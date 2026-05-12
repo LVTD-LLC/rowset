@@ -1,0 +1,108 @@
+{% load mjml %}
+
+{% mjml %}
+<mjml>
+  <mj-head>
+    <mj-style>
+      .btn-confirm {
+        display: inline-block;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        color: white;
+        background-color: #2563eb;
+        text-decoration: none;
+        line-height: 24px;
+        text-align: center;
+      }
+      .btn-confirm:hover {
+        background-color: #1d4ed8;
+      }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#f3f4f6">
+    <mj-section background-color="#ffffff" padding="40px 20px">
+      <mj-column>
+        <mj-text
+          font-size="28px"
+          font-weight="bold"
+          color="#1f2937"
+          align="center"
+          padding="0 0 20px 0"
+        >
+          FileBridge
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 20px 20px 20px">
+      <mj-column>
+        <mj-text font-size="18px" color="#1f2937" font-weight="600" padding="0 0 10px 0">
+          Welcome to FileBridge!
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563" line-height="24px" padding="0 0 20px 0">
+          Hello,
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563" line-height="24px" padding="0 0 20px 0">
+          Thank you for signing up at {{ site_name }}! We're excited to have you on board.
+        </mj-text>
+        <mj-text font-size="16px" color="#4b5563" line-height="24px" padding="0 0 20px 0">
+          To get started, please confirm your email address by clicking the button below:
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 20px 30px 20px">
+      <mj-column>
+        <mj-button
+          background-color="#2563eb"
+          color="#ffffff"
+          font-size="16px"
+          font-weight="600"
+          border-radius="8px"
+          padding="12px 24px"
+          href="{{ activate_url }}"
+        >
+          Confirm Email Address
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 20px 30px 20px">
+      <mj-column>
+        <mj-text font-size="14px" color="#6b7280" line-height="20px" padding="0 0 10px 0">
+          Or copy and paste this link into your browser:
+        </mj-text>
+        <mj-text font-size="13px" color="#2563eb" line-height="20px" padding="0 0 20px 0">
+          {{ activate_url }}
+        </mj-text>
+        <mj-text font-size="14px" color="#6b7280" line-height="20px" padding="20px 0 0 0">
+          If you didn't create an account, you can safely ignore this email.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#f9fafb" padding="30px 20px">
+      <mj-column>
+        <mj-text font-size="14px" color="#6b7280" align="center" line-height="20px">
+          Thanks,
+        </mj-text>
+        <mj-text font-size="14px" color="#6b7280" align="center" line-height="20px" padding="5px 0 0 0">
+          Rasul Kireev
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#f3f4f6" padding="20px">
+      <mj-column>
+        <mj-text font-size="12px" color="#9ca3af" align="center">
+          © {% now "Y" %} FileBridge. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>
+{% endmjml %}

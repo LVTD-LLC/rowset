@@ -1,0 +1,36 @@
+name: Deploy Prod Server
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: filebridge-server-prod
+  cancel-in-progress: true
+
+env:
+  PROJECT_NAME: filebridge
+
+jobs:
+  deploy:
+    name: Deploy server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare CapRover deployment bundle
+        run: |
+          tmpdir="$(mktemp -d)"
+          rsync -a --exclude .git ./ "$tmpdir/"
+          printf '{"schemaVersion":2,"dockerfilePath":"./deployment/Dockerfile.server"}\n' > "$tmpdir/captain-definition"
+          tar -C "$tmpdir" -cf /tmp/filebridge-server.tar .
+
+      - name: Deploy to CapRover
+        run: |
+          npx -y -p node@20 -p caprover caprover deploy \
+            -u "${{ secrets.CAPROVER_SERVER }}" \
+            -p "${{ secrets.CAPROVER_PASSWORD }}" \
+            -a "${PROJECT_NAME}" \
+            -t /tmp/filebridge-server.tar

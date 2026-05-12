@@ -1,0 +1,36 @@
+name: Deploy Prod Workers
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: filebridge-workers-prod
+  cancel-in-progress: true
+
+env:
+  PROJECT_NAME: filebridge
+
+jobs:
+  deploy:
+    name: Deploy workers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare CapRover deployment bundle
+        run: |
+          tmpdir="$(mktemp -d)"
+          rsync -a --exclude .git ./ "$tmpdir/"
+          printf '{"schemaVersion":2,"dockerfilePath":"./deployment/Dockerfile.workers"}\n' > "$tmpdir/captain-definition"
+          tar -C "$tmpdir" -cf /tmp/filebridge-workers.tar .
+
+      - name: Deploy to CapRover
+        run: |
+          npx -y -p node@20 -p caprover caprover deploy \
+            -u "${{ secrets.CAPROVER_SERVER }}" \
+            -p "${{ secrets.CAPROVER_PASSWORD }}" \
+            -a "${PROJECT_NAME}-workers" \
+            -t /tmp/filebridge-workers.tar

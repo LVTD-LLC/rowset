@@ -1,0 +1,82 @@
+{% extends "base_landing.html" %}
+
+{% block content %}
+<div class="isolate relative px-6 mt-16 sm:mt-24 lg:px-8">
+
+  {% if request.GET.account_deleted %}
+  <div class="mx-auto mb-10 max-w-3xl rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900/40 dark:bg-green-950/30 dark:text-green-200">
+    Your account has been deleted.
+  </div>
+  {% endif %}
+
+  <div class="isolate relative px-6 mt-16 sm:mt-24 lg:px-8">
+    <div class="mx-auto text-center">
+        <h1 class="mx-auto mb-6 max-w-2xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+          Turn uploaded files into clean API endpoints and structured data feeds.
+        </h1>
+        <div class="flex flex-col gap-x-6 justify-center items-center mt-10 md:flex-row md:items-end">
+          <a
+            class="block px-3 py-2 text-sm font-semibold text-white bg-green-600 rounded-md shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+            href="{% url 'account_signup' %}"
+          >
+            Get Started
+          </a>
+        </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ Section -->
+<div class="bg-white dark:bg-gray-900">
+  <div class="px-6 py-24 mx-auto max-w-7xl sm:py-32 lg:px-8 lg:py-40">
+    <div class="mx-auto max-w-4xl">
+      <h2 class="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl dark:text-white">Frequently asked questions</h2>
+      <dl class="mt-16 divide-y divide-gray-900/10 dark:divide-white/10">
+        <div class="py-6 first:pt-0 last:pb-0">
+          <dt>
+            <button type="button" command="--toggle" commandfor="faq-0" class="flex justify-between items-start w-full text-left text-gray-900 dark:text-white">
+              <span class="font-semibold text-base/7">What features are included?</span>
+              <span class="flex items-center ml-6 h-7">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 [[aria-expanded='true']_&]:hidden">
+                  <path d="M12 6v12m6-6H6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 [&:not([aria-expanded='true']_*)]:hidden">
+                  <path d="M18 12H6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </button>
+          </dt>
+          <el-disclosure id="faq-0" class="[&:not([hidden])]:contents">
+            <dd class="pr-12 mt-2">
+              <p class="text-gray-600 text-base/7 dark:text-gray-400">Our platform includes the core workflows you need to get started quickly, with room to customize the experience for your own product.</p>
+            </dd>
+          </el-disclosure>
+        </div>
+        
+        <div class="py-6 first:pt-0 last:pb-0">
+          <dt>
+            <button type="button" command="--toggle" commandfor="faq-1" class="flex justify-between items-start w-full text-left text-gray-900 dark:text-white">
+              <span class="font-semibold text-base/7">How does pricing work?</span>
+              <span class="flex items-center ml-6 h-7">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 [[aria-expanded='true']_&]:hidden">
+                  <path d="M12 6v12m6-6H6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 [&:not([aria-expanded='true']_*)]:hidden">
+                  <path d="M18 12H6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </button>
+          </dt>
+          <el-disclosure id="faq-1" hidden class="[&:not([hidden])]:contents">
+            <dd class="pr-12 mt-2">
+              <p class="text-gray-600 text-base/7 dark:text-gray-400">We offer flexible pricing plans to suit different needs. Start with our free tier to explore the platform, then upgrade as you grow. Cancel or change your plan anytime.</p>
+            </dd>
+          </el-disclosure>
+        </div>
+        
+      </dl>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

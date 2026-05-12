@@ -1,0 +1,160 @@
+from decimal import Decimal, InvalidOperation
+
+
+from django.contrib.auth.models import User
+from django.db import models
+from django.urls import reverse
+from django.conf import settings
+from django.core.mail import send_mail
+from django_q.tasks import async_task
+
+from apps.core.base_models import BaseModel
+from apps.core.choices import ProfileStates, EmailType
+from apps.core.model_utils import generate_random_key
+from apps.core.utils import send_transactional_email
+
+
+from filebridge.utils import get_filebridge_logger
+
+logger = get_filebridge_logger(__name__)
+
+
+class Profile(BaseModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    key = models.CharField(max_length=30, unique=True, default=generate_random_key)
+
+    
+    stripe_subscription_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="The user's Stripe subscription id, if it exists",
+    )
+    stripe_customer_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="The user's Stripe customer id, if it exists",
+    )
+    
+
+    state = models.CharField(
+        max_length=255,
+        choices=ProfileStates.choices,
+        default=ProfileStates.STRANGER,
+        help_text="The current state of the user's profile",
+    )
+
+    def track_state_change(self, to_state, metadata=None, source_function=None):
+        async_task(
+            "apps.core.tasks.track_state_change",
+            profile_id=self.id,
+            from_state=self.current_state,
+            to_state=to_state,
+            metadata=metadata,
+            source_function=source_function,
+            group="Track State Change",
+        )
+
+    @property
+    def current_state(self):
+        if not self.state_transitions.all().exists():
+            return ProfileStates.STRANGER
+        latest_transition = self.state_transitions.latest("created_at")
+        return latest_transition.to_state
+
+    
+    @property
+    def has_active_subscription(self):
+        return self.state in [
+            ProfileStates.SUBSCRIBED,
+            ProfileStates.CANCELLED,
+        ] or (self.user.is_superuser and settings.ENVIRONMENT == "prod")
+    
+class ProfileStateTransition(BaseModel):
+    profile = models.ForeignKey(
+        Profile,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="state_transitions",
+    )
+    from_state = models.CharField(max_length=255, choices=ProfileStates.choices)
+    to_state = models.CharField(max_length=255, choices=ProfileStates.choices)
+    backup_profile_id = models.IntegerField()
+    metadata = models.JSONField(null=True, blank=True)
+
+class Feedback(BaseModel):
+    profile = models.ForeignKey(
+        Profile,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="feedback",
+        help_text="The user who submitted the feedback",
+    )
+    feedback = models.TextField(
+        help_text="The feedback text",
+    )
+    page = models.CharField(
+        max_length=255,
+        help_text="The page where the feedback was submitted",
+    )
+
+    def __str__(self):
+        return f"{self.profile.user.email}: {self.feedback}"
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+
+        if is_new:
+            subject = "New Feedback Submitted"
+            message = f"""
+                New feedback was submitted:\n\n
+                User: {self.profile.user.email if self.profile else "Anonymous"}
+                Feedback: {self.feedback}
+                Page: {self.page}
+            """
+            from_email = settings.DEFAULT_FROM_EMAIL
+            recipient_list = [settings.DEFAULT_FROM_EMAIL]
+
+            for recipient_email in recipient_list:
+                send_transactional_email(
+                    lambda recipient=recipient_email: send_mail(
+                        subject,
+                        message,
+                        from_email,
+                        [recipient],
+                        fail_silently=False,
+                    ),
+                    email_address=recipient_email,
+                    email_type=EmailType.FEEDBACK_NOTIFICATION,
+                    profile=self.profile,
+                    context={
+                        "flow": "feedback_notification",
+                        "feedback_id": self.id,
+                    },
+                )
+
+class EmailSent(BaseModel):
+    email_address = models.EmailField(help_text="The recipient email address")
+    email_type = models.CharField(
+        max_length=50, choices=EmailType.choices, help_text="Type of email sent"
+    )
+    profile = models.ForeignKey(
+        Profile,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="emails_sent",
+        help_text="Associated user profile, if applicable",
+    )
+
+    class Meta:
+        verbose_name = "Email Sent"
+        verbose_name_plural = "Emails Sent"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.email_type} to {self.email_address}"

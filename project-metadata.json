@@ -1,0 +1,26 @@
+{
+  "generator_version": "1.0",
+  "metadata_version": "1.0",
+  "module_flags": {
+    "generate_blog": "y",
+    "generate_docs": "y",
+    "use_ai": "y",
+    "use_buttondown": "y",
+    "use_ci": "y",
+    "use_healthchecks": "y",
+    "use_logfire": "y",
+    "use_mjml": "y",
+    "use_posthog": "y",
+    "use_s3": "y",
+    "use_sentry": "y",
+    "use_stripe": "y"
+  },
+  "project_id": 1,
+  "project_name": "FileBridge",
+  "project_slug": "filebridge",
+  "timestamps": {
+    "created_at": "2026-05-12T10:09:13.139383+00:00",
+    "finished_at": "2026-05-12T10:09:14.554694+00:00",
+    "started_at": "2026-05-12T10:09:13.165534+00:00"
+  }
+}

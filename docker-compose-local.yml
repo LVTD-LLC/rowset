@@ -1,0 +1,146 @@
+services:
+  db:
+    image: rasulkireev/custom-postgres:18
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=filebridge
+      - POSTGRES_USER=filebridge
+      - POSTGRES_PASSWORD=filebridge
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filebridge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass filebridge
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=filebridge
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile-python
+    working_dir: /app
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      frontend:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  workers:
+    build:
+      context: .
+      dockerfile: Dockerfile-python
+    working_dir: /app
+    command: python manage.py qcluster
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+
+  frontend:
+    image: node:24
+    working_dir: /app
+    command: sh -c "npm install && npm run start"
+    volumes:
+      - .:/app
+    ports:
+      - "9091:9091"
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/frontend/build/manifest.json"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  mailhog:
+    image: mailhog/mailhog
+    expose:
+      - 1025
+      - 8025
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  stripe:
+    image: stripe/stripe-cli:latest
+    command: [
+      "listen",
+      "--forward-to", "http://backend:8000/stripe/webhook/"
+    ]
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_DEVICE_NAME=cleanapp_docker
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    env_file:
+      - .env
+  
+
+  mjml:
+    image: danihodovic/mjml-server
+    ports:
+      - "15500:15500"
+  
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: filebridge-user
+      MINIO_ROOT_PASSWORD: filebridge-password
+    command: server --console-address ":9001" /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5 &&
+      /usr/bin/mc config host add myminio http://minio:9000 filebridge filebridge &&
+      /usr/bin/mc mb myminio/filebridge-dev &&
+      /usr/bin/mc anonymous set download myminio/filebridge-dev &&
+      exit 0;
+      "
+  
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  

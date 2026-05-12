@@ -1,0 +1,46 @@
+"""filebridge URL Configuration
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/4.0/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import include, path
+from django.contrib.sitemaps.views import sitemap
+from django.views.generic import TemplateView
+
+from filebridge.sitemaps import sitemaps
+from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView
+
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    # Override allauth signup with custom views.
+    path("accounts/signup/passkey/", AccountSignupByPasskeyView.as_view(), name="account_signup_by_passkey"),
+    path("accounts/signup/", AccountSignupView.as_view(), name="account_signup"),
+    path("accounts/", include("allauth.urls")),
+    path("anymail/", include("anymail.urls")),
+    path("uses", TemplateView.as_view(template_name="pages/uses.html"), name="uses"),
+    path("blog/", include("apps.blog.urls")),
+    
+    path("api/", include("apps.api.urls")),
+    path("", include("apps.pages.urls")),
+    path("", include("apps.core.urls")),
+    path("docs/", include("apps.docs.urls")),
+    
+    path(
+        "sitemap.xml",
+        sitemap,
+        {"sitemaps": sitemaps},
+        name="django.contrib.sitemaps.views.sitemap",
+    ),
+]
