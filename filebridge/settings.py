@@ -294,8 +294,11 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
 ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
+# Send verification email during signup, but do not block the new user's first session.
+# Users land in the app immediately and see an in-app reminder until they verify.
+ACCOUNT_EMAIL_VERIFICATION = "optional"
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = False
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ALLOW_SIGNUPS = env.bool("ALLOW_SIGNUPS", default=True)
 ACCOUNT_FORMS = {
     "signup": "apps.core.forms.CustomSignUpForm",
@@ -308,7 +311,9 @@ if ENVIRONMENT != "dev":
 # Passkey (WebAuthn) auth support via django-allauth MFA.
 MFA_SUPPORTED_TYPES = ["webauthn"]
 MFA_PASSKEY_LOGIN_ENABLED = True
-MFA_PASSKEY_SIGNUP_ENABLED = True
+# allauth requires mandatory code-based email verification for passkey signup.
+# Keep password signup non-blocking instead of sending new users to the raw code page.
+MFA_PASSKEY_SIGNUP_ENABLED = False
 # Local dev uses http://localhost, so allow insecure origin only in debug.
 MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = DEBUG
 

@@ -1,4 +1,6 @@
 import pytest
+from allauth.account.models import EmailAddress
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 
 
@@ -14,18 +16,60 @@ def test_login_page_shows_passkey_option(client):
     assert 'id="mfa_login"' in content
 
 
-def test_signup_page_shows_passkey_option(client):
+def test_signup_page_hides_passkey_signup_option(client):
     response = client.get(reverse("account_signup"))
     assert response.status_code == 200
 
     content = response.content.decode()
-    assert "Sign up using a passkey" in content
+    assert "Sign up using a passkey" not in content
 
 
-def test_passkey_signup_page_uses_custom_template(client):
-    response = client.get(reverse("account_signup_by_passkey"))
+def test_signup_redirects_to_dashboard_without_blocking_email_code_page(
+    client, monkeypatch, settings
+):
+    sent_confirmations = []
+
+    def fake_send_confirmation_mail(self, request, emailconfirmation, signup):
+        sent_confirmations.append((emailconfirmation.email_address.email, signup))
+
+    monkeypatch.setattr(
+        "filebridge.adapters.CustomAccountAdapter.send_confirmation_mail",
+        fake_send_confirmation_mail,
+    )
+    settings.POSTHOG_API_KEY = ""
+
+    response = client.post(
+        reverse("account_signup"),
+        data={
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "password1": "strong-test-pass-123",
+            "password2": "strong-test-pass-123",
+        },
+    )
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("home")
+    assert get_user_model().objects.filter(username="newuser").exists()
+    assert sent_confirmations == [("newuser@example.com", True)]
+
+
+def test_dashboard_reminds_unverified_users_without_blocking(client):
+    user = get_user_model().objects.create_user(
+        username="unverified",
+        email="unverified@example.com",
+        password="strong-test-pass-123",
+    )
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"primary": True, "verified": False},
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("home"))
+
     assert response.status_code == 200
-
     content = response.content.decode()
-    assert "Create your account with a passkey" in content
-    assert "Continue with passkey" in content
+    assert "Your email is not yet confirmed" in content
+    assert "Welcome to FileBridge" in content

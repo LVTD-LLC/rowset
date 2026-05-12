@@ -39,6 +39,13 @@ class HomeView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        email_address = EmailAddress.objects.filter(
+            user=self.request.user,
+            email__iexact=self.request.user.email,
+        ).first()
+        context["email_verified"] = bool(email_address and email_address.verified)
+        context["resend_confirmation_url"] = reverse("resend_confirmation")
+
         payment_status = self.request.GET.get("payment")
         if payment_status == "success":
             messages.success(self.request, "Thanks for subscribing, I hope you enjoy the app!")
