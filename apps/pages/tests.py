@@ -73,3 +73,19 @@ def test_dashboard_reminds_unverified_users_without_blocking(client):
     content = response.content.decode()
     assert "Your email is not yet confirmed" in content
     assert "Welcome to FileBridge" in content
+
+
+def test_dashboard_suppresses_verification_reminder_without_email_address(client):
+    user = get_user_model().objects.create_user(
+        username="admincreated",
+        email="admincreated@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("home"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Your email is not yet confirmed" not in content
+    assert "Welcome to FileBridge" in content
