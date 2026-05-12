@@ -28,9 +28,12 @@ jobs:
           tar -C "$tmpdir" -cf /tmp/filebridge-workers.tar .
 
       - name: Deploy to CapRover
+        env:
+          CAPROVER_URL: ${{ secrets.CAPROVER_SERVER }}
+          CAPROVER_APP_TOKEN: ${{ secrets.WORKERS_APP_TOKEN }}
         run: |
           npx -y -p node@20 -p caprover caprover deploy \
-            -u "${{ secrets.CAPROVER_SERVER }}" \
-            -p "${{ secrets.CAPROVER_PASSWORD }}" \
-            -a "${PROJECT_NAME}-workers" \
-            -t /tmp/filebridge-workers.tar
+            --caproverUrl "$CAPROVER_URL" \
+            --appToken "$CAPROVER_APP_TOKEN" \
+            --caproverApp "${PROJECT_NAME}-workers" \
+            --tarFile /tmp/filebridge-workers.tar
