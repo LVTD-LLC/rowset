@@ -39,6 +39,16 @@ class HomeView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        email_address = EmailAddress.objects.filter(
+            user=self.request.user,
+            email__iexact=self.request.user.email,
+        ).first()
+        # Users created outside allauth (admin/management commands) may not have
+        # an EmailAddress row yet. Suppress the signup reminder for them instead
+        # of showing a banner with a resend action that cannot work.
+        context["email_verified"] = email_address is None or email_address.verified
+        context["resend_confirmation_url"] = reverse("resend_confirmation")
+
         payment_status = self.request.GET.get("payment")
         if payment_status == "success":
             messages.success(self.request, "Thanks for subscribing, I hope you enjoy the app!")
