@@ -333,12 +333,13 @@ if GITHUB_CLIENT_ID != "":
     }
 
 MAILGUN_API_KEY = env("MAILGUN_API_KEY", default="")
+MAILGUN_SENDER_DOMAIN = env("MAILGUN_SENDER_DOMAIN", default="mg.lvtd.dev")
 ANYMAIL = {
     "MAILGUN_API_KEY": MAILGUN_API_KEY,
-    "MAILGUN_SENDER_DOMAIN": "mg.filebridge.app",
+    "MAILGUN_SENDER_DOMAIN": MAILGUN_SENDER_DOMAIN,
 }
-DEFAULT_FROM_EMAIL = "Rasul Kireev from FileBridge <hello@filebridge.app>"
-SERVER_EMAIL = "FileBridge Errors <error@filebridge.app>"
+DEFAULT_FROM_EMAIL = "Rasul Kireev <rasul@lvtd.dev>"
+SERVER_EMAIL = "FileBridge Errors <rasul@lvtd.dev>"
 
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
