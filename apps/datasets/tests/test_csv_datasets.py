@@ -65,6 +65,7 @@ def test_preview_csv_file_returns_headers_sample_and_count():
     preview = preview_csv_file(csv_upload())
 
     assert preview.headers == ["name", "email"]
+    assert preview.text == "name,email\nAda,ada@example.com\nGrace,grace@example.com\n"
     assert preview.row_count == 2
     assert preview.preview_rows == [
         {"name": "Ada", "email": "ada@example.com"},
@@ -91,7 +92,43 @@ def test_upload_preview_creates_preview_dataset(auth_client, profile):
 
     dataset = Dataset.objects.get(profile=profile)
     assert dataset.status == DatasetStatus.PREVIEWED
+    assert dataset.source_text == "name,email\nAda,ada@example.com\nGrace,grace@example.com\n"
     assert dataset.rows.count() == 0
+
+
+def test_upload_preview_rejects_oversized_csv(auth_client):
+    upload = csv_upload("name,email\n" + ("Ada,ada@example.com\n" * 600_000))
+
+    response = auth_client.post(
+        reverse("dataset_upload_preview"),
+        {"file": upload},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "ok": False,
+        "error": "CSV files must be 10 MB or smaller for now.",
+    }
+
+
+def test_import_uses_stored_source_text_when_file_is_not_available(profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file="datasets/csv/missing.csv",
+        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name", "email"],
+        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+        row_count=2,
+    )
+
+    import_dataset_rows(dataset.id)
+
+    dataset.refresh_from_db()
+    assert dataset.status == DatasetStatus.READY
+    assert dataset.rows.count() == 2
 
 
 def test_confirm_import_enqueues_and_imports_rows(auth_client, profile, monkeypatch):
@@ -100,6 +137,7 @@ def test_confirm_import_enqueues_and_imports_rows(auth_client, profile, monkeypa
         name="People",
         original_filename="people.csv",
         source_file=csv_upload(),
+        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
         status=DatasetStatus.PREVIEWED,
         headers=["name", "email"],
         preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
