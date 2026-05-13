@@ -24,6 +24,14 @@ def test_chatwoot_context_disabled_without_token():
     assert chatwoot_config(request) == {"chatwoot": {"enabled": False}}
 
 
+@override_settings(CHATWOOT_BASE_URL="", CHATWOOT_WEBSITE_TOKEN="website-token")
+def test_chatwoot_context_disabled_without_base_url():
+    request = RequestFactory().get("/")
+    request.user = SimpleNamespace(is_authenticated=False)
+
+    assert chatwoot_config(request) == {"chatwoot": {"enabled": False}}
+
+
 @override_settings(
     CHATWOOT_BASE_URL="https://chatwoot.cap.gregagi.com/",
     CHATWOOT_WEBSITE_TOKEN="website-token",
