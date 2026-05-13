@@ -1,30 +1,29 @@
 from urllib.parse import urlencode
 
 import stripe
-
-from allauth.account.models import EmailAddress, EmailConfirmation
+from allauth.account.internal.flows.email_verification import (
+    send_verification_email_to_address,
+)
+from allauth.account.models import EmailAddress
 from allauth.mfa.models import Authenticator
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.core.cache import cache
-from django.http import HttpResponse, HttpResponseBadRequest
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-from django.contrib.messages.views import SuccessMessageMixin
-from django.shortcuts import redirect
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.messages.views import SuccessMessageMixin
+from django.core.cache import cache
 from django.db import transaction
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView, UpdateView
-
-from apps.core.stripe_webhooks import EVENT_HANDLERS
-
 
 from apps.core.forms import ProfileUpdateForm
 from apps.core.models import Profile
-
+from apps.core.stripe_webhooks import EVENT_HANDLERS
 from filebridge.utils import get_filebridge_logger
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -46,7 +45,6 @@ class HomeView(LoginRequiredMixin, TemplateView):
             context["show_confetti"] = True
         elif payment_status == "failed":
             messages.error(self.request, "Something went wrong with the payment.")
-        
 
         return context
 
@@ -74,11 +72,11 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             user=user,
             type=Authenticator.Type.WEBAUTHN,
         ).count()
-        
+
         context["api_key"] = user.profile.key
 
-
         return context
+
 
 @login_required
 def resend_confirmation_email(request):
@@ -105,9 +103,13 @@ def resend_confirmation_email(request):
             )
             return redirect("settings")
 
-        # Create or get existing email confirmation
-        email_confirmation = EmailConfirmation.create(email_address)
-        email_confirmation.send(request, signup=False)
+        sent = send_verification_email_to_address(request, email_address, signup=False)
+        if not sent:
+            messages.error(
+                request,
+                "Please wait before requesting another confirmation email.",
+            )
+            return redirect("settings")
 
         messages.success(request, "Confirmation email has been sent. Please check your inbox.")
         logger.info(
@@ -253,7 +255,6 @@ def create_customer_portal_session(request):
     return redirect(session.url, code=303)
 
 
-
 class AdminPanelView(UserPassesTestMixin, TemplateView):
     template_name = "pages/admin-panel.html"
     login_url = "account_login"
@@ -266,11 +267,12 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         return redirect("home")
 
     def get_context_data(self, **kwargs):
-        from django.db.models import Count
+        from datetime import timedelta
+
         from django.contrib.auth.models import User
         from django.utils import timezone
-        from datetime import timedelta
-        from apps.core.models import Profile, Feedback
+
+        from apps.core.models import Feedback, Profile
 
         context = super().get_context_data(**kwargs)
 
@@ -286,28 +288,32 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         new_users_month = User.objects.filter(date_joined__gte=month_ago).count()
         feedback_week = Feedback.objects.filter(created_at__gte=week_ago).count()
 
-        recent_users = User.objects.select_related('profile').order_by('-date_joined')[:10]
-        recent_feedback = Feedback.objects.select_related('profile__user').order_by('-created_at')[:10]
+        recent_users = User.objects.select_related("profile").order_by("-date_joined")[:10]
+        recent_feedback = Feedback.objects.select_related("profile__user").order_by("-created_at")[
+            :10
+        ]
 
         # Calculate average users per day for last 30 days
         avg_users_per_day = new_users_month / 30 if new_users_month > 0 else 0
 
-        context.update({
-            'total_users': total_users,
-            'total_profiles': total_profiles,
-            'total_feedback': total_feedback,
-            'new_users_week': new_users_week,
-            'new_users_month': new_users_month,
-            'feedback_week': feedback_week,
-            'recent_users': recent_users,
-            'recent_feedback': recent_feedback,
-            'avg_users_per_day': avg_users_per_day,
-        })
+        context.update(
+            {
+                "total_users": total_users,
+                "total_profiles": total_profiles,
+                "total_feedback": total_feedback,
+                "new_users_week": new_users_week,
+                "new_users_month": new_users_month,
+                "feedback_week": feedback_week,
+                "recent_users": recent_users,
+                "recent_feedback": recent_feedback,
+                "avg_users_per_day": avg_users_per_day,
+            }
+        )
 
         logger.info(
             "Admin panel accessed",
             email=self.request.user.email,
-            profile_id=self.request.user.profile.id
+            profile_id=self.request.user.profile.id,
         )
 
         return context
