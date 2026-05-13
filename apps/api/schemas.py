@@ -77,6 +77,7 @@ class DatasetRowPatchIn(Schema):
 class DatasetRowOut(Schema):
     id: int
     row_number: int
+    index_value: str
     data: dict[str, str]
 
 

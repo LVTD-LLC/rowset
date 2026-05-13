@@ -45,6 +45,12 @@
           <div data-csv-upload-target="headers" class="flex flex-wrap gap-2"></div>
         </div>
 
+        <div class="mt-5">
+          <label for="dataset-index-column" class="mb-2 block text-sm font-medium text-gray-900 dark:text-gray-100">Index column</label>
+          <select id="dataset-index-column" data-csv-upload-target="indexSelector" class="block w-full max-w-md rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-green-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"></select>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Pick a column with unique values, or let FileBridge generate a stable ID column for each row.</p>
+        </div>
+
         <div class="mt-5 overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900" data-csv-upload-target="sample"></div>
       </div>
     </form>

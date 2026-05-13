@@ -15,6 +15,7 @@ class Dataset(BaseModel):
     key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=255)
     original_filename = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=32, default="csv")
     source_file = models.FileField(upload_to="datasets/csv/%Y/%m/%d/")
     source_text = models.TextField(
         blank=True,
@@ -28,6 +29,8 @@ class Dataset(BaseModel):
     )
     headers = models.JSONField(default=list)
     preview_rows = models.JSONField(default=list)
+    index_column = models.CharField(max_length=255, blank=True, default="")
+    index_generated = models.BooleanField(default=False)
     row_count = models.PositiveIntegerField(default=0)
     parse_error = models.TextField(blank=True, default="")
     confirmed_at = models.DateTimeField(null=True, blank=True)
@@ -46,6 +49,7 @@ class Dataset(BaseModel):
 class DatasetRow(BaseModel):
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name="rows")
     row_number = models.PositiveIntegerField()
+    index_value = models.CharField(max_length=1024, blank=True, default="")
     data = models.JSONField(default=dict)
 
     class Meta:
@@ -54,6 +58,10 @@ class DatasetRow(BaseModel):
             models.UniqueConstraint(
                 fields=["dataset", "row_number"],
                 name="unique_dataset_row_number",
+            ),
+            models.UniqueConstraint(
+                fields=["dataset", "index_value"],
+                name="unique_dataset_index_value",
             )
         ]
 
