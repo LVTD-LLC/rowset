@@ -1,31 +1,39 @@
-from django.http import HttpRequest
-from django.db import connection
+import csv
+
 from django.core.cache import cache
+from django.db import connection
+from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
 from ninja.errors import HttpError
 
-from apps.api.auth import session_auth, superuser_api_auth
-from apps.core.models import Feedback
-from apps.blog.models import BlogPost
-from apps.blog.choices import BlogPostStatus
+from apps.api.auth import api_key_auth, session_auth, superuser_api_auth
 from apps.api.schemas import (
-    SubmitFeedbackIn,
-    SubmitFeedbackOut,
+    BlogPostDetailOut,
     BlogPostIn,
-    BlogPostUpdateIn,
     BlogPostItemOut,
     BlogPostListOut,
     BlogPostOut,
-    BlogPostDetailOut,
-    ProfileSettingsOut,
+    BlogPostUpdateIn,
+    DatasetApiOut,
+    DatasetRowIn,
+    DatasetRowOut,
+    DatasetRowPatchIn,
+    DatasetRowsOut,
+    SubmitFeedbackIn,
+    SubmitFeedbackOut,
     UserSettingsOut,
 )
-
+from apps.blog.choices import BlogPostStatus
+from apps.blog.models import BlogPost
+from apps.core.models import Feedback
+from apps.datasets.choices import DatasetStatus
+from apps.datasets.models import Dataset, DatasetRow
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
 
 api = NinjaAPI()
+
 
 @api.get("/healthcheck", auth=None, include_in_schema=False, tags=["private"])
 def healthcheck(request: HttpRequest):
@@ -111,7 +119,6 @@ def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
     except Exception as e:
         logger.error("Failed to submit feedback", error=str(e), profile_id=profile.id)
         return {"status": False, "message": "Failed to submit feedback. Please try again."}
-
 
 
 def _serialize_blog_post(blog_post: BlogPost) -> BlogPostItemOut:
@@ -205,7 +212,9 @@ def update_internal_blog_post(request: HttpRequest, blog_post_id: int, data: Blo
     blog_post.tags = data.tags
     blog_post.content = data.content
     blog_post.status = data.status
-    blog_post.save(update_fields=["title", "description", "slug", "tags", "content", "status", "updated_at"])
+    blog_post.save(
+        update_fields=["title", "description", "slug", "tags", "content", "status", "updated_at"]
+    )
 
     return {
         "status": "success",
@@ -314,9 +323,7 @@ def user_settings(request: HttpRequest):
     profile = request.auth
     try:
         profile_data = {
-            
             "has_pro_subscription": profile.has_active_subscription,
-            
         }
         data = {"profile": profile_data}
 
@@ -328,4 +335,135 @@ def user_settings(request: HttpRequest):
             profile_id=profile.id,
             exc_info=True,
         )
-        raise HttpError(500, "An unexpected error occurred.")
+        raise HttpError(500, "An unexpected error occurred.") from e
+
+
+def _get_ready_dataset(profile, dataset_key: str) -> Dataset:
+    try:
+        dataset = Dataset.objects.get(key=dataset_key, profile=profile)
+    except Dataset.DoesNotExist as exc:
+        raise HttpError(404, "Dataset not found.") from exc
+
+    if dataset.status != DatasetStatus.READY:
+        raise HttpError(
+            409,
+            "Dataset is not ready yet. Confirm and wait for import first.",
+        )
+
+    return dataset
+
+
+def _serialize_dataset_row(row: DatasetRow) -> DatasetRowOut:
+    return {"id": row.id, "row_number": row.row_number, "data": row.data}
+
+
+@api.get(
+    "/datasets/{dataset_key}/rows",
+    response=DatasetRowsOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def list_dataset_rows(request: HttpRequest, dataset_key: str, limit: int = 100, offset: int = 0):
+    dataset = _get_ready_dataset(request.auth, dataset_key)
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+    rows = dataset.rows.all()[offset : offset + limit]
+    return {
+        "dataset": str(dataset.key),
+        "count": dataset.rows.count(),
+        "rows": [_serialize_dataset_row(row) for row in rows],
+    }
+
+
+@api.post(
+    "/datasets/{dataset_key}/rows",
+    response=DatasetApiOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def create_dataset_row(request: HttpRequest, dataset_key: str, payload: DatasetRowIn):
+    dataset = _get_ready_dataset(request.auth, dataset_key)
+    last_row_number = (
+        dataset.rows.order_by("-row_number").values_list("row_number", flat=True).first() or 0
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=last_row_number + 1,
+        data={header: str(payload.data.get(header, "")) for header in dataset.headers},
+    )
+    dataset.row_count = dataset.rows.count()
+    dataset.save(update_fields=["row_count", "updated_at"])
+    return {"status": "success", "message": "Row created.", "row": _serialize_dataset_row(row)}
+
+
+@api.get(
+    "/datasets/{dataset_key}/rows/{row_id}",
+    response=DatasetApiOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def get_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
+    dataset = _get_ready_dataset(request.auth, dataset_key)
+    try:
+        row = dataset.rows.get(id=row_id)
+    except DatasetRow.DoesNotExist as exc:
+        raise HttpError(404, "Row not found.") from exc
+    return {"status": "success", "message": "Row retrieved.", "row": _serialize_dataset_row(row)}
+
+
+@api.patch(
+    "/datasets/{dataset_key}/rows/{row_id}",
+    response=DatasetApiOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def patch_dataset_row(
+    request: HttpRequest,
+    dataset_key: str,
+    row_id: int,
+    payload: DatasetRowPatchIn,
+):
+    dataset = _get_ready_dataset(request.auth, dataset_key)
+    try:
+        row = dataset.rows.get(id=row_id)
+    except DatasetRow.DoesNotExist as exc:
+        raise HttpError(404, "Row not found.") from exc
+
+    row.data = {
+        **row.data,
+        **{key: str(value) for key, value in payload.data.items() if key in dataset.headers},
+    }
+    row.save(update_fields=["data", "updated_at"])
+    return {"status": "success", "message": "Row updated.", "row": _serialize_dataset_row(row)}
+
+
+@api.delete(
+    "/datasets/{dataset_key}/rows/{row_id}",
+    response=DatasetApiOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def delete_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
+    dataset = _get_ready_dataset(request.auth, dataset_key)
+    deleted_count, _ = dataset.rows.filter(id=row_id).delete()
+    if deleted_count == 0:
+        raise HttpError(404, "Row not found.")
+    dataset.row_count = dataset.rows.count()
+    dataset.save(update_fields=["row_count", "updated_at"])
+    return {"status": "success", "message": "Row deleted."}
+
+
+@api.get(
+    "/datasets/{dataset_key}/export.csv",
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def export_dataset_csv(request: HttpRequest, dataset_key: str):
+    dataset = _get_ready_dataset(request.auth, dataset_key)
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{dataset.name}.csv"'
+    writer = csv.DictWriter(response, fieldnames=dataset.headers)
+    writer.writeheader()
+    for row in dataset.rows.all().iterator():
+        writer.writerow({header: row.data.get(header, "") for header in dataset.headers})
+    return response

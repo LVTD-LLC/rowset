@@ -46,6 +46,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
         elif payment_status == "failed":
             messages.error(self.request, "Something went wrong with the payment.")
 
+        context["recent_datasets"] = self.request.user.profile.datasets.all()[:5]
         return context
 
 

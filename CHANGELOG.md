@@ -28,6 +28,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Sentry setup now includes release metadata, configurable tracing/profiling/log settings, logging breadcrumbs/events, and the `before_send` hook by default.
 
 ### Added
+- CSV dataset MVP: authenticated users can upload a CSV, preview detected headers/sample rows/row count, confirm import, and get API endpoints for listing, creating, updating, deleting, and exporting rows.
 - Passkey login now uses a hardened FileBridge WebAuthn launcher that validates server options before calling the browser API.
 - Settings confirmation resends now use django-allauth's canonical email verification flow so generated links confirm correctly.
 - Passkey setup now surfaces WebAuthn errors to users instead of failing silently when the browser/device cannot start passkey creation.
