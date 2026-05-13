@@ -1,6 +1,8 @@
 import pytest
+import time
 from allauth.account.models import EmailAddress
 from allauth.mfa.models import Authenticator
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
@@ -135,6 +137,81 @@ def test_settings_shows_passkey_manage_link_when_passkey_exists(client):
     assert "You have 1 passkey set up." in content
     assert "Manage passkeys" in content
     assert reverse("mfa_list_webauthn") in content
+
+
+def test_mfa_index_uses_filebridge_styling(client):
+    user = get_user_model().objects.create_user(
+        username="mfauser",
+        email="mfauser@example.com",
+        password="strong-test-pass-123",
+    )
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"primary": True, "verified": True},
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("mfa_index"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Passkeys" in content
+    assert "Add passkey" in content
+    assert "Menu:" not in content
+    assert "FileBridge Logo" in content
+
+
+def test_webauthn_add_page_loads_styled_form_and_scripts(client):
+    user = get_user_model().objects.create_user(
+        username="addpasskeyuser",
+        email="addpasskeyuser@example.com",
+        password="strong-test-pass-123",
+    )
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"primary": True, "verified": True},
+    )
+    assert client.login(username="addpasskeyuser", password="strong-test-pass-123")
+    session = client.session
+    session["account_authentication_methods"] = [
+        {"method": "password", "at": time.time(), "username": "addpasskeyuser"}
+    ]
+    session.save()
+
+    response = client.get(reverse("mfa_add_webauthn"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Add passkey" in content
+    assert 'id="mfa_webauthn_add"' in content
+    assert "allauth.webauthn.forms.addForm" in content
+    assert "mfa/js/webauthn.js" in content
+    assert "Menu:" not in content
+
+
+def test_reauthenticate_page_uses_filebridge_styling(client):
+    user = get_user_model().objects.create_user(
+        username="reauthuser",
+        email="reauthuser@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("account_reauthenticate"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Confirm access" in content
+    assert "FileBridge Logo" in content
+    assert "Menu:" not in content
+
+
+def test_mailgun_sender_defaults_to_rasul_lvtd():
+    assert settings.DEFAULT_FROM_EMAIL == "Rasul Kireev <rasul@lvtd.dev>"
+    assert settings.SERVER_EMAIL == "FileBridge Errors <rasul@lvtd.dev>"
+    assert settings.ANYMAIL["MAILGUN_SENDER_DOMAIN"] == "mg.lvtd.dev"
 
 
 def test_dashboard_suppresses_verification_reminder_without_email_address(client):

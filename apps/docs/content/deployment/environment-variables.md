@@ -182,6 +182,11 @@ Configure these to send emails from FileBridge (for notifications, password rese
 - Used for sending transactional emails
 - Leave empty to use console email backend (emails printed to console)
 
+**MAILGUN_SENDER_DOMAIN**
+- Mailgun sender domain used for the API endpoint
+- Defaults to `mg.lvtd.dev`
+- The app sends transactional email from `Rasul Kireev <rasul@lvtd.dev>`
+
 ### OAuth/Social Authentication
 
 **GITHUB_CLIENT_ID**
