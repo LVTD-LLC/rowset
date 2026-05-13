@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- The django-allauth email management fallback page now uses FileBridge app styling instead of the default unstyled layout.
 - Passkey and two-factor account pages now use FileBridge app styling instead of django-allauth's default unstyled layout.
 - Transactional emails now send from `Rasul Kireev <rasul@lvtd.dev>` by default and use `mg.lvtd.dev` as the default Mailgun sender domain.
 - Email verification during signup is now non-blocking: new users land on the dashboard, receive a confirmation-link email, and see an in-app reminder until verified.
@@ -26,6 +27,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Sentry setup now includes release metadata, configurable tracing/profiling/log settings, logging breadcrumbs/events, and the `before_send` hook by default.
 
 ### Added
+- Settings confirmation resends now use django-allauth's canonical email verification flow so generated links confirm correctly.
 - Passkey setup now surfaces WebAuthn errors to users instead of failing silently when the browser/device cannot start passkey creation.
 - Settings now links users to add and manage passkeys after account creation.
 - `ALLOW_SIGNUPS` environment flag (default `True`) to pause new email/social registrations while keeping existing user logins available.

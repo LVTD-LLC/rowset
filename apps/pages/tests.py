@@ -1,11 +1,11 @@
-import pytest
 import time
+
+import pytest
 from allauth.account.models import EmailAddress
 from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-
 
 pytestmark = pytest.mark.django_db
 
@@ -212,6 +212,95 @@ def test_mailgun_sender_defaults_to_rasul_lvtd():
     assert settings.DEFAULT_FROM_EMAIL == "Rasul Kireev <rasul@lvtd.dev>"
     assert settings.SERVER_EMAIL == "FileBridge Errors <rasul@lvtd.dev>"
     assert settings.ANYMAIL["MAILGUN_SENDER_DOMAIN"] == "mg.lvtd.dev"
+
+
+def test_account_email_page_uses_filebridge_styling(client):
+    user = get_user_model().objects.create_user(
+        username="emailpageuser",
+        email="emailpageuser@example.com",
+        password="strong-test-pass-123",
+    )
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"primary": True, "verified": False},
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("account_email"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Email addresses" in content
+    assert "Re-send verification" in content
+    assert "FileBridge Logo" in content
+    assert "Menu:" not in content
+
+
+def test_settings_resend_confirmation_uses_hmac_link(client, monkeypatch):
+    sent_confirmations = []
+
+    def fake_send_confirmation_mail(self, request, emailconfirmation, signup):
+        sent_confirmations.append((emailconfirmation, signup))
+
+    monkeypatch.setattr(
+        "filebridge.adapters.CustomAccountAdapter.send_confirmation_mail",
+        fake_send_confirmation_mail,
+    )
+    user = get_user_model().objects.create_user(
+        username="resenduser",
+        email="resenduser@example.com",
+        password="strong-test-pass-123",
+    )
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"primary": True, "verified": False},
+    )
+    client.force_login(user)
+
+    response = client.post(reverse("resend_confirmation"))
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("settings")
+    assert len(sent_confirmations) == 1
+    emailconfirmation, signup = sent_confirmations[0]
+    assert signup is False
+    assert emailconfirmation.key.count(":") == 2
+    assert not EmailAddress.objects.get(user=user, email=user.email).verified
+
+
+def test_settings_resend_confirmation_link_confirms_email(client, monkeypatch):
+    sent_confirmations = []
+
+    def fake_send_confirmation_mail(self, request, emailconfirmation, signup):
+        sent_confirmations.append(emailconfirmation)
+
+    monkeypatch.setattr(
+        "filebridge.adapters.CustomAccountAdapter.send_confirmation_mail",
+        fake_send_confirmation_mail,
+    )
+    user = get_user_model().objects.create_user(
+        username="confirmresenduser",
+        email="confirmresenduser@example.com",
+        password="strong-test-pass-123",
+    )
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"primary": True, "verified": False},
+    )
+    client.force_login(user)
+
+    response = client.post(reverse("resend_confirmation"))
+
+    assert response.status_code == 302
+    assert len(sent_confirmations) == 1
+    confirm_path = reverse("account_confirm_email", args=[sent_confirmations[0].key])
+    confirm_response = client.post(confirm_path)
+
+    assert confirm_response.status_code == 302
+    assert EmailAddress.objects.get(user=user, email=user.email).verified is True
 
 
 def test_dashboard_suppresses_verification_reminder_without_email_address(client):
