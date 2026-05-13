@@ -11,6 +11,8 @@ class CSVParseError(ValueError):
 
 GENERATED_INDEX_CHOICE = "__filebridge_generated__"
 GENERATED_INDEX_BASENAME = "filebridge_id"
+DEFAULT_PUBLIC_PAGE_SIZE = 10
+MAX_PUBLIC_PAGE_SIZE = 100
 
 
 @dataclass(frozen=True)
@@ -228,3 +230,14 @@ def prepare_index_config(headers: list[str], selected_index: str) -> tuple[str, 
 def dataset_name_from_filename(filename: str) -> str:
     name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
     return name.title() or "Untitled dataset"
+
+
+def normalize_public_page_size(value) -> int:
+    try:
+        page_size = int(value)
+    except (TypeError, ValueError):
+        page_size = DEFAULT_PUBLIC_PAGE_SIZE
+
+    if page_size < 1:
+        return DEFAULT_PUBLIC_PAGE_SIZE
+    return min(page_size, MAX_PUBLIC_PAGE_SIZE)

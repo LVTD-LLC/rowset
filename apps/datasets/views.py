@@ -1,10 +1,15 @@
+import hashlib
+
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.paginator import Paginator
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
 from django_q.tasks import async_task
 
@@ -16,10 +21,13 @@ from apps.datasets.services import (
     CSVParseError,
     dataset_name_from_filename,
     iter_indexed_rows,
+    normalize_public_page_size,
     prepare_index_config,
     preview_uploaded_table,
     source_text_from_file,
 )
+
+PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
 
 
 class DatasetListView(LoginRequiredMixin, ListView):
@@ -45,7 +53,54 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context["sample_rows"] = dataset.rows.all()[:5]
         context["api_key"] = self.request.user.profile.key
         context["api_base_url"] = self.request.build_absolute_uri("/api").rstrip("/")
+        context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
         return context
+
+
+class DatasetSettingsView(LoginRequiredMixin, DetailView):
+    template_name = "datasets/dataset_settings.html"
+    context_object_name = "dataset"
+    slug_url_kwarg = "dataset_key"
+    slug_field = "key"
+
+    def get_queryset(self):
+        return self.request.user.profile.datasets.all()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["public_url"] = self.request.build_absolute_uri(self.object.get_public_url())
+        return context
+
+
+@login_required
+@require_POST
+def dataset_update_public_settings(request, dataset_key):
+    dataset = get_object_or_404(
+        Dataset,
+        key=dataset_key,
+        profile=request.user.profile,
+    )
+
+    dataset.public_enabled = request.POST.get("public_enabled") == "on"
+    dataset.public_page_size = normalize_public_page_size(request.POST.get("public_page_size"))
+
+    password = request.POST.get("public_password", "")
+    clear_password = request.POST.get("clear_public_password") == "on"
+    if clear_password:
+        dataset.public_password_hash = ""
+    elif password:
+        dataset.public_password_hash = make_password(password)
+
+    dataset.save(
+        update_fields=[
+            "public_enabled",
+            "public_page_size",
+            "public_password_hash",
+            "updated_at",
+        ]
+    )
+    messages.success(request, "Public sharing settings updated.")
+    return redirect(dataset.get_settings_url())
 
 
 @login_required
@@ -183,4 +238,52 @@ def dataset_status(request, dataset_key):
             "row_count": dataset.row_count,
             "parse_error": dataset.parse_error,
         }
+    )
+
+
+def _public_access_session_key(dataset: Dataset) -> str:
+    return f"{PUBLIC_ACCESS_SESSION_PREFIX}{dataset.public_key}"
+
+
+def _public_access_session_value(dataset: Dataset) -> str:
+    return hashlib.sha256(dataset.public_password_hash.encode()).hexdigest()
+
+
+@require_http_methods(["GET", "POST"])
+def public_dataset(request, public_key):
+    dataset = get_object_or_404(
+        Dataset,
+        public_key=public_key,
+        public_enabled=True,
+        status=DatasetStatus.READY,
+    )
+
+    session_key = _public_access_session_key(dataset)
+    password_error = ""
+    has_access = (
+        not dataset.is_public_password_protected
+        or request.session.get(session_key) == _public_access_session_value(dataset)
+    )
+
+    if request.method == "POST" and dataset.is_public_password_protected:
+        password = request.POST.get("password", "")
+        if dataset.public_password_matches(password):
+            request.session[session_key] = _public_access_session_value(dataset)
+            return redirect(dataset.get_public_url())
+        password_error = "That password did not work. Please try again."
+
+    page_obj = None
+    if has_access:
+        paginator = Paginator(dataset.rows.all(), dataset.public_page_size)
+        page_obj = paginator.get_page(request.GET.get("page"))
+
+    return render(
+        request,
+        "datasets/public_dataset.html",
+        {
+            "dataset": dataset,
+            "has_access": has_access,
+            "password_error": password_error,
+            "page_obj": page_obj,
+        },
     )
