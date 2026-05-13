@@ -1,5 +1,6 @@
 import pytest
 from allauth.account.models import EmailAddress
+from allauth.mfa.models import Authenticator
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
@@ -21,7 +22,20 @@ def test_signup_page_hides_passkey_signup_option(client):
     assert response.status_code == 200
 
     content = response.content.decode()
+    assert "Username" not in content
+    assert "Confirm Password" not in content
+    assert "Cofirm Password" not in content
     assert "Sign up using a passkey" not in content
+
+
+def test_login_page_uses_email_instead_of_username(client):
+    response = client.get(reverse("account_login"))
+    assert response.status_code == 200
+
+    content = response.content.decode()
+    assert 'placeholder="Email"' in content
+    assert 'type="email"' in content
+    assert 'placeholder="Username"' not in content
 
 
 def test_signup_redirects_to_dashboard_without_blocking_email_code_page(
@@ -41,20 +55,19 @@ def test_signup_redirects_to_dashboard_without_blocking_email_code_page(
     response = client.post(
         reverse("account_signup"),
         data={
-            "username": "newuser",
             "email": "newuser@example.com",
             "password1": "strong-test-pass-123",
-            "password2": "strong-test-pass-123",
         },
     )
 
     assert response.status_code == 302
     assert response["Location"] == reverse("home")
-    assert get_user_model().objects.filter(username="newuser").exists()
+    user = get_user_model().objects.get(email="newuser@example.com")
+    assert user.username
     assert sent_confirmations == [("newuser@example.com", True)]
 
 
-def test_dashboard_reminds_unverified_users_without_blocking(client):
+def test_dashboard_does_not_show_email_confirmation_reminder(client):
     user = get_user_model().objects.create_user(
         username="unverified",
         email="unverified@example.com",
@@ -71,8 +84,57 @@ def test_dashboard_reminds_unverified_users_without_blocking(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Your email is not yet confirmed" in content
+    assert "Your email is not yet confirmed" not in content
     assert "Welcome to FileBridge" in content
+
+
+def test_settings_shows_email_confirmation_and_passkey_setup(client):
+    user = get_user_model().objects.create_user(
+        username="settingsuser",
+        email="settingsuser@example.com",
+        password="strong-test-pass-123",
+    )
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"primary": True, "verified": False},
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("settings"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Your email is not yet confirmed" in content
+    assert "Add passkey" in content
+    assert reverse("mfa_add_webauthn") in content
+
+
+def test_settings_shows_passkey_manage_link_when_passkey_exists(client):
+    user = get_user_model().objects.create_user(
+        username="passkeyuser",
+        email="passkeyuser@example.com",
+        password="strong-test-pass-123",
+    )
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"primary": True, "verified": True},
+    )
+    Authenticator.objects.create(
+        user=user,
+        type=Authenticator.Type.WEBAUTHN,
+        data={"name": "Test passkey"},
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("settings"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "You have 1 passkey set up." in content
+    assert "Manage passkeys" in content
+    assert reverse("mfa_list_webauthn") in content
 
 
 def test_dashboard_suppresses_verification_reminder_without_email_address(client):

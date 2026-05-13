@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 import stripe
 
 from allauth.account.models import EmailAddress, EmailConfirmation
+from allauth.mfa.models import Authenticator
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.cache import cache
@@ -39,16 +40,6 @@ class HomeView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        email_address = EmailAddress.objects.filter(
-            user=self.request.user,
-            email__iexact=self.request.user.email,
-        ).first()
-        # Users created outside allauth (admin/management commands) may not have
-        # an EmailAddress row yet. Suppress the signup reminder for them instead
-        # of showing a banner with a resend action that cannot work.
-        context["email_verified"] = email_address is None or email_address.verified
-        context["resend_confirmation_url"] = reverse("resend_confirmation")
-
         payment_status = self.request.GET.get("payment")
         if payment_status == "success":
             messages.success(self.request, "Thanks for subscribing, I hope you enjoy the app!")
@@ -76,9 +67,13 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         user = self.request.user
 
         email_address = EmailAddress.objects.get_for_user(user, user.email)
-        context["email_verified"] = email_address.verified
+        context["email_verified"] = email_address is None or email_address.verified
         context["resend_confirmation_url"] = reverse("resend_confirmation")
         context["has_subscription"] = user.profile.has_active_subscription
+        context["passkey_count"] = Authenticator.objects.filter(
+            user=user,
+            type=Authenticator.Type.WEBAUTHN,
+        ).count()
         
         context["api_key"] = user.profile.key
 
