@@ -81,11 +81,6 @@
     {% include 'components/messages.html' with messages=messages %}
   {% endblock default_messages %}
 
-  <!-- Include the feedback component -->
-  {% if user.is_authenticated %}
-    {% include 'components/feedback.html' %}
-  {% endif %}
-
   <div class="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
     <header class="sticky left-0 top-3 z-10">
       <div class="mx-auto w-full max-w-[1376px] px-4">

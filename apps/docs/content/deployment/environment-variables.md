@@ -147,8 +147,8 @@ These variables enhance functionality but aren't required:
 ### Chatwoot (Support Chat)
 
 **CHATWOOT_BASE_URL**
-- Base URL for the Chatwoot instance
-- Defaults to `https://chatwoot.cap.gregagi.com`
+- Base URL for your Chatwoot instance
+- Leave empty to disable the support chat widget
 
 **CHATWOOT_WEBSITE_TOKEN**
 - Website inbox token from Chatwoot

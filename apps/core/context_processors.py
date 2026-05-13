@@ -31,13 +31,14 @@ def posthog_api_key(request):
 
 
 def chatwoot_config(request):
+    base_url = settings.CHATWOOT_BASE_URL.rstrip("/")
     website_token = settings.CHATWOOT_WEBSITE_TOKEN
-    if not website_token:
+    if not base_url or not website_token:
         return {"chatwoot": {"enabled": False}}
 
     config = {
         "enabled": True,
-        "base_url": settings.CHATWOOT_BASE_URL.rstrip("/"),
+        "base_url": base_url,
         "website_token": website_token,
         "user": None,
     }

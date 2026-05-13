@@ -536,7 +536,7 @@ if SENTRY_DSN and ENVIRONMENT == "prod":
 POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
 
 
-CHATWOOT_BASE_URL = env("CHATWOOT_BASE_URL", default="https://chatwoot.cap.gregagi.com")
+CHATWOOT_BASE_URL = env("CHATWOOT_BASE_URL", default="")
 CHATWOOT_WEBSITE_TOKEN = env("CHATWOOT_WEBSITE_TOKEN", default="")
 CHATWOOT_HMAC_SECRET = env("CHATWOOT_HMAC_SECRET", default="")
 
