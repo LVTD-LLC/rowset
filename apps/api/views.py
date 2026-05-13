@@ -354,7 +354,12 @@ def _get_ready_dataset(profile, dataset_key: str) -> Dataset:
 
 
 def _serialize_dataset_row(row: DatasetRow) -> DatasetRowOut:
-    return {"id": row.id, "row_number": row.row_number, "data": row.data}
+    return {
+        "id": row.id,
+        "row_number": row.row_number,
+        "index_value": row.index_value,
+        "data": row.data,
+    }
 
 
 @api.get(
@@ -386,14 +391,43 @@ def create_dataset_row(request: HttpRequest, dataset_key: str, payload: DatasetR
     last_row_number = (
         dataset.rows.order_by("-row_number").values_list("row_number", flat=True).first() or 0
     )
+    row_number = last_row_number + 1
+    if dataset.index_generated:
+        index_value = str(row_number)
+        data = {dataset.index_column: index_value, **payload.data}
+    else:
+        index_value = str(payload.data.get(dataset.index_column, "")).strip()
+        if not index_value:
+            raise HttpError(400, f"Index column '{dataset.index_column}' is required.")
+        data = payload.data
+
+    if dataset.rows.filter(index_value=index_value).exists():
+        raise HttpError(409, f"Row with index '{index_value}' already exists.")
+
     row = DatasetRow.objects.create(
         dataset=dataset,
-        row_number=last_row_number + 1,
-        data={header: str(payload.data.get(header, "")) for header in dataset.headers},
+        row_number=row_number,
+        index_value=index_value,
+        data={header: str(data.get(header, "")) for header in dataset.headers},
     )
     dataset.row_count = dataset.rows.count()
     dataset.save(update_fields=["row_count", "updated_at"])
     return {"status": "success", "message": "Row created.", "row": _serialize_dataset_row(row)}
+
+
+@api.get(
+    "/datasets/{dataset_key}/rows/by-index",
+    response=DatasetApiOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def get_dataset_row_by_index(request: HttpRequest, dataset_key: str, index_value: str):
+    dataset = _get_ready_dataset(request.auth, dataset_key)
+    try:
+        row = dataset.rows.get(index_value=index_value)
+    except DatasetRow.DoesNotExist as exc:
+        raise HttpError(404, "Row not found.") from exc
+    return {"status": "success", "message": "Row retrieved.", "row": _serialize_dataset_row(row)}
 
 
 @api.get(
@@ -433,7 +467,20 @@ def patch_dataset_row(
         **row.data,
         **{key: str(value) for key, value in payload.data.items() if key in dataset.headers},
     }
-    row.save(update_fields=["data", "updated_at"])
+    if dataset.index_column in payload.data:
+        if dataset.index_generated:
+            raise HttpError(
+                400,
+                f"Index column '{dataset.index_column}' is managed by FileBridge "
+                "and cannot be updated.",
+            )
+        index_value = str(payload.data.get(dataset.index_column, "")).strip()
+        if not index_value:
+            raise HttpError(400, f"Index column '{dataset.index_column}' cannot be blank.")
+        if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
+            raise HttpError(409, f"Row with index '{index_value}' already exists.")
+        row.index_value = index_value
+    row.save(update_fields=["data", "index_value", "updated_at"])
     return {"status": "success", "message": "Row updated.", "row": _serialize_dataset_row(row)}
 
 

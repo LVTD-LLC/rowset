@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.services import CSVParseError, preview_csv_file
+from apps.datasets.services import GENERATED_INDEX_CHOICE, CSVParseError, preview_csv_file
 from apps.datasets.tasks import import_dataset_rows
 
 pytestmark = pytest.mark.django_db
@@ -45,17 +45,20 @@ def create_ready_dataset(profile):
         source_file=csv_upload(),
         status=DatasetStatus.READY,
         headers=["name", "email"],
+        index_column="email",
         preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
         row_count=2,
     )
     DatasetRow.objects.create(
         dataset=dataset,
         row_number=1,
+        index_value="ada@example.com",
         data={"name": "Ada", "email": "ada@example.com"},
     )
     DatasetRow.objects.create(
         dataset=dataset,
         row_number=2,
+        index_value="grace@example.com",
         data={"name": "Grace", "email": "grace@example.com"},
     )
     return dataset
@@ -89,6 +92,7 @@ def test_upload_preview_creates_preview_dataset(auth_client, profile):
     assert payload["ok"] is True
     assert payload["dataset"]["headers"] == ["name", "email"]
     assert payload["dataset"]["row_count"] == 2
+    assert payload["dataset"]["generated_index_choice"] == GENERATED_INDEX_CHOICE
 
     dataset = Dataset.objects.get(profile=profile)
     assert dataset.status == DatasetStatus.PREVIEWED
@@ -120,6 +124,7 @@ def test_import_uses_stored_source_text_when_file_is_not_available(profile):
         source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
         status=DatasetStatus.PROCESSING,
         headers=["name", "email"],
+        index_column="email",
         preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
         row_count=2,
     )
@@ -129,6 +134,27 @@ def test_import_uses_stored_source_text_when_file_is_not_available(profile):
     dataset.refresh_from_db()
     assert dataset.status == DatasetStatus.READY
     assert dataset.rows.count() == 2
+
+
+def test_import_file_fallback_uses_selected_index_column(profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file=csv_upload(),
+        source_text="",
+        status=DatasetStatus.PROCESSING,
+        headers=["name", "email"],
+        index_column="email",
+        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+        row_count=2,
+    )
+
+    import_dataset_rows(dataset.id)
+
+    dataset.refresh_from_db()
+    assert dataset.status == DatasetStatus.READY
+    assert dataset.rows.first().index_value == "ada@example.com"
 
 
 def test_confirm_import_enqueues_and_imports_rows(auth_client, profile, monkeypatch):
@@ -150,14 +176,106 @@ def test_confirm_import_enqueues_and_imports_rows(auth_client, profile, monkeypa
 
     monkeypatch.setattr("apps.datasets.views.async_task", run_sync)
 
-    response = auth_client.post(reverse("dataset_confirm_import", args=[dataset.key]))
+    response = auth_client.post(
+        reverse("dataset_confirm_import", args=[dataset.key]),
+        {"index_column": "email"},
+    )
 
     assert response.status_code == 302
     dataset.refresh_from_db()
     assert dataset.status == DatasetStatus.READY
     assert dataset.confirmed_at is not None
     assert dataset.rows.count() == 2
+    assert dataset.index_column == "email"
+    assert dataset.rows.first().index_value == "ada@example.com"
     assert dataset.rows.first().data == {"name": "Ada", "email": "ada@example.com"}
+
+
+def test_confirm_import_file_fallback_validates_selected_index(auth_client, profile, monkeypatch):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file=csv_upload(),
+        source_text="",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name", "email"],
+        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+        row_count=2,
+    )
+
+    monkeypatch.setattr(
+        "apps.datasets.views.async_task",
+        lambda func_path, dataset_id, **kwargs: import_dataset_rows(dataset_id),
+    )
+
+    response = auth_client.post(
+        reverse("dataset_confirm_import", args=[dataset.key]),
+        {"index_column": "email"},
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.status == DatasetStatus.READY
+    assert dataset.rows.first().index_value == "ada@example.com"
+
+
+def test_confirm_import_rejects_duplicate_index_column(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file=csv_upload("name,email\nAda,same@example.com\nGrace,same@example.com\n"),
+        source_text="name,email\nAda,same@example.com\nGrace,same@example.com\n",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name", "email"],
+        preview_rows=[{"name": "Ada", "email": "same@example.com"}],
+        row_count=2,
+    )
+
+    response = auth_client.post(
+        reverse("dataset_confirm_import", args=[dataset.key]),
+        {"index_column": "email"},
+    )
+
+    assert response.status_code == 400
+    assert "must be unique" in response.json()["error"]
+
+
+def test_confirm_import_can_generate_index_column(auth_client, profile, monkeypatch):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file=csv_upload(),
+        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name", "email"],
+        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+        row_count=2,
+    )
+
+    monkeypatch.setattr(
+        "apps.datasets.views.async_task",
+        lambda func_path, dataset_id, **kwargs: import_dataset_rows(dataset_id),
+    )
+
+    response = auth_client.post(
+        reverse("dataset_confirm_import", args=[dataset.key]),
+        {"index_column": GENERATED_INDEX_CHOICE},
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.index_column == "filebridge_id"
+    assert dataset.index_generated is True
+    assert dataset.headers == ["filebridge_id", "name", "email"]
+    assert dataset.rows.first().index_value == "1"
+    assert dataset.rows.first().data == {
+        "filebridge_id": "1",
+        "name": "Ada",
+        "email": "ada@example.com",
+    }
 
 
 def test_dataset_api_crud_and_export(client, profile):
@@ -175,6 +293,13 @@ def test_dataset_api_crud_and_export(client, profile):
     )
     assert create_response.status_code == 200
     row_id = create_response.json()["row"]["id"]
+    assert create_response.json()["row"]["index_value"] == "kat@example.com"
+
+    get_by_index_response = client.get(
+        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=kat@example.com"
+    )
+    assert get_by_index_response.status_code == 200
+    assert get_by_index_response.json()["row"]["data"]["name"] == "Katherine"
 
     patch_response = client.patch(
         f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={api_key}",
@@ -195,6 +320,27 @@ def test_dataset_api_crud_and_export(client, profile):
     delete_response = client.delete(f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={api_key}")
     assert delete_response.status_code == 200
     assert not DatasetRow.objects.filter(id=row_id).exists()
+
+
+def test_dataset_api_rejects_patch_to_generated_index(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.index_column = "filebridge_id"
+    dataset.index_generated = True
+    dataset.headers = ["filebridge_id", "name", "email"]
+    dataset.save(update_fields=["index_column", "index_generated", "headers"])
+    row = dataset.rows.first()
+    row.index_value = "1"
+    row.data = {"filebridge_id": "1", **row.data}
+    row.save(update_fields=["index_value", "data"])
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"filebridge_id": "custom"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert "managed by FileBridge" in response.json()["detail"]
 
 
 def test_dataset_api_rejects_other_users_dataset(client, django_user_model, profile):

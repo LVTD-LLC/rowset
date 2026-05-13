@@ -33,6 +33,9 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Dataset imports now ask users to choose a unique index column or generate a FileBridge ID column before confirming import.
+- Dataset APIs now expose `GET /datasets/{dataset_key}/rows/by-index?index_value=...` for retrieving a row by its selected index value.
+- Dataset parsing now uses a tabular parser abstraction so future JSON, XLSX, and parquet file types can plug into preview/import flows without rewriting dataset logic.
 - CSV dataset MVP: authenticated users can upload a CSV, preview detected headers/sample rows/row count, confirm import, and get API endpoints for listing, creating, updating, deleting, and exporting rows.
 - Passkey login now uses a hardened FileBridge WebAuthn launcher that validates server options before calling the browser API.
 - Settings confirmation resends now use django-allauth's canonical email verification flow so generated links confirm correctly.

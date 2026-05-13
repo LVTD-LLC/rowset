@@ -2,18 +2,94 @@ import csv
 import io
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 
 class CSVParseError(ValueError):
     pass
 
 
+GENERATED_INDEX_CHOICE = "__filebridge_generated__"
+GENERATED_INDEX_BASENAME = "filebridge_id"
+
+
 @dataclass(frozen=True)
-class CSVPreview:
+class TabularPreview:
     headers: list[str]
     preview_rows: list[dict[str, str]]
     row_count: int
-    text: str
+    source_text: str
+    file_type: str
+
+    @property
+    def text(self) -> str:
+        return self.source_text
+
+
+@dataclass(frozen=True)
+class IndexedRow:
+    row_number: int
+    index_value: str
+    data: dict[str, str]
+
+
+class TabularParser(Protocol):
+    file_type: str
+
+    def source_text_from_file(self, uploaded_file) -> str: ...
+
+    def preview_file(self, uploaded_file, sample_size: int = 5) -> TabularPreview: ...
+
+    def iter_text_rows(self, text: str): ...
+
+
+class CSVParser:
+    file_type = "csv"
+
+    def source_text_from_file(self, uploaded_file) -> str:
+        uploaded_file.seek(0)
+        raw = uploaded_file.read()
+        uploaded_file.seek(0)
+        return _decode_bytes(raw)
+
+    def preview_file(self, uploaded_file, sample_size: int = 5) -> TabularPreview:
+        text = self.source_text_from_file(uploaded_file)
+        return self.preview_text(text, sample_size=sample_size)
+
+    def preview_text(self, text: str, sample_size: int = 5) -> TabularPreview:
+        reader = _reader_for_text(text)
+        headers = _validate_headers(reader.fieldnames)
+
+        preview_rows = []
+        row_count = 0
+        for row in reader:
+            row_count += 1
+            normalized = {header: (row.get(header) or "") for header in headers}
+            if len(preview_rows) < sample_size:
+                preview_rows.append(normalized)
+
+        return TabularPreview(
+            headers=headers,
+            preview_rows=preview_rows,
+            row_count=row_count,
+            source_text=text,
+            file_type=self.file_type,
+        )
+
+    def iter_text_rows(self, text: str):
+        reader = _reader_for_text(text)
+        headers = _validate_headers(reader.fieldnames)
+
+        for index, row in enumerate(reader, start=1):
+            yield index, {header: (row.get(header) or "") for header in headers}
+
+
+PARSERS_BY_EXTENSION = {".csv": CSVParser()}
+PARSERS_BY_TYPE = {"csv": PARSERS_BY_EXTENSION[".csv"]}
+
+
+# Backward-compatible names used by existing views/tests.
+CSVPreview = TabularPreview
 
 
 def _decode_bytes(raw: bytes) -> str:
@@ -54,41 +130,39 @@ def _validate_headers(headers: list[str] | None) -> list[str]:
     return cleaned
 
 
+def parser_for_filename(filename: str) -> TabularParser:
+    suffix = Path(filename).suffix.lower()
+    parser = PARSERS_BY_EXTENSION.get(suffix)
+    if not parser:
+        raise CSVParseError("For now, FileBridge only accepts CSV files.")
+    return parser
+
+
+def parser_for_file_type(file_type: str) -> TabularParser:
+    try:
+        return PARSERS_BY_TYPE[file_type]
+    except KeyError as exc:
+        raise CSVParseError(f"Unsupported file type: {file_type}.") from exc
+
+
+def preview_uploaded_table(uploaded_file, filename: str, sample_size: int = 5) -> TabularPreview:
+    return parser_for_filename(filename).preview_file(uploaded_file, sample_size=sample_size)
+
+
+def source_text_from_file(file_obj, file_type: str) -> str:
+    return parser_for_file_type(file_type).source_text_from_file(file_obj)
+
+
 def preview_csv_text(text: str, sample_size: int = 5) -> CSVPreview:
-    reader = _reader_for_text(text)
-    headers = _validate_headers(reader.fieldnames)
-
-    preview_rows = []
-    row_count = 0
-    for row in reader:
-        row_count += 1
-        normalized = {header: (row.get(header) or "") for header in headers}
-        if len(preview_rows) < sample_size:
-            preview_rows.append(normalized)
-
-    return CSVPreview(
-        headers=headers,
-        preview_rows=preview_rows,
-        row_count=row_count,
-        text=text,
-    )
+    return CSVParser().preview_text(text, sample_size=sample_size)
 
 
 def preview_csv_file(uploaded_file, sample_size: int = 5) -> CSVPreview:
-    uploaded_file.seek(0)
-    raw = uploaded_file.read()
-    uploaded_file.seek(0)
-
-    text = _decode_bytes(raw)
-    return preview_csv_text(text, sample_size=sample_size)
+    return CSVParser().preview_file(uploaded_file, sample_size=sample_size)
 
 
 def iter_csv_text_rows(text: str):
-    reader = _reader_for_text(text)
-    headers = _validate_headers(reader.fieldnames)
-
-    for index, row in enumerate(reader, start=1):
-        yield index, {header: (row.get(header) or "") for header in headers}
+    yield from CSVParser().iter_text_rows(text)
 
 
 def iter_csv_rows(file_obj):
@@ -96,6 +170,59 @@ def iter_csv_rows(file_obj):
     raw = file_obj.read()
     text = _decode_bytes(raw)
     yield from iter_csv_text_rows(text)
+
+
+def generated_index_column_name(headers: list[str]) -> str:
+    if GENERATED_INDEX_BASENAME not in headers:
+        return GENERATED_INDEX_BASENAME
+
+    suffix = 2
+    while f"{GENERATED_INDEX_BASENAME}_{suffix}" in headers:
+        suffix += 1
+    return f"{GENERATED_INDEX_BASENAME}_{suffix}"
+
+
+def iter_indexed_rows(
+    *,
+    file_type: str,
+    source_text: str,
+    headers: list[str],
+    index_column: str,
+    index_generated: bool,
+):
+    parser = parser_for_file_type(file_type)
+    seen = set()
+
+    for row_number, data in parser.iter_text_rows(source_text):
+        if index_generated:
+            index_value = str(row_number)
+            data = {index_column: index_value, **data}
+        else:
+            index_value = str(data.get(index_column, "")).strip()
+            if not index_value:
+                raise CSVParseError(f"Index column '{index_column}' cannot contain blank values.")
+
+        if index_value in seen:
+            raise CSVParseError(
+                f"Index column '{index_column}' must be unique. Duplicate value: {index_value}."
+            )
+        seen.add(index_value)
+        yield IndexedRow(
+            row_number=row_number,
+            index_value=index_value,
+            data={header: str(data.get(header, "")) for header in headers},
+        )
+
+
+def prepare_index_config(headers: list[str], selected_index: str) -> tuple[str, bool, list[str]]:
+    if selected_index == GENERATED_INDEX_CHOICE:
+        index_column = generated_index_column_name(headers)
+        return index_column, True, [index_column, *headers]
+
+    if selected_index not in headers:
+        raise CSVParseError("Choose a valid index column or let FileBridge generate one.")
+
+    return selected_index, False, headers
 
 
 def dataset_name_from_filename(filename: str) -> str:

@@ -12,9 +12,13 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 from apps.datasets.models import Dataset
 from apps.datasets.services import (
+    GENERATED_INDEX_CHOICE,
     CSVParseError,
     dataset_name_from_filename,
-    preview_csv_file,
+    iter_indexed_rows,
+    prepare_index_config,
+    preview_uploaded_table,
+    source_text_from_file,
 )
 
 
@@ -52,12 +56,6 @@ def dataset_upload_preview(request):
         return JsonResponse({"ok": False, "error": "Please choose a CSV file."}, status=400)
 
     filename = uploaded_file.name or "dataset.csv"
-    if not filename.lower().endswith(".csv"):
-        return JsonResponse(
-            {"ok": False, "error": "For now, FileBridge only accepts CSV files."},
-            status=400,
-        )
-
     if uploaded_file.size > MAX_CSV_UPLOAD_BYTES:
         return JsonResponse(
             {
@@ -68,7 +66,7 @@ def dataset_upload_preview(request):
         )
 
     try:
-        preview = preview_csv_file(uploaded_file)
+        preview = preview_uploaded_table(uploaded_file, filename)
     except CSVParseError as exc:
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
 
@@ -76,8 +74,9 @@ def dataset_upload_preview(request):
         profile=request.user.profile,
         name=dataset_name_from_filename(filename),
         original_filename=filename,
+        file_type=preview.file_type,
         source_file=uploaded_file,
-        source_text=preview.text,
+        source_text=preview.source_text,
         headers=preview.headers,
         preview_rows=preview.preview_rows,
         row_count=preview.row_count,
@@ -95,6 +94,7 @@ def dataset_upload_preview(request):
                 "headers": dataset.headers,
                 "preview_rows": dataset.preview_rows,
                 "row_count": dataset.row_count,
+                "generated_index_choice": GENERATED_INDEX_CHOICE,
                 "confirm_url": reverse(
                     "dataset_confirm_import",
                     kwargs={"dataset_key": dataset.key},
@@ -117,10 +117,51 @@ def dataset_confirm_import(request, dataset_key):
     if dataset.status in {DatasetStatus.READY, DatasetStatus.PROCESSING}:
         return redirect(dataset.get_absolute_url())
 
+    selected_index = request.POST.get("index_column", "")
+    try:
+        index_column, index_generated, headers = prepare_index_config(
+            dataset.headers,
+            selected_index,
+        )
+        # Validate uniqueness before queueing the import so users get immediate feedback.
+        source_text = dataset.source_text or source_text_from_file(
+            dataset.source_file,
+            dataset.file_type,
+        )
+        validated_rows = list(
+            iter_indexed_rows(
+                file_type=dataset.file_type,
+                source_text=source_text,
+                headers=headers,
+                index_column=index_column,
+                index_generated=index_generated,
+            )
+        )
+    except CSVParseError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+
     dataset.status = DatasetStatus.PROCESSING
     dataset.confirmed_at = timezone.now()
     dataset.parse_error = ""
-    dataset.save(update_fields=["status", "confirmed_at", "parse_error", "updated_at"])
+    dataset.index_column = index_column
+    dataset.index_generated = index_generated
+    dataset.headers = headers
+    dataset.preview_rows = [
+        {header: str(row.data.get(header, "")) for header in headers}
+        for row in validated_rows[:5]
+    ]
+    dataset.save(
+        update_fields=[
+            "status",
+            "confirmed_at",
+            "parse_error",
+            "index_column",
+            "index_generated",
+            "headers",
+            "preview_rows",
+            "updated_at",
+        ]
+    )
     async_task(
         "apps.datasets.tasks.import_dataset_rows",
         dataset.id,
