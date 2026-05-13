@@ -27,6 +27,11 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Passkey signup is disabled so passkey setup can move to a post-registration account security flow.
 - Sentry setup now includes release metadata, configurable tracing/profiling/log settings, logging breadcrumbs/events, and the `before_send` hook by default.
 
+### Fixed
+- CSV imports now store parsed source text in the database so async workers can import rows even when uploaded media files are not shared across containers.
+- CSV uploads now reject files over 10 MB before preview/import to avoid unbounded database writes.
+- Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
+
 ### Added
 - CSV dataset MVP: authenticated users can upload a CSV, preview detected headers/sample rows/row count, confirm import, and get API endpoints for listing, creating, updating, deleting, and exporting rows.
 - Passkey login now uses a hardened FileBridge WebAuthn launcher that validates server options before calling the browser API.

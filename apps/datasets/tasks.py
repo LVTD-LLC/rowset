@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.services import iter_csv_rows
+from apps.datasets.services import iter_csv_rows, iter_csv_text_rows
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -14,9 +14,14 @@ def import_dataset_rows(dataset_id: int) -> None:
     logger.info("Starting CSV dataset import", dataset_id=dataset.id, dataset_key=str(dataset.key))
 
     try:
+        row_iterator = (
+            iter_csv_text_rows(dataset.source_text)
+            if dataset.source_text
+            else iter_csv_rows(dataset.source_file)
+        )
         rows = [
             DatasetRow(dataset=dataset, row_number=row_number, data=data)
-            for row_number, data in iter_csv_rows(dataset.source_file)
+            for row_number, data in row_iterator
         ]
         with transaction.atomic():
             dataset.rows.all().delete()

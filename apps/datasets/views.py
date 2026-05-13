@@ -9,8 +9,13 @@ from django.views.generic import DetailView, ListView
 from django_q.tasks import async_task
 
 from apps.datasets.choices import DatasetStatus
+from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 from apps.datasets.models import Dataset
-from apps.datasets.services import CSVParseError, dataset_name_from_filename, preview_csv_file
+from apps.datasets.services import (
+    CSVParseError,
+    dataset_name_from_filename,
+    preview_csv_file,
+)
 
 
 class DatasetListView(LoginRequiredMixin, ListView):
@@ -53,6 +58,15 @@ def dataset_upload_preview(request):
             status=400,
         )
 
+    if uploaded_file.size > MAX_CSV_UPLOAD_BYTES:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "CSV files must be 10 MB or smaller for now.",
+            },
+            status=400,
+        )
+
     try:
         preview = preview_csv_file(uploaded_file)
     except CSVParseError as exc:
@@ -63,6 +77,7 @@ def dataset_upload_preview(request):
         name=dataset_name_from_filename(filename),
         original_filename=filename,
         source_file=uploaded_file,
+        source_text=preview.text,
         headers=preview.headers,
         preview_rows=preview.preview_rows,
         row_count=preview.row_count,

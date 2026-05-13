@@ -1,11 +1,13 @@
 import uuid
 
+from django.core.validators import MaxLengthValidator
 from django.db import models
 from django.urls import reverse
 
 from apps.core.base_models import BaseModel
 from apps.core.models import Profile
 from apps.datasets.choices import DatasetStatus
+from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 
 
 class Dataset(BaseModel):
@@ -14,6 +16,11 @@ class Dataset(BaseModel):
     name = models.CharField(max_length=255)
     original_filename = models.CharField(max_length=255)
     source_file = models.FileField(upload_to="datasets/csv/%Y/%m/%d/")
+    source_text = models.TextField(
+        blank=True,
+        default="",
+        validators=[MaxLengthValidator(MAX_CSV_UPLOAD_BYTES)],
+    )
     status = models.CharField(
         max_length=32,
         choices=DatasetStatus.choices,

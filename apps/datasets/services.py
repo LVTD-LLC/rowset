@@ -13,6 +13,7 @@ class CSVPreview:
     headers: list[str]
     preview_rows: list[dict[str, str]]
     row_count: int
+    text: str
 
 
 def _decode_bytes(raw: bytes) -> str:
@@ -53,12 +54,7 @@ def _validate_headers(headers: list[str] | None) -> list[str]:
     return cleaned
 
 
-def preview_csv_file(uploaded_file, sample_size: int = 5) -> CSVPreview:
-    uploaded_file.seek(0)
-    raw = uploaded_file.read()
-    uploaded_file.seek(0)
-
-    text = _decode_bytes(raw)
+def preview_csv_text(text: str, sample_size: int = 5) -> CSVPreview:
     reader = _reader_for_text(text)
     headers = _validate_headers(reader.fieldnames)
 
@@ -70,18 +66,36 @@ def preview_csv_file(uploaded_file, sample_size: int = 5) -> CSVPreview:
         if len(preview_rows) < sample_size:
             preview_rows.append(normalized)
 
-    return CSVPreview(headers=headers, preview_rows=preview_rows, row_count=row_count)
+    return CSVPreview(
+        headers=headers,
+        preview_rows=preview_rows,
+        row_count=row_count,
+        text=text,
+    )
+
+
+def preview_csv_file(uploaded_file, sample_size: int = 5) -> CSVPreview:
+    uploaded_file.seek(0)
+    raw = uploaded_file.read()
+    uploaded_file.seek(0)
+
+    text = _decode_bytes(raw)
+    return preview_csv_text(text, sample_size=sample_size)
+
+
+def iter_csv_text_rows(text: str):
+    reader = _reader_for_text(text)
+    headers = _validate_headers(reader.fieldnames)
+
+    for index, row in enumerate(reader, start=1):
+        yield index, {header: (row.get(header) or "") for header in headers}
 
 
 def iter_csv_rows(file_obj):
     file_obj.seek(0)
     raw = file_obj.read()
     text = _decode_bytes(raw)
-    reader = _reader_for_text(text)
-    headers = _validate_headers(reader.fieldnames)
-
-    for index, row in enumerate(reader, start=1):
-        yield index, {header: (row.get(header) or "") for header in headers}
+    yield from iter_csv_text_rows(text)
 
 
 def dataset_name_from_filename(filename: str) -> str:
