@@ -1,0 +1,47 @@
+{% if chatwoot.enabled %}
+  {{ chatwoot|json_script:"chatwoot-config" }}
+  <script>
+    (function () {
+      var configElement = document.getElementById("chatwoot-config");
+      if (!configElement) {
+        return;
+      }
+
+      var config = JSON.parse(configElement.textContent);
+      window.chatwootSettings = {
+        hideMessageBubble: false,
+        position: "right",
+        locale: "en",
+        type: "standard"
+      };
+
+      var script = document.createElement("script");
+      script.src = config.base_url + "/packs/js/sdk.js";
+      script.defer = true;
+      script.async = true;
+      script.onload = function () {
+        window.chatwootSDK.run({
+          websiteToken: config.website_token,
+          baseUrl: config.base_url
+        });
+      };
+
+      window.addEventListener("chatwoot:ready", function () {
+        if (!config.user || !window.$chatwoot) {
+          return;
+        }
+
+        var userAttributes = {
+          email: config.user.email,
+          name: config.user.name
+        };
+        if (config.user.identifier_hash) {
+          userAttributes.identifier_hash = config.user.identifier_hash;
+        }
+
+        window.$chatwoot.setUser(config.user.identifier, userAttributes);
+      });
+      document.head.appendChild(script);
+    })();
+  </script>
+{% endif %}

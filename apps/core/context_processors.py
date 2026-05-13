@@ -1,8 +1,10 @@
+import hashlib
+import hmac
+
 from allauth.socialaccount.models import SocialApp
 from django.conf import settings
 
 from apps.core.choices import ProfileStates
-
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -26,6 +28,36 @@ def pro_subscription_status(request):
 
 def posthog_api_key(request):
     return {"posthog_api_key": settings.POSTHOG_API_KEY}
+
+
+def chatwoot_config(request):
+    website_token = settings.CHATWOOT_WEBSITE_TOKEN
+    if not website_token:
+        return {"chatwoot": {"enabled": False}}
+
+    config = {
+        "enabled": True,
+        "base_url": settings.CHATWOOT_BASE_URL.rstrip("/"),
+        "website_token": website_token,
+        "user": None,
+    }
+
+    if request.user.is_authenticated:
+        identifier = str(request.user.id)
+        user = {
+            "identifier": identifier,
+            "email": request.user.email,
+            "name": request.user.get_full_name() or request.user.email,
+        }
+        if settings.CHATWOOT_HMAC_SECRET:
+            user["identifier_hash"] = hmac.new(
+                settings.CHATWOOT_HMAC_SECRET.encode(),
+                identifier.encode(),
+                hashlib.sha256,
+            ).hexdigest()
+        config["user"] = user
+
+    return {"chatwoot": config}
 
 
 def mjml_url(request):

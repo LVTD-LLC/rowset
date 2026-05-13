@@ -33,6 +33,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Chatwoot support chat can now be enabled with `CHATWOOT_WEBSITE_TOKEN`, using the hosted `https://chatwoot.cap.gregagi.com` instance by default.
 - Dataset settings now let owners enable an off-by-default public table preview link with configurable pagination and optional password protection.
 - Dataset imports now ask users to choose a unique index column or generate a FileBridge ID column before confirming import.
 - Dataset APIs now expose `GET /datasets/{dataset_key}/rows/by-index?index_value=...` for retrieving a row by its selected index value.

@@ -144,6 +144,20 @@ These variables enhance functionality but aren't required:
 - Used for product analytics and feature flags
 - Leave empty to disable PostHog
 
+### Chatwoot (Support Chat)
+
+**CHATWOOT_BASE_URL**
+- Base URL for the Chatwoot instance
+- Defaults to `https://chatwoot.cap.gregagi.com`
+
+**CHATWOOT_WEBSITE_TOKEN**
+- Website inbox token from Chatwoot
+- Leave empty to disable the support chat widget
+
+**CHATWOOT_HMAC_SECRET**
+- Optional identity validation secret from the Chatwoot website inbox
+- When set, authenticated FileBridge users are identified with an HMAC hash
+
 ### Buttondown (Email Newsletter)
 
 **BUTTONDOWN_API_KEY**
