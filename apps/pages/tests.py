@@ -5,6 +5,7 @@ from allauth.account.models import EmailAddress
 from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.messages import get_messages
 from django.urls import reverse
 
 pytestmark = pytest.mark.django_db
@@ -17,6 +18,9 @@ def test_login_page_shows_passkey_option(client):
     content = response.content.decode()
     assert "Sign in with a passkey" in content
     assert 'id="mfa_login"' in content
+    assert "window.webauthnJSON.get(requestOptions)" in content
+    assert "X-Requested-With" in content
+    assert "allauth.webauthn.forms.loginForm" not in content
 
 
 def test_signup_page_hides_passkey_signup_option(client):
@@ -263,6 +267,7 @@ def test_settings_resend_confirmation_uses_hmac_link(client, monkeypatch):
 
     assert response.status_code == 302
     assert response["Location"] == reverse("settings")
+    assert len(list(get_messages(response.wsgi_request))) == 1
     assert len(sent_confirmations) == 1
     emailconfirmation, signup = sent_confirmations[0]
     assert signup is False

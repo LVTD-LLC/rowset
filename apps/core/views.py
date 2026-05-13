@@ -111,7 +111,6 @@ def resend_confirmation_email(request):
             )
             return redirect("settings")
 
-        messages.success(request, "Confirmation email has been sent. Please check your inbox.")
         logger.info(
             "[Resend Confirmation] Email sent successfully",
             user_id=user.id,
