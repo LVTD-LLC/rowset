@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- Reworked the landing page into a sharper FileBridge product story with a bolder visual system, API-focused hero, use cases, and updated FAQs.
 - Settings confirmation resends now show one success notification instead of duplicate allauth/app messages.
 - The django-allauth email management fallback page now uses FileBridge app styling instead of the default unstyled layout.
 - Passkey and two-factor account pages now use FileBridge app styling instead of django-allauth's default unstyled layout.

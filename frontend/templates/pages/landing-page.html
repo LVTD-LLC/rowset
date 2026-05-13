@@ -1,82 +1,267 @@
 {% extends "base_landing.html" %}
+{% load static %}
+
+{% block meta %}
+<title>FileBridge — turn CSVs into APIs in minutes</title>
+<meta name="description" content="Upload a CSV, inspect it, choose an index, and get clean API endpoints, exports, and shareable dataset previews without building a backend." />
+<meta name="keywords" content="CSV API, file to API, dataset API, no-code API, data sharing" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://{{ request.get_host }}/" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="FileBridge — turn CSVs into APIs in minutes" />
+<meta property="og:url" content="https://{{ request.get_host }}/" />
+<meta property="og:description" content="Stop rebuilding one-off import tools. FileBridge turns useful files into clean APIs, indexed lookups, CSV exports, and shareable previews." />
+<meta property="og:image" content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=FileBridge&subtitle=Your%20spreadsheet%20deserves%20an%20API%20endpoint.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta property="og:locale" content="en_US" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="FileBridge — turn CSVs into APIs in minutes" />
+<meta name="twitter:description" content="Upload a CSV. Confirm the preview. Get a clean API, indexed lookups, exports, and optional public sharing." />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge&subtitle=Your%20spreadsheet%20deserves%20an%20API%20endpoint.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+{% endblock meta %}
 
 {% block content %}
-<div class="isolate relative px-6 mt-16 sm:mt-24 lg:px-8">
+<div class="relative overflow-hidden bg-[#07130f] text-white">
+  <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(16,185,129,0.32),transparent_32%),radial-gradient(circle_at_80%_5%,rgba(34,211,238,0.20),transparent_28%),linear-gradient(135deg,rgba(7,19,15,1),rgba(2,6,23,1)_60%,rgba(6,78,59,0.72))]"></div>
+  <div class="absolute left-1/2 top-0 h-[42rem] w-[42rem] -translate-x-1/2 rounded-full border border-emerald-300/10 bg-emerald-400/5 blur-3xl"></div>
+  <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent"></div>
 
   {% if request.GET.account_deleted %}
-  <div class="mx-auto mb-10 max-w-3xl rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900/40 dark:bg-green-950/30 dark:text-green-200">
+  <div class="relative mx-auto mt-10 max-w-3xl rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 text-sm text-emerald-50 backdrop-blur">
     Your account has been deleted.
   </div>
   {% endif %}
 
-  <div class="isolate relative px-6 mt-16 sm:mt-24 lg:px-8">
-    <div class="mx-auto text-center">
-        <h1 class="mx-auto mb-6 max-w-2xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-          Turn uploaded files into clean API endpoints and structured data feeds.
-        </h1>
-        <div class="flex flex-col gap-x-6 justify-center items-center mt-10 md:flex-row md:items-end">
-          <a
-            class="block px-3 py-2 text-sm font-semibold text-white bg-green-600 rounded-md shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
-            href="{% url 'account_signup' %}"
-          >
-            Get Started
-          </a>
+  <section class="relative mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-20 sm:pt-28 lg:grid-cols-[1.02fr_0.98fr] lg:px-8 lg:pb-28">
+    <div>
+      <div class="mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-white/7 px-4 py-2 text-sm font-medium text-emerald-100 shadow-2xl shadow-emerald-950/40 backdrop-blur">
+        <span class="flex h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_20px_rgba(110,231,183,0.9)]"></span>
+        File → preview → API → share link
+      </div>
+
+      <h1 class="max-w-4xl text-5xl font-black tracking-[-0.055em] text-white sm:text-7xl lg:text-8xl">
+        Your spreadsheet deserves an API endpoint.
+      </h1>
+      <p class="mt-7 max-w-2xl text-lg leading-8 text-emerald-50/78 sm:text-xl">
+        FileBridge turns CSVs and useful operational files into queryable datasets: clean REST endpoints, indexed row lookup, CSV export, and public previews when you want to share the data without exposing the backend.
+      </p>
+
+      <div class="mt-9 flex flex-col gap-3 sm:flex-row">
+        <a href="{% url 'account_signup' %}" class="group inline-flex items-center justify-center rounded-full bg-emerald-300 px-7 py-4 text-base font-bold text-emerald-950 shadow-[0_18px_60px_rgba(16,185,129,0.35)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-offset-2 focus:ring-offset-[#07130f]">
+          Build your first file API
+          <span class="ml-2 transition group-hover:translate-x-1">→</span>
+        </a>
+        <a href="{% url 'account_login' %}" class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/8 px-7 py-4 text-base font-semibold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/14 focus:outline-none focus:ring-2 focus:ring-white/40">
+          Sign in
+        </a>
+      </div>
+
+      <div class="mt-10 grid max-w-xl grid-cols-3 gap-3 text-sm text-emerald-50/70">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div class="text-2xl font-black text-white">10MB</div>
+          <div>per CSV upload</div>
         </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div class="text-2xl font-black text-white">API</div>
+          <div>CRUD + export</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div class="text-2xl font-black text-white">Index</div>
+          <div>fast row lookup</div>
+        </div>
+      </div>
     </div>
-  </div>
+
+    <div class="relative">
+      <div class="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-emerald-300/25 via-cyan-300/10 to-lime-300/20 blur-2xl"></div>
+      <div class="relative overflow-hidden rounded-[2rem] border border-white/14 bg-slate-950/75 shadow-2xl shadow-black/40 backdrop-blur-xl">
+        <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div class="flex items-center gap-2">
+            <span class="h-3 w-3 rounded-full bg-red-400"></span>
+            <span class="h-3 w-3 rounded-full bg-yellow-300"></span>
+            <span class="h-3 w-3 rounded-full bg-emerald-300"></span>
+          </div>
+          <div class="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">live dataset</div>
+        </div>
+
+        <div class="grid gap-4 p-5 lg:grid-cols-[0.95fr_1.05fr]">
+          <div class="rounded-3xl border border-dashed border-emerald-300/35 bg-emerald-300/8 p-5">
+            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-300 text-2xl text-emerald-950">↥</div>
+            <div class="text-lg font-bold">Upload suppliers.csv</div>
+            <div class="mt-2 text-sm leading-6 text-emerald-50/65">Inspect headers, row count, sample values, and choose the column your API should use as the lookup key.</div>
+            <div class="mt-5 space-y-2 text-xs text-emerald-50/70">
+              <div class="flex justify-between rounded-xl bg-white/7 px-3 py-2"><span>rows</span><strong class="text-white">2,418</strong></div>
+              <div class="flex justify-between rounded-xl bg-white/7 px-3 py-2"><span>index</span><strong class="text-white">sku</strong></div>
+              <div class="flex justify-between rounded-xl bg-white/7 px-3 py-2"><span>status</span><strong class="text-emerald-200">ready</strong></div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div class="rounded-2xl border border-white/10 bg-white/[0.05] p-4 font-mono text-xs text-emerald-50/80">
+              <div class="mb-3 text-[11px] uppercase tracking-[0.28em] text-cyan-200/70">API route</div>
+              <div><span class="text-emerald-300">GET</span> /api/datasets/suppliers/rows/by-index?index_value=sku_482</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/[0.05] p-4 font-mono text-xs leading-6 text-slate-100">
+              <div class="text-cyan-200">{</div>
+              <div class="pl-4"><span class="text-emerald-200">"name"</span>: "Northline Parts",</div>
+              <div class="pl-4"><span class="text-emerald-200">"city"</span>: "Austin",</div>
+              <div class="pl-4"><span class="text-emerald-200">"lead_time"</span>: "3 days"</div>
+              <div class="text-cyan-200">}</div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div class="rounded-2xl bg-lime-300 px-4 py-3 font-bold text-lime-950">CSV export</div>
+              <div class="rounded-2xl bg-cyan-300 px-4 py-3 font-bold text-cyan-950">public preview</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
-<!-- FAQ Section -->
-<div class="bg-white dark:bg-gray-900">
-  <div class="px-6 py-24 mx-auto max-w-7xl sm:py-32 lg:px-8 lg:py-40">
-    <div class="mx-auto max-w-4xl">
-      <h2 class="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl dark:text-white">Frequently asked questions</h2>
-      <dl class="mt-16 divide-y divide-gray-900/10 dark:divide-white/10">
-        <div class="py-6 first:pt-0 last:pb-0">
-          <dt>
-            <button type="button" command="--toggle" commandfor="faq-0" class="flex justify-between items-start w-full text-left text-gray-900 dark:text-white">
-              <span class="font-semibold text-base/7">What features are included?</span>
-              <span class="flex items-center ml-6 h-7">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 [[aria-expanded='true']_&]:hidden">
-                  <path d="M12 6v12m6-6H6" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 [&:not([aria-expanded='true']_*)]:hidden">
-                  <path d="M18 12H6" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-            </button>
-          </dt>
-          <el-disclosure id="faq-0" class="[&:not([hidden])]:contents">
-            <dd class="pr-12 mt-2">
-              <p class="text-gray-600 text-base/7 dark:text-gray-400">Our platform includes the core workflows you need to get started quickly, with room to customize the experience for your own product.</p>
-            </dd>
-          </el-disclosure>
-        </div>
-        
-        <div class="py-6 first:pt-0 last:pb-0">
-          <dt>
-            <button type="button" command="--toggle" commandfor="faq-1" class="flex justify-between items-start w-full text-left text-gray-900 dark:text-white">
-              <span class="font-semibold text-base/7">How does pricing work?</span>
-              <span class="flex items-center ml-6 h-7">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 [[aria-expanded='true']_&]:hidden">
-                  <path d="M12 6v12m6-6H6" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 [&:not([aria-expanded='true']_*)]:hidden">
-                  <path d="M18 12H6" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-            </button>
-          </dt>
-          <el-disclosure id="faq-1" hidden class="[&:not([hidden])]:contents">
-            <dd class="pr-12 mt-2">
-              <p class="text-gray-600 text-base/7 dark:text-gray-400">We offer flexible pricing plans to suit different needs. Start with our free tier to explore the platform, then upgrade as you grow. Cancel or change your plan anytime.</p>
-            </dd>
-          </el-disclosure>
-        </div>
-        
-      </dl>
+<section class="bg-white px-6 py-24 text-slate-950 dark:bg-slate-950 dark:text-white lg:px-8">
+  <div class="mx-auto max-w-7xl">
+    <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+      <div>
+        <p class="text-sm font-bold uppercase tracking-[0.3em] text-emerald-600 dark:text-emerald-300">Why FileBridge</p>
+        <h2 class="mt-4 max-w-2xl text-4xl font-black tracking-[-0.045em] sm:text-6xl">The fastest backend is the one you don’t have to write.</h2>
+      </div>
+      <p class="text-lg leading-8 text-slate-600 dark:text-slate-300">Every team has “just one spreadsheet” that quietly becomes infrastructure: supplier catalogs, lead lists, SKU maps, pricing sheets, research exports, internal directories. FileBridge makes those files usable by products, scripts, and agents without turning every import into a custom engineering project.</p>
+    </div>
+
+    <div class="mt-14 grid gap-4 md:grid-cols-3">
+      <div class="group rounded-[2rem] border border-slate-200 bg-slate-50 p-7 transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-950/10 dark:border-white/10 dark:bg-white/[0.04]">
+        <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-2xl dark:bg-emerald-300 dark:text-emerald-950">01</div>
+        <h3 class="text-xl font-black">Upload without ceremony</h3>
+        <p class="mt-3 leading-7 text-slate-600 dark:text-slate-300">Drop in a CSV, preview the shape, catch bad files early, and confirm before importing the full dataset.</p>
+      </div>
+      <div class="group rounded-[2rem] border border-slate-200 bg-slate-50 p-7 transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-2xl hover:shadow-cyan-950/10 dark:border-white/10 dark:bg-white/[0.04]">
+        <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-100 text-2xl dark:bg-cyan-300 dark:text-cyan-950">02</div>
+        <h3 class="text-xl font-black">Get API-shaped data</h3>
+        <p class="mt-3 leading-7 text-slate-600 dark:text-slate-300">List, create, read, update, delete, export, and lookup rows by the index column your workflow actually uses.</p>
+      </div>
+      <div class="group rounded-[2rem] border border-slate-200 bg-slate-50 p-7 transition hover:-translate-y-1 hover:border-lime-300 hover:shadow-2xl hover:shadow-lime-950/10 dark:border-white/10 dark:bg-white/[0.04]">
+        <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-lime-100 text-2xl dark:bg-lime-300 dark:text-lime-950">03</div>
+        <h3 class="text-xl font-black">Share safely</h3>
+        <p class="mt-3 leading-7 text-slate-600 dark:text-slate-300">Turn on a public preview only when needed. Add password protection for lightweight sharing without exposing your private API key.</p>
+      </div>
     </div>
   </div>
-</div>
+</section>
 
+<section class="relative overflow-hidden bg-slate-100 px-6 py-24 dark:bg-[#08110f] lg:px-8">
+  <div class="absolute inset-0 bg-[linear-gradient(115deg,rgba(16,185,129,0.10),transparent_35%,rgba(34,211,238,0.12))]"></div>
+  <div class="relative mx-auto max-w-7xl">
+    <div class="grid gap-8 lg:grid-cols-2 lg:items-center">
+      <div class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/10 dark:border-white/10 dark:bg-slate-950/75">
+        <div class="mb-4 flex items-center justify-between">
+          <div class="text-sm font-bold text-slate-500 dark:text-slate-400">From messy file</div>
+          <div class="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-600 dark:bg-red-400/10 dark:text-red-200">before</div>
+        </div>
+        <div class="overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10">
+          <div class="grid grid-cols-4 bg-slate-900 text-xs font-bold text-white">
+            <div class="px-3 py-3">sku</div><div class="px-3 py-3">name</div><div class="px-3 py-3">price</div><div class="px-3 py-3">status</div>
+          </div>
+          <div class="grid grid-cols-4 text-xs text-slate-600 dark:text-slate-300">
+            <div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">A-102</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">Cable</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">12.50</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">active</div>
+            <div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">B-219</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">Bracket</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">8.20</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">active</div>
+            <div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">C-771</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">Sensor</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">44.00</div><div class="border-t border-slate-200 px-3 py-3 dark:border-white/10">review</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-[2rem] border border-emerald-300/40 bg-slate-950 p-5 text-white shadow-2xl shadow-emerald-950/20">
+        <div class="mb-4 flex items-center justify-between">
+          <div class="text-sm font-bold text-emerald-200">To product-grade interface</div>
+          <div class="rounded-full bg-emerald-300 px-3 py-1 text-xs font-black text-emerald-950">after</div>
+        </div>
+        <div class="space-y-3 font-mono text-xs">
+          <div class="rounded-2xl bg-white/7 p-4"><span class="text-emerald-300">GET</span> /api/datasets/products/rows/</div>
+          <div class="rounded-2xl bg-white/7 p-4"><span class="text-cyan-300">GET</span> /api/datasets/products/rows/by-index?index_value=A-102</div>
+          <div class="rounded-2xl bg-white/7 p-4"><span class="text-lime-300">GET</span> /api/datasets/products/export.csv</div>
+          <div class="rounded-2xl bg-white/7 p-4"><span class="text-fuchsia-300">POST</span> /api/datasets/products/rows/</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bg-white px-6 py-24 dark:bg-slate-950 lg:px-8">
+  <div class="mx-auto max-w-7xl">
+    <div class="mx-auto max-w-3xl text-center">
+      <p class="text-sm font-bold uppercase tracking-[0.3em] text-emerald-600 dark:text-emerald-300">Built for practical data work</p>
+      <h2 class="mt-4 text-4xl font-black tracking-[-0.045em] text-slate-950 dark:text-white sm:text-6xl">For the files that keep becoming products.</h2>
+    </div>
+    <div class="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-[2rem] bg-slate-950 p-6 text-white dark:bg-white dark:text-slate-950">
+        <div class="text-3xl">🤖</div>
+        <h3 class="mt-5 font-black">Agent-ready datasets</h3>
+        <p class="mt-3 text-sm leading-6 text-slate-300 dark:text-slate-600">Give scripts and AI agents stable endpoints instead of brittle file downloads.</p>
+      </div>
+      <div class="rounded-[2rem] bg-emerald-100 p-6 text-emerald-950 dark:bg-emerald-300">
+        <div class="text-3xl">🧰</div>
+        <h3 class="mt-5 font-black">Internal tools</h3>
+        <p class="mt-3 text-sm leading-6 text-emerald-900/75">Prototype a catalog, directory, lookup table, or admin workflow before a custom backend exists.</p>
+      </div>
+      <div class="rounded-[2rem] bg-cyan-100 p-6 text-cyan-950 dark:bg-cyan-300">
+        <div class="text-3xl">🔗</div>
+        <h3 class="mt-5 font-black">Client portals</h3>
+        <p class="mt-3 text-sm leading-6 text-cyan-900/75">Share a password-protected preview when people need the data, not your database.</p>
+      </div>
+      <div class="rounded-[2rem] bg-lime-100 p-6 text-lime-950 dark:bg-lime-300">
+        <div class="text-3xl">⚡</div>
+        <h3 class="mt-5 font-black">Fast experiments</h3>
+        <p class="mt-3 text-sm leading-6 text-lime-900/75">Validate demand for a data product before committing to migrations, imports, queues, and bespoke APIs.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bg-[#07130f] px-6 py-24 text-white lg:px-8">
+  <div class="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+    <div>
+      <p class="text-sm font-bold uppercase tracking-[0.3em] text-emerald-300">FAQ</p>
+      <h2 class="mt-4 text-4xl font-black tracking-[-0.045em] sm:text-6xl">Questions before you bridge your first file?</h2>
+    </div>
+    <div class="space-y-3">
+      <details class="group rounded-3xl border border-white/10 bg-white/[0.05] p-6 open:bg-white/[0.08]">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-6 text-lg font-bold">
+          What can I upload today?
+          <span class="text-emerald-300 transition group-open:rotate-45">+</span>
+        </summary>
+        <p class="mt-4 leading-7 text-emerald-50/70">CSV is supported today, including preview, import, row APIs, CSV export, index-column lookup, and public sharing. The product is intentionally shaped so more file types can follow.</p>
+      </details>
+      <details class="group rounded-3xl border border-white/10 bg-white/[0.05] p-6 open:bg-white/[0.08]">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-6 text-lg font-bold">
+          Is this just a public spreadsheet viewer?
+          <span class="text-emerald-300 transition group-open:rotate-45">+</span>
+        </summary>
+        <p class="mt-4 leading-7 text-emerald-50/70">No. Public previews are optional. The core value is turning a file into an authenticated, API-addressable dataset that your apps, scripts, and agents can use.</p>
+      </details>
+      <details class="group rounded-3xl border border-white/10 bg-white/[0.05] p-6 open:bg-white/[0.08]">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-6 text-lg font-bold">
+          Do I need developers to use it?
+          <span class="text-emerald-300 transition group-open:rotate-45">+</span>
+        </summary>
+        <p class="mt-4 leading-7 text-emerald-50/70">You can upload and share from the UI. Developers and agents get clean endpoints when they need automation. That is the bridge.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="relative overflow-hidden bg-emerald-300 px-6 py-20 text-emerald-950 lg:px-8">
+  <div class="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/35 blur-3xl"></div>
+  <div class="absolute -bottom-28 left-10 h-72 w-72 rounded-full bg-cyan-200/60 blur-3xl"></div>
+  <div class="relative mx-auto flex max-w-7xl flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
+    <div>
+      <p class="font-mono text-sm font-bold uppercase tracking-[0.25em]">Start with one useful file</p>
+      <h2 class="mt-4 max-w-3xl text-4xl font-black tracking-[-0.045em] sm:text-6xl">Turn the spreadsheet everyone depends on into infrastructure.</h2>
+    </div>
+    <a href="{% url 'account_signup' %}" class="inline-flex shrink-0 items-center justify-center rounded-full bg-emerald-950 px-8 py-4 text-base font-black text-white shadow-2xl shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-950 focus:ring-offset-2 focus:ring-offset-emerald-300">
+      Launch FileBridge
+      <span class="ml-2">→</span>
+    </a>
+  </div>
+</section>
 {% endblock content %}

@@ -1,11 +1,10 @@
 from allauth.account.views import SignupByPasskeyView, SignupView
-from django_q.tasks import async_task
 from django.conf import settings
 from django.contrib import messages
 from django.views.generic import TemplateView
+from django_q.tasks import async_task
 
 from apps.core.models import Profile
-
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
