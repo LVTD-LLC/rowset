@@ -10,21 +10,20 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
+import logging
 import os
 from pathlib import Path
+
 import environ
-import structlog
-import logging
+import logfire
 import sentry_sdk
+import structlog
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from structlog_sentry import SentryProcessor
-from filebridge.sentry_utils import CustomLoggingIntegration, before_send
 
-import logfire
 from filebridge.logging_utils import scrubbing_callback
-
-
+from filebridge.sentry_utils import CustomLoggingIntegration, before_send
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -62,7 +61,7 @@ SENTRY_MAX_BREADCRUMBS = env.int("SENTRY_MAX_BREADCRUMBS", default=100)
 SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
+DEBUG = env("DEBUG")
 
 SITE_URL = env("SITE_URL")
 SITE_HOST = SITE_URL.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
@@ -108,18 +107,16 @@ THIRD_PARTY_APPS = [
     "django_q",
     "django_extensions",
     "mjml",
-    
     "django_structlog",
 ]
 
 CUSTOM_APPS = [
     "apps.core.CoreConfig",
     "apps.api.ApiConfig",
+    "apps.datasets.apps.DatasetsConfig",
     "apps.pages.PagesConfig",
     "apps.blog.BlogConfig",
-    
     "apps.docs.DocsConfig",
-    
 ]
 
 INSTALLED_APPS = DEFAULT_APPS + THIRD_PARTY_APPS + CUSTOM_APPS
@@ -152,9 +149,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.current_state",
                 "apps.core.context_processors.posthog_api_key",
-                
                 "apps.core.context_processors.mjml_url",
-                
                 "apps.core.context_processors.available_social_providers",
                 "apps.pages.context_processors.referrer_banner",
             ],
@@ -233,7 +228,7 @@ aws_s3_endpoint_url = env("AWS_S3_ENDPOINT_URL", default="")
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 
 if not aws_s3_endpoint_url:
-    MEDIA_URL = f"/media/"
+    MEDIA_URL = "/media/"
     STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -372,6 +367,7 @@ Q_CLUSTER = {
     "error_reporter": {},
 }
 
+
 def extract_from_record(logger, name, event_dict):
     """
     Extract thread name and add them to the event dict.
@@ -379,6 +375,7 @@ def extract_from_record(logger, name, event_dict):
     record = event_dict["_record"]
     event_dict["thread_id"] = record.thread
     return event_dict
+
 
 LOGGING = {
     "version": 1,
@@ -538,7 +535,7 @@ if SENTRY_DSN and ENVIRONMENT == "prod":
 POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
 
 
-BUTTONDOWN_API_KEY=env("BUTTONDOWN_API_KEY", default="")
+BUTTONDOWN_API_KEY = env("BUTTONDOWN_API_KEY", default="")
 
 
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")

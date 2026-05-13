@@ -1,14 +1,12 @@
 from ninja import Schema
-from typing import Optional
-
 
 from apps.blog.choices import BlogPostStatus
-
 
 
 class SubmitFeedbackIn(Schema):
     feedback: str
     page: str
+
 
 class SubmitFeedbackOut(Schema):
     success: bool
@@ -21,18 +19,18 @@ class BlogPostIn(Schema):
     slug: str
     tags: str = ""
     content: str
-    icon: Optional[str] = None  # URL or base64 string
-    image: Optional[str] = None  # URL or base64 string
+    icon: str | None = None  # URL or base64 string
+    image: str | None = None  # URL or base64 string
     status: BlogPostStatus = BlogPostStatus.DRAFT
 
 
 class BlogPostUpdateIn(Schema):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    slug: Optional[str] = None
-    tags: Optional[str] = None
-    content: Optional[str] = None
-    status: Optional[BlogPostStatus] = None
+    title: str | None = None
+    description: str | None = None
+    slug: str | None = None
+    tags: str | None = None
+    content: str | None = None
+    status: BlogPostStatus | None = None
 
 
 class BlogPostItemOut(Schema):
@@ -57,15 +55,38 @@ class BlogPostOut(Schema):
 class BlogPostDetailOut(Schema):
     status: str
     message: str
-    blog_post: Optional[BlogPostItemOut] = None
-
+    blog_post: BlogPostItemOut | None = None
 
 
 class ProfileSettingsOut(Schema):
-    
     has_pro_subscription: bool
-    
 
 
 class UserSettingsOut(Schema):
     profile: ProfileSettingsOut
+
+
+class DatasetRowIn(Schema):
+    data: dict[str, str]
+
+
+class DatasetRowPatchIn(Schema):
+    data: dict[str, str]
+
+
+class DatasetRowOut(Schema):
+    id: int
+    row_number: int
+    data: dict[str, str]
+
+
+class DatasetRowsOut(Schema):
+    dataset: str
+    count: int
+    rows: list[DatasetRowOut]
+
+
+class DatasetApiOut(Schema):
+    status: str
+    message: str
+    row: DatasetRowOut | None = None

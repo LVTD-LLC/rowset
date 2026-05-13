@@ -91,7 +91,7 @@ def test_dashboard_does_not_show_email_confirmation_reminder(client):
     assert response.status_code == 200
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
-    assert "Welcome to FileBridge" in content
+    assert "Turn a CSV into an API" in content
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):
@@ -321,4 +321,4 @@ def test_dashboard_suppresses_verification_reminder_without_email_address(client
     assert response.status_code == 200
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
-    assert "Welcome to FileBridge" in content
+    assert "Turn a CSV into an API" in content
