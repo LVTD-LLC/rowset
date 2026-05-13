@@ -18,9 +18,12 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 
 ### Changed
 - Email verification during signup is now non-blocking: new users land on the dashboard, receive a confirmation-link email, and see an in-app reminder until verified.
+- Signup and login now use email + password only; usernames are generated automatically and signup no longer asks for password confirmation.
+- The email confirmation reminder now appears only in settings, not on the dashboard home page.
 - Passkey signup is disabled so passkey setup can move to a post-registration account security flow.
 - Sentry setup now includes release metadata, configurable tracing/profiling/log settings, logging breadcrumbs/events, and the `before_send` hook by default.
 
 ### Added
+- Settings now links users to add and manage passkeys after account creation.
 - `ALLOW_SIGNUPS` environment flag (default `True`) to pause new email/social registrations while keeping existing user logins available.
 - Superuser-only admin blog API for creating, listing, reading, updating, patching, deleting, reviewing, and publishing blog posts when the blog app is generated.
