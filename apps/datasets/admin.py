@@ -5,10 +5,18 @@ from apps.datasets.models import Dataset, DatasetRow
 
 @admin.register(Dataset)
 class DatasetAdmin(admin.ModelAdmin):
-    list_display = ("name", "profile", "status", "row_count", "created_at")
+    list_display = ("name", "profile", "status", "row_count", "public_enabled", "created_at")
     search_fields = ("name", "original_filename", "profile__user__email")
-    list_filter = ("status", "created_at")
-    readonly_fields = ("key", "headers", "preview_rows", "parse_error", "created_at", "updated_at")
+    list_filter = ("status", "public_enabled", "created_at")
+    readonly_fields = (
+        "key",
+        "public_key",
+        "headers",
+        "preview_rows",
+        "parse_error",
+        "created_at",
+        "updated_at",
+    )
 
 
 @admin.register(DatasetRow)

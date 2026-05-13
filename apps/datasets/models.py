@@ -1,5 +1,6 @@
 import uuid
 
+from django.contrib.auth.hashers import check_password
 from django.core.validators import MaxLengthValidator
 from django.db import models
 from django.urls import reverse
@@ -31,6 +32,10 @@ class Dataset(BaseModel):
     preview_rows = models.JSONField(default=list)
     index_column = models.CharField(max_length=255, blank=True, default="")
     index_generated = models.BooleanField(default=False)
+    public_key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    public_enabled = models.BooleanField(default=False)
+    public_page_size = models.PositiveIntegerField(default=10)
+    public_password_hash = models.CharField(max_length=255, blank=True, default="")
     row_count = models.PositiveIntegerField(default=0)
     parse_error = models.TextField(blank=True, default="")
     confirmed_at = models.DateTimeField(null=True, blank=True)
@@ -44,6 +49,21 @@ class Dataset(BaseModel):
 
     def get_absolute_url(self):
         return reverse("dataset_detail", kwargs={"dataset_key": self.key})
+
+    def get_settings_url(self):
+        return reverse("dataset_settings", kwargs={"dataset_key": self.key})
+
+    def get_public_url(self):
+        return reverse("public_dataset", kwargs={"public_key": self.public_key})
+
+    @property
+    def is_public_password_protected(self) -> bool:
+        return bool(self.public_password_hash)
+
+    def public_password_matches(self, password: str) -> bool:
+        if not self.public_password_hash:
+            return True
+        return check_password(password, self.public_password_hash)
 
 
 class DatasetRow(BaseModel):

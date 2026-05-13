@@ -354,3 +354,108 @@ def test_dataset_api_rejects_other_users_dataset(client, django_user_model, prof
     response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={other_user.profile.key}")
 
     assert response.status_code == 404
+
+
+def test_dataset_public_sharing_is_off_by_default(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.get(dataset.get_public_url())
+
+    assert response.status_code == 404
+
+
+def test_dataset_owner_can_enable_public_sharing(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+
+    response = auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "1",
+        },
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.public_enabled is True
+    assert dataset.public_page_size == 1
+
+
+def test_public_dataset_view_paginates_rows(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.public_page_size = 1
+    dataset.save(update_fields=["public_enabled", "public_page_size"])
+
+    response = client.get(dataset.get_public_url())
+
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Ada" in content
+    assert "Grace" not in content
+    assert "Page 1 of 2" in content
+
+    page_two = client.get(f"{dataset.get_public_url()}?page=2")
+    page_two_content = page_two.content.decode()
+    assert "Grace" in page_two_content
+
+
+def test_public_dataset_password_protection(auth_client, client, profile):
+    dataset = create_ready_dataset(profile)
+    auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "10",
+            "public_password": "secret-table",
+        },
+    )
+    dataset.refresh_from_db()
+
+    locked_response = client.get(dataset.get_public_url())
+    assert locked_response.status_code == 200
+    assert "Password required" in locked_response.content.decode()
+    assert "Ada" not in locked_response.content.decode()
+
+    wrong_response = client.post(dataset.get_public_url(), {"password": "wrong"})
+    assert "That password did not work" in wrong_response.content.decode()
+
+    unlock_response = client.post(dataset.get_public_url(), {"password": "secret-table"})
+    assert unlock_response.status_code == 302
+
+    unlocked_response = client.get(dataset.get_public_url())
+    assert "Ada" in unlocked_response.content.decode()
+
+
+def test_public_dataset_password_change_revokes_existing_unlock(auth_client, client, profile):
+    dataset = create_ready_dataset(profile)
+    auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "10",
+            "public_password": "old-secret",
+        },
+    )
+    dataset.refresh_from_db()
+
+    unlock_response = client.post(dataset.get_public_url(), {"password": "old-secret"})
+    assert unlock_response.status_code == 302
+    assert "Ada" in client.get(dataset.get_public_url()).content.decode()
+
+    auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "10",
+            "public_password": "new-secret",
+        },
+    )
+
+    locked_again = client.get(dataset.get_public_url())
+    content = locked_again.content.decode()
+    assert "Password required" in content
+    assert "Ada" not in content
+    assert dataset.name not in content
