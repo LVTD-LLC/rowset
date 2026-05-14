@@ -39,11 +39,11 @@ class TestHomeView:
         assert "do not print it" in content
 
     def test_build_agent_setup_prompt_uses_current_site_and_profile_key(self, rf, user):
-        request = rf.get("/home", HTTP_HOST="example.test")
+        request = rf.get("/home", HTTP_HOST="localhost")
         request.user = user
 
         prompt = build_agent_setup_prompt(request)
 
-        assert "FileBridge MCP URL: http://example.test/mcp/" in prompt
-        assert "FileBridge REST API base: http://example.test/api/" in prompt
+        assert "FileBridge MCP URL: http://localhost/mcp/" in prompt
+        assert "FileBridge REST API base: http://localhost/api/" in prompt
         assert f"FileBridge API key: {user.profile.key}" in prompt
