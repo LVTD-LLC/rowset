@@ -10,6 +10,7 @@ from django.shortcuts import redirect, render
 from django.template import Context, Template
 from django.urls import reverse
 
+from apps.core.models import Profile
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -176,7 +177,8 @@ def docs_page_view(request, category, page):
         with open(markdown_file, encoding="utf-8") as file:
             post = frontmatter.load(file)
 
-        api_key = request.user.profile.key
+        profile, _created = Profile.objects.get_or_create(user=request.user)
+        api_key = profile.key
         api_base_url = request.build_absolute_uri("/api").rstrip("/")
         docs_template_context = {
             "api_base_url": api_base_url,
