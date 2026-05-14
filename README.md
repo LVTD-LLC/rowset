@@ -103,7 +103,7 @@ How you are going to expose the backend container is up to you. I usually do it 
 Not recommended due to not being too safe for production and not being tested by me.
 
 If you are not into Docker or Render and just wanto to run this via regular commands you will need to have 5 processes running:
-- `python manage.py collectstatic --noinput && python manage.py migrate && gunicorn ${PROJECT_NAME}.wsgi:application --bind 0.0.0.0:80 --workers 3 --threads 2`
+- `python manage.py collectstatic --noinput && python manage.py migrate && gunicorn ${PROJECT_NAME}.asgi:application --bind 0.0.0.0:80 --workers 3 --worker-class uvicorn_worker.UvicornWorker`
 - `python manage.py qcluster`
 - `npm install && npm run start`
 - `postgres`

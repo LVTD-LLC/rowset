@@ -113,6 +113,7 @@ THIRD_PARTY_APPS = [
 CUSTOM_APPS = [
     "apps.core.CoreConfig",
     "apps.api.ApiConfig",
+    "apps.mcp_server.apps.McpServerConfig",
     "apps.datasets.apps.DatasetsConfig",
     "apps.pages.PagesConfig",
     "apps.blog.BlogConfig",

@@ -21,8 +21,10 @@ from apps.api.schemas import (
     DatasetRowsOut,
     SubmitFeedbackIn,
     SubmitFeedbackOut,
+    UserInfoOut,
     UserSettingsOut,
 )
+from apps.api.services import serialize_user_info
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
 from apps.core.models import Feedback
@@ -310,6 +312,17 @@ def publish_internal_blog_post(request: HttpRequest, blog_post_id: int):
         "message": "Blog post published successfully.",
         "blog_post": _serialize_blog_post(blog_post),
     }
+
+
+@api.get(
+    "/user",
+    response=UserInfoOut,
+    auth=[api_key_auth],
+    tags=["user"],
+)
+def get_user_info(request: HttpRequest):
+    """Return safe profile and account details for the authenticated API key."""
+    return serialize_user_info(request.auth)
 
 
 @api.get(

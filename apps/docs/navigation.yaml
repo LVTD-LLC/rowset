@@ -33,6 +33,7 @@ navigation:
 
   features:
     - example-feature
+    - agent-access
 
   deployment:
     - render-deployment
