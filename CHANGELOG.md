@@ -35,6 +35,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Dashboard home now includes a copyable “teach your AI agent to use FileBridge” prompt with the user's MCP URL, REST API base, API key, and a linked public agent skill file.
 - Added agent access foundations: `GET /api/user` for API-key-authenticated user info and a hosted FastMCP server at `/mcp/` with a matching `get_user_info` tool.
 - Added a Google DESIGN.md-style design system source of truth for FileBridge colors, typography, layout, components, and usage guardrails.
 - Chatwoot support chat can now be enabled with `CHATWOOT_BASE_URL` and `CHATWOOT_WEBSITE_TOKEN`.
