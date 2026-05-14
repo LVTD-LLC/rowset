@@ -34,6 +34,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Added a Google DESIGN.md-style design system source of truth for FileBridge colors, typography, layout, components, and usage guardrails.
 - Chatwoot support chat can now be enabled with `CHATWOOT_BASE_URL` and `CHATWOOT_WEBSITE_TOKEN`.
 - Dataset settings now let owners enable an off-by-default public table preview link with configurable pagination and optional password protection.
 - Dataset imports now ask users to choose a unique index column or generate a FileBridge ID column before confirming import.
