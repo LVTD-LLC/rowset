@@ -15,11 +15,13 @@ export default class extends Controller {
       const response = await fetch(this.urlValue, { credentials: "same-origin" });
       const data = await response.json();
       this.badgeTarget.textContent = data.status;
-      this.messageTarget.textContent = data.status === "ready"
-        ? `${data.row_count.toLocaleString()} rows imported. Your API is ready.`
-        : data.status === "failed"
-          ? data.parse_error
-          : "Still importing rows…";
+      if (this.hasMessageTarget) {
+        this.messageTarget.textContent = data.status === "ready"
+          ? `${data.row_count.toLocaleString()} rows imported. Your API is ready.`
+          : data.status === "failed"
+            ? data.parse_error
+            : "Still importing rows…";
+      }
       if (data.status === "processing") {
         window.setTimeout(() => this.poll(), 2500);
       } else if (data.status === "ready") {

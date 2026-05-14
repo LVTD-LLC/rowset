@@ -35,6 +35,9 @@ navigation:
     - example-feature
     - agent-access
 
+  api:
+    - endpoints
+
   deployment:
     - render-deployment
     - docker-compose-deployment
