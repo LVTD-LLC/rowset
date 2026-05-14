@@ -1,25 +1,39 @@
 ---
-title: Getting Started with FileBridge
-description: Learn how to get started with FileBridge, Turn uploaded files into clean API endpoints and structured data feeds.
-keywords: FileBridge, getting started, documentation
-author: Rasul Kireev
+title: Getting started
+description: Learn how to upload a file and turn it into a FileBridge API.
+keywords: FileBridge, getting started, CSV API
 ---
 
-Welcome to FileBridge! This guide will help you get started with your new Django SaaS application.
+# Getting started
 
-## What is FileBridge?
+FileBridge turns CSVs and operational files into API-backed datasets that apps, scripts, and AI agents can use.
 
-FileBridge is built on a modern Django SaaS starter template that includes:
+## Basic workflow
 
-- User authentication and profile management
-- Subscription billing with Stripe
-- Built-in blog system with markdown support
-- Product analytics with PostHog
-- Cloud storage with S3
-- Responsive design with Tailwind CSS
-- API endpoints with Django Ninja
-- Error tracking with Sentry
+1. Upload a CSV from the dashboard.
+2. Review the preview, headers, and sample rows.
+3. Choose the index column your workflow uses for lookups.
+4. Confirm the import.
+5. Use the generated API endpoints, CSV export, or optional public preview.
 
-## Next Steps
+## Your API key
 
-Sign up for an account and explore the features!
+Use this key for authenticated API and MCP requests:
+
+```text
+{{ api_key_masked }}
+```
+
+Prefer sending it as a bearer token:
+
+```http
+Authorization: Bearer {{ api_key_masked }}
+```
+
+## Your API base URL
+
+```text
+{{ api_base_url }}
+```
+
+Open any dataset and click **API docs** for endpoint examples that use this base URL.

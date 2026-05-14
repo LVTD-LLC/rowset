@@ -1,49 +1,50 @@
+---
+title: Agent access
+description: Configure AI agents and API clients to use FileBridge without browser automation.
+keywords: FileBridge, agents, MCP, API key
+---
+
 # Agent access
 
-FileBridge exposes API and hosted MCP access so AI agents can use the app without browser automation.
+FileBridge exposes REST API and hosted MCP access so AI agents can use your datasets without browser automation.
 
 ## REST API user info
 
-Use the profile API key from the app settings page.
+Use your profile API key from settings. Your current key is:
+
+```text
+{{ api_key_masked }}
+```
 
 ```bash
-curl "https://your-filebridge-domain.com/api/user?api_key=<FILEBRIDGE_API_KEY>"
+curl -H "Authorization: Bearer {{ api_key_masked }}" "{{ api_base_url }}/user"
 ```
 
 The endpoint returns safe account/profile details for the authenticated user. It does **not** return the API key.
 
 ```json
 {
-  "id": 1,
-  "email": "user@example.com",
-  "username": "user@example.com",
-  "first_name": "",
-  "last_name": "",
-  "full_name": "",
-  "date_joined": "2026-05-14T00:00:00Z",
-  "is_staff": false,
-  "is_superuser": false,
+  "email": "{{ user_email }}",
   "profile": {
-    "id": 1,
     "state": "signed_up",
-    "has_active_subscription": false
+    "has_active_subscription": true
   }
 }
 ```
 
 ## Hosted MCP
 
-The hosted MCP endpoint is available at:
+Your hosted MCP endpoint is:
 
 ```text
-https://your-filebridge-domain.com/mcp/
+{{ mcp_url }}
 ```
 
 Use one of these API-key authentication options:
 
-- `Authorization: Bearer <FILEBRIDGE_API_KEY>` header
-- `X-API-Key: <FILEBRIDGE_API_KEY>` header
-- `?api_key=<FILEBRIDGE_API_KEY>` query parameter on the MCP URL
+- `Authorization: Bearer {{ api_key_masked }}` header
+- `X-API-Key: {{ api_key_masked }}` header
+- `?api_key={{ api_key_masked }}` query parameter on the MCP URL
 - `api_key` tool argument when a client cannot send headers
 
 The first MCP tool is:
@@ -52,12 +53,10 @@ The first MCP tool is:
 get_user_info
 ```
 
-It returns the same safe user/profile details as the REST endpoint.
-
 For most hosted clients, configure the MCP server URL and provide the API key as a bearer token if the client supports auth headers. If it does not, use the URL query parameter form:
 
 ```text
-https://your-filebridge-domain.com/mcp/?api_key=<FILEBRIDGE_API_KEY>
+{{ mcp_url }}?api_key={{ api_key_masked }}
 ```
 
 Prefer headers over query parameters when the client supports them, because URLs are more likely to be copied into logs or screenshots.

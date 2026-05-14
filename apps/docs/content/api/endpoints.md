@@ -13,55 +13,61 @@ FileBridge gives every imported dataset a small REST API. Use these endpoints wh
 Prefer the `Authorization` header for private API requests:
 
 ```http
-Authorization: Bearer YOUR_API_KEY
+Authorization: Bearer {{ api_key_masked }}
 ```
 
 Query-string API keys are supported only for clients that cannot send headers:
 
 ```text
-?api_key=YOUR_API_KEY
+?api_key={{ api_key_masked }}
 ```
 
 Keep API keys private. Do not paste full keys into public docs, screenshots, client-side code, or shared tickets.
 
 ## Dataset routes
 
+Your API base URL is:
+
+```text
+{{ api_base_url }}
+```
+
 Replace `{dataset_key}` with the dataset key from the dataset page.
 
 ```http
-GET /api/datasets/{dataset_key}/rows
+GET {{ api_base_url }}/datasets/{dataset_key}/rows
 ```
 
 List dataset rows.
 
 ```http
-GET /api/datasets/{dataset_key}/rows/by-index?index_value={index_value}
+GET {{ api_base_url }}/datasets/{dataset_key}/rows/by-index?index_value={index_value}
 ```
 
 Fetch one row by the dataset index column.
 
 ```http
-POST /api/datasets/{dataset_key}/rows
+POST {{ api_base_url }}/datasets/{dataset_key}/rows
 Content-Type: application/json
 ```
 
 Create a row. Send JSON where keys match the dataset headers.
 
 ```http
-PATCH /api/datasets/{dataset_key}/rows/{row_id}
+PATCH {{ api_base_url }}/datasets/{dataset_key}/rows/{row_id}
 Content-Type: application/json
 ```
 
 Update a row by FileBridge row id.
 
 ```http
-DELETE /api/datasets/{dataset_key}/rows/{row_id}
+DELETE {{ api_base_url }}/datasets/{dataset_key}/rows/{row_id}
 ```
 
 Delete a row by FileBridge row id.
 
 ```http
-GET /api/datasets/{dataset_key}/export.csv
+GET {{ api_base_url }}/datasets/{dataset_key}/export.csv
 ```
 
 Export the dataset as CSV.
@@ -70,8 +76,8 @@ Export the dataset as CSV.
 
 ```bash
 curl \
-  -H "Authorization: Bearer $FILEBRIDGE_API_KEY" \
-  "https://your-filebridge-host.com/api/datasets/{dataset_key}/rows"
+  -H "Authorization: Bearer {{ api_key_masked }}" \
+  "{{ api_base_url }}/datasets/{dataset_key}/rows"
 ```
 
 ## Notes
