@@ -22,7 +22,7 @@
 {% endblock meta %}
 
 {% block content %}
-<div class="relative overflow-hidden bg-[#07130f] text-white">
+<div class="relative -mt-[76px] overflow-hidden bg-[#07130f] text-white">
   <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(16,185,129,0.32),transparent_32%),radial-gradient(circle_at_80%_5%,rgba(34,211,238,0.20),transparent_28%),linear-gradient(135deg,rgba(7,19,15,1),rgba(2,6,23,1)_60%,rgba(6,78,59,0.72))]"></div>
   <div class="absolute left-1/2 top-0 h-[42rem] w-[42rem] -translate-x-1/2 rounded-full border border-emerald-300/10 bg-emerald-400/5 blur-3xl"></div>
   <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent"></div>
@@ -33,7 +33,7 @@
   </div>
   {% endif %}
 
-  <section class="relative mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-20 sm:pt-28 lg:grid-cols-[1.02fr_0.98fr] lg:px-8 lg:pb-28">
+  <section class="relative mx-auto grid min-h-screen max-w-7xl items-center gap-12 px-6 pb-20 pt-32 sm:pt-36 lg:grid-cols-[1.02fr_0.98fr] lg:px-8 lg:pb-28">
     <div>
       <div class="mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-white/7 px-4 py-2 text-sm font-medium text-emerald-100 shadow-2xl shadow-emerald-950/40 backdrop-blur">
         <span class="flex h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_20px_rgba(110,231,183,0.9)]"></span>
@@ -48,11 +48,11 @@
       </p>
 
       <div class="mt-9 flex flex-col gap-3 sm:flex-row">
-        <a href="{% url 'account_signup' %}" class="group inline-flex items-center justify-center rounded-full bg-emerald-300 px-7 py-4 text-base font-bold text-emerald-950 shadow-[0_18px_60px_rgba(16,185,129,0.35)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-offset-2 focus:ring-offset-[#07130f]">
+        <a href="{% url 'account_signup' %}" class="group inline-flex items-center justify-center rounded-xl bg-emerald-600 px-7 py-4 text-base font-bold text-white shadow-[0_18px_60px_rgba(16,185,129,0.28)] transition hover:-translate-y-0.5 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-offset-2 focus:ring-offset-[#07130f]">
           Build your first file API
           <span class="ml-2 transition group-hover:translate-x-1">→</span>
         </a>
-        <a href="{% url 'account_login' %}" class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/8 px-7 py-4 text-base font-semibold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/14 focus:outline-none focus:ring-2 focus:ring-white/40">
+        <a href="{% url 'account_login' %}" class="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/8 px-7 py-4 text-base font-semibold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/14 focus:outline-none focus:ring-2 focus:ring-white/40">
           Sign in
         </a>
       </div>
@@ -258,7 +258,7 @@
       <p class="font-mono text-sm font-bold uppercase tracking-[0.25em]">Start with one useful file</p>
       <h2 class="mt-4 max-w-3xl text-4xl font-black tracking-[-0.045em] sm:text-6xl">Turn the spreadsheet everyone depends on into infrastructure.</h2>
     </div>
-    <a href="{% url 'account_signup' %}" class="inline-flex shrink-0 items-center justify-center rounded-full bg-emerald-950 px-8 py-4 text-base font-black text-white shadow-2xl shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-950 focus:ring-offset-2 focus:ring-offset-emerald-300">
+    <a href="{% url 'account_signup' %}" class="inline-flex shrink-0 items-center justify-center rounded-xl bg-emerald-950 px-8 py-4 text-base font-black text-white shadow-2xl shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-950 focus:ring-offset-2 focus:ring-offset-emerald-300">
       Launch FileBridge
       <span class="ml-2">→</span>
     </a>
