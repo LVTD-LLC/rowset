@@ -3,6 +3,26 @@ from django.test import override_settings
 from django.urls import reverse
 
 
+@pytest.fixture
+def user(django_user_model):
+    return django_user_model.objects.create_user(
+        username="docsuser",
+        email="docsuser@example.com",
+        password="password123",
+    )
+
+
+@pytest.fixture
+def auth_client(client, user):
+    client.force_login(user)
+    return client
+
+
+@pytest.fixture
+def profile(user):
+    return user.profile
+
+
 @pytest.mark.django_db
 class TestDocsView:
     @override_settings(SITE_URL="http://filebridge.example")
