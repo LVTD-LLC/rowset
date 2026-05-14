@@ -54,10 +54,14 @@ The user prompt should provide:
 4. Treat the API key as a secret: do not print it, commit it, store it in public logs,
    or share it with other tools.
 5. After connecting, call the `get_user_info` tool to verify the connection.
+6. Use `get_all_datasets` to discover datasets available to the authenticated
+   profile before reading rows.
 
 ## Working rules
 
 - Prefer MCP tools over browser automation when working with FileBridge.
+- Use `get_all_datasets` for dataset discovery. It returns paginated dataset
+  metadata only, not row contents.
 - If MCP configuration is unavailable in your runtime, use the REST API endpoints with
   the same API key.
 - Ask the user before destructive changes such as deleting datasets or rows.
@@ -103,7 +107,8 @@ def build_agent_setup_prompt(request: HttpRequest) -> str:
             "HTTP MCP server, and authenticate with the API key. Prefer an Authorization: "
             "Bearer header; if your MCP client cannot send headers, use X-API-Key or the "
             "MCP URL query parameter fallback. After setup, call get_user_info to verify "
-            "the connection. Treat the API key as secret and do not print it back.",
+            "the connection, then call get_all_datasets to discover available datasets. "
+            "Treat the API key as secret and do not print it back.",
         ]
     )
 

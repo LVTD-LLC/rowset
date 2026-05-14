@@ -82,9 +82,33 @@ class UserInfoOut(Schema):
     last_name: str
     full_name: str
     date_joined: datetime
-    is_staff: bool
-    is_superuser: bool
     profile: UserProfileOut
+
+
+class DatasetSummaryOut(Schema):
+    key: str
+    name: str
+    original_filename: str
+    file_type: str
+    status: str
+    headers: list[str]
+    index_column: str
+    index_generated: bool
+    row_count: int
+    public_enabled: bool
+    created_at: datetime
+    updated_at: datetime
+    confirmed_at: datetime | None = None
+    processed_at: datetime | None = None
+
+
+class DatasetListOut(Schema):
+    count: int
+    total_count: int
+    limit: int
+    offset: int
+    has_more: bool
+    datasets: list[DatasetSummaryOut]
 
 
 class DatasetRowIn(Schema):

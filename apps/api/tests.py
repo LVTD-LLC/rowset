@@ -8,6 +8,7 @@ from apps.api.views import (
     delete_internal_blog_post,
     get_internal_blog_post,
     get_user_info,
+    list_datasets,
     list_internal_blog_posts,
     patch_internal_blog_post,
     publish_internal_blog_post,
@@ -220,6 +221,63 @@ class UserInfoApiUnitTests(SimpleTestCase):
             "has_active_subscription": False,
         }
         assert "key" not in response
+        assert "is_staff" not in response
+        assert "is_superuser" not in response
+
+
+class DatasetListApiUnitTests(SimpleTestCase):
+    def test_list_datasets_returns_profile_dataset_metadata_without_rows(self):
+        dataset = SimpleNamespace(
+            key="6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
+            name="Customers",
+            original_filename="customers.csv",
+            file_type="csv",
+            status="ready",
+            headers=["email", "name"],
+            index_column="email",
+            index_generated=False,
+            row_count=42,
+            public_enabled=True,
+            created_at="2026-05-14T00:00:00Z",
+            updated_at="2026-05-14T00:01:00Z",
+            confirmed_at="2026-05-14T00:02:00Z",
+            processed_at="2026-05-14T00:03:00Z",
+        )
+        queryset = Mock()
+        queryset.count.return_value = 1
+        queryset.__getitem__ = Mock(return_value=[dataset])
+        datasets = Mock()
+        datasets.only.return_value = queryset
+        request = HttpRequest()
+        request.auth = SimpleNamespace(datasets=datasets)
+
+        response = list_datasets(request)
+
+        assert response["count"] == 1
+        assert response["total_count"] == 1
+        assert response["limit"] == 100
+        assert response["offset"] == 0
+        assert response["has_more"] is False
+        assert response["datasets"] == [
+            {
+                "key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
+                "name": "Customers",
+                "original_filename": "customers.csv",
+                "file_type": "csv",
+                "status": "ready",
+                "headers": ["email", "name"],
+                "index_column": "email",
+                "index_generated": False,
+                "row_count": 42,
+                "public_enabled": True,
+                "created_at": "2026-05-14T00:00:00Z",
+                "updated_at": "2026-05-14T00:01:00Z",
+                "confirmed_at": "2026-05-14T00:02:00Z",
+                "processed_at": "2026-05-14T00:03:00Z",
+            }
+        ]
+        datasets.only.assert_called_once()
+        queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
 
 def test_api_key_auth_returns_profile_for_valid_key():
