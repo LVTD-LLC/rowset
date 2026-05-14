@@ -35,6 +35,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Dataset uploads now accept Parquet files in addition to CSV.
 - Added dataset discovery for agents via `GET /api/datasets` and the hosted MCP `get_all_datasets` tool, returning dataset metadata for the authenticated profile without row payloads.
 - Dashboard home now includes a copyable “teach your AI agent to use FileBridge” prompt with the user's HTTPS MCP URL, REST API base, API key, and a linked public `/SKILL.md` agent skill file.
 - Added agent access foundations: `GET /api/user` for API-key-authenticated user info and a hosted FastMCP server at `/mcp/` with a matching `get_user_info` tool.

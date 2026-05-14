@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+import polars as pl
+
 
 class CSVParseError(ValueError):
     pass
@@ -86,8 +88,35 @@ class CSVParser:
             yield index, {header: (row.get(header) or "") for header in headers}
 
 
-PARSERS_BY_EXTENSION = {".csv": CSVParser()}
-PARSERS_BY_TYPE = {"csv": PARSERS_BY_EXTENSION[".csv"]}
+class ParquetParser:
+    file_type = "parquet"
+
+    def source_text_from_file(self, uploaded_file) -> str:
+        dataframe = _parquet_dataframe(uploaded_file)
+        original_headers = dataframe.columns
+        headers = _validate_headers(original_headers, file_kind="Parquet")
+        dataframe = dataframe.rename(dict(zip(original_headers, headers, strict=True)))
+        normalized = dataframe.select([pl.col(header).cast(pl.String) for header in headers])
+        normalized = normalized.fill_null("")
+        return normalized.write_csv()
+
+    def preview_file(self, uploaded_file, sample_size: int = 5) -> TabularPreview:
+        source_text = self.source_text_from_file(uploaded_file)
+        preview = CSVParser().preview_text(source_text, sample_size=sample_size)
+        return TabularPreview(
+            headers=preview.headers,
+            preview_rows=preview.preview_rows,
+            row_count=preview.row_count,
+            source_text=source_text,
+            file_type=self.file_type,
+        )
+
+    def iter_text_rows(self, text: str):
+        yield from CSVParser().iter_text_rows(text)
+
+
+PARSERS_BY_EXTENSION = {".csv": CSVParser(), ".parquet": ParquetParser()}
+PARSERS_BY_TYPE = {parser.file_type: parser for parser in PARSERS_BY_EXTENSION.values()}
 
 
 # Backward-compatible names used by existing views/tests.
@@ -103,6 +132,16 @@ def _decode_bytes(raw: bytes) -> str:
     raise CSVParseError("Could not decode the CSV file. Please upload UTF-8 or latin-1 text.")
 
 
+def _parquet_dataframe(uploaded_file) -> pl.DataFrame:
+    uploaded_file.seek(0)
+    raw = uploaded_file.read()
+    uploaded_file.seek(0)
+    try:
+        return pl.read_parquet(io.BytesIO(raw))
+    except Exception as exc:
+        raise CSVParseError("Could not read the Parquet file.") from exc
+
+
 def _reader_for_text(text: str):
     if not text.strip():
         raise CSVParseError("The CSV file is empty.")
@@ -116,18 +155,18 @@ def _reader_for_text(text: str):
     return csv.DictReader(io.StringIO(text), dialect=dialect)
 
 
-def _validate_headers(headers: list[str] | None) -> list[str]:
+def _validate_headers(headers: list[str] | None, file_kind: str = "CSV") -> list[str]:
     if not headers:
-        raise CSVParseError("Could not find a header row in the CSV file.")
+        raise CSVParseError(f"Could not find a header row in the {file_kind} file.")
 
     cleaned = [(header or "").strip() for header in headers]
     if any(not header for header in cleaned):
-        raise CSVParseError("Every CSV column needs a non-empty header.")
+        raise CSVParseError(f"Every {file_kind} column needs a non-empty header.")
 
     duplicates = sorted({header for header in cleaned if cleaned.count(header) > 1})
     if duplicates:
         joined = ", ".join(duplicates)
-        raise CSVParseError(f"CSV headers must be unique. Duplicate headers: {joined}.")
+        raise CSVParseError(f"{file_kind} headers must be unique. Duplicate headers: {joined}.")
 
     return cleaned
 
@@ -136,7 +175,7 @@ def parser_for_filename(filename: str) -> TabularParser:
     suffix = Path(filename).suffix.lower()
     parser = PARSERS_BY_EXTENSION.get(suffix)
     if not parser:
-        raise CSVParseError("For now, FileBridge only accepts CSV files.")
+        raise CSVParseError("FileBridge accepts CSV and Parquet files.")
     return parser
 
 
