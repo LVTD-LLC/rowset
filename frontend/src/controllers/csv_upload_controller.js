@@ -17,12 +17,14 @@ export default class extends Controller {
     event.preventDefault();
 
     if (!this.hasFileTarget || this.fileTarget.files.length === 0) {
-      this.showError("Choose a CSV file first.");
+      this.showError("Choose a CSV or Parquet file first.");
       return;
     }
 
+    this._submitLabel = this.submitTarget.textContent;
     this.submitTarget.disabled = true;
-    this.statusTarget.textContent = "Reading CSV preview…";
+    this.submitTarget.textContent = "Reading preview…";
+    this.statusTarget.textContent = "Reading dataset preview…";
     this.statusTarget.className = "text-sm text-gray-600 dark:text-gray-300";
     this.previewTarget.classList.add("hidden");
 
@@ -38,13 +40,14 @@ export default class extends Controller {
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) {
-        throw new Error(payload.error || "Could not preview this CSV file.");
+        throw new Error(payload.error || "Could not preview this file.");
       }
       this.renderPreview(payload.dataset);
     } catch (error) {
       this.showError(error.message);
     } finally {
       this.submitTarget.disabled = false;
+      this.submitTarget.textContent = this._submitLabel ?? "Preview dataset";
     }
   }
 
@@ -89,19 +92,19 @@ export default class extends Controller {
     this.statusTarget.className = "text-sm text-emerald-700 dark:text-emerald-300";
     this.rowCountTarget.textContent = `${dataset.row_count.toLocaleString()} rows detected`;
     this.headersTarget.innerHTML = dataset.headers
-      .map((header) => `<span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800 dark:bg-gray-800 dark:text-gray-100">${this.escape(header)}</span>`)
+      .map((header) => `<span class="max-w-full break-words rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-100">${this.escape(header)}</span>`)
       .join("");
 
     this.indexSelectorTarget.innerHTML = this.renderIndexOptions(dataset);
 
-    const headerCells = dataset.headers.map((header) => `<th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">${this.escape(header)}</th>`).join("");
+    const headerCells = dataset.headers.map((header) => `<th scope="col" class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">${this.escape(header)}</th>`).join("");
     const rows = dataset.preview_rows.map((row) => {
-      const cells = dataset.headers.map((header) => `<td class="max-w-xs truncate px-3 py-2 text-sm text-gray-700 dark:text-gray-200">${this.escape(row[header] || "")}</td>`).join("");
-      return `<tr class="border-t border-gray-100 dark:border-gray-800">${cells}</tr>`;
+      const cells = dataset.headers.map((header) => `<td class="max-w-xs truncate px-3 py-2 text-sm text-slate-700 dark:text-slate-200">${this.escape(row[header] || "")}</td>`).join("");
+      return `<tr class="border-t border-slate-100 dark:border-slate-800">${cells}</tr>`;
     }).join("");
 
-    this.sampleTarget.innerHTML = `<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800"><thead><tr>${headerCells}</tr></thead><tbody>${rows}</tbody></table>`;
-    this.confirmFormTarget.innerHTML = '<button type="button" data-action="csv-upload#confirm" class="inline-flex justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">Confirm import</button>';
+    this.sampleTarget.innerHTML = `<table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800" aria-label="Dataset preview"><thead><tr>${headerCells}</tr></thead><tbody>${rows}</tbody></table>`;
+    this.confirmFormTarget.innerHTML = '<button type="button" data-action="csv-upload#confirm" class="fb-button-primary">Confirm import</button>';
     this.previewTarget.classList.remove("hidden");
   }
 

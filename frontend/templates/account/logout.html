@@ -1,20 +1,23 @@
 {% extends 'base_app.html' %}
-{% load widget_tweaks %}
+
+{% block meta %}
+<title>Sign out · FileBridge</title>
+{% endblock meta %}
 
 {% block content %}
-    <div class="mx-auto my-4 prose md:my-10 lg:prose-lg">
-        <h1 class="text-center">Please confirm Sign Out</h1>
-        <form method="post" class="flex flex-row justify-center" action="{% url 'account_logout' %}">
-            {% csrf_token %}
-
-            {% if redirect_field_value %}
-                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
-            {% endif %}
-
-            <button class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-red-600 border border-transparent border-solid rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    type="submit">
-                Sign Out
-            </button>
-        </form>
-    </div>
+<div class="mx-auto max-w-md px-4 py-16 sm:px-6 lg:px-8">
+  <section class="fb-card p-6 text-center sm:p-8" aria-labelledby="signout-heading">
+    <p class="fb-label-caps text-red-600 dark:text-red-400">Sign out</p>
+    <h1 id="signout-heading" class="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Please confirm sign out</h1>
+    <p class="fb-text-muted mt-2 text-sm leading-6">You can sign back in any time with your email, password, or passkey.</p>
+    <form method="post" class="mt-6 flex flex-col justify-center gap-3 sm:flex-row" action="{% url 'account_logout' %}">
+      {% csrf_token %}
+      {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+      {% endif %}
+      <button class="fb-button-danger" type="submit">Sign out</button>
+      <a href="{% url 'home' %}" class="fb-button-secondary">Stay signed in</a>
+    </form>
+  </section>
+</div>
 {% endblock content %}

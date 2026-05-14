@@ -6,35 +6,36 @@
 {% endblock meta %}
 
 {% block content %}
-<div class="px-4 py-12 mx-auto max-w-3xl sm:px-6 lg:px-8">
-  <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-8">
+<div class="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+  <section class="fb-card p-6 sm:p-8" aria-labelledby="email-addresses-heading">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Email addresses</h1>
-        <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Manage the email addresses associated with your FileBridge account.</p>
+        <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Account security</p>
+        <h1 id="email-addresses-heading" class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Email addresses</h1>
+        <p class="fb-text-muted mt-2 text-sm leading-6">Manage addresses used for sign-in, verification, and account recovery.</p>
       </div>
-      <a href="{% url 'settings' %}" class="text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">Back to settings</a>
+      <a href="{% url 'settings' %}" class="fb-button-secondary">Back to settings</a>
     </div>
 
     {% if emailaddresses %}
       <form class="mt-8 space-y-5" method="post" action="{% url 'account_email' %}">
         {% csrf_token %}
         <fieldset class="space-y-3">
-          <legend class="sr-only">Email addresses</legend>
+          <legend class="sr-only">Choose an email address to manage</legend>
           {% for radio in emailaddress_radios %}
             {% with emailaddress=radio.emailaddress %}
-              <label for="{{ radio.id }}" class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
-                <input id="{{ radio.id }}" type="radio" name="email" value="{{ emailaddress.email }}" {% if radio.checked %}checked{% endif %} class="mt-1 h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
+              <label for="{{ radio.id }}" class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-950/60 dark:hover:border-emerald-800">
+                <input id="{{ radio.id }}" type="radio" name="email" value="{{ emailaddress.email }}" {% if radio.checked %}checked{% endif %} class="fb-focus mt-1 h-4 w-4 border-slate-300 text-emerald-600 dark:border-slate-700">
                 <span class="min-w-0 flex-1">
-                  <span class="block break-all font-medium text-gray-900 dark:text-gray-100">{{ emailaddress.email }}</span>
+                  <span class="block break-all font-semibold text-slate-900 dark:text-slate-100">{{ emailaddress.email }}</span>
                   <span class="mt-2 flex flex-wrap gap-2">
                     {% if emailaddress.verified %}
-                      <span class="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">Verified</span>
+                      <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">Verified</span>
                     {% else %}
-                      <span class="inline-flex rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">Unverified</span>
+                      <span class="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">Unverified</span>
                     {% endif %}
                     {% if emailaddress.primary %}
-                      <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">Primary</span>
+                      <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">Primary</span>
                     {% endif %}
                   </span>
                 </span>
@@ -44,30 +45,30 @@
         </fieldset>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <button type="submit" name="action_primary" class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800">Make primary</button>
-          <button type="submit" name="action_send" class="inline-flex justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">Re-send verification</button>
-          <button type="submit" name="action_remove" class="inline-flex justify-center rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 dark:border-red-900/70 dark:bg-gray-900 dark:text-red-300 dark:hover:bg-red-950/40">Remove</button>
+          <button type="submit" name="action_primary" class="fb-button-secondary">Make primary</button>
+          <button type="submit" name="action_send" class="fb-button-primary">Re-send verification</button>
+          <button type="submit" name="action_remove" class="fb-button-danger">Remove</button>
         </div>
       </form>
     {% else %}
-      <p class="mt-8 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-900/60 dark:bg-yellow-950/30 dark:text-yellow-200">No email address is currently associated with your account.</p>
+      <div class="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100" role="status">No email address is currently associated with your account.</div>
     {% endif %}
 
     {% if can_add_email %}
-      <div class="mt-10 border-t border-gray-200 pt-8 dark:border-gray-800">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Add email address</h2>
+      <div class="mt-10 border-t border-slate-200 pt-8 dark:border-slate-800">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Add email address</h2>
         <form class="mt-4 space-y-4" method="post" action="{% url 'account_email' %}">
           {% csrf_token %}
-          {{ form.non_field_errors|safe }}
+          {% if form.non_field_errors %}<div class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">{{ form.non_field_errors|safe }}</div>{% endif %}
           <div>
-            {{ form.email.errors|safe }}
-            <label for="{{ form.email.id_for_label }}" class="sr-only">Email address</label>
-            {% render_field form.email placeholder="Email address" type="email" autocomplete="email" class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 shadow-sm focus:border-green-500 focus:outline-none focus:ring-green-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 sm:text-sm" %}
+            <label for="{{ form.email.id_for_label }}" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Email address</label>
+            {% if form.email.errors %}<div id="add-email-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.email.errors|safe }}</div>{% endif %}
+            {% render_field form.email placeholder="Email address" type="email" autocomplete="email" aria-describedby="add-email-error" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
           </div>
-          <button type="submit" name="action_add" class="inline-flex justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">Add email</button>
+          <button type="submit" name="action_add" class="fb-button-primary">Add email</button>
         </form>
       </div>
     {% endif %}
-  </div>
+  </section>
 </div>
 {% endblock content %}

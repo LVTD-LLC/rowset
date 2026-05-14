@@ -4,65 +4,52 @@
 {% block meta %}
 <title>FileBridge Blog</title>
 <meta name="description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
-<meta name="keywords" content="" />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://{{ request.get_host }}{% url 'blog_posts' %}" />
-
 <meta property="og:type" content="website" />
 <meta property="og:title" content="FileBridge Blog" />
 <meta property="og:url" content="https://{{ request.get_host }}{% url 'blog_posts' %}" />
 <meta property="og:description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
 <meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 <meta property="og:locale" content="en_US" />
-
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:creator" content="@rasulkireev" />
-<meta name="twitter:site" content="@rasulkireev" />
 <meta name="twitter:title" content="FileBridge Blog" />
 <meta name="twitter:description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
 <meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 
 {% block content %}
-<div class="container px-4 py-8 mx-auto md:relative">
-  <div class="mx-auto max-w-3xl">
-    <h1 class="mb-8 text-3xl font-bold text-center">FileBridge Blog</h1>
-    {% if blog_posts %}
-      <div class="space-y-4">
-        {% for post in blog_posts %}
-          <a href="{{ post.get_absolute_url }}" class="block rounded-lg transition duration-150 ease-in-out hover:bg-gray-100">
-            <article class="flex items-start p-4">
-              {% if post.icon %}
-                <img src="{{ post.icon.url }}" alt="{{ post.title }}" class="object-cover flex-shrink-0 mr-4 w-24 h-24 rounded-lg">
-              {% endif %}
-              <div>
-                <h2 class="mb-2 text-2xl font-semibold text-gray-900">{{ post.title }}</h2>
-                <p class="text-gray-600">{{ post.description }}</p>
-              </div>
-            </article>
-          </a>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p class="text-center text-gray-600">No blog posts available at the moment.</p>
-    {% endif %}
+<div class="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-3xl text-center">
+    <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">FileBridge Blog</p>
+    <h1 class="mt-3 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">Practical notes on file-backed APIs</h1>
+    <p class="fb-text-muted mt-4 text-lg leading-8">Guides, product notes, and patterns for turning static data files into useful API workflows.</p>
   </div>
+
+  {% if blog_posts %}
+    <div class="mx-auto mt-12 grid max-w-4xl gap-4">
+      {% for post in blog_posts %}
+        <a href="{{ post.get_absolute_url }}" class="fb-card fb-focus block p-4 transition hover:border-emerald-300 hover:shadow-md dark:hover:border-emerald-700">
+          <article class="flex flex-col gap-4 sm:flex-row sm:items-start">
+            {% if post.icon %}<img src="{{ post.icon.url }}" alt="" class="h-24 w-24 flex-shrink-0 rounded-2xl object-cover">{% endif %}
+            <div>
+              <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ post.title }}</h2>
+              <p class="fb-text-muted mt-2 leading-6">{{ post.description }}</p>
+            </div>
+          </article>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="fb-panel mx-auto mt-12 max-w-xl p-8 text-center">
+      <p class="text-sm text-slate-600 dark:text-slate-300">No blog posts are available yet.</p>
+    </div>
+  {% endif %}
 </div>
 {% endblock content %}
 
 {% block schema %}
 <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "FileBridge Blog",
-    "description": "Turn uploaded files into clean API endpoints and structured data feeds.",
-    "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
-    "url": "https://{{ request.get_host }}{% url 'blog_posts' %}",
-    "author": {
-      "@type": "Person",
-      "name": "Rasul Kireev"
-    }
-  }
-  </script>
+  {"@context":"https://schema.org","@type":"WebSite","name":"FileBridge Blog","description":"Turn uploaded files into clean API endpoints and structured data feeds.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'blog_posts' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
+</script>
 {% endblock schema %}

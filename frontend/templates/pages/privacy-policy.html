@@ -23,17 +23,17 @@
 {% endblock meta %}
 
 {% block content %}
-<div class="px-4 py-16 mx-auto max-w-4xl sm:py-24 sm:px-6 lg:px-8">
+<div class="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
   <div class="text-center">
-    <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+    <h1 class="text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">
       Privacy Policy
     </h1>
-    <p class="mt-4 text-lg text-gray-600">
+    <p class="fb-text-muted mt-4 text-lg">
       Last updated: {{ now|date:"F Y" }}
     </p>
   </div>
 
-  <div class="mt-16 max-w-none prose prose-lg">
+  <div class="prose prose-lg mt-12 max-w-none prose-slate prose-headings:font-black prose-a:text-emerald-700 hover:prose-a:text-emerald-800 dark:prose-invert dark:prose-a:text-emerald-300">
     <h2>1. Information We Collect</h2>
     <p>
       We collect information you provide directly to us, such as when you create an account,
@@ -109,8 +109,7 @@
       <li>Stripe (payment processing)</li>
       
       <li>Google Analytics (usage analytics)</li>
-      <li>[Any other third-party services you use]</li>
-    </ul>
+          </ul>
     <p>
       You can control cookies through your browser settings. Note that disabling
       essential cookies may affect service functionality.

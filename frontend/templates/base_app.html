@@ -1,265 +1,426 @@
 {% load webpack_loader static %}
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-<head>
-  <!-- Required meta tags -->
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Other meta stuff -->
+    <link
+      rel="apple-touch-icon"
+      href="{% static 'vendors/images/logo.png' %}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16 32x32 500x500"
+      href="{% static 'vendors/images/logo.png' %}"
+    />
 
-  <!-- Other meta stuff -->
-  <link rel="apple-touch-icon" href="{% static 'vendors/images/logo.png' %}" />
-  <link rel="apple-touch-icon" href="{% static 'vendors/images/logo.png' %}" />
-  <link rel="icon" type="image/png" sizes="16x16 32x32 500x500" href="{% static 'vendors/images/logo.png' %}" />
+    {% block meta %}
+    <title>FileBridge</title>
+    <meta
+      name="description"
+      content="Turn uploaded files into clean API endpoints and structured data feeds."
+    />
+    <meta name="keywords" content="django" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://{{ request.get_host }}/" />
 
-  {% block meta %}
-  <title>FileBridge</title>
-  <meta name="description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
-  <meta name="keywords" content="django" />
-  <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="https://{{ request.get_host }}/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="FileBridge" />
+    <meta property="og:url" content="https://{{ request.get_host }}/" />
+    <meta
+      property="og:description"
+      content="Turn uploaded files into clean API endpoints and structured data feeds."
+    />
+    <meta
+      property="og:image"
+      content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=FileBridge&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}"
+    />
+    <meta property="og:locale" content="en_US" />
 
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="FileBridge" />
-  <meta property="og:url" content="https://{{ request.get_host }}/" />
-  <meta property="og:description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
-  <meta property="og:image" content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=FileBridge&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
-  <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:creator" content="@rasulkireev" />
+    <meta name="twitter:site" content="@rasulkireev" />
+    <meta name="twitter:title" content="FileBridge" />
+    <meta
+      name="twitter:description"
+      content="Turn uploaded files into clean API endpoints and structured data feeds."
+    />
+    <meta
+      name="twitter:image"
+      content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}"
+    />
+    {% endblock meta %} {% if posthog_api_key %}
+    <!-- Update this from Posthog dashboard in case of any changes -->
+    <script>
+      !(function (t, e) {
+        var o, n, p, r;
+        e.__SV ||
+          ((window.posthog = e),
+          (e._i = []),
+          (e.init = function (i, s, a) {
+            function g(t, e) {
+              var o = e.split(".");
+              (2 == o.length && ((t = t[o[0]]), (e = o[1])),
+                (t[e] = function () {
+                  t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+                }));
+            }
+            (((p = t.createElement("script")).type = "text/javascript"),
+              (p.crossOrigin = "anonymous"),
+              (p.async = !0),
+              (p.src =
+                s.api_host.replace(".i.posthog.com", "-assets.i.posthog.com") +
+                "/static/array.js"),
+              (r = t.getElementsByTagName("script")[0]).parentNode.insertBefore(
+                p,
+                r,
+              ));
+            var u = e;
+            for (
+              void 0 !== a ? (u = e[a] = []) : (a = "posthog"),
+                u.people = u.people || [],
+                u.toString = function (t) {
+                  var e = "posthog";
+                  return (
+                    "posthog" !== a && (e += "." + a),
+                    t || (e += " (stub)"),
+                    e
+                  );
+                },
+                u.people.toString = function () {
+                  return u.toString(1) + ".people (stub)";
+                },
+                o =
+                  "init Ie Ts Ms Ee Es Rs capture Ge calculateEventProperties Os register register_once register_for_session unregister unregister_for_session js getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty Ds Fs createPersonProfile Ls Ps opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing Cs debug I As getPageViewId captureTraceFeedback captureTraceMetric".split(
+                    " ",
+                  ),
+                n = 0;
+              n < o.length;
+              n++
+            )
+              g(u, o[n]);
+            e._i.push([i, s, a]);
+          }),
+          (e.__SV = 1));
+      })(document, window.posthog || []);
+      posthog.init("{{ posthog_api_key }}", {
+        api_host: "https://us.i.posthog.com",
+        defaults: "2025-05-24",
+        person_profiles: "always",
+      });
+    </script>
+    {% endif %}
 
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:creator" content="@rasulkireev" />
-  <meta name="twitter:site" content="@rasulkireev" />
-  <meta name="twitter:title" content="FileBridge" />
-  <meta name="twitter:description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
-  <meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
-  {% endblock meta %}
-
-  
-  {% if posthog_api_key %}
-  <!-- Update this from Posthog dashboard in case of any changes -->
-  <script>
-      !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init Ie Ts Ms Ee Es Rs capture Ge calculateEventProperties Os register register_once register_for_session unregister unregister_for_session js getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty Ds Fs createPersonProfile Ls Ps opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing Cs debug I As getPageViewId captureTraceFeedback captureTraceMetric".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-      posthog.init('{{ posthog_api_key }}', {
-          api_host: 'https://us.i.posthog.com',
-          defaults: '2025-05-24',
-          person_profiles: 'always',
-      })
-  </script>
-  {% endif %}
-  
-
-  <script>
-    // Set theme early to avoid a flash of incorrect theme.
-    (function () {
-      try {
-        var theme = localStorage.getItem("theme");
-        if (!theme) {
-          theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    <script>
+      // Set theme early to avoid a flash of incorrect theme.
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme");
+          if (!theme) {
+            theme =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          }
+          if (theme === "dark") {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+        } catch (e) {
+          // no-op
         }
-        if (theme === "dark") {
-          document.documentElement.classList.add("dark");
-        } else {
-          document.documentElement.classList.remove("dark");
-        }
-      } catch (e) {
-        // no-op
-      }
-    })();
-  </script>
+      })();
+    </script>
 
-  {% stylesheet_pack 'index' %}
-  {% javascript_pack 'index' attrs='defer' %}
-</head>
+    {% stylesheet_pack 'index' %} {% javascript_pack 'index' attrs='defer' %}
+  </head>
 
-<body {% if request.user.is_authenticated %}data-controller="user-settings"{% endif %}>
-  {% block default_messages %}
-    {% include 'components/messages.html' with messages=messages %}
-  {% endblock default_messages %}
+  <body {% if request.user.is_authenticated %}data-controller="user-settings"{% endif %}>
+    {% block default_messages %}
+      {% include 'components/messages.html' with messages=messages %}
+    {% endblock default_messages %}
 
-  <div class="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-    <header class="sticky left-0 top-3 z-10">
-      <div class="mx-auto w-full max-w-[1376px] px-4">
-        <div class="flex gap-2 items-center px-4 py-3.5 bg-white rounded-xl border border-gray-200 dark:bg-gray-900 dark:border-gray-800 sm:gap-4 md:px-6 lg:rounded-full">
-
-          <!-- Logo and Navigation -->
-          <div class="flex gap-6 items-center">
-            <a href="{% url 'home' %}" class="flex gap-2 items-center">
-              <img class="w-auto h-8" src="{% static 'vendors/images/logo.png' %}" alt="FileBridge Logo" />
-              <span class="text-base font-semibold text-gray-900 dark:text-gray-100">FileBridge</span>
-            </a>
-
-            <!-- Desktop Navigation -->
-            <nav class="hidden lg:block">
-              <ul class="flex gap-4 items-center">
-                <li>
-                  <a href="{% url 'home' %}" class="rounded-full px-6 py-3 text-base font-semibold leading-[1.7] tracking-[-0.09px] text-gray-900 transition-colors hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800">
-                    Dashboard
-                  </a>
-                </li>
-                <li>
-                  <a href="{% url 'settings' %}" class="rounded-full px-6 py-3 text-base font-semibold leading-[1.7] tracking-[-0.09px] text-gray-900 transition-colors hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800">
-                    Settings
-                  </a>
-                </li>
-                {% if user.is_superuser %}
-                <li>
-                  <a href="{% url 'admin_panel' %}" class="rounded-full px-6 py-3 text-base font-semibold leading-[1.7] tracking-[-0.09px] text-green-600 transition-colors hover:bg-green-50">
-                    Admin
-                  </a>
-                </li>
-                {% endif %}
-              </ul>
-            </nav>
-          </div>
-
-          <!-- Desktop Auth Buttons -->
-          <div class="flex gap-2 items-center ml-auto">
-            <button
-              type="button"
-              data-controller="theme"
-              data-action="click->theme#toggle"
-              class="hidden lg:inline-flex justify-center items-center w-11 h-11 rounded-full border border-gray-200 bg-white text-gray-900 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
-              aria-label="Toggle theme"
-            >
-              <span class="sr-only" data-theme-target="label">Theme</span>
-              <!-- Sun (light) -->
-              <svg data-theme-target="iconLight" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2" />
-                <path d="M12 20v2" />
-                <path d="M4.93 4.93l1.41 1.41" />
-                <path d="M17.66 17.66l1.41 1.41" />
-                <path d="M2 12h2" />
-                <path d="M20 12h2" />
-                <path d="M4.93 19.07l1.41-1.41" />
-                <path d="M17.66 6.34l1.41-1.41" />
-              </svg>
-              <!-- Moon (dark) -->
-              <svg data-theme-target="iconDark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden w-5 h-5">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
-              </svg>
-            </button>
-            {% if user.is_authenticated %}
-            <form method="post" action="{% url 'account_logout' %}" class="hidden lg:block">
-              {% csrf_token %}
-              <button
-                type="submit"
-                class="rounded-full border-[1.5px] border-gray-300 px-5 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+    <div
+      class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100"
+    >
+      <a
+        href="#main-content"
+        class="fb-focus sr-only fixed left-4 top-4 z-[100] rounded-full bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950 focus:not-sr-only"
+        >Skip to content</a
+      >
+      <header class="sticky left-0 top-3 z-10">
+        <div class="mx-auto w-full max-w-[1376px] px-4">
+          <div
+            class="flex gap-2 items-center rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:gap-4 md:px-6 lg:rounded-full"
+          >
+            <!-- Logo and Navigation -->
+            <div class="flex gap-6 items-center">
+              <a
+                href="{% url 'home' %}"
+                class="fb-focus flex gap-2 items-center rounded-full"
               >
-                Sign Out
-              </button>
-            </form>
-            {% else %}
-            <div class="hidden gap-2 items-center lg:flex">
-              <a href="{% url 'account_login' %}" class="rounded-full border-[1.5px] border-gray-300 px-5 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800">
-                Sign In
+                <img
+                  class="w-auto h-8"
+                  src="{% static 'vendors/images/logo.png' %}"
+                  alt="FileBridge Logo"
+                />
+                <span
+                  class="text-base font-semibold text-gray-900 dark:text-gray-100"
+                  >FileBridge</span
+                >
               </a>
-              <a href="{% url 'account_signup' %}" class="px-5 py-3 text-sm font-semibold text-white bg-green-600 rounded-full transition-colors hover:bg-green-700">
-                Start for Free
-              </a>
-            </div>
-            {% endif %}
-          </div>
 
-          <!-- Mobile Menu Button -->
-          <div class="lg:hidden" data-controller="dropdown">
-            <button class="flex relative justify-center items-center w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 dark:bg-gray-900"
-                    aria-label="Toggle mobile menu"
-                    data-action="dropdown#toggle click@window->dropdown#hide">
-              <span class="absolute left-1/2 top-[13px] flex h-[2px] w-4 -translate-x-1/2 rounded-full bg-black dark:bg-gray-200 transition-transform"></span>
-              <span class="absolute left-1/2 top-1/2 flex h-[2px] w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black dark:bg-gray-200 transition-transform"></span>
-              <span class="absolute bottom-[13px] left-1/2 flex h-[2px] w-4 -translate-x-1/2 rounded-full bg-black dark:bg-gray-200 transition-transform"></span>
-            </button>
-
-            <!-- Mobile Menu Dropdown -->
-            <div data-dropdown-target="menu" class="hidden absolute right-4 left-4 top-full z-10 mt-2 bg-white rounded-2xl border border-gray-200 shadow-lg dark:bg-gray-900 dark:border-gray-800">
-              <nav class="flex-1 justify-center items-center">
-                <ul class="flex flex-col px-4">
-                  <li class="py-5 text-center border-b border-gray-200 dark:border-gray-800">
-                    <a href="{% url 'home' %}" class="text-sm font-semibold text-gray-900 hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400">
+              <!-- Desktop Navigation -->
+              <nav class="hidden lg:block">
+                <ul class="flex gap-4 items-center">
+                  <li>
+                    <a
+                      href="{% url 'home' %}"
+                      class="fb-focus rounded-full px-6 py-3 text-base font-semibold leading-[1.7] tracking-[-0.09px] text-slate-900 transition-colors hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+                    >
                       Dashboard
                     </a>
                   </li>
-                  {% if user.is_authenticated %}
-                  <li class="py-5 text-center border-b border-gray-200 dark:border-gray-800">
-                    <a href="{% url 'settings' %}" class="text-sm font-semibold text-gray-900 hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400">
+                  <li>
+                    <a
+                      href="{% url 'settings' %}"
+                      class="fb-focus rounded-full px-6 py-3 text-base font-semibold leading-[1.7] tracking-[-0.09px] text-slate-900 transition-colors hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+                    >
                       Settings
                     </a>
                   </li>
                   {% if user.is_superuser %}
-                  <li class="py-5 text-center border-b border-gray-200 dark:border-gray-800">
-                    <a href="{% url 'admin_panel' %}" class="text-sm font-semibold text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">
-                      Admin Panel
-                    </a>
-                  </li>
-                  {% endif %}
-                  <li class="py-5 text-center">
-                    <form method="post" action="{% url 'account_logout' %}">
-                      {% csrf_token %}
-                      <button type="submit" class="text-sm font-semibold text-gray-900 hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400">
-                        Sign Out
-                      </button>
-                    </form>
-                  </li>
-                  {% else %}
-                  <li class="py-5 text-center border-b border-gray-200 dark:border-gray-800">
-                    <a href="{% url 'account_login' %}" class="text-sm font-semibold text-gray-900 hover:text-green-600 dark:text-gray-100 dark:hover:text-green-400">
-                      Sign In
-                    </a>
-                  </li>
-                  <li class="py-5 text-center">
-                    <a href="{% url 'account_signup' %}" class="text-sm font-semibold text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">
-                      Start for Free
+                  <li>
+                    <a
+                      href="{% url 'admin_panel' %}"
+                      class="rounded-full px-6 py-3 text-base font-semibold leading-[1.7] tracking-[-0.09px] text-green-600 transition-colors hover:bg-green-50"
+                    >
+                      Admin
                     </a>
                   </li>
                   {% endif %}
                 </ul>
               </nav>
             </div>
+
+            <!-- Desktop Auth Buttons -->
+            <div class="flex gap-2 items-center ml-auto">
+              <button
+                type="button"
+                data-controller="theme"
+                data-action="click->theme#toggle"
+                class="fb-focus hidden h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 lg:inline-flex"
+                aria-label="Toggle theme"
+              >
+                <span class="sr-only" data-theme-target="label">Theme</span>
+                <!-- Sun (light) -->
+                <svg
+                  data-theme-target="iconLight"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="w-5 h-5"
+                >
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2" />
+                  <path d="M12 20v2" />
+                  <path d="M4.93 4.93l1.41 1.41" />
+                  <path d="M17.66 17.66l1.41 1.41" />
+                  <path d="M2 12h2" />
+                  <path d="M20 12h2" />
+                  <path d="M4.93 19.07l1.41-1.41" />
+                  <path d="M17.66 6.34l1.41-1.41" />
+                </svg>
+                <!-- Moon (dark) -->
+                <svg
+                  data-theme-target="iconDark"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="hidden w-5 h-5"
+                >
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
+                </svg>
+              </button>
+              {% if user.is_authenticated %}
+              <form
+                method="post"
+                action="{% url 'account_logout' %}"
+                class="hidden lg:block"
+              >
+                {% csrf_token %}
+                <button type="submit" class="fb-button-secondary">
+                  Sign Out
+                </button>
+              </form>
+              {% else %}
+              <div class="hidden gap-2 items-center lg:flex">
+                <a href="{% url 'account_login' %}" class="fb-button-secondary">
+                  Sign In
+                </a>
+                <a href="{% url 'account_signup' %}" class="fb-button-primary">
+                  Start for Free
+                </a>
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <div class="lg:hidden" data-controller="mobile-menu">
+              <button
+                class="flex relative justify-center items-center w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 dark:bg-gray-900"
+                aria-label="Open navigation menu"
+                data-mobile-menu-target="button"
+                data-action="click->mobile-menu#toggle click@window->mobile-menu#close"
+                aria-expanded="false"
+                aria-controls="app-mobile-menu"
+              >
+                <span
+                  class="absolute left-1/2 top-[13px] flex h-[2px] w-4 -translate-x-1/2 rounded-full bg-black dark:bg-gray-200 transition-transform"
+                ></span>
+                <span
+                  class="absolute left-1/2 top-1/2 flex h-[2px] w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black dark:bg-gray-200 transition-transform"
+                ></span>
+                <span
+                  class="absolute bottom-[13px] left-1/2 flex h-[2px] w-4 -translate-x-1/2 rounded-full bg-black dark:bg-gray-200 transition-transform"
+                ></span>
+              </button>
+
+              <!-- Mobile Menu Dropdown -->
+              <div
+                id="app-mobile-menu"
+                data-mobile-menu-target="menu"
+                class="hidden absolute right-4 left-4 top-full z-10 mt-2 bg-white rounded-2xl border border-gray-200 shadow-lg dark:bg-gray-900 dark:border-gray-800"
+              >
+                <nav class="flex-1 justify-center items-center">
+                  <ul class="flex flex-col px-4">
+                    <li
+                      class="py-5 text-center border-b border-gray-200 dark:border-gray-800"
+                    >
+                      <a
+                        href="{% url 'home' %}"
+                        class="fb-focus inline-flex rounded-full px-3 py-2 text-sm font-semibold text-slate-900 hover:text-emerald-600 dark:text-slate-100 dark:hover:text-emerald-400"
+                      >
+                        Dashboard
+                      </a>
+                    </li>
+                    {% if user.is_authenticated %}
+                    <li
+                      class="py-5 text-center border-b border-gray-200 dark:border-gray-800"
+                    >
+                      <a
+                        href="{% url 'settings' %}"
+                        class="fb-focus inline-flex rounded-full px-3 py-2 text-sm font-semibold text-slate-900 hover:text-emerald-600 dark:text-slate-100 dark:hover:text-emerald-400"
+                      >
+                        Settings
+                      </a>
+                    </li>
+                    {% if user.is_superuser %}
+                    <li
+                      class="py-5 text-center border-b border-gray-200 dark:border-gray-800"
+                    >
+                      <a
+                        href="{% url 'admin_panel' %}"
+                        class="fb-focus inline-flex rounded-full px-3 py-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                      >
+                        Admin Panel
+                      </a>
+                    </li>
+                    {% endif %}
+                    <li class="py-5 text-center">
+                      <form method="post" action="{% url 'account_logout' %}">
+                        {% csrf_token %}
+                        <button
+                          type="submit"
+                          class="fb-focus inline-flex rounded-full px-3 py-2 text-sm font-semibold text-slate-900 hover:text-emerald-600 dark:text-slate-100 dark:hover:text-emerald-400"
+                        >
+                          Sign Out
+                        </button>
+                      </form>
+                    </li>
+                    {% else %}
+                    <li
+                      class="py-5 text-center border-b border-gray-200 dark:border-gray-800"
+                    >
+                      <a
+                        href="{% url 'account_login' %}"
+                        class="fb-focus inline-flex rounded-full px-3 py-2 text-sm font-semibold text-slate-900 hover:text-emerald-600 dark:text-slate-100 dark:hover:text-emerald-400"
+                      >
+                        Sign In
+                      </a>
+                    </li>
+                    <li class="py-5 text-center">
+                      <a
+                        href="{% url 'account_signup' %}"
+                        class="fb-focus inline-flex rounded-full px-3 py-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                      >
+                        Start for Free
+                      </a>
+                    </li>
+                    {% endif %}
+                  </ul>
+                </nav>
+              </div>
+            </div>
           </div>
-
         </div>
-      </div>
-    </header>
+      </header>
 
-    <div class="px-2 sm:px-0">
-      {% block content %}
-      {% endblock content %}
+      <main id="main-content" class="px-2 sm:px-0" tabindex="-1">
+        {% block content %} {% endblock content %}
+      </main>
+
+      <footer class="bg-white dark:bg-gray-950">
+        <div
+          class="px-6 py-12 mx-auto max-w-7xl md:flex md:items-center md:justify-between lg:px-8"
+        >
+          <div class="mt-8 md:mt-0">
+            <p
+              class="text-xs leading-5 text-center text-gray-500 dark:text-gray-400"
+            >
+              &copy; {% now "Y" %}
+              <a href="https://lvtd.dev?ref={{ request.get_host }}">LVTD, LLC</a
+              >. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
 
-    <footer class="bg-white dark:bg-gray-950">
-      <div class="px-6 py-12 mx-auto max-w-7xl md:flex md:items-center md:justify-between lg:px-8">
-        <div class="mt-8 md:mt-0">
-          <p class="text-xs leading-5 text-center text-gray-500 dark:text-gray-400">
-            &copy; {% now "Y" %} <a href="https://lvtd.dev?ref={{ request.get_host }}">LVTD, LLC</a>. All rights reserved.
-          </p>
-        </div>
-      </div>
-    </footer>
-
-  </div>
-
-  {% include 'components/chatwoot.html' %}
-
-  {% block schema %}
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "FileBridge",
-      "description": "Turn uploaded files into clean API endpoints and structured data feeds.",
-      "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
-      "url": "https://{{ request.get_host }}/",
-      "author": {
-        "@type": "Person",
-        "name": "Rasul Kireev"
+    {% include 'components/chatwoot.html' %} {% block schema %}
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "FileBridge",
+        "description": "Turn uploaded files into clean API endpoints and structured data feeds.",
+        "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
+        "url": "https://{{ request.get_host }}/",
+        "author": {
+          "@type": "Person",
+          "name": "Rasul Kireev"
+        }
       }
-    }
     </script>
-  {% endblock schema %}
-
-</body>
-
+    {% endblock schema %}
+  </body>
 </html>

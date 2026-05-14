@@ -1,25 +1,19 @@
 {% extends 'docs/base_docs.html' %}
 
 {% block meta %}
-<title>{{ page_title }} - {{ category_title }} | FileBridge Documentation</title>
+<title>{{ page_title }} · {{ category_title }} · FileBridge Docs</title>
 <meta name="description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ page_title }} documentation for FileBridge{% endif %}" />
 {% if meta_keywords %}<meta name="keywords" content="{{ meta_keywords }}" />{% endif %}
 {% if author %}<meta name="author" content="{{ author }}" />{% endif %}
 <meta name="robots" content="index, follow" />
-{% if canonical_url %}
-<link rel="canonical" href="{{ canonical_url }}" />
-{% else %}
-<link rel="canonical" href="https://{{ request.get_host }}{% url 'docs_page' category=current_category page=current_page %}" />
-{% endif %}
-
+{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}" />{% else %}<link rel="canonical" href="https://{{ request.get_host }}{% url 'docs_page' category=current_category page=current_page %}" />{% endif %}
 <meta property="og:type" content="article" />
-<meta property="og:title" content="{{ page_title }} - {{ category_title }} | FileBridge Documentation" />
+<meta property="og:title" content="{{ page_title }} · {{ category_title }} · FileBridge Docs" />
 <meta property="og:url" content="https://{{ request.get_host }}{% url 'docs_page' category=current_category page=current_page %}" />
 <meta property="og:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ page_title }} documentation for FileBridge{% endif %}" />
 <meta property="og:site_name" content="FileBridge" />
-
 <meta name="twitter:card" content="summary" />
-<meta property="twitter:title" content="{{ page_title }} - {{ category_title }} | FileBridge Documentation" />
+<meta property="twitter:title" content="{{ page_title }} · {{ category_title }} · FileBridge Docs" />
 <meta name="twitter:description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ page_title }} documentation for FileBridge{% endif %}" />
 {% endblock meta %}
 
@@ -27,33 +21,24 @@
 <h1>{{ page_title }}</h1>
 {{ content|safe }}
 
-<nav class="pt-8 mt-12 border-t border-gray-200 not-prose" aria-label="Docs pages navigation">
-    <div class="flex gap-4 justify-between">
-        <div class="flex-1">
-            {% if previous_page %}
-            <a href="{{ previous_page.url }}" class="block p-4 no-underline rounded-lg border border-gray-300 transition-colors group hover:border-gray-400">
-                <div class="mb-1 text-xs font-medium text-gray-500">
-                    ← Previous
-                </div>
-                <div class="text-base font-medium text-gray-700 group-hover:text-gray-900">
-                    {{ previous_page.page_title }}
-                </div>
-            </a>
-            {% endif %}
-        </div>
-
-        <div class="flex-1">
-            {% if next_page %}
-            <a href="{{ next_page.url }}" class="block p-4 text-right no-underline rounded-lg border border-gray-300 transition-colors group hover:border-gray-400">
-                <div class="mb-1 text-xs font-medium text-gray-500">
-                    Next →
-                </div>
-                <div class="text-base font-medium text-gray-700 group-hover:text-gray-900">
-                    {{ next_page.page_title }}
-                </div>
-            </a>
-            {% endif %}
-        </div>
+<nav class="not-prose mt-12 border-t border-slate-200 pt-8 dark:border-slate-800" aria-label="Documentation page navigation">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      {% if previous_page %}
+        <a href="{{ previous_page.url }}" class="fb-focus block rounded-2xl border border-slate-200 p-4 no-underline transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-800 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30">
+          <div class="mb-1 text-xs font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">← Previous</div>
+          <div class="text-base font-bold text-slate-800 dark:text-slate-100">{{ previous_page.page_title }}</div>
+        </a>
+      {% endif %}
     </div>
+    <div>
+      {% if next_page %}
+        <a href="{{ next_page.url }}" class="fb-focus block rounded-2xl border border-slate-200 p-4 text-right no-underline transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-800 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30">
+          <div class="mb-1 text-xs font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Next →</div>
+          <div class="text-base font-bold text-slate-800 dark:text-slate-100">{{ next_page.page_title }}</div>
+        </a>
+      {% endif %}
+    </div>
+  </div>
 </nav>
 {% endblock docs_content %}
