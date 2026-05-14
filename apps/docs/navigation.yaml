@@ -4,8 +4,11 @@ navigation:
 
   features:
     - datasets
+    - public-previews
+    - mcp
     - agent-access
 
   api-reference:
+    - introduction
     - user
     - datasets

@@ -38,6 +38,10 @@ Authorization: Bearer {{ api_key_full }}
 
 ## Where to go next
 
-- **Agent access** explains MCP setup and what to put in an agent `SKILL.md`.
+- **Working with datasets** explains lifecycle, index columns, and exports.
+- **Public previews** explains browser-friendly, read-only sharing.
+- **MCP access** explains hosted MCP setup for AI agents.
+- **Agent access** gives the copy/paste prompt and `SKILL.md` guidance.
+- **API Reference → Introduction** explains REST authentication and links to generated API docs.
 - **API Reference → User API** is the safest first request for testing a key.
 - **API Reference → Dataset API** covers row list, lookup, create, update, delete, and CSV export endpoints.

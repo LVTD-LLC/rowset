@@ -22,6 +22,7 @@ logger = get_filebridge_logger(__name__)
 class Profile(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     key = models.CharField(max_length=30, unique=True, default=generate_random_key)
+    agent_setup_prompt_dismissed = models.BooleanField(default=False)
 
     
     stripe_subscription_id = models.CharField(

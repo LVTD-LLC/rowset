@@ -127,7 +127,9 @@ class HomeView(LoginRequiredMixin, TemplateView):
         elif payment_status == "failed":
             messages.error(self.request, "Something went wrong with the payment.")
 
-        context["recent_datasets"] = self.request.user.profile.datasets.all()[:5]
+        profile = self.request.user.profile
+        context["recent_datasets"] = profile.datasets.all()[:5]
+        context["show_agent_setup_prompt"] = not profile.agent_setup_prompt_dismissed
         context["agent_setup_prompt"] = build_agent_setup_prompt(self.request)
         context["agent_instructions_url"] = build_absolute_public_url(
             reverse("agent_instructions_filebridge_mcp")
@@ -166,6 +168,15 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
 def agent_instructions_filebridge_mcp(request):
     return HttpResponse(AGENT_INSTRUCTIONS_MARKDOWN, content_type="text/markdown; charset=utf-8")
+
+
+@login_required
+@require_POST
+def dismiss_agent_setup_prompt(request):
+    request.user.profile.agent_setup_prompt_dismissed = True
+    request.user.profile.save(update_fields=["agent_setup_prompt_dismissed", "updated_at"])
+    messages.success(request, "Agent setup prompt hidden from the dashboard.")
+    return redirect("home")
 
 
 @login_required

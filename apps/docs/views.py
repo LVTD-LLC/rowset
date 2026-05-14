@@ -11,6 +11,7 @@ from django.template import Context, Template
 from django.urls import reverse
 
 from apps.core.models import Profile
+from apps.core.views import build_absolute_public_url, build_agent_setup_prompt
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -179,13 +180,16 @@ def docs_page_view(request, category, page):
 
         profile, _created = Profile.objects.get_or_create(user=request.user)
         api_key = profile.key
-        api_base_url = request.build_absolute_uri("/api").rstrip("/")
+        api_base_url = build_absolute_public_url("/api/").rstrip("/")
         docs_template_context = {
             "api_base_url": api_base_url,
             "api_key": api_key,
             "api_key_masked": f"{api_key[:8]}••••••••",
             "api_key_full": api_key,
-            "mcp_url": request.build_absolute_uri("/mcp/"),
+            "api_docs_url": build_absolute_public_url("/api/docs"),
+            "agent_setup_prompt": build_agent_setup_prompt(request),
+            "mcp_url": build_absolute_public_url("/mcp/"),
+            "site_url": build_absolute_public_url("/").rstrip("/"),
             "user_email": request.user.email,
         }
         rendered_markdown = Template(post.content).render(Context(docs_template_context))
