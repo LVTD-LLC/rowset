@@ -65,10 +65,17 @@ The user prompt should provide:
 """
 
 
+def build_absolute_public_url(path: str) -> str:
+    site_url = settings.SITE_URL.rstrip("/")
+    if site_url.startswith("http://") and "localhost" not in site_url:
+        site_url = site_url.replace("http://", "https://", 1)
+    return f"{site_url}{path}"
+
+
 def build_agent_setup_prompt(request: HttpRequest) -> str:
-    mcp_url = request.build_absolute_uri("/mcp/")
-    rest_api_base_url = request.build_absolute_uri("/api/")
-    instructions_url = request.build_absolute_uri(reverse("agent_instructions_filebridge_mcp"))
+    mcp_url = build_absolute_public_url("/mcp/")
+    rest_api_base_url = build_absolute_public_url("/api/")
+    instructions_url = build_absolute_public_url(reverse("agent_instructions_filebridge_mcp"))
     api_key = request.user.profile.key
 
     return "\n".join(
@@ -105,7 +112,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
         context["recent_datasets"] = self.request.user.profile.datasets.all()[:5]
         context["agent_setup_prompt"] = build_agent_setup_prompt(self.request)
-        context["agent_instructions_url"] = self.request.build_absolute_uri(
+        context["agent_instructions_url"] = build_absolute_public_url(
             reverse("agent_instructions_filebridge_mcp")
         )
         return context

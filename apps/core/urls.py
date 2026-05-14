@@ -8,7 +8,7 @@ urlpatterns = [
     path("settings", views.UserSettingsView.as_view(), name="settings"),
     path("admin-panel", views.AdminPanelView.as_view(), name="admin_panel"),
     path(
-        "agent/filebridge-mcp.md",
+        "SKILL.md",
         views.agent_instructions_filebridge_mcp,
         name="agent_instructions_filebridge_mcp",
     ),
