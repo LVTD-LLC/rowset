@@ -5,7 +5,7 @@
 <meta name="description" content="{% if meta_description %}{{ meta_description }}{% else %}{{ page_title }} documentation for FileBridge{% endif %}" />
 {% if meta_keywords %}<meta name="keywords" content="{{ meta_keywords }}" />{% endif %}
 {% if author %}<meta name="author" content="{{ author }}" />{% endif %}
-<meta name="robots" content="index, follow" />
+<meta name="robots" content="noindex, nofollow" />
 {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}" />{% else %}<link rel="canonical" href="https://{{ request.get_host }}{% url 'docs_page' category=current_category page=current_page %}" />{% endif %}
 <meta property="og:type" content="article" />
 <meta property="og:title" content="{{ page_title }} · {{ category_title }} · FileBridge Docs" />
@@ -18,7 +18,6 @@
 {% endblock meta %}
 
 {% block docs_content %}
-<h1>{{ page_title }}</h1>
 {{ content|safe }}
 
 <nav class="not-prose mt-12 border-t border-slate-200 pt-8 dark:border-slate-800" aria-label="Documentation page navigation">
