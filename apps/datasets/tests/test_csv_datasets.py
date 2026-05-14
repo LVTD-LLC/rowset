@@ -1,13 +1,20 @@
 import csv
 import io
 
+import polars as pl
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.services import GENERATED_INDEX_CHOICE, CSVParseError, preview_csv_file
+from apps.datasets.services import (
+    GENERATED_INDEX_CHOICE,
+    CSVParseError,
+    TabularPreview,
+    preview_csv_file,
+    preview_uploaded_table,
+)
 from apps.datasets.tasks import import_dataset_rows
 
 pytestmark = pytest.mark.django_db
@@ -35,6 +42,23 @@ def profile(user):
 
 def csv_upload(content="name,email\nAda,ada@example.com\nGrace,grace@example.com\n"):
     return SimpleUploadedFile("people.csv", content.encode(), content_type="text/csv")
+
+
+def parquet_upload(data=None):
+    buffer = io.BytesIO()
+    pl.DataFrame(
+        data
+        or {
+            "name": ["Ada", "Grace"],
+            "email": ["ada@example.com", "grace@example.com"],
+            "score": [10, None],
+        }
+    ).write_parquet(buffer)
+    return SimpleUploadedFile(
+        "people.parquet",
+        buffer.getvalue(),
+        content_type="application/vnd.apache.parquet",
+    )
 
 
 def create_ready_dataset(profile):
@@ -81,6 +105,32 @@ def test_preview_csv_file_rejects_duplicate_headers():
         preview_csv_file(csv_upload("name,name\nAda,Lovelace\n"))
 
 
+def test_preview_uploaded_table_strips_parquet_header_whitespace():
+    preview = preview_uploaded_table(
+        parquet_upload({" name ": ["Ada"], " email ": ["ada@example.com"]}),
+        "people.parquet",
+    )
+
+    assert preview.headers == ["name", "email"]
+    assert preview.preview_rows == [{"name": "Ada", "email": "ada@example.com"}]
+
+
+def test_preview_uploaded_table_accepts_parquet_files():
+    preview = preview_uploaded_table(parquet_upload(), "people.parquet")
+
+    assert preview.file_type == "parquet"
+    assert preview.headers == ["name", "email", "score"]
+    assert preview.row_count == 2
+    assert preview.preview_rows == [
+        {"name": "Ada", "email": "ada@example.com", "score": "10"},
+        {"name": "Grace", "email": "grace@example.com", "score": ""},
+    ]
+    assert (
+        preview.source_text
+        == 'name,email,score\nAda,ada@example.com,10\nGrace,grace@example.com,""\n'
+    )
+
+
 def test_upload_preview_creates_preview_dataset(auth_client, profile):
     response = auth_client.post(
         reverse("dataset_upload_preview"),
@@ -100,6 +150,51 @@ def test_upload_preview_creates_preview_dataset(auth_client, profile):
     assert dataset.rows.count() == 0
 
 
+def test_upload_preview_creates_preview_dataset_for_parquet(auth_client, profile):
+    response = auth_client.post(
+        reverse("dataset_upload_preview"),
+        {"file": parquet_upload()},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["dataset"]["headers"] == ["name", "email", "score"]
+    assert payload["dataset"]["row_count"] == 2
+
+    dataset = Dataset.objects.get(profile=profile)
+    assert dataset.file_type == "parquet"
+    assert dataset.original_filename == "people.parquet"
+    assert (
+        dataset.source_text
+        == 'name,email,score\nAda,ada@example.com,10\nGrace,grace@example.com,""\n'
+    )
+
+
+def test_upload_preview_rejects_expanded_dataset_content_over_limit(auth_client, monkeypatch):
+    def oversized_preview(uploaded_file, filename):
+        return TabularPreview(
+            headers=["name"],
+            preview_rows=[{"name": "Ada"}],
+            row_count=1,
+            source_text="name\n" + ("Ada\n" * 3_000_000),
+            file_type="parquet",
+        )
+
+    monkeypatch.setattr("apps.datasets.views.preview_uploaded_table", oversized_preview)
+
+    response = auth_client.post(
+        reverse("dataset_upload_preview"),
+        {"file": parquet_upload()},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "ok": False,
+        "error": "Parsed dataset content must be 10 MB or smaller for now.",
+    }
+
+
 def test_upload_preview_rejects_oversized_csv(auth_client):
     upload = csv_upload("name,email\n" + ("Ada,ada@example.com\n" * 600_000))
 
@@ -111,7 +206,7 @@ def test_upload_preview_rejects_oversized_csv(auth_client):
     assert response.status_code == 400
     assert response.json() == {
         "ok": False,
-        "error": "CSV files must be 10 MB or smaller for now.",
+        "error": "Dataset files must be 10 MB or smaller for now.",
     }
 
 
@@ -366,7 +461,6 @@ def test_dataset_public_sharing_is_off_by_default(client, profile):
 
 def test_dataset_owner_can_enable_public_sharing(auth_client, profile):
     dataset = create_ready_dataset(profile)
-
 
     response = auth_client.post(
         reverse("dataset_update_public_settings", args=[dataset.key]),

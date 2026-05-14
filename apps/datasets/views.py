@@ -108,14 +108,17 @@ def dataset_update_public_settings(request, dataset_key):
 def dataset_upload_preview(request):
     uploaded_file = request.FILES.get("file")
     if not uploaded_file:
-        return JsonResponse({"ok": False, "error": "Please choose a CSV file."}, status=400)
+        return JsonResponse(
+            {"ok": False, "error": "Please choose a CSV or Parquet file."},
+            status=400,
+        )
 
     filename = uploaded_file.name or "dataset.csv"
     if uploaded_file.size > MAX_CSV_UPLOAD_BYTES:
         return JsonResponse(
             {
                 "ok": False,
-                "error": "CSV files must be 10 MB or smaller for now.",
+                "error": "Dataset files must be 10 MB or smaller for now.",
             },
             status=400,
         )
@@ -124,6 +127,15 @@ def dataset_upload_preview(request):
         preview = preview_uploaded_table(uploaded_file, filename)
     except CSVParseError as exc:
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+
+    if len(preview.source_text.encode("utf-8")) > MAX_CSV_UPLOAD_BYTES:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Parsed dataset content must be 10 MB or smaller for now.",
+            },
+            status=400,
+        )
 
     dataset = Dataset.objects.create(
         profile=request.user.profile,
@@ -202,8 +214,7 @@ def dataset_confirm_import(request, dataset_key):
     dataset.index_generated = index_generated
     dataset.headers = headers
     dataset.preview_rows = [
-        {header: str(row.data.get(header, "")) for header in headers}
-        for row in validated_rows[:5]
+        {header: str(row.data.get(header, "")) for header in headers} for row in validated_rows[:5]
     ]
     dataset.save(
         update_fields=[
@@ -220,7 +231,7 @@ def dataset_confirm_import(request, dataset_key):
     async_task(
         "apps.datasets.tasks.import_dataset_rows",
         dataset.id,
-        group="Import CSV dataset",
+        group="Import dataset",
     )
     return redirect(dataset.get_absolute_url())
 
@@ -260,10 +271,9 @@ def public_dataset(request, public_key):
 
     session_key = _public_access_session_key(dataset)
     password_error = ""
-    has_access = (
-        not dataset.is_public_password_protected
-        or request.session.get(session_key) == _public_access_session_value(dataset)
-    )
+    has_access = not dataset.is_public_password_protected or request.session.get(
+        session_key
+    ) == _public_access_session_value(dataset)
 
     if request.method == "POST" and dataset.is_public_password_protected:
         password = request.POST.get("password", "")

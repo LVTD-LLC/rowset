@@ -21,6 +21,7 @@ dependencies = [
     "ipython>=9.13.0",
     "markdown>=3.10.2",
     "pillow>=12.2.0",
+    "polars>=1.40.1",
     "psycopg[binary]>=3.3.4",
     "pytest>=9.0.3",
     "pytest-django>=4.12.0",
