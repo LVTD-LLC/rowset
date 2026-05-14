@@ -20,7 +20,7 @@ export default class extends Controller {
 
       block.dataset.copyEnhanced = "true";
       const wrapper = document.createElement("div");
-      wrapper.className = "not-prose group relative my-6";
+      wrapper.className = "group relative my-6";
       block.parentNode.insertBefore(wrapper, block);
       wrapper.appendChild(block);
 
