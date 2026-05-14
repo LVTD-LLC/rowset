@@ -21,6 +21,7 @@ export default class extends Controller {
       return;
     }
 
+    this._submitLabel = this.submitTarget.textContent;
     this.submitTarget.disabled = true;
     this.submitTarget.textContent = "Reading preview…";
     this.statusTarget.textContent = "Reading dataset preview…";
@@ -46,7 +47,7 @@ export default class extends Controller {
       this.showError(error.message);
     } finally {
       this.submitTarget.disabled = false;
-      this.submitTarget.textContent = "Preview dataset";
+      this.submitTarget.textContent = this._submitLabel ?? "Preview dataset";
     }
   }
 

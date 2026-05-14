@@ -62,13 +62,21 @@
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">First name</label>
-            {% if form.first_name.errors %}<div id="first-name-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.first_name.errors | safe }}</div>{% endif %}
-            {% render_field form.first_name id="first-name" name="first-name" type="text" autocomplete="given-name" aria-describedby="first-name-error" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+            {% if form.first_name.errors %}
+              <div id="first-name-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.first_name.errors | safe }}</div>
+              {% render_field form.first_name id="first-name" name="first-name" type="text" autocomplete="given-name" aria-describedby="first-name-error" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+            {% else %}
+              {% render_field form.first_name id="first-name" name="first-name" type="text" autocomplete="given-name" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+            {% endif %}
           </div>
           <div>
             <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Last name</label>
-            {% if form.last_name.errors %}<div id="last-name-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.last_name.errors | safe }}</div>{% endif %}
-            {% render_field form.last_name id="last-name" name="last-name" type="text" autocomplete="family-name" aria-describedby="last-name-error" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+            {% if form.last_name.errors %}
+              <div id="last-name-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.last_name.errors | safe }}</div>
+              {% render_field form.last_name id="last-name" name="last-name" type="text" autocomplete="family-name" aria-describedby="last-name-error" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+            {% else %}
+              {% render_field form.last_name id="last-name" name="last-name" type="text" autocomplete="family-name" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+            {% endif %}
           </div>
         </div>
 
