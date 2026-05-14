@@ -46,7 +46,7 @@ export default class extends Controller {
       link.textContent = headingText;
       link.dataset.tocTarget = "link";
       link.dataset.section = headingId;
-      link.className = `block py-1.5 pl-3 text-sm text-gray-600 border-l-2 border-gray-200 transition-colors hover:text-gray-900 hover:border-gray-400`;
+      link.className = `block rounded-lg px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-slate-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100`;
 
       link.addEventListener("click", (event) => {
         event.preventDefault();
@@ -119,11 +119,11 @@ export default class extends Controller {
       const isActive = link.dataset.section === activeSectionId;
 
       if (isActive) {
-        link.classList.remove("border-gray-200", "text-gray-600");
-        link.classList.add("border-red-600", "text-red-600", "font-medium");
+        link.classList.remove("text-gray-600", "dark:text-slate-400");
+        link.classList.add("bg-emerald-50", "text-emerald-700", "font-medium", "dark:bg-emerald-950/40", "dark:text-emerald-300");
       } else {
-        link.classList.remove("border-red-600", "text-red-600", "font-medium");
-        link.classList.add("border-gray-200", "text-gray-600");
+        link.classList.remove("bg-emerald-50", "text-emerald-700", "font-medium", "dark:bg-emerald-950/40", "dark:text-emerald-300");
+        link.classList.add("text-gray-600", "dark:text-slate-400");
       }
     });
   }

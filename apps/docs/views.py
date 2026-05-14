@@ -73,7 +73,7 @@ def get_docs_navigation():  # noqa: C901
 
     for category_slug in ordered_categories:
         category_dir = all_categories[category_slug]
-        category_name = category_slug.replace("-", " ").title()
+        category_name = "API Reference" if category_slug == "api-reference" else category_slug.replace("-", " ").title()
 
         all_pages = {}
         for markdown_file in category_dir.glob("*.md"):
@@ -184,6 +184,7 @@ def docs_page_view(request, category, page):
             "api_base_url": api_base_url,
             "api_key": api_key,
             "api_key_masked": f"{api_key[:8]}••••••••",
+            "api_key_full": api_key,
             "mcp_url": request.build_absolute_uri("/mcp/"),
             "user_email": request.user.email,
         }
@@ -194,7 +195,7 @@ def docs_page_view(request, category, page):
         previous_page, next_page = get_previous_and_next_pages(navigation, category, page)
 
         default_page_title = page.replace("-", " ").title()
-        default_category_title = category.replace("-", " ").title()
+        default_category_title = "API Reference" if category == "api-reference" else category.replace("-", " ").title()
 
         context = {
             "content": markdown_html,

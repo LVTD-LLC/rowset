@@ -1,36 +1,23 @@
 ---
 title: Agent access
 description: Configure AI agents and API clients to use FileBridge without browser automation.
-keywords: FileBridge, agents, MCP, API key
+keywords: FileBridge, agents, MCP, API key, SKILL.md
 ---
 
 # Agent access
 
 FileBridge exposes REST API and hosted MCP access so AI agents can use your datasets without browser automation.
 
-## REST API user info
+## Recommended agent setup
 
-Use your profile API key from settings. Your current key is:
+For coding agents, add a short `SKILL.md` or equivalent tool note in the agent workspace that includes:
 
-```text
-{{ api_key_masked }}
-```
+- Your FileBridge base URL: `{{ api_base_url }}`
+- Your API key: `{{ api_key_full }}`
+- The expected auth header: `Authorization: Bearer {{ api_key_full }}`
+- Links to the relevant API Reference pages inside FileBridge docs
 
-```bash
-curl -H "Authorization: Bearer {{ api_key_masked }}" "{{ api_base_url }}/user"
-```
-
-The endpoint returns safe account/profile details for the authenticated user. It does **not** return the API key.
-
-```json
-{
-  "email": "{{ user_email }}",
-  "profile": {
-    "state": "signed_up",
-    "has_active_subscription": true
-  }
-}
-```
+Keep the instructions focused on what the agent should do: authenticate with headers, use the dataset API for reads/writes, and avoid scraping the UI unless explicitly asked.
 
 ## Hosted MCP
 
@@ -42,21 +29,36 @@ Your hosted MCP endpoint is:
 
 Use one of these API-key authentication options:
 
-- `Authorization: Bearer {{ api_key_masked }}` header
-- `X-API-Key: {{ api_key_masked }}` header
-- `?api_key={{ api_key_masked }}` query parameter on the MCP URL
-- `api_key` tool argument when a client cannot send headers
+```http
+Authorization: Bearer {{ api_key_full }}
+```
 
-The first MCP tool is:
+```http
+X-API-Key: {{ api_key_full }}
+```
+
+When a client cannot send headers, use the URL query parameter form:
+
+```text
+{{ mcp_url }}?api_key={{ api_key_full }}
+```
+
+Prefer headers over query parameters when the client supports them, because URLs are more likely to be copied into logs or screenshots.
+
+## First MCP tool
 
 ```text
 get_user_info
 ```
 
-For most hosted clients, configure the MCP server URL and provide the API key as a bearer token if the client supports auth headers. If it does not, use the URL query parameter form:
+It returns the same safe user/profile details as the User API endpoint.
 
-```text
-{{ mcp_url }}?api_key={{ api_key_masked }}
+## REST connectivity check
+
+Before giving an agent dataset-write permissions, have it verify the key with the User API:
+
+```bash
+curl -H "Authorization: Bearer {{ api_key_full }}" "{{ api_base_url }}/user"
 ```
 
-Prefer headers over query parameters when the client supports them, because URLs are more likely to be copied into logs or screenshots.
+See the API Reference for full endpoint details.

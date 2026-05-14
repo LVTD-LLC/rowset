@@ -3,7 +3,9 @@ navigation:
     - introduction
 
   features:
+    - datasets
     - agent-access
 
-  api:
-    - endpoints
+  api-reference:
+    - user
+    - datasets

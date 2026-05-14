@@ -26,7 +26,7 @@
         {% endif %}
       </div>
       <div class="flex flex-col gap-2 sm:flex-row">
-        <a href="{% url 'docs_page' category='api' page='endpoints' %}" class="fb-button-secondary">API docs</a>
+        <a href="{% url 'docs_page' category='api-reference' page='datasets' %}" class="fb-button-secondary">Dataset API</a>
         <a href="{{ dataset.get_settings_url }}" class="fb-button-secondary">Settings</a>
       </div>
     </div>
@@ -37,7 +37,7 @@
           <h2 id="api-access-heading" class="text-lg font-bold text-slate-900 dark:text-slate-100">API access</h2>
           <p class="fb-text-muted mt-1 text-sm leading-6">Use the Authorization header for private requests. Full endpoint examples now live in the docs.</p>
         </div>
-        <a href="{% url 'docs_page' category='api' page='endpoints' %}" class="fb-button-primary">View endpoint docs</a>
+        <a href="{% url 'docs_page' category='api-reference' page='datasets' %}" class="fb-button-primary">View Dataset API</a>
       </div>
       <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
         Keep your API key private. This page masks the key and shows the safer header-first pattern.

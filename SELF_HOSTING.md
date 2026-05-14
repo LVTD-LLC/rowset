@@ -1,9 +1,50 @@
 # Self-hosting FileBridge
 
+<!-- toc -->
+## Table of contents
+
+- [Render deployment](#render-deployment)
+- [Required configuration](#required-configuration)
+- [Docker Compose deployment](#docker-compose-deployment)
+- [What you'll learn](#what-youll-learn)
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+- [Setup steps](#setup-steps)
+  - [1. Create deployment directory](#1-create-deployment-directory)
+  - [2. Download and configure environment file](#2-download-and-configure-environment-file)
+  - [3. Download docker-compose file](#3-download-docker-compose-file)
+  - [4. Start the application](#4-start-the-application)
+  - [5. Verify deployment](#5-verify-deployment)
+- [Expose your application](#expose-your-application)
+  - [Option 1: Direct port access](#option-1-direct-port-access)
+  - [Option 2: Nginx reverse proxy (recommended)](#option-2-nginx-reverse-proxy-recommended)
+  - [Option 3: Add SSL with Certbot](#option-3-add-ssl-with-certbot)
+- [Environment variables](#environment-variables)
+- [Required variables](#required-variables)
+  - [Core Django settings](#core-django-settings)
+  - [Database configuration](#database-configuration)
+  - [Redis configuration](#redis-configuration)
+- [Optional variables](#optional-variables)
+  - [Logfire (Monitoring)](#logfire-monitoring)
+  - [Sentry (Error Tracking)](#sentry-error-tracking)
+  - [PostHog (Analytics)](#posthog-analytics)
+  - [Chatwoot (Support Chat)](#chatwoot-support-chat)
+  - [Buttondown (Email Newsletter)](#buttondown-email-newsletter)
+  - [Stripe (Payments)](#stripe-payments)
+  - [Email configuration](#email-configuration)
+  - [OAuth/Social Authentication](#oauthsocial-authentication)
+  - [Storage configuration](#storage-configuration)
+  - [MJML (Email Templates)](#mjml-email-templates)
+  - [Logging](#logging)
+- [Getting the .env.example file](#getting-the-envexample-file)
+- [Security best practices](#security-best-practices)
+<!-- /toc -->
+
+
 This file keeps deployment/self-hosting notes in the repository without exposing them in the in-app user documentation.
 
 
-## render deployment
+## Render deployment
 
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=)
@@ -30,7 +71,7 @@ All other variables beyond the required ones are optional but may enhance functi
 
 If you know of any other services like Render that allow deployment via a button and provide free Redis, Postgres, and web services, please let me know in the [Issues](/issues) section. I can try to create deployments for those. Bear in mind that free services are usually not large enough to run this application reliably.
 
-## docker compose deployment
+## Docker Compose deployment
 
 
 Deploy FileBridge on your own server using Docker Compose.
@@ -217,7 +258,7 @@ sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 
 Follow the prompts. Certbot automatically configures SSL and sets up auto-renewal.
 
-## environment variables
+## Environment variables
 
 
 This guide covers all environment variables needed to configure FileBridge.
