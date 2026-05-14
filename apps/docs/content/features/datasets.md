@@ -1,7 +1,7 @@
 ---
 title: Working with datasets
-description: Understand the FileBridge dataset lifecycle, index columns, public previews, and exports.
-keywords: FileBridge datasets, CSV import, index columns, public preview
+description: Understand the FileBridge dataset lifecycle, index columns, and exports.
+keywords: FileBridge datasets, CSV import, index columns
 ---
 
 # Working with datasets
@@ -26,12 +26,10 @@ Pick the column your apps and agents naturally use to find a row:
 
 If the file does not have a stable key, let FileBridge generate one.
 
-## Public previews
-
-Public previews are optional and separate from authenticated API access. Enable them from dataset settings when someone needs to view the data without an API client.
-
-Use password protection when the link should not be casually forwarded.
-
 ## CSV exports
 
 Use CSV export when a workflow needs a full snapshot instead of row-by-row API access. For automated systems, prefer the Dataset API unless the consumer explicitly expects CSV.
+
+## Sharing
+
+Use Public previews when a human needs a browser-friendly, read-only view. Use the authenticated Dataset API for applications and agents.

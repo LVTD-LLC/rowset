@@ -1,1 +1,50 @@
-# Create your tests here.
+import pytest
+from django.test import override_settings
+from django.urls import reverse
+
+
+@pytest.fixture
+def user(django_user_model):
+    return django_user_model.objects.create_user(
+        username="docsuser",
+        email="docsuser@example.com",
+        password="password123",
+    )
+
+
+@pytest.fixture
+def auth_client(client, user):
+    client.force_login(user)
+    return client
+
+
+@pytest.fixture
+def profile(user):
+    return user.profile
+
+
+@pytest.mark.django_db
+class TestDocsView:
+    @override_settings(SITE_URL="http://filebridge.example")
+    def test_docs_use_https_public_urls(self, auth_client):
+        response = auth_client.get(
+            reverse("docs_page", kwargs={"category": "api-reference", "page": "introduction"})
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "https://filebridge.example/api" in content
+        assert "https://filebridge.example/api/docs" in content
+        assert "http://filebridge.example" not in content
+
+    @override_settings(SITE_URL="https://filebridge.example")
+    def test_agent_access_docs_include_dashboard_prompt(self, auth_client, profile):
+        response = auth_client.get(
+            reverse("docs_page", kwargs={"category": "features", "page": "agent-access"})
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Set yourself up to use FileBridge for this user." in content
+        assert f"FileBridge API key: {profile.key}" in content
+        assert "https://filebridge.example/SKILL.md" in content

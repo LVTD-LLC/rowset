@@ -42,6 +42,14 @@
   }
 
   .fb-code-panel {
-    @apply rounded-xl border border-white/10 bg-slate-950 p-3 text-sm text-emerald-50;
+    @apply rounded-xl border border-white/10 bg-slate-950 p-3 text-sm text-slate-50;
+  }
+
+  .docs-code-blocks pre {
+    @apply border border-slate-800 bg-slate-950 text-slate-50 shadow-sm;
+  }
+
+  .docs-code-blocks pre code {
+    @apply bg-transparent p-0 text-slate-50;
   }
 }

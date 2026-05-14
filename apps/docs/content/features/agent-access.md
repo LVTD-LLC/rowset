@@ -1,64 +1,44 @@
 ---
 title: Agent access
-description: Configure AI agents and API clients to use FileBridge without browser automation.
+description: Configure AI agents to use FileBridge without browser automation.
 keywords: FileBridge, agents, MCP, API key, SKILL.md
 ---
 
 # Agent access
 
-FileBridge exposes REST API and hosted MCP access so AI agents can use your datasets without browser automation.
+FileBridge gives you a copy/paste setup prompt for AI agents. It includes the hosted MCP URL, REST API base URL, your API key, and the `SKILL.md` instructions URL.
 
-## Recommended agent setup
+## Copy/paste setup prompt
 
-For coding agents, add a short `SKILL.md` or equivalent tool note in the agent workspace that includes:
-
-- Your FileBridge base URL: `{{ api_base_url }}`
-- Your API key: `{{ api_key_full }}`
-- The expected auth header: `Authorization: Bearer {{ api_key_full }}`
-- Links to the relevant API Reference pages inside FileBridge docs
-
-Keep the instructions focused on what the agent should do: authenticate with headers, use the dataset API for reads/writes, and avoid scraping the UI unless explicitly asked.
-
-## Hosted MCP
-
-Your hosted MCP endpoint is:
+Paste this into a trusted agent:
 
 ```text
-{{ mcp_url }}
+{{ agent_setup_prompt }}
 ```
 
-Use one of these API-key authentication options:
+Treat this prompt like a password because it includes your full API key.
 
-```http
-Authorization: Bearer {{ api_key_full }}
-```
+## SKILL.md instructions
 
-```http
-X-API-Key: {{ api_key_full }}
-```
-
-When a client cannot send headers, use the URL query parameter form:
+The prompt links to:
 
 ```text
-{{ mcp_url }}?api_key={{ api_key_full }}
+{{ site_url }}/SKILL.md
 ```
 
-Prefer headers over query parameters when the client supports them, because URLs are more likely to be copied into logs or screenshots.
+That file gives an agent durable setup instructions for FileBridge MCP, including the expected tools and safety rules.
 
-## First MCP tool
+## Recommended agent behavior
 
-```text
-get_user_info
-```
+- Prefer MCP tools over browser automation.
+- Verify setup with `get_user_info`.
+- Discover available datasets with `get_all_datasets`.
+- Use the Dataset API if MCP configuration is unavailable.
+- Ask before destructive actions like deleting datasets or rows.
+- Keep the API key private and never print it back into public logs or messages.
 
-It returns the same safe user/profile details as the User API endpoint.
+## Related docs
 
-## REST connectivity check
-
-Before giving an agent dataset-write permissions, have it verify the key with the User API:
-
-```bash
-curl -H "Authorization: Bearer {{ api_key_full }}" "{{ api_base_url }}/user"
-```
-
-See the API Reference for full endpoint details.
+- MCP access explains the hosted MCP endpoint and auth options.
+- API Reference explains REST authentication and endpoints.
+- Public previews are for browser sharing, not agent authentication.

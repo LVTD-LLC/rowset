@@ -23,11 +23,21 @@ class TestHomeView:
         response = auth_client.get(url)
 
         prompt = response.context["agent_setup_prompt"]
+        assert response.context["show_agent_setup_prompt"] is True
         assert "FileBridge MCP URL: https://filebridge.example/mcp/" in prompt
         assert "FileBridge REST API base: https://filebridge.example/api/" in prompt
         assert f"FileBridge API key: {profile.key}" in prompt
         assert "Agent instructions/skill: https://filebridge.example/SKILL.md" in prompt
         assert "get_user_info" in prompt
+
+    def test_dismiss_agent_setup_prompt_hides_dashboard_card(self, auth_client, profile):
+        response = auth_client.post(reverse("dismiss_agent_setup_prompt"), follow=True)
+        profile.refresh_from_db()
+
+        assert response.status_code == 200
+        assert profile.agent_setup_prompt_dismissed is True
+        assert response.context["show_agent_setup_prompt"] is False
+        assert "agent-setup-prompt" not in response.content.decode()
 
     def test_agent_instructions_markdown_is_public_and_actionable(self, client):
         response = client.get(reverse("agent_instructions_filebridge_mcp"))
