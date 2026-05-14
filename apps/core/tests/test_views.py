@@ -17,18 +17,16 @@ class TestHomeView:
         response = auth_client.get(url)
         assert "pages/home.html" in [t.name for t in response.templates]
 
+    @override_settings(SITE_URL="https://filebridge.example")
     def test_home_view_includes_agent_setup_prompt(self, auth_client, profile):
         url = reverse("home")
         response = auth_client.get(url)
 
         prompt = response.context["agent_setup_prompt"]
-        assert "FileBridge MCP URL: https://" in prompt
-        assert "/mcp/" in prompt
-        assert "FileBridge REST API base: https://" in prompt
-        assert "/api/" in prompt
+        assert "FileBridge MCP URL: https://filebridge.example/mcp/" in prompt
+        assert "FileBridge REST API base: https://filebridge.example/api/" in prompt
         assert f"FileBridge API key: {profile.key}" in prompt
-        assert "Agent instructions/skill: https://" in prompt
-        assert "/SKILL.md" in prompt
+        assert "Agent instructions/skill: https://filebridge.example/SKILL.md" in prompt
         assert "get_user_info" in prompt
 
     def test_agent_instructions_markdown_is_public_and_actionable(self, client):
@@ -57,3 +55,11 @@ class TestHomeView:
     @override_settings(SITE_URL="http://localhost:8000")
     def test_build_absolute_public_url_keeps_localhost_http(self):
         assert build_absolute_public_url("/SKILL.md") == "http://localhost:8000/SKILL.md"
+
+    @override_settings(SITE_URL="http://127.0.0.1:8000")
+    def test_build_absolute_public_url_keeps_loopback_http(self):
+        assert build_absolute_public_url("/SKILL.md") == "http://127.0.0.1:8000/SKILL.md"
+
+    @override_settings(SITE_URL="http://notlocalhost.example")
+    def test_build_absolute_public_url_does_not_substring_match_localhost(self):
+        assert build_absolute_public_url("/SKILL.md") == "https://notlocalhost.example/SKILL.md"

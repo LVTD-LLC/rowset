@@ -1,4 +1,4 @@
-from urllib.parse import urlencode
+from urllib.parse import urlsplit, urlunsplit, urlencode
 
 import stripe
 from allauth.account.internal.flows.email_verification import (
@@ -67,8 +67,20 @@ The user prompt should provide:
 
 def build_absolute_public_url(path: str) -> str:
     site_url = settings.SITE_URL.rstrip("/")
-    if site_url.startswith("http://") and "localhost" not in site_url:
-        site_url = site_url.replace("http://", "https://", 1)
+    parsed_url = urlsplit(site_url)
+    local_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+
+    if parsed_url.scheme == "http" and parsed_url.hostname not in local_hosts:
+        site_url = urlunsplit(
+            (
+                "https",
+                parsed_url.netloc,
+                parsed_url.path,
+                parsed_url.query,
+                parsed_url.fragment,
+            )
+        ).rstrip("/")
+
     return f"{site_url}{path}"
 
 
