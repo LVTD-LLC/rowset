@@ -70,5 +70,5 @@
 .docs-code-blocks pre code {
   padding: 0 !important;
   border-radius: 0 !important;
-  font-weight: 500;
+  font-weight: 500 !important;
 }
