@@ -10,9 +10,9 @@ This file keeps deployment/self-hosting notes in the repository without exposing
 
 ## Required configuration
 
-Before deploying, you need to configure environment variables. See the [Environment Variables](/docs/deployment/environment-variables/) guide for detailed information about all configuration options.
+Before deploying, you need to configure environment variables. See the environment variables section below for detailed information about all configuration options.
 
-Refer to the [Environment Variables](/docs/deployment/environment-variables/) guide for the complete list of required and optional variables.
+Refer to the environment variables section below for the complete list of required and optional variables.
 
 All other variables beyond the required ones are optional but may enhance functionality.
 
@@ -88,7 +88,7 @@ Now edit the `.env` file to add your credentials:
 nano .env
 ```
 
-You need to configure several environment variables for FileBridge to work properly. See the [Environment Variables](/docs/deployment/environment-variables/) guide for complete details on all available options.
+You need to configure several environment variables for FileBridge to work properly. See the environment variables section below for complete details on all available options.
 
 At minimum, update these required values:
 
