@@ -229,14 +229,43 @@ def test_api_key_auth_returns_profile_for_valid_key():
     profile = SimpleNamespace(id=11)
 
     with patch("apps.api.auth.Profile.objects") as objects:
-        objects.get.return_value = profile
+        objects.select_related.return_value.get.return_value = profile
         response = APIKeyAuth().authenticate(HttpRequest(), "secret-key")
 
     assert response is profile
-    objects.get.assert_called_once_with(key="secret-key")
+    objects.select_related.assert_called_once_with("user")
+    objects.select_related.return_value.get.assert_called_once_with(key="secret-key")
 
     with patch("apps.api.auth.Profile.objects") as objects:
-        objects.get.side_effect = Profile.DoesNotExist
+        objects.select_related.return_value.get.side_effect = Profile.DoesNotExist
         response = APIKeyAuth().authenticate(HttpRequest(), "bad-key")
+
+    assert response is None
+
+
+def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
+    from apps.api.auth import SuperuserAPIKeyAuth
+    from apps.core.models import Profile
+
+    superuser_profile = SimpleNamespace(id=11, user=SimpleNamespace(id=21, is_superuser=True))
+    regular_profile = SimpleNamespace(id=12, user=SimpleNamespace(id=22, is_superuser=False))
+
+    with patch("apps.api.auth.Profile.objects") as objects:
+        objects.select_related.return_value.get.return_value = superuser_profile
+        response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "secret-key")
+
+    assert response is superuser_profile
+    objects.select_related.assert_called_once_with("user")
+    objects.select_related.return_value.get.assert_called_once_with(key="secret-key")
+
+    with patch("apps.api.auth.Profile.objects") as objects:
+        objects.select_related.return_value.get.return_value = regular_profile
+        response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "regular-key")
+
+    assert response is None
+
+    with patch("apps.api.auth.Profile.objects") as objects:
+        objects.select_related.return_value.get.side_effect = Profile.DoesNotExist
+        response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "bad-key")
 
     assert response is None
