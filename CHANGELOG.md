@@ -29,6 +29,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Sentry setup now includes release metadata, configurable tracing/profiling/log settings, logging breadcrumbs/events, and the `before_send` hook by default.
 
 ### Fixed
+- API/MCP authentication logs no longer include raw API key values, and API-key profile lookups now eager-load users for the user-info endpoint.
 - CSV imports now store parsed source text in the database so async workers can import rows even when uploaded media files are not shared across containers.
 - CSV uploads now reject files over 10 MB before preview/import to avoid unbounded database writes.
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.

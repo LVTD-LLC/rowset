@@ -2,7 +2,6 @@ from django.http import HttpRequest
 from ninja.security import APIKeyQuery
 
 from apps.core.models import Profile
-
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -12,14 +11,11 @@ class APIKeyAuth(APIKeyQuery):
     param_name = "api_key"
 
     def authenticate(self, request: HttpRequest, key: str) -> Profile | None:
-        logger.info(
-            "[Django Ninja Auth] API Request with key",
-            key=key,
-        )
+        logger.info("[Django Ninja Auth] API key request")
         try:
-            return Profile.objects.get(key=key)
+            return Profile.objects.select_related("user").get(key=key)
         except Profile.DoesNotExist:
-            logger.warning("[Django Ninja Auth] Invalid API key", key=key)
+            logger.warning("[Django Ninja Auth] Invalid API key")
             return None
 
 
@@ -48,7 +44,7 @@ class SuperuserAPIKeyAuth(APIKeyQuery):
 
     def authenticate(self, request: HttpRequest, key: str) -> Profile | None:
         try:
-            profile = Profile.objects.get(key=key)
+            profile = Profile.objects.select_related("user").get(key=key)
             if profile.user.is_superuser:
                 return profile
             logger.warning(
@@ -57,7 +53,7 @@ class SuperuserAPIKeyAuth(APIKeyQuery):
             )
             return None
         except Profile.DoesNotExist:
-            logger.warning("[Django Ninja Auth] Profile does not exist", key=key)
+            logger.warning("[Django Ninja Auth] Profile does not exist")
             return None
 
 

@@ -229,14 +229,15 @@ def test_api_key_auth_returns_profile_for_valid_key():
     profile = SimpleNamespace(id=11)
 
     with patch("apps.api.auth.Profile.objects") as objects:
-        objects.get.return_value = profile
+        objects.select_related.return_value.get.return_value = profile
         response = APIKeyAuth().authenticate(HttpRequest(), "secret-key")
 
     assert response is profile
-    objects.get.assert_called_once_with(key="secret-key")
+    objects.select_related.assert_called_once_with("user")
+    objects.select_related.return_value.get.assert_called_once_with(key="secret-key")
 
     with patch("apps.api.auth.Profile.objects") as objects:
-        objects.get.side_effect = Profile.DoesNotExist
+        objects.select_related.return_value.get.side_effect = Profile.DoesNotExist
         response = APIKeyAuth().authenticate(HttpRequest(), "bad-key")
 
     assert response is None

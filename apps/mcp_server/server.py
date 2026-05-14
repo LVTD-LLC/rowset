@@ -51,7 +51,7 @@ def _authenticate_profile(api_key: str | None = None) -> Profile:
     try:
         return Profile.objects.select_related("user").get(key=key)
     except Profile.DoesNotExist as exc:
-        logger.warning("[MCP] Invalid API key", key=key)
+        logger.warning("[MCP] Invalid API key")
         raise PermissionError("Invalid FileBridge API key.") from exc
 
 
