@@ -5,7 +5,7 @@ from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
 from pydantic import Field
 
-from apps.api.services import serialize_user_info
+from apps.api.services import serialize_profile_datasets, serialize_user_info
 from apps.core.models import Profile
 from filebridge.utils import get_filebridge_logger
 
@@ -75,3 +75,35 @@ def get_user_info(
     close_old_connections()
     profile = _authenticate_profile(api_key)
     return serialize_user_info(profile)
+
+
+@mcp.tool(
+    name="get_all_datasets",
+    description=(
+        "Return metadata for all datasets available to the authenticated FileBridge profile."
+    ),
+)
+def get_all_datasets(
+    api_key: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional FileBridge API key. Hosted clients may instead send it as "
+                "Authorization: Bearer <api_key>, X-API-Key, or ?api_key= on the MCP URL."
+            ),
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(default=100, ge=1, le=500, description="Maximum datasets to return."),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Field(default=0, ge=0, description="Number of datasets to skip."),
+    ] = 0,
+) -> dict:
+    """Return a bounded page of datasets for the authenticated FileBridge API key."""
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    return serialize_profile_datasets(profile, limit=limit, offset=offset)

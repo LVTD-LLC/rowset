@@ -15,6 +15,7 @@ from apps.api.schemas import (
     BlogPostOut,
     BlogPostUpdateIn,
     DatasetApiOut,
+    DatasetListOut,
     DatasetRowIn,
     DatasetRowOut,
     DatasetRowPatchIn,
@@ -24,7 +25,7 @@ from apps.api.schemas import (
     UserInfoOut,
     UserSettingsOut,
 )
-from apps.api.services import serialize_user_info
+from apps.api.services import serialize_profile_datasets, serialize_user_info
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
 from apps.core.models import Feedback
@@ -349,6 +350,17 @@ def user_settings(request: HttpRequest):
             exc_info=True,
         )
         raise HttpError(500, "An unexpected error occurred.") from e
+
+
+@api.get(
+    "/datasets",
+    response=DatasetListOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def list_datasets(request: HttpRequest, limit: int = 100, offset: int = 0):
+    """Return a page of datasets available to the authenticated profile."""
+    return serialize_profile_datasets(request.auth, limit=limit, offset=offset)
 
 
 def _get_ready_dataset(profile, dataset_key: str) -> Dataset:
