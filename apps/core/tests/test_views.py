@@ -22,10 +22,13 @@ class TestHomeView:
         response = auth_client.get(url)
 
         prompt = response.context["agent_setup_prompt"]
-        assert "FileBridge MCP URL: http://localhost:8000/mcp/" in prompt
-        assert "FileBridge REST API base: http://localhost:8000/api/" in prompt
+        assert "FileBridge MCP URL: https://" in prompt
+        assert "/mcp/" in prompt
+        assert "FileBridge REST API base: https://" in prompt
+        assert "/api/" in prompt
         assert f"FileBridge API key: {profile.key}" in prompt
-        assert "Agent instructions/skill: http://localhost:8000/SKILL.md" in prompt
+        assert "Agent instructions/skill: https://" in prompt
+        assert "/SKILL.md" in prompt
         assert "get_user_info" in prompt
 
     def test_agent_instructions_markdown_is_public_and_actionable(self, client):
