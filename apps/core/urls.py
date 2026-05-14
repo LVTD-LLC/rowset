@@ -7,6 +7,11 @@ urlpatterns = [
     path("home", views.HomeView.as_view(), name="home"),
     path("settings", views.UserSettingsView.as_view(), name="settings"),
     path("admin-panel", views.AdminPanelView.as_view(), name="admin_panel"),
+    path(
+        "agent/filebridge-mcp.md",
+        views.agent_instructions_filebridge_mcp,
+        name="agent_instructions_filebridge_mcp",
+    ),
     # Utils
     path("resend-confirmation/", views.resend_confirmation_email, name="resend_confirmation"),
     path("delete-account/", views.delete_account, name="delete_account"),

@@ -14,7 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import transaction
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.csrf import csrf_exempt
@@ -32,6 +32,63 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 logger = get_filebridge_logger(__name__)
 
 
+AGENT_INSTRUCTIONS_MARKDOWN = """# FileBridge MCP Agent Skill
+
+Use this when a user asks you to connect to FileBridge or work with FileBridge datasets.
+
+## Inputs from the user prompt
+
+The user prompt should provide:
+
+- `FileBridge MCP URL`: the hosted MCP endpoint, usually ending in `/mcp/`.
+- `FileBridge API key`: the user's secret API key.
+- Optional `FileBridge REST API base`: the same site with `/api/` endpoints.
+
+## Setup
+
+1. Configure your MCP client for a remote Streamable HTTP server named `filebridge`.
+2. Use the provided MCP URL exactly as given.
+3. Authenticate with the API key. Prefer an `Authorization: Bearer <api_key>` header.
+   If your MCP client cannot send headers, use `X-API-Key` if supported, or append
+   `?api_key=<api_key>` to the MCP URL as a fallback.
+4. Treat the API key as a secret: do not print it, commit it, store it in public logs,
+   or share it with other tools.
+5. After connecting, call the `get_user_info` tool to verify the connection.
+
+## Working rules
+
+- Prefer MCP tools over browser automation when working with FileBridge.
+- If MCP configuration is unavailable in your runtime, use the REST API endpoints with
+  the same API key.
+- Ask the user before destructive changes such as deleting datasets or rows.
+- Keep user data private and only access the FileBridge resources needed for the task.
+"""
+
+
+def build_agent_setup_prompt(request: HttpRequest) -> str:
+    mcp_url = request.build_absolute_uri("/mcp/")
+    rest_api_base_url = request.build_absolute_uri("/api/")
+    instructions_url = request.build_absolute_uri(reverse("agent_instructions_filebridge_mcp"))
+    api_key = request.user.profile.key
+
+    return "\n".join(
+        [
+            "Set yourself up to use FileBridge for this user.",
+            "",
+            f"FileBridge MCP URL: {mcp_url}",
+            f"FileBridge REST API base: {rest_api_base_url}",
+            f"FileBridge API key: {api_key}",
+            f"Agent instructions/skill: {instructions_url}",
+            "",
+            "Read the instructions/skill URL, configure FileBridge as a remote Streamable "
+            "HTTP MCP server, and authenticate with the API key. Prefer an Authorization: "
+            "Bearer header; if your MCP client cannot send headers, use X-API-Key or the "
+            "MCP URL query parameter fallback. After setup, call get_user_info to verify "
+            "the connection. Treat the API key as secret and do not print it back.",
+        ]
+    )
+
+
 class HomeView(LoginRequiredMixin, TemplateView):
     login_url = "account_login"
     template_name = "pages/home.html"
@@ -47,6 +104,10 @@ class HomeView(LoginRequiredMixin, TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         context["recent_datasets"] = self.request.user.profile.datasets.all()[:5]
+        context["agent_setup_prompt"] = build_agent_setup_prompt(self.request)
+        context["agent_instructions_url"] = self.request.build_absolute_uri(
+            reverse("agent_instructions_filebridge_mcp")
+        )
         return context
 
 
@@ -77,6 +138,10 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         context["api_key"] = user.profile.key
 
         return context
+
+
+def agent_instructions_filebridge_mcp(request):
+    return HttpResponse(AGENT_INSTRUCTIONS_MARKDOWN, content_type="text/markdown; charset=utf-8")
 
 
 @login_required
