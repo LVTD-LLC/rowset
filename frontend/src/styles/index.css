@@ -53,3 +53,22 @@
     @apply bg-transparent p-0 text-slate-50;
   }
 }
+
+/* Force fenced docs blocks to stay readable over Tailwind Typography defaults. */
+.docs-code-blocks pre,
+.docs-code-blocks pre code,
+.docs-code-blocks pre code * {
+  color: #f8fafc !important;
+  opacity: 1 !important;
+}
+
+.docs-code-blocks pre,
+.docs-code-blocks pre code {
+  background-color: #020617 !important;
+}
+
+.docs-code-blocks pre code {
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-weight: 500;
+}
