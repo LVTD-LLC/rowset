@@ -2,50 +2,44 @@
 {% load webpack_loader static %}
 
 {% block meta %}
-    <title>Technologies We Use | FileBridge</title>
-    <meta name="description" content="Technologies and Tools Used by FileBridge" />
-    <meta name="keywords" content="FileBridge, Technology Stack, Web Development" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://{{ request.get_host }}/uses" />
-    <meta property="og:type" content="article" />
-    <meta property="og:title" content="Technologies We Use | FileBridge" />
-    <meta property="og:url" content="https://{{ request.get_host }}/uses" />
-    <meta property="og:description" content="Technologies and Tools Used by FileBridge" />
-    <meta property="og:locale" content="en_US" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:creator" content="@rasulkireev" />
-    <meta name="twitter:site" content="@rasulkireev" />
-    <meta name="twitter:title" content="Technologies We Use | FileBridge" />
-    <meta name="twitter:description" content="Technologies and Tools Used by FileBridge" />
-    <meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge&subtitle=Tech we use&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<title>Technology stack · FileBridge</title>
+<meta name="description" content="The practical technology stack behind FileBridge." />
+<meta name="keywords" content="FileBridge, Technology Stack, Django, PostgreSQL" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://{{ request.get_host }}/uses" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Technology stack · FileBridge" />
+<meta property="og:url" content="https://{{ request.get_host }}/uses" />
+<meta property="og:description" content="The practical technology stack behind FileBridge." />
+<meta property="og:locale" content="en_US" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Technology stack · FileBridge" />
+<meta name="twitter:description" content="The practical technology stack behind FileBridge." />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge&subtitle=Technology stack&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 
 {% block content %}
-    <div class="container px-4 py-8 mx-auto prose">
-        <h1>Tech I Use</h1>
-        <p>
-          I run
-          
-          multiple projects
-          
-          at the same time and using reliable and simple tech is the key to running everything smoothly. Here's what I use:
-        </p>
-        <ul>
-            <li><strong><a href="https://sentry.io/" target="_blank" rel="noopener noreferrer">Sentry</a>:</strong> For error tracking and performance monitoring, ensuring a smooth user experience.</li>
-            <li><strong><a href="https://hetzner.cloud/?ref=Ju1ttKSG0Fn7" target="_blank" rel="noopener noreferrer">Hetzner</a>:</strong> Our cloud infrastructure provider, hosting our servers and services.</li>
-            <li><strong><a href="https://buttondown.email/refer/rasulkireev" target="_blank" rel="noopener noreferrer">Buttondown</a>:</strong> for the newsletter.</li>
-            <li><strong><a href="https://www.djangoproject.com/" target="_blank" rel="noopener noreferrer">Django</a>:</strong> Our primary web framework, providing a robust foundation for our backend.</li>
-            <li><strong><a href="https://django-q2.readthedocs.io/" target="_blank" rel="noopener noreferrer">Django-Q2</a>:</strong> A task queue and scheduler for Django, helping us manage background tasks efficiently.</li>
-            <li><strong><a href="https://caprover.com/" target="_blank" rel="noopener noreferrer">CapRover</a>:</strong> Our deployment and server management tool, simplifying our DevOps processes.</li>
-            <li><strong><a href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub</a>:</strong> For version control and collaborative development of our codebase.</li>
-            <li><strong><a href="https://redis.io/" target="_blank" rel="noopener noreferrer">Redis</a>:</strong> An in-memory data structure store, used as a database, cache, and message broker.</li>
-            <li><strong><a href="https://www.postgresql.org/" target="_blank" rel="noopener noreferrer">PostgreSQL</a>:</strong> Our primary relational database management system.</li>
-            <li><strong><a href="https://www.anthropic.com/" target="_blank" rel="noopener noreferrer">Anthropic</a>:</strong> Leveraging AI capabilities to enhance our services.</li>
-            <li><strong><a href="https://replicate.com/" target="_blank" rel="noopener noreferrer">Replicate</a>:</strong> For AI model deployment and management.</li>
-            <li><strong><a href="https://stimulus.hotwired.dev/" target="_blank" rel="noopener noreferrer">StimulusJS</a>:</strong> A modest JavaScript framework for the "sprinkles of interactivity" in our frontend.</li>
-            <li><strong><a href="https://whitenoise.evans.io/" target="_blank" rel="noopener noreferrer">WhiteNoise</a>:</strong> For efficient serving of static files.</li>
-            <li><strong><a href="https://logfire.pydantic.dev/" target="_blank" rel="noopener noreferrer">Logfire</a>:</strong> For all my logging needs.</li>
-        </ul>
-        <p>If you have any questions about our technology choices or are interested in learning more, feel free to contact us at <a href="mailto:rasul@builtwithdjango.com">contact@builtwithdjango.com</a>.</p>
-    </div>
+<article class="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+  <header class="mb-10">
+    <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Stack</p>
+    <h1 class="mt-3 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">Technology behind FileBridge</h1>
+    <p class="fb-text-muted mt-4 text-lg leading-8">A boring, reliable stack for turning uploaded files into APIs without unnecessary moving parts.</p>
+  </header>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <a href="https://www.djangoproject.com/" target="_blank" rel="noopener noreferrer" class="fb-card fb-focus block p-5"><h2 class="font-bold text-slate-900 dark:text-slate-100">Django</h2><p class="fb-text-muted mt-2 text-sm leading-6">Primary web framework and backend foundation.</p></a>
+    <a href="https://www.postgresql.org/" target="_blank" rel="noopener noreferrer" class="fb-card fb-focus block p-5"><h2 class="font-bold text-slate-900 dark:text-slate-100">PostgreSQL</h2><p class="fb-text-muted mt-2 text-sm leading-6">Relational database for users, datasets, and API state.</p></a>
+    <a href="https://redis.io/" target="_blank" rel="noopener noreferrer" class="fb-card fb-focus block p-5"><h2 class="font-bold text-slate-900 dark:text-slate-100">Redis</h2><p class="fb-text-muted mt-2 text-sm leading-6">Cache and message broker for background work.</p></a>
+    <a href="https://django-q2.readthedocs.io/" target="_blank" rel="noopener noreferrer" class="fb-card fb-focus block p-5"><h2 class="font-bold text-slate-900 dark:text-slate-100">Django-Q2</h2><p class="fb-text-muted mt-2 text-sm leading-6">Task queue and scheduler for async imports.</p></a>
+    <a href="https://stimulus.hotwired.dev/" target="_blank" rel="noopener noreferrer" class="fb-card fb-focus block p-5"><h2 class="font-bold text-slate-900 dark:text-slate-100">Stimulus</h2><p class="fb-text-muted mt-2 text-sm leading-6">Small JavaScript controllers where interactivity helps.</p></a>
+    <a href="https://sentry.io/" target="_blank" rel="noopener noreferrer" class="fb-card fb-focus block p-5"><h2 class="font-bold text-slate-900 dark:text-slate-100">Sentry</h2><p class="fb-text-muted mt-2 text-sm leading-6">Error tracking and production visibility.</p></a>
+    <a href="https://caprover.com/" target="_blank" rel="noopener noreferrer" class="fb-card fb-focus block p-5"><h2 class="font-bold text-slate-900 dark:text-slate-100">CapRover</h2><p class="fb-text-muted mt-2 text-sm leading-6">Deployment and server management.</p></a>
+    <a href="https://whitenoise.evans.io/" target="_blank" rel="noopener noreferrer" class="fb-card fb-focus block p-5"><h2 class="font-bold text-slate-900 dark:text-slate-100">WhiteNoise</h2><p class="fb-text-muted mt-2 text-sm leading-6">Simple static asset serving for Django.</p></a>
+  </div>
+
+  <section class="fb-panel mt-8 p-6" aria-labelledby="stack-question-heading">
+    <h2 id="stack-question-heading" class="text-xl font-bold text-slate-900 dark:text-slate-100">Questions about the stack?</h2>
+    <p class="fb-text-muted mt-2 text-sm leading-6">Email <a href="mailto:rasul@lvtd.dev" class="font-semibold text-emerald-700 hover:underline dark:text-emerald-300">rasul@lvtd.dev</a>.</p>
+  </section>
+</article>
 {% endblock content %}

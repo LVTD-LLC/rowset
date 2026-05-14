@@ -4,108 +4,110 @@
 <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
   <div class="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <p class="text-sm font-semibold uppercase tracking-wide text-green-600 dark:text-green-400">FileBridge</p>
-      <h1 class="mt-2 text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Turn a CSV or Parquet file into an API</h1>
-      <p class="mt-4 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
+      <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">FileBridge</p>
+      <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">Turn a CSV or Parquet file into an API</h1>
+      <p class="fb-text-muted mt-4 max-w-2xl text-lg leading-8">
         Upload a CSV or Parquet file, verify the headers and sample rows, then confirm the import. FileBridge will turn it into API endpoints you can query and edit.
       </p>
     </div>
-    <a href="{% url 'dataset_list' %}" class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800">
+    <a href="{% url 'dataset_list' %}" class="fb-button-secondary">
       View datasets
     </a>
   </div>
 
-  <section class="mb-10 rounded-2xl border border-green-200 bg-green-50 p-6 shadow-sm dark:border-green-900/60 dark:bg-green-950/30">
+  <section class="mb-10 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30" aria-labelledby="agent-setup-heading">
     <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
       <div class="max-w-2xl">
-        <p class="text-sm font-semibold uppercase tracking-wide text-green-700 dark:text-green-300">Agent setup</p>
-        <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">Teach your AI agent to use FileBridge</h2>
-        <p class="mt-3 text-sm text-gray-700 dark:text-gray-300">
+        <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Agent setup</p>
+        <h2 id="agent-setup-heading" class="mt-2 text-2xl font-black text-slate-900 dark:text-slate-100">Teach your AI agent to use FileBridge</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
           Copy this prompt into your AI agent. It includes your FileBridge MCP URL, REST API base, API key, and a short skill file the agent can read for setup instructions.
         </p>
-        <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+        <p class="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
           Treat this prompt like a password: it includes your API key. Use it only with agents you trust.
         </p>
       </div>
-      <a href="{{ agent_instructions_url }}" class="inline-flex items-center justify-center rounded-md border border-green-300 bg-white px-4 py-2 text-sm font-medium text-green-800 shadow-sm hover:bg-green-100 dark:border-green-800 dark:bg-gray-950 dark:text-green-200 dark:hover:bg-green-950">
+      <a href="{{ agent_instructions_url }}" class="fb-button-secondary border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-950">
         View agent skill
       </a>
     </div>
 
     <div class="mt-6" data-controller="copy">
       <label for="agent-setup-prompt" class="mb-2 block text-sm font-medium text-gray-900 dark:text-gray-100">Copy/paste prompt</label>
-      <textarea id="agent-setup-prompt" data-copy-target="source" readonly rows="10" class="block w-full rounded-xl border border-green-200 bg-white p-4 font-mono text-xs leading-5 text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-green-500 dark:border-green-900 dark:bg-gray-950 dark:text-gray-100">{{ agent_setup_prompt }}</textarea>
+      <textarea id="agent-setup-prompt" data-copy-target="source" readonly rows="10" aria-describedby="agent-setup-help" class="fb-input block w-full border-emerald-200 p-4 font-mono text-xs leading-5 dark:border-emerald-900">{{ agent_setup_prompt }}</textarea>
       <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-xs text-gray-600 dark:text-gray-400">Best path: remote MCP over HTTPS with the API key in an auth header. Query-string auth is only a fallback for clients that cannot send headers.</p>
-        <button type="button" data-action="copy#copy" class="inline-flex items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+        <p id="agent-setup-help" class="text-xs leading-5 text-slate-600 dark:text-slate-400">Best path: remote MCP over HTTPS with the API key in an auth header. Query-string auth is only a fallback for clients that cannot send headers.</p>
+        <button type="button" data-action="copy#copy" class="fb-button-primary">
           <span data-copy-target="label">Copy prompt</span>
         </button>
       </div>
     </div>
   </section>
 
-  <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+  <section class="fb-card p-6" aria-labelledby="upload-dataset-heading">
     <div class="mb-6">
-      <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Upload dataset</h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">We’ll preview the file first. The full row import only starts after you confirm.</p>
+      <h2 id="upload-dataset-heading" class="text-xl font-bold text-slate-900 dark:text-slate-100">Upload dataset</h2>
+      <p class="fb-text-muted mt-1 text-sm leading-6">We’ll preview the file first. The full row import only starts after you confirm.</p>
     </div>
 
     <form action="{% url 'dataset_upload_preview' %}" method="post" enctype="multipart/form-data" data-controller="csv-upload" data-action="submit->csv-upload#preview" class="space-y-6">
       {% csrf_token %}
-      <div class="rounded-xl border-2 border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
-        <input data-csv-upload-target="file" type="file" name="file" accept=".csv,text/csv,.parquet,application/vnd.apache.parquet" class="mx-auto block w-full max-w-md rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm file:mr-4 file:rounded-md file:border-0 file:bg-green-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-green-700 hover:file:bg-green-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:file:bg-green-900/40 dark:file:text-green-200" />
-        <button data-csv-upload-target="submit" type="submit" class="mt-4 inline-flex justify-center rounded-md bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+      <div class="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-950/70">
+        <label for="dataset-file" class="block text-base font-semibold text-slate-900 dark:text-slate-100">Choose a CSV or Parquet file</label>
+        <p id="dataset-file-help" class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">Maximum upload size is 10 MB. We only store the normalized table text after you confirm the preview.</p>
+        <input id="dataset-file" data-csv-upload-target="file" type="file" name="file" accept=".csv,text/csv,.parquet,application/vnd.apache.parquet" aria-describedby="dataset-file-help upload-status" class="fb-input mx-auto mt-5 block w-full max-w-md text-sm file:mr-4 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-emerald-800 hover:file:bg-emerald-100 dark:file:bg-emerald-900/40 dark:file:text-emerald-200" />
+        <button data-csv-upload-target="submit" type="submit" class="fb-button-primary mt-5">
           Preview dataset
         </button>
-        <p data-csv-upload-target="status" class="mt-3 text-sm text-gray-500 dark:text-gray-400">CSV and Parquet files supported for this first slice.</p>
+        <p id="upload-status" data-csv-upload-target="status" aria-live="polite" class="mt-3 text-sm text-slate-500 dark:text-slate-400">CSV and Parquet files supported.</p>
       </div>
 
-      <div data-csv-upload-target="preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950">
+      <div data-csv-upload-target="preview" class="fb-panel hidden p-5" aria-live="polite">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Does this look right?</h3>
-            <p data-csv-upload-target="rowCount" class="mt-1 text-sm text-gray-600 dark:text-gray-300"></p>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Does this look right?</h3>
+            <p data-csv-upload-target="rowCount" class="fb-text-muted mt-1 text-sm"></p>
           </div>
           <div data-csv-upload-target="confirmForm" data-action="placeholder"></div>
         </div>
 
         <div class="mt-5">
-          <p class="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">Headers</p>
+          <p class="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Headers</p>
           <div data-csv-upload-target="headers" class="flex flex-wrap gap-2"></div>
         </div>
 
         <div class="mt-5">
-          <label for="dataset-index-column" class="mb-2 block text-sm font-medium text-gray-900 dark:text-gray-100">Index column</label>
-          <select id="dataset-index-column" data-csv-upload-target="indexSelector" class="block w-full max-w-md rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-green-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"></select>
-          <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Pick a column with unique values, or let FileBridge generate a stable ID column for each row.</p>
+          <label for="dataset-index-column" class="mb-2 block text-sm font-semibold text-slate-900 dark:text-slate-100">Index column</label>
+          <select id="dataset-index-column" data-csv-upload-target="indexSelector" class="fb-input block w-full max-w-md px-3 py-2 text-sm"></select>
+          <p class="fb-text-muted mt-2 text-sm">Pick a column with unique values, or let FileBridge generate a stable ID column for each row.</p>
         </div>
 
-        <div class="mt-5 overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900" data-csv-upload-target="sample"></div>
+        <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" data-csv-upload-target="sample"></div>
       </div>
     </form>
   </section>
 
   <section class="mt-10">
     <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Recent datasets</h2>
+      <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Recent datasets</h2>
     </div>
     {% if recent_datasets %}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {% for dataset in recent_datasets %}
-          <a href="{{ dataset.get_absolute_url }}" class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-green-700">
+          <a href="{{ dataset.get_absolute_url }}" class="fb-card fb-focus rounded-2xl p-5 transition hover:border-emerald-300 hover:shadow-md dark:hover:border-emerald-700">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ dataset.name }}</h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ dataset.row_count }} rows</p>
+                <h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.name }}</h3>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ dataset.row_count }} rows</p>
               </div>
-              <span class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{ dataset.status }}</span>
+              <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ dataset.status }}</span>
             </div>
           </a>
         {% endfor %}
       </div>
     {% else %}
-      <div class="rounded-xl border border-gray-200 bg-gray-50 p-8 text-center dark:border-gray-800 dark:bg-gray-900/50">
-        <p class="text-sm text-gray-600 dark:text-gray-300">No datasets yet. Upload your first CSV above.</p>
+      <div class="fb-panel p-8 text-center">
+        <p class="text-sm text-slate-600 dark:text-slate-300">No datasets yet. Upload your first CSV or Parquet file above.</p>
       </div>
     {% endif %}
   </section>

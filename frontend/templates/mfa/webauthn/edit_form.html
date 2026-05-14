@@ -2,20 +2,21 @@
 {% load widget_tweaks %}
 
 {% block mfa_content %}
-  <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Rename passkey</h1>
-  <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Give this passkey a name you will recognize later.</p>
+  <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Security</p>
+  <h1 class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Rename passkey</h1>
+  <p class="fb-text-muted mt-2 text-sm leading-6">Give this passkey a name you will recognize later.</p>
 
   <form class="mt-8 space-y-6" method="post" action="{% url 'mfa_edit_webauthn' pk=object.pk %}">
     {% csrf_token %}
-    {{ form.non_field_errors|safe }}
+    {% if form.non_field_errors %}<div class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">{{ form.non_field_errors|safe }}</div>{% endif %}
     <div>
-      {{ form.name.errors|safe }}
-      <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-900 dark:text-gray-100">Passkey name</label>
-      {% render_field form.name class="mt-2 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 shadow-sm focus:border-green-500 focus:outline-none focus:ring-green-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 sm:text-sm" %}
+      <label for="{{ form.name.id_for_label }}" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Passkey name</label>
+      {% if form.name.errors %}<div id="rename-passkey-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.name.errors|safe }}</div>{% endif %}
+      {% render_field form.name class="fb-input mt-2 block w-full px-3 py-2 text-sm" aria-describedby="rename-passkey-error" %}
     </div>
     <div class="flex flex-col gap-3 sm:flex-row">
-      <button type="submit" class="inline-flex justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">Save</button>
-      <a href="{% url 'mfa_list_webauthn' %}" class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800">Cancel</a>
+      <button type="submit" class="fb-button-primary">Save name</button>
+      <a href="{% url 'mfa_list_webauthn' %}" class="fb-button-secondary">Cancel</a>
     </div>
   </form>
 {% endblock mfa_content %}

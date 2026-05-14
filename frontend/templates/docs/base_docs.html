@@ -1,61 +1,42 @@
 {% extends 'base_landing.html' %}
 
 {% block content %}
-<div class="px-4 mx-auto max-w-[1400px] mt-16 sm:mt-24 lg:px-8" data-controller="toc">
+<div class="mx-auto mt-12 max-w-[1400px] px-4 sm:mt-16 lg:px-8" data-controller="toc">
   <div class="flex flex-col gap-8 xl:flex-row xl:gap-12">
-    <!-- Left Sidebar Navigation -->
-    <aside class="flex-shrink-0 xl:w-72">
-      <nav class="sticky top-8 pb-8 space-y-8">
+    <aside class="flex-shrink-0 xl:w-72" aria-label="Documentation sections">
+      <nav class="sticky top-24 space-y-8 pb-8">
         {% for section in navigation %}
-        <div class="space-y-3">
-          <h3 class="px-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
-            {{ section.category }}
-          </h3>
-          <ul class="space-y-1">
-            {% for page in section.pages %}
-            <li>
-              <a href="{{ page.url }}"
-                 class="block px-4 py-2.5 text-[15px] leading-snug rounded-lg transition-all duration-150 {% if current_category == section.category_slug and current_page == page.slug %}bg-{{ cookiecutter.project_main_color }}-50 text-{{ cookiecutter.project_main_color }}-600 font-semibold shadow-sm{% else %}text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:pl-5{% endif %}">
-                {{ page.title }}
-              </a>
-            </li>
-{% endfor %}
-          </ul>
-        </div>
-{% endfor %}
+          <section class="space-y-3" aria-labelledby="docs-section-{{ forloop.counter }}">
+            <h2 id="docs-section-{{ forloop.counter }}" class="px-4 text-xs font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">{{ section.category }}</h2>
+            <ul class="space-y-1">
+              {% for page in section.pages %}
+                <li>
+                  <a href="{{ page.url }}" class="fb-focus block rounded-xl px-4 py-2.5 text-[15px] leading-snug transition {% if current_category == section.category_slug and current_page == page.slug %}bg-emerald-50 font-bold text-emerald-700 shadow-sm dark:bg-emerald-950/40 dark:text-emerald-300{% else %}text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white{% endif %}">{{ page.title }}</a>
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endfor %}
       </nav>
     </aside>
 
-    <!-- Main Content -->
-    <main class="flex-1 min-w-0 max-w-4xl">
-      <!-- Work in Progress Notice -->
-      <div class="px-4 py-3 mb-6 text-sm text-blue-800 bg-blue-50 rounded-lg border border-blue-200">
-        <p class="flex gap-2 items-center mb-1">
-          <svg class="flex-shrink-0 w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-          </svg>
-          <span><strong>Work in Progress:</strong> This documentation is being actively developed. More content will be added soon!</span>
-        </p>
-        <p class="ml-7">
-          If you run into any issues, please email <a href="mailto:rasul@lvtd.dev" class="font-semibold underline hover:text-blue-900">rasul@lvtd.dev</a>
+    <main class="min-w-0 flex-1" id="docs-main-content">
+      <div class="mb-6 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-950 dark:border-cyan-900/60 dark:bg-cyan-950/40 dark:text-cyan-100" role="note">
+        <p class="flex gap-2 leading-6">
+          <svg class="mt-0.5 h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+          <span><strong>Work in progress:</strong> This documentation is being actively developed. If you run into issues, email <a href="mailto:rasul@lvtd.dev" class="font-bold underline underline-offset-2 hover:text-cyan-800 dark:hover:text-cyan-200">rasul@lvtd.dev</a>.</span>
         </p>
       </div>
 
-      <article class="max-w-none prose prose-lg prose-gray prose-headings:font-semibold prose-headings:text-gray-900 prose-h1:text-4xl prose-h1:mb-4 prose-h2:text-3xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-2xl prose-h3:mt-6 prose-h3:mb-3 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-green-600 prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-strong:font-semibold prose-code:text-green-600 prose-code:bg-green-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-none prose-code:after:content-none prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:rounded-lg prose-pre:shadow-lg prose-ol:list-decimal prose-ol:pl-6 prose-ul:list-disc prose-ul:pl-6 prose-li:text-gray-700 docs-code-blocks" data-toc-target="content">
-        {% block docs_content %}
-        {% endblock docs_content %}
+      <article class="prose prose-lg max-w-none prose-slate prose-headings:font-black prose-a:text-emerald-700 prose-a:no-underline hover:prose-a:underline prose-code:rounded prose-code:bg-emerald-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-emerald-700 prose-code:before:content-none prose-code:after:content-none prose-pre:rounded-2xl prose-pre:bg-slate-950 prose-pre:text-slate-100 dark:prose-invert dark:prose-a:text-emerald-300 dark:prose-code:bg-emerald-950/40 dark:prose-code:text-emerald-200 docs-code-blocks" data-toc-target="content">
+        {% block docs_content %}{% endblock docs_content %}
       </article>
     </main>
 
-    <!-- Right Sidebar Table of Contents -->
-    <aside class="hidden flex-shrink-0 xl:block xl:w-64" data-toc-target="sidebar">
-      <nav class="sticky top-8 space-y-4">
-        <h3 class="px-3 text-xs font-bold tracking-wider text-gray-500 uppercase">
-          On This Page
-        </h3>
-        <ul class="space-y-0" data-toc-target="list">
-          <!-- TOC items will be inserted here by JavaScript -->
-        </ul>
+    <aside class="hidden flex-shrink-0 xl:block xl:w-64" data-toc-target="sidebar" aria-label="Page table of contents">
+      <nav class="sticky top-24 space-y-4">
+        <h2 class="px-3 text-xs font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">On this page</h2>
+        <ul class="space-y-0" data-toc-target="list"></ul>
       </nav>
     </aside>
   </div>
