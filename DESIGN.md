@@ -26,7 +26,7 @@ typography:
     fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
     fontSize: 72px
     fontWeight: 900
-    lineHeight: 0.92
+    lineHeight: 1
     letterSpacing: -0.055em
   headline-lg:
     fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
@@ -86,7 +86,7 @@ spacing:
   container: 1280px
 components:
   button-primary:
-    backgroundColor: "{colors.success}"
+    backgroundColor: "{colors.secondary}"
     textColor: "{colors.primary}"
     typography: "{typography.body-md}"
     rounded: "{rounded.full}"
@@ -111,7 +111,7 @@ components:
     rounded: "{rounded.xxl}"
     padding: 28px
   chip-success:
-    backgroundColor: "{colors.secondary}"
+    backgroundColor: "{colors.success}"
     textColor: "{colors.primary}"
     typography: "{typography.label-caps}"
     rounded: "{rounded.full}"
