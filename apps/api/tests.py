@@ -1,21 +1,21 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from django.test import SimpleTestCase
 from django.http import HttpRequest
+from django.test import SimpleTestCase
 
-
-from apps.blog.choices import BlogPostStatus
 from apps.api.views import (
-    submit_blog_post,
-    list_internal_blog_posts,
-    get_internal_blog_post,
-    update_internal_blog_post,
-    patch_internal_blog_post,
     delete_internal_blog_post,
-    review_internal_blog_post,
+    get_internal_blog_post,
+    get_user_info,
+    list_internal_blog_posts,
+    patch_internal_blog_post,
     publish_internal_blog_post,
+    review_internal_blog_post,
+    submit_blog_post,
+    update_internal_blog_post,
 )
+from apps.blog.choices import BlogPostStatus
 
 
 class BlogPostApiTests(SimpleTestCase):
@@ -123,7 +123,15 @@ class BlogPostApiTests(SimpleTestCase):
         assert post.title == "Updated"
         assert post.status == BlogPostStatus.PUBLISHED
         post.save.assert_called_once_with(
-            update_fields=["title", "description", "slug", "tags", "content", "status", "updated_at"]
+            update_fields=[
+                "title",
+                "description",
+                "slug",
+                "tags",
+                "content",
+                "status",
+                "updated_at",
+            ]
         )
 
     def test_patch_internal_blog_post_updates_only_supplied_fields(self):
@@ -179,3 +187,56 @@ class BlogPostApiTests(SimpleTestCase):
         assert post.status == BlogPostStatus.DRAFT
         post.save.assert_called_once_with(update_fields=["status", "updated_at"])
 
+
+class UserInfoApiUnitTests(SimpleTestCase):
+    def test_get_user_info_returns_safe_profile_data(self):
+        user = SimpleNamespace(
+            id=7,
+            email="ada@example.com",
+            username="ada",
+            first_name="Ada",
+            last_name="Lovelace",
+            date_joined="2026-05-14T00:00:00Z",
+            is_staff=False,
+            is_superuser=False,
+            get_full_name=lambda: "Ada Lovelace",
+        )
+        profile = SimpleNamespace(
+            id=11,
+            user=user,
+            state="signed_up",
+            has_active_subscription=False,
+        )
+        request = HttpRequest()
+        request.auth = profile
+
+        response = get_user_info(request)
+
+        assert response["email"] == "ada@example.com"
+        assert response["full_name"] == "Ada Lovelace"
+        assert response["profile"] == {
+            "id": 11,
+            "state": "signed_up",
+            "has_active_subscription": False,
+        }
+        assert "key" not in response
+
+
+def test_api_key_auth_returns_profile_for_valid_key():
+    from apps.api.auth import APIKeyAuth
+    from apps.core.models import Profile
+
+    profile = SimpleNamespace(id=11)
+
+    with patch("apps.api.auth.Profile.objects") as objects:
+        objects.get.return_value = profile
+        response = APIKeyAuth().authenticate(HttpRequest(), "secret-key")
+
+    assert response is profile
+    objects.get.assert_called_once_with(key="secret-key")
+
+    with patch("apps.api.auth.Profile.objects") as objects:
+        objects.get.side_effect = Profile.DoesNotExist
+        response = APIKeyAuth().authenticate(HttpRequest(), "bad-key")
+
+    assert response is None

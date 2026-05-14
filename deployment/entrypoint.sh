@@ -56,7 +56,7 @@ if [ "$server" = true ]; then
     echo "Starting FileBridge server..."
     python manage.py collectstatic --noinput
     python manage.py migrate --noinput
-    exec gunicorn ${PROJECT_NAME}.wsgi:application --bind 0.0.0.0:80 --workers 3 --threads 2
+    exec gunicorn ${PROJECT_NAME}.asgi:application --bind 0.0.0.0:80 --workers 3 --worker-class uvicorn_worker.UvicornWorker
 else
     echo "Starting FileBridge workers..."
     exec python manage.py qcluster

@@ -7,7 +7,7 @@ services:
       npm ci &&
       npm run build &&
       python manage.py collectstatic --noinput
-    startCommand: python manage.py migrate && gunicorn filebridge.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120
+    startCommand: python manage.py migrate && gunicorn filebridge.asgi:application --bind 0.0.0.0:$PORT --workers 2 --worker-class uvicorn_worker.UvicornWorker --timeout 120
     plan: free
     healthCheckPath: /
 
