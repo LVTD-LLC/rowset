@@ -1,4 +1,4 @@
-from urllib.parse import urlsplit, urlunsplit, urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import stripe
 from allauth.account.internal.flows.email_verification import (
