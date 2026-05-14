@@ -35,9 +35,11 @@ export default class extends Controller {
 
   async copyCode(text, button) {
     const copied = await this.copyText(text);
-    const original = button.textContent;
+    const original = button.dataset.originalLabel || button.textContent;
+    button.dataset.originalLabel = original;
     button.textContent = copied ? "Copied" : "Copy failed";
-    window.setTimeout(() => {
+    window.clearTimeout(Number(button.dataset.resetTimer));
+    button.dataset.resetTimer = window.setTimeout(() => {
       button.textContent = original;
     }, 1600);
   }
