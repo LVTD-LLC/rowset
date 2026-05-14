@@ -1,4 +1,4 @@
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import stripe
 from allauth.account.internal.flows.email_verification import (
@@ -65,10 +65,29 @@ The user prompt should provide:
 """
 
 
+def build_absolute_public_url(path: str) -> str:
+    site_url = settings.SITE_URL.rstrip("/")
+    parsed_url = urlsplit(site_url)
+    local_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+
+    if parsed_url.scheme == "http" and parsed_url.hostname not in local_hosts:
+        site_url = urlunsplit(
+            (
+                "https",
+                parsed_url.netloc,
+                parsed_url.path,
+                parsed_url.query,
+                parsed_url.fragment,
+            )
+        ).rstrip("/")
+
+    return f"{site_url}{path}"
+
+
 def build_agent_setup_prompt(request: HttpRequest) -> str:
-    mcp_url = request.build_absolute_uri("/mcp/")
-    rest_api_base_url = request.build_absolute_uri("/api/")
-    instructions_url = request.build_absolute_uri(reverse("agent_instructions_filebridge_mcp"))
+    mcp_url = build_absolute_public_url("/mcp/")
+    rest_api_base_url = build_absolute_public_url("/api/")
+    instructions_url = build_absolute_public_url(reverse("agent_instructions_filebridge_mcp"))
     api_key = request.user.profile.key
 
     return "\n".join(
@@ -105,7 +124,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
         context["recent_datasets"] = self.request.user.profile.datasets.all()[:5]
         context["agent_setup_prompt"] = build_agent_setup_prompt(self.request)
-        context["agent_instructions_url"] = self.request.build_absolute_uri(
+        context["agent_instructions_url"] = build_absolute_public_url(
             reverse("agent_instructions_filebridge_mcp")
         )
         return context
