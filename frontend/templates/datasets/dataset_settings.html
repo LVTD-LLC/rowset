@@ -5,9 +5,15 @@
   <div class="space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <a href="{{ dataset.get_absolute_url }}" class="fb-focus inline-flex rounded-full text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300">← Back to dataset</a>
-      {% if dataset.public_enabled %}
-        <a href="{{ public_url }}" class="fb-button-secondary">Open public preview</a>
-      {% endif %}
+      <div class="flex flex-wrap gap-2">
+        {% if dataset.public_enabled %}
+          <a href="{{ public_url }}" class="fb-button-secondary">Open public preview</a>
+        {% endif %}
+        {% if dataset.status == "ready" %}
+          <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary">Export CSV</a>
+          <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary">Export Parquet</a>
+        {% endif %}
+      </div>
     </div>
 
     <div>
@@ -53,6 +59,16 @@
           <button type="submit" class="fb-button-primary">Save sharing settings</button>
           <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
         </div>
+      </form>
+    </section>
+
+    <section class="rounded-3xl border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30" aria-labelledby="delete-dataset-heading">
+      <h2 id="delete-dataset-heading" class="text-lg font-bold text-red-900 dark:text-red-100">Delete dataset</h2>
+      <p class="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">Delete this dataset, its imported rows, and its stored source file. This cannot be undone.</p>
+      <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');" class="mt-4">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="settings">
+        <button type="submit" class="fb-button-secondary border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950">Delete dataset</button>
       </form>
     </section>
   </div>

@@ -24,6 +24,7 @@ from django.views.generic import TemplateView, UpdateView
 from apps.core.forms import ProfileUpdateForm
 from apps.core.models import Profile
 from apps.core.stripe_webhooks import EVENT_HANDLERS
+from apps.datasets.choices import DatasetStatus
 from filebridge.utils import get_filebridge_logger
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -129,7 +130,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
-        context["recent_datasets"] = profile.datasets.all()[:5]
+        context["recent_datasets"] = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)[:5]
         context["show_agent_setup_prompt"] = not profile.agent_setup_prompt_dismissed
         context["agent_setup_prompt"] = build_agent_setup_prompt(self.request)
         context["agent_instructions_url"] = build_absolute_public_url(

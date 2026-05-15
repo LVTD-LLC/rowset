@@ -258,6 +258,27 @@ def test_upload_preview_creates_preview_dataset(auth_client, profile):
     assert dataset.rows.count() == 0
 
 
+def test_upload_preview_replaces_unconfirmed_preview_dataset(auth_client, profile):
+    old_preview = Dataset.objects.create(
+        profile=profile,
+        name="Old preview",
+        original_filename="old.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name"],
+        preview_rows=[{"name": "Old"}],
+        row_count=1,
+    )
+
+    response = auth_client.post(
+        reverse("dataset_upload_preview"),
+        {"file": csv_upload()},
+    )
+
+    assert response.status_code == 200
+    assert not Dataset.objects.filter(id=old_preview.id).exists()
+    assert Dataset.objects.filter(profile=profile, status=DatasetStatus.PREVIEWED).count() == 1
+
+
 def test_upload_preview_creates_preview_dataset_for_parquet(auth_client, profile):
     response = auth_client.post(
         reverse("dataset_upload_preview"),
@@ -531,6 +552,96 @@ def test_confirm_import_can_generate_index_column(auth_client, profile, monkeypa
         "name": "Ada",
         "email": "ada@example.com",
     }
+
+
+def test_dataset_list_hides_unconfirmed_preview_dataset(auth_client, profile):
+    create_ready_dataset(profile)
+    Dataset.objects.create(
+        profile=profile,
+        name="Preview Only",
+        original_filename="preview.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name"],
+        preview_rows=[{"name": "Ada"}],
+        row_count=1,
+    )
+
+    response = auth_client.get(reverse("dataset_list"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "People" in content
+    assert "Preview Only" not in content
+
+
+def test_dataset_delete_removes_owned_dataset(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.post(reverse("dataset_delete", args=[dataset.key]))
+
+    assert response.status_code == 302
+    assert not Dataset.objects.filter(id=dataset.id).exists()
+    assert not DatasetRow.objects.filter(dataset_id=dataset.id).exists()
+
+
+def test_dataset_delete_rejects_other_users_dataset(client, django_user_model, profile):
+    dataset = create_ready_dataset(profile)
+    other_user = django_user_model.objects.create_user(
+        username="other-delete",
+        email="other-delete@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.post(reverse("dataset_delete", args=[dataset.key]))
+
+    assert response.status_code == 404
+    assert Dataset.objects.filter(id=dataset.id).exists()
+
+
+def test_dataset_export_csv_download(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "csv"]))
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/csv; charset=utf-8"
+    assert response["Content-Disposition"].endswith('.csv"')
+    exported = list(csv.DictReader(io.StringIO(response.content.decode())))
+    assert exported == [
+        {"name": "Ada", "email": "ada@example.com"},
+        {"name": "Grace", "email": "grace@example.com"},
+    ]
+
+
+def test_dataset_export_parquet_download(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "parquet"]))
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/vnd.apache.parquet"
+    dataframe = pl.read_parquet(io.BytesIO(response.content))
+    assert dataframe.to_dicts() == [
+        {"name": "Ada", "email": "ada@example.com"},
+        {"name": "Grace", "email": "grace@example.com"},
+    ]
+
+
+def test_dataset_export_requires_ready_dataset(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Preview Only",
+        original_filename="preview.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name"],
+        preview_rows=[{"name": "Ada"}],
+        row_count=1,
+    )
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "csv"]))
+
+    assert response.status_code == 404
 
 
 def test_dataset_api_crud_and_export(client, profile):

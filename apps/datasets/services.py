@@ -341,6 +341,25 @@ def iter_indexed_rows(
         )
 
 
+def rows_to_csv_text(headers: list[str], rows) -> str:
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=headers, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({header: row.data.get(header, "") for header in headers})
+    return buffer.getvalue()
+
+
+def rows_to_parquet_bytes(headers: list[str], rows) -> bytes:
+    dataframe = pl.DataFrame(
+        [{header: row.data.get(header, "") for header in headers} for row in rows],
+        schema={header: pl.String for header in headers},
+    )
+    buffer = io.BytesIO()
+    dataframe.write_parquet(buffer)
+    return buffer.getvalue()
+
+
 def prepare_index_config(headers: list[str], selected_index: str) -> tuple[str, bool, list[str]]:
     if selected_index == GENERATED_INDEX_CHOICE:
         index_column = generated_index_column_name(headers)

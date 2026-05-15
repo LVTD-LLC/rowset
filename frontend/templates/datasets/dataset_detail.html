@@ -26,6 +26,10 @@
         {% endif %}
       </div>
       <div class="flex flex-col gap-2 sm:flex-row">
+        {% if dataset.status == "ready" %}
+          <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary">Export CSV</a>
+          <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary">Export Parquet</a>
+        {% endif %}
         <a href="{% url 'docs_page' category='api-reference' page='datasets' %}" class="fb-button-secondary">Dataset API</a>
         <a href="{{ dataset.get_settings_url }}" class="fb-button-secondary">Settings</a>
       </div>
