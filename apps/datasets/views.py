@@ -16,6 +16,7 @@ from django_q.tasks import async_task
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
+from apps.datasets.google_sheets import GoogleSheetsSyncError, preview_google_sheet_url_with_oauth
 from apps.datasets.models import Dataset
 from apps.datasets.services import (
     GENERATED_INDEX_CHOICE,
@@ -239,8 +240,14 @@ def dataset_upload_preview(request):
 def _dataset_google_sheets_preview(request, google_sheets_url: str):
     try:
         preview = preview_google_sheet_url(google_sheets_url)
-    except CSVParseError as exc:
-        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    except CSVParseError:
+        try:
+            preview = preview_google_sheet_url_with_oauth(
+                google_sheets_url,
+                user=request.user,
+            )
+        except GoogleSheetsSyncError as oauth_exc:
+            return JsonResponse({"ok": False, "error": str(oauth_exc)}, status=400)
 
     if len(preview.source_text.encode("utf-8")) > MAX_CSV_UPLOAD_BYTES:
         return JsonResponse(

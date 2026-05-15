@@ -1,9 +1,16 @@
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
+from allauth.socialaccount.models import SocialAccount, SocialToken
+from django.utils import timezone
 
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.google_sheets import GoogleSheetsSyncError, sync_dataset_to_google_sheet
+from apps.datasets.google_sheets import (
+    GoogleSheetsSyncError,
+    preview_google_sheet_url_with_oauth,
+    sync_dataset_to_google_sheet,
+)
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import GOOGLE_SHEETS_FILE_TYPE, google_sheets_ids
 
@@ -67,6 +74,81 @@ def test_sync_dataset_to_google_sheet_noops_without_credentials(settings, profil
     sync_dataset_to_google_sheet(dataset)
 
 
+def test_sync_dataset_to_google_sheet_uses_user_google_token(settings, profile, monkeypatch):
+    settings.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON = ""
+    settings.GOOGLE_CLIENT_ID = "client-id"
+    settings.GOOGLE_CLIENT_SECRET = "client-secret"
+    dataset = create_google_sheet_dataset(profile)
+    account = SocialAccount.objects.create(user=profile.user, provider="google", uid="google-1")
+    SocialToken.objects.create(account=account, token="user-token")
+    calls = []
+
+    def fake_request(url, *, token, method, payload=None):
+        calls.append({"url": url, "token": token, "method": method, "payload": payload})
+        if method == "GET":
+            return {
+                "sheets": [
+                    {
+                        "properties": {
+                            "sheetId": 456,
+                            "title": "People Sheet",
+                            "gridProperties": {"rowCount": 2, "columnCount": 2},
+                        }
+                    }
+                ]
+            }
+        return {}
+
+    monkeypatch.setattr("apps.datasets.google_sheets._request_json", fake_request)
+
+    assert sync_dataset_to_google_sheet(dataset) == "synced"
+    assert [call["token"] for call in calls] == ["user-token", "user-token"]
+
+
+def test_sync_dataset_to_google_sheet_refreshes_expired_user_token(
+    settings,
+    profile,
+    monkeypatch,
+):
+    settings.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON = ""
+    settings.GOOGLE_CLIENT_ID = "client-id"
+    settings.GOOGLE_CLIENT_SECRET = "client-secret"
+    dataset = create_google_sheet_dataset(profile)
+    account = SocialAccount.objects.create(user=profile.user, provider="google", uid="google-1")
+    token = SocialToken.objects.create(
+        account=account,
+        token="expired-token",
+        token_secret="refresh-token",
+        expires_at=timezone.now() - timedelta(minutes=5),
+    )
+
+    def fake_refresh(credentials, request):
+        credentials.token = "fresh-token"
+        credentials.expiry = timezone.now() + timedelta(hours=1)
+
+    def fake_request(url, *, token, method, payload=None):
+        if method == "GET":
+            return {
+                "sheets": [
+                    {
+                        "properties": {
+                            "sheetId": 456,
+                            "title": "People Sheet",
+                            "gridProperties": {"rowCount": 2, "columnCount": 2},
+                        }
+                    }
+                ]
+            }
+        return {}
+
+    monkeypatch.setattr("apps.datasets.google_sheets.GoogleOAuthCredentials.refresh", fake_refresh)
+    monkeypatch.setattr("apps.datasets.google_sheets._request_json", fake_request)
+
+    assert sync_dataset_to_google_sheet(dataset) == "synced"
+    token.refresh_from_db()
+    assert token.token == "fresh-token"
+
+
 def test_sync_dataset_to_google_sheet_replaces_tab_values(settings, profile, monkeypatch):
     settings.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON = '{"client_email":"svc@example.com"}'
     dataset = create_google_sheet_dataset(profile)
@@ -109,6 +191,39 @@ def test_sync_dataset_to_google_sheet_replaces_tab_values(settings, profile, mon
         ]
     }
     assert len(calls) == 2
+
+
+def test_preview_google_sheet_url_with_oauth(settings, profile, monkeypatch):
+    settings.GOOGLE_CLIENT_ID = "client-id"
+    settings.GOOGLE_CLIENT_SECRET = "client-secret"
+    account = SocialAccount.objects.create(user=profile.user, provider="google", uid="google-1")
+    SocialToken.objects.create(account=account, token="user-token")
+
+    def fake_request(url, *, token, method, payload=None):
+        if "fields=" in url:
+            return {
+                "sheets": [
+                    {
+                        "properties": {
+                            "sheetId": 456,
+                            "title": "People Sheet",
+                            "gridProperties": {"rowCount": 2, "columnCount": 2},
+                        }
+                    }
+                ]
+            }
+        return {"values": [["email", "name"], ["ada@example.com", "Ada"]]}
+
+    monkeypatch.setattr("apps.datasets.google_sheets._request_json", fake_request)
+
+    preview = preview_google_sheet_url_with_oauth(
+        "https://docs.google.com/spreadsheets/d/sheet123/edit#gid=456",
+        user=profile.user,
+    )
+
+    assert preview.headers == ["email", "name"]
+    assert preview.preview_rows == [{"email": "ada@example.com", "name": "Ada"}]
+    assert preview.row_count == 1
 
 
 def test_sync_dataset_to_google_sheet_does_not_clear_before_successful_update(

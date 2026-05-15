@@ -37,6 +37,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Google OAuth can now be enabled with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` for Google signup/login and per-user Google Sheets access/write-back.
 - Google Sheets-backed datasets can now write row creates, updates, and deletes back to the source sheet when `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` is configured and the sheet is shared with that service account as an editor.
 - Hosted MCP now exposes dataset detail and ready-dataset row tools for listing, reading, creating, updating, and deleting rows.
 - Dataset owners can now delete datasets from the dataset list, dashboard recent datasets, and dataset settings.

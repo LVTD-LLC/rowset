@@ -6,6 +6,7 @@ from allauth.account.internal.flows.email_verification import (
 )
 from allauth.account.models import EmailAddress
 from allauth.mfa.models import Authenticator
+from allauth.socialaccount.models import SocialToken
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -167,6 +168,11 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             user=user,
             type=Authenticator.Type.WEBAUTHN,
         ).count()
+        context["google_connected"] = SocialToken.objects.filter(
+            account__user=user,
+            account__provider="google",
+        ).exists()
+        context["google_provider_enabled"] = "google" in settings.SOCIALACCOUNT_PROVIDERS
 
         context["api_key"] = user.profile.key
 

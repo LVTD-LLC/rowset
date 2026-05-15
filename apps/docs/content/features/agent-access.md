@@ -36,7 +36,7 @@ That file gives an agent durable setup instructions for FileBridge MCP, includin
 - Inspect one dataset with `get_dataset` before row operations.
 - Read rows with `list_dataset_rows`, `get_dataset_row`, or `get_dataset_row_by_index`.
 - Modify rows with `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row` only when requested.
-- For Google Sheets-backed datasets, row changes may also update the source spreadsheet when write-back credentials are configured.
+- For Google Sheets-backed datasets, row changes may also update the source spreadsheet when the user has connected Google or service-account write-back is configured.
 - Use the Dataset API if MCP configuration is unavailable.
 - Ask before destructive actions like deleting datasets or rows.
 - Keep the API key private and never print it back into public logs or messages.

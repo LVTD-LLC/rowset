@@ -62,6 +62,14 @@
           </div>
 
           <div class="mt-6 grid grid-cols-1 gap-4">
+            {% if 'google' in available_social_providers %}
+              <form method="post" action="{% provider_login_url 'google' %}">
+                {% csrf_token %}
+                <button class="fb-button-secondary w-full gap-3">
+                  <span>Google</span>
+                </button>
+              </form>
+            {% endif %}
             {% if 'github' in available_social_providers %}
               <form method="post" action="{% provider_login_url 'github' %}">
                 {% csrf_token %}

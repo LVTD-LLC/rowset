@@ -51,6 +51,12 @@
             <div class="relative flex justify-center text-sm font-medium leading-6"><span class="bg-white px-6 text-slate-600 dark:bg-slate-900 dark:text-slate-300">Or continue with</span></div>
           </div>
           <div class="mt-6 grid grid-cols-1 gap-4">
+            {% if 'google' in available_social_providers %}
+              <form method="post" action="{% provider_login_url 'google' %}">
+                {% csrf_token %}
+                <button class="fb-button-secondary w-full gap-3">Google</button>
+              </form>
+            {% endif %}
             {% if 'github' in available_social_providers %}
               <form method="post" action="{% provider_login_url 'github' %}">
                 {% csrf_token %}
