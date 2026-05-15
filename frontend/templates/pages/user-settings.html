@@ -1,6 +1,7 @@
 {% extends 'base_app.html' %}
 {% load webpack_loader static %}
 {% load widget_tweaks %}
+{% load socialaccount %}
 
 {% block meta %}
   <title>Settings · FileBridge</title>
@@ -48,6 +49,31 @@
         </div>
       </div>
     </section>
+
+    {% if google_provider_enabled %}
+    <section class="fb-card p-6" aria-labelledby="google-settings-heading">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 id="google-settings-heading" class="text-lg font-bold text-slate-900 dark:text-slate-100">Google Sheets access</h2>
+          <p class="fb-text-muted mt-1 text-sm leading-6">
+            {% if google_connected %}
+              Google is connected. FileBridge can import private sheets you can access and write row changes back to Google Sheets.
+            {% else %}
+              Connect Google to import private sheets and write row changes back without sharing sheets with a service account.
+            {% endif %}
+          </p>
+        </div>
+        {% if google_connected %}
+          <a href="{% url 'socialaccount_connections' %}" class="fb-button-secondary">Manage Google</a>
+        {% else %}
+          <form method="post" action="{% provider_login_url 'google' process='connect' %}">
+            {% csrf_token %}
+            <button class="fb-button-primary">Connect Google</button>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
 
     <section class="fb-card p-6" aria-labelledby="profile-heading">
       <form id="settings-form" action="" method="post" class="space-y-6">

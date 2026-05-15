@@ -104,6 +104,7 @@ THIRD_PARTY_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.github",
+    "allauth.socialaccount.providers.google",
     "allauth.mfa",
     "django_q",
     "django_extensions",
@@ -315,6 +316,7 @@ MFA_PASSKEY_SIGNUP_ENABLED = False
 MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = DEBUG
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_STORE_TOKENS = True
 SOCIALACCOUNT_PROVIDERS = {}
 SOCIALACCOUNT_ADAPTER = "filebridge.adapters.CustomSocialAccountAdapter"
 
@@ -327,6 +329,28 @@ if GITHUB_CLIENT_ID != "":
         "APP": {
             "client_id": env("GITHUB_CLIENT_ID"),
             "secret": env("GITHUB_CLIENT_SECRET"),
+        },
+    }
+
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
+GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET", default="")
+if GOOGLE_CLIENT_ID != "":
+    SOCIALACCOUNT_PROVIDERS["google"] = {
+        "SCOPE": [
+            "profile",
+            "email",
+            "https://www.googleapis.com/auth/spreadsheets",
+        ],
+        "AUTH_PARAMS": {
+            "access_type": "offline",
+            "prompt": "consent",
+        },
+        "VERIFIED_EMAIL": True,
+        "EMAIL_AUTHENTICATION": True,
+        "AUTO_SIGNUP": True,
+        "APP": {
+            "client_id": env("GOOGLE_CLIENT_ID"),
+            "secret": env("GOOGLE_CLIENT_SECRET"),
         },
     }
 
