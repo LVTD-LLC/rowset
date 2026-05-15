@@ -339,12 +339,7 @@ if GOOGLE_CLIENT_ID != "":
         "SCOPE": [
             "profile",
             "email",
-            "https://www.googleapis.com/auth/spreadsheets",
         ],
-        "AUTH_PARAMS": {
-            "access_type": "offline",
-            "prompt": "consent",
-        },
         "VERIFIED_EMAIL": True,
         "EMAIL_AUTHENTICATION": True,
         "AUTO_SIGNUP": True,

@@ -67,9 +67,11 @@
         <p id="dataset-file-help" class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">Maximum upload size is 10 MB. We only store the normalized table text after you confirm the preview.</p>
         <input id="dataset-file" data-csv-upload-target="file" type="file" name="file" accept=".csv,text/csv,.parquet,application/vnd.apache.parquet" aria-describedby="dataset-file-help upload-status" class="fb-input mx-auto mt-5 block w-full max-w-md text-sm file:mr-4 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-emerald-800 hover:file:bg-emerald-100 dark:file:bg-emerald-900/40 dark:file:text-emerald-200" />
         <div class="mx-auto mt-6 max-w-md text-left">
-          <label for="google-sheets-url" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Or paste a public Google Sheets link</label>
+          <label for="google-sheets-url" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Or paste a Google Sheets link</label>
           <input id="google-sheets-url" data-csv-upload-target="googleSheetsUrl" type="url" name="google_sheets_url" placeholder="https://docs.google.com/spreadsheets/d/..." aria-describedby="google-sheets-help upload-status" class="fb-input mt-2 block w-full px-3 py-2 text-sm" />
-          <p id="google-sheets-help" class="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-400">The sheet must be public/shareable. FileBridge imports the active tab by exporting it as CSV.</p>
+          <p id="google-sheets-help" class="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-400">
+            Public sheets work immediately. Private sheets need Google Sheets access connected first.
+          </p>
         </div>
         <button data-csv-upload-target="submit" type="submit" class="fb-button-primary mt-5">
           Preview dataset
@@ -100,6 +102,26 @@
         <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" data-csv-upload-target="sample"></div>
       </div>
     </form>
+
+    {% if google_provider_enabled %}
+      <div class="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-950/70 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-slate-600 dark:text-slate-300">
+          {% if google_connected %}
+            Google Sheets is connected. You can import private sheets you can access.
+          {% else %}
+            Want to import private Google Sheets? Connect Google Sheets only when you need it.
+          {% endif %}
+        </p>
+        {% if google_connected %}
+          <a href="{% url 'settings' %}" class="fb-button-secondary whitespace-nowrap">Manage Google Sheets</a>
+        {% else %}
+          <form method="post" action="{% url 'connect_google_sheets' %}">
+            {% csrf_token %}
+            <button class="fb-button-secondary whitespace-nowrap">Connect Google Sheets</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
   </section>
 
   <section class="mt-10">

@@ -6,7 +6,6 @@ from allauth.account.internal.flows.email_verification import (
 )
 from allauth.account.models import EmailAddress
 from allauth.mfa.models import Authenticator
-from allauth.socialaccount.models import SocialToken
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -26,13 +25,17 @@ from apps.core.forms import ProfileUpdateForm
 from apps.core.models import Profile
 from apps.core.stripe_webhooks import EVENT_HANDLERS
 from apps.datasets.choices import DatasetStatus
+from apps.datasets.google_sheets import (
+    GOOGLE_SHEETS_CONNECT_SESSION_KEY,
+    SHEETS_SCOPE,
+    user_has_google_sheets_connection,
+)
 from filebridge.utils import get_filebridge_logger
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 logger = get_filebridge_logger(__name__)
-
 
 AGENT_INSTRUCTIONS_MARKDOWN = """# FileBridge MCP Agent Skill
 
@@ -142,6 +145,8 @@ class HomeView(LoginRequiredMixin, TemplateView):
         context["agent_instructions_url"] = build_absolute_public_url(
             reverse("agent_instructions_filebridge_mcp")
         )
+        context["google_connected"] = user_has_google_sheets_connection(self.request.user)
+        context["google_provider_enabled"] = "google" in settings.SOCIALACCOUNT_PROVIDERS
         return context
 
 
@@ -168,15 +173,33 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             user=user,
             type=Authenticator.Type.WEBAUTHN,
         ).count()
-        context["google_connected"] = SocialToken.objects.filter(
-            account__user=user,
-            account__provider="google",
-        ).exists()
+        context["google_connected"] = user_has_google_sheets_connection(user)
         context["google_provider_enabled"] = "google" in settings.SOCIALACCOUNT_PROVIDERS
 
         context["api_key"] = user.profile.key
 
         return context
+
+
+@login_required
+@require_POST
+def connect_google_sheets(request):
+    request.session[GOOGLE_SHEETS_CONNECT_SESSION_KEY] = True
+    query = urlencode(
+        {
+            "process": "connect",
+            "scope": SHEETS_SCOPE,
+            "auth_params": urlencode(
+                {
+                    "access_type": "offline",
+                    "include_granted_scopes": "true",
+                    "prompt": "consent",
+                }
+            ),
+            "next": reverse("settings"),
+        }
+    )
+    return redirect(f"{reverse('google_login')}?{query}")
 
 
 def agent_instructions_filebridge_mcp(request):
