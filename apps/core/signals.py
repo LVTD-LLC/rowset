@@ -10,10 +10,12 @@ from apps.core.tasks import add_email_to_buttondown
 from apps.datasets.google_sheets import (
     GOOGLE_SHEETS_CONNECT_SESSION_KEY,
     GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY,
+    SHEETS_SCOPE,
 )
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
+
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
@@ -41,21 +43,31 @@ def add_email_to_buttondown_on_confirm(sender, **kwargs):
 
 @receiver(user_signed_up)
 def email_confirmation_callback(sender, request, user, **kwargs):
-    if 'sociallogin' in kwargs:
+    if "sociallogin" in kwargs:
         logger.info(
             "Adding new user to buttondown newsletter on social signup",
             kwargs=kwargs,
             sender=sender,
         )
-        email = kwargs['sociallogin'].user.email
+        email = kwargs["sociallogin"].user.email
         if email:
             async_task(add_email_to_buttondown, email, tag="user")
+
+
+def _sociallogin_requested_google_sheets(sociallogin) -> bool:
+    scope = (sociallogin.state or {}).get("scope", "")
+    if isinstance(scope, str):
+        requested_scopes = set(scope.replace(",", " ").split())
+    else:
+        requested_scopes = set(scope or [])
+    return SHEETS_SCOPE in requested_scopes
 
 
 def _mark_google_sheets_connected(request, sociallogin):
     if sociallogin.account.provider != "google":
         return
-    if not request.session.pop(GOOGLE_SHEETS_CONNECT_SESSION_KEY, False):
+    request.session.pop(GOOGLE_SHEETS_CONNECT_SESSION_KEY, None)
+    if not _sociallogin_requested_google_sheets(sociallogin):
         return
     extra_data = sociallogin.account.extra_data or {}
     extra_data[GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY] = True
