@@ -269,7 +269,10 @@ class _GoogleSheetsRedirectHandler(HTTPRedirectHandler):
 
 def _validate_google_sheets_fetch_url(url: str):
     parsed = urlparse(url)
-    if parsed.scheme != "https" or parsed.netloc != "docs.google.com":
+    hostname = parsed.hostname or ""
+    is_google_sheets_export = hostname == "docs.google.com"
+    is_google_csv_redirect = hostname.endswith("-sheets.googleusercontent.com")
+    if parsed.scheme != "https" or not (is_google_sheets_export or is_google_csv_redirect):
         raise CSVParseError("Could not download that Google Sheet right now.")
 
 
