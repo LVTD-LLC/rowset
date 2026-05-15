@@ -13,6 +13,7 @@ from apps.datasets.services import (
     GOOGLE_SHEETS_FILE_TYPE,
     CSVParseError,
     TabularPreview,
+    fetch_google_sheet_csv,
     google_sheets_export_url,
     preview_csv_file,
     preview_google_sheet_url,
@@ -146,6 +147,34 @@ def test_google_sheets_export_url_accepts_share_links():
 def test_google_sheets_export_url_rejects_non_google_hosts():
     with pytest.raises(CSVParseError, match="docs.google.com"):
         google_sheets_export_url("https://example.com/spreadsheets/d/abc123/edit")
+
+
+def test_google_sheets_export_url_rejects_http_links():
+    with pytest.raises(CSVParseError, match="docs.google.com"):
+        google_sheets_export_url("http://docs.google.com/spreadsheets/d/abc123/edit")
+
+
+def test_fetch_google_sheet_csv_rejects_html_without_content_type(monkeypatch):
+    class FakeResponse:
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def read(self, size):
+            return b"<html><body>sign in</body></html>"
+
+    class FakeOpener:
+        def open(self, request, timeout):
+            return FakeResponse()
+
+    monkeypatch.setattr("apps.datasets.services.build_opener", lambda handler: FakeOpener())
+
+    with pytest.raises(CSVParseError, match="publicly accessible"):
+        fetch_google_sheet_csv("https://docs.google.com/spreadsheets/d/abc123/export?format=csv")
 
 
 def test_preview_google_sheet_url_fetches_and_parses_csv(monkeypatch):
@@ -376,6 +405,29 @@ def test_confirm_import_file_fallback_validates_selected_index(auth_client, prof
     dataset.refresh_from_db()
     assert dataset.status == DatasetStatus.READY
     assert dataset.rows.first().index_value == "ada@example.com"
+
+
+def test_confirm_import_rejects_missing_google_sheets_source_text(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="Google Sheets import",
+        file_type=GOOGLE_SHEETS_FILE_TYPE,
+        source_url="https://docs.google.com/spreadsheets/d/abc123/edit",
+        source_text="",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name", "email"],
+        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+        row_count=2,
+    )
+
+    response = auth_client.post(
+        reverse("dataset_confirm_import", args=[dataset.key]),
+        {"index_column": "email"},
+    )
+
+    assert response.status_code == 400
+    assert "stored dataset content" in response.json()["error"]
 
 
 def test_confirm_import_rejects_duplicate_index_column(auth_client, profile):

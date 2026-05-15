@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 import polars as pl
 
@@ -213,7 +213,7 @@ def preview_google_sheet_url(url: str, sample_size: int = 5) -> TabularPreview:
 
 def google_sheets_export_url(url: str) -> tuple[str, str]:
     parsed = urlparse((url or "").strip())
-    if parsed.scheme not in {"https", "http"} or parsed.netloc != "docs.google.com":
+    if parsed.scheme != "https" or parsed.netloc != "docs.google.com":
         raise CSVParseError("Enter a public Google Sheets link from docs.google.com.")
 
     parts = [part for part in parsed.path.split("/") if part]
@@ -221,9 +221,6 @@ def google_sheets_export_url(url: str) -> tuple[str, str]:
         raise CSVParseError("Enter a public Google Sheets spreadsheet link.")
 
     sheet_id = parts[2]
-    if not sheet_id:
-        raise CSVParseError("Enter a valid Google Sheets spreadsheet link.")
-
     params = parse_qs(parsed.query)
     fragment_params = parse_qs(parsed.fragment)
     gid = (params.get("gid") or fragment_params.get("gid") or ["0"])[0]
@@ -237,9 +234,11 @@ def google_sheets_export_url(url: str) -> tuple[str, str]:
 
 
 def fetch_google_sheet_csv(export_url: str) -> str:
+    _validate_google_sheets_fetch_url(export_url)
     request = Request(export_url, headers={"User-Agent": "FileBridge/1.0"})
+    opener = build_opener(_GoogleSheetsRedirectHandler)
     try:
-        with urlopen(request, timeout=GOOGLE_SHEETS_EXPORT_TIMEOUT_SECONDS) as response:
+        with opener.open(request, timeout=GOOGLE_SHEETS_EXPORT_TIMEOUT_SECONDS) as response:
             content_type = response.headers.get("Content-Type", "")
             raw = response.read(MAX_CSV_UPLOAD_BYTES + 1)
     except HTTPError as exc:
@@ -255,11 +254,23 @@ def fetch_google_sheet_csv(export_url: str) -> str:
         raise CSVParseError("Google Sheets exports must be 10 MB or smaller for now.")
 
     text = _decode_bytes(raw)
-    if "text/html" in content_type.lower() and "<html" in text[:200].lower():
+    if "text/html" in content_type.lower() or "<html" in text[:200].lower():
         raise CSVParseError(
             "Google returned a web page instead of CSV. Make sure the sheet is publicly accessible."
         )
     return text
+
+
+class _GoogleSheetsRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        _validate_google_sheets_fetch_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _validate_google_sheets_fetch_url(url: str):
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.netloc != "docs.google.com":
+        raise CSVParseError("Could not download that Google Sheet right now.")
 
 
 def source_text_from_file(file_obj, file_type: str) -> str:
@@ -346,7 +357,7 @@ def dataset_name_from_filename(filename: str) -> str:
 def normalize_public_page_size(value) -> int:
     try:
         page_size = int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         page_size = DEFAULT_PUBLIC_PAGE_SIZE
 
     if page_size < 1:

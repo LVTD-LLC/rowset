@@ -18,8 +18,8 @@ from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 from apps.datasets.models import Dataset
 from apps.datasets.services import (
     GENERATED_INDEX_CHOICE,
-    CSVParseError,
     GOOGLE_SHEETS_FILE_TYPE,
+    CSVParseError,
     dataset_name_from_filename,
     iter_indexed_rows,
     normalize_public_page_size,
@@ -116,7 +116,10 @@ def dataset_upload_preview(request):
 
     if not uploaded_file:
         return JsonResponse(
-            {"ok": False, "error": "Please choose a CSV/Parquet file or paste a Google Sheets link."},
+            {
+                "ok": False,
+                "error": "Please choose a CSV/Parquet file or paste a Google Sheets link.",
+            },
             status=400,
         )
 
@@ -232,10 +235,13 @@ def dataset_confirm_import(request, dataset_key):
             selected_index,
         )
         # Validate uniqueness before queueing the import so users get immediate feedback.
-        source_text = dataset.source_text or source_text_from_file(
-            dataset.source_file,
-            dataset.file_type,
-        )
+        source_text = dataset.source_text
+        if not source_text and dataset.source_file:
+            source_text = source_text_from_file(dataset.source_file, dataset.file_type)
+        if not source_text:
+            raise CSVParseError(
+                "Could not find stored dataset content. Please upload the dataset again."
+            )
         validated_rows = list(
             iter_indexed_rows(
                 file_type=dataset.file_type,
