@@ -5,7 +5,19 @@ from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
 from pydantic import Field
 
-from apps.api.services import serialize_profile_datasets, serialize_user_info
+from apps.api.services import (
+    DatasetServiceError,
+    create_profile_dataset_row,
+    delete_profile_dataset_row,
+    get_profile_dataset,
+    get_profile_dataset_row,
+    get_profile_dataset_row_by_index,
+    list_profile_dataset_rows,
+    patch_profile_dataset_row,
+    serialize_dataset_summary,
+    serialize_profile_datasets,
+    serialize_user_info,
+)
 from apps.core.models import Profile
 from filebridge.utils import get_filebridge_logger
 
@@ -53,6 +65,10 @@ def _authenticate_profile(api_key: str | None = None) -> Profile:
     except Profile.DoesNotExist as exc:
         logger.warning("[MCP] Invalid API key")
         raise PermissionError("Invalid FileBridge API key.") from exc
+
+
+def _service_error_to_value_error(exc: DatasetServiceError) -> ValueError:
+    return ValueError(f"{exc.status_code}: {exc.message}")
 
 
 @mcp.tool(
@@ -107,3 +123,144 @@ def get_all_datasets(
     close_old_connections()
     profile = _authenticate_profile(api_key)
     return serialize_profile_datasets(profile, limit=limit, offset=offset)
+
+
+@mcp.tool(
+    name="get_dataset",
+    description="Return metadata for one dataset owned by the authenticated FileBridge profile.",
+)
+def get_dataset(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return serialize_dataset_summary(get_profile_dataset(profile, dataset_key))
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="list_dataset_rows",
+    description="Return a bounded page of rows for a ready dataset.",
+)
+def list_dataset_rows(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+    limit: Annotated[int, Field(default=100, ge=1, le=500)] = 100,
+    offset: Annotated[int, Field(default=0, ge=0)] = 0,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return list_profile_dataset_rows(profile, dataset_key, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="get_dataset_row",
+    description="Return one row from a ready dataset by internal row id.",
+)
+def get_dataset_row(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    row_id: Annotated[int, Field(ge=1, description="Internal FileBridge row id.")],
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return get_profile_dataset_row(profile, dataset_key, row_id)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="get_dataset_row_by_index",
+    description="Return one row from a ready dataset by its configured index value.",
+)
+def get_dataset_row_by_index(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    index_value: Annotated[str, Field(description="Value from the dataset index column.")],
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return get_profile_dataset_row_by_index(profile, dataset_key, index_value)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="create_dataset_row",
+    description="Create one row in a ready dataset. Provide values keyed by dataset header.",
+)
+def create_dataset_row(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    data: Annotated[dict[str, str], Field(description="Row values keyed by dataset header.")],
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return create_profile_dataset_row(profile, dataset_key, data)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_dataset_row",
+    description="Patch one row in a ready dataset. Unknown headers are ignored.",
+)
+def update_dataset_row(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    row_id: Annotated[int, Field(ge=1, description="Internal FileBridge row id.")],
+    data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return patch_profile_dataset_row(profile, dataset_key, row_id, data)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="delete_dataset_row",
+    description="Delete one row from a ready dataset by internal row id.",
+)
+def delete_dataset_row(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    row_id: Annotated[int, Field(ge=1, description="Internal FileBridge row id.")],
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return delete_profile_dataset_row(profile, dataset_key, row_id)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc

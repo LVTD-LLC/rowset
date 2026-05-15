@@ -50,6 +50,22 @@ Then discover datasets with:
 get_all_datasets
 ```
 
+For a specific ready dataset, agents can use:
+
+```text
+get_dataset
+list_dataset_rows
+get_dataset_row
+get_dataset_row_by_index
+create_dataset_row
+update_dataset_row
+delete_dataset_row
+```
+
+Row tools enforce the same API-key ownership boundary as the REST API. `create`,
+`update`, and `delete` change dataset contents, so agents should ask the user before
+using them unless the user explicitly requested the change.
+
 Use MCP tools for agent workflows when available. If the runtime cannot configure MCP, use the REST API with the same API key.
 
 ## Agent setup prompt

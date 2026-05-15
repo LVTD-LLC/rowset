@@ -129,6 +129,9 @@ class DatasetRowOut(Schema):
 class DatasetRowsOut(Schema):
     dataset: str
     count: int
+    limit: int
+    offset: int
+    has_more: bool
     rows: list[DatasetRowOut]
 
 
