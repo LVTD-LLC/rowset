@@ -357,7 +357,9 @@ def dataset_name_from_filename(filename: str) -> str:
 def normalize_public_page_size(value) -> int:
     try:
         page_size = int(value)
-    except TypeError, ValueError:
+    except TypeError:
+        page_size = DEFAULT_PUBLIC_PAGE_SIZE
+    except ValueError:
         page_size = DEFAULT_PUBLIC_PAGE_SIZE
 
     if page_size < 1:
