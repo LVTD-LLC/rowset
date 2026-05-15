@@ -4,6 +4,7 @@ import anyio
 import pytest
 from fastmcp import Client
 
+from apps.api.services import DatasetServiceError
 from apps.mcp_server.server import mcp
 
 
@@ -92,6 +93,151 @@ def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
         assert payload["datasets"][0]["name"] == "Customers"
         assert payload["datasets"][0]["row_count"] == 42
         assert "rows" not in payload["datasets"][0]
+
+    anyio.run(run)
+
+
+def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
+    async def run():
+        profile = _profile()
+        dataset = profile.datasets.only().__getitem__(slice(0, 100, None))[0]
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.get_profile_dataset",
+            lambda authenticated_profile, dataset_key: dataset,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "get_dataset",
+                {
+                    "api_key": "secret-key",
+                    "dataset_key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
+                },
+            )
+
+        payload = result.data
+        assert payload["key"] == "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7"
+        assert payload["name"] == "Customers"
+        assert "rows" not in payload
+
+    anyio.run(run)
+
+
+def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
+    calls = []
+
+    def profile():
+        return _profile()
+
+    def list_rows(authenticated_profile, dataset_key, limit=100, offset=0):
+        calls.append(("list", dataset_key, limit, offset))
+        return {
+            "dataset": dataset_key,
+            "count": 1,
+            "rows": [{"id": 1, "data": {"email": "a@example.com"}}],
+        }
+
+    def get_row(authenticated_profile, dataset_key, row_id):
+        calls.append(("get", dataset_key, row_id))
+        return {"status": "success", "message": "Row retrieved.", "row": {"id": row_id}}
+
+    def get_by_index(authenticated_profile, dataset_key, index_value):
+        calls.append(("get_by_index", dataset_key, index_value))
+        return {
+            "status": "success",
+            "message": "Row retrieved.",
+            "row": {"index_value": index_value},
+        }
+
+    def create_row(authenticated_profile, dataset_key, data):
+        calls.append(("create", dataset_key, data))
+        return {"status": "success", "message": "Row created.", "row": {"data": data}}
+
+    def update_row(authenticated_profile, dataset_key, row_id, data):
+        calls.append(("update", dataset_key, row_id, data))
+        return {"status": "success", "message": "Row updated.", "row": {"id": row_id, "data": data}}
+
+    def delete_row(authenticated_profile, dataset_key, row_id):
+        calls.append(("delete", dataset_key, row_id))
+        return {"status": "success", "message": "Row deleted."}
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile(),
+        )
+        monkeypatch.setattr("apps.mcp_server.server.list_profile_dataset_rows", list_rows)
+        monkeypatch.setattr("apps.mcp_server.server.get_profile_dataset_row", get_row)
+        monkeypatch.setattr("apps.mcp_server.server.get_profile_dataset_row_by_index", get_by_index)
+        monkeypatch.setattr("apps.mcp_server.server.create_profile_dataset_row", create_row)
+        monkeypatch.setattr("apps.mcp_server.server.patch_profile_dataset_row", update_row)
+        monkeypatch.setattr("apps.mcp_server.server.delete_profile_dataset_row", delete_row)
+
+        async with Client(mcp) as client:
+            list_result = await client.call_tool(
+                "list_dataset_rows",
+                {"dataset_key": "ds", "limit": 5},
+            )
+            get_result = await client.call_tool(
+                "get_dataset_row",
+                {"dataset_key": "ds", "row_id": 7},
+            )
+            get_by_index_result = await client.call_tool(
+                "get_dataset_row_by_index",
+                {"dataset_key": "ds", "index_value": "a@example.com"},
+            )
+            create_result = await client.call_tool(
+                "create_dataset_row",
+                {"dataset_key": "ds", "data": {"email": "b@example.com"}},
+            )
+            update_result = await client.call_tool(
+                "update_dataset_row",
+                {"dataset_key": "ds", "row_id": 7, "data": {"email": "c@example.com"}},
+            )
+            delete_result = await client.call_tool(
+                "delete_dataset_row",
+                {"dataset_key": "ds", "row_id": 7},
+            )
+
+        assert list_result.data["count"] == 1
+        assert get_result.data["row"]["id"] == 7
+        assert get_by_index_result.data["row"]["index_value"] == "a@example.com"
+        assert create_result.data["row"]["data"]["email"] == "b@example.com"
+        assert update_result.data["row"]["data"]["email"] == "c@example.com"
+        assert delete_result.data["message"] == "Row deleted."
+
+        assert calls == [
+            ("list", "ds", 5, 0),
+            ("get", "ds", 7),
+            ("get_by_index", "ds", "a@example.com"),
+            ("create", "ds", {"email": "b@example.com"}),
+            ("update", "ds", 7, {"email": "c@example.com"}),
+            ("delete", "ds", 7),
+        ]
+
+    anyio.run(run)
+
+
+def test_dataset_row_mcp_tools_return_service_errors(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.get_profile_dataset_row",
+            lambda profile, dataset_key, row_id: (_ for _ in ()).throw(
+                DatasetServiceError(404, "Row not found.")
+            ),
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception, match="404: Row not found"):
+                await client.call_tool("get_dataset_row", {"dataset_key": "ds", "row_id": 999})
 
     anyio.run(run)
 

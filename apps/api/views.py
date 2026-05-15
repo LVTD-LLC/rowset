@@ -17,7 +17,6 @@ from apps.api.schemas import (
     DatasetApiOut,
     DatasetListOut,
     DatasetRowIn,
-    DatasetRowOut,
     DatasetRowPatchIn,
     DatasetRowsOut,
     SubmitFeedbackIn,
@@ -25,17 +24,30 @@ from apps.api.schemas import (
     UserInfoOut,
     UserSettingsOut,
 )
-from apps.api.services import serialize_profile_datasets, serialize_user_info
+from apps.api.services import (
+    DatasetServiceError,
+    create_profile_dataset_row,
+    delete_profile_dataset_row,
+    get_profile_dataset_row,
+    get_profile_dataset_row_by_index,
+    get_ready_profile_dataset,
+    list_profile_dataset_rows,
+    patch_profile_dataset_row,
+    serialize_profile_datasets,
+    serialize_user_info,
+)
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
 from apps.core.models import Feedback
-from apps.datasets.choices import DatasetStatus
-from apps.datasets.models import Dataset, DatasetRow
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
 
 api = NinjaAPI()
+
+
+def _raise_http_error(exc: DatasetServiceError):
+    raise HttpError(exc.status_code, exc.message) from exc
 
 
 @api.get("/healthcheck", auth=None, include_in_schema=False, tags=["private"])
@@ -363,30 +375,6 @@ def list_datasets(request: HttpRequest, limit: int = 100, offset: int = 0):
     return serialize_profile_datasets(request.auth, limit=limit, offset=offset)
 
 
-def _get_ready_dataset(profile, dataset_key: str) -> Dataset:
-    try:
-        dataset = Dataset.objects.get(key=dataset_key, profile=profile)
-    except Dataset.DoesNotExist as exc:
-        raise HttpError(404, "Dataset not found.") from exc
-
-    if dataset.status != DatasetStatus.READY:
-        raise HttpError(
-            409,
-            "Dataset is not ready yet. Confirm and wait for import first.",
-        )
-
-    return dataset
-
-
-def _serialize_dataset_row(row: DatasetRow) -> DatasetRowOut:
-    return {
-        "id": row.id,
-        "row_number": row.row_number,
-        "index_value": row.index_value,
-        "data": row.data,
-    }
-
-
 @api.get(
     "/datasets/{dataset_key}/rows",
     response=DatasetRowsOut,
@@ -394,15 +382,10 @@ def _serialize_dataset_row(row: DatasetRow) -> DatasetRowOut:
     tags=["datasets"],
 )
 def list_dataset_rows(request: HttpRequest, dataset_key: str, limit: int = 100, offset: int = 0):
-    dataset = _get_ready_dataset(request.auth, dataset_key)
-    limit = max(1, min(limit, 500))
-    offset = max(0, offset)
-    rows = dataset.rows.all()[offset : offset + limit]
-    return {
-        "dataset": str(dataset.key),
-        "count": dataset.rows.count(),
-        "rows": [_serialize_dataset_row(row) for row in rows],
-    }
+    try:
+        return list_profile_dataset_rows(request.auth, dataset_key, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.post(
@@ -412,32 +395,10 @@ def list_dataset_rows(request: HttpRequest, dataset_key: str, limit: int = 100, 
     tags=["datasets"],
 )
 def create_dataset_row(request: HttpRequest, dataset_key: str, payload: DatasetRowIn):
-    dataset = _get_ready_dataset(request.auth, dataset_key)
-    last_row_number = (
-        dataset.rows.order_by("-row_number").values_list("row_number", flat=True).first() or 0
-    )
-    row_number = last_row_number + 1
-    if dataset.index_generated:
-        index_value = str(row_number)
-        data = {dataset.index_column: index_value, **payload.data}
-    else:
-        index_value = str(payload.data.get(dataset.index_column, "")).strip()
-        if not index_value:
-            raise HttpError(400, f"Index column '{dataset.index_column}' is required.")
-        data = payload.data
-
-    if dataset.rows.filter(index_value=index_value).exists():
-        raise HttpError(409, f"Row with index '{index_value}' already exists.")
-
-    row = DatasetRow.objects.create(
-        dataset=dataset,
-        row_number=row_number,
-        index_value=index_value,
-        data={header: str(data.get(header, "")) for header in dataset.headers},
-    )
-    dataset.row_count = dataset.rows.count()
-    dataset.save(update_fields=["row_count", "updated_at"])
-    return {"status": "success", "message": "Row created.", "row": _serialize_dataset_row(row)}
+    try:
+        return create_profile_dataset_row(request.auth, dataset_key, payload.data)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.get(
@@ -447,12 +408,10 @@ def create_dataset_row(request: HttpRequest, dataset_key: str, payload: DatasetR
     tags=["datasets"],
 )
 def get_dataset_row_by_index(request: HttpRequest, dataset_key: str, index_value: str):
-    dataset = _get_ready_dataset(request.auth, dataset_key)
     try:
-        row = dataset.rows.get(index_value=index_value)
-    except DatasetRow.DoesNotExist as exc:
-        raise HttpError(404, "Row not found.") from exc
-    return {"status": "success", "message": "Row retrieved.", "row": _serialize_dataset_row(row)}
+        return get_profile_dataset_row_by_index(request.auth, dataset_key, index_value)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.get(
@@ -462,12 +421,10 @@ def get_dataset_row_by_index(request: HttpRequest, dataset_key: str, index_value
     tags=["datasets"],
 )
 def get_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
-    dataset = _get_ready_dataset(request.auth, dataset_key)
     try:
-        row = dataset.rows.get(id=row_id)
-    except DatasetRow.DoesNotExist as exc:
-        raise HttpError(404, "Row not found.") from exc
-    return {"status": "success", "message": "Row retrieved.", "row": _serialize_dataset_row(row)}
+        return get_profile_dataset_row(request.auth, dataset_key, row_id)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.patch(
@@ -482,31 +439,10 @@ def patch_dataset_row(
     row_id: int,
     payload: DatasetRowPatchIn,
 ):
-    dataset = _get_ready_dataset(request.auth, dataset_key)
     try:
-        row = dataset.rows.get(id=row_id)
-    except DatasetRow.DoesNotExist as exc:
-        raise HttpError(404, "Row not found.") from exc
-
-    row.data = {
-        **row.data,
-        **{key: str(value) for key, value in payload.data.items() if key in dataset.headers},
-    }
-    if dataset.index_column in payload.data:
-        if dataset.index_generated:
-            raise HttpError(
-                400,
-                f"Index column '{dataset.index_column}' is managed by FileBridge "
-                "and cannot be updated.",
-            )
-        index_value = str(payload.data.get(dataset.index_column, "")).strip()
-        if not index_value:
-            raise HttpError(400, f"Index column '{dataset.index_column}' cannot be blank.")
-        if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
-            raise HttpError(409, f"Row with index '{index_value}' already exists.")
-        row.index_value = index_value
-    row.save(update_fields=["data", "index_value", "updated_at"])
-    return {"status": "success", "message": "Row updated.", "row": _serialize_dataset_row(row)}
+        return patch_profile_dataset_row(request.auth, dataset_key, row_id, payload.data)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.delete(
@@ -516,13 +452,10 @@ def patch_dataset_row(
     tags=["datasets"],
 )
 def delete_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
-    dataset = _get_ready_dataset(request.auth, dataset_key)
-    deleted_count, _ = dataset.rows.filter(id=row_id).delete()
-    if deleted_count == 0:
-        raise HttpError(404, "Row not found.")
-    dataset.row_count = dataset.rows.count()
-    dataset.save(update_fields=["row_count", "updated_at"])
-    return {"status": "success", "message": "Row deleted."}
+    try:
+        return delete_profile_dataset_row(request.auth, dataset_key, row_id)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.get(
@@ -531,7 +464,10 @@ def delete_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
     tags=["datasets"],
 )
 def export_dataset_csv(request: HttpRequest, dataset_key: str):
-    dataset = _get_ready_dataset(request.auth, dataset_key)
+    try:
+        dataset = get_ready_profile_dataset(request.auth, dataset_key)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{dataset.name}.csv"'
     writer = csv.DictWriter(response, fieldnames=dataset.headers)

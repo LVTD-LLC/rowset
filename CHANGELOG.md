@@ -37,6 +37,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Hosted MCP now exposes dataset detail and ready-dataset row tools for listing, reading, creating, updating, and deleting rows.
 - Dataset owners can now delete datasets from the dataset list, dashboard recent datasets, and dataset settings.
 - Dataset owners can now export imported datasets as CSV or Parquet from the dataset UI.
 - Dataset uploads now accept Parquet files in addition to CSV.

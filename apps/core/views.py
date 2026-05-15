@@ -57,12 +57,17 @@ The user prompt should provide:
 5. After connecting, call the `get_user_info` tool to verify the connection.
 6. Use `get_all_datasets` to discover datasets available to the authenticated
    profile before reading rows.
+7. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
+   `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, and
+   `delete_dataset_row` to inspect and manage ready dataset rows.
 
 ## Working rules
 
 - Prefer MCP tools over browser automation when working with FileBridge.
 - Use `get_all_datasets` for dataset discovery. It returns paginated dataset
   metadata only, not row contents.
+- Use row tools for dataset contents. They require a ready dataset and enforce the
+  authenticated user's dataset ownership.
 - If MCP configuration is unavailable in your runtime, use the REST API endpoints with
   the same API key.
 - Ask the user before destructive changes such as deleting datasets or rows.
