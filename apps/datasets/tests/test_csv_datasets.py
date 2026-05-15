@@ -185,6 +185,20 @@ def test_fetch_google_sheet_csv_rejects_untrusted_redirects():
         )
 
 
+def test_fetch_google_sheet_csv_rejects_http_google_csv_redirects():
+    handler = _GoogleSheetsRedirectHandler()
+
+    with pytest.raises(CSVParseError, match="download"):
+        handler.redirect_request(
+            Request("https://docs.google.com/spreadsheets/d/abc123/export?format=csv"),
+            fp=None,
+            code=302,
+            msg="Found",
+            headers={},
+            newurl="http://doc-0g-bs-sheets.googleusercontent.com/export/abc123?format=csv",
+        )
+
+
 def test_fetch_google_sheet_csv_rejects_html_without_content_type(monkeypatch):
     class FakeResponse:
         headers = {}
