@@ -6,6 +6,12 @@ urlpatterns = [
     path("datasets/", views.DatasetListView.as_view(), name="dataset_list"),
     path("datasets/upload/preview/", views.dataset_upload_preview, name="dataset_upload_preview"),
     path("datasets/<uuid:dataset_key>/", views.DatasetDetailView.as_view(), name="dataset_detail"),
+    path("datasets/<uuid:dataset_key>/delete/", views.dataset_delete, name="dataset_delete"),
+    path(
+        "datasets/<uuid:dataset_key>/export/<str:export_format>/",
+        views.dataset_export,
+        name="dataset_export",
+    ),
     path(
         "datasets/<uuid:dataset_key>/settings/",
         views.DatasetSettingsView.as_view(),

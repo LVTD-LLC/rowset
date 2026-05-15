@@ -30,12 +30,15 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 
 ### Fixed
 - Google Sheets imports now follow Google's CSV export redirect to `*-sheets.googleusercontent.com` while still rejecting untrusted redirect hosts.
+- Unconfirmed dataset previews are no longer kept in dataset/recent lists and are replaced when users preview another upload.
 - API/MCP authentication logs no longer include raw API key values, and API-key profile lookups now eager-load users for the user-info endpoint.
 - CSV imports now store parsed source text in the database so async workers can import rows even when uploaded media files are not shared across containers.
 - CSV uploads now reject files over 10 MB before preview/import to avoid unbounded database writes.
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Dataset owners can now delete datasets from the dataset list, dashboard recent datasets, and dataset settings.
+- Dataset owners can now export imported datasets as CSV or Parquet from the dataset UI.
 - Dataset uploads now accept Parquet files in addition to CSV.
 - Added dataset discovery for agents via `GET /api/datasets` and the hosted MCP `get_all_datasets` tool, returning dataset metadata for the authenticated profile without row payloads.
 - Dashboard home now includes a copyable “teach your AI agent to use FileBridge” prompt with the user's HTTPS MCP URL, REST API base, API key, and a linked public `/SKILL.md` agent skill file.

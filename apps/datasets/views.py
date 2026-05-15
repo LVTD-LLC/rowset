@@ -5,10 +5,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
 from django_q.tasks import async_task
@@ -26,10 +27,28 @@ from apps.datasets.services import (
     prepare_index_config,
     preview_google_sheet_url,
     preview_uploaded_table,
+    rows_to_csv_text,
+    rows_to_parquet_bytes,
     source_text_from_file,
 )
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
+
+
+def _delete_dataset(dataset: Dataset) -> None:
+    if dataset.source_file:
+        dataset.source_file.delete(save=False)
+    dataset.delete()
+
+
+def _dataset_export_filename(dataset: Dataset, extension: str) -> str:
+    name = f"{dataset.name or 'dataset'}".strip().replace("/", "-") or "dataset"
+    return f"{name}.{extension}"
+
+
+def _delete_unconfirmed_previews(profile) -> None:
+    for dataset in profile.datasets.filter(status=DatasetStatus.PREVIEWED):
+        _delete_dataset(dataset)
 
 
 class DatasetListView(LoginRequiredMixin, ListView):
@@ -37,7 +56,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
     context_object_name = "datasets"
 
     def get_queryset(self):
-        return self.request.user.profile.datasets.all()
+        return self.request.user.profile.datasets.exclude(status=DatasetStatus.PREVIEWED)
 
 
 class DatasetDetailView(LoginRequiredMixin, DetailView):
@@ -107,6 +126,60 @@ def dataset_update_public_settings(request, dataset_key):
 
 @login_required
 @require_POST
+def dataset_delete(request, dataset_key):
+    dataset = get_object_or_404(
+        Dataset,
+        key=dataset_key,
+        profile=request.user.profile,
+    )
+    dataset_name = dataset.name
+    _delete_dataset(dataset)
+    messages.success(request, f"Deleted {dataset_name}.")
+
+    next_url = request.POST.get("next")
+    if next_url in {"home", "settings"}:
+        return redirect("home")
+    return redirect("dataset_list")
+
+
+@login_required
+def dataset_export(request, dataset_key, export_format):
+    dataset = get_object_or_404(
+        Dataset,
+        key=dataset_key,
+        profile=request.user.profile,
+    )
+    if dataset.status != DatasetStatus.READY:
+        raise Http404("Dataset exports are available after import completes.")
+
+    rows = list(dataset.rows.all())
+    if export_format == "csv":
+        response = HttpResponse(
+            rows_to_csv_text(dataset.headers, rows),
+            content_type="text/csv; charset=utf-8",
+        )
+        response["Content-Disposition"] = content_disposition_header(
+            True,
+            _dataset_export_filename(dataset, "csv"),
+        )
+        return response
+
+    if export_format == "parquet":
+        response = HttpResponse(
+            rows_to_parquet_bytes(dataset.headers, rows),
+            content_type="application/vnd.apache.parquet",
+        )
+        response["Content-Disposition"] = content_disposition_header(
+            True,
+            _dataset_export_filename(dataset, "parquet"),
+        )
+        return response
+
+    raise Http404("Unsupported export format.")
+
+
+@login_required
+@require_POST
 def dataset_upload_preview(request):
     uploaded_file = request.FILES.get("file")
     google_sheets_url = request.POST.get("google_sheets_url", "").strip()
@@ -147,6 +220,7 @@ def dataset_upload_preview(request):
             status=400,
         )
 
+    _delete_unconfirmed_previews(request.user.profile)
     dataset = Dataset.objects.create(
         profile=request.user.profile,
         name=dataset_name_from_filename(filename),
@@ -177,6 +251,7 @@ def _dataset_google_sheets_preview(request, google_sheets_url: str):
             status=400,
         )
 
+    _delete_unconfirmed_previews(request.user.profile)
     dataset = Dataset.objects.create(
         profile=request.user.profile,
         name="Google Sheet",
