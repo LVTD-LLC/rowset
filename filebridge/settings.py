@@ -65,6 +65,7 @@ DEBUG = env("DEBUG")
 
 SITE_URL = env("SITE_URL")
 SITE_HOST = SITE_URL.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
+GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON = env("GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON", default="")
 
 # Keep production locked to the configured site hostname.
 ALLOWED_HOSTS = [SITE_HOST]

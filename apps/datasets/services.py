@@ -212,6 +212,14 @@ def preview_google_sheet_url(url: str, sample_size: int = 5) -> TabularPreview:
 
 
 def google_sheets_export_url(url: str) -> tuple[str, str]:
+    sheet_id, gid = google_sheets_ids(url)
+    return (
+        f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}",
+        sheet_id,
+    )
+
+
+def google_sheets_ids(url: str) -> tuple[str, str]:
     parsed = urlparse((url or "").strip())
     if parsed.scheme != "https" or parsed.netloc != "docs.google.com":
         raise CSVParseError("Enter a public Google Sheets link from docs.google.com.")
@@ -227,10 +235,7 @@ def google_sheets_export_url(url: str) -> tuple[str, str]:
     if not gid.isdigit():
         raise CSVParseError("Google Sheets gid must be numeric.")
 
-    return (
-        f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}",
-        sheet_id,
-    )
+    return sheet_id, gid
 
 
 def fetch_google_sheet_csv(export_url: str) -> str:

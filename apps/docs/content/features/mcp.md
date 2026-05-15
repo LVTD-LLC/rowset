@@ -66,6 +66,11 @@ Row tools enforce the same API-key ownership boundary as the REST API. `create`,
 `update`, and `delete` change dataset contents, so agents should ask the user before
 using them unless the user explicitly requested the change.
 
+For datasets imported from Google Sheets, row changes can also be written back to the
+source spreadsheet when the deployment is configured with a Google service account and
+the spreadsheet is shared with that service account as an editor. Public Google Sheets
+CSV import by itself is read-only.
+
 Use MCP tools for agent workflows when available. If the runtime cannot configure MCP, use the REST API with the same API key.
 
 ## Agent setup prompt

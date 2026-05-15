@@ -2,7 +2,9 @@ from django.db import transaction
 
 from apps.core.models import Profile
 from apps.datasets.choices import DatasetStatus
+from apps.datasets.google_sheets import GoogleSheetsSyncError, sync_dataset_to_google_sheet
 from apps.datasets.models import Dataset, DatasetRow
+from apps.datasets.services import GOOGLE_SHEETS_FILE_TYPE
 
 
 class DatasetServiceError(Exception):
@@ -122,6 +124,27 @@ def serialize_dataset_row(row: DatasetRow) -> dict:
     }
 
 
+def sync_dataset_source(dataset: Dataset) -> dict | None:
+    if dataset.file_type != GOOGLE_SHEETS_FILE_TYPE:
+        return None
+
+    try:
+        status = sync_dataset_to_google_sheet(dataset)
+    except GoogleSheetsSyncError as exc:
+        return {"status": "failed", "message": str(exc)}
+    if status == "skipped":
+        return None
+    return {"status": "synced", "message": "Google Sheets source updated."}
+
+
+def add_source_sync_result(result: dict, source_sync: dict | None) -> dict:
+    if not source_sync or source_sync["status"] == "synced":
+        return result
+    result["source_sync"] = source_sync
+    result["message"] = f"{result['message']} {source_sync['message']}"
+    return result
+
+
 def list_profile_dataset_rows(
     profile: Profile,
     dataset_key: str,
@@ -174,7 +197,11 @@ def create_profile_dataset_row(profile: Profile, dataset_key: str, data: dict) -
         )
         dataset.row_count = dataset.rows.count()
         dataset.save(update_fields=["row_count", "updated_at"])
-    return {"status": "success", "message": "Row created.", "row": serialize_dataset_row(row)}
+    source_sync = sync_dataset_source(dataset)
+    return add_source_sync_result(
+        {"status": "success", "message": "Row created.", "row": serialize_dataset_row(row)},
+        source_sync,
+    )
 
 
 def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
@@ -224,7 +251,11 @@ def patch_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int, d
                 raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
             row.index_value = index_value
         row.save(update_fields=["data", "index_value", "updated_at"])
-    return {"status": "success", "message": "Row updated.", "row": serialize_dataset_row(row)}
+    source_sync = sync_dataset_source(dataset)
+    return add_source_sync_result(
+        {"status": "success", "message": "Row updated.", "row": serialize_dataset_row(row)},
+        source_sync,
+    )
 
 
 def delete_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
@@ -235,4 +266,8 @@ def delete_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) 
             raise DatasetServiceError(404, "Row not found.")
         dataset.row_count = dataset.rows.count()
         dataset.save(update_fields=["row_count", "updated_at"])
-    return {"status": "success", "message": "Row deleted."}
+    source_sync = sync_dataset_source(dataset)
+    return add_source_sync_result(
+        {"status": "success", "message": "Row deleted."},
+        source_sync,
+    )
