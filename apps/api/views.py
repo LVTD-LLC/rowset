@@ -1,4 +1,5 @@
 import csv
+from typing import NoReturn
 
 from django.core.cache import cache
 from django.db import connection
@@ -46,7 +47,7 @@ logger = get_filebridge_logger(__name__)
 api = NinjaAPI()
 
 
-def _raise_http_error(exc: DatasetServiceError):
+def _raise_http_error(exc: DatasetServiceError) -> NoReturn:
     raise HttpError(exc.status_code, exc.message) from exc
 
 

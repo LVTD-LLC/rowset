@@ -1,3 +1,5 @@
+from django.db import transaction
+
 from apps.core.models import Profile
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
@@ -116,43 +118,57 @@ def list_profile_dataset_rows(
     dataset = get_ready_profile_dataset(profile, dataset_key)
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
+    total_count = dataset.rows.count()
     rows = dataset.rows.all()[offset : offset + limit]
     return {
         "dataset": str(dataset.key),
-        "count": dataset.rows.count(),
+        "count": total_count,
         "limit": limit,
         "offset": offset,
-        "has_more": offset + len(rows) < dataset.rows.count(),
+        "has_more": offset + len(rows) < total_count,
         "rows": [serialize_dataset_row(row) for row in rows],
     }
 
 
 def create_profile_dataset_row(profile: Profile, dataset_key: str, data: dict) -> dict:
-    dataset = get_ready_profile_dataset(profile, dataset_key)
-    last_row_number = (
-        dataset.rows.order_by("-row_number").values_list("row_number", flat=True).first() or 0
-    )
-    row_number = last_row_number + 1
-    if dataset.index_generated:
-        index_value = str(row_number)
-        row_data = {dataset.index_column: index_value, **data}
-    else:
-        index_value = str(data.get(dataset.index_column, "")).strip()
-        if not index_value:
-            raise DatasetServiceError(400, f"Index column '{dataset.index_column}' is required.")
-        row_data = data
+    with transaction.atomic():
+        try:
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
+        except Dataset.DoesNotExist as exc:
+            raise DatasetServiceError(404, "Dataset not found.") from exc
+        if dataset.status != DatasetStatus.READY:
+            raise DatasetServiceError(
+                409,
+                "Dataset is not ready yet. Confirm and wait for import first.",
+            )
 
-    if dataset.rows.filter(index_value=index_value).exists():
-        raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
+        last_row_number = (
+            dataset.rows.order_by("-row_number").values_list("row_number", flat=True).first() or 0
+        )
+        row_number = last_row_number + 1
+        if dataset.index_generated:
+            index_value = str(row_number)
+            row_data = {dataset.index_column: index_value, **data}
+        else:
+            index_value = str(data.get(dataset.index_column, "")).strip()
+            if not index_value:
+                raise DatasetServiceError(
+                    400,
+                    f"Index column '{dataset.index_column}' is required.",
+                )
+            row_data = data
 
-    row = DatasetRow.objects.create(
-        dataset=dataset,
-        row_number=row_number,
-        index_value=index_value,
-        data={header: str(row_data.get(header, "")) for header in dataset.headers},
-    )
-    dataset.row_count = dataset.rows.count()
-    dataset.save(update_fields=["row_count", "updated_at"])
+        if dataset.rows.filter(index_value=index_value).exists():
+            raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
+
+        row = DatasetRow.objects.create(
+            dataset=dataset,
+            row_number=row_number,
+            index_value=index_value,
+            data={header: str(row_data.get(header, "")) for header in dataset.headers},
+        )
+        dataset.row_count = dataset.rows.count()
+        dataset.save(update_fields=["row_count", "updated_at"])
     return {"status": "success", "message": "Row created.", "row": serialize_dataset_row(row)}
 
 
