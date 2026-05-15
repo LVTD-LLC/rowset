@@ -279,6 +279,51 @@ def test_upload_preview_replaces_unconfirmed_preview_dataset(auth_client, profil
     assert Dataset.objects.filter(profile=profile, status=DatasetStatus.PREVIEWED).count() == 1
 
 
+def test_upload_preview_keeps_existing_preview_when_new_upload_is_invalid(auth_client, profile):
+    old_preview = Dataset.objects.create(
+        profile=profile,
+        name="Old preview",
+        original_filename="old.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name"],
+        preview_rows=[{"name": "Old"}],
+        row_count=1,
+    )
+
+    response = auth_client.post(reverse("dataset_upload_preview"), {})
+
+    assert response.status_code == 400
+    assert Dataset.objects.filter(id=old_preview.id).exists()
+
+
+def test_upload_preview_keeps_existing_preview_when_new_google_sheet_is_invalid(
+    auth_client,
+    profile,
+    monkeypatch,
+):
+    old_preview = Dataset.objects.create(
+        profile=profile,
+        name="Old preview",
+        original_filename="old.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name"],
+        preview_rows=[{"name": "Old"}],
+        row_count=1,
+    )
+    monkeypatch.setattr(
+        "apps.datasets.views.preview_google_sheet_url",
+        lambda url: (_ for _ in ()).throw(CSVParseError("Bad sheet")),
+    )
+
+    response = auth_client.post(
+        reverse("dataset_upload_preview"),
+        {"google_sheets_url": "https://docs.google.com/spreadsheets/d/abc123/edit"},
+    )
+
+    assert response.status_code == 400
+    assert Dataset.objects.filter(id=old_preview.id).exists()
+
+
 def test_upload_preview_creates_preview_dataset_for_parquet(auth_client, profile):
     response = auth_client.post(
         reverse("dataset_upload_preview"),

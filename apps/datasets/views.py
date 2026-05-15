@@ -184,8 +184,6 @@ def dataset_upload_preview(request):
     uploaded_file = request.FILES.get("file")
     google_sheets_url = request.POST.get("google_sheets_url", "").strip()
 
-    _delete_unconfirmed_previews(request.user.profile)
-
     if google_sheets_url:
         return _dataset_google_sheets_preview(request, google_sheets_url)
 
@@ -222,6 +220,7 @@ def dataset_upload_preview(request):
             status=400,
         )
 
+    _delete_unconfirmed_previews(request.user.profile)
     dataset = Dataset.objects.create(
         profile=request.user.profile,
         name=dataset_name_from_filename(filename),
@@ -252,6 +251,7 @@ def _dataset_google_sheets_preview(request, google_sheets_url: str):
             status=400,
         )
 
+    _delete_unconfirmed_previews(request.user.profile)
     dataset = Dataset.objects.create(
         profile=request.user.profile,
         name="Google Sheet",
