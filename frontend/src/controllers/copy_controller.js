@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { copyTextToClipboard } from "../utils/clipboard";
 
 export default class extends Controller {
   static targets = ["source", "label"];
@@ -17,27 +18,8 @@ export default class extends Controller {
     }
   }
 
-  async copyText(text) {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch (error) {
-        // Fall back for browsers/contexts where clipboard permissions are blocked.
-      }
-    }
-
-    return this.copyWithSelectionFallback();
-  }
-
-  copyWithSelectionFallback() {
-    this.sourceTarget.focus();
-    this.sourceTarget.select();
-    try {
-      return document.execCommand("copy");
-    } catch (error) {
-      return false;
-    }
+  copyText(text) {
+    return copyTextToClipboard(text, { sourceElement: this.sourceTarget });
   }
 
   flashLabel(message) {
