@@ -30,6 +30,16 @@ class TestHomeView:
         assert "Agent instructions/skill: https://filebridge.example/SKILL.md" in prompt
         assert "get_user_info" in prompt
 
+    @override_settings(SITE_URL="https://filebridge.example")
+    def test_home_view_creates_missing_profile(self, auth_client, user):
+        user.profile.delete()
+
+        response = auth_client.get(reverse("home"))
+
+        assert response.status_code == 200
+        assert response.context["show_agent_setup_prompt"] is True
+        assert user.__class__.objects.get(pk=user.pk).profile.key in response.context["agent_setup_prompt"]
+
     def test_dismiss_agent_setup_prompt_hides_dashboard_card(self, auth_client, profile):
         response = auth_client.post(reverse("dismiss_agent_setup_prompt"), follow=True)
         profile.refresh_from_db()
@@ -61,6 +71,18 @@ class TestHomeView:
         assert "FileBridge REST API base: https://filebridge.example/api/" in prompt
         assert "Agent instructions/skill: https://filebridge.example/SKILL.md" in prompt
         assert f"FileBridge API key: {user.profile.key}" in prompt
+
+    @override_settings(SITE_URL="https://filebridge.example")
+    def test_build_agent_setup_prompt_creates_missing_profile(self, rf, user):
+        user.profile.delete()
+        fresh_user = user.__class__.objects.get(pk=user.pk)
+        request = rf.get("/home", HTTP_HOST="internal-proxy")
+        request.user = fresh_user
+
+        prompt = build_agent_setup_prompt(request)
+
+        assert "FileBridge API key:" in prompt
+        assert fresh_user.profile.key in prompt
 
     @override_settings(SITE_URL="http://localhost:8000")
     def test_build_absolute_public_url_keeps_localhost_http(self):

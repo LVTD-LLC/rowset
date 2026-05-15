@@ -92,7 +92,8 @@ def build_agent_setup_prompt(request: HttpRequest) -> str:
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_filebridge_mcp"))
-    api_key = request.user.profile.key
+    profile, _created = Profile.objects.get_or_create(user=request.user)
+    api_key = profile.key
 
     return "\n".join(
         [
@@ -127,7 +128,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
         elif payment_status == "failed":
             messages.error(self.request, "Something went wrong with the payment.")
 
-        profile = self.request.user.profile
+        profile, _created = Profile.objects.get_or_create(user=self.request.user)
         context["recent_datasets"] = profile.datasets.all()[:5]
         context["show_agent_setup_prompt"] = not profile.agent_setup_prompt_dismissed
         context["agent_setup_prompt"] = build_agent_setup_prompt(self.request)
