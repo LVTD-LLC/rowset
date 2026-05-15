@@ -100,6 +100,19 @@ def get_ready_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     return dataset
 
 
+def get_ready_profile_dataset_for_update(profile: Profile, dataset_key: str) -> Dataset:
+    try:
+        dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
+    except Dataset.DoesNotExist as exc:
+        raise DatasetServiceError(404, "Dataset not found.") from exc
+    if dataset.status != DatasetStatus.READY:
+        raise DatasetServiceError(
+            409,
+            "Dataset is not ready yet. Confirm and wait for import first.",
+        )
+    return dataset
+
+
 def serialize_dataset_row(row: DatasetRow) -> dict:
     return {
         "id": row.id,
@@ -132,15 +145,7 @@ def list_profile_dataset_rows(
 
 def create_profile_dataset_row(profile: Profile, dataset_key: str, data: dict) -> dict:
     with transaction.atomic():
-        try:
-            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except Dataset.DoesNotExist as exc:
-            raise DatasetServiceError(404, "Dataset not found.") from exc
-        if dataset.status != DatasetStatus.READY:
-            raise DatasetServiceError(
-                409,
-                "Dataset is not ready yet. Confirm and wait for import first.",
-            )
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
 
         last_row_number = (
             dataset.rows.order_by("-row_number").values_list("row_number", flat=True).first() or 0
@@ -191,41 +196,43 @@ def get_profile_dataset_row_by_index(profile: Profile, dataset_key: str, index_v
 
 
 def patch_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int, data: dict) -> dict:
-    dataset = get_ready_profile_dataset(profile, dataset_key)
-    try:
-        row = dataset.rows.get(id=row_id)
-    except DatasetRow.DoesNotExist as exc:
-        raise DatasetServiceError(404, "Row not found.") from exc
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        try:
+            row = dataset.rows.get(id=row_id)
+        except DatasetRow.DoesNotExist as exc:
+            raise DatasetServiceError(404, "Row not found.") from exc
 
-    row.data = {
-        **row.data,
-        **{key: str(value) for key, value in data.items() if key in dataset.headers},
-    }
-    if dataset.index_column in data:
-        if dataset.index_generated:
-            raise DatasetServiceError(
-                400,
-                f"Index column '{dataset.index_column}' is managed by FileBridge "
-                "and cannot be updated.",
-            )
-        index_value = str(data.get(dataset.index_column, "")).strip()
-        if not index_value:
-            raise DatasetServiceError(
-                400,
-                f"Index column '{dataset.index_column}' cannot be blank.",
-            )
-        if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
-            raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
-        row.index_value = index_value
-    row.save(update_fields=["data", "index_value", "updated_at"])
+        row.data = {
+            **row.data,
+            **{key: str(value) for key, value in data.items() if key in dataset.headers},
+        }
+        if dataset.index_column in data:
+            if dataset.index_generated:
+                raise DatasetServiceError(
+                    400,
+                    f"Index column '{dataset.index_column}' is managed by FileBridge "
+                    "and cannot be updated.",
+                )
+            index_value = str(data.get(dataset.index_column, "")).strip()
+            if not index_value:
+                raise DatasetServiceError(
+                    400,
+                    f"Index column '{dataset.index_column}' cannot be blank.",
+                )
+            if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
+                raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
+            row.index_value = index_value
+        row.save(update_fields=["data", "index_value", "updated_at"])
     return {"status": "success", "message": "Row updated.", "row": serialize_dataset_row(row)}
 
 
 def delete_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
-    dataset = get_ready_profile_dataset(profile, dataset_key)
-    deleted_count, _ = dataset.rows.filter(id=row_id).delete()
-    if deleted_count == 0:
-        raise DatasetServiceError(404, "Row not found.")
-    dataset.row_count = dataset.rows.count()
-    dataset.save(update_fields=["row_count", "updated_at"])
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        deleted_count, _ = dataset.rows.filter(id=row_id).delete()
+        if deleted_count == 0:
+            raise DatasetServiceError(404, "Row not found.")
+        dataset.row_count = dataset.rows.count()
+        dataset.save(update_fields=["row_count", "updated_at"])
     return {"status": "success", "message": "Row deleted."}
