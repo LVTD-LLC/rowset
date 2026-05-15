@@ -17,7 +17,8 @@ class Dataset(BaseModel):
     name = models.CharField(max_length=255)
     original_filename = models.CharField(max_length=255)
     file_type = models.CharField(max_length=32, default="csv")
-    source_file = models.FileField(upload_to="datasets/csv/%Y/%m/%d/")
+    source_file = models.FileField(upload_to="datasets/csv/%Y/%m/%d/", blank=True)
+    source_url = models.URLField(blank=True, default="", max_length=2000)
     source_text = models.TextField(
         blank=True,
         default="",

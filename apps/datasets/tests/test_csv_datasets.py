@@ -10,9 +10,12 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
     GENERATED_INDEX_CHOICE,
+    GOOGLE_SHEETS_FILE_TYPE,
     CSVParseError,
     TabularPreview,
+    google_sheets_export_url,
     preview_csv_file,
+    preview_google_sheet_url,
     preview_uploaded_table,
 )
 from apps.datasets.tasks import import_dataset_rows
@@ -131,6 +134,37 @@ def test_preview_uploaded_table_accepts_parquet_files():
     )
 
 
+def test_google_sheets_export_url_accepts_share_links():
+    export_url, sheet_id = google_sheets_export_url(
+        "https://docs.google.com/spreadsheets/d/abc123/edit#gid=456"
+    )
+
+    assert sheet_id == "abc123"
+    assert export_url == "https://docs.google.com/spreadsheets/d/abc123/export?format=csv&gid=456"
+
+
+def test_google_sheets_export_url_rejects_non_google_hosts():
+    with pytest.raises(CSVParseError, match="docs.google.com"):
+        google_sheets_export_url("https://example.com/spreadsheets/d/abc123/edit")
+
+
+def test_preview_google_sheet_url_fetches_and_parses_csv(monkeypatch):
+    monkeypatch.setattr(
+        "apps.datasets.services.fetch_google_sheet_csv",
+        lambda export_url: "name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
+    )
+
+    preview = preview_google_sheet_url("https://docs.google.com/spreadsheets/d/abc123/edit")
+
+    assert preview.file_type == GOOGLE_SHEETS_FILE_TYPE
+    assert preview.headers == ["name", "email"]
+    assert preview.row_count == 2
+    assert preview.preview_rows == [
+        {"name": "Ada", "email": "ada@example.com"},
+        {"name": "Grace", "email": "grace@example.com"},
+    ]
+
+
 def test_upload_preview_creates_preview_dataset(auth_client, profile):
     response = auth_client.post(
         reverse("dataset_upload_preview"),
@@ -169,6 +203,35 @@ def test_upload_preview_creates_preview_dataset_for_parquet(auth_client, profile
         dataset.source_text
         == 'name,email,score\nAda,ada@example.com,10\nGrace,grace@example.com,""\n'
     )
+
+
+def test_upload_preview_creates_preview_dataset_for_google_sheet(auth_client, profile, monkeypatch):
+    monkeypatch.setattr(
+        "apps.datasets.views.preview_google_sheet_url",
+        lambda url: TabularPreview(
+            headers=["name", "email"],
+            preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+            row_count=1,
+            source_text="name,email\nAda,ada@example.com\n",
+            file_type=GOOGLE_SHEETS_FILE_TYPE,
+        ),
+    )
+
+    response = auth_client.post(
+        reverse("dataset_upload_preview"),
+        {"google_sheets_url": "https://docs.google.com/spreadsheets/d/abc123/edit"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["dataset"]["headers"] == ["name", "email"]
+
+    dataset = Dataset.objects.get(profile=profile)
+    assert dataset.file_type == GOOGLE_SHEETS_FILE_TYPE
+    assert dataset.source_file.name == ""
+    assert dataset.source_url == "https://docs.google.com/spreadsheets/d/abc123/edit"
+    assert dataset.source_text == "name,email\nAda,ada@example.com\n"
 
 
 def test_upload_preview_rejects_expanded_dataset_content_over_limit(auth_client, monkeypatch):

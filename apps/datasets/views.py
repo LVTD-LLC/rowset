@@ -19,10 +19,12 @@ from apps.datasets.models import Dataset
 from apps.datasets.services import (
     GENERATED_INDEX_CHOICE,
     CSVParseError,
+    GOOGLE_SHEETS_FILE_TYPE,
     dataset_name_from_filename,
     iter_indexed_rows,
     normalize_public_page_size,
     prepare_index_config,
+    preview_google_sheet_url,
     preview_uploaded_table,
     source_text_from_file,
 )
@@ -107,9 +109,14 @@ def dataset_update_public_settings(request, dataset_key):
 @require_POST
 def dataset_upload_preview(request):
     uploaded_file = request.FILES.get("file")
+    google_sheets_url = request.POST.get("google_sheets_url", "").strip()
+
+    if google_sheets_url:
+        return _dataset_google_sheets_preview(request, google_sheets_url)
+
     if not uploaded_file:
         return JsonResponse(
-            {"ok": False, "error": "Please choose a CSV or Parquet file."},
+            {"ok": False, "error": "Please choose a CSV/Parquet file or paste a Google Sheets link."},
             status=400,
         )
 
@@ -149,7 +156,41 @@ def dataset_upload_preview(request):
         row_count=preview.row_count,
         status=DatasetStatus.PREVIEWED,
     )
+    return _dataset_preview_response(dataset)
 
+
+def _dataset_google_sheets_preview(request, google_sheets_url: str):
+    try:
+        preview = preview_google_sheet_url(google_sheets_url)
+    except CSVParseError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+
+    if len(preview.source_text.encode("utf-8")) > MAX_CSV_UPLOAD_BYTES:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Google Sheets exports must be 10 MB or smaller for now.",
+            },
+            status=400,
+        )
+
+    dataset = Dataset.objects.create(
+        profile=request.user.profile,
+        name="Google Sheet",
+        original_filename="Google Sheets import",
+        file_type=GOOGLE_SHEETS_FILE_TYPE,
+        source_url=google_sheets_url,
+        source_text=preview.source_text,
+        headers=preview.headers,
+        preview_rows=preview.preview_rows,
+        row_count=preview.row_count,
+        status=DatasetStatus.PREVIEWED,
+    )
+
+    return _dataset_preview_response(dataset)
+
+
+def _dataset_preview_response(dataset: Dataset):
     return JsonResponse(
         {
             "ok": True,

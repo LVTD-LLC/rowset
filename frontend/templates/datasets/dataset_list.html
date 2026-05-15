@@ -6,7 +6,7 @@
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Datasets</p>
       <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Your API-backed files</h1>
-      <p class="fb-text-muted mt-2 max-w-2xl text-sm leading-6">CSV and Parquet files you have bridged into queryable datasets.</p>
+      <p class="fb-text-muted mt-2 max-w-2xl text-sm leading-6">CSV, Parquet, and Google Sheets data you have bridged into queryable datasets.</p>
     </div>
     <a href="{% url 'home' %}#upload-dataset-heading" class="fb-button-primary">Upload dataset</a>
   </div>
@@ -30,7 +30,7 @@
   {% else %}
     <div class="fb-panel p-10 text-center">
       <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">No datasets yet</h2>
-      <p class="fb-text-muted mx-auto mt-2 max-w-md text-sm leading-6">Upload a CSV or Parquet file, confirm the preview, and FileBridge will create the API endpoints.</p>
+      <p class="fb-text-muted mx-auto mt-2 max-w-md text-sm leading-6">Upload a CSV/Parquet file or paste a Google Sheets link, confirm the preview, and FileBridge will create the API endpoints.</p>
       <a href="{% url 'home' %}#upload-dataset-heading" class="fb-button-primary mt-6">Upload your first dataset</a>
     </div>
   {% endif %}
