@@ -614,6 +614,20 @@ def test_dataset_export_csv_download(auth_client, profile):
     ]
 
 
+def test_dataset_export_escapes_content_disposition_filename(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.name = 'R&D "People"/2026'
+    dataset.save(update_fields=["name"])
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "csv"]))
+
+    assert response.status_code == 200
+    assert (
+        response["Content-Disposition"]
+        == 'attachment; filename="R&D \\"People\\"-2026.csv"'
+    )
+
+
 def test_dataset_export_parquet_download(auth_client, profile):
     dataset = create_ready_dataset(profile)
 

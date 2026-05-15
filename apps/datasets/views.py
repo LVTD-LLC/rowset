@@ -9,6 +9,7 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
 from django_q.tasks import async_task
@@ -38,6 +39,11 @@ def _delete_dataset(dataset: Dataset) -> None:
     if dataset.source_file:
         dataset.source_file.delete(save=False)
     dataset.delete()
+
+
+def _dataset_export_filename(dataset: Dataset, extension: str) -> str:
+    name = f"{dataset.name or 'dataset'}".strip().replace("/", "-") or "dataset"
+    return f"{name}.{extension}"
 
 
 def _delete_unconfirmed_previews(profile) -> None:
@@ -147,13 +153,15 @@ def dataset_export(request, dataset_key, export_format):
         raise Http404("Dataset exports are available after import completes.")
 
     rows = list(dataset.rows.all())
-    filename = f"{dataset.name or 'dataset'}".strip().replace("/", "-") or "dataset"
     if export_format == "csv":
         response = HttpResponse(
             rows_to_csv_text(dataset.headers, rows),
             content_type="text/csv; charset=utf-8",
         )
-        response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
+        response["Content-Disposition"] = content_disposition_header(
+            True,
+            _dataset_export_filename(dataset, "csv"),
+        )
         return response
 
     if export_format == "parquet":
@@ -161,7 +169,10 @@ def dataset_export(request, dataset_key, export_format):
             rows_to_parquet_bytes(dataset.headers, rows),
             content_type="application/vnd.apache.parquet",
         )
-        response["Content-Disposition"] = f'attachment; filename="{filename}.parquet"'
+        response["Content-Disposition"] = content_disposition_header(
+            True,
+            _dataset_export_filename(dataset, "parquet"),
+        )
         return response
 
     raise Http404("Unsupported export format.")
