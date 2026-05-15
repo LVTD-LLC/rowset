@@ -5,9 +5,9 @@
   <div class="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">FileBridge</p>
-      <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">Turn a CSV or Parquet file into an API</h1>
+      <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">Turn files and Google Sheets into an API</h1>
       <p class="fb-text-muted mt-4 max-w-2xl text-lg leading-8">
-        Upload a CSV or Parquet file, verify the headers and sample rows, then confirm the import. FileBridge will turn it into API endpoints you can query and edit.
+        Upload a CSV or Parquet file, or paste a public Google Sheets link. Verify the headers and sample rows, then confirm the import. FileBridge will turn it into API endpoints you can query and edit.
       </p>
     </div>
     <a href="{% url 'dataset_list' %}" class="fb-button-secondary">
@@ -57,7 +57,7 @@
   <section class="fb-card p-6" aria-labelledby="upload-dataset-heading">
     <div class="mb-6">
       <h2 id="upload-dataset-heading" class="text-xl font-bold text-slate-900 dark:text-slate-100">Upload dataset</h2>
-      <p class="fb-text-muted mt-1 text-sm leading-6">We’ll preview the file first. The full row import only starts after you confirm.</p>
+      <p class="fb-text-muted mt-1 text-sm leading-6">We’ll preview the file or sheet first. The full row import only starts after you confirm.</p>
     </div>
 
     <form action="{% url 'dataset_upload_preview' %}" method="post" enctype="multipart/form-data" data-controller="csv-upload" data-action="submit->csv-upload#preview" class="space-y-6">
@@ -66,10 +66,15 @@
         <label for="dataset-file" class="block text-base font-semibold text-slate-900 dark:text-slate-100">Choose a CSV or Parquet file</label>
         <p id="dataset-file-help" class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">Maximum upload size is 10 MB. We only store the normalized table text after you confirm the preview.</p>
         <input id="dataset-file" data-csv-upload-target="file" type="file" name="file" accept=".csv,text/csv,.parquet,application/vnd.apache.parquet" aria-describedby="dataset-file-help upload-status" class="fb-input mx-auto mt-5 block w-full max-w-md text-sm file:mr-4 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-emerald-800 hover:file:bg-emerald-100 dark:file:bg-emerald-900/40 dark:file:text-emerald-200" />
+        <div class="mx-auto mt-6 max-w-md text-left">
+          <label for="google-sheets-url" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Or paste a public Google Sheets link</label>
+          <input id="google-sheets-url" data-csv-upload-target="googleSheetsUrl" type="url" name="google_sheets_url" placeholder="https://docs.google.com/spreadsheets/d/..." aria-describedby="google-sheets-help upload-status" class="fb-input mt-2 block w-full px-3 py-2 text-sm" />
+          <p id="google-sheets-help" class="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-400">The sheet must be public/shareable. FileBridge imports the active tab by exporting it as CSV.</p>
+        </div>
         <button data-csv-upload-target="submit" type="submit" class="fb-button-primary mt-5">
           Preview dataset
         </button>
-        <p id="upload-status" data-csv-upload-target="status" aria-live="polite" class="mt-3 text-sm text-slate-500 dark:text-slate-400">CSV and Parquet files supported.</p>
+        <p id="upload-status" data-csv-upload-target="status" aria-live="polite" class="mt-3 text-sm text-slate-500 dark:text-slate-400">CSV, Parquet, and public Google Sheets links supported.</p>
       </div>
 
       <div data-csv-upload-target="preview" class="fb-panel hidden p-5" aria-live="polite">
@@ -117,7 +122,7 @@
       </div>
     {% else %}
       <div class="fb-panel p-8 text-center">
-        <p class="text-sm text-slate-600 dark:text-slate-300">No datasets yet. Upload your first CSV or Parquet file above.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-300">No datasets yet. Upload your first file or Google Sheet above.</p>
       </div>
     {% endif %}
   </section>

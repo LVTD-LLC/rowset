@@ -3,6 +3,7 @@ import { Controller } from "@hotwired/stimulus";
 export default class extends Controller {
   static targets = [
     "file",
+    "googleSheetsUrl",
     "submit",
     "status",
     "preview",
@@ -16,8 +17,11 @@ export default class extends Controller {
   async preview(event) {
     event.preventDefault();
 
-    if (!this.hasFileTarget || this.fileTarget.files.length === 0) {
-      this.showError("Choose a CSV or Parquet file first.");
+    const googleSheetsUrl = this.hasGoogleSheetsUrlTarget ? this.googleSheetsUrlTarget.value.trim() : "";
+    const hasFile = this.hasFileTarget && this.fileTarget.files.length > 0;
+
+    if (!hasFile && !googleSheetsUrl) {
+      this.showError("Choose a CSV/Parquet file or paste a Google Sheets link first.");
       return;
     }
 
@@ -29,7 +33,11 @@ export default class extends Controller {
     this.previewTarget.classList.add("hidden");
 
     const formData = new FormData();
-    formData.append("file", this.fileTarget.files[0]);
+    if (googleSheetsUrl) {
+      formData.append("google_sheets_url", googleSheetsUrl);
+    } else {
+      formData.append("file", this.fileTarget.files[0]);
+    }
 
     try {
       const response = await fetch(this.element.action, {
