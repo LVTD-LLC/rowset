@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
 from django.http import HttpRequest
 from django.test import SimpleTestCase
 
@@ -17,6 +18,9 @@ from apps.api.views import (
     update_internal_blog_post,
 )
 from apps.blog.choices import BlogPostStatus
+from apps.datasets.choices import DatasetStatus
+from apps.datasets.models import Dataset, DatasetRow
+from apps.datasets.services import GOOGLE_SHEETS_FILE_TYPE
 
 
 class BlogPostApiTests(SimpleTestCase):
@@ -327,3 +331,110 @@ def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "bad-key")
 
     assert response is None
+
+
+@pytest.mark.django_db
+def test_create_google_sheet_dataset_row_syncs_source(django_user_model):
+    from apps.api.services import create_profile_dataset_row
+
+    user = django_user_model.objects.create_user(
+        username="sheetapiuser",
+        email="sheetapiuser@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="People",
+        original_filename="people.csv",
+        file_type=GOOGLE_SHEETS_FILE_TYPE,
+        source_url="https://docs.google.com/spreadsheets/d/sheet123/edit#gid=456",
+        status=DatasetStatus.READY,
+        headers=["email", "name"],
+        index_column="email",
+        row_count=0,
+    )
+
+    with patch("apps.api.services.sync_dataset_to_google_sheet", return_value="synced") as sync:
+        result = create_profile_dataset_row(
+            user.profile,
+            str(dataset.key),
+            {"email": "ada@example.com", "name": "Ada"},
+        )
+
+    sync.assert_called_once()
+    assert sync.call_args.args[0].id == dataset.id
+    assert "source_sync" not in result
+
+
+@pytest.mark.django_db
+def test_update_and_delete_google_sheet_dataset_rows_sync_source(django_user_model):
+    from apps.api.services import delete_profile_dataset_row, patch_profile_dataset_row
+
+    user = django_user_model.objects.create_user(
+        username="sheetapiuser2",
+        email="sheetapiuser2@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="People",
+        original_filename="people.csv",
+        file_type=GOOGLE_SHEETS_FILE_TYPE,
+        source_url="https://docs.google.com/spreadsheets/d/sheet123/edit#gid=456",
+        status=DatasetStatus.READY,
+        headers=["email", "name"],
+        index_column="email",
+        row_count=1,
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ada@example.com",
+        data={"email": "ada@example.com", "name": "Ada"},
+    )
+
+    with patch("apps.api.services.sync_dataset_to_google_sheet", return_value="synced") as sync:
+        patch_profile_dataset_row(user.profile, str(dataset.key), row.id, {"name": "Ada L"})
+        delete_profile_dataset_row(user.profile, str(dataset.key), row.id)
+
+    assert sync.call_count == 2
+
+
+@pytest.mark.django_db
+def test_google_sheet_sync_failure_returns_success_with_warning(django_user_model):
+    from apps.api.services import create_profile_dataset_row
+    from apps.datasets.google_sheets import GoogleSheetsSyncError
+
+    user = django_user_model.objects.create_user(
+        username="sheetapiuser3",
+        email="sheetapiuser3@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="People",
+        original_filename="people.csv",
+        file_type=GOOGLE_SHEETS_FILE_TYPE,
+        source_url="https://docs.google.com/spreadsheets/d/sheet123/edit#gid=456",
+        status=DatasetStatus.READY,
+        headers=["email", "name"],
+        index_column="email",
+        row_count=0,
+    )
+
+    with patch(
+        "apps.api.services.sync_dataset_to_google_sheet",
+        side_effect=GoogleSheetsSyncError("Could not reach Google Sheets."),
+    ):
+        result = create_profile_dataset_row(
+            user.profile,
+            str(dataset.key),
+            {"email": "ada@example.com", "name": "Ada"},
+        )
+
+    assert result["status"] == "success"
+    assert result["source_sync"] == {
+        "status": "failed",
+        "message": "Could not reach Google Sheets.",
+    }
+    assert DatasetRow.objects.filter(dataset=dataset, index_value="ada@example.com").exists()
