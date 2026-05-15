@@ -7,9 +7,11 @@ from django.utils import timezone
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.google_sheets import (
+    GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY,
     GoogleSheetsSyncError,
     preview_google_sheet_url_with_oauth,
     sync_dataset_to_google_sheet,
+    user_has_google_sheets_connection,
 )
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import GOOGLE_SHEETS_FILE_TYPE, google_sheets_ids
@@ -79,7 +81,12 @@ def test_sync_dataset_to_google_sheet_uses_user_google_token(settings, profile, 
     settings.GOOGLE_CLIENT_ID = "client-id"
     settings.GOOGLE_CLIENT_SECRET = "client-secret"
     dataset = create_google_sheet_dataset(profile)
-    account = SocialAccount.objects.create(user=profile.user, provider="google", uid="google-1")
+    account = SocialAccount.objects.create(
+        user=profile.user,
+        provider="google",
+        uid="google-1",
+        extra_data={GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY: True},
+    )
     SocialToken.objects.create(account=account, token="user-token")
     calls = []
 
@@ -105,6 +112,25 @@ def test_sync_dataset_to_google_sheet_uses_user_google_token(settings, profile, 
     assert [call["token"] for call in calls] == ["user-token", "user-token"]
 
 
+def test_sync_dataset_to_google_sheet_ignores_basic_google_login_token(
+    settings,
+    profile,
+    monkeypatch,
+):
+    settings.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON = ""
+    dataset = create_google_sheet_dataset(profile)
+    account = SocialAccount.objects.create(user=profile.user, provider="google", uid="google-1")
+    SocialToken.objects.create(account=account, token="basic-login-token")
+
+    def fail_request(*args, **kwargs):
+        raise AssertionError("Basic Google login token must not be used for Sheets")
+
+    monkeypatch.setattr("apps.datasets.google_sheets._request_json", fail_request)
+
+    assert sync_dataset_to_google_sheet(dataset) == "skipped"
+    assert user_has_google_sheets_connection(profile.user) is False
+
+
 def test_sync_dataset_to_google_sheet_refreshes_expired_user_token(
     settings,
     profile,
@@ -114,7 +140,12 @@ def test_sync_dataset_to_google_sheet_refreshes_expired_user_token(
     settings.GOOGLE_CLIENT_ID = "client-id"
     settings.GOOGLE_CLIENT_SECRET = "client-secret"
     dataset = create_google_sheet_dataset(profile)
-    account = SocialAccount.objects.create(user=profile.user, provider="google", uid="google-1")
+    account = SocialAccount.objects.create(
+        user=profile.user,
+        provider="google",
+        uid="google-1",
+        extra_data={GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY: True},
+    )
     token = SocialToken.objects.create(
         account=account,
         token="expired-token",
@@ -196,7 +227,12 @@ def test_sync_dataset_to_google_sheet_replaces_tab_values(settings, profile, mon
 def test_preview_google_sheet_url_with_oauth(settings, profile, monkeypatch):
     settings.GOOGLE_CLIENT_ID = "client-id"
     settings.GOOGLE_CLIENT_SECRET = "client-secret"
-    account = SocialAccount.objects.create(user=profile.user, provider="google", uid="google-1")
+    account = SocialAccount.objects.create(
+        user=profile.user,
+        provider="google",
+        uid="google-1",
+        extra_data={GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY: True},
+    )
     SocialToken.objects.create(account=account, token="user-token")
 
     def fake_request(url, *, token, method, payload=None):

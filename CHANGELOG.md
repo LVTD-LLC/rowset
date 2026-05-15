@@ -27,6 +27,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - The email confirmation reminder now appears only in settings, not on the dashboard home page.
 - Passkey signup is disabled so passkey setup can move to a post-registration account security flow.
 - Sentry setup now includes release metadata, configurable tracing/profiling/log settings, logging breadcrumbs/events, and the `before_send` hook by default.
+- Google signup/login now asks only for basic profile/email access. Google Sheets permission is requested later from the explicit Connect Google Sheets flow.
 
 ### Fixed
 - Google Sheets imports now follow Google's CSV export redirect to `*-sheets.googleusercontent.com` while still rejecting untrusted redirect hosts.

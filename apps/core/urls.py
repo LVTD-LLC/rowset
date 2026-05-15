@@ -6,6 +6,11 @@ urlpatterns = [
     # App pages
     path("home", views.HomeView.as_view(), name="home"),
     path("settings", views.UserSettingsView.as_view(), name="settings"),
+    path(
+        "settings/connect-google-sheets/",
+        views.connect_google_sheets,
+        name="connect_google_sheets",
+    ),
     path("admin-panel", views.AdminPanelView.as_view(), name="admin_panel"),
     path(
         "SKILL.md",

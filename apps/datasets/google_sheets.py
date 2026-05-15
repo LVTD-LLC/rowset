@@ -22,6 +22,8 @@ from apps.datasets.services import (
 SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"
 SHEETS_API_BASE = "https://sheets.googleapis.com/v4/spreadsheets"
 GOOGLE_SHEETS_TIMEOUT_SECONDS = 15
+GOOGLE_SHEETS_CONNECT_SESSION_KEY = "filebridge_google_sheets_connect_requested"
+GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY = "filebridge_google_sheets_connected"
 
 
 class GoogleSheetsSyncError(ValueError):
@@ -103,7 +105,11 @@ def preview_google_sheet_url_with_oauth(
 
 
 def user_has_google_sheets_connection(user) -> bool:
-    return SocialToken.objects.filter(account__user=user, account__provider="google").exists()
+    return SocialToken.objects.filter(
+        account__user=user,
+        account__provider="google",
+        account__extra_data__filebridge_google_sheets_connected=True,
+    ).exists()
 
 
 def _credentials_for_dataset(dataset: Dataset):
@@ -120,7 +126,11 @@ def _credentials_for_dataset(dataset: Dataset):
 def _credentials_for_user(user):
     token = (
         SocialToken.objects.select_related("account")
-        .filter(account__user=user, account__provider="google")
+        .filter(
+            account__user=user,
+            account__provider="google",
+            account__extra_data__filebridge_google_sheets_connected=True,
+        )
         .order_by("-id")
         .first()
     )
