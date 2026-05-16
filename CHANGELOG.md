@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- Polished the Google auth and Sheets connect UI with Google/Sheets logos, a green dashboard connect button, a post-connect dashboard redirect, and a connected-state “Add from Google Sheets” CTA.
 - Styled the Google Sheets connect confirmation page with the FileBridge app layout instead of django-allauth's default unstyled template.
 - Replaced the default app logo/favicon with a generated FileBridge icon and added dedicated favicon/apple-touch assets.
 - Reworked the landing page into a sharper FileBridge product story with a bolder visual system, API-focused hero, use cases, and updated FAQs.

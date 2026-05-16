@@ -1,8 +1,10 @@
 import pytest
+from allauth.socialaccount.models import SocialAccount, SocialToken
 from django.test import override_settings
 from django.urls import reverse
 
 from apps.core.views import build_absolute_public_url, build_agent_setup_prompt
+from apps.datasets.google_sheets import GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY
 
 
 @pytest.mark.django_db
@@ -16,6 +18,31 @@ class TestHomeView:
         url = reverse("home")
         response = auth_client.get(url)
         assert "pages/home.html" in [t.name for t in response.templates]
+
+    @override_settings(SOCIALACCOUNT_PROVIDERS={"google": {}})
+    def test_home_view_shows_connect_google_sheets_cta_when_disconnected(self, auth_client):
+        response = auth_client.get(reverse("home"))
+        content = response.content.decode()
+
+        assert "Connect Google Sheets" in content
+        assert "google-sheets-logo.svg" in content
+        assert "Add from Google Sheets" not in content
+
+    @override_settings(SOCIALACCOUNT_PROVIDERS={"google": {}})
+    def test_home_view_shows_add_from_google_sheets_cta_when_connected(self, auth_client, user):
+        account = SocialAccount.objects.create(
+            user=user,
+            provider="google",
+            uid="google-1",
+            extra_data={GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY: True},
+        )
+        SocialToken.objects.create(account=account, token="token")
+
+        response = auth_client.get(reverse("home"))
+        content = response.content.decode()
+
+        assert "Add from Google Sheets" in content
+        assert "Connect Google Sheets" not in content
 
     @override_settings(SITE_URL="https://filebridge.example")
     def test_home_view_includes_agent_setup_prompt(self, auth_client, profile):
@@ -38,7 +65,10 @@ class TestHomeView:
 
         assert response.status_code == 200
         assert response.context["show_agent_setup_prompt"] is True
-        assert user.__class__.objects.get(pk=user.pk).profile.key in response.context["agent_setup_prompt"]
+        assert (
+            user.__class__.objects.get(pk=user.pk).profile.key
+            in response.context["agent_setup_prompt"]
+        )
 
     def test_dismiss_agent_setup_prompt_hides_dashboard_card(self, auth_client, profile):
         response = auth_client.post(reverse("dismiss_agent_setup_prompt"), follow=True)

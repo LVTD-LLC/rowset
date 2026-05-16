@@ -1,4 +1,5 @@
 {% extends 'base_app.html' %}
+{% load static %}
 
 {% block meta %}
   {% if process == "connect" %}
@@ -48,10 +49,11 @@
 
       <form method="post" class="flex flex-col gap-3 sm:flex-row">
         {% csrf_token %}
-        <button type="submit" class="fb-button-primary">
+        <button type="submit" class="fb-button-primary gap-2">
           {% if process == "connect" %}
             {% if provider.id == "google" and "spreadsheets" in requested_scope %}
-              Continue to Google Sheets consent
+              <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
+              <span>Continue to Google Sheets consent</span>
             {% else %}
               Continue
             {% endif %}
@@ -60,7 +62,11 @@
           {% endif %}
         </button>
         {% if process == "connect" %}
-          <a href="{% url 'settings' %}" class="fb-button-secondary">Cancel</a>
+          {% if provider.id == "google" and "spreadsheets" in requested_scope %}
+            <a href="{% url 'home' %}" class="fb-button-secondary">Cancel</a>
+          {% else %}
+            <a href="{% url 'settings' %}" class="fb-button-secondary">Cancel</a>
+          {% endif %}
         {% else %}
           <a href="{% url 'landing' %}" class="fb-button-secondary">Back to FileBridge</a>
         {% endif %}
