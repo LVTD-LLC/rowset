@@ -2,6 +2,9 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from allauth.socialaccount.models import SocialAccount
+from django.conf import settings
+from django.template.loader import render_to_string
+from django.test import override_settings
 from django.urls import reverse
 
 from apps.core.signals import _mark_google_sheets_connected
@@ -12,6 +15,21 @@ from apps.datasets.google_sheets import (
 )
 
 pytestmark = pytest.mark.django_db
+
+MINIMAL_TEMPLATE_SETTINGS = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [str(settings.BASE_DIR.joinpath("frontend", "templates"))],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    }
+]
 
 
 def test_connect_google_sheets_requests_sheets_scope_only_when_clicked(client, django_user_model):
@@ -36,6 +54,41 @@ def test_connect_google_sheets_requests_sheets_scope_only_when_clicked(client, d
     assert auth_params["include_granted_scopes"] == ["true"]
     assert auth_params["prompt"] == ["consent"]
     assert client.session[GOOGLE_SHEETS_CONNECT_SESSION_KEY] is True
+
+
+@override_settings(
+    TEMPLATES=MINIMAL_TEMPLATE_SETTINGS,
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+)
+def test_google_sheets_connect_confirmation_uses_filebridge_template(rf, django_user_model):
+    request = rf.get(
+        reverse("google_login"),
+        {
+            "process": "connect",
+            "scope": SHEETS_SCOPE,
+            "next": reverse("settings"),
+        },
+    )
+    request.user = django_user_model.objects.create_user(
+        username="sheets-template",
+        email="sheets-template@example.com",
+        password="password123",
+    )
+    provider = type("Provider", (), {"id": "google", "name": "Google"})()
+
+    html = render_to_string(
+        "socialaccount/login.html",
+        {"process": "connect", "provider": provider, "next": reverse("settings")},
+        request=request,
+    )
+
+    assert "Connect Google Sheets" in html
+    assert "Continue to Google Sheets consent" in html
+    assert "fb-card" in html
+    assert "Menu:" not in html
 
 
 def test_google_sheets_connect_signal_marks_account(rf, django_user_model):
