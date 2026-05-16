@@ -88,6 +88,7 @@ def test_google_sheets_connect_confirmation_uses_filebridge_template(rf, django_
     assert "Connect Google Sheets" in html
     assert "Continue to Google Sheets consent" in html
     assert "fb-card" in html
+    assert f'href="{reverse("settings")}"' in html
     assert "Menu:" not in html
 
 

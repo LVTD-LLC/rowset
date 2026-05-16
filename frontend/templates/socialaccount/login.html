@@ -1,5 +1,4 @@
 {% extends 'base_app.html' %}
-{% load i18n %}
 
 {% block meta %}
   {% if process == "connect" %}
@@ -60,10 +59,10 @@
             Continue
           {% endif %}
         </button>
-        {% if next %}
-          <a href="{{ next }}" class="fb-button-secondary">Cancel</a>
+        {% if process == "connect" %}
+          <a href="{% url 'settings' %}" class="fb-button-secondary">Cancel</a>
         {% else %}
-          <a href="{% url 'settings' %}" class="fb-button-secondary">Back to settings</a>
+          <a href="{% url 'landing' %}" class="fb-button-secondary">Back to FileBridge</a>
         {% endif %}
       </form>
     </div>
