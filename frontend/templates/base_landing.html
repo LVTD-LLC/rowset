@@ -14,14 +14,22 @@
     <!-- Other meta stuff -->
     <link
       rel="apple-touch-icon"
-      href="{% static 'vendors/images/logo.png' %}"
+      sizes="180x180"
+      href="{% static 'vendors/images/apple-touch-icon.png' %}"
     />
     <link
       rel="icon"
       type="image/png"
-      sizes="16x16 32x32 500x500"
-      href="{% static 'vendors/images/logo.png' %}"
+      sizes="32x32"
+      href="{% static 'vendors/images/favicon-32x32.png' %}"
     />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="{% static 'vendors/images/favicon-16x16.png' %}"
+    />
+    <link rel="shortcut icon" href="{% static 'vendors/images/favicon.ico' %}" />
 
     {% block meta %}
     <title>FileBridge</title>
