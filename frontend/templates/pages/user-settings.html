@@ -63,11 +63,20 @@
           </p>
         </div>
         {% if google_connected %}
-          <a href="{% url 'socialaccount_connections' %}" class="fb-button-secondary">Manage Google</a>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <a href="{% url 'home' %}#google-sheets-import" class="fb-button-primary gap-2">
+              <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
+              <span>Add from Google Sheets</span>
+            </a>
+            <a href="{% url 'socialaccount_connections' %}" class="fb-button-secondary">Manage Google</a>
+          </div>
         {% else %}
           <form method="post" action="{% url 'connect_google_sheets' %}">
             {% csrf_token %}
-            <button class="fb-button-primary">Connect Google Sheets</button>
+            <button class="fb-button-primary gap-2">
+              <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
+              <span>Connect Google Sheets</span>
+            </button>
           </form>
         {% endif %}
       </div>

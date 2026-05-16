@@ -1,6 +1,6 @@
 {% extends 'base_landing.html' %}
 {% load widget_tweaks %}
-{% load socialaccount %}
+{% load socialaccount static %}
 
 {% block meta %}
 <title>Sign in · FileBridge</title>
@@ -66,7 +66,8 @@
               <form method="post" action="{% provider_login_url 'google' %}">
                 {% csrf_token %}
                 <button class="fb-button-secondary w-full gap-3">
-                  <span>Google</span>
+                  <img src="{% static 'vendors/images/google-logo.svg' %}" alt="" class="h-5 w-5" />
+                  <span>Sign in with Google</span>
                 </button>
               </form>
             {% endif %}

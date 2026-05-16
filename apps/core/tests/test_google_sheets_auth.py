@@ -49,7 +49,7 @@ def test_connect_google_sheets_requests_sheets_scope_only_when_clicked(client, d
     assert redirect.path == reverse("google_login")
     assert query["process"] == ["connect"]
     assert query["scope"] == ["https://www.googleapis.com/auth/spreadsheets"]
-    assert query["next"] == [reverse("settings")]
+    assert query["next"] == [reverse("home")]
     assert auth_params["access_type"] == ["offline"]
     assert auth_params["include_granted_scopes"] == ["true"]
     assert auth_params["prompt"] == ["consent"]
@@ -69,7 +69,7 @@ def test_google_sheets_connect_confirmation_uses_filebridge_template(rf, django_
         {
             "process": "connect",
             "scope": SHEETS_SCOPE,
-            "next": reverse("settings"),
+            "next": reverse("home"),
         },
     )
     request.user = django_user_model.objects.create_user(
@@ -81,14 +81,15 @@ def test_google_sheets_connect_confirmation_uses_filebridge_template(rf, django_
 
     html = render_to_string(
         "socialaccount/login.html",
-        {"process": "connect", "provider": provider, "next": reverse("settings")},
+        {"process": "connect", "provider": provider, "next": reverse("home")},
         request=request,
     )
 
     assert "Connect Google Sheets" in html
     assert "Continue to Google Sheets consent" in html
     assert "fb-card" in html
-    assert f'href="{reverse("settings")}"' in html
+    assert "google-sheets-logo.svg" in html
+    assert f'href="{reverse("home")}"' in html
     assert "Menu:" not in html
 
 
@@ -107,6 +108,56 @@ def test_google_sheets_connect_signal_marks_account(rf, django_user_model):
 
     account.refresh_from_db()
     assert account.extra_data[GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY] is True
+    assert GOOGLE_SHEETS_CONNECT_SESSION_KEY not in request.session
+
+
+def test_google_sheets_connect_signal_marks_account_when_allauth_drops_scope(
+    rf,
+    django_user_model,
+):
+    user = django_user_model.objects.create_user(
+        username="sheets-session-signal",
+        email="sheets-session-signal@example.com",
+        password="password123",
+    )
+    account = SocialAccount.objects.create(user=user, provider="google", uid="google-1")
+    request = rf.get("/settings")
+    request.session = {GOOGLE_SHEETS_CONNECT_SESSION_KEY: True}
+    sociallogin = type(
+        "SocialLogin",
+        (),
+        {"account": account, "state": {"process": "connect", "next": reverse("home")}},
+    )()
+
+    _mark_google_sheets_connected(request, sociallogin)
+
+    account.refresh_from_db()
+    assert account.extra_data[GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY] is True
+    assert GOOGLE_SHEETS_CONNECT_SESSION_KEY not in request.session
+
+
+def test_google_connect_does_not_mark_sheets_connected_for_non_sheets_scope(
+    rf,
+    django_user_model,
+):
+    user = django_user_model.objects.create_user(
+        username="google-non-sheets-signal",
+        email="google-non-sheets-signal@example.com",
+        password="password123",
+    )
+    account = SocialAccount.objects.create(user=user, provider="google", uid="google-1")
+    request = rf.get("/settings")
+    request.session = {GOOGLE_SHEETS_CONNECT_SESSION_KEY: True}
+    sociallogin = type(
+        "SocialLogin",
+        (),
+        {"account": account, "state": {"process": "connect", "scope": "profile email"}},
+    )()
+
+    _mark_google_sheets_connected(request, sociallogin)
+
+    account.refresh_from_db()
+    assert GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY not in account.extra_data
     assert GOOGLE_SHEETS_CONNECT_SESSION_KEY not in request.session
 
 

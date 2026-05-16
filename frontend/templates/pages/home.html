@@ -1,4 +1,5 @@
 {% extends "base_app.html" %}
+{% load static %}
 
 {% block content %}
 <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -66,7 +67,7 @@
         <label for="dataset-file" class="block text-base font-semibold text-slate-900 dark:text-slate-100">Choose a CSV or Parquet file</label>
         <p id="dataset-file-help" class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">Maximum upload size is 10 MB. We only store the normalized table text after you confirm the preview.</p>
         <input id="dataset-file" data-csv-upload-target="file" type="file" name="file" accept=".csv,text/csv,.parquet,application/vnd.apache.parquet" aria-describedby="dataset-file-help upload-status" class="fb-input mx-auto mt-5 block w-full max-w-md text-sm file:mr-4 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-emerald-800 hover:file:bg-emerald-100 dark:file:bg-emerald-900/40 dark:file:text-emerald-200" />
-        <div class="mx-auto mt-6 max-w-md text-left">
+        <div id="google-sheets-import" class="mx-auto mt-6 max-w-md text-left">
           <label for="google-sheets-url" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Or paste a Google Sheets link</label>
           <input id="google-sheets-url" data-csv-upload-target="googleSheetsUrl" type="url" name="google_sheets_url" placeholder="https://docs.google.com/spreadsheets/d/..." aria-describedby="google-sheets-help upload-status" class="fb-input mt-2 block w-full px-3 py-2 text-sm" />
           <p id="google-sheets-help" class="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-400">
@@ -113,11 +114,17 @@
           {% endif %}
         </p>
         {% if google_connected %}
-          <a href="{% url 'settings' %}" class="fb-button-secondary whitespace-nowrap">Manage Google Sheets</a>
+          <a href="#google-sheets-import" class="fb-button-primary whitespace-nowrap gap-2">
+            <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
+            <span>Add from Google Sheets</span>
+          </a>
         {% else %}
           <form method="post" action="{% url 'connect_google_sheets' %}">
             {% csrf_token %}
-            <button class="fb-button-secondary whitespace-nowrap">Connect Google Sheets</button>
+            <button class="fb-button-primary whitespace-nowrap gap-2">
+              <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
+              <span>Connect Google Sheets</span>
+            </button>
           </form>
         {% endif %}
       </div>

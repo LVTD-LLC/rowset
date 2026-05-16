@@ -196,7 +196,7 @@ def connect_google_sheets(request):
                     "prompt": "consent",
                 }
             ),
-            "next": reverse("settings"),
+            "next": reverse("home"),
         }
     )
     return redirect(f"{reverse('google_login')}?{query}")

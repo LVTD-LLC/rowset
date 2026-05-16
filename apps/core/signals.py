@@ -63,11 +63,23 @@ def _sociallogin_requested_google_sheets(sociallogin) -> bool:
     return SHEETS_SCOPE in requested_scopes
 
 
+def _is_google_sheets_connect_callback_without_scope(request, sociallogin) -> bool:
+    state = sociallogin.state or {}
+    return (
+        "scope" not in state
+        and state.get("process") == "connect"
+        and request.session.get(GOOGLE_SHEETS_CONNECT_SESSION_KEY) is True
+    )
+
+
 def _mark_google_sheets_connected(request, sociallogin):
     if sociallogin.account.provider != "google":
         return
+    should_mark_connected = _sociallogin_requested_google_sheets(
+        sociallogin
+    ) or _is_google_sheets_connect_callback_without_scope(request, sociallogin)
     request.session.pop(GOOGLE_SHEETS_CONNECT_SESSION_KEY, None)
-    if not _sociallogin_requested_google_sheets(sociallogin):
+    if not should_mark_connected:
         return
     extra_data = sociallogin.account.extra_data or {}
     extra_data[GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY] = True

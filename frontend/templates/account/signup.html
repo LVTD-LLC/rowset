@@ -1,6 +1,6 @@
 {% extends "base_landing.html" %}
 {% load widget_tweaks %}
-{% load socialaccount %}
+{% load socialaccount static %}
 
 {% block meta %}
 <title>Create account · FileBridge</title>
@@ -54,7 +54,10 @@
             {% if 'google' in available_social_providers %}
               <form method="post" action="{% provider_login_url 'google' %}">
                 {% csrf_token %}
-                <button class="fb-button-secondary w-full gap-3">Google</button>
+                <button class="fb-button-secondary w-full gap-3">
+                  <img src="{% static 'vendors/images/google-logo.svg' %}" alt="" class="h-5 w-5" />
+                  <span>Sign up with Google</span>
+                </button>
               </form>
             {% endif %}
             {% if 'github' in available_social_providers %}
