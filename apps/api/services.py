@@ -237,8 +237,8 @@ def create_profile_dataset(
         if index_generated:
             index_value = str(row_number)
             serialized_data = {
-                **{header: row_data.get(header, "") for header in dataset_headers},
                 index_column: index_value,
+                **{header: row_data.get(header, "") for header in base_headers},
             }
         else:
             index_value = row_data.get(index_column, "").strip()
