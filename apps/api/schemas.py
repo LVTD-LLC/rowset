@@ -1,7 +1,10 @@
 from datetime import datetime
+from typing import Any
 
 from ninja import Schema
+from pydantic import Field
 
+from apps.api.services import MAX_API_DATASET_CREATE_ROWS
 from apps.blog.choices import BlogPostStatus
 
 
@@ -109,6 +112,22 @@ class DatasetListOut(Schema):
     offset: int
     has_more: bool
     datasets: list[DatasetSummaryOut]
+
+
+class DatasetCreateIn(Schema):
+    name: str
+    headers: list[str] | None = None
+    rows: list[dict[str, Any]] = Field(
+        default_factory=list,
+        max_length=MAX_API_DATASET_CREATE_ROWS,
+    )
+    index_column: str | None = None
+
+
+class DatasetCreateOut(Schema):
+    status: str
+    message: str
+    dataset: DatasetSummaryOut
 
 
 class DatasetRowIn(Schema):

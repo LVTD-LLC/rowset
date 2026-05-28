@@ -7,10 +7,28 @@ from filebridge.utils import get_filebridge_logger
 logger = get_filebridge_logger(__name__)
 
 
+def _api_key_from_request(request: HttpRequest, query_param_name: str) -> str | None:
+    authorization = request.headers.get("authorization", "")
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() == "bearer" and token.strip():
+        return token.strip()
+
+    header_key = request.headers.get("x-api-key", "").strip()
+    if header_key:
+        return header_key
+
+    return request.GET.get(query_param_name)
+
+
 class APIKeyAuth(APIKeyQuery):
     param_name = "api_key"
 
-    def authenticate(self, request: HttpRequest, key: str) -> Profile | None:
+    def _get_key(self, request: HttpRequest) -> str | None:
+        return _api_key_from_request(request, self.param_name)
+
+    def authenticate(self, request: HttpRequest, key: str | None) -> Profile | None:
+        if not key:
+            return None
         logger.info("[Django Ninja Auth] API key request")
         try:
             return Profile.objects.select_related("user").get(key=key)
@@ -42,7 +60,12 @@ class SessionAuth:
 class SuperuserAPIKeyAuth(APIKeyQuery):
     param_name = "api_key"
 
-    def authenticate(self, request: HttpRequest, key: str) -> Profile | None:
+    def _get_key(self, request: HttpRequest) -> str | None:
+        return _api_key_from_request(request, self.param_name)
+
+    def authenticate(self, request: HttpRequest, key: str | None) -> Profile | None:
+        if not key:
+            return None
         try:
             profile = Profile.objects.select_related("user").get(key=key)
             if profile.user.is_superuser:

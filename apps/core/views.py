@@ -61,7 +61,8 @@ The user prompt should provide:
 5. After connecting, call the `get_user_info` tool to verify the connection.
 6. Use `get_all_datasets` to discover datasets available to the authenticated
    profile before reading rows.
-7. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
+7. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
+8. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
    `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, and
    `delete_dataset_row` to inspect and manage ready dataset rows.
 
@@ -70,6 +71,8 @@ The user prompt should provide:
 - Prefer MCP tools over browser automation when working with FileBridge.
 - Use `get_all_datasets` for dataset discovery. It returns paginated dataset
   metadata only, not row contents.
+- Use `create_dataset` when a workflow needs a new dataset. It returns a dataset
+  key that can be used immediately with row tools.
 - Use row tools for dataset contents. They require a ready dataset and enforce the
   authenticated user's dataset ownership.
 - If MCP configuration is unavailable in your runtime, use the REST API endpoints with
@@ -119,6 +122,7 @@ def build_agent_setup_prompt(request: HttpRequest) -> str:
             "Bearer header; if your MCP client cannot send headers, use X-API-Key or the "
             "MCP URL query parameter fallback. After setup, call get_user_info to verify "
             "the connection, then call get_all_datasets to discover available datasets. "
+            "Use create_dataset when you need to create a dataset on the fly. "
             "Treat the API key as secret and do not print it back.",
         ]
     )

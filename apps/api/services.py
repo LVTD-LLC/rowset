@@ -1,10 +1,21 @@
+from typing import Any
+
 from django.db import transaction
+from django.utils import timezone
 
 from apps.core.models import Profile
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.google_sheets import GoogleSheetsSyncError, sync_dataset_to_google_sheet
 from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.services import GOOGLE_SHEETS_FILE_TYPE
+from apps.datasets.services import (
+    GOOGLE_SHEETS_FILE_TYPE,
+    CSVParseError,
+    generated_index_column_name,
+    validate_headers,
+)
+
+API_CREATED_FILE_TYPE = "api"
+MAX_API_DATASET_CREATE_ROWS = 1000
 
 
 class DatasetServiceError(Exception):
@@ -115,6 +126,172 @@ def get_ready_profile_dataset_for_update(profile: Profile, dataset_key: str) -> 
     return dataset
 
 
+def _stringify_cell(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _normalize_dataset_name(name: str) -> str:
+    normalized_name = (name or "").strip()
+    if not normalized_name:
+        raise DatasetServiceError(400, "Dataset name is required.")
+    if len(normalized_name) > 255:
+        raise DatasetServiceError(400, "Dataset name must be 255 characters or fewer.")
+    return normalized_name
+
+
+def _normalize_create_rows(rows: list[dict[str, Any]] | None) -> list[dict[str, str]]:
+    if rows and len(rows) > MAX_API_DATASET_CREATE_ROWS:
+        raise DatasetServiceError(
+            400,
+            f"Datasets can be created with at most {MAX_API_DATASET_CREATE_ROWS} initial rows.",
+        )
+
+    normalized_rows = []
+    for row in rows or []:
+        normalized_row = {}
+        for key, value in row.items():
+            header = str(key or "").strip()
+            if not header:
+                raise DatasetServiceError(400, "Dataset row keys must be non-empty strings.")
+            if header in normalized_row:
+                raise DatasetServiceError(
+                    400,
+                    f"Dataset row contains duplicate normalized header '{header}'.",
+                )
+            normalized_row[header] = _stringify_cell(value)
+        normalized_rows.append(normalized_row)
+    return normalized_rows
+
+
+def _headers_from_rows(rows: list[dict[str, str]]) -> list[str]:
+    headers = []
+    seen: set[str] = set()
+    for row in rows:
+        for header in row:
+            if header not in seen:
+                headers.append(header)
+                seen.add(header)
+    return headers
+
+
+def _normalize_create_headers(
+    headers: list[str] | None,
+    rows: list[dict[str, str]],
+) -> list[str]:
+    if headers is None:
+        headers = _headers_from_rows(rows)
+
+    if not headers:
+        raise DatasetServiceError(400, "Provide at least one dataset header or row.")
+
+    try:
+        return validate_headers([str(header or "").strip() for header in headers], "Dataset")
+    except CSVParseError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+
+def _validate_rows_match_headers(rows: list[dict[str, str]], headers: list[str]) -> None:
+    header_set = set(headers)
+    extra_headers = sorted({header for row in rows for header in row if header not in header_set})
+    if extra_headers:
+        joined = ", ".join(extra_headers)
+        raise DatasetServiceError(400, f"Rows contain fields not listed in headers: {joined}.")
+
+
+def _create_dataset_index_config(
+    headers: list[str],
+    index_column: str | None,
+) -> tuple[str, bool, list[str]]:
+    normalized_index = (index_column or "").strip()
+    if not normalized_index:
+        generated_index = generated_index_column_name(headers)
+        return generated_index, True, [generated_index, *headers]
+
+    if normalized_index not in headers:
+        raise DatasetServiceError(400, "Index column must match one of the dataset headers.")
+
+    return normalized_index, False, headers
+
+
+def create_profile_dataset(
+    profile: Profile,
+    *,
+    name: str,
+    headers: list[str] | None = None,
+    rows: list[dict[str, Any]] | None = None,
+    index_column: str | None = None,
+) -> dict:
+    """Create a ready API-backed dataset for an authenticated profile."""
+    normalized_name = _normalize_dataset_name(name)
+    normalized_rows = _normalize_create_rows(rows)
+    base_headers = _normalize_create_headers(headers, normalized_rows)
+    _validate_rows_match_headers(normalized_rows, base_headers)
+    index_column, index_generated, dataset_headers = _create_dataset_index_config(
+        base_headers,
+        index_column,
+    )
+
+    seen_index_values = set()
+    row_payloads = []
+    for row_number, row_data in enumerate(normalized_rows, start=1):
+        if index_generated:
+            index_value = str(row_number)
+            serialized_data = {
+                index_column: index_value,
+                **{header: row_data.get(header, "") for header in base_headers},
+            }
+        else:
+            index_value = row_data.get(index_column, "").strip()
+            if not index_value:
+                raise DatasetServiceError(400, f"Index column '{index_column}' is required.")
+            serialized_data = {header: row_data.get(header, "") for header in dataset_headers}
+
+        if index_value in seen_index_values:
+            raise DatasetServiceError(
+                409,
+                f"Index column '{index_column}' must be unique. Duplicate value: {index_value}.",
+            )
+        seen_index_values.add(index_value)
+        row_payloads.append((row_number, index_value, serialized_data))
+
+    now = timezone.now()
+    with transaction.atomic():
+        dataset = Dataset.objects.create(
+            profile=profile,
+            name=normalized_name,
+            original_filename="Created via API",
+            file_type=API_CREATED_FILE_TYPE,
+            status=DatasetStatus.READY,
+            headers=dataset_headers,
+            preview_rows=[payload[2] for payload in row_payloads[:5]],
+            index_column=index_column,
+            index_generated=index_generated,
+            row_count=len(row_payloads),
+            confirmed_at=now,
+            processed_at=now,
+        )
+        DatasetRow.objects.bulk_create(
+            [
+                DatasetRow(
+                    dataset=dataset,
+                    row_number=row_number,
+                    index_value=index_value,
+                    data=data,
+                )
+                for row_number, index_value, data in row_payloads
+            ],
+            batch_size=1000,
+        )
+
+    return {
+        "status": "success",
+        "message": "Dataset created.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
 def serialize_dataset_row(row: DatasetRow) -> dict:
     return {
         "id": row.id,
@@ -176,7 +353,7 @@ def create_profile_dataset_row(profile: Profile, dataset_key: str, data: dict) -
         row_number = last_row_number + 1
         if dataset.index_generated:
             index_value = str(row_number)
-            row_data = {dataset.index_column: index_value, **data}
+            row_data = {**data, dataset.index_column: index_value}
         else:
             index_value = str(data.get(dataset.index_column, "")).strip()
             if not index_value:

@@ -6,6 +6,7 @@ from django.db import connection
 from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
 from ninja.errors import HttpError
+from ninja.responses import Status
 
 from apps.api.auth import api_key_auth, session_auth, superuser_api_auth
 from apps.api.schemas import (
@@ -16,6 +17,8 @@ from apps.api.schemas import (
     BlogPostOut,
     BlogPostUpdateIn,
     DatasetApiOut,
+    DatasetCreateIn,
+    DatasetCreateOut,
     DatasetListOut,
     DatasetRowIn,
     DatasetRowPatchIn,
@@ -27,6 +30,7 @@ from apps.api.schemas import (
 )
 from apps.api.services import (
     DatasetServiceError,
+    create_profile_dataset,
     create_profile_dataset_row,
     delete_profile_dataset_row,
     get_profile_dataset_row,
@@ -374,6 +378,29 @@ def user_settings(request: HttpRequest):
 def list_datasets(request: HttpRequest, limit: int = 100, offset: int = 0):
     """Return a page of datasets available to the authenticated profile."""
     return serialize_profile_datasets(request.auth, limit=limit, offset=offset)
+
+
+@api.post(
+    "/datasets",
+    response={201: DatasetCreateOut},
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
+    """Create a ready API-backed dataset for the authenticated profile."""
+    try:
+        return Status(
+            201,
+            create_profile_dataset(
+                request.auth,
+                name=payload.name,
+                headers=payload.headers,
+                rows=payload.rows,
+                index_column=payload.index_column,
+            ),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.get(

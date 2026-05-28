@@ -127,6 +127,55 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
     anyio.run(run)
 
 
+def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
+    calls = []
+
+    def create_dataset(authenticated_profile, *, name, headers=None, rows=None, index_column=None):
+        calls.append((authenticated_profile.id, name, headers, rows, index_column))
+        return {
+            "status": "success",
+            "message": "Dataset created.",
+            "dataset": {
+                "key": "dataset-key",
+                "name": name,
+                "headers": headers,
+                "index_column": index_column,
+            },
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr("apps.mcp_server.server.create_profile_dataset", create_dataset)
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "create_dataset",
+                {
+                    "api_key": "secret-key",
+                    "name": "Products",
+                    "headers": ["sku", "name"],
+                    "rows": [{"sku": "A-1", "name": "Adapter"}],
+                    "index_column": "sku",
+                },
+            )
+
+        assert result.data["dataset"]["key"] == "dataset-key"
+        assert calls == [
+            (
+                11,
+                "Products",
+                ["sku", "name"],
+                [{"sku": "A-1", "name": "Adapter"}],
+                "sku",
+            )
+        ]
+
+    anyio.run(run)
+
+
 def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
     calls = []
 

@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from django.db import close_old_connections
 from fastmcp import FastMCP
@@ -6,7 +6,9 @@ from fastmcp.server.dependencies import get_http_request
 from pydantic import Field
 
 from apps.api.services import (
+    MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
+    create_profile_dataset,
     create_profile_dataset_row,
     delete_profile_dataset_row,
     get_profile_dataset,
@@ -140,6 +142,65 @@ def get_dataset(
     profile = _authenticate_profile(api_key)
     try:
         return serialize_dataset_summary(get_profile_dataset(profile, dataset_key))
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="create_dataset",
+    description=(
+        "Create a ready API-backed dataset for the authenticated FileBridge profile. "
+        "Provide headers, rows, or both. If index_column is omitted, FileBridge generates "
+        "a filebridge_id index column so the dataset can be used immediately."
+    ),
+)
+def create_dataset(
+    name: Annotated[str, Field(description="Human-readable dataset name.")],
+    headers: Annotated[
+        list[str] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional ordered dataset headers. If omitted, headers are derived from rows."
+            ),
+        ),
+    ] = None,
+    rows: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            default=None,
+            max_length=MAX_API_DATASET_CREATE_ROWS,
+            description=(
+                f"Optional initial rows keyed by dataset header. "
+                f"Maximum {MAX_API_DATASET_CREATE_ROWS} rows."
+            ),
+        ),
+    ] = None,
+    index_column: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional unique, non-blank header to use as the row index. "
+                "Omit to generate a filebridge_id index."
+            ),
+        ),
+    ] = None,
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return create_profile_dataset(
+            profile,
+            name=name,
+            headers=headers,
+            rows=rows,
+            index_column=index_column,
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
 
