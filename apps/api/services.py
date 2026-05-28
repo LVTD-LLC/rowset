@@ -167,10 +167,12 @@ def _normalize_create_rows(rows: list[dict[str, Any]] | None) -> list[dict[str, 
 
 def _headers_from_rows(rows: list[dict[str, str]]) -> list[str]:
     headers = []
+    seen: set[str] = set()
     for row in rows:
         for header in row:
-            if header not in headers:
+            if header not in seen:
                 headers.append(header)
+                seen.add(header)
     return headers
 
 
