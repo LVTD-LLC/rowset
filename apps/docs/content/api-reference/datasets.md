@@ -41,7 +41,7 @@ POST {{ api_base_url }}/datasets
 Content-Type: application/json
 ```
 
-Send a dataset name plus `headers`, `rows`, or both. If `index_column` is omitted, FileBridge adds a generated `filebridge_id` column so the dataset is ready to use immediately.
+Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, FileBridge adds a generated `filebridge_id` column so the dataset is ready to use immediately.
 
 ```json
 {

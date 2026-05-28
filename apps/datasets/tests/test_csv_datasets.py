@@ -836,6 +836,37 @@ def test_dataset_api_rejects_duplicate_index_on_create(client, profile):
     assert not Dataset.objects.filter(profile=profile, name="Duplicate products").exists()
 
 
+def test_dataset_api_rejects_too_many_initial_rows(client, profile):
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Too many rows",
+            "headers": ["name"],
+            "rows": [{"name": str(index)} for index in range(1001)],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "payload", "rows"]
+    assert not Dataset.objects.filter(profile=profile, name="Too many rows").exists()
+
+
+def test_create_profile_dataset_enforces_initial_row_limit(profile):
+    from apps.api.services import DatasetServiceError, create_profile_dataset
+
+    with pytest.raises(DatasetServiceError, match="at most 1000 initial rows") as exc_info:
+        create_profile_dataset(
+            profile,
+            name="Too many rows",
+            headers=["name"],
+            rows=[{"name": str(index)} for index in range(1001)],
+        )
+
+    assert exc_info.value.status_code == 400
+    assert not Dataset.objects.filter(profile=profile, name="Too many rows").exists()
+
+
 def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.index_column = "filebridge_id"

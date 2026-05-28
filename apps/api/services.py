@@ -15,6 +15,7 @@ from apps.datasets.services import (
 )
 
 API_CREATED_FILE_TYPE = "api"
+MAX_API_DATASET_CREATE_ROWS = 1000
 
 
 class DatasetServiceError(Exception):
@@ -141,6 +142,12 @@ def _normalize_dataset_name(name: str) -> str:
 
 
 def _normalize_create_rows(rows: list[dict[str, Any]] | None) -> list[dict[str, str]]:
+    if rows and len(rows) > MAX_API_DATASET_CREATE_ROWS:
+        raise DatasetServiceError(
+            400,
+            f"Datasets can be created with at most {MAX_API_DATASET_CREATE_ROWS} initial rows.",
+        )
+
     normalized_rows = []
     for row in rows or []:
         normalized_row = {}

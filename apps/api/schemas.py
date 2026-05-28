@@ -4,6 +4,7 @@ from typing import Any
 from ninja import Schema
 from pydantic import Field
 
+from apps.api.services import MAX_API_DATASET_CREATE_ROWS
 from apps.blog.choices import BlogPostStatus
 
 
@@ -116,7 +117,10 @@ class DatasetListOut(Schema):
 class DatasetCreateIn(Schema):
     name: str
     headers: list[str] | None = None
-    rows: list[dict[str, Any]] = Field(default_factory=list)
+    rows: list[dict[str, Any]] = Field(
+        default_factory=list,
+        max_length=MAX_API_DATASET_CREATE_ROWS,
+    )
     index_column: str | None = None
 
 

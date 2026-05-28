@@ -6,6 +6,7 @@ from fastmcp.server.dependencies import get_http_request
 from pydantic import Field
 
 from apps.api.services import (
+    MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
     create_profile_dataset,
     create_profile_dataset_row,
@@ -166,7 +167,14 @@ def create_dataset(
     ] = None,
     rows: Annotated[
         list[dict[str, Any]] | None,
-        Field(default=None, description="Optional initial rows keyed by dataset header."),
+        Field(
+            default=None,
+            max_length=MAX_API_DATASET_CREATE_ROWS,
+            description=(
+                f"Optional initial rows keyed by dataset header. "
+                f"Maximum {MAX_API_DATASET_CREATE_ROWS} rows."
+            ),
+        ),
     ] = None,
     index_column: Annotated[
         str | None,
