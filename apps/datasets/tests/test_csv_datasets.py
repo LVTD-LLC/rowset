@@ -747,6 +747,95 @@ def test_dataset_api_crud_and_export(client, profile):
     assert not DatasetRow.objects.filter(id=row_id).exists()
 
 
+def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
+    response = client.post(
+        "/api/datasets",
+        data={
+            "name": "Products",
+            "headers": ["sku", "name", "price"],
+            "index_column": "sku",
+            "rows": [
+                {"sku": "A-1", "name": "Adapter", "price": 19.99},
+                {"sku": "B-2", "name": "Bridge", "price": 29},
+            ],
+        },
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {profile.key}",
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["dataset"]["name"] == "Products"
+    assert payload["dataset"]["file_type"] == "api"
+    assert payload["dataset"]["status"] == DatasetStatus.READY
+    assert payload["dataset"]["index_column"] == "sku"
+    assert payload["dataset"]["row_count"] == 2
+
+    dataset = Dataset.objects.get(key=payload["dataset"]["key"], profile=profile)
+    assert dataset.headers == ["sku", "name", "price"]
+    assert dataset.original_filename == "Created via API"
+    assert dataset.confirmed_at is not None
+    assert dataset.processed_at is not None
+    assert list(dataset.rows.values_list("index_value", flat=True)) == ["A-1", "B-2"]
+    assert dataset.rows.first().data == {
+        "sku": "A-1",
+        "name": "Adapter",
+        "price": "19.99",
+    }
+
+
+def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile):
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Scratch tasks",
+            "rows": [
+                {"task": "Draft"},
+            ],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    dataset_key = response.json()["dataset"]["key"]
+    dataset = Dataset.objects.get(key=dataset_key, profile=profile)
+    assert dataset.headers == ["filebridge_id", "task"]
+    assert dataset.index_column == "filebridge_id"
+    assert dataset.index_generated is True
+    assert dataset.rows.first().data == {"filebridge_id": "1", "task": "Draft"}
+
+    create_response = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={"data": {"filebridge_id": "custom", "task": "Ship"}},
+        content_type="application/json",
+    )
+
+    assert create_response.status_code == 200
+    assert create_response.json()["row"]["index_value"] == "2"
+    assert create_response.json()["row"]["data"] == {"filebridge_id": "2", "task": "Ship"}
+
+
+def test_dataset_api_rejects_duplicate_index_on_create(client, profile):
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Duplicate products",
+            "headers": ["sku", "name"],
+            "index_column": "sku",
+            "rows": [
+                {"sku": "A-1", "name": "Adapter"},
+                {"sku": "A-1", "name": "Another adapter"},
+            ],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 409
+    assert "Duplicate value: A-1" in response.json()["detail"]
+    assert not Dataset.objects.filter(profile=profile, name="Duplicate products").exists()
+
+
 def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.index_column = "filebridge_id"

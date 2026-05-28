@@ -33,6 +33,7 @@ That file gives an agent durable setup instructions for FileBridge MCP, includin
 - Prefer MCP tools over browser automation.
 - Verify setup with `get_user_info`.
 - Discover available datasets with `get_all_datasets`.
+- Create new ready datasets with `create_dataset` when the user asks for an on-the-fly dataset.
 - Inspect one dataset with `get_dataset` before row operations.
 - Read rows with `list_dataset_rows`, `get_dataset_row`, or `get_dataset_row_by_index`.
 - Modify rows with `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row` only when requested.

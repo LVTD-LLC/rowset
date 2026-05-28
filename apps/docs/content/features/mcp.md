@@ -50,6 +50,14 @@ Then discover datasets with:
 get_all_datasets
 ```
 
+To create a new ready dataset from an agent workflow, call:
+
+```text
+create_dataset
+```
+
+The tool returns the new dataset key. Agents can use that key immediately with the row tools.
+
 For a specific ready dataset, agents can use:
 
 ```text
@@ -62,9 +70,10 @@ update_dataset_row
 delete_dataset_row
 ```
 
-Row tools enforce the same API-key ownership boundary as the REST API. `create`,
-`update`, and `delete` change dataset contents, so agents should ask the user before
-using them unless the user explicitly requested the change.
+Dataset and row tools enforce the same API-key ownership boundary as the REST API.
+`create_dataset`, `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`
+change dataset contents, so agents should ask the user before using them unless the
+user explicitly requested the change.
 
 For datasets imported from Google Sheets, row changes can also be written back to the
 source spreadsheet when the user has explicitly connected Google Sheets access. Basic

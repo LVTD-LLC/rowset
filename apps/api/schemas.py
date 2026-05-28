@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Any
 
 from ninja import Schema
+from pydantic import Field
 
 from apps.blog.choices import BlogPostStatus
 
@@ -109,6 +111,19 @@ class DatasetListOut(Schema):
     offset: int
     has_more: bool
     datasets: list[DatasetSummaryOut]
+
+
+class DatasetCreateIn(Schema):
+    name: str
+    headers: list[str] | None = None
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+    index_column: str | None = None
+
+
+class DatasetCreateOut(Schema):
+    status: str
+    message: str
+    dataset: DatasetSummaryOut
 
 
 class DatasetRowIn(Schema):

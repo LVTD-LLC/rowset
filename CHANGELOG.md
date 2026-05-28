@@ -33,6 +33,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Google signup/login now asks only for basic profile/email access. Google Sheets permission is requested later from the explicit Connect Google Sheets flow.
 
 ### Fixed
+- REST API key authentication now accepts `Authorization: Bearer ...` and `X-API-Key` headers in addition to `?api_key=...`, matching the published docs and agent setup guidance.
 - Google Sheets imports now follow Google's CSV export redirect to `*-sheets.googleusercontent.com` while still rejecting untrusted redirect hosts.
 - Unconfirmed dataset previews are no longer kept in dataset/recent lists and are replaced when users preview another upload.
 - API/MCP authentication logs no longer include raw API key values, and API-key profile lookups now eager-load users for the user-info endpoint.
@@ -41,6 +42,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- API and MCP clients can now create ready API-backed datasets on the fly, with optional initial rows and either a supplied unique index column or a generated FileBridge ID.
 - Google OAuth can now be enabled with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` for Google signup/login and per-user Google Sheets access/write-back.
 - Google Sheets-backed datasets can now write row creates, updates, and deletes back to the source sheet when `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` is configured and the sheet is shared with that service account as an editor.
 - Hosted MCP now exposes dataset detail and ready-dataset row tools for listing, reading, creating, updating, and deleting rows.

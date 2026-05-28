@@ -305,6 +305,30 @@ def test_api_key_auth_returns_profile_for_valid_key():
     assert response is None
 
 
+def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
+    from apps.api.auth import APIKeyAuth
+
+    profile = SimpleNamespace(id=11)
+
+    bearer_request = HttpRequest()
+    bearer_request.META["HTTP_AUTHORIZATION"] = "Bearer secret-key"
+    with patch("apps.api.auth.Profile.objects") as objects:
+        objects.select_related.return_value.get.return_value = profile
+        response = APIKeyAuth()(bearer_request)
+
+    assert response is profile
+    objects.select_related.return_value.get.assert_called_once_with(key="secret-key")
+
+    header_request = HttpRequest()
+    header_request.META["HTTP_X_API_KEY"] = "header-key"
+    with patch("apps.api.auth.Profile.objects") as objects:
+        objects.select_related.return_value.get.return_value = profile
+        response = APIKeyAuth()(header_request)
+
+    assert response is profile
+    objects.select_related.return_value.get.assert_called_once_with(key="header-key")
+
+
 def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
     from apps.api.auth import SuperuserAPIKeyAuth
     from apps.core.models import Profile

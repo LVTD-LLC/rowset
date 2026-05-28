@@ -179,6 +179,10 @@ def _validate_headers(headers: list[str] | None, file_kind: str = "CSV") -> list
     return cleaned
 
 
+def validate_headers(headers: list[str] | None, file_kind: str = "CSV") -> list[str]:
+    return _validate_headers(headers, file_kind=file_kind)
+
+
 def parser_for_filename(filename: str) -> TabularParser:
     suffix = Path(filename).suffix.lower()
     parser = PARSERS_BY_EXTENSION.get(suffix)
