@@ -421,7 +421,8 @@ class FileBridgeOAuthProvider(OAuthProvider):
             if stored_refresh_token is None:
                 raise TokenError("invalid_grant", "refresh token does not exist")
 
-            for scope in scopes:
+            effective_scopes = scopes or stored_refresh_token.scopes
+            for scope in effective_scopes:
                 if scope not in stored_refresh_token.scopes:
                     raise TokenError("invalid_scope", f"cannot request scope `{scope}`")
 
@@ -430,7 +431,7 @@ class FileBridgeOAuthProvider(OAuthProvider):
             return self._issue_tokens(
                 client_id=client.client_id or refresh_token.client_id,
                 profile=stored_refresh_token.profile,
-                scopes=scopes,
+                scopes=effective_scopes,
                 resource=stored_refresh_token.resource,
             )
 

@@ -118,6 +118,52 @@ def test_oauth_authorization_approval_issues_access_token(auth_client, profile):
 
 
 @override_settings(SITE_URL="https://filebridge.example")
+def test_oauth_refresh_without_scope_reuses_original_scopes(auth_client):
+    provider = _provider()
+    client_info = _client()
+
+    anyio.run(provider.register_client, client_info)
+    authorization_url = anyio.run(
+        provider.authorize,
+        client_info,
+        AuthorizationParams(
+            state="state-123",
+            scopes=[MCP_SCOPE],
+            code_challenge="challenge",
+            redirect_uri="http://127.0.0.1:8765/callback",
+            redirect_uri_provided_explicitly=True,
+            resource="https://filebridge.example/mcp/",
+        ),
+    )
+    transaction_id = parse_qs(urlsplit(authorization_url).query)["transaction"][0]
+    response = auth_client.post(
+        reverse("mcp_oauth_authorize"),
+        {"transaction": transaction_id, "action": "approve"},
+    )
+    authorization_code = parse_qs(urlsplit(response["Location"]).query)["code"][0]
+
+    loaded_code = anyio.run(provider.load_authorization_code, client_info, authorization_code)
+    token = anyio.run(provider.exchange_authorization_code, client_info, loaded_code)
+    loaded_refresh_token = anyio.run(
+        provider.load_refresh_token,
+        client_info,
+        token.refresh_token,
+    )
+
+    refreshed_token = anyio.run(
+        provider.exchange_refresh_token,
+        client_info,
+        loaded_refresh_token,
+        [],
+    )
+    access_token = anyio.run(provider.load_access_token, refreshed_token.access_token)
+
+    assert refreshed_token.scope == MCP_SCOPE
+    assert access_token.scopes == [MCP_SCOPE]
+    assert anyio.run(provider.load_refresh_token, client_info, token.refresh_token) is None
+
+
+@override_settings(SITE_URL="https://filebridge.example")
 def test_oauth_authorization_denial_redirects_with_error(auth_client):
     provider = _provider()
     client_info = _client()
