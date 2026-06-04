@@ -2,7 +2,7 @@ from typing import Annotated, Any
 
 from django.db import close_old_connections
 from fastmcp import FastMCP
-from fastmcp.server.dependencies import get_http_request
+from fastmcp.server.dependencies import get_access_token, get_http_request
 from pydantic import Field
 
 from apps.api.services import (
@@ -21,6 +21,7 @@ from apps.api.services import (
     serialize_user_info,
 )
 from apps.core.models import Profile
+from apps.mcp_server.oauth import LEGACY_API_KEY_CLIENT_ID, mcp_auth
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -29,10 +30,10 @@ mcp = FastMCP(
     name="FileBridge",
     instructions=(
         "FileBridge turns uploaded files into API-addressable datasets. "
-        "Authenticate hosted MCP requests with an API key using one of: "
-        "Authorization: Bearer <api_key>, X-API-Key: <api_key>, "
-        "the api_key query parameter on the MCP URL, or the api_key tool argument."
+        "For hosted MCP requests, add the FileBridge MCP server URL to your MCP client "
+        "and complete the browser-based OAuth authorization flow when prompted."
     ),
+    auth=mcp_auth,
 )
 
 
@@ -55,11 +56,15 @@ def _get_request_api_key() -> str:
 
 
 def _authenticate_profile(api_key: str | None = None) -> Profile:
+    token_profile = _get_access_token_profile()
+    if token_profile is not None and not api_key:
+        return token_profile
+
     key = (api_key or "").strip() or _get_request_api_key()
     if not key:
         raise PermissionError(
-            "Missing FileBridge API key. Provide Authorization: Bearer <api_key>, "
-            "X-API-Key, ?api_key=, or the api_key tool argument."
+            "Missing FileBridge authorization. Add the FileBridge MCP server URL to your "
+            "MCP client and complete the browser-based authorization flow."
         )
 
     try:
@@ -67,6 +72,23 @@ def _authenticate_profile(api_key: str | None = None) -> Profile:
     except Profile.DoesNotExist as exc:
         logger.warning("[MCP] Invalid API key")
         raise PermissionError("Invalid FileBridge API key.") from exc
+
+
+def _get_access_token_profile() -> Profile | None:
+    access_token = get_access_token()
+    if access_token is None:
+        return None
+
+    profile_id = access_token.subject or access_token.claims.get("profile_id")
+    if not profile_id:
+        return None
+
+    try:
+        return Profile.objects.select_related("user").get(id=profile_id)
+    except Profile.DoesNotExist, ValueError:
+        if access_token.client_id != LEGACY_API_KEY_CLIENT_ID:
+            logger.warning("[MCP] OAuth token profile no longer exists")
+        return None
 
 
 def _service_error_to_value_error(exc: DatasetServiceError) -> ValueError:
@@ -77,21 +99,10 @@ def _service_error_to_value_error(exc: DatasetServiceError) -> ValueError:
     name="get_user_info",
     description="Return safe account and profile details for the authenticated FileBridge user.",
 )
-def get_user_info(
-    api_key: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description=(
-                "Optional FileBridge API key. Hosted clients may instead send it as "
-                "Authorization: Bearer <api_key>, X-API-Key, or ?api_key= on the MCP URL."
-            ),
-        ),
-    ] = None,
-) -> dict:
-    """Return safe user/profile details for the authenticated FileBridge API key."""
+def get_user_info() -> dict:
+    """Return safe user/profile details for the authenticated FileBridge user."""
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     return serialize_user_info(profile)
 
 
@@ -102,16 +113,6 @@ def get_user_info(
     ),
 )
 def get_all_datasets(
-    api_key: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description=(
-                "Optional FileBridge API key. Hosted clients may instead send it as "
-                "Authorization: Bearer <api_key>, X-API-Key, or ?api_key= on the MCP URL."
-            ),
-        ),
-    ] = None,
     limit: Annotated[
         int,
         Field(default=100, ge=1, le=500, description="Maximum datasets to return."),
@@ -121,9 +122,9 @@ def get_all_datasets(
         Field(default=0, ge=0, description="Number of datasets to skip."),
     ] = 0,
 ) -> dict:
-    """Return a bounded page of datasets for the authenticated FileBridge API key."""
+    """Return a bounded page of datasets for the authenticated FileBridge user."""
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     return serialize_profile_datasets(profile, limit=limit, offset=offset)
 
 
@@ -133,13 +134,9 @@ def get_all_datasets(
 )
 def get_dataset(
     dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional FileBridge API key."),
-    ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return serialize_dataset_summary(get_profile_dataset(profile, dataset_key))
     except DatasetServiceError as exc:
@@ -186,13 +183,9 @@ def create_dataset(
             ),
         ),
     ] = None,
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional FileBridge API key."),
-    ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return create_profile_dataset(
             profile,
@@ -211,15 +204,11 @@ def create_dataset(
 )
 def list_dataset_rows(
     dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional FileBridge API key."),
-    ] = None,
     limit: Annotated[int, Field(default=100, ge=1, le=500)] = 100,
     offset: Annotated[int, Field(default=0, ge=0)] = 0,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return list_profile_dataset_rows(profile, dataset_key, limit=limit, offset=offset)
     except DatasetServiceError as exc:
@@ -233,13 +222,9 @@ def list_dataset_rows(
 def get_dataset_row(
     dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
     row_id: Annotated[int, Field(ge=1, description="Internal FileBridge row id.")],
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional FileBridge API key."),
-    ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return get_profile_dataset_row(profile, dataset_key, row_id)
     except DatasetServiceError as exc:
@@ -253,13 +238,9 @@ def get_dataset_row(
 def get_dataset_row_by_index(
     dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
     index_value: Annotated[str, Field(description="Value from the dataset index column.")],
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional FileBridge API key."),
-    ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return get_profile_dataset_row_by_index(profile, dataset_key, index_value)
     except DatasetServiceError as exc:
@@ -273,13 +254,9 @@ def get_dataset_row_by_index(
 def create_dataset_row(
     dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
     data: Annotated[dict[str, str], Field(description="Row values keyed by dataset header.")],
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional FileBridge API key."),
-    ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return create_profile_dataset_row(profile, dataset_key, data)
     except DatasetServiceError as exc:
@@ -294,13 +271,9 @@ def update_dataset_row(
     dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
     row_id: Annotated[int, Field(ge=1, description="Internal FileBridge row id.")],
     data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional FileBridge API key."),
-    ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return patch_profile_dataset_row(profile, dataset_key, row_id, data)
     except DatasetServiceError as exc:
@@ -314,13 +287,9 @@ def update_dataset_row(
 def delete_dataset_row(
     dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
     row_id: Annotated[int, Field(ge=1, description="Internal FileBridge row id.")],
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional FileBridge API key."),
-    ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return delete_profile_dataset_row(profile, dataset_key, row_id)
     except DatasetServiceError as exc:

@@ -36,6 +36,7 @@ urlpatterns = [
     path("uses", TemplateView.as_view(template_name="pages/uses.html"), name="uses"),
     path("blog/", include("apps.blog.urls")),
     path("api/", include("apps.api.urls")),
+    path("oauth/mcp/", include("apps.mcp_server.urls")),
     path("", include("apps.datasets.urls")),
     path("", include("apps.pages.urls")),
     path("", include("apps.core.urls")),

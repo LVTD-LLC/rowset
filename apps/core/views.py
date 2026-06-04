@@ -46,23 +46,19 @@ Use this when a user asks you to connect to FileBridge or work with FileBridge d
 The user prompt should provide:
 
 - `FileBridge MCP URL`: the hosted MCP endpoint, usually ending in `/mcp/`.
-- `FileBridge API key`: the user's secret API key.
 - Optional `FileBridge REST API base`: the same site with `/api/` endpoints.
 
 ## Setup
 
 1. Configure your MCP client for a remote Streamable HTTP server named `filebridge`.
 2. Use the provided MCP URL exactly as given.
-3. Authenticate with the API key. Prefer an `Authorization: Bearer <api_key>` header.
-   If your MCP client cannot send headers, use `X-API-Key` if supported, or append
-   `?api_key=<api_key>` to the MCP URL as a fallback.
-4. Treat the API key as a secret: do not print it, commit it, store it in public logs,
-   or share it with other tools.
-5. After connecting, call the `get_user_info` tool to verify the connection.
-6. Use `get_all_datasets` to discover datasets available to the authenticated
+3. When your MCP client opens the FileBridge authorization link, sign in and
+   approve access in the browser.
+4. After connecting, call the `get_user_info` tool to verify the connection.
+5. Use `get_all_datasets` to discover datasets available to the authenticated
    profile before reading rows.
-7. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
-8. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
+6. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
+7. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
    `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, and
    `delete_dataset_row` to inspect and manage ready dataset rows.
 
@@ -75,8 +71,8 @@ The user prompt should provide:
   key that can be used immediately with row tools.
 - Use row tools for dataset contents. They require a ready dataset and enforce the
   authenticated user's dataset ownership.
-- If MCP configuration is unavailable in your runtime, use the REST API endpoints with
-  the same API key.
+- If MCP configuration is unavailable in your runtime, ask the user before falling
+  back to REST API authentication.
 - Ask the user before destructive changes such as deleting datasets or rows.
 - Keep user data private and only access the FileBridge resources needed for the task.
 """
@@ -105,8 +101,7 @@ def build_agent_setup_prompt(request: HttpRequest) -> str:
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_filebridge_mcp"))
-    profile, _created = Profile.objects.get_or_create(user=request.user)
-    api_key = profile.key
+    Profile.objects.get_or_create(user=request.user)
 
     return "\n".join(
         [
@@ -114,16 +109,13 @@ def build_agent_setup_prompt(request: HttpRequest) -> str:
             "",
             f"FileBridge MCP URL: {mcp_url}",
             f"FileBridge REST API base: {rest_api_base_url}",
-            f"FileBridge API key: {api_key}",
             f"Agent instructions/skill: {instructions_url}",
             "",
             "Read the instructions/skill URL, configure FileBridge as a remote Streamable "
-            "HTTP MCP server, and authenticate with the API key. Prefer an Authorization: "
-            "Bearer header; if your MCP client cannot send headers, use X-API-Key or the "
-            "MCP URL query parameter fallback. After setup, call get_user_info to verify "
-            "the connection, then call get_all_datasets to discover available datasets. "
-            "Use create_dataset when you need to create a dataset on the fly. "
-            "Treat the API key as secret and do not print it back.",
+            "HTTP MCP server, and complete the browser authorization flow opened by your "
+            "MCP client. After setup, call get_user_info to verify the connection, then "
+            "call get_all_datasets to discover available datasets. Use create_dataset "
+            "when you need to create a dataset on the fly.",
         ]
     )
 

@@ -16,25 +16,22 @@ FileBridge includes a hosted MCP endpoint so compatible AI agents can discover a
 
 ## Authentication
 
-Prefer an auth header:
+Add the MCP URL to a compatible remote MCP client. The client will discover
+FileBridge's OAuth metadata, generate an authorization link, and open it in your
+browser. Sign in to FileBridge, approve access, and the MCP client will store the
+OAuth token for future MCP requests.
+
+No API key needs to be pasted into the MCP client for the normal setup path.
+
+For older clients that cannot complete MCP OAuth, a bearer API key is still
+accepted as a compatibility path:
 
 ```http
 Authorization: Bearer {{ api_key_full }}
 ```
 
-If your MCP client cannot send bearer headers, use:
-
-```http
-X-API-Key: {{ api_key_full }}
-```
-
-As a last resort, append the key to the MCP URL:
-
-```text
-{{ mcp_url }}?api_key={{ api_key_full }}
-```
-
-Prefer headers because URLs are more likely to be copied into logs, screenshots, and shell history.
+Prefer OAuth when your client supports it because it avoids copying secrets into
+configuration files.
 
 ## First checks
 
@@ -70,7 +67,7 @@ update_dataset_row
 delete_dataset_row
 ```
 
-Dataset and row tools enforce the same API-key ownership boundary as the REST API.
+Dataset and row tools enforce the authenticated user's ownership boundary.
 `create_dataset`, `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`
 change dataset contents, so agents should ask the user before using them unless the
 user explicitly requested the change.
@@ -81,7 +78,7 @@ Google signup/login does not request Sheets permission. Deployments can also fal
 to `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` when the sheet is shared with that service
 account as an editor. Public Google Sheets CSV import by itself is read-only.
 
-Use MCP tools for agent workflows when available. If the runtime cannot configure MCP, use the REST API with the same API key.
+Use MCP tools for agent workflows when available. If the runtime cannot configure MCP, use the REST API only after the user approves REST API authentication.
 
 ## Agent setup prompt
 
