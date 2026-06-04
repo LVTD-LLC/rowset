@@ -13,6 +13,7 @@ from apps.mcp_server.oauth import (
     MCP_INTERNAL_PATH,
     MCP_SCOPE,
     FileBridgeOAuthProvider,
+    get_authorization_request,
     mcp_auth,
 )
 from apps.mcp_server.server import _authenticate_profile
@@ -135,6 +136,35 @@ def test_oauth_authorization_denial_redirects_with_error(auth_client):
     redirect_query = parse_qs(urlsplit(response["Location"]).query)
     assert redirect_query["error"] == ["access_denied"]
     assert redirect_query["state"] == ["state-123"]
+
+
+@override_settings(SITE_URL="https://filebridge.example")
+def test_oauth_authorization_rejects_unknown_post_action(auth_client):
+    provider = _provider()
+    client_info = _client()
+
+    anyio.run(provider.register_client, client_info)
+    authorization_url = anyio.run(
+        provider.authorize,
+        client_info,
+        AuthorizationParams(
+            state="state-123",
+            scopes=[MCP_SCOPE],
+            code_challenge="challenge",
+            redirect_uri="http://127.0.0.1:8765/callback",
+            redirect_uri_provided_explicitly=True,
+            resource="https://filebridge.example/mcp/",
+        ),
+    )
+    transaction_id = parse_qs(urlsplit(authorization_url).query)["transaction"][0]
+
+    response = auth_client.post(
+        reverse("mcp_oauth_authorize"),
+        {"transaction": transaction_id, "action": "unexpected"},
+    )
+
+    assert response.status_code == 400
+    assert get_authorization_request(transaction_id) is not None
 
 
 def test_oauth_provider_accepts_legacy_bearer_api_key(profile):

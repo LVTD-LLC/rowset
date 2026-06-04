@@ -29,8 +29,12 @@ def authorize(request: HttpRequest):
         return HttpResponseBadRequest("OAuth client no longer exists.")
 
     if request.method == "POST":
-        if request.POST.get("action") == "deny":
+        action = request.POST.get("action")
+        if action == "deny":
             return redirect(deny_authorization_request(transaction_id))
+
+        if action != "approve":
+            return HttpResponseBadRequest("Invalid authorization action.")
 
         profile, _created = Profile.objects.get_or_create(user=request.user)
         return redirect(approve_authorization_request(transaction_id, profile))

@@ -85,9 +85,12 @@ def _get_access_token_profile() -> Profile | None:
 
     try:
         return Profile.objects.select_related("user").get(id=profile_id)
-    except Profile.DoesNotExist, ValueError:
+    except (Profile.DoesNotExist, ValueError) as exc:
         if access_token.client_id != LEGACY_API_KEY_CLIENT_ID:
-            logger.warning("[MCP] OAuth token profile no longer exists")
+            logger.warning(
+                "[MCP] OAuth token profile could not be resolved",
+                error=str(exc),
+            )
         return None
 
 
