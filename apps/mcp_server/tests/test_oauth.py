@@ -1,20 +1,30 @@
+from datetime import timedelta
 from urllib.parse import parse_qs, urlsplit
 
 import anyio
 import pytest
 from django.test import override_settings
 from django.urls import reverse
+from django.utils import timezone
 from fastmcp.server.auth import AccessToken
 from mcp.server.auth.provider import AuthorizationParams
 from mcp.shared.auth import OAuthClientInformationFull
 
+from apps.mcp_server.models import (
+    McpOAuthAccessToken,
+    McpOAuthAuthorizationCode,
+    McpOAuthAuthorizationRequest,
+    McpOAuthRefreshToken,
+)
 from apps.mcp_server.oauth import (
     LEGACY_API_KEY_CLIENT_ID,
     MCP_INTERNAL_PATH,
     MCP_SCOPE,
     FileBridgeOAuthProvider,
     get_authorization_request,
+    hash_token,
     mcp_auth,
+    prune_expired_oauth_artifacts,
 )
 from apps.mcp_server.server import _authenticate_profile
 
@@ -165,6 +175,122 @@ def test_oauth_authorization_rejects_unknown_post_action(auth_client):
 
     assert response.status_code == 400
     assert get_authorization_request(transaction_id) is not None
+
+
+@override_settings(SITE_URL="https://filebridge.example")
+def test_oauth_authorization_handles_expired_post_race(auth_client, monkeypatch):
+    provider = _provider()
+    client_info = _client()
+
+    anyio.run(provider.register_client, client_info)
+    authorization_url = anyio.run(
+        provider.authorize,
+        client_info,
+        AuthorizationParams(
+            state="state-123",
+            scopes=[MCP_SCOPE],
+            code_challenge="challenge",
+            redirect_uri="http://127.0.0.1:8765/callback",
+            redirect_uri_provided_explicitly=True,
+            resource="https://filebridge.example/mcp/",
+        ),
+    )
+    transaction_id = parse_qs(urlsplit(authorization_url).query)["transaction"][0]
+    monkeypatch.setattr(
+        "apps.mcp_server.views.approve_authorization_request",
+        lambda *_args: (_ for _ in ()).throw(ValueError("Authorization request expired.")),
+    )
+
+    response = auth_client.post(
+        reverse("mcp_oauth_authorize"),
+        {"transaction": transaction_id, "action": "approve"},
+    )
+
+    assert response.status_code == 400
+    assert b"Authorization request expired." in response.content
+
+
+def test_prune_expired_oauth_artifacts_removes_stale_rows(profile):
+    now = timezone.now()
+    expired_at = now - timedelta(seconds=1)
+    future_at = now + timedelta(hours=1)
+
+    McpOAuthAuthorizationRequest.objects.create(
+        transaction_id="expired-request",
+        client_id="client-1",
+        scopes=[MCP_SCOPE],
+        code_challenge="challenge",
+        redirect_uri="http://127.0.0.1:8765/callback",
+        expires_at=expired_at,
+    )
+    McpOAuthAuthorizationRequest.objects.create(
+        transaction_id="valid-request",
+        client_id="client-1",
+        scopes=[MCP_SCOPE],
+        code_challenge="challenge",
+        redirect_uri="http://127.0.0.1:8765/callback",
+        expires_at=future_at,
+    )
+    McpOAuthAuthorizationCode.objects.create(
+        code_hash=hash_token("expired-code"),
+        client_id="client-1",
+        profile=profile,
+        scopes=[MCP_SCOPE],
+        code_challenge="challenge",
+        redirect_uri="http://127.0.0.1:8765/callback",
+        expires_at=expired_at,
+    )
+    McpOAuthAuthorizationCode.objects.create(
+        code_hash=hash_token("valid-code"),
+        client_id="client-1",
+        profile=profile,
+        scopes=[MCP_SCOPE],
+        code_challenge="challenge",
+        redirect_uri="http://127.0.0.1:8765/callback",
+        expires_at=future_at,
+    )
+    McpOAuthAccessToken.objects.create(
+        token_hash=hash_token("expired-access"),
+        client_id="client-1",
+        profile=profile,
+        scopes=[MCP_SCOPE],
+        expires_at=expired_at,
+    )
+    McpOAuthAccessToken.objects.create(
+        token_hash=hash_token("valid-access"),
+        client_id="client-1",
+        profile=profile,
+        scopes=[MCP_SCOPE],
+        expires_at=future_at,
+    )
+    McpOAuthRefreshToken.objects.create(
+        token_hash=hash_token("revoked-refresh"),
+        client_id="client-1",
+        profile=profile,
+        scopes=[MCP_SCOPE],
+        expires_at=future_at,
+        revoked_at=now,
+    )
+    McpOAuthRefreshToken.objects.create(
+        token_hash=hash_token("valid-refresh"),
+        client_id="client-1",
+        profile=profile,
+        scopes=[MCP_SCOPE],
+        expires_at=future_at,
+    )
+
+    counts = prune_expired_oauth_artifacts()
+
+    assert counts == {
+        "authorization_requests": 1,
+        "authorization_codes": 1,
+        "access_tokens": 1,
+        "refresh_tokens": 1,
+    }
+    assert McpOAuthAuthorizationRequest.objects.filter(transaction_id="valid-request").exists()
+    assert McpOAuthAuthorizationCode.objects.filter(code_hash=hash_token("valid-code")).exists()
+    assert McpOAuthAccessToken.objects.filter(token_hash=hash_token("valid-access")).exists()
+    assert McpOAuthRefreshToken.objects.filter(token_hash=hash_token("valid-refresh")).exists()
 
 
 def test_oauth_provider_accepts_legacy_bearer_api_key(profile):

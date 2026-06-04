@@ -30,14 +30,17 @@ def authorize(request: HttpRequest):
 
     if request.method == "POST":
         action = request.POST.get("action")
-        if action == "deny":
-            return redirect(deny_authorization_request(transaction_id))
+        try:
+            if action == "deny":
+                return redirect(deny_authorization_request(transaction_id))
 
-        if action != "approve":
-            return HttpResponseBadRequest("Invalid authorization action.")
+            if action != "approve":
+                return HttpResponseBadRequest("Invalid authorization action.")
 
-        profile, _created = Profile.objects.get_or_create(user=request.user)
-        return redirect(approve_authorization_request(transaction_id, profile))
+            profile, _created = Profile.objects.get_or_create(user=request.user)
+            return redirect(approve_authorization_request(transaction_id, profile))
+        except ValueError as exc:
+            return HttpResponseBadRequest(str(exc))
 
     return render(
         request,

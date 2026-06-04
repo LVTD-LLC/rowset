@@ -542,4 +542,22 @@ def models_refresh_token_not_expired():
     return Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now())
 
 
+def prune_expired_oauth_artifacts() -> dict[str, int]:
+    now = timezone.now()
+    return {
+        "authorization_requests": McpOAuthAuthorizationRequest.objects.filter(
+            expires_at__lte=now
+        ).delete()[0],
+        "authorization_codes": McpOAuthAuthorizationCode.objects.filter(
+            Q(expires_at__lte=now) | Q(used_at__isnull=False)
+        ).delete()[0],
+        "access_tokens": McpOAuthAccessToken.objects.filter(
+            Q(expires_at__lte=now) | Q(revoked_at__isnull=False)
+        ).delete()[0],
+        "refresh_tokens": McpOAuthRefreshToken.objects.filter(
+            Q(expires_at__lte=now) | Q(revoked_at__isnull=False)
+        ).delete()[0],
+    }
+
+
 mcp_auth = FileBridgeOAuthProvider()
