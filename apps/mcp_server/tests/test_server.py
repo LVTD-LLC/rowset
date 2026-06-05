@@ -63,7 +63,7 @@ def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
         )
 
         async with Client(mcp) as client:
-            result = await client.call_tool("get_user_info", {"api_key": "secret-key"})
+            result = await client.call_tool("get_user_info", {})
 
         payload = result.data
         assert payload["email"] == "ada@example.com"
@@ -83,7 +83,7 @@ def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
         )
 
         async with Client(mcp) as client:
-            result = await client.call_tool("get_all_datasets", {"api_key": "secret-key"})
+            result = await client.call_tool("get_all_datasets", {})
 
         payload = result.data
         assert payload["count"] == 1
@@ -114,7 +114,6 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
             result = await client.call_tool(
                 "get_dataset",
                 {
-                    "api_key": "secret-key",
                     "dataset_key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
                 },
             )
@@ -154,7 +153,6 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
             result = await client.call_tool(
                 "create_dataset",
                 {
-                    "api_key": "secret-key",
                     "name": "Products",
                     "headers": ["sku", "name"],
                     "rows": [{"sku": "A-1", "name": "Adapter"}],
@@ -300,6 +298,6 @@ def test_get_user_info_mcp_tool_rejects_invalid_api_key(monkeypatch):
 
         async with Client(mcp) as client:
             with pytest.raises(Exception, match="Invalid FileBridge API key"):
-                await client.call_tool("get_user_info", {"api_key": "not-real"})
+                await client.call_tool("get_user_info", {})
 
     anyio.run(run)
