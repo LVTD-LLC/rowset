@@ -421,7 +421,8 @@ class FileBridgeOAuthProvider(OAuthProvider):
             if stored_refresh_token is None:
                 raise TokenError("invalid_grant", "refresh token does not exist")
 
-            effective_scopes = scopes or stored_refresh_token.scopes
+            # RFC 6749 section 6 treats an omitted refresh scope as the original grant.
+            effective_scopes = scopes if scopes else stored_refresh_token.scopes
             for scope in effective_scopes:
                 if scope not in stored_refresh_token.scopes:
                     raise TokenError("invalid_scope", f"cannot request scope `{scope}`")
