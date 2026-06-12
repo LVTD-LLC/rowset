@@ -58,7 +58,7 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "headers": dataset.headers,
         "column_schema": normalize_column_schema(
             dataset.headers,
-            getattr(dataset, "column_schema", {}),
+            dataset.column_schema or {},
         ),
         "index_column": dataset.index_column,
         "index_generated": dataset.index_generated,
@@ -343,9 +343,6 @@ def update_profile_dataset_column_types(
     dataset_key: str,
     column_types: dict[str, str],
 ) -> dict:
-    if not isinstance(column_types, dict):
-        raise DatasetServiceError(400, "Column types must be an object keyed by header.")
-
     with transaction.atomic():
         try:
             dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)

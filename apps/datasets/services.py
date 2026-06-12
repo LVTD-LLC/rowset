@@ -221,6 +221,10 @@ def _has_currency_marker(value: str) -> bool:
     return any(symbol in value for symbol in CURRENCY_SYMBOLS)
 
 
+def _has_decimal_component(value: str) -> bool:
+    return not _is_integer(value) and _is_number(value)
+
+
 def _parse_datetime(value: str) -> datetime | None:
     normalized = value.strip()
     if INTEGER_RE.match(normalized):
@@ -233,7 +237,6 @@ def _parse_datetime(value: str) -> datetime | None:
         pass
 
     formats = (
-        "%Y-%m-%d",
         "%Y/%m/%d",
         "%m/%d/%Y",
         "%Y-%m-%d %H:%M:%S",
@@ -276,6 +279,7 @@ def infer_column_type(header: str, values: list[str]) -> str:
     if all(_is_currency(value) for value in non_empty_values) and (
         any(_has_currency_marker(value) for value in non_empty_values)
         or bool(tokens & CURRENCY_HEADER_TOKENS)
+        and any(_has_decimal_component(value) for value in non_empty_values)
     ):
         return DatasetColumnType.CURRENCY
 

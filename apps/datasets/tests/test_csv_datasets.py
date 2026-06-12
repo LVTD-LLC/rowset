@@ -115,6 +115,7 @@ def test_infer_column_type_detects_common_semantic_types():
     assert infer_column_type("id", ["1", "2"]) == "integer"
     assert infer_column_type("score", ["98.5", "100"]) == "number"
     assert infer_column_type("price", ["19.99", "29"]) == "currency"
+    assert infer_column_type("total_items", ["1", "2"]) == "integer"
     assert infer_column_type("active", ["true", "false"]) == "boolean"
     assert infer_column_type("launched_on", ["2026-05-14", "2026-05-15"]) == "date"
     assert infer_column_type("created_at", ["2026-05-14T10:15:00Z"]) == "datetime"
