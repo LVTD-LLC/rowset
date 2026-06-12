@@ -14,11 +14,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import transaction
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, UpdateView
 
 from apps.core.forms import ProfileUpdateForm
@@ -37,44 +37,45 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 logger = get_filebridge_logger(__name__)
 
-AGENT_INSTRUCTIONS_MARKDOWN = """# FileBridge MCP Agent Skill
+AGENT_API_KEY_MASK = "***"
+
+
+AGENT_INSTRUCTIONS_MARKDOWN = """# FileBridge Agent Skill
 
 Use this when a user asks you to connect to FileBridge or work with FileBridge datasets.
+FileBridge turns user-owned tabular data into datasets that agents can discover,
+read, create, update, export, and share through MCP or the REST API.
 
-## Inputs from the user prompt
+## Prompt Inputs
 
-The user prompt should provide:
+The setup prompt should provide:
 
-- `FileBridge MCP URL`: the hosted MCP endpoint, usually ending in `/mcp/`.
-- Optional `FileBridge REST API base`: the same site with `/api/` endpoints.
+- `FileBridge MCP URL`
+- `FileBridge REST API base`
+- `FileBridge API key`
+- this `SKILL.md` URL
 
 ## Setup
 
-1. Configure your MCP client for a remote Streamable HTTP server named `filebridge`.
-2. Use the provided MCP URL exactly as given.
-3. When your MCP client opens the FileBridge authorization link, sign in and
-   approve access in the browser.
-4. After connecting, call the `get_user_info` tool to verify the connection.
-5. Use `get_all_datasets` to discover datasets available to the authenticated
-   profile before reading rows.
-6. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
-7. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
-   `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, and
-   `delete_dataset_row` to inspect and manage ready dataset rows.
+1. Configure a remote Streamable HTTP MCP server named `filebridge` with the MCP URL.
+2. Prefer the browser authorization flow if your MCP client supports it.
+3. If your client needs a token, use the API key as a bearer token. Never print it
+   in logs, screenshots, public chats, or generated files.
+4. Verify the connection by calling the current user/profile tool exposed by the
+   MCP server or by checking the REST user endpoint.
 
-## Working rules
+## How To Work
 
-- Prefer MCP tools over browser automation when working with FileBridge.
-- Use `get_all_datasets` for dataset discovery. It returns paginated dataset
-  metadata only, not row contents.
-- Use `create_dataset` when a workflow needs a new dataset. It returns a dataset
-  key that can be used immediately with row tools.
-- Use row tools for dataset contents. They require a ready dataset and enforce the
-  authenticated user's dataset ownership.
-- If MCP configuration is unavailable in your runtime, ask the user before falling
-  back to REST API authentication.
-- Ask the user before destructive changes such as deleting datasets or rows.
-- Keep user data private and only access the FileBridge resources needed for the task.
+- Prefer MCP over browser automation.
+- Treat this file as orientation, not a tool catalog. Discover the current MCP tools
+  and schemas from the connected server before acting.
+- For REST fallback, inspect the API docs from the provided REST API base, usually
+  by opening the `docs` path under that base.
+- Discover datasets before reading rows. Inspect a dataset's current metadata before
+  creating, updating, deleting, or exporting rows.
+- Create or mutate data only when the user asked for that change. Ask before
+  destructive actions.
+- Keep access scoped to the user's request and protect credentials and dataset data.
 """
 
 
@@ -97,25 +98,31 @@ def build_absolute_public_url(path: str) -> str:
     return f"{site_url}{path}"
 
 
-def build_agent_setup_prompt(request: HttpRequest) -> str:
+def build_agent_setup_prompt(
+    request: HttpRequest,
+    *,
+    mask_api_key: bool = False,
+    profile: Profile | None = None,
+) -> str:
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_filebridge_mcp"))
-    Profile.objects.get_or_create(user=request.user)
+    if profile is None:
+        profile, _created = Profile.objects.get_or_create(user=request.user)
+    api_key = AGENT_API_KEY_MASK if mask_api_key else profile.key
 
     return "\n".join(
         [
-            "Set yourself up to use FileBridge for this user.",
+            "Set up FileBridge for this user.",
             "",
             f"FileBridge MCP URL: {mcp_url}",
             f"FileBridge REST API base: {rest_api_base_url}",
-            f"Agent instructions/skill: {instructions_url}",
+            f"FileBridge API key: {api_key}",
+            f"FileBridge skill: {instructions_url}",
             "",
-            "Read the instructions/skill URL, configure FileBridge as a remote Streamable "
-            "HTTP MCP server, and complete the browser authorization flow opened by your "
-            "MCP client. After setup, call get_user_info to verify the connection, then "
-            "call get_all_datasets to discover available datasets. Use create_dataset "
-            "when you need to create a dataset on the fly.",
+            "Read the skill first. Prefer MCP; use the API key only when your client "
+            "needs bearer-token auth or REST fallback. Discover the current tools and "
+            "API docs at runtime before working with datasets.",
         ]
     )
 
@@ -137,7 +144,12 @@ class HomeView(LoginRequiredMixin, TemplateView):
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
         context["recent_datasets"] = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)[:5]
         context["show_agent_setup_prompt"] = not profile.agent_setup_prompt_dismissed
-        context["agent_setup_prompt"] = build_agent_setup_prompt(self.request)
+        context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
+            self.request,
+            mask_api_key=True,
+            profile=profile,
+        )
+        context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
         context["agent_instructions_url"] = build_absolute_public_url(
             reverse("agent_instructions_filebridge_mcp")
         )
@@ -200,6 +212,15 @@ def connect_google_sheets(request):
 
 def agent_instructions_filebridge_mcp(request):
     return HttpResponse(AGENT_INSTRUCTIONS_MARKDOWN, content_type="text/markdown; charset=utf-8")
+
+
+@login_required
+@require_GET
+def agent_setup_prompt(request):
+    profile, _created = Profile.objects.get_or_create(user=request.user)
+    response = JsonResponse({"prompt": build_agent_setup_prompt(request, profile=profile)})
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 @login_required

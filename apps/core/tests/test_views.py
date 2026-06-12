@@ -45,18 +45,34 @@ class TestHomeView:
         assert "Connect Google Sheets" not in content
 
     @override_settings(SITE_URL="https://filebridge.example")
-    def test_home_view_includes_agent_setup_prompt(self, auth_client):
+    def test_home_view_includes_agent_setup_prompt(self, auth_client, profile):
         url = reverse("home")
         response = auth_client.get(url)
 
-        prompt = response.context["agent_setup_prompt"]
+        masked_prompt = response.context["agent_setup_prompt_masked"]
+        content = response.content.decode()
         assert response.context["show_agent_setup_prompt"] is True
+        assert "agent_setup_prompt" not in response.context
+        assert "FileBridge API key: ***" in masked_prompt
+        assert profile.key not in masked_prompt
+        assert "FileBridge API key: ***" in content
+        assert profile.key not in content
+        assert reverse("agent_setup_prompt") in content
+        assert "Only share this prompt with agents and people you trust." in content
+
+    @override_settings(SITE_URL="https://filebridge.example")
+    def test_agent_setup_prompt_endpoint_returns_full_prompt(self, auth_client, profile):
+        response = auth_client.get(reverse("agent_setup_prompt"))
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/json"
+        assert response["Cache-Control"] == "no-store"
+        prompt = response.json()["prompt"]
         assert "FileBridge MCP URL: https://filebridge.example/mcp/" in prompt
         assert "FileBridge REST API base: https://filebridge.example/api/" in prompt
-        assert "FileBridge API key:" not in prompt
-        assert "browser authorization flow" in prompt
-        assert "Agent instructions/skill: https://filebridge.example/SKILL.md" in prompt
-        assert "get_user_info" in prompt
+        assert f"FileBridge API key: {profile.key}" in prompt
+        assert "FileBridge skill: https://filebridge.example/SKILL.md" in prompt
+        assert "Discover the current tools and API docs at runtime" in prompt
 
     @override_settings(SITE_URL="https://filebridge.example")
     def test_home_view_creates_missing_profile(self, auth_client, user):
@@ -66,7 +82,8 @@ class TestHomeView:
 
         assert response.status_code == 200
         assert response.context["show_agent_setup_prompt"] is True
-        assert "FileBridge API key:" not in response.context["agent_setup_prompt"]
+        assert "FileBridge API key: ***" in response.context["agent_setup_prompt_masked"]
+        assert "agent_setup_prompt" not in response.context
         assert user.__class__.objects.get(pk=user.pk).profile
 
     def test_dismiss_agent_setup_prompt_hides_dashboard_card(self, auth_client, profile):
@@ -84,10 +101,12 @@ class TestHomeView:
         assert response.status_code == 200
         assert response["Content-Type"] == "text/markdown; charset=utf-8"
         content = response.content.decode()
-        assert "# FileBridge MCP Agent Skill" in content
+        assert "# FileBridge Agent Skill" in content
+        assert "FileBridge turns user-owned tabular data into datasets" in content
         assert "Streamable HTTP" in content
-        assert "get_user_info" in content
-        assert "Keep user data private" in content
+        assert "Discover the current MCP tools" in content
+        assert "REST API base" in content
+        assert "Keep access scoped" in content
 
     @override_settings(SITE_URL="http://filebridge.example")
     def test_build_agent_setup_prompt_uses_https_public_site_url(self, rf, user):
@@ -98,9 +117,13 @@ class TestHomeView:
 
         assert "FileBridge MCP URL: https://filebridge.example/mcp/" in prompt
         assert "FileBridge REST API base: https://filebridge.example/api/" in prompt
-        assert "Agent instructions/skill: https://filebridge.example/SKILL.md" in prompt
-        assert "FileBridge API key:" not in prompt
-        assert "browser authorization flow" in prompt
+        assert "FileBridge skill: https://filebridge.example/SKILL.md" in prompt
+        assert f"FileBridge API key: {user.profile.key}" in prompt
+        assert "API key only when your client needs bearer-token auth" in prompt
+
+        masked_prompt = build_agent_setup_prompt(request, mask_api_key=True)
+        assert "FileBridge API key: ***" in masked_prompt
+        assert user.profile.key not in masked_prompt
 
     @override_settings(SITE_URL="https://filebridge.example")
     def test_build_agent_setup_prompt_creates_missing_profile(self, rf, user):
@@ -111,7 +134,7 @@ class TestHomeView:
 
         prompt = build_agent_setup_prompt(request)
 
-        assert "FileBridge API key:" not in prompt
+        assert f"FileBridge API key: {fresh_user.profile.key}" in prompt
         assert fresh_user.profile
 
     @override_settings(SITE_URL="http://localhost:8000")

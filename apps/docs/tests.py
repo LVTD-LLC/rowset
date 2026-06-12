@@ -45,7 +45,8 @@ class TestDocsView:
 
         assert response.status_code == 200
         content = response.content.decode()
-        assert "Set yourself up to use FileBridge for this user." in content
+        assert "Set up FileBridge for this user." in content
+        assert "FileBridge API key: ***" in content
         assert f"FileBridge API key: {profile.key}" not in content
-        assert "browser authorization flow" in content
+        assert "treat the copied prompt like a password" in content
         assert "https://filebridge.example/SKILL.md" in content
