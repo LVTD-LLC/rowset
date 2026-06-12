@@ -74,7 +74,11 @@ def get_docs_navigation():  # noqa: C901
 
     for category_slug in ordered_categories:
         category_dir = all_categories[category_slug]
-        category_name = "API Reference" if category_slug == "api-reference" else category_slug.replace("-", " ").title()
+        category_name = (
+            "API Reference"
+            if category_slug == "api-reference"
+            else category_slug.replace("-", " ").title()
+        )
 
         all_pages = {}
         for markdown_file in category_dir.glob("*.md"):
@@ -160,7 +164,9 @@ def get_previous_and_next_pages(navigation, current_category, current_page):
 
 @login_required
 def docs_home_view(request):
-    return redirect(reverse("docs_page", kwargs={"category": "getting-started", "page": "introduction"}))
+    return redirect(
+        reverse("docs_page", kwargs={"category": "getting-started", "page": "introduction"})
+    )
 
 
 @login_required
@@ -187,7 +193,11 @@ def docs_page_view(request, category, page):
             "api_key_masked": f"{api_key[:8]}••••••••",
             "api_key_full": api_key,
             "api_docs_url": build_absolute_public_url("/api/docs"),
-            "agent_setup_prompt": build_agent_setup_prompt(request),
+            "agent_setup_prompt_masked": build_agent_setup_prompt(
+                request,
+                mask_api_key=True,
+                profile=profile,
+            ),
             "mcp_url": build_absolute_public_url("/mcp/"),
             "site_url": build_absolute_public_url("/").rstrip("/"),
             "user_email": request.user.email,
@@ -199,7 +209,9 @@ def docs_page_view(request, category, page):
         previous_page, next_page = get_previous_and_next_pages(navigation, category, page)
 
         default_page_title = page.replace("-", " ").title()
-        default_category_title = "API Reference" if category == "api-reference" else category.replace("-", " ").title()
+        default_category_title = (
+            "API Reference" if category == "api-reference" else category.replace("-", " ").title()
+        )
 
         context = {
             "content": markdown_html,
@@ -218,5 +230,10 @@ def docs_page_view(request, category, page):
 
         return render(request, "docs/docs_page.html", context)
     except Exception as e:
-        logger.error("Error loading documentation page", category=category, page=page, error=str(e))
-        raise Http404("Documentation page not found")
+        logger.error(
+            "Error loading documentation page",
+            category=category,
+            page=page,
+            error=str(e),
+        )
+        raise Http404("Documentation page not found") from e

@@ -18,6 +18,11 @@ urlpatterns = [
         name="agent_instructions_filebridge_mcp",
     ),
     path(
+        "home/agent-setup-prompt/",
+        views.agent_setup_prompt,
+        name="agent_setup_prompt",
+    ),
+    path(
         "home/dismiss-agent-setup/",
         views.dismiss_agent_setup_prompt,
         name="dismiss_agent_setup_prompt",
@@ -33,9 +38,8 @@ urlpatterns = [
         name="user_upgrade_checkout_session",
     ),
     path(
-      "create-customer-portal/",
-      views.create_customer_portal_session,
-      name="create_customer_portal_session"
+        "create-customer-portal/",
+        views.create_customer_portal_session,
+        name="create_customer_portal_session",
     ),
-    
 ]

@@ -6,17 +6,19 @@ keywords: FileBridge, agents, MCP, OAuth, SKILL.md
 
 # Agent access
 
-FileBridge gives you a copy/paste setup prompt for AI agents. It includes the hosted MCP URL, REST API base URL, and the `SKILL.md` instructions URL. The agent connects to MCP with browser-based OAuth, so the prompt does not include your API key.
+FileBridge gives you a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, and your API key for clients that need bearer-token auth.
+
+The dashboard preview masks the API key. The copy button includes the real key, so treat the copied prompt like a password.
 
 ## Copy/paste setup prompt
 
-Paste this into a trusted agent:
+The docs show a masked example:
 
 ```text
-{{ agent_setup_prompt }}
+{{ agent_setup_prompt_masked }}
 ```
 
-When the MCP client opens the FileBridge authorization link, sign in and approve access in the browser.
+Use the dashboard copy button when you want the full prompt with the API key included.
 
 ## SKILL.md instructions
 
@@ -26,17 +28,16 @@ The prompt links to:
 {{ site_url }}/SKILL.md
 ```
 
-That file gives an agent durable setup instructions for FileBridge MCP, including the expected tools and safety rules.
+That file gives an agent durable setup instructions for FileBridge MCP and REST fallback. It tells agents how to discover the current tools and API docs instead of hardcoding an endpoint list.
 
 ## Recommended agent behavior
 
 - Prefer MCP tools over browser automation.
-- Verify setup with `get_user_info`.
-- Discover available datasets with `get_all_datasets`.
-- Create new ready datasets with `create_dataset` when the user asks for an on-the-fly dataset.
-- Inspect one dataset with `get_dataset` before row operations.
-- Read rows with `list_dataset_rows`, `get_dataset_row`, or `get_dataset_row_by_index`.
-- Modify rows with `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row` only when requested.
+- Discover current MCP tools and schemas from the connected server before acting.
+- For REST fallback, inspect the current API docs from the REST API base.
+- Discover datasets before reading rows.
+- Inspect one dataset's current metadata before row operations.
+- Create or modify data only when the user asks for that change.
 - For Google Sheets-backed datasets, row changes may also update the source spreadsheet when the user has explicitly connected Google Sheets access or service-account write-back is configured.
 - Use the Dataset API only if MCP configuration is unavailable and the user approves REST API authentication.
 - Ask before destructive actions like deleting datasets or rows.

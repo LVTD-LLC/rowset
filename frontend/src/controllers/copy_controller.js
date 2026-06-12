@@ -3,12 +3,16 @@ import { copyTextToClipboard } from "../utils/clipboard";
 
 export default class extends Controller {
   static targets = ["source", "label"];
+  static values = { url: String };
 
   async copy(event) {
     event.preventDefault();
 
-    const text = this.sourceTarget.value || this.sourceTarget.textContent;
+    const text = await this.getCopyText();
     if (!text) {
+      if (this.hasLabelTarget) {
+        this.flashLabel("Copy failed");
+      }
       return;
     }
 
@@ -19,7 +23,29 @@ export default class extends Controller {
   }
 
   copyText(text) {
-    return copyTextToClipboard(text, { sourceElement: this.sourceTarget });
+    const sourceElement = this.hasUrlValue && this.urlValue ? null : this.sourceTarget;
+    return copyTextToClipboard(text, { sourceElement });
+  }
+
+  async getCopyText() {
+    if (!this.hasUrlValue || !this.urlValue) {
+      return this.sourceTarget.value || this.sourceTarget.textContent;
+    }
+
+    try {
+      const response = await fetch(this.urlValue, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) {
+        return "";
+      }
+
+      const payload = await response.json();
+      return payload.prompt || "";
+    } catch (error) {
+      return "";
+    }
   }
 
   flashLabel(message) {
