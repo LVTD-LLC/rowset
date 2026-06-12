@@ -226,7 +226,6 @@ def _create_dataset_index_config(
 def _normalize_dataset_column_schema(
     *,
     base_headers: list[str],
-    dataset_headers: list[str],
     index_column: str,
     index_generated: bool,
     rows: list[dict[str, str]],
@@ -271,7 +270,6 @@ def create_profile_dataset(
     )
     column_schema = _normalize_dataset_column_schema(
         base_headers=base_headers,
-        dataset_headers=dataset_headers,
         index_column=index_column,
         index_generated=index_generated,
         rows=normalized_rows,
