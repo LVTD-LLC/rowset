@@ -11,6 +11,8 @@ export default class extends Controller {
     "sample",
     "rowCount",
     "indexSelector",
+    "columnTypes",
+    "columnType",
     "confirmForm",
   ];
 
@@ -71,6 +73,7 @@ export default class extends Controller {
 
     const formData = new FormData();
     formData.append("index_column", this.indexSelectorTarget.value);
+    formData.append("column_types", JSON.stringify(this.selectedColumnTypes));
 
     try {
       const response = await fetch(this.confirmUrl, {
@@ -104,6 +107,7 @@ export default class extends Controller {
       .join("");
 
     this.indexSelectorTarget.innerHTML = this.renderIndexOptions(dataset);
+    this.columnTypesTarget.innerHTML = this.renderColumnTypeControls(dataset);
 
     const headerCells = dataset.headers.map((header) => `<th scope="col" class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">${this.escape(header)}</th>`).join("");
     const rows = dataset.preview_rows.map((row) => {
@@ -124,6 +128,43 @@ export default class extends Controller {
     return `${generated}${headers}`;
   }
 
+  renderColumnTypeControls(dataset) {
+    const options = dataset.column_type_options || [
+      { value: "text", label: "Text" },
+      { value: "integer", label: "Integer" },
+      { value: "number", label: "Number" },
+      { value: "currency", label: "Currency" },
+      { value: "boolean", label: "Boolean" },
+      { value: "date", label: "Date" },
+      { value: "datetime", label: "Date/time" },
+      { value: "email", label: "Email" },
+      { value: "url", label: "URL" },
+    ];
+    const schema = dataset.column_schema || {};
+    const controls = dataset.headers.map((header) => {
+      const selectedType = schema[header]?.type || "text";
+      const optionHtml = options.map((option) => {
+        const selected = option.value === selectedType ? " selected" : "";
+        return `<option value="${this.escape(option.value)}"${selected}>${this.escape(option.label)}</option>`;
+      }).join("");
+      return `
+        <label class="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center">
+          <span class="min-w-0 break-words font-semibold text-slate-700 dark:text-slate-200">${this.escape(header)}</span>
+          <select data-csv-upload-target="columnType" data-column-name="${this.escape(header)}" class="fb-input w-full px-3 py-2 text-sm">
+            ${optionHtml}
+          </select>
+        </label>
+      `;
+    }).join("");
+
+    return `
+      <div>
+        <p class="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Column types</p>
+        <div class="grid gap-3 sm:max-w-2xl">${controls}</div>
+      </div>
+    `;
+  }
+
   showError(message) {
     this.statusTarget.textContent = message;
     this.statusTarget.className = "text-sm text-red-700 dark:text-red-300";
@@ -136,6 +177,14 @@ export default class extends Controller {
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
+
+  get selectedColumnTypes() {
+    if (!this.hasColumnTypeTarget) return {};
+    return this.columnTypeTargets.reduce((columnTypes, select) => {
+      columnTypes[select.dataset.columnName] = select.value;
+      return columnTypes;
+    }, {});
   }
 
   get csrfToken() {

@@ -41,13 +41,14 @@ POST {{ api_base_url }}/datasets
 Content-Type: application/json
 ```
 
-Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, FileBridge adds a generated `filebridge_id` column so the dataset is ready to use immediately.
+Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, FileBridge adds a generated `filebridge_id` column so the dataset is ready to use immediately. FileBridge infers column types from supplied rows; pass `column_types` to override them.
 
 ```json
 {
   "name": "Products",
   "headers": ["sku", "name", "price"],
   "index_column": "sku",
+  "column_types": {"sku": "text", "name": "text", "price": "currency"},
   "rows": [
     {"sku": "A-1", "name": "Adapter", "price": "19.99"}
   ]
@@ -89,6 +90,27 @@ Content-Type: application/json
 ```
 
 Use row ids for updates when you already have the FileBridge row id from a list or lookup response.
+
+## Update column types
+
+```http
+PATCH {{ api_base_url }}/datasets/{dataset_key}/column-types
+Content-Type: application/json
+```
+
+Updates semantic column metadata without changing stored row values.
+
+```json
+{
+  "column_types": {
+    "sku": "text",
+    "price": "currency",
+    "updated_at": "datetime"
+  }
+}
+```
+
+Supported types are `text`, `integer`, `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
 
 ## Delete a row
 

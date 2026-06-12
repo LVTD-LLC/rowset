@@ -19,6 +19,7 @@ from apps.api.services import (
     serialize_dataset_summary,
     serialize_profile_datasets,
     serialize_user_info,
+    update_profile_dataset_column_types,
 )
 from apps.core.models import Profile
 from apps.mcp_server.oauth import LEGACY_API_KEY_CLIENT_ID, mcp_auth
@@ -176,6 +177,17 @@ def create_dataset(
             ),
         ),
     ] = None,
+    column_types: Annotated[
+        dict[str, str] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional mapping from header name to semantic column type. "
+                "Supported values include text, integer, number, currency, boolean, "
+                "date, datetime, email, and url."
+            ),
+        ),
+    ] = None,
     index_column: Annotated[
         str | None,
         Field(
@@ -196,7 +208,36 @@ def create_dataset(
             headers=headers,
             rows=rows,
             index_column=index_column,
+            column_types=column_types,
         )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_dataset_column_types",
+    description="Update semantic column type metadata for an existing FileBridge dataset.",
+)
+def update_dataset_column_types(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    column_types: Annotated[
+        dict[str, str],
+        Field(
+            description=(
+                "Mapping from dataset header to semantic type. Supported values include "
+                "text, integer, number, currency, boolean, date, datetime, email, and url."
+            ),
+        ),
+    ],
+    api_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional FileBridge API key."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile(api_key)
+    try:
+        return update_profile_dataset_column_types(profile, dataset_key, column_types)
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
 

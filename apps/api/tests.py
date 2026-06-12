@@ -238,6 +238,10 @@ class DatasetListApiUnitTests(SimpleTestCase):
             file_type="csv",
             status="ready",
             headers=["email", "name"],
+            column_schema={
+                "email": {"type": "email"},
+                "name": {"type": "text"},
+            },
             index_column="email",
             index_generated=False,
             row_count=42,
@@ -270,6 +274,10 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "file_type": "csv",
                 "status": "ready",
                 "headers": ["email", "name"],
+                "column_schema": {
+                    "email": {"type": "email"},
+                    "name": {"type": "text"},
+                },
                 "index_column": "email",
                 "index_generated": False,
                 "row_count": 42,

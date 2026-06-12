@@ -23,6 +23,11 @@ urlpatterns = [
         name="dataset_update_public_settings",
     ),
     path(
+        "datasets/<uuid:dataset_key>/settings/columns/",
+        views.dataset_update_column_settings,
+        name="dataset_update_column_settings",
+    ),
+    path(
         "datasets/<uuid:dataset_key>/confirm/",
         views.dataset_confirm_import,
         name="dataset_confirm_import",

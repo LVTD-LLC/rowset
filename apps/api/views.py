@@ -17,6 +17,8 @@ from apps.api.schemas import (
     BlogPostOut,
     BlogPostUpdateIn,
     DatasetApiOut,
+    DatasetColumnTypesOut,
+    DatasetColumnTypesPatchIn,
     DatasetCreateIn,
     DatasetCreateOut,
     DatasetListOut,
@@ -40,6 +42,7 @@ from apps.api.services import (
     patch_profile_dataset_row,
     serialize_profile_datasets,
     serialize_user_info,
+    update_profile_dataset_column_types,
 )
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
@@ -397,7 +400,30 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 headers=payload.headers,
                 rows=payload.rows,
                 index_column=payload.index_column,
+                column_types=payload.column_types,
             ),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.patch(
+    "/datasets/{dataset_key}/column-types",
+    response=DatasetColumnTypesOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def patch_dataset_column_types(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetColumnTypesPatchIn,
+):
+    """Update semantic column type metadata without changing row values."""
+    try:
+        return update_profile_dataset_column_types(
+            request.auth,
+            dataset_key,
+            payload.column_types,
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)

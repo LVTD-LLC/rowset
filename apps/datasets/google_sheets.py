@@ -101,6 +101,7 @@ def preview_google_sheet_url_with_oauth(
         row_count=preview.row_count,
         source_text=preview.source_text,
         file_type=GOOGLE_SHEETS_FILE_TYPE,
+        column_schema=preview.column_schema,
     )
 
 
