@@ -17,6 +17,7 @@ from apps.datasets.services import (
     _GoogleSheetsRedirectHandler,
     fetch_google_sheet_csv,
     google_sheets_export_url,
+    infer_column_type,
     preview_csv_file,
     preview_google_sheet_url,
     preview_uploaded_table,
@@ -104,6 +105,24 @@ def test_preview_csv_file_returns_headers_sample_and_count():
         {"name": "Ada", "email": "ada@example.com"},
         {"name": "Grace", "email": "grace@example.com"},
     ]
+    assert preview.column_schema == {
+        "name": {"type": "text"},
+        "email": {"type": "email"},
+    }
+
+
+def test_infer_column_type_detects_common_semantic_types():
+    assert infer_column_type("id", ["1", "2"]) == "integer"
+    assert infer_column_type("score", ["98.5", "100"]) == "number"
+    assert infer_column_type("price", ["19.99", "29"]) == "currency"
+    assert infer_column_type("total_items", ["1", "2"]) == "integer"
+    assert infer_column_type("active", ["true", "false"]) == "boolean"
+    assert infer_column_type("launched_on", ["2026-05-14", "2026-05-15"]) == "date"
+    assert infer_column_type("created_at", ["2026-05-14T10:15:00Z"]) == "datetime"
+    assert infer_column_type("email", ["ada@example.com"]) == "email"
+    assert infer_column_type("website", ["https://example.com"]) == "url"
+    assert infer_column_type("date", ["31/01/2026"]) == "text"
+    assert infer_column_type("mixed", ["Ada", "10"]) == "text"
 
 
 def test_preview_csv_file_rejects_duplicate_headers():
@@ -249,11 +268,19 @@ def test_upload_preview_creates_preview_dataset(auth_client, profile):
     payload = response.json()
     assert payload["ok"] is True
     assert payload["dataset"]["headers"] == ["name", "email"]
+    assert payload["dataset"]["column_schema"] == {
+        "name": {"type": "text"},
+        "email": {"type": "email"},
+    }
     assert payload["dataset"]["row_count"] == 2
     assert payload["dataset"]["generated_index_choice"] == GENERATED_INDEX_CHOICE
 
     dataset = Dataset.objects.get(profile=profile)
     assert dataset.status == DatasetStatus.PREVIEWED
+    assert dataset.column_schema == {
+        "name": {"type": "text"},
+        "email": {"type": "email"},
+    }
     assert dataset.source_text == "name,email\nAda,ada@example.com\nGrace,grace@example.com\n"
     assert dataset.rows.count() == 0
 
@@ -485,8 +512,49 @@ def test_confirm_import_enqueues_and_imports_rows(auth_client, profile, monkeypa
     assert dataset.confirmed_at is not None
     assert dataset.rows.count() == 2
     assert dataset.index_column == "email"
+    assert dataset.column_schema == {
+        "name": {"type": "text"},
+        "email": {"type": "email"},
+    }
     assert dataset.rows.first().index_value == "ada@example.com"
     assert dataset.rows.first().data == {"name": "Ada", "email": "ada@example.com"}
+
+
+def test_confirm_import_persists_user_selected_column_types(auth_client, profile, monkeypatch):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file=csv_upload(),
+        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
+        status=DatasetStatus.PREVIEWED,
+        headers=["name", "email"],
+        column_schema={"name": {"type": "text"}, "email": {"type": "email"}},
+        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+        row_count=2,
+    )
+
+    monkeypatch.setattr(
+        "apps.datasets.views.async_task",
+        lambda func_path, dataset_id, **kwargs: import_dataset_rows(dataset_id),
+    )
+
+    response = auth_client.post(
+        reverse("dataset_confirm_import", args=[dataset.key]),
+        {
+            "index_column": GENERATED_INDEX_CHOICE,
+            "column_types": '{"name":"text","email":"text"}',
+        },
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.headers == ["filebridge_id", "name", "email"]
+    assert dataset.column_schema == {
+        "filebridge_id": {"type": "integer"},
+        "name": {"type": "text"},
+        "email": {"type": "text"},
+    }
 
 
 def test_confirm_import_file_fallback_validates_selected_index(auth_client, profile, monkeypatch):
@@ -591,6 +659,7 @@ def test_confirm_import_can_generate_index_column(auth_client, profile, monkeypa
     assert dataset.index_column == "filebridge_id"
     assert dataset.index_generated is True
     assert dataset.headers == ["filebridge_id", "name", "email"]
+    assert dataset.column_schema["filebridge_id"] == {"type": "integer"}
     assert dataset.rows.first().index_value == "1"
     assert dataset.rows.first().data == {
         "filebridge_id": "1",
@@ -770,10 +839,20 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
     assert payload["dataset"]["file_type"] == "api"
     assert payload["dataset"]["status"] == DatasetStatus.READY
     assert payload["dataset"]["index_column"] == "sku"
+    assert payload["dataset"]["column_schema"] == {
+        "sku": {"type": "text"},
+        "name": {"type": "text"},
+        "price": {"type": "currency"},
+    }
     assert payload["dataset"]["row_count"] == 2
 
     dataset = Dataset.objects.get(key=payload["dataset"]["key"], profile=profile)
     assert dataset.headers == ["sku", "name", "price"]
+    assert dataset.column_schema == {
+        "sku": {"type": "text"},
+        "name": {"type": "text"},
+        "price": {"type": "currency"},
+    }
     assert dataset.original_filename == "Created via API"
     assert dataset.confirmed_at is not None
     assert dataset.processed_at is not None
@@ -801,6 +880,10 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
     dataset_key = response.json()["dataset"]["key"]
     dataset = Dataset.objects.get(key=dataset_key, profile=profile)
     assert dataset.headers == ["filebridge_id", "task"]
+    assert dataset.column_schema == {
+        "filebridge_id": {"type": "integer"},
+        "task": {"type": "text"},
+    }
     assert dataset.index_column == "filebridge_id"
     assert dataset.index_generated is True
     assert dataset.rows.first().data == {"filebridge_id": "1", "task": "Draft"}
@@ -814,6 +897,62 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
     assert create_response.status_code == 200
     assert create_response.json()["row"]["index_value"] == "2"
     assert create_response.json()["row"]["data"] == {"filebridge_id": "2", "task": "Ship"}
+
+
+def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Products",
+            "headers": ["sku", "price"],
+            "index_column": "sku",
+            "column_types": {"sku": "text", "price": "number"},
+            "rows": [{"sku": "A-1", "price": "19.99"}],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    dataset = Dataset.objects.get(key=response.json()["dataset"]["key"], profile=profile)
+    assert dataset.column_schema == {
+        "sku": {"type": "text"},
+        "price": {"type": "number"},
+    }
+
+
+def test_dataset_api_updates_column_types(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+        data={"column_types": {"email": "text"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["dataset"]["column_schema"] == {
+        "name": {"type": "text"},
+        "email": {"type": "text"},
+    }
+    dataset.refresh_from_db()
+    assert dataset.column_schema == {
+        "name": {"type": "text"},
+        "email": {"type": "text"},
+    }
+
+
+def test_dataset_api_rejects_unknown_column_type_header(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+        data={"column_types": {"missing": "text"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert "unknown headers" in response.json()["detail"]
 
 
 def test_dataset_api_rejects_duplicate_index_on_create(client, profile):
@@ -899,6 +1038,47 @@ def test_dataset_api_rejects_other_users_dataset(client, django_user_model, prof
     response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={other_user.profile.key}")
 
     assert response.status_code == 404
+
+
+def test_dataset_owner_can_update_column_types_from_settings(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.post(
+        reverse("dataset_update_column_settings", args=[dataset.key]),
+        {
+            "column_name": ["name", "email"],
+            "column_type": ["text", "text"],
+        },
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.column_schema == {
+        "name": {"type": "text"},
+        "email": {"type": "text"},
+    }
+
+
+def test_dataset_owner_cannot_update_column_types_while_processing(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.status = DatasetStatus.PROCESSING
+    dataset.column_schema = {"name": {"type": "text"}, "email": {"type": "email"}}
+    dataset.save(update_fields=["status", "column_schema"])
+
+    response = auth_client.post(
+        reverse("dataset_update_column_settings", args=[dataset.key]),
+        {
+            "column_name": ["name", "email"],
+            "column_type": ["text", "text"],
+        },
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.column_schema == {
+        "name": {"type": "text"},
+        "email": {"type": "email"},
+    }
 
 
 def test_dataset_public_sharing_is_off_by_default(client, profile):

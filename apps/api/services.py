@@ -11,6 +11,9 @@ from apps.datasets.services import (
     GOOGLE_SHEETS_FILE_TYPE,
     CSVParseError,
     generated_index_column_name,
+    generated_index_column_schema,
+    infer_column_schema,
+    normalize_column_schema,
     validate_headers,
 )
 
@@ -53,6 +56,10 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "file_type": dataset.file_type,
         "status": dataset.status,
         "headers": dataset.headers,
+        "column_schema": normalize_column_schema(
+            dataset.headers,
+            dataset.column_schema or {},
+        ),
         "index_column": dataset.index_column,
         "index_generated": dataset.index_generated,
         "row_count": dataset.row_count,
@@ -75,6 +82,7 @@ def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int =
         "file_type",
         "status",
         "headers",
+        "column_schema",
         "index_column",
         "index_generated",
         "row_count",
@@ -215,6 +223,33 @@ def _create_dataset_index_config(
     return normalized_index, False, headers
 
 
+def _normalize_dataset_column_schema(
+    *,
+    base_headers: list[str],
+    index_column: str,
+    index_generated: bool,
+    rows: list[dict[str, str]],
+    column_types: dict[str, str] | None,
+) -> dict[str, dict[str, str]]:
+    inferred_schema = infer_column_schema(base_headers, rows)
+    try:
+        base_schema = normalize_column_schema(
+            base_headers,
+            column_types,
+            fallback_schema=inferred_schema,
+            reject_unknown=True,
+        )
+    except CSVParseError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+    if index_generated:
+        return {
+            index_column: generated_index_column_schema(),
+            **base_schema,
+        }
+    return base_schema
+
+
 def create_profile_dataset(
     profile: Profile,
     *,
@@ -222,6 +257,7 @@ def create_profile_dataset(
     headers: list[str] | None = None,
     rows: list[dict[str, Any]] | None = None,
     index_column: str | None = None,
+    column_types: dict[str, str] | None = None,
 ) -> dict:
     """Create a ready API-backed dataset for an authenticated profile."""
     normalized_name = _normalize_dataset_name(name)
@@ -231,6 +267,13 @@ def create_profile_dataset(
     index_column, index_generated, dataset_headers = _create_dataset_index_config(
         base_headers,
         index_column,
+    )
+    column_schema = _normalize_dataset_column_schema(
+        base_headers=base_headers,
+        index_column=index_column,
+        index_generated=index_generated,
+        rows=normalized_rows,
+        column_types=column_types,
     )
 
     seen_index_values = set()
@@ -265,6 +308,7 @@ def create_profile_dataset(
             file_type=API_CREATED_FILE_TYPE,
             status=DatasetStatus.READY,
             headers=dataset_headers,
+            column_schema=column_schema,
             preview_rows=[payload[2] for payload in row_payloads[:5]],
             index_column=index_column,
             index_generated=index_generated,
@@ -288,6 +332,41 @@ def create_profile_dataset(
     return {
         "status": "success",
         "message": "Dataset created.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
+def update_profile_dataset_column_types(
+    profile: Profile,
+    dataset_key: str,
+    column_types: dict[str, str],
+) -> dict:
+    with transaction.atomic():
+        try:
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
+        except Dataset.DoesNotExist as exc:
+            raise DatasetServiceError(404, "Dataset not found.") from exc
+
+        if dataset.status == DatasetStatus.PROCESSING:
+            raise DatasetServiceError(
+                409,
+                "Column types cannot be updated while the dataset is processing.",
+            )
+
+        try:
+            dataset.column_schema = normalize_column_schema(
+                dataset.headers,
+                column_types,
+                fallback_schema=dataset.column_schema,
+                reject_unknown=True,
+            )
+        except CSVParseError as exc:
+            raise DatasetServiceError(400, str(exc)) from exc
+        dataset.save(update_fields=["column_schema", "updated_at"])
+
+    return {
+        "status": "success",
+        "message": "Column types updated.",
         "dataset": serialize_dataset_summary(dataset),
     }
 

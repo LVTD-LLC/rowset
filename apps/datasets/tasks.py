@@ -3,7 +3,12 @@ from django.utils import timezone
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.services import iter_indexed_rows, source_text_from_file
+from apps.datasets.services import (
+    generated_index_column_schema,
+    iter_indexed_rows,
+    normalize_column_schema,
+    source_text_from_file,
+)
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -15,8 +20,13 @@ def _ensure_index_config(dataset: Dataset) -> None:
 
     dataset.index_column = "filebridge_id"
     dataset.index_generated = True
+    existing_headers = [header for header in dataset.headers if header != dataset.index_column]
     if dataset.index_column not in dataset.headers:
         dataset.headers = [dataset.index_column, *dataset.headers]
+    dataset.column_schema = {
+        dataset.index_column: generated_index_column_schema(),
+        **normalize_column_schema(existing_headers, dataset.column_schema),
+    }
 
 
 def import_dataset_rows(dataset_id: int) -> None:
@@ -56,6 +66,7 @@ def import_dataset_rows(dataset_id: int) -> None:
             dataset.save(
                 update_fields=[
                     "headers",
+                    "column_schema",
                     "index_column",
                     "index_generated",
                     "row_count",

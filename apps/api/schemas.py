@@ -95,6 +95,7 @@ class DatasetSummaryOut(Schema):
     file_type: str
     status: str
     headers: list[str]
+    column_schema: dict[str, dict[str, str]]
     index_column: str
     index_generated: bool
     row_count: int
@@ -122,9 +123,20 @@ class DatasetCreateIn(Schema):
         max_length=MAX_API_DATASET_CREATE_ROWS,
     )
     index_column: str | None = None
+    column_types: dict[str, str] | None = None
 
 
 class DatasetCreateOut(Schema):
+    status: str
+    message: str
+    dataset: DatasetSummaryOut
+
+
+class DatasetColumnTypesPatchIn(Schema):
+    column_types: dict[str, str]
+
+
+class DatasetColumnTypesOut(Schema):
     status: str
     message: str
     dataset: DatasetSummaryOut

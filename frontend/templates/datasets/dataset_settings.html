@@ -22,6 +22,35 @@
       <p class="fb-text-muted mt-2 break-words leading-6">Control public sharing for {{ dataset.name }}. Private authenticated API access remains available even when public preview is off.</p>
     </div>
 
+    <section class="fb-card p-5" aria-labelledby="column-schema-settings-heading">
+      <form method="post" action="{% url 'dataset_update_column_settings' dataset.key %}" class="space-y-5">
+        {% csrf_token %}
+        <div>
+          <h2 id="column-schema-settings-heading" class="text-lg font-bold text-slate-900 dark:text-slate-100">Column schema</h2>
+          <p class="fb-text-muted mt-1 text-sm leading-6">Column types are used as dataset metadata for previews, API clients, filtering, exports, and analysis.</p>
+        </div>
+
+        <div class="grid gap-3">
+          {% for column in column_definitions %}
+            <label class="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-950 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center">
+              <span class="min-w-0 break-words font-semibold text-slate-800 dark:text-slate-100">{{ column.name }}</span>
+              <input type="hidden" name="column_name" value="{{ column.name }}">
+              <select name="column_type" class="fb-input w-full px-3 py-2 text-sm">
+                {% for value, label in column_type_choices %}
+                  <option value="{{ value }}" {% if column.type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          {% endfor %}
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <button type="submit" class="fb-button-primary">Save column types</button>
+          <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
+        </div>
+      </form>
+    </section>
+
     <section class="fb-card p-5" aria-labelledby="public-preview-settings-heading">
       <form method="post" action="{% url 'dataset_update_public_settings' dataset.key %}" class="space-y-6">
         {% csrf_token %}

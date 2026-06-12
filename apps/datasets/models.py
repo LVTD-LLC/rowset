@@ -30,6 +30,7 @@ class Dataset(BaseModel):
         default=DatasetStatus.PREVIEWED,
     )
     headers = models.JSONField(default=list)
+    column_schema = models.JSONField(default=dict)
     preview_rows = models.JSONField(default=list)
     index_column = models.CharField(max_length=255, blank=True, default="")
     index_generated = models.BooleanField(default=False)

@@ -27,6 +27,10 @@ def _profile():
         file_type="csv",
         status="ready",
         headers=["email", "name"],
+        column_schema={
+            "email": {"type": "email"},
+            "name": {"type": "text"},
+        },
         index_column="email",
         index_generated=False,
         row_count=42,
@@ -129,8 +133,16 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
 def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
     calls = []
 
-    def create_dataset(authenticated_profile, *, name, headers=None, rows=None, index_column=None):
-        calls.append((authenticated_profile.id, name, headers, rows, index_column))
+    def create_dataset(
+        authenticated_profile,
+        *,
+        name,
+        headers=None,
+        rows=None,
+        index_column=None,
+        column_types=None,
+    ):
+        calls.append((authenticated_profile.id, name, headers, rows, index_column, column_types))
         return {
             "status": "success",
             "message": "Dataset created.",
@@ -157,6 +169,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                     "headers": ["sku", "name"],
                     "rows": [{"sku": "A-1", "name": "Adapter"}],
                     "index_column": "sku",
+                    "column_types": {"sku": "text", "name": "text"},
                 },
             )
 
@@ -168,6 +181,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                 ["sku", "name"],
                 [{"sku": "A-1", "name": "Adapter"}],
                 "sku",
+                {"sku": "text", "name": "text"},
             )
         ]
 
@@ -265,6 +279,43 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             ("update", "ds", 7, {"email": "c@example.com"}),
             ("delete", "ds", 7),
         ]
+
+    anyio.run(run)
+
+
+def test_update_dataset_column_types_mcp_tool_calls_dataset_service(monkeypatch):
+    calls = []
+
+    def update_column_types(authenticated_profile, dataset_key, column_types):
+        calls.append((authenticated_profile.id, dataset_key, column_types))
+        return {
+            "status": "success",
+            "message": "Column types updated.",
+            "dataset": {"key": dataset_key, "column_schema": {"email": {"type": "text"}}},
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_dataset_column_types",
+            update_column_types,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "update_dataset_column_types",
+                {
+                    "api_key": "secret-key",
+                    "dataset_key": "ds",
+                    "column_types": {"email": "text"},
+                },
+            )
+
+        assert result.data["message"] == "Column types updated."
+        assert calls == [(11, "ds", {"email": "text"})]
 
     anyio.run(run)
 

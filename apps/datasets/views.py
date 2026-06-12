@@ -1,10 +1,12 @@
 import hashlib
+import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -14,7 +16,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
 from django_q.tasks import async_task
 
-from apps.datasets.choices import DatasetStatus
+from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 from apps.datasets.google_sheets import GoogleSheetsSyncError, preview_google_sheet_url_with_oauth
 from apps.datasets.models import Dataset
@@ -22,8 +24,12 @@ from apps.datasets.services import (
     GENERATED_INDEX_CHOICE,
     GOOGLE_SHEETS_FILE_TYPE,
     CSVParseError,
+    column_definitions,
     dataset_name_from_filename,
+    generated_index_column_schema,
+    infer_column_schema,
     iter_indexed_rows,
+    normalize_column_schema,
     normalize_public_page_size,
     prepare_index_config,
     preview_google_sheet_url,
@@ -76,6 +82,10 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context["api_key"] = self.request.user.profile.key
         context["api_base_url"] = self.request.build_absolute_uri("/api").rstrip("/")
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
+        context["column_definitions"] = column_definitions(
+            dataset.headers,
+            dataset.column_schema,
+        )
         return context
 
 
@@ -91,6 +101,11 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["public_url"] = self.request.build_absolute_uri(self.object.get_public_url())
+        context["column_definitions"] = column_definitions(
+            self.object.headers,
+            self.object.column_schema,
+        )
+        context["column_type_choices"] = DatasetColumnType.choices
         return context
 
 
@@ -122,6 +137,47 @@ def dataset_update_public_settings(request, dataset_key):
         ]
     )
     messages.success(request, "Public sharing settings updated.")
+    return redirect(dataset.get_settings_url())
+
+
+@login_required
+@require_POST
+def dataset_update_column_settings(request, dataset_key):
+    column_names = request.POST.getlist("column_name")
+    column_types = request.POST.getlist("column_type")
+
+    with transaction.atomic():
+        dataset = get_object_or_404(
+            Dataset.objects.select_for_update(),
+            key=dataset_key,
+            profile=request.user.profile,
+        )
+
+        if len(column_names) != len(column_types):
+            messages.error(request, "Column type settings were incomplete.")
+            return redirect(dataset.get_settings_url())
+
+        if dataset.status == DatasetStatus.PROCESSING:
+            messages.error(
+                request,
+                "Column types cannot be updated while the dataset is processing.",
+            )
+            return redirect(dataset.get_settings_url())
+
+        try:
+            dataset.column_schema = normalize_column_schema(
+                dataset.headers,
+                dict(zip(column_names, column_types, strict=True)),
+                fallback_schema=dataset.column_schema,
+                reject_unknown=True,
+            )
+        except CSVParseError as exc:
+            messages.error(request, str(exc))
+            return redirect(dataset.get_settings_url())
+
+        dataset.save(update_fields=["column_schema", "updated_at"])
+
+    messages.success(request, "Column types updated.")
     return redirect(dataset.get_settings_url())
 
 
@@ -230,6 +286,7 @@ def dataset_upload_preview(request):
         source_file=uploaded_file,
         source_text=preview.source_text,
         headers=preview.headers,
+        column_schema=preview.column_schema,
         preview_rows=preview.preview_rows,
         row_count=preview.row_count,
         status=DatasetStatus.PREVIEWED,
@@ -267,6 +324,7 @@ def _dataset_google_sheets_preview(request, google_sheets_url: str):
         source_url=google_sheets_url,
         source_text=preview.source_text,
         headers=preview.headers,
+        column_schema=preview.column_schema,
         preview_rows=preview.preview_rows,
         row_count=preview.row_count,
         status=DatasetStatus.PREVIEWED,
@@ -276,6 +334,7 @@ def _dataset_google_sheets_preview(request, google_sheets_url: str):
 
 
 def _dataset_preview_response(dataset: Dataset):
+    column_schema = normalize_column_schema(dataset.headers, dataset.column_schema)
     return JsonResponse(
         {
             "ok": True,
@@ -285,6 +344,10 @@ def _dataset_preview_response(dataset: Dataset):
                 "filename": dataset.original_filename,
                 "status": dataset.status,
                 "headers": dataset.headers,
+                "column_schema": column_schema,
+                "column_type_options": [
+                    {"value": value, "label": label} for value, label in DatasetColumnType.choices
+                ],
                 "preview_rows": dataset.preview_rows,
                 "row_count": dataset.row_count,
                 "generated_index_choice": GENERATED_INDEX_CHOICE,
@@ -296,6 +359,17 @@ def _dataset_preview_response(dataset: Dataset):
             },
         }
     )
+
+
+def _column_types_from_request(request) -> dict:
+    raw_column_types = request.POST.get("column_types", "{}")
+    try:
+        parsed_column_types = json.loads(raw_column_types)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise CSVParseError("Column types must be valid JSON.") from exc
+    if not isinstance(parsed_column_types, dict):
+        raise CSVParseError("Column types must be an object keyed by header.")
+    return parsed_column_types
 
 
 @login_required
@@ -312,10 +386,26 @@ def dataset_confirm_import(request, dataset_key):
 
     selected_index = request.POST.get("index_column", "")
     try:
+        selected_column_types = _column_types_from_request(request)
         index_column, index_generated, headers = prepare_index_config(
             dataset.headers,
             selected_index,
         )
+        fallback_schema = dataset.column_schema or infer_column_schema(
+            dataset.headers,
+            dataset.preview_rows,
+        )
+        column_schema = normalize_column_schema(
+            dataset.headers,
+            selected_column_types,
+            fallback_schema=fallback_schema,
+            reject_unknown=True,
+        )
+        if index_generated:
+            column_schema = {
+                index_column: generated_index_column_schema(),
+                **column_schema,
+            }
         # Validate uniqueness before queueing the import so users get immediate feedback.
         source_text = dataset.source_text
         if not source_text and dataset.source_file:
@@ -342,6 +432,7 @@ def dataset_confirm_import(request, dataset_key):
     dataset.index_column = index_column
     dataset.index_generated = index_generated
     dataset.headers = headers
+    dataset.column_schema = column_schema
     dataset.preview_rows = [
         {header: str(row.data.get(header, "")) for header in headers} for row in validated_rows[:5]
     ]
@@ -353,6 +444,7 @@ def dataset_confirm_import(request, dataset_key):
             "index_column",
             "index_generated",
             "headers",
+            "column_schema",
             "preview_rows",
             "updated_at",
         ]
