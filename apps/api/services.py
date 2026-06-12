@@ -248,7 +248,7 @@ def _normalize_dataset_column_schema(
             index_column: generated_index_column_schema(),
             **base_schema,
         }
-    return normalize_column_schema(dataset_headers, base_schema)
+    return base_schema
 
 
 def create_profile_dataset(

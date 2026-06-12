@@ -120,6 +120,7 @@ def test_infer_column_type_detects_common_semantic_types():
     assert infer_column_type("created_at", ["2026-05-14T10:15:00Z"]) == "datetime"
     assert infer_column_type("email", ["ada@example.com"]) == "email"
     assert infer_column_type("website", ["https://example.com"]) == "url"
+    assert infer_column_type("date", ["31/01/2026"]) == "text"
     assert infer_column_type("mixed", ["Ada", "10"]) == "text"
 
 
@@ -1054,6 +1055,28 @@ def test_dataset_owner_can_update_column_types_from_settings(auth_client, profil
     assert dataset.column_schema == {
         "name": {"type": "text"},
         "email": {"type": "text"},
+    }
+
+
+def test_dataset_owner_cannot_update_column_types_while_processing(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.status = DatasetStatus.PROCESSING
+    dataset.column_schema = {"name": {"type": "text"}, "email": {"type": "email"}}
+    dataset.save(update_fields=["status", "column_schema"])
+
+    response = auth_client.post(
+        reverse("dataset_update_column_settings", args=[dataset.key]),
+        {
+            "column_name": ["name", "email"],
+            "column_type": ["text", "text"],
+        },
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.column_schema == {
+        "name": {"type": "text"},
+        "email": {"type": "email"},
     }
 
 

@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -142,29 +143,40 @@ def dataset_update_public_settings(request, dataset_key):
 @login_required
 @require_POST
 def dataset_update_column_settings(request, dataset_key):
-    dataset = get_object_or_404(
-        Dataset,
-        key=dataset_key,
-        profile=request.user.profile,
-    )
     column_names = request.POST.getlist("column_name")
     column_types = request.POST.getlist("column_type")
-    if len(column_names) != len(column_types):
-        messages.error(request, "Column type settings were incomplete.")
-        return redirect(dataset.get_settings_url())
 
-    try:
-        dataset.column_schema = normalize_column_schema(
-            dataset.headers,
-            dict(zip(column_names, column_types, strict=True)),
-            fallback_schema=dataset.column_schema,
-            reject_unknown=True,
+    with transaction.atomic():
+        dataset = get_object_or_404(
+            Dataset.objects.select_for_update(),
+            key=dataset_key,
+            profile=request.user.profile,
         )
-    except CSVParseError as exc:
-        messages.error(request, str(exc))
-        return redirect(dataset.get_settings_url())
 
-    dataset.save(update_fields=["column_schema", "updated_at"])
+        if len(column_names) != len(column_types):
+            messages.error(request, "Column type settings were incomplete.")
+            return redirect(dataset.get_settings_url())
+
+        if dataset.status == DatasetStatus.PROCESSING:
+            messages.error(
+                request,
+                "Column types cannot be updated while the dataset is processing.",
+            )
+            return redirect(dataset.get_settings_url())
+
+        try:
+            dataset.column_schema = normalize_column_schema(
+                dataset.headers,
+                dict(zip(column_names, column_types, strict=True)),
+                fallback_schema=dataset.column_schema,
+                reject_unknown=True,
+            )
+        except CSVParseError as exc:
+            messages.error(request, str(exc))
+            return redirect(dataset.get_settings_url())
+
+        dataset.save(update_fields=["column_schema", "updated_at"])
+
     messages.success(request, "Column types updated.")
     return redirect(dataset.get_settings_url())
 
