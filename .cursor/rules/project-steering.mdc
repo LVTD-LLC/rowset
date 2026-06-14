@@ -1,0 +1,11 @@
+---
+description: Repo-wide FileBridge steering files and AI agent guardrails
+alwaysApply: true
+---
+
+- Read `AGENTS.md` for commands, workflow, guardrails, and code style.
+- Use `PRODUCT.md`, `TECH.md`, `STRUCTURE.md`, `VISION.md`, and `DESIGN.md` for product, stack, repo layout, long-term direction, and UI context.
+- Keep dataset, REST API, and MCP behavior aligned through shared services.
+- Prefer `make test ...` over host `pytest`.
+- Never hand-write migrations; use `make makemigrations`.
+- Keep API keys, OAuth tokens, service-account JSON, and private dataset contents out of generated code, docs, logs, and responses.

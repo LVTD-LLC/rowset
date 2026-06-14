@@ -1,0 +1,68 @@
+# VISION.md
+
+## Vision
+
+FileBridge should become the fastest trustworthy way to give files, spreadsheets,
+and small operational tables a real programmatic interface. It should feel like a
+practical bridge between ad hoc data and production-grade access, not like a
+generic file manager or a heavy data platform.
+
+The durable product direction is: private by default, agent-ready by design, and
+honest about what source types and sync paths are actually supported.
+
+## What Should Not Drift
+
+- The primary object is the dataset: headers, rows, semantic column metadata, and
+  a stable index.
+- The most important lookup path is by a user-meaningful key, not by UI scraping.
+- MCP and REST are first-class interfaces, not afterthoughts.
+- Public previews are for human review and lightweight sharing only.
+- Agents should use MCP first, REST second, and browser automation last.
+- Authenticated ownership boundaries matter more than convenience shortcuts.
+- The UI should make API outcomes visible quickly: routes, row lookups, exports,
+  and agent setup.
+
+## Product Taste
+
+FileBridge should feel like a crisp developer/data utility:
+
+- Fast to understand.
+- Concrete about inputs and outputs.
+- Calm and operational inside the app.
+- Polished enough to trust with real business data.
+- Technical without making users assemble every part themselves.
+
+Avoid vague platform language. Prefer specific nouns like dataset, row, index
+column, API key, MCP tool, public preview, CSV export, and Google Sheet.
+
+## Long-Term Direction
+
+- Make more structured sources feel as reliable as the current CSV, Parquet, and
+  Google Sheets paths.
+- Improve agent setup so users can connect trusted agents without copying secrets.
+- Keep data mutation explicit, auditable, and easy to reason about.
+- Expand schema and type handling when it improves API usefulness.
+- Keep deployment and self-hosting approachable for small teams.
+
+## Non-Goals
+
+- Do not become a public spreadsheet host by default.
+- Do not become a broad BI/dashboard product unless that directly improves
+  dataset API workflows.
+- Do not hide authentication or sharing tradeoffs behind convenience UI.
+- Do not market source types, write-back modes, or agent capabilities before they
+  are implemented and tested.
+- Do not optimize for flashy UI at the cost of clear data inspection and safe
+  programmatic access.
+
+## Success Criteria
+
+- A user can turn a real file or sheet into a usable API-backed dataset without
+  needing custom backend code.
+- A trusted AI agent can safely discover, read, create, update, and delete rows
+  only within the authenticated user's datasets.
+- API and MCP docs are accurate enough that users do not need to inspect source
+  code to integrate.
+- Private data remains private unless the user deliberately enables a sharing
+  path.
+- Future features strengthen the dataset/API bridge instead of diluting it.

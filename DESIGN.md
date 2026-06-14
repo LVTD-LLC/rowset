@@ -167,7 +167,7 @@ FileBridge should feel like a serious developer/data utility with just enough gl
 
 The UI combines dark, high-contrast command-center surfaces with bright emerald/cyan/lime accents. It should feel fast, technical, trustworthy, and pragmatic — closer to a polished internal data platform than a generic SaaS template.
 
-Primary audiences are builders, operators, and AI-agent-heavy teams who want to turn CSVs and future structured files into stable API endpoints without custom backend work.
+Primary audiences are builders, operators, and AI-agent-heavy teams who want to turn CSV, Parquet, and Google Sheets-backed tables into stable API endpoints without custom backend work.
 
 ## Colors
 
@@ -238,5 +238,5 @@ The shape language is rounded and modern, but still structural.
 - Do treat long file names, column names, API keys, and routes as first-class overflow cases.
 - Don't use generic SaaS gradients without product-specific data/API context.
 - Don't overuse emojis; one small icon per use-case card is enough.
-- Don't imply unsupported file types are available today. CSV is supported now; additional structured file types are future-facing unless shipped.
+- Don't imply unsupported file types are available today. CSV, Parquet, and Google Sheets-backed datasets are supported now; additional structured file types are future-facing unless shipped.
 - Don't make public sharing feel like the default. Private authenticated API access is the core product path.
