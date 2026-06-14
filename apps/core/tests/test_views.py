@@ -2,7 +2,8 @@ import pytest
 from django.test import override_settings
 from django.urls import reverse
 
-from apps.core.views import build_absolute_public_url, build_agent_setup_prompt
+from apps.core.views import build_agent_setup_prompt
+from filebridge.utils import build_absolute_public_url
 
 
 @pytest.mark.django_db
