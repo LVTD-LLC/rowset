@@ -1,12 +1,12 @@
 ---
 title: Dataset API
-description: Use FileBridge dataset endpoints for row CRUD, indexed lookup, and CSV export.
+description: Use FileBridge dataset endpoints for row CRUD, indexed lookup, CSV export, and public previews.
 keywords: FileBridge API, dataset API, CSV API, REST endpoints
 ---
 
 # Dataset API
 
-Every imported or API-created dataset gets a small REST API. Use these endpoints when your app, script, or agent needs to create datasets, read/update rows, or export dataset rows.
+Every dataset gets a small REST API. Use these endpoints when your app, script, or agent needs to create datasets, read/update rows, export rows, or configure public preview sharing.
 
 ## Authentication
 
@@ -112,6 +112,34 @@ Updates semantic column metadata without changing stored row values.
 
 Supported types are `text`, `integer`, `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
 
+## Update public preview
+
+```http
+PATCH {{ api_base_url }}/datasets/{dataset_key}/public-preview
+Content-Type: application/json
+```
+
+Enable or disable the read-only public preview link. Public previews can only be enabled for ready datasets.
+
+```json
+{
+  "public_enabled": true,
+  "public_page_size": 25,
+  "public_password": "optional-password"
+}
+```
+
+To remove an existing preview password:
+
+```json
+{
+  "public_enabled": true,
+  "clear_public_password": true
+}
+```
+
+The response includes `dataset.public_url`.
+
 ## Delete a row
 
 ```http
@@ -138,4 +166,4 @@ curl \
 
 ## Public previews
 
-Public previews are separate from the authenticated API. Configure public sharing from the dataset settings page.
+Public previews are separate from authenticated row APIs. Use `PATCH /datasets/{dataset_key}/public-preview` or the MCP `update_dataset_public_preview` tool to configure sharing.

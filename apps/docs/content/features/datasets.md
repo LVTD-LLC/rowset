@@ -1,19 +1,18 @@
 ---
 title: Working with datasets
 description: Understand the FileBridge dataset lifecycle, index columns, and exports.
-keywords: FileBridge datasets, CSV import, index columns
+keywords: FileBridge datasets, MCP datasets, index columns
 ---
 
 # Working with datasets
 
-Datasets are the core object in FileBridge. A dataset starts as an uploaded file and becomes an API-addressable table after import.
+Datasets are the core object in FileBridge. Agents create them through MCP or REST, then use row tools and endpoints to keep them current.
 
 ## Dataset lifecycle
 
-1. **Previewed** — FileBridge has read the file, detected headers, and shown sample rows.
-2. **Processing** — You confirmed the import and FileBridge is building API rows.
-3. **Ready** — Rows are imported and API endpoints are available.
-4. **Failed** — Import stopped because the file could not be parsed or validated. The dataset page shows the parse error.
+1. **Ready** — API-created datasets are available immediately.
+2. **Processing** — Legacy background imports may still finish asynchronously.
+3. **Failed** — A background import stopped because its stored source could not be parsed or validated.
 
 ## Choosing an index column
 
@@ -28,7 +27,7 @@ If the file does not have a stable key, let FileBridge generate one.
 
 ## CSV exports
 
-Use CSV export when a workflow needs a full snapshot instead of row-by-row API access. For automated systems, prefer the Dataset API unless the consumer explicitly expects CSV.
+Use CSV export when a workflow needs a full snapshot instead of row-by-row API access. For automated systems, prefer MCP or the Dataset API unless the consumer explicitly expects CSV.
 
 ## Sharing
 

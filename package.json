@@ -1,7 +1,7 @@
 {
   "name": "filebridge",
   "version": "1.0.0",
-  "description": "Turn uploaded files into clean API endpoints and structured data feeds.",
+  "description": "MCP and REST datasets for AI agents.",
   "scripts": {
     "build": "cross-env NODE_ENV=production webpack --config frontend/webpack/webpack.config.prod.js",
     "start": "webpack serve --config frontend/webpack/webpack.config.dev.js",

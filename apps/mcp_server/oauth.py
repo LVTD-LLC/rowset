@@ -3,10 +3,8 @@ from __future__ import annotations
 import hashlib
 import secrets
 from datetime import timedelta
-from urllib.parse import urlsplit, urlunsplit
 
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.db import close_old_connections, transaction
 from django.db.models import Q
 from django.urls import reverse
@@ -32,6 +30,7 @@ from apps.mcp_server.models import (
     McpOAuthClient,
     McpOAuthRefreshToken,
 )
+from filebridge.utils import build_absolute_public_url
 
 MCP_MOUNT_PATH = "/mcp"
 MCP_INTERNAL_PATH = "/"
@@ -41,25 +40,6 @@ AUTHORIZATION_CODE_TTL_SECONDS = 10 * 60
 ACCESS_TOKEN_TTL_SECONDS = 60 * 60
 REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60
 LEGACY_API_KEY_CLIENT_ID = "filebridge-api-key"
-
-
-def build_absolute_public_url(path: str) -> str:
-    site_url = settings.SITE_URL.rstrip("/")
-    parsed_url = urlsplit(site_url)
-    local_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
-
-    if parsed_url.scheme == "http" and parsed_url.hostname not in local_hosts:
-        site_url = urlunsplit(
-            (
-                "https",
-                parsed_url.netloc,
-                parsed_url.path,
-                parsed_url.query,
-                parsed_url.fragment,
-            )
-        ).rstrip("/")
-
-    return f"{site_url}{path}"
 
 
 def build_mcp_base_url() -> str:

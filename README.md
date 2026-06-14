@@ -5,7 +5,7 @@
 <!--  -->
 <div align="center">
   <b>FileBridge</b>
-  <b>Turn uploaded files into clean API endpoints and structured data feeds.</b>
+  <b>MCP and REST datasets for AI agents.</b>
 </div>
 
 ***

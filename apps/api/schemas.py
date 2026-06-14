@@ -100,6 +100,10 @@ class DatasetSummaryOut(Schema):
     index_generated: bool
     row_count: int
     public_enabled: bool
+    public_key: str
+    public_url: str
+    public_page_size: int
+    public_password_protected: bool
     created_at: datetime
     updated_at: datetime
     confirmed_at: datetime | None = None
@@ -137,6 +141,19 @@ class DatasetColumnTypesPatchIn(Schema):
 
 
 class DatasetColumnTypesOut(Schema):
+    status: str
+    message: str
+    dataset: DatasetSummaryOut
+
+
+class DatasetPublicPreviewPatchIn(Schema):
+    public_enabled: bool | None = None
+    public_page_size: int | None = Field(default=None, ge=1, le=100)
+    public_password: str | None = None
+    clear_public_password: bool = False
+
+
+class DatasetPublicPreviewOut(Schema):
     status: str
     message: str
     dataset: DatasetSummaryOut

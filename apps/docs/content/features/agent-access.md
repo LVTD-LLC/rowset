@@ -35,11 +35,14 @@ That file gives an agent durable setup instructions for FileBridge MCP and REST 
 - Prefer MCP tools over browser automation.
 - Discover current MCP tools and schemas from the connected server before acting.
 - For REST fallback, inspect the current API docs from the REST API base.
-- Discover datasets before reading rows.
-- Inspect one dataset's current metadata before row operations.
-- Create or modify data only when the user asks for that change.
-- For Google Sheets-backed datasets, row changes may also update the source spreadsheet when the user has explicitly connected Google Sheets access or service-account write-back is configured.
-- Use the Dataset API only if MCP configuration is unavailable and the user approves REST API authentication.
+- Verify setup with `get_user_info`.
+- Discover available datasets with `get_all_datasets`.
+- Create new ready datasets with `create_dataset` when the user asks for an on-the-fly dataset.
+- Inspect one dataset with `get_dataset` before row operations.
+- Read rows with `list_dataset_rows`, `get_dataset_row`, or `get_dataset_row_by_index`.
+- Modify rows with `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row` only when requested.
+- Enable or disable read-only public previews with `update_dataset_public_preview` only when the user asks to share a dataset.
+- Use the Dataset API only if MCP configuration is unavailable and the user approves REST API authentication. The user can copy the API key from Settings.
 - Ask before destructive actions like deleting datasets or rows.
 - Keep user data private and never print credentials into public logs or messages.
 

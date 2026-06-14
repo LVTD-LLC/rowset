@@ -22,6 +22,8 @@ from apps.api.schemas import (
     DatasetCreateIn,
     DatasetCreateOut,
     DatasetListOut,
+    DatasetPublicPreviewOut,
+    DatasetPublicPreviewPatchIn,
     DatasetRowIn,
     DatasetRowPatchIn,
     DatasetRowsOut,
@@ -43,6 +45,7 @@ from apps.api.services import (
     serialize_profile_datasets,
     serialize_user_info,
     update_profile_dataset_column_types,
+    update_profile_dataset_public_preview,
 )
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
@@ -424,6 +427,31 @@ def patch_dataset_column_types(
             request.auth,
             dataset_key,
             payload.column_types,
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.patch(
+    "/datasets/{dataset_key}/public-preview",
+    response=DatasetPublicPreviewOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def patch_dataset_public_preview(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetPublicPreviewPatchIn,
+):
+    """Update read-only public preview settings for a dataset."""
+    try:
+        return update_profile_dataset_public_preview(
+            request.auth,
+            dataset_key,
+            public_enabled=payload.public_enabled,
+            public_page_size=payload.public_page_size,
+            public_password=payload.public_password,
+            clear_public_password=payload.clear_public_password,
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)

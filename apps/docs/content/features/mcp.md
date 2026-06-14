@@ -43,15 +43,40 @@ their schemas from your MCP client.
 Do not treat this page as the source of truth for tool names or inputs. The MCP
 server and the REST API docs describe the current surface.
 
-Dataset and row tools enforce the authenticated user's ownership boundary. Tools
-that create, update, or delete data change dataset contents, so agents should ask
-the user before using them unless the user explicitly requested the change.
+Then discover datasets with:
 
-For datasets imported from Google Sheets, row changes can also be written back to the
-source spreadsheet when the user has explicitly connected Google Sheets access. Basic
-Google signup/login does not request Sheets permission. Deployments can also fall back
-to `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` when the sheet is shared with that service
-account as an editor. Public Google Sheets CSV import by itself is read-only.
+```text
+get_all_datasets
+```
+
+To create a new ready dataset from an agent workflow, call:
+
+```text
+create_dataset
+```
+
+The tool returns the new dataset key. Agents can use that key immediately with the row tools.
+
+For a specific ready dataset, agents can use:
+
+```text
+get_dataset
+list_dataset_rows
+get_dataset_row
+get_dataset_row_by_index
+create_dataset_row
+update_dataset_row
+delete_dataset_row
+update_dataset_public_preview
+```
+
+Dataset and row tools enforce the authenticated user's ownership boundary.
+`create_dataset`, `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`
+change dataset contents, so agents should ask the user before using them unless the
+user explicitly requested the change.
+
+Use `update_dataset_public_preview` only when the user asks to share a read-only
+browser preview. The tool returns the public preview URL.
 
 Use MCP tools for agent workflows when available. If the runtime cannot configure
 MCP, use the REST API only after the user approves REST API authentication.

@@ -20,6 +20,7 @@ from apps.api.services import (
     serialize_profile_datasets,
     serialize_user_info,
     update_profile_dataset_column_types,
+    update_profile_dataset_public_preview,
 )
 from apps.core.models import Profile
 from apps.mcp_server.oauth import LEGACY_API_KEY_CLIENT_ID, mcp_auth
@@ -30,7 +31,7 @@ logger = get_filebridge_logger(__name__)
 mcp = FastMCP(
     name="FileBridge",
     instructions=(
-        "FileBridge turns uploaded files into API-addressable datasets. "
+        "FileBridge lets AI agents create, inspect, update, and share API-addressable datasets. "
         "For hosted MCP requests, add the FileBridge MCP server URL to your MCP client "
         "and complete the browser-based OAuth authorization flow when prompted."
     ),
@@ -238,6 +239,61 @@ def update_dataset_column_types(
     profile = _authenticate_profile(api_key)
     try:
         return update_profile_dataset_column_types(profile, dataset_key, column_types)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_dataset_public_preview",
+    description=(
+        "Enable, disable, password-protect, or resize a read-only public preview for "
+        "an existing ready FileBridge dataset. Returns the public preview URL."
+    ),
+)
+def update_dataset_public_preview(
+    dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
+    public_enabled: Annotated[
+        bool | None,
+        Field(
+            default=None,
+            description=(
+                "Set true or false to enable or disable the public preview. Omit to keep "
+                "the current enabled state while updating page size or password settings."
+            ),
+        ),
+    ] = None,
+    public_page_size: Annotated[
+        int | None,
+        Field(
+            default=None,
+            ge=1,
+            le=100,
+            description="Optional number of rows to show per public preview page.",
+        ),
+    ] = None,
+    public_password: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Optional password to require before viewing the public preview.",
+        ),
+    ] = None,
+    clear_public_password: Annotated[
+        bool,
+        Field(default=False, description="Set true to remove the existing preview password."),
+    ] = False,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return update_profile_dataset_public_preview(
+            profile,
+            dataset_key,
+            public_enabled=public_enabled,
+            public_page_size=public_page_size,
+            public_password=public_password,
+            clear_public_password=clear_public_password,
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
 

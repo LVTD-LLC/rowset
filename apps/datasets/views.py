@@ -1,5 +1,4 @@
 import hashlib
-import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -9,34 +8,19 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
-from django.utils import timezone
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
-from django_q.tasks import async_task
 
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
-from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
-from apps.datasets.google_sheets import GoogleSheetsSyncError, preview_google_sheet_url_with_oauth
 from apps.datasets.models import Dataset
 from apps.datasets.services import (
-    GENERATED_INDEX_CHOICE,
-    GOOGLE_SHEETS_FILE_TYPE,
     CSVParseError,
     column_definitions,
-    dataset_name_from_filename,
-    generated_index_column_schema,
-    infer_column_schema,
-    iter_indexed_rows,
     normalize_column_schema,
     normalize_public_page_size,
-    prepare_index_config,
-    preview_google_sheet_url,
-    preview_uploaded_table,
     rows_to_csv_text,
     rows_to_parquet_bytes,
-    source_text_from_file,
 )
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
@@ -51,11 +35,6 @@ def _delete_dataset(dataset: Dataset) -> None:
 def _dataset_export_filename(dataset: Dataset, extension: str) -> str:
     name = f"{dataset.name or 'dataset'}".strip().replace("/", "-") or "dataset"
     return f"{name}.{extension}"
-
-
-def _delete_unconfirmed_previews(profile) -> None:
-    for dataset in profile.datasets.filter(status=DatasetStatus.PREVIEWED):
-        _delete_dataset(dataset)
 
 
 class DatasetListView(LoginRequiredMixin, ListView):
@@ -233,228 +212,6 @@ def dataset_export(request, dataset_key, export_format):
         return response
 
     raise Http404("Unsupported export format.")
-
-
-@login_required
-@require_POST
-def dataset_upload_preview(request):
-    uploaded_file = request.FILES.get("file")
-    google_sheets_url = request.POST.get("google_sheets_url", "").strip()
-
-    if google_sheets_url:
-        return _dataset_google_sheets_preview(request, google_sheets_url)
-
-    if not uploaded_file:
-        return JsonResponse(
-            {
-                "ok": False,
-                "error": "Please choose a CSV/Parquet file or paste a Google Sheets link.",
-            },
-            status=400,
-        )
-
-    filename = uploaded_file.name or "dataset.csv"
-    if uploaded_file.size > MAX_CSV_UPLOAD_BYTES:
-        return JsonResponse(
-            {
-                "ok": False,
-                "error": "Dataset files must be 10 MB or smaller for now.",
-            },
-            status=400,
-        )
-
-    try:
-        preview = preview_uploaded_table(uploaded_file, filename)
-    except CSVParseError as exc:
-        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
-
-    if len(preview.source_text.encode("utf-8")) > MAX_CSV_UPLOAD_BYTES:
-        return JsonResponse(
-            {
-                "ok": False,
-                "error": "Parsed dataset content must be 10 MB or smaller for now.",
-            },
-            status=400,
-        )
-
-    _delete_unconfirmed_previews(request.user.profile)
-    dataset = Dataset.objects.create(
-        profile=request.user.profile,
-        name=dataset_name_from_filename(filename),
-        original_filename=filename,
-        file_type=preview.file_type,
-        source_file=uploaded_file,
-        source_text=preview.source_text,
-        headers=preview.headers,
-        column_schema=preview.column_schema,
-        preview_rows=preview.preview_rows,
-        row_count=preview.row_count,
-        status=DatasetStatus.PREVIEWED,
-    )
-    return _dataset_preview_response(dataset)
-
-
-def _dataset_google_sheets_preview(request, google_sheets_url: str):
-    try:
-        preview = preview_google_sheet_url(google_sheets_url)
-    except CSVParseError:
-        try:
-            preview = preview_google_sheet_url_with_oauth(
-                google_sheets_url,
-                user=request.user,
-            )
-        except GoogleSheetsSyncError as oauth_exc:
-            return JsonResponse({"ok": False, "error": str(oauth_exc)}, status=400)
-
-    if len(preview.source_text.encode("utf-8")) > MAX_CSV_UPLOAD_BYTES:
-        return JsonResponse(
-            {
-                "ok": False,
-                "error": "Google Sheets exports must be 10 MB or smaller for now.",
-            },
-            status=400,
-        )
-
-    _delete_unconfirmed_previews(request.user.profile)
-    dataset = Dataset.objects.create(
-        profile=request.user.profile,
-        name="Google Sheet",
-        original_filename="Google Sheets import",
-        file_type=GOOGLE_SHEETS_FILE_TYPE,
-        source_url=google_sheets_url,
-        source_text=preview.source_text,
-        headers=preview.headers,
-        column_schema=preview.column_schema,
-        preview_rows=preview.preview_rows,
-        row_count=preview.row_count,
-        status=DatasetStatus.PREVIEWED,
-    )
-
-    return _dataset_preview_response(dataset)
-
-
-def _dataset_preview_response(dataset: Dataset):
-    column_schema = normalize_column_schema(dataset.headers, dataset.column_schema)
-    return JsonResponse(
-        {
-            "ok": True,
-            "dataset": {
-                "key": str(dataset.key),
-                "name": dataset.name,
-                "filename": dataset.original_filename,
-                "status": dataset.status,
-                "headers": dataset.headers,
-                "column_schema": column_schema,
-                "column_type_options": [
-                    {"value": value, "label": label} for value, label in DatasetColumnType.choices
-                ],
-                "preview_rows": dataset.preview_rows,
-                "row_count": dataset.row_count,
-                "generated_index_choice": GENERATED_INDEX_CHOICE,
-                "confirm_url": reverse(
-                    "dataset_confirm_import",
-                    kwargs={"dataset_key": dataset.key},
-                ),
-                "detail_url": dataset.get_absolute_url(),
-            },
-        }
-    )
-
-
-def _column_types_from_request(request) -> dict:
-    raw_column_types = request.POST.get("column_types", "{}")
-    try:
-        parsed_column_types = json.loads(raw_column_types)
-    except (TypeError, json.JSONDecodeError) as exc:
-        raise CSVParseError("Column types must be valid JSON.") from exc
-    if not isinstance(parsed_column_types, dict):
-        raise CSVParseError("Column types must be an object keyed by header.")
-    return parsed_column_types
-
-
-@login_required
-@require_POST
-def dataset_confirm_import(request, dataset_key):
-    dataset = get_object_or_404(
-        Dataset,
-        key=dataset_key,
-        profile=request.user.profile,
-    )
-
-    if dataset.status in {DatasetStatus.READY, DatasetStatus.PROCESSING}:
-        return redirect(dataset.get_absolute_url())
-
-    selected_index = request.POST.get("index_column", "")
-    try:
-        selected_column_types = _column_types_from_request(request)
-        index_column, index_generated, headers = prepare_index_config(
-            dataset.headers,
-            selected_index,
-        )
-        fallback_schema = dataset.column_schema or infer_column_schema(
-            dataset.headers,
-            dataset.preview_rows,
-        )
-        column_schema = normalize_column_schema(
-            dataset.headers,
-            selected_column_types,
-            fallback_schema=fallback_schema,
-            reject_unknown=True,
-        )
-        if index_generated:
-            column_schema = {
-                index_column: generated_index_column_schema(),
-                **column_schema,
-            }
-        # Validate uniqueness before queueing the import so users get immediate feedback.
-        source_text = dataset.source_text
-        if not source_text and dataset.source_file:
-            source_text = source_text_from_file(dataset.source_file, dataset.file_type)
-        if not source_text:
-            raise CSVParseError(
-                "Could not find stored dataset content. Please upload the dataset again."
-            )
-        validated_rows = list(
-            iter_indexed_rows(
-                file_type=dataset.file_type,
-                source_text=source_text,
-                headers=headers,
-                index_column=index_column,
-                index_generated=index_generated,
-            )
-        )
-    except CSVParseError as exc:
-        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
-
-    dataset.status = DatasetStatus.PROCESSING
-    dataset.confirmed_at = timezone.now()
-    dataset.parse_error = ""
-    dataset.index_column = index_column
-    dataset.index_generated = index_generated
-    dataset.headers = headers
-    dataset.column_schema = column_schema
-    dataset.preview_rows = [
-        {header: str(row.data.get(header, "")) for header in headers} for row in validated_rows[:5]
-    ]
-    dataset.save(
-        update_fields=[
-            "status",
-            "confirmed_at",
-            "parse_error",
-            "index_column",
-            "index_generated",
-            "headers",
-            "column_schema",
-            "preview_rows",
-            "updated_at",
-        ]
-    )
-    async_task(
-        "apps.datasets.tasks.import_dataset_rows",
-        dataset.id,
-        group="Import dataset",
-    )
-    return redirect(dataset.get_absolute_url())
 
 
 @login_required

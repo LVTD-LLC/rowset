@@ -49,39 +49,23 @@
       </div>
     </section>
 
-    {% if google_provider_enabled %}
-    <section class="fb-card p-6" aria-labelledby="google-settings-heading">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <section class="fb-card p-6" aria-labelledby="api-key-heading">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 id="google-settings-heading" class="text-lg font-bold text-slate-900 dark:text-slate-100">Google Sheets access</h2>
-          <p class="fb-text-muted mt-1 text-sm leading-6">
-            {% if google_connected %}
-              Google is connected. FileBridge can import private sheets you can access and write row changes back to Google Sheets.
-            {% else %}
-              Connect Google to import private sheets and write row changes back without sharing sheets with a service account.
-            {% endif %}
-          </p>
+          <h2 id="api-key-heading" class="text-lg font-bold text-slate-900 dark:text-slate-100">API key</h2>
+          <p class="fb-text-muted mt-1 text-sm leading-6">Use this only with trusted agents and tools that cannot complete MCP OAuth.</p>
         </div>
-        {% if google_connected %}
-          <div class="flex flex-col gap-2 sm:flex-row">
-            <a href="{% url 'home' %}#google-sheets-import" class="fb-button-primary gap-2">
-              <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
-              <span>Add from Google Sheets</span>
-            </a>
-            <a href="{% url 'socialaccount_connections' %}" class="fb-button-secondary">Manage Google</a>
-          </div>
-        {% else %}
-          <form method="post" action="{% url 'connect_google_sheets' %}">
-            {% csrf_token %}
-            <button class="fb-button-primary gap-2">
-              <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
-              <span>Connect Google Sheets</span>
-            </button>
-          </form>
-        {% endif %}
+      </div>
+      <div class="mt-5" data-controller="copy">
+        <label for="api-key" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Bearer token</label>
+        <div class="mt-2 flex flex-col gap-3 sm:flex-row">
+          <input id="api-key" data-copy-target="source" readonly value="{{ api_key }}" class="fb-input min-w-0 flex-1 px-3 py-2 font-mono text-sm" />
+          <button type="button" data-action="copy#copy" class="fb-button-secondary sm:w-auto">
+            <span data-copy-target="label">Copy API key</span>
+          </button>
+        </div>
       </div>
     </section>
-    {% endif %}
 
     <section class="fb-card p-6" aria-labelledby="profile-heading">
       <form id="settings-form" action="" method="post" class="space-y-6">

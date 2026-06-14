@@ -1,0 +1,13 @@
+---
+description: FileBridge product direction for all AI-assisted work
+alwaysApply: true
+---
+
+# FileBridge Product Direction
+
+- FileBridge is AI-native and agent-first: trusted agents manage datasets through MCP and REST.
+- Do not reintroduce dashboard upload/import wizards, Google Sheets connection flows, or FileBridge-owned spreadsheet sync.
+- The primary post-signup UI action is copying the agent setup prompt.
+- Dataset and row operations should be exposed through API and MCP before UI controls.
+- Public previews must be manageable through API and MCP. Treat previews as read-only sharing, not authentication.
+- Keep copy concrete: MCP URL, REST base URL, dataset key, row CRUD, CSV export, public preview URL.

@@ -4,6 +4,13 @@
 
 These guidelines ensure documentation is user-friendly, clear, and actionable for FileBridge users.
 
+## Product Direction
+
+- FileBridge is an AI-native, agent-first tool for managing and sharing datasets.
+- Lead with MCP and REST workflows. The dashboard is for setup, verification, recent state, settings, and public preview review.
+- Do not document Google Sheets connection, dashboard CSV/Parquet upload, or spreadsheet write-back flows as active product capabilities.
+- Public previews can be enabled through API and MCP. Describe them as read-only browser sharing, not agent authentication.
+
 ## Core Principles
 
 ### Write for Users, Not Developers

@@ -1,5 +1,3 @@
-from urllib.parse import urlencode, urlsplit, urlunsplit
-
 import stripe
 from allauth.account.internal.flows.email_verification import (
     send_verification_email_to_address,
@@ -25,12 +23,7 @@ from apps.core.forms import ProfileUpdateForm
 from apps.core.models import Profile
 from apps.core.stripe_webhooks import EVENT_HANDLERS
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.google_sheets import (
-    GOOGLE_SHEETS_CONNECT_SESSION_KEY,
-    SHEETS_SCOPE,
-    user_has_google_sheets_connection,
-)
-from filebridge.utils import get_filebridge_logger
+from filebridge.utils import build_absolute_public_url, get_filebridge_logger
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -57,45 +50,39 @@ The setup prompt should provide:
 
 ## Setup
 
-1. Configure a remote Streamable HTTP MCP server named `filebridge` with the MCP URL.
-2. Prefer the browser authorization flow if your MCP client supports it.
-3. If your client needs a token, use the API key as a bearer token. Never print it
+1. Configure your MCP client for a remote Streamable HTTP server named `filebridge`.
+2. Use the provided MCP URL exactly as given.
+3. When your MCP client opens the FileBridge authorization link, sign in and
+   approve access in the browser.
+4. If your client needs a token, use the API key as a bearer token. Never print it
    in logs, screenshots, public chats, or generated files.
-4. Verify the connection by calling the current user/profile tool exposed by the
-   MCP server or by checking the REST user endpoint.
+5. After connecting, call the `get_user_info` tool to verify the connection.
+6. Use `get_all_datasets` to discover datasets available to the authenticated
+   profile before reading rows.
+7. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
+8. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
+   `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, and
+   `delete_dataset_row` to inspect and manage ready dataset rows.
+9. Use `update_dataset_public_preview` when the user asks to enable, disable,
+   password-protect, or resize a public read-only preview.
 
 ## How To Work
 
-- Prefer MCP over browser automation.
-- Treat this file as orientation, not a tool catalog. Discover the current MCP tools
-  and schemas from the connected server before acting.
-- For REST fallback, inspect the API docs from the provided REST API base, usually
-  by opening the `docs` path under that base.
-- Discover datasets before reading rows. Inspect a dataset's current metadata before
-  creating, updating, deleting, or exporting rows.
-- Create or mutate data only when the user asked for that change. Ask before
-  destructive actions.
-- Keep access scoped to the user's request and protect credentials and dataset data.
+- Prefer MCP tools over browser automation when working with FileBridge.
+- Use `get_all_datasets` for dataset discovery. It returns paginated dataset
+  metadata only, not row contents.
+- Use `create_dataset` when a workflow needs a new dataset. It returns a dataset
+  key that can be used immediately with row tools.
+- Use row tools for dataset contents. They require a ready dataset and enforce the
+  authenticated user's dataset ownership.
+- Use `update_dataset_public_preview` for public sharing. Public previews are
+  read-only browser pages, not a substitute for authenticated MCP or REST access.
+- If MCP configuration is unavailable in your runtime, ask the user before falling
+  back to REST API authentication. The user can copy their API key from FileBridge
+  Settings.
+- Ask the user before destructive changes such as deleting datasets or rows.
+- Keep user data private and only access the FileBridge resources needed for the task.
 """
-
-
-def build_absolute_public_url(path: str) -> str:
-    site_url = settings.SITE_URL.rstrip("/")
-    parsed_url = urlsplit(site_url)
-    local_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
-
-    if parsed_url.scheme == "http" and parsed_url.hostname not in local_hosts:
-        site_url = urlunsplit(
-            (
-                "https",
-                parsed_url.netloc,
-                parsed_url.path,
-                parsed_url.query,
-                parsed_url.fragment,
-            )
-        ).rstrip("/")
-
-    return f"{site_url}{path}"
 
 
 def build_agent_setup_prompt(
@@ -120,9 +107,15 @@ def build_agent_setup_prompt(
             f"FileBridge API key: {api_key}",
             f"FileBridge skill: {instructions_url}",
             "",
-            "Read the skill first. Prefer MCP; use the API key only when your client "
-            "needs bearer-token auth or REST fallback. Discover the current tools and "
-            "API docs at runtime before working with datasets.",
+            "Read the instructions/skill URL, configure FileBridge as a remote Streamable "
+            "HTTP MCP server, and complete the browser authorization flow opened by your "
+            "MCP client. Use the API key only when your client needs bearer-token auth "
+            "or REST fallback. After setup, call get_user_info to verify the connection, "
+            "then call get_all_datasets to discover available datasets. Use "
+            "create_dataset when you need to create a dataset on the fly. Use "
+            "update_dataset_public_preview when the user asks for a shareable read-only "
+            "preview. Discover the current MCP tools and API docs at runtime before "
+            "working with datasets.",
         ]
     )
 
@@ -143,7 +136,6 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
         context["recent_datasets"] = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)[:5]
-        context["show_agent_setup_prompt"] = not profile.agent_setup_prompt_dismissed
         context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
             self.request,
             mask_api_key=True,
@@ -153,8 +145,8 @@ class HomeView(LoginRequiredMixin, TemplateView):
         context["agent_instructions_url"] = build_absolute_public_url(
             reverse("agent_instructions_filebridge_mcp")
         )
-        context["google_connected"] = user_has_google_sheets_connection(self.request.user)
-        context["google_provider_enabled"] = "google" in settings.SOCIALACCOUNT_PROVIDERS
+        context["mcp_url"] = build_absolute_public_url("/mcp/")
+        context["rest_api_base_url"] = build_absolute_public_url("/api/")
         return context
 
 
@@ -181,33 +173,9 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             user=user,
             type=Authenticator.Type.WEBAUTHN,
         ).count()
-        context["google_connected"] = user_has_google_sheets_connection(user)
-        context["google_provider_enabled"] = "google" in settings.SOCIALACCOUNT_PROVIDERS
-
         context["api_key"] = user.profile.key
 
         return context
-
-
-@login_required
-@require_POST
-def connect_google_sheets(request):
-    request.session[GOOGLE_SHEETS_CONNECT_SESSION_KEY] = True
-    query = urlencode(
-        {
-            "process": "connect",
-            "scope": SHEETS_SCOPE,
-            "auth_params": urlencode(
-                {
-                    "access_type": "offline",
-                    "include_granted_scopes": "true",
-                    "prompt": "consent",
-                }
-            ),
-            "next": reverse("home"),
-        }
-    )
-    return redirect(f"{reverse('google_login')}?{query}")
 
 
 def agent_instructions_filebridge_mcp(request):
@@ -221,15 +189,6 @@ def agent_setup_prompt(request):
     response = JsonResponse({"prompt": build_agent_setup_prompt(request, profile=profile)})
     response["Cache-Control"] = "no-store"
     return response
-
-
-@login_required
-@require_POST
-def dismiss_agent_setup_prompt(request):
-    request.user.profile.agent_setup_prompt_dismissed = True
-    request.user.profile.save(update_fields=["agent_setup_prompt_dismissed", "updated_at"])
-    messages.success(request, "Agent setup prompt hidden from the dashboard.")
-    return redirect("home")
 
 
 @login_required

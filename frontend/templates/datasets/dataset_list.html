@@ -5,10 +5,10 @@
   <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Datasets</p>
-      <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Your API-backed files</h1>
-      <p class="fb-text-muted mt-2 max-w-2xl text-sm leading-6">CSV, Parquet, and Google Sheets data you have bridged into queryable datasets.</p>
+      <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Your API-backed datasets</h1>
+      <p class="fb-text-muted mt-2 max-w-2xl text-sm leading-6">Datasets created and managed through FileBridge API or MCP.</p>
     </div>
-    <a href="{% url 'home' %}#upload-dataset-heading" class="fb-button-primary">Upload dataset</a>
+    <a href="{% url 'home' %}" class="fb-button-primary">Copy agent prompt</a>
   </div>
 
   {% if datasets %}
@@ -40,8 +40,8 @@
   {% else %}
     <div class="fb-panel p-10 text-center">
       <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">No datasets yet</h2>
-      <p class="fb-text-muted mx-auto mt-2 max-w-md text-sm leading-6">Upload a CSV/Parquet file or paste a Google Sheets link, confirm the preview, and FileBridge will create the API endpoints.</p>
-      <a href="{% url 'home' %}#upload-dataset-heading" class="fb-button-primary mt-6">Upload your first dataset</a>
+      <p class="fb-text-muted mx-auto mt-2 max-w-md text-sm leading-6">Copy the agent prompt, then ask your agent to create a dataset from the source file or table it can access.</p>
+      <a href="{% url 'home' %}" class="fb-button-primary mt-6">Copy agent prompt</a>
     </div>
   {% endif %}
 </div>
