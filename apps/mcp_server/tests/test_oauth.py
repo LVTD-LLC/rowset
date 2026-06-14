@@ -18,6 +18,7 @@ from apps.mcp_server.models import (
 )
 from apps.mcp_server.oauth import (
     LEGACY_API_KEY_CLIENT_ID,
+    LEGACY_MCP_SCOPE,
     MCP_INTERNAL_PATH,
     MCP_SCOPE,
     RowsetOAuthProvider,
@@ -115,6 +116,56 @@ def test_oauth_authorization_approval_issues_access_token(auth_client, profile):
     assert access_token.claims["email"] == profile.user.email
     assert access_token.scopes == [MCP_SCOPE]
     assert anyio.run(provider.load_authorization_code, client_info, authorization_code) is None
+
+
+def test_oauth_load_access_token_normalizes_legacy_scope(profile):
+    provider = _provider()
+    expires_at = timezone.now() + timedelta(hours=1)
+    McpOAuthAccessToken.objects.create(
+        token_hash=hash_token("legacy-access"),
+        client_id="client-1",
+        profile=profile,
+        scopes=[LEGACY_MCP_SCOPE],
+        expires_at=expires_at,
+    )
+
+    access_token = anyio.run(provider.load_access_token, "legacy-access")
+
+    assert access_token.scopes == [MCP_SCOPE]
+    assert McpOAuthAccessToken.objects.get(token_hash=hash_token("legacy-access")).scopes == [
+        MCP_SCOPE
+    ]
+
+
+def test_oauth_refresh_with_legacy_scope_issues_rowset_scope(profile):
+    provider = _provider()
+    client_info = _client()
+    expires_at = timezone.now() + timedelta(hours=1)
+    McpOAuthRefreshToken.objects.create(
+        token_hash=hash_token("legacy-refresh"),
+        client_id=client_info.client_id,
+        profile=profile,
+        scopes=[LEGACY_MCP_SCOPE],
+        expires_at=expires_at,
+    )
+
+    loaded_refresh_token = anyio.run(
+        provider.load_refresh_token,
+        client_info,
+        "legacy-refresh",
+    )
+    refreshed_token = anyio.run(
+        provider.exchange_refresh_token,
+        client_info,
+        loaded_refresh_token,
+        [],
+    )
+    access_token = anyio.run(provider.load_access_token, refreshed_token.access_token)
+
+    assert loaded_refresh_token.scopes == [MCP_SCOPE]
+    assert refreshed_token.scope == MCP_SCOPE
+    assert access_token.scopes == [MCP_SCOPE]
+    assert McpOAuthRefreshToken.objects.get(token_hash=hash_token("legacy-refresh")).revoked_at
 
 
 @override_settings(SITE_URL="https://rowset.example")

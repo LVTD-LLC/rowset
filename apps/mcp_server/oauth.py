@@ -35,6 +35,7 @@ from filebridge.utils import build_absolute_public_url
 MCP_MOUNT_PATH = "/mcp"
 MCP_INTERNAL_PATH = "/"
 MCP_SCOPE = "rowset:mcp"
+LEGACY_MCP_SCOPE = "filebridge:mcp"
 AUTHORIZATION_REQUEST_TTL_SECONDS = 10 * 60
 AUTHORIZATION_CODE_TTL_SECONDS = 10 * 60
 ACCESS_TOKEN_TTL_SECONDS = 60 * 60
@@ -52,6 +53,23 @@ def hash_token(token: str) -> str:
 
 def generate_token() -> str:
     return secrets.token_urlsafe(48)
+
+
+def normalize_oauth_scopes(scopes: list[str] | None) -> list[str]:
+    normalized = []
+    for scope in scopes or []:
+        normalized_scope = MCP_SCOPE if scope == LEGACY_MCP_SCOPE else scope
+        if normalized_scope not in normalized:
+            normalized.append(normalized_scope)
+    return normalized
+
+
+def normalize_stored_oauth_scopes(token) -> list[str]:
+    scopes = normalize_oauth_scopes(token.scopes)
+    if scopes != token.scopes:
+        token.scopes = scopes
+        token.save(update_fields=["scopes", "updated_at"])
+    return scopes
 
 
 def expires_in(seconds: int):
@@ -275,9 +293,10 @@ class RowsetOAuthProvider(OAuthProvider):
         if code is None:
             return None
 
+        scopes = normalize_stored_oauth_scopes(code)
         return AuthorizationCode(
             code=authorization_code,
-            scopes=code.scopes,
+            scopes=scopes,
             expires_at=code.expires_at.timestamp(),
             client_id=code.client_id,
             code_challenge=code.code_challenge,
@@ -323,7 +342,7 @@ class RowsetOAuthProvider(OAuthProvider):
             return self._issue_tokens(
                 client_id=client.client_id or authorization_code.client_id,
                 profile=code.profile,
-                scopes=code.scopes,
+                scopes=normalize_stored_oauth_scopes(code),
                 resource=code.resource,
             )
 
@@ -359,10 +378,11 @@ class RowsetOAuthProvider(OAuthProvider):
         if token is None:
             return None
 
+        scopes = normalize_stored_oauth_scopes(token)
         return RefreshToken(
             token=refresh_token,
             client_id=token.client_id,
-            scopes=token.scopes,
+            scopes=scopes,
             expires_at=unix_timestamp(token.expires_at) if token.expires_at else None,
             subject=str(token.profile_id),
         )
@@ -402,9 +422,11 @@ class RowsetOAuthProvider(OAuthProvider):
                 raise TokenError("invalid_grant", "refresh token does not exist")
 
             # RFC 6749 section 6 treats an omitted refresh scope as the original grant.
-            effective_scopes = scopes if scopes else stored_refresh_token.scopes
+            stored_scopes = normalize_stored_oauth_scopes(stored_refresh_token)
+            requested_scopes = normalize_oauth_scopes(scopes)
+            effective_scopes = requested_scopes if requested_scopes else stored_scopes
             for scope in effective_scopes:
-                if scope not in stored_refresh_token.scopes:
+                if scope not in stored_scopes:
                     raise TokenError("invalid_scope", f"cannot request scope `{scope}`")
 
             stored_refresh_token.revoked_at = timezone.now()
@@ -475,6 +497,7 @@ class RowsetOAuthProvider(OAuthProvider):
     ) -> OAuthToken:
         access_token = generate_token()
         refresh_token = generate_token()
+        scopes = normalize_oauth_scopes(scopes)
         McpOAuthAccessToken.objects.create(
             token_hash=hash_token(access_token),
             client_id=client_id,
@@ -504,10 +527,11 @@ class RowsetOAuthProvider(OAuthProvider):
         stored_token: McpOAuthAccessToken,
     ) -> AccessToken:
         profile = stored_token.profile
+        scopes = normalize_stored_oauth_scopes(stored_token)
         return AccessToken(
             token=raw_token,
             client_id=stored_token.client_id,
-            scopes=stored_token.scopes,
+            scopes=scopes,
             expires_at=unix_timestamp(stored_token.expires_at),
             resource=stored_token.resource or None,
             subject=str(profile.id),
