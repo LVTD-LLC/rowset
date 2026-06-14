@@ -38,20 +38,20 @@ class LandingPageView(TemplateView):
 
         mcp_url = build_absolute_public_url("/mcp/")
         rest_api_base_url = build_absolute_public_url("/api/")
-        instructions_url = build_absolute_public_url(reverse("agent_instructions_filebridge_mcp"))
+        instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
         signup_url = build_absolute_public_url(reverse("account_signup"))
 
         context["landing_agent_setup_prompt"] = "\n".join(
             [
-                "Set yourself up to use FileBridge for me.",
+                "Set yourself up to use Rowset for me.",
                 "",
-                f"FileBridge MCP URL: {mcp_url}",
-                f"FileBridge REST API base: {rest_api_base_url}",
+                f"Rowset MCP URL: {mcp_url}",
+                f"Rowset REST API base: {rest_api_base_url}",
                 f"Agent instructions/skill: {instructions_url}",
                 "",
-                "Read the skill URL, configure FileBridge as a remote Streamable HTTP MCP "
+                "Read the skill URL, configure Rowset as a remote Streamable HTTP MCP "
                 "server, and complete the browser authorization flow when your MCP client "
-                f"asks. If I do not have a FileBridge account yet, tell me to sign up at "
+                f"asks. If I do not have a Rowset account yet, tell me to sign up at "
                 f"{signup_url}. After setup, call get_user_info, then use get_all_datasets, "
                 "create_dataset, row tools, exports, and update_dataset_public_preview as "
                 "needed.",

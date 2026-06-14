@@ -5,6 +5,7 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
     generated_index_column_schema,
+    generated_index_column_name,
     iter_indexed_rows,
     normalize_column_schema,
     source_text_from_file,
@@ -18,7 +19,7 @@ def _ensure_index_config(dataset: Dataset) -> None:
     if dataset.index_column:
         return
 
-    dataset.index_column = "filebridge_id"
+    dataset.index_column = generated_index_column_name(dataset.headers)
     dataset.index_generated = True
     existing_headers = [header for header in dataset.headers if header != dataset.index_column]
     if dataset.index_column not in dataset.headers:

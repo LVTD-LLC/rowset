@@ -7,7 +7,8 @@
 - MCP: FastMCP in `apps/mcp_server`.
 - Auth: Django allauth, session auth, API-key auth, hosted MCP OAuth.
 - Data: PostgreSQL, Redis, Django Q workers.
-- Tabular processing: Python `csv`, Polars for Parquet, Google Sheets API paths.
+- Tabular processing: Python `csv` and Polars for dataset parsing, CSV export,
+  and Parquet export.
 - Frontend: Django templates, Stimulus, Webpack, Tailwind, Bootstrap.
 - Local containers: Docker Compose with Postgres, Redis, backend, workers,
   frontend Node 24, Mailhog, Stripe CLI, MJML, and MinIO.
@@ -24,7 +25,7 @@
 - Apply migrations: `make migrate`
 - Run all tests in Docker: `make test`
 - Run focused tests: `make test apps/datasets/tests/test_csv_datasets.py`
-- Pass pytest flags: `make test -- -k google_sheets -q`
+- Pass pytest flags: `make test -- -k dataset -q`
 - Restart workers: `make restart-worker`
 - Build frontend assets: `npm run build`
 - Lint frontend JS: `npm run lint`
@@ -44,8 +45,8 @@ contents.
 
 - `filebridge/settings.py` wires Django apps, allauth, storage, logging, Redis,
   Django Q, observability, payments, and AI model labels.
-- `apps/datasets` owns dataset parsing, preview, import, row storage, exports,
-  Google Sheets behavior, and dataset-specific tests.
+- `apps/datasets` owns dataset parsing, legacy import support, row storage,
+  exports, public previews, and dataset-specific tests.
 - `apps/api` exposes REST endpoints and keeps API schemas/auth/service wrappers.
 - `apps/mcp_server` exposes hosted MCP tools and OAuth-compatible auth.
 - `apps/core` owns profiles, account state, feedback, email delivery, Stripe
@@ -58,14 +59,13 @@ contents.
 
 ## Dataset Rules
 
-- Upload parsing currently supports CSV and Parquet files.
-- Google Sheets imports use CSV export for public sheets and the Sheets API for
-  private OAuth-backed access.
-- Source files are limited by `MAX_CSV_UPLOAD_BYTES` in
+- Agents normally create datasets through MCP or REST by sending headers and
+  rows. Legacy parser paths still support CSV and Parquet source text.
+- Source files in legacy parser paths are limited by `MAX_CSV_UPLOAD_BYTES` in
   `apps/datasets/constants.py`.
 - Headers must be present, non-empty, and unique.
-- Index values must be non-blank and unique unless FileBridge generated the index.
-- Generated index columns use `filebridge_id` or the next available suffixed name.
+- Index values must be non-blank and unique unless Rowset generated the index.
+- Generated index columns use `rowset_id` or the next available suffixed name.
 - Stored row data is string-keyed by dataset headers.
 - Semantic column metadata supports `text`, `integer`, `number`, `currency`,
   `boolean`, `date`, `datetime`, `email`, and `url`.
@@ -95,8 +95,8 @@ contents.
 ## Testing Notes
 
 - Prefer `make test` over host `pytest`.
-- Dataset parser, import, API, MCP, OAuth, and Google Sheets changes need focused
-  tests.
+- Dataset parser, API, MCP, OAuth, export, and public-preview changes need
+  focused tests.
 - Template-only changes can be checked with Django template loading and
   `manage.py check`, but asset-related work should also build or run the frontend
   stack.

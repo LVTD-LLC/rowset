@@ -33,26 +33,26 @@ logger = get_filebridge_logger(__name__)
 AGENT_API_KEY_MASK = "***"
 
 
-AGENT_INSTRUCTIONS_MARKDOWN = """# FileBridge Agent Skill
+AGENT_INSTRUCTIONS_MARKDOWN = """# Rowset Agent Skill
 
-Use this when a user asks you to connect to FileBridge or work with FileBridge datasets.
-FileBridge turns user-owned tabular data into datasets that agents can discover,
+Use this when a user asks you to connect to Rowset or work with Rowset datasets.
+Rowset turns user-owned tabular data into datasets that agents can discover,
 read, create, update, export, and share through MCP or the REST API.
 
 ## Prompt Inputs
 
 The setup prompt should provide:
 
-- `FileBridge MCP URL`
-- `FileBridge REST API base`
-- `FileBridge API key`
+- `Rowset MCP URL`
+- `Rowset REST API base`
+- `Rowset API key`
 - this `SKILL.md` URL
 
 ## Setup
 
-1. Configure your MCP client for a remote Streamable HTTP server named `filebridge`.
+1. Configure your MCP client for a remote Streamable HTTP server named `rowset`.
 2. Use the provided MCP URL exactly as given.
-3. When your MCP client opens the FileBridge authorization link, sign in and
+3. When your MCP client opens the Rowset authorization link, sign in and
    approve access in the browser.
 4. If your client needs a token, use the API key as a bearer token. Never print it
    in logs, screenshots, public chats, or generated files.
@@ -68,7 +68,7 @@ The setup prompt should provide:
 
 ## How To Work
 
-- Prefer MCP tools over browser automation when working with FileBridge.
+- Prefer MCP tools over browser automation when working with Rowset.
 - Use `get_all_datasets` for dataset discovery. It returns paginated dataset
   metadata only, not row contents.
 - Use `create_dataset` when a workflow needs a new dataset. It returns a dataset
@@ -78,10 +78,10 @@ The setup prompt should provide:
 - Use `update_dataset_public_preview` for public sharing. Public previews are
   read-only browser pages, not a substitute for authenticated MCP or REST access.
 - If MCP configuration is unavailable in your runtime, ask the user before falling
-  back to REST API authentication. The user can copy their API key from FileBridge
+  back to REST API authentication. The user can copy their API key from Rowset
   Settings.
 - Ask the user before destructive changes such as deleting datasets or rows.
-- Keep user data private and only access the FileBridge resources needed for the task.
+- Keep user data private and only access the Rowset resources needed for the task.
 """
 
 
@@ -93,21 +93,21 @@ def build_agent_setup_prompt(
 ) -> str:
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
-    instructions_url = build_absolute_public_url(reverse("agent_instructions_filebridge_mcp"))
+    instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
     if profile is None:
         profile, _created = Profile.objects.get_or_create(user=request.user)
     api_key = AGENT_API_KEY_MASK if mask_api_key else profile.key
 
     return "\n".join(
         [
-            "Set up FileBridge for this user.",
+            "Set up Rowset for this user.",
             "",
-            f"FileBridge MCP URL: {mcp_url}",
-            f"FileBridge REST API base: {rest_api_base_url}",
-            f"FileBridge API key: {api_key}",
-            f"FileBridge skill: {instructions_url}",
+            f"Rowset MCP URL: {mcp_url}",
+            f"Rowset REST API base: {rest_api_base_url}",
+            f"Rowset API key: {api_key}",
+            f"Rowset skill: {instructions_url}",
             "",
-            "Read the instructions/skill URL, configure FileBridge as a remote Streamable "
+            "Read the instructions/skill URL, configure Rowset as a remote Streamable "
             "HTTP MCP server, and complete the browser authorization flow opened by your "
             "MCP client. Use the API key only when your client needs bearer-token auth "
             "or REST fallback. After setup, call get_user_info to verify the connection, "
@@ -143,7 +143,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
         )
         context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
         context["agent_instructions_url"] = build_absolute_public_url(
-            reverse("agent_instructions_filebridge_mcp")
+            reverse("agent_instructions_rowset_mcp")
         )
         context["mcp_url"] = build_absolute_public_url("/mcp/")
         context["rest_api_base_url"] = build_absolute_public_url("/api/")
@@ -178,7 +178,7 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         return context
 
 
-def agent_instructions_filebridge_mcp(request):
+def agent_instructions_rowset_mcp(request):
     return HttpResponse(AGENT_INSTRUCTIONS_MARKDOWN, content_type="text/markdown; charset=utf-8")
 
 

@@ -229,7 +229,7 @@ class UserInfoApiUnitTests(SimpleTestCase):
 
 
 class DatasetListApiUnitTests(SimpleTestCase):
-    @override_settings(SITE_URL="https://filebridge.example")
+    @override_settings(SITE_URL="https://rowset.example")
     def test_list_datasets_returns_profile_dataset_metadata_without_rows(self):
         dataset = SimpleNamespace(
             key="6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
@@ -288,7 +288,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "row_count": 42,
                 "public_enabled": True,
                 "public_key": "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
-                "public_url": "https://filebridge.example/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
+                "public_url": "https://rowset.example/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
                 "public_page_size": 25,
                 "public_password_protected": True,
                 "created_at": "2026-05-14T00:00:00Z",
@@ -375,7 +375,7 @@ def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
 
 
 @pytest.mark.django_db
-@override_settings(SITE_URL="https://filebridge.example")
+@override_settings(SITE_URL="https://rowset.example")
 def test_update_dataset_public_preview_enables_public_link(django_user_model):
     from apps.api.services import update_profile_dataset_public_preview
 
@@ -408,7 +408,7 @@ def test_update_dataset_public_preview_enables_public_link(django_user_model):
     assert dataset.public_page_size == 25
     assert dataset.public_password_matches("share-secret")
     assert result["dataset"]["public_url"] == (
-        f"https://filebridge.example/share/datasets/{dataset.public_key}/"
+        f"https://rowset.example/share/datasets/{dataset.public_key}/"
     )
     assert result["dataset"]["public_password_protected"] is True
 

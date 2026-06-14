@@ -6,11 +6,11 @@ on:
       - main
 
 concurrency:
-  group: filebridge-workers-prod
+  group: rowset-workers-prod
   cancel-in-progress: true
 
 env:
-  PROJECT_NAME: filebridge
+  PROJECT_NAME: rowset
 
 jobs:
   deploy:
@@ -25,7 +25,7 @@ jobs:
           tmpdir="$(mktemp -d)"
           rsync -a --exclude .git ./ "$tmpdir/"
           printf '{"schemaVersion":2,"dockerfilePath":"./deployment/Dockerfile.workers"}\n' > "$tmpdir/captain-definition"
-          tar -C "$tmpdir" -cf /tmp/filebridge-workers.tar .
+          tar -C "$tmpdir" -cf /tmp/rowset-workers.tar .
 
       - name: Deploy to CapRover
         env:
@@ -36,4 +36,4 @@ jobs:
             --caproverUrl "$CAPROVER_URL" \
             --appToken "$CAPROVER_APP_TOKEN" \
             --caproverApp "${PROJECT_NAME}-workers" \
-            --tarFile /tmp/filebridge-workers.tar
+            --tarFile /tmp/rowset-workers.tar

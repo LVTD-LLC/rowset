@@ -2,26 +2,26 @@
 {% load webpack_loader static %}
 
 {% block meta %}
-<title>FileBridge Blog</title>
-<meta name="description" content="Notes on agent-managed datasets, MCP, and FileBridge API workflows." />
+<title>Rowset Blog</title>
+<meta name="description" content="Notes on agent-managed datasets, MCP, and Rowset API workflows." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://{{ request.get_host }}{% url 'blog_posts' %}" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="FileBridge Blog" />
+<meta property="og:title" content="Rowset Blog" />
 <meta property="og:url" content="https://{{ request.get_host }}{% url 'blog_posts' %}" />
-<meta property="og:description" content="Notes on agent-managed datasets, MCP, and FileBridge API workflows." />
-<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta property="og:description" content="Notes on agent-managed datasets, MCP, and Rowset API workflows." />
+<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 <meta property="og:locale" content="en_US" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="FileBridge Blog" />
-<meta name="twitter:description" content="Notes on agent-managed datasets, MCP, and FileBridge API workflows." />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta name="twitter:title" content="Rowset Blog" />
+<meta name="twitter:description" content="Notes on agent-managed datasets, MCP, and Rowset API workflows." />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 
 {% block content %}
 <div class="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
   <div class="mx-auto max-w-3xl text-center">
-    <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">FileBridge Blog</p>
+    <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Rowset Blog</p>
     <h1 class="mt-3 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">Practical notes on file-backed APIs</h1>
     <p class="fb-text-muted mt-4 text-lg leading-8">Guides, product notes, and patterns for turning static data files into useful API workflows.</p>
   </div>
@@ -50,6 +50,6 @@
 
 {% block schema %}
 <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"WebSite","name":"FileBridge Blog","description":"Notes on agent-managed datasets, MCP, and FileBridge API workflows.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'blog_posts' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
+  {"@context":"https://schema.org","@type":"WebSite","name":"Rowset Blog","description":"Notes on agent-managed datasets, MCP, and Rowset API workflows.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'blog_posts' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
 </script>
 {% endblock schema %}

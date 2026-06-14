@@ -1,12 +1,12 @@
 ---
 title: MCP access
-description: Connect AI agents to FileBridge through the hosted MCP endpoint.
-keywords: FileBridge MCP, Streamable HTTP MCP, AI agents
+description: Connect AI agents to Rowset through the hosted MCP endpoint.
+keywords: Rowset MCP, Streamable HTTP MCP, AI agents
 ---
 
 # MCP access
 
-FileBridge includes a hosted MCP endpoint so compatible AI agents can discover and use datasets without browser automation.
+Rowset includes a hosted MCP endpoint so compatible AI agents can discover and use datasets without browser automation.
 
 ## MCP URL
 
@@ -17,8 +17,8 @@ FileBridge includes a hosted MCP endpoint so compatible AI agents can discover a
 ## Authentication
 
 Add the MCP URL to a compatible remote MCP client. The client will discover
-FileBridge's OAuth metadata, generate an authorization link, and open it in your
-browser. Sign in to FileBridge, approve access, and the MCP client will store the
+Rowset's OAuth metadata, generate an authorization link, and open it in your
+browser. Sign in to Rowset, approve access, and the MCP client will store the
 OAuth token for future MCP requests.
 
 The dashboard setup prompt includes your API key for clients that cannot complete

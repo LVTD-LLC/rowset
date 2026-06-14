@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: FileBridge
+name: Rowset
 description: A crisp product UI system for agent-managed API datasets.
 colors:
   primary: "#07130F"
@@ -159,11 +159,11 @@ components:
     padding: 16px
 ---
 
-# FileBridge Design System
+# Rowset Design System
 
 ## Overview
 
-FileBridge should feel like a serious developer/data utility with just enough glow to make agent-managed data feel trustworthy. The core metaphor is **agent prompt → authenticated MCP → managed dataset → shareable preview**.
+Rowset should feel like a serious developer/data utility with just enough glow to make agent-managed data feel trustworthy. The core metaphor is **agent prompt → authenticated MCP → managed dataset → shareable preview**.
 
 The UI combines dark, high-contrast command-center surfaces with bright emerald/cyan/lime accents. It should feel fast, technical, trustworthy, and pragmatic — closer to a polished internal data platform than a generic SaaS template.
 
@@ -175,7 +175,7 @@ The palette is built around a dark green-black base and API-like status accents.
 
 - **Primary (#07130F):** Deep green-black for hero sections, CTAs on light backgrounds, and the core brand mood.
 - **Primary Strong (#020617):** Near-black slate for code surfaces, product mocks, and maximum contrast panels.
-- **Secondary (#10B981):** Emerald interaction color for primary action, success, active states, and the main “bridge” signal.
+- **Secondary (#10B981):** Emerald interaction color for primary action, success, active states, and the main dataset signal.
 - **Tertiary (#22D3EE):** Cyan for API routes, secondary highlights, and technical affordances.
 - **Accent (#BEF264):** Lime for export/share callouts and small high-energy moments; use sparingly.
 - **Neutral/Surface (#F8FAFC / #FFFFFF / #F1F5F9):** Clean product surfaces for setup, dataset state, API details, and sharing controls.
@@ -187,10 +187,10 @@ Use emerald as the dominant accent. Cyan and lime should support the API/export 
 
 Typography is intentionally system-first and dense enough for product work.
 
-- **Headlines:** Heavy, tightly tracked sans-serif. Use `font-black`-style weight for concise product claims like “FileBridge gives your AI agent a dataset backend.”
+- **Headlines:** Heavy, tightly tracked sans-serif. Use `font-black`-style weight for concise product claims like “Rowset gives your AI agent a dataset backend.”
 - **Body:** Neutral, readable sans-serif at comfortable line-height. Product explanations should feel concise, not precious.
 - **Labels:** Uppercase, wide-tracked labels for section eyebrows, status chips, and technical metadata.
-- **Code/data:** Monospace for routes, JSON, row previews, IDs, and API examples. Monospace blocks should reinforce that FileBridge produces real machine-readable interfaces.
+- **Code/data:** Monospace for routes, JSON, row previews, IDs, and API examples. Monospace blocks should reinforce that Rowset produces real machine-readable interfaces.
 
 ## Layout
 
@@ -208,7 +208,7 @@ Depth comes from tonal layering, subtle borders, gradients, and controlled glow 
 - Dark hero/product panels may use blurred emerald/cyan radial gradients behind the content.
 - Light cards should rely on border contrast first, then soft shadows only on hover or important grouped panels.
 - Code panels should feel inset and glassy with low-opacity white borders.
-- Avoid drop-shadow-heavy “startup template” styling. FileBridge should feel engineered.
+- Avoid drop-shadow-heavy “startup template” styling. Rowset should feel engineered.
 
 ## Shapes
 

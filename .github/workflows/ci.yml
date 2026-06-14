@@ -11,13 +11,13 @@ jobs:
       postgres:
         image: rasulkireev/custom-postgres:18
         env:
-          POSTGRES_DB: filebridge
-          POSTGRES_USER: filebridge
-          POSTGRES_PASSWORD: filebridge
+          POSTGRES_DB: rowset
+          POSTGRES_USER: rowset
+          POSTGRES_PASSWORD: rowset
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U filebridge -d filebridge"
+          --health-cmd "pg_isready -U rowset -d rowset"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
@@ -40,9 +40,9 @@ jobs:
       SITE_URL: "https://testserver"
       ALLOWED_HOSTS: "localhost,127.0.0.1"
 
-      POSTGRES_DB: filebridge
-      POSTGRES_USER: filebridge
-      POSTGRES_PASSWORD: filebridge
+      POSTGRES_DB: rowset
+      POSTGRES_USER: rowset
+      POSTGRES_PASSWORD: rowset
       POSTGRES_HOST: 127.0.0.1
       POSTGRES_PORT: 5432
 

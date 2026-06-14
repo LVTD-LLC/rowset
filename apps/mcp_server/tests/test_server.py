@@ -353,7 +353,7 @@ def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatc
             "dataset": {
                 "key": dataset_key,
                 "public_enabled": public_enabled,
-                "public_url": "https://filebridge.example/share/datasets/public-key/",
+                "public_url": "https://rowset.example/share/datasets/public-key/",
             },
         }
 
@@ -417,13 +417,13 @@ def test_dataset_row_mcp_tools_return_service_errors(monkeypatch):
 
 def test_get_user_info_mcp_tool_rejects_invalid_api_key(monkeypatch):
     def reject(api_key=None):
-        raise PermissionError("Invalid FileBridge API key")
+        raise PermissionError("Invalid Rowset API key")
 
     async def run():
         monkeypatch.setattr("apps.mcp_server.server._authenticate_profile", reject)
 
         async with Client(mcp) as client:
-            with pytest.raises(Exception, match="Invalid FileBridge API key"):
+            with pytest.raises(Exception, match="Invalid Rowset API key"):
                 await client.call_tool("get_user_info", {})
 
     anyio.run(run)

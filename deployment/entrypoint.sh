@@ -53,11 +53,11 @@ PY
 wait_for_database
 
 if [ "$server" = true ]; then
-    echo "Starting FileBridge server..."
+    echo "Starting Rowset server..."
     python manage.py collectstatic --noinput
     python manage.py migrate --noinput
     exec gunicorn ${PROJECT_NAME}.asgi:application --bind 0.0.0.0:80 --workers 3 --worker-class uvicorn_worker.UvicornWorker
 else
-    echo "Starting FileBridge workers..."
+    echo "Starting Rowset workers..."
     exec python manage.py qcluster
 fi

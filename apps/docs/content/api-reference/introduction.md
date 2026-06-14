@@ -1,12 +1,12 @@
 ---
 title: Introduction
-description: Learn how FileBridge API authentication works and where to find generated API docs.
-keywords: FileBridge API, API authentication, OpenAPI docs
+description: Learn how Rowset API authentication works and where to find generated API docs.
+keywords: Rowset API, API authentication, OpenAPI docs
 ---
 
 # API Reference introduction
 
-FileBridge exposes authenticated REST endpoints for account checks, dataset creation, dataset rows, CSV exports, and public preview settings.
+Rowset exposes authenticated REST endpoints for account checks, dataset creation, dataset rows, CSV exports, and public preview settings.
 
 ## Base URL
 
@@ -34,7 +34,7 @@ Authenticated docs show your full key so you can copy it into trusted tools. Tre
 
 ## Interactive API docs
 
-FileBridge also exposes generated API docs from the backend schema:
+Rowset also exposes generated API docs from the backend schema:
 
 [Open generated API docs]({{ api_docs_url }})
 

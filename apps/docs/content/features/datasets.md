@@ -1,12 +1,12 @@
 ---
 title: Working with datasets
-description: Understand the FileBridge dataset lifecycle, index columns, and exports.
-keywords: FileBridge datasets, MCP datasets, index columns
+description: Understand the Rowset dataset lifecycle, index columns, and exports.
+keywords: Rowset datasets, MCP datasets, index columns
 ---
 
 # Working with datasets
 
-Datasets are the core object in FileBridge. Agents create them through MCP or REST, then use row tools and endpoints to keep them current.
+Datasets are the core object in Rowset. Agents create them through MCP or REST, then use row tools and endpoints to keep them current.
 
 ## Dataset lifecycle
 
@@ -23,7 +23,7 @@ Pick the column your apps and agents naturally use to find a row:
 - `slug` for content inventories
 - `external_id` for synced systems
 
-If the file does not have a stable key, let FileBridge generate one.
+If the file does not have a stable key, let Rowset generate one.
 
 ## CSV exports
 

@@ -2,13 +2,13 @@
 
 ## Vision
 
-FileBridge should become the fastest trustworthy way to give files, spreadsheets,
-and small operational tables a real programmatic interface. It should feel like a
-practical bridge between ad hoc data and production-grade access, not like a
-generic file manager or a heavy data platform.
+Rowset should become the fastest trustworthy dataset backend for AI agents. It
+should feel like a practical place for agents to create, mutate, export, and
+share structured rows without making humans operate upload wizards or fragile
+source-specific sync.
 
-The durable product direction is: private by default, agent-ready by design, and
-honest about what source types and sync paths are actually supported.
+The durable product direction is: private by default, agent-native by design,
+and honest about which operations are available through MCP and REST.
 
 ## What Should Not Drift
 
@@ -19,12 +19,12 @@ honest about what source types and sync paths are actually supported.
 - Public previews are for human review and lightweight sharing only.
 - Agents should use MCP first, REST second, and browser automation last.
 - Authenticated ownership boundaries matter more than convenience shortcuts.
-- The UI should make API outcomes visible quickly: routes, row lookups, exports,
-  and agent setup.
+- The UI should make agent setup and API outcomes visible quickly: MCP URL,
+  REST base URL, dataset keys, row lookups, exports, and public preview URLs.
 
 ## Product Taste
 
-FileBridge should feel like a crisp developer/data utility:
+Rowset should feel like a crisp developer/data utility:
 
 - Fast to understand.
 - Concrete about inputs and outputs.
@@ -33,12 +33,10 @@ FileBridge should feel like a crisp developer/data utility:
 - Technical without making users assemble every part themselves.
 
 Avoid vague platform language. Prefer specific nouns like dataset, row, index
-column, API key, MCP tool, public preview, CSV export, and Google Sheet.
+column, API key, MCP tool, public preview, CSV export, and Parquet export.
 
 ## Long-Term Direction
 
-- Make more structured sources feel as reliable as the current CSV, Parquet, and
-  Google Sheets paths.
 - Improve agent setup so users can connect trusted agents without copying secrets.
 - Keep data mutation explicit, auditable, and easy to reason about.
 - Expand schema and type handling when it improves API usefulness.
@@ -57,8 +55,8 @@ column, API key, MCP tool, public preview, CSV export, and Google Sheet.
 
 ## Success Criteria
 
-- A user can turn a real file or sheet into a usable API-backed dataset without
-  needing custom backend code.
+- A user can sign in, copy a setup prompt, and let a trusted agent create a
+  usable API-backed dataset without custom backend code.
 - A trusted AI agent can safely discover, read, create, update, and delete rows
   only within the authenticated user's datasets.
 - API and MCP docs are accurate enough that users do not need to inspect source

@@ -6,8 +6,8 @@
   sitemap, and adapters.
 - `apps/core/` - profiles, account state, signup/login helpers, feedback, email,
   Stripe webhooks, shared tasks, and shared tests.
-- `apps/datasets/` - dataset domain models, parsing, import/export services,
-  Google Sheets integration, views, tasks, and dataset tests.
+- `apps/datasets/` - dataset domain models, parsing, legacy import/export
+  services, public previews, views, tasks, and dataset tests.
 - `apps/api/` - Django Ninja API object, auth, schemas, REST views, and API
   service wrappers.
 - `apps/mcp_server/` - hosted FastMCP server, MCP OAuth, tools, URLs, and tests.
@@ -27,9 +27,7 @@
 ## Placement Rules
 
 - Put dataset parsing, validation, indexing, serialization, and export behavior in
-  `apps/datasets/services.py` unless the behavior is specific to Google Sheets.
-- Put Google Sheets API calls, credential resolution, and write-back behavior in
-  `apps/datasets/google_sheets.py`.
+  `apps/datasets/services.py`.
 - Put dataset background jobs in `apps/datasets/tasks.py`.
 - Put API request/response schema definitions in `apps/api/schemas.py`.
 - Put REST endpoint functions in `apps/api/views.py`; keep them thin.
@@ -61,8 +59,6 @@
 ## Existing Good Patterns
 
 - Dataset parser and schema inference logic: `apps/datasets/services.py`.
-- Google Sheets credential and write-back isolation:
-  `apps/datasets/google_sheets.py`.
 - REST endpoints delegating to services: `apps/api/views.py`.
 - MCP tools delegating to services: `apps/mcp_server/server.py`.
 - User-facing docs front matter and concise sections:

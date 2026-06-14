@@ -1,7 +1,7 @@
 ---
 title: Dataset API
-description: Use FileBridge dataset endpoints for row CRUD, indexed lookup, CSV export, and public previews.
-keywords: FileBridge API, dataset API, CSV API, REST endpoints
+description: Use Rowset dataset endpoints for row CRUD, indexed lookup, CSV export, and public previews.
+keywords: Rowset API, dataset API, CSV API, REST endpoints
 ---
 
 # Dataset API
@@ -41,7 +41,7 @@ POST {{ api_base_url }}/datasets
 Content-Type: application/json
 ```
 
-Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, FileBridge adds a generated `filebridge_id` column so the dataset is ready to use immediately. FileBridge infers column types from supplied rows; pass `column_types` to override them.
+Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, Rowset adds a generated `rowset_id` column so the dataset is ready to use immediately. Rowset infers column types from supplied rows; pass `column_types` to override them.
 
 ```json
 {
@@ -89,7 +89,7 @@ PATCH {{ api_base_url }}/datasets/{dataset_key}/rows/{row_id}
 Content-Type: application/json
 ```
 
-Use row ids for updates when you already have the FileBridge row id from a list or lookup response.
+Use row ids for updates when you already have the Rowset row id from a list or lookup response.
 
 ## Update column types
 
@@ -146,7 +146,7 @@ The response includes `dataset.public_url`.
 DELETE {{ api_base_url }}/datasets/{dataset_key}/rows/{row_id}
 ```
 
-Deletes a row by FileBridge row id.
+Deletes a row by Rowset row id.
 
 ## Export CSV
 

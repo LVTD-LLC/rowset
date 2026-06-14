@@ -23,7 +23,8 @@ vendor-neutral steering set:
 ## High-Risk Areas
 
 - Dataset import/indexing rules in `apps/datasets/services.py`.
-- Google Sheets OAuth and write-back in `apps/datasets/google_sheets.py`.
+- Legacy dataset parser/import behavior in `apps/datasets/services.py` and
+  `apps/datasets/tasks.py`.
 - MCP OAuth and token handling in `apps/mcp_server/oauth.py`.
 - API key handling in `apps/api/auth.py` and MCP auth paths.
 - Shared base templates used by both public and authenticated pages.

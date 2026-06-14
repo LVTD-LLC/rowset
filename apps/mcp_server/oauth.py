@@ -34,12 +34,12 @@ from filebridge.utils import build_absolute_public_url
 
 MCP_MOUNT_PATH = "/mcp"
 MCP_INTERNAL_PATH = "/"
-MCP_SCOPE = "filebridge:mcp"
+MCP_SCOPE = "rowset:mcp"
 AUTHORIZATION_REQUEST_TTL_SECONDS = 10 * 60
 AUTHORIZATION_CODE_TTL_SECONDS = 10 * 60
 ACCESS_TOKEN_TTL_SECONDS = 60 * 60
 REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60
-LEGACY_API_KEY_CLIENT_ID = "filebridge-api-key"
+LEGACY_API_KEY_CLIENT_ID = "rowset-api-key"
 
 
 def build_mcp_base_url() -> str:
@@ -157,7 +157,7 @@ def approve_authorization_request(transaction_id: str, profile: Profile) -> str:
     return construct_redirect_uri(redirect_uri, code=code, state=state)
 
 
-class FileBridgeOAuthProvider(OAuthProvider):
+class RowsetOAuthProvider(OAuthProvider):
     def __init__(self, *, base_url: str | None = None):
         super().__init__(
             base_url=base_url or build_mcp_base_url(),
@@ -542,4 +542,4 @@ def prune_expired_oauth_artifacts() -> dict[str, int]:
     }
 
 
-mcp_auth = FileBridgeOAuthProvider()
+mcp_auth = RowsetOAuthProvider()

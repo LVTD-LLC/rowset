@@ -2,20 +2,20 @@
 {% load webpack_loader static %}
 
 {% block meta %}
-<title>FileBridge Pricing</title>
-<meta name="description" content="Simple FileBridge pricing for hosted agent-managed dataset workflows and self-hosted teams." />
+<title>Rowset Pricing</title>
+<meta name="description" content="Simple Rowset pricing for hosted agent-managed dataset workflows and self-hosted teams." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://{{ request.get_host }}{% url 'pricing' %}" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="FileBridge Pricing" />
+<meta property="og:title" content="Rowset Pricing" />
 <meta property="og:url" content="https://{{ request.get_host }}{% url 'pricing' %}" />
-<meta property="og:description" content="Simple FileBridge pricing for hosted agent-managed dataset workflows and self-hosted teams." />
-<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta property="og:description" content="Simple Rowset pricing for hosted agent-managed dataset workflows and self-hosted teams." />
+<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 <meta property="og:locale" content="en_US" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="FileBridge Pricing" />
-<meta name="twitter:description" content="Simple FileBridge pricing for hosted agent-managed dataset workflows and self-hosted teams." />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta name="twitter:title" content="Rowset Pricing" />
+<meta name="twitter:description" content="Simple Rowset pricing for hosted agent-managed dataset workflows and self-hosted teams." />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 
 {% block content %}
@@ -23,14 +23,14 @@
   <div class="mx-auto max-w-3xl text-center">
     <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Pricing</p>
     <h1 class="mt-3 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">Free to self-host. Upgrade for hosted convenience.</h1>
-    <p class="fb-text-muted mt-5 text-lg leading-8">Use FileBridge for free, self-host it, or choose a paid hosted plan when you want managed infrastructure and support.</p>
+    <p class="fb-text-muted mt-5 text-lg leading-8">Use Rowset for free, self-host it, or choose a paid hosted plan when you want managed infrastructure and support.</p>
   </div>
 
   <div class="mt-14 grid gap-5 lg:grid-cols-3" aria-label="Pricing plans">
     <section class="fb-card p-6" aria-labelledby="tier-monthly">
       <h2 id="tier-monthly" class="text-lg font-bold text-slate-900 dark:text-slate-100">Monthly</h2>
       <p class="mt-5 flex items-baseline gap-1"><span class="text-5xl font-black text-slate-900 dark:text-slate-100">$10</span><span class="text-sm font-semibold text-slate-600 dark:text-slate-300">/month</span></p>
-      <p class="fb-text-muted mt-3 text-sm leading-6">Best for trying hosted FileBridge without a long commitment.</p>
+      <p class="fb-text-muted mt-3 text-sm leading-6">Best for trying hosted Rowset without a long commitment.</p>
       {% if user.is_authenticated %}
         {% if has_pro_subscription %}<span class="fb-button-secondary mt-8 w-full" aria-describedby="tier-monthly">You are a pro</span>{% else %}<a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" aria-describedby="tier-monthly" class="fb-button-primary mt-8 w-full">Buy monthly</a>{% endif %}
       {% else %}
@@ -79,14 +79,14 @@
 
   <section class="fb-panel mt-10 p-6 text-center" aria-labelledby="self-host-heading">
     <h2 id="self-host-heading" class="text-xl font-bold text-slate-900 dark:text-slate-100">Prefer to self-host?</h2>
-    <p class="fb-text-muted mx-auto mt-2 max-w-2xl text-sm leading-6">FileBridge is open source. Self-host when you need full infrastructure control, or use the hosted plan when you want speed and fewer moving parts.</p>
-    <a href="{% url 'account_signup' %}" class="fb-button-secondary mt-5">Start with FileBridge</a>
+    <p class="fb-text-muted mx-auto mt-2 max-w-2xl text-sm leading-6">Rowset is open source. Self-host when you need full infrastructure control, or use the hosted plan when you want speed and fewer moving parts.</p>
+    <a href="{% url 'account_signup' %}" class="fb-button-secondary mt-5">Start with Rowset</a>
   </section>
 </div>
 {% endblock content %}
 
 {% block schema %}
 <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"WebSite","name":"FileBridge Pricing","description":"Simple FileBridge pricing for hosted agent-managed dataset workflows and self-hosted teams.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'pricing' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
+  {"@context":"https://schema.org","@type":"WebSite","name":"Rowset Pricing","description":"Simple Rowset pricing for hosted agent-managed dataset workflows and self-hosted teams.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'pricing' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
 </script>
 {% endblock schema %}

@@ -1,12 +1,12 @@
 ---
 title: Agent access
-description: Configure AI agents to use FileBridge without browser automation.
-keywords: FileBridge, agents, MCP, OAuth, SKILL.md
+description: Configure AI agents to use Rowset without browser automation.
+keywords: Rowset, agents, MCP, OAuth, SKILL.md
 ---
 
 # Agent access
 
-FileBridge gives you a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, and your API key for clients that need bearer-token auth.
+Rowset gives you a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, and your API key for clients that need bearer-token auth.
 
 The dashboard preview masks the API key. The copy button includes the real key, so treat the copied prompt like a password.
 
@@ -28,7 +28,7 @@ The prompt links to:
 {{ site_url }}/SKILL.md
 ```
 
-That file gives an agent durable setup instructions for FileBridge MCP and REST fallback. It tells agents how to discover the current tools and API docs instead of hardcoding an endpoint list.
+That file gives an agent durable setup instructions for Rowset MCP and REST fallback. It tells agents how to discover the current tools and API docs instead of hardcoding an endpoint list.
 
 ## Recommended agent behavior
 

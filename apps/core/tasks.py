@@ -20,7 +20,7 @@ def add_email_to_buttondown(email, tag):
         "email_address": str(email),
         "metadata": {"source": tag},
         "tags": [tag],
-        "referrer_url": "https://filebridge.com",
+        "referrer_url": "https://rowset.lvtd.dev",
         "type": "regular",
     }
 

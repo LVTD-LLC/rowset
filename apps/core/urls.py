@@ -9,8 +9,8 @@ urlpatterns = [
     path("admin-panel", views.AdminPanelView.as_view(), name="admin_panel"),
     path(
         "SKILL.md",
-        views.agent_instructions_filebridge_mcp,
-        name="agent_instructions_filebridge_mcp",
+        views.agent_instructions_rowset_mcp,
+        name="agent_instructions_rowset_mcp",
     ),
     path(
         "home/agent-setup-prompt/",

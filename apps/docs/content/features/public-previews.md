@@ -1,7 +1,7 @@
 ---
 title: Public previews
 description: Share read-only dataset previews without requiring API clients.
-keywords: FileBridge public preview, dataset sharing, password protected preview
+keywords: Rowset public preview, dataset sharing, password protected preview
 ---
 
 # Public previews

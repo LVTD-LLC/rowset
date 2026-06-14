@@ -1,4 +1,4 @@
-# Self-hosting FileBridge
+# Self-hosting Rowset
 
 <!-- toc -->
 ## Table of contents
@@ -74,18 +74,18 @@ If you know of any other services like Render that allow deployment via a button
 ## Docker Compose deployment
 
 
-Deploy FileBridge on your own server using Docker Compose.
+Deploy Rowset on your own server using Docker Compose.
 
 ## What you'll learn
 
-- Set up FileBridge with Docker Compose
+- Set up Rowset with Docker Compose
 - Configure environment variables
 - Access your deployed application
 - Troubleshoot common deployment issues
 
 ## Overview
 
-Docker Compose provides a streamlined way to deploy FileBridge on your server. This method handles all services (database, Redis, backend, and workers) with a single command.
+Docker Compose provides a streamlined way to deploy Rowset on your server. This method handles all services (database, Redis, backend, and workers) with a single command.
 
 This approach works best if you have a VPS or dedicated server where you can run Docker.
 
@@ -102,16 +102,16 @@ Before starting, make sure you have:
 
 ### 1. Create deployment directory
 
-SSH into your server and create a folder for FileBridge:
+SSH into your server and create a folder for Rowset:
 
 ```bash
-mkdir filebridge-deployment
-cd filebridge-deployment
+mkdir rowset-deployment
+cd rowset-deployment
 ```
 
 ### 2. Download and configure environment file
 
-Download the example environment file from the FileBridge repository:
+Download the example environment file from the Rowset repository:
 
 ```bash
 wget /raw/main/.env.example -O .env
@@ -129,7 +129,7 @@ Now edit the `.env` file to add your credentials:
 nano .env
 ```
 
-You need to configure several environment variables for FileBridge to work properly. See the environment variables section below for complete details on all available options.
+You need to configure several environment variables for Rowset to work properly. See the environment variables section below for complete details on all available options.
 
 At minimum, update these required values:
 
@@ -146,7 +146,7 @@ Save the file (in nano: Ctrl+X, then Y, then Enter).
 
 ### 3. Download docker-compose file
 
-Download the production docker-compose configuration from the FileBridge repository:
+Download the production docker-compose configuration from the Rowset repository:
 
 ```bash
 wget /raw/main/docker-compose-prod.yml -O docker-compose-prod.yml
@@ -164,7 +164,7 @@ You can use the file as-is, or customize it if needed.
 Run this command to start all services:
 
 ```bash
-docker-compose -f docker-compose-prod.yml -p "filebridge" up --detach --remove-orphans || true
+docker-compose -f docker-compose-prod.yml -p "rowset" up --detach --remove-orphans || true
 ```
 
 Docker will:
@@ -197,7 +197,7 @@ The backend runs on port 8000. You need to expose it to the internet.
 
 ### Option 1: Direct port access
 
-If your server allows it, access FileBridge at:
+If your server allows it, access Rowset at:
 
 ```
 http://your-server-ip:8000
@@ -217,7 +217,7 @@ sudo apt install nginx
 Create an Nginx configuration:
 
 ```bash
-sudo nano /etc/nginx/sites-available/filebridge
+sudo nano /etc/nginx/sites-available/rowset
 ```
 
 Add this configuration:
@@ -240,12 +240,12 @@ server {
 Enable the site:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/filebridge /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/rowset /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Now access FileBridge at `http://yourdomain.com`.
+Now access Rowset at `http://yourdomain.com`.
 
 ### Option 3: Add SSL with Certbot
 
@@ -261,11 +261,11 @@ Follow the prompts. Certbot automatically configures SSL and sets up auto-renewa
 ## Environment variables
 
 
-This guide covers all environment variables needed to configure FileBridge.
+This guide covers all environment variables needed to configure Rowset.
 
 ## Required variables
 
-These variables are essential for FileBridge to function:
+These variables are essential for Rowset to function:
 
 ### Core Django settings
 
@@ -286,7 +286,7 @@ These variables are essential for FileBridge to function:
 - Never deploy to production with DEBUG=True
 
 **SITE_URL**
-- Full URL where your FileBridge instance is accessible
+- Full URL where your Rowset instance is accessible
 - Example: `https://yourdomain.com`
 - Used for generating absolute URLs in emails and notifications
 
@@ -304,11 +304,11 @@ These variables are essential for FileBridge to function:
 
 **POSTGRES_DB**
 - Name of the PostgreSQL database
-- Example: `filebridge_db`
+- Example: `rowset_db`
 
 **POSTGRES_USER**
 - PostgreSQL username
-- Example: `filebridge_user`
+- Example: `rowset_user`
 
 **POSTGRES_PASSWORD**
 - Password for your PostgreSQL database
@@ -412,7 +412,7 @@ These variables enhance functionality but aren't required:
 
 **CHATWOOT_HMAC_SECRET**
 - Optional identity validation secret from the Chatwoot website inbox
-- When set, authenticated FileBridge users are identified with an HMAC hash
+- When set, authenticated Rowset users are identified with an HMAC hash
 
 ### Buttondown (Email Newsletter)
 
@@ -444,7 +444,7 @@ These variables enhance functionality but aren't required:
 
 ### Email configuration
 
-Configure these to send emails from FileBridge (for notifications, password resets, etc.):
+Configure these to send emails from Rowset (for notifications, password resets, etc.):
 
 **MAILGUN_API_KEY**
 - API key for Mailgun email service
@@ -514,7 +514,7 @@ Configure these to use cloud storage for media files:
 
 ## Getting the .env.example file
 
-The complete `.env.example` file with all variables and detailed comments is available in the FileBridge repository.
+The complete `.env.example` file with all variables and detailed comments is available in the Rowset repository.
 
 Download it directly:
 
@@ -532,7 +532,7 @@ This file includes all available options with explanations and example values.
 
 ## Security best practices
 
-Follow these guidelines to keep your FileBridge installation secure:
+Follow these guidelines to keep your Rowset installation secure:
 
 **Never commit .env files**
 - Add `.env` to your `.gitignore`

@@ -1,18 +1,18 @@
 ---
 title: Getting started
-description: Connect an AI agent to FileBridge and create API-backed datasets.
-keywords: FileBridge, getting started, MCP, dataset API
+description: Connect an AI agent to Rowset and create API-backed datasets.
+keywords: Rowset, getting started, MCP, dataset API
 ---
 
 # Getting started
 
-FileBridge gives AI agents a stable MCP and REST surface for API-backed datasets.
+Rowset gives AI agents a stable MCP and REST surface for API-backed datasets.
 
 ## What to do first
 
 1. Sign in and copy the dashboard agent prompt.
 2. Paste the prompt into a trusted AI agent.
-3. Complete the FileBridge browser authorization flow when the MCP client asks.
+3. Complete the Rowset browser authorization flow when the MCP client asks.
 4. Ask the agent to create a dataset from a file, table, or system it can access.
 5. Use MCP or REST for row CRUD, CSV export, and optional public previews.
 
