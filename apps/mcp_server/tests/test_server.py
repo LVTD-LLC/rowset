@@ -332,7 +332,7 @@ def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatc
         authenticated_profile,
         dataset_key,
         *,
-        public_enabled,
+        public_enabled=None,
         public_page_size=None,
         public_password=None,
         clear_public_password=False,
@@ -377,9 +377,20 @@ def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatc
                     "public_password": "secret",
                 },
             )
+            partial_result = await client.call_tool(
+                "update_dataset_public_preview",
+                {
+                    "dataset_key": "ds",
+                    "public_page_size": 50,
+                },
+            )
 
         assert result.data["dataset"]["public_url"].endswith("/share/datasets/public-key/")
-        assert calls == [(11, "ds", True, 25, "secret", False)]
+        assert partial_result.data["message"] == "Public preview settings updated."
+        assert calls == [
+            (11, "ds", True, 25, "secret", False),
+            (11, "ds", None, 50, None, False),
+        ]
 
     anyio.run(run)
 

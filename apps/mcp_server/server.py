@@ -253,9 +253,15 @@ def update_dataset_column_types(
 def update_dataset_public_preview(
     dataset_key: Annotated[str, Field(description="FileBridge dataset key/UUID.")],
     public_enabled: Annotated[
-        bool,
-        Field(description="Whether the public read-only preview should be enabled."),
-    ],
+        bool | None,
+        Field(
+            default=None,
+            description=(
+                "Set true or false to enable or disable the public preview. Omit to keep "
+                "the current enabled state while updating page size or password settings."
+            ),
+        ),
+    ] = None,
     public_page_size: Annotated[
         int | None,
         Field(
