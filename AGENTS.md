@@ -100,6 +100,7 @@ host environment. The supported path is the Docker-backed `make test`.
 ## Git
 
 - Worktrees may be detached. If a branch is needed, create it from the current
-  HEAD with the `rasul/` prefix unless the user asked for a different name.
+  HEAD with a descriptive name that follows the user's or team's branch naming
+  convention.
 - Do not force-push or rewrite shared history unless the user explicitly asks.
 - Do not revert user changes or unrelated files.
