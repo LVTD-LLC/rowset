@@ -225,7 +225,9 @@ STATICFILES_DIRS = [
     BASE_DIR.joinpath("frontend/build"),
 ]
 
-folder_name = f"rowset-{ENVIRONMENT}"
+# Keep the historical storage bucket name stable so existing media remains
+# available after the product rename.
+folder_name = f"filebridge-{ENVIRONMENT}"
 aws_s3_endpoint_url = env("AWS_S3_ENDPOINT_URL", default="")
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
