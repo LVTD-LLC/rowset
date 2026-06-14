@@ -35,10 +35,15 @@ def _profile():
         index_generated=False,
         row_count=42,
         public_enabled=False,
+        public_key="4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
+        public_page_size=10,
+        public_password_hash="",
+        is_public_password_protected=False,
         created_at="2026-05-14T00:00:00Z",
         updated_at="2026-05-14T00:01:00Z",
         confirmed_at=None,
         processed_at=None,
+        get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
     )
 
     class DatasetQuerySet:
@@ -316,6 +321,65 @@ def test_update_dataset_column_types_mcp_tool_calls_dataset_service(monkeypatch)
 
         assert result.data["message"] == "Column types updated."
         assert calls == [(11, "ds", {"email": "text"})]
+
+    anyio.run(run)
+
+
+def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatch):
+    calls = []
+
+    def update_public_preview(
+        authenticated_profile,
+        dataset_key,
+        *,
+        public_enabled,
+        public_page_size=None,
+        public_password=None,
+        clear_public_password=False,
+    ):
+        calls.append(
+            (
+                authenticated_profile.id,
+                dataset_key,
+                public_enabled,
+                public_page_size,
+                public_password,
+                clear_public_password,
+            )
+        )
+        return {
+            "status": "success",
+            "message": "Public preview settings updated.",
+            "dataset": {
+                "key": dataset_key,
+                "public_enabled": public_enabled,
+                "public_url": "https://filebridge.example/share/datasets/public-key/",
+            },
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_dataset_public_preview",
+            update_public_preview,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "update_dataset_public_preview",
+                {
+                    "dataset_key": "ds",
+                    "public_enabled": True,
+                    "public_page_size": 25,
+                    "public_password": "secret",
+                },
+            )
+
+        assert result.data["dataset"]["public_url"].endswith("/share/datasets/public-key/")
+        assert calls == [(11, "ds", True, 25, "secret", False)]
 
     anyio.run(run)
 

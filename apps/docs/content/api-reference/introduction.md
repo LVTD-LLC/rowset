@@ -6,7 +6,7 @@ keywords: FileBridge API, API authentication, OpenAPI docs
 
 # API Reference introduction
 
-FileBridge exposes authenticated REST endpoints for account checks, dataset creation, dataset rows, and CSV exports.
+FileBridge exposes authenticated REST endpoints for account checks, dataset creation, dataset rows, CSV exports, and public preview settings.
 
 ## Base URL
 
@@ -43,4 +43,4 @@ Use those generated docs when you want request/response schemas or to inspect lo
 ## Sections
 
 - **User API** — verify a key and inspect safe profile details.
-- **Dataset API** — create datasets; list, look up, create, update, delete, and export dataset rows.
+- **Dataset API** — create datasets; list, look up, create, update, delete, export rows, and configure public previews.

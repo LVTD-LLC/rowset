@@ -1,11 +1,12 @@
 from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
+from django.urls import reverse
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
 from apps.core.models import Profile
-from filebridge.utils import get_filebridge_logger
+from filebridge.utils import build_absolute_public_url, get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
 
@@ -34,7 +35,28 @@ class LandingPageView(TemplateView):
             messages.success(self.request, "Thanks for subscribing, I hope you enjoy the app!")
         elif payment_status == "failed":
             messages.error(self.request, "Something went wrong with the payment.")
-        
+
+        mcp_url = build_absolute_public_url("/mcp/")
+        rest_api_base_url = build_absolute_public_url("/api/")
+        instructions_url = build_absolute_public_url(reverse("agent_instructions_filebridge_mcp"))
+        signup_url = build_absolute_public_url(reverse("account_signup"))
+
+        context["landing_agent_setup_prompt"] = "\n".join(
+            [
+                "Set yourself up to use FileBridge for me.",
+                "",
+                f"FileBridge MCP URL: {mcp_url}",
+                f"FileBridge REST API base: {rest_api_base_url}",
+                f"Agent instructions/skill: {instructions_url}",
+                "",
+                "Read the skill URL, configure FileBridge as a remote Streamable HTTP MCP "
+                "server, and complete the browser authorization flow when your MCP client "
+                f"asks. If I do not have a FileBridge account yet, tell me to sign up at "
+                f"{signup_url}. After setup, call get_user_info, then use get_all_datasets, "
+                "create_dataset, row tools, exports, and update_dataset_public_preview as "
+                "needed.",
+            ]
+        )
 
         return context
 

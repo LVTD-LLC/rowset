@@ -6,14 +6,11 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Protocol
-from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.parse import urlparse
 
 import polars as pl
 
 from apps.datasets.choices import DatasetColumnType
-from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 
 
 class CSVParseError(ValueError):
@@ -24,8 +21,9 @@ GENERATED_INDEX_CHOICE = "__filebridge_generated__"
 GENERATED_INDEX_BASENAME = "filebridge_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
 MAX_PUBLIC_PAGE_SIZE = 100
-GOOGLE_SHEETS_FILE_TYPE = "google_sheets"
-GOOGLE_SHEETS_EXPORT_TIMEOUT_SECONDS = 15
+# Backward compatibility for datasets that already stored normalized sheet text
+# before FileBridge removed Google Sheets import/sync as an active product path.
+LEGACY_GOOGLE_SHEETS_FILE_TYPE = "google_sheets"
 COLUMN_TYPE_SAMPLE_LIMIT = 200
 COLUMN_SCHEMA_TYPE_KEY = "type"
 
@@ -161,7 +159,7 @@ class ParquetParser:
 
 PARSERS_BY_EXTENSION = {".csv": CSVParser(), ".parquet": ParquetParser()}
 PARSERS_BY_TYPE = {parser.file_type: parser for parser in PARSERS_BY_EXTENSION.values()}
-PARSERS_BY_TYPE[GOOGLE_SHEETS_FILE_TYPE] = CSVParser()
+PARSERS_BY_TYPE[LEGACY_GOOGLE_SHEETS_FILE_TYPE] = CSVParser()
 
 
 # Backward-compatible names used by existing views/tests.
@@ -450,90 +448,6 @@ def parser_for_file_type(file_type: str) -> TabularParser:
 
 def preview_uploaded_table(uploaded_file, filename: str, sample_size: int = 5) -> TabularPreview:
     return parser_for_filename(filename).preview_file(uploaded_file, sample_size=sample_size)
-
-
-def preview_google_sheet_url(url: str, sample_size: int = 5) -> TabularPreview:
-    export_url, _sheet_id = google_sheets_export_url(url)
-    text = fetch_google_sheet_csv(export_url)
-    preview = CSVParser().preview_text(text, sample_size=sample_size)
-    return TabularPreview(
-        headers=preview.headers,
-        preview_rows=preview.preview_rows,
-        row_count=preview.row_count,
-        source_text=preview.source_text,
-        file_type=GOOGLE_SHEETS_FILE_TYPE,
-        column_schema=preview.column_schema,
-    )
-
-
-def google_sheets_export_url(url: str) -> tuple[str, str]:
-    sheet_id, gid = google_sheets_ids(url)
-    return (
-        f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}",
-        sheet_id,
-    )
-
-
-def google_sheets_ids(url: str) -> tuple[str, str]:
-    parsed = urlparse((url or "").strip())
-    if parsed.scheme != "https" or parsed.netloc != "docs.google.com":
-        raise CSVParseError("Enter a public Google Sheets link from docs.google.com.")
-
-    parts = [part for part in parsed.path.split("/") if part]
-    if len(parts) < 3 or parts[0] != "spreadsheets" or parts[1] != "d":
-        raise CSVParseError("Enter a public Google Sheets spreadsheet link.")
-
-    sheet_id = parts[2]
-    params = parse_qs(parsed.query)
-    fragment_params = parse_qs(parsed.fragment)
-    gid = (params.get("gid") or fragment_params.get("gid") or ["0"])[0]
-    if not gid.isdigit():
-        raise CSVParseError("Google Sheets gid must be numeric.")
-
-    return sheet_id, gid
-
-
-def fetch_google_sheet_csv(export_url: str) -> str:
-    _validate_google_sheets_fetch_url(export_url)
-    request = Request(export_url, headers={"User-Agent": "FileBridge/1.0"})
-    opener = build_opener(_GoogleSheetsRedirectHandler)
-    try:
-        with opener.open(request, timeout=GOOGLE_SHEETS_EXPORT_TIMEOUT_SECONDS) as response:
-            content_type = response.headers.get("Content-Type", "")
-            raw = response.read(MAX_CSV_UPLOAD_BYTES + 1)
-    except HTTPError as exc:
-        if exc.code in {401, 403, 404}:
-            raise CSVParseError(
-                "Could not read that Google Sheet. Make sure it is shared publicly or published."
-            ) from exc
-        raise CSVParseError("Could not download that Google Sheet right now.") from exc
-    except (TimeoutError, URLError) as exc:
-        raise CSVParseError("Could not download that Google Sheet right now.") from exc
-
-    if len(raw) > MAX_CSV_UPLOAD_BYTES:
-        raise CSVParseError("Google Sheets exports must be 10 MB or smaller for now.")
-
-    text = _decode_bytes(raw)
-    if "text/html" in content_type.lower() or "<html" in text[:200].lower():
-        raise CSVParseError(
-            "Google returned a web page instead of CSV. Make sure the sheet is publicly accessible."
-        )
-    return text
-
-
-class _GoogleSheetsRedirectHandler(HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        _validate_google_sheets_fetch_url(newurl)
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
-
-
-def _validate_google_sheets_fetch_url(url: str):
-    parsed = urlparse(url)
-    hostname = parsed.hostname or ""
-    is_google_sheets_export = hostname == "docs.google.com"
-    is_google_csv_redirect = hostname.endswith("-sheets.googleusercontent.com")
-    if parsed.scheme != "https" or not (is_google_sheets_export or is_google_csv_redirect):
-        raise CSVParseError("Could not download that Google Sheet right now.")
 
 
 def source_text_from_file(file_obj, file_type: str) -> str:

@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from django.http import HttpRequest
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from apps.api.views import (
     delete_internal_blog_post,
@@ -19,8 +19,7 @@ from apps.api.views import (
 )
 from apps.blog.choices import BlogPostStatus
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.services import GOOGLE_SHEETS_FILE_TYPE
+from apps.datasets.models import Dataset
 
 
 class BlogPostApiTests(SimpleTestCase):
@@ -230,6 +229,7 @@ class UserInfoApiUnitTests(SimpleTestCase):
 
 
 class DatasetListApiUnitTests(SimpleTestCase):
+    @override_settings(SITE_URL="https://filebridge.example")
     def test_list_datasets_returns_profile_dataset_metadata_without_rows(self):
         dataset = SimpleNamespace(
             key="6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
@@ -246,10 +246,15 @@ class DatasetListApiUnitTests(SimpleTestCase):
             index_generated=False,
             row_count=42,
             public_enabled=True,
+            public_key="4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
+            public_page_size=25,
+            public_password_hash="hashed",
             created_at="2026-05-14T00:00:00Z",
             updated_at="2026-05-14T00:01:00Z",
             confirmed_at="2026-05-14T00:02:00Z",
             processed_at="2026-05-14T00:03:00Z",
+            is_public_password_protected=True,
+            get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
         )
         queryset = Mock()
         queryset.count.return_value = 1
@@ -282,6 +287,10 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "index_generated": False,
                 "row_count": 42,
                 "public_enabled": True,
+                "public_key": "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
+                "public_url": "https://filebridge.example/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
+                "public_page_size": 25,
+                "public_password_protected": True,
                 "created_at": "2026-05-14T00:00:00Z",
                 "updated_at": "2026-05-14T00:01:00Z",
                 "confirmed_at": "2026-05-14T00:02:00Z",
@@ -366,107 +375,70 @@ def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
 
 
 @pytest.mark.django_db
-def test_create_google_sheet_dataset_row_syncs_source(django_user_model):
-    from apps.api.services import create_profile_dataset_row
+@override_settings(SITE_URL="https://filebridge.example")
+def test_update_dataset_public_preview_enables_public_link(django_user_model):
+    from apps.api.services import update_profile_dataset_public_preview
 
     user = django_user_model.objects.create_user(
-        username="sheetapiuser",
-        email="sheetapiuser@example.com",
+        username="previewapiuser",
+        email="previewapiuser@example.com",
         password="password123",
     )
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="People",
-        original_filename="people.csv",
-        file_type=GOOGLE_SHEETS_FILE_TYPE,
-        source_url="https://docs.google.com/spreadsheets/d/sheet123/edit#gid=456",
+        original_filename="Created via API",
+        file_type="api",
         status=DatasetStatus.READY,
         headers=["email", "name"],
         index_column="email",
         row_count=0,
     )
 
-    with patch("apps.api.services.sync_dataset_to_google_sheet", return_value="synced") as sync:
-        result = create_profile_dataset_row(
-            user.profile,
-            str(dataset.key),
-            {"email": "ada@example.com", "name": "Ada"},
-        )
+    result = update_profile_dataset_public_preview(
+        user.profile,
+        str(dataset.key),
+        public_enabled=True,
+        public_page_size=25,
+        public_password="share-secret",
+    )
 
-    sync.assert_called_once()
-    assert sync.call_args.args[0].id == dataset.id
-    assert "source_sync" not in result
+    dataset.refresh_from_db()
+    assert dataset.public_enabled is True
+    assert dataset.public_page_size == 25
+    assert dataset.public_password_matches("share-secret")
+    assert result["dataset"]["public_url"] == (
+        f"https://filebridge.example/share/datasets/{dataset.public_key}/"
+    )
+    assert result["dataset"]["public_password_protected"] is True
 
 
 @pytest.mark.django_db
-def test_update_and_delete_google_sheet_dataset_rows_sync_source(django_user_model):
-    from apps.api.services import delete_profile_dataset_row, patch_profile_dataset_row
+def test_update_dataset_public_preview_requires_ready_dataset(django_user_model):
+    from apps.api.services import DatasetServiceError, update_profile_dataset_public_preview
 
     user = django_user_model.objects.create_user(
-        username="sheetapiuser2",
-        email="sheetapiuser2@example.com",
+        username="previewblocked",
+        email="previewblocked@example.com",
         password="password123",
     )
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="People",
-        original_filename="people.csv",
-        file_type=GOOGLE_SHEETS_FILE_TYPE,
-        source_url="https://docs.google.com/spreadsheets/d/sheet123/edit#gid=456",
-        status=DatasetStatus.READY,
-        headers=["email", "name"],
-        index_column="email",
-        row_count=1,
-    )
-    row = DatasetRow.objects.create(
-        dataset=dataset,
-        row_number=1,
-        index_value="ada@example.com",
-        data={"email": "ada@example.com", "name": "Ada"},
-    )
-
-    with patch("apps.api.services.sync_dataset_to_google_sheet", return_value="synced") as sync:
-        patch_profile_dataset_row(user.profile, str(dataset.key), row.id, {"name": "Ada L"})
-        delete_profile_dataset_row(user.profile, str(dataset.key), row.id)
-
-    assert sync.call_count == 2
-
-
-@pytest.mark.django_db
-def test_google_sheet_sync_failure_returns_success_with_warning(django_user_model):
-    from apps.api.services import create_profile_dataset_row
-    from apps.datasets.google_sheets import GoogleSheetsSyncError
-
-    user = django_user_model.objects.create_user(
-        username="sheetapiuser3",
-        email="sheetapiuser3@example.com",
-        password="password123",
-    )
-    dataset = Dataset.objects.create(
-        profile=user.profile,
-        name="People",
-        original_filename="people.csv",
-        file_type=GOOGLE_SHEETS_FILE_TYPE,
-        source_url="https://docs.google.com/spreadsheets/d/sheet123/edit#gid=456",
-        status=DatasetStatus.READY,
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.PROCESSING,
         headers=["email", "name"],
         index_column="email",
         row_count=0,
     )
 
-    with patch(
-        "apps.api.services.sync_dataset_to_google_sheet",
-        side_effect=GoogleSheetsSyncError("Could not reach Google Sheets."),
-    ):
-        result = create_profile_dataset_row(
+    with pytest.raises(DatasetServiceError) as exc:
+        update_profile_dataset_public_preview(
             user.profile,
             str(dataset.key),
-            {"email": "ada@example.com", "name": "Ada"},
+            public_enabled=True,
         )
 
-    assert result["status"] == "success"
-    assert result["source_sync"] == {
-        "status": "failed",
-        "message": "Could not reach Google Sheets.",
-    }
-    assert DatasetRow.objects.filter(dataset=dataset, index_value="ada@example.com").exists()
+    assert exc.value.status_code == 409
+    assert "ready datasets" in exc.value.message

@@ -11,8 +11,8 @@ from django.template import Context, Template
 from django.urls import reverse
 
 from apps.core.models import Profile
-from apps.core.views import build_absolute_public_url, build_agent_setup_prompt
-from filebridge.utils import get_filebridge_logger
+from apps.core.views import build_agent_setup_prompt
+from filebridge.utils import build_absolute_public_url, get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
 

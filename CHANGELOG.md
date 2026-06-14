@@ -17,10 +17,10 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
-- Polished the Google auth and Sheets connect UI with Google/Sheets logos, a green dashboard connect button, a post-connect dashboard redirect, and a connected-state “Add from Google Sheets” CTA.
-- Styled the Google Sheets connect confirmation page with the FileBridge app layout instead of django-allauth's default unstyled template.
+- Repositioned FileBridge as an AI-native, agent-first dataset tool centered on MCP and REST workflows.
+- Reworked the dashboard around the copyable agent setup prompt, connection details, recent datasets, and settings access.
+- Reworked the landing page around a pre-signup agent prompt so visitors can hand setup to an AI agent before creating an account.
 - Replaced the default app logo/favicon with a generated FileBridge icon and added dedicated favicon/apple-touch assets.
-- Reworked the landing page into a sharper FileBridge product story with a bolder visual system, API-focused hero, use cases, and updated FAQs.
 - Settings confirmation resends now show one success notification instead of duplicate allauth/app messages.
 - The django-allauth email management fallback page now uses FileBridge app styling instead of the default unstyled layout.
 - Passkey and two-factor account pages now use FileBridge app styling instead of django-allauth's default unstyled layout.
@@ -30,29 +30,29 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - The email confirmation reminder now appears only in settings, not on the dashboard home page.
 - Passkey signup is disabled so passkey setup can move to a post-registration account security flow.
 - Sentry setup now includes release metadata, configurable tracing/profiling/log settings, logging breadcrumbs/events, and the `before_send` hook by default.
-- Google signup/login now asks only for basic profile/email access. Google Sheets permission is requested later from the explicit Connect Google Sheets flow.
+- Google signup/login now asks only for basic profile/email access.
 
 ### Fixed
 - REST API key authentication now accepts `Authorization: Bearer ...` and `X-API-Key` headers in addition to `?api_key=...`, matching the published docs and agent setup guidance.
-- Google Sheets imports now follow Google's CSV export redirect to `*-sheets.googleusercontent.com` while still rejecting untrusted redirect hosts.
-- Unconfirmed dataset previews are no longer kept in dataset/recent lists and are replaced when users preview another upload.
 - API/MCP authentication logs no longer include raw API key values, and API-key profile lookups now eager-load users for the user-info endpoint.
 - CSV imports now store parsed source text in the database so async workers can import rows even when uploaded media files are not shared across containers.
-- CSV uploads now reject files over 10 MB before preview/import to avoid unbounded database writes.
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- API and MCP clients can now enable, disable, password-protect, and resize public dataset previews.
 - API and MCP clients can now create ready API-backed datasets on the fly, with optional initial rows and either a supplied unique index column or a generated FileBridge ID.
-- Google OAuth can now be enabled with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` for Google signup/login and per-user Google Sheets access/write-back.
-- Google Sheets-backed datasets can now write row creates, updates, and deletes back to the source sheet when `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` is configured and the sheet is shared with that service account as an editor.
+- Google OAuth can now be enabled with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` for Google signup/login.
 - Hosted MCP now exposes dataset detail and ready-dataset row tools for listing, reading, creating, updating, and deleting rows.
 - Dataset owners can now delete datasets from the dataset list, dashboard recent datasets, and dataset settings.
 - Dataset owners can now export imported datasets as CSV or Parquet from the dataset UI.
-- Dataset uploads now accept Parquet files in addition to CSV.
 - Added dataset discovery for agents via `GET /api/datasets` and the hosted MCP `get_all_datasets` tool, returning dataset metadata for the authenticated profile without row payloads.
-- Dashboard home now includes a copyable “teach your AI agent to use FileBridge” prompt with the user's HTTPS MCP URL, REST API base, API key, and a linked public `/SKILL.md` agent skill file.
+- Dashboard home now includes a copyable “teach your AI agent to use FileBridge” prompt with the user's HTTPS MCP URL, REST API base, and a linked public `/SKILL.md` agent skill file.
 - Added agent access foundations: `GET /api/user` for API-key-authenticated user info and a hosted FastMCP server at `/mcp/` with a matching `get_user_info` tool.
 - Added a Google DESIGN.md-style design system source of truth for FileBridge colors, typography, layout, components, and usage guardrails.
+
+### Removed
+- Removed the dashboard CSV/Parquet upload and preview-confirm import wizard.
+- Removed FileBridge-managed Google Sheets connection, import, and write-back code.
 - Chatwoot support chat can now be enabled with `CHATWOOT_BASE_URL` and `CHATWOOT_WEBSITE_TOKEN`.
 - Dataset settings now let owners enable an off-by-default public table preview link with configurable pagination and optional password protection.
 - Dataset imports now ask users to choose a unique index column or generate a FileBridge ID column before confirming import.

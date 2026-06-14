@@ -1,42 +1,20 @@
 {% extends "base_app.html" %}
-{% load static %}
 
 {% block content %}
 <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-  <div class="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-      <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">FileBridge</p>
-      <h1 class="mt-2 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">Turn files and Google Sheets into an API</h1>
-      <p class="fb-text-muted mt-4 max-w-2xl text-lg leading-8">
-        Upload a CSV or Parquet file, or paste a public Google Sheets link. Verify the headers and sample rows, then confirm the import. FileBridge will turn it into API endpoints you can query and edit.
-      </p>
-    </div>
-    <a href="{% url 'dataset_list' %}" class="fb-button-secondary">
-      View datasets
-    </a>
-  </div>
-
-  {% if show_agent_setup_prompt %}
-    <section class="mb-10 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30" aria-labelledby="agent-setup-heading">
-      <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+  <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+    <section class="fb-card p-6 sm:p-8" aria-labelledby="agent-setup-heading">
+      <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div class="max-w-2xl">
           <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Agent setup</p>
-          <h2 id="agent-setup-heading" class="mt-2 text-2xl font-black text-slate-900 dark:text-slate-100">Teach your AI agent to use FileBridge</h2>
-          <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
-            Copy this prompt into a trusted AI agent. It includes your FileBridge MCP URL, REST API base, API key, and a short skill file the agent can read for setup instructions.
+          <h1 id="agent-setup-heading" class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
+            Connect your AI agent to FileBridge
+          </h1>
+          <p class="fb-text-muted mt-4 text-base leading-7">
+            Copy this prompt into a trusted AI agent. It includes your FileBridge MCP URL, REST API base, API key, and skill file so the agent can configure MCP, ask for authorization, then create and manage datasets through MCP or REST.
           </p>
         </div>
-        <div class="flex flex-col gap-3 sm:flex-row lg:flex-col">
-          <a href="{{ agent_instructions_url }}" class="fb-button-secondary border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-950">
-            View agent skill
-          </a>
-          <form method="post" action="{% url 'dismiss_agent_setup_prompt' %}">
-            {% csrf_token %}
-            <button type="submit" class="fb-button-secondary w-full border-transparent bg-transparent text-slate-600 shadow-none hover:bg-emerald-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-emerald-950">
-              Hide this
-            </button>
-          </form>
-        </div>
+        <a href="{% url 'dataset_list' %}" class="fb-button-secondary whitespace-nowrap">View datasets</a>
       </div>
 
       <div class="mt-6" data-controller="copy" data-copy-url-value="{{ agent_setup_prompt_url }}">
@@ -48,115 +26,57 @@
             <p id="agent-setup-warning" class="font-semibold text-amber-700 dark:text-amber-300">Only share this prompt with agents and people you trust.</p>
           </div>
           <button type="button" data-action="copy#copy" class="fb-button-primary">
-            <span data-copy-target="label">Copy prompt</span>
+            <span data-copy-target="label">Copy agent prompt</span>
           </button>
         </div>
       </div>
     </section>
-  {% endif %}
 
-  <section class="fb-card p-6" aria-labelledby="upload-dataset-heading">
-    <div class="mb-6">
-      <h2 id="upload-dataset-heading" class="text-xl font-bold text-slate-900 dark:text-slate-100">Upload dataset</h2>
-      <p class="fb-text-muted mt-1 text-sm leading-6">We’ll preview the file or sheet first. The full row import only starts after you confirm.</p>
-    </div>
-
-    <form action="{% url 'dataset_upload_preview' %}" method="post" enctype="multipart/form-data" data-controller="csv-upload" data-action="submit->csv-upload#preview" class="space-y-6">
-      {% csrf_token %}
-      <div class="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-950/70">
-        <label for="dataset-file" class="block text-base font-semibold text-slate-900 dark:text-slate-100">Choose a CSV or Parquet file</label>
-        <p id="dataset-file-help" class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">Maximum upload size is 10 MB. We only store the normalized table text after you confirm the preview.</p>
-        <input id="dataset-file" data-csv-upload-target="file" type="file" name="file" accept=".csv,text/csv,.parquet,application/vnd.apache.parquet" aria-describedby="dataset-file-help upload-status" class="fb-input mx-auto mt-5 block w-full max-w-md text-sm file:mr-4 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-emerald-800 hover:file:bg-emerald-100 dark:file:bg-emerald-900/40 dark:file:text-emerald-200" />
-        <div id="google-sheets-import" class="mx-auto mt-6 max-w-md text-left">
-          <label for="google-sheets-url" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Or paste a Google Sheets link</label>
-          <input id="google-sheets-url" data-csv-upload-target="googleSheetsUrl" type="url" name="google_sheets_url" placeholder="https://docs.google.com/spreadsheets/d/..." aria-describedby="google-sheets-help upload-status" class="fb-input mt-2 block w-full px-3 py-2 text-sm" />
-          <p id="google-sheets-help" class="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-400">
-            Public sheets work immediately. Private sheets need Google Sheets access connected first.
-          </p>
-        </div>
-        <button data-csv-upload-target="submit" type="submit" class="fb-button-primary mt-5">
-          Preview dataset
-        </button>
-        <p id="upload-status" data-csv-upload-target="status" aria-live="polite" class="mt-3 text-sm text-slate-500 dark:text-slate-400">CSV, Parquet, and public Google Sheets links supported.</p>
+    <aside class="space-y-4" aria-label="Connection details">
+      <div class="fb-panel p-5">
+        <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">MCP endpoint</h2>
+        <p class="mt-2 break-all font-mono text-sm text-slate-700 dark:text-slate-200">{{ mcp_url }}</p>
       </div>
-
-      <div data-csv-upload-target="preview" class="fb-panel hidden p-5" aria-live="polite">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Does this look right?</h3>
-            <p data-csv-upload-target="rowCount" class="fb-text-muted mt-1 text-sm"></p>
-          </div>
-          <div data-csv-upload-target="confirmForm" data-action="placeholder"></div>
-        </div>
-
-        <div class="mt-5">
-          <p class="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Headers</p>
-          <div data-csv-upload-target="headers" class="flex flex-wrap gap-2"></div>
-        </div>
-
-        <div class="mt-5">
-          <label for="dataset-index-column" class="mb-2 block text-sm font-semibold text-slate-900 dark:text-slate-100">Index column</label>
-          <select id="dataset-index-column" data-csv-upload-target="indexSelector" class="fb-input block w-full max-w-md px-3 py-2 text-sm"></select>
-          <p class="fb-text-muted mt-2 text-sm">Pick a column with unique values, or let FileBridge generate a stable ID column for each row.</p>
-        </div>
-
-        <div data-csv-upload-target="columnTypes" class="mt-5"></div>
-
-        <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" data-csv-upload-target="sample"></div>
+      <div class="fb-panel p-5">
+        <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">REST API base</h2>
+        <p class="mt-2 break-all font-mono text-sm text-slate-700 dark:text-slate-200">{{ rest_api_base_url }}</p>
       </div>
-    </form>
-
-    {% if google_provider_enabled %}
-      <div class="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-950/70 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-slate-600 dark:text-slate-300">
-          {% if google_connected %}
-            Google Sheets is connected. You can import private sheets you can access.
-          {% else %}
-            Want to import private Google Sheets? Connect Google Sheets only when you need it.
-          {% endif %}
-        </p>
-        {% if google_connected %}
-          <a href="#google-sheets-import" class="fb-button-primary whitespace-nowrap gap-2">
-            <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
-            <span>Add from Google Sheets</span>
-          </a>
-        {% else %}
-          <form method="post" action="{% url 'connect_google_sheets' %}">
-            {% csrf_token %}
-            <button class="fb-button-primary whitespace-nowrap gap-2">
-              <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
-              <span>Connect Google Sheets</span>
-            </button>
-          </form>
-        {% endif %}
+      <div class="fb-card p-5">
+        <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">Agent skill</h2>
+        <p class="fb-text-muted mt-2 text-sm leading-6">The prompt links to a public skill file your agent can read before it touches data.</p>
+        <a href="{{ agent_instructions_url }}" class="fb-button-secondary mt-4 w-full">Open agent skill</a>
       </div>
-    {% endif %}
-  </section>
+    </aside>
+  </div>
 
-  <section class="mt-10">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Recent datasets</h2>
+  <section class="mt-10" aria-labelledby="recent-datasets-heading">
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h2 id="recent-datasets-heading" class="text-xl font-bold text-slate-900 dark:text-slate-100">Recent datasets</h2>
+        <p class="fb-text-muted mt-1 text-sm leading-6">Datasets created or managed by API and MCP appear here.</p>
+      </div>
+      <a href="{% url 'settings' %}" class="fb-button-secondary">Open settings</a>
     </div>
     {% if recent_datasets %}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {% for dataset in recent_datasets %}
-          <div class="fb-card rounded-2xl p-5 transition hover:border-emerald-300 hover:shadow-md dark:hover:border-emerald-700">
+          <div class="fb-card p-5 transition hover:border-emerald-300 dark:hover:border-emerald-700">
             <div class="flex items-start justify-between gap-3">
-              <div>
-                <a href="{{ dataset.get_absolute_url }}" class="fb-focus font-semibold text-slate-900 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+              <div class="min-w-0">
+                <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-900 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ dataset.row_count }} rows</p>
               </div>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ dataset.status }}</span>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
               {% if dataset.status == "ready" %}
-                <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary px-3 py-1.5 text-xs">CSV</a>
-                <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary px-3 py-1.5 text-xs">Parquet</a>
+                <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary px-3 py-1.5 text-xs">Download CSV</a>
+                <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary px-3 py-1.5 text-xs">Download Parquet</a>
               {% endif %}
               <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="home">
-                <button type="submit" class="fb-button-secondary border-red-200 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40">Delete</button>
+                <button type="submit" class="fb-button-secondary border-red-200 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40">Delete dataset</button>
               </form>
             </div>
           </div>
@@ -164,7 +84,8 @@
       </div>
     {% else %}
       <div class="fb-panel p-8 text-center">
-        <p class="text-sm text-slate-600 dark:text-slate-300">No datasets yet. Upload your first file or Google Sheet above.</p>
+        <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">No datasets yet</h3>
+        <p class="fb-text-muted mx-auto mt-2 max-w-md text-sm leading-6">Copy the agent prompt, then ask your agent to create a dataset from a local file, table, or other source it can access.</p>
       </div>
     {% endif %}
   </section>

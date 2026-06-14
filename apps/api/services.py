@@ -1,21 +1,22 @@
 from typing import Any
 
+from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
 
 from apps.core.models import Profile
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.google_sheets import GoogleSheetsSyncError, sync_dataset_to_google_sheet
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
-    GOOGLE_SHEETS_FILE_TYPE,
     CSVParseError,
     generated_index_column_name,
     generated_index_column_schema,
     infer_column_schema,
     normalize_column_schema,
+    normalize_public_page_size,
     validate_headers,
 )
+from filebridge.utils import build_absolute_public_url
 
 API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
@@ -64,6 +65,10 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "index_generated": dataset.index_generated,
         "row_count": dataset.row_count,
         "public_enabled": dataset.public_enabled,
+        "public_key": str(dataset.public_key),
+        "public_url": build_absolute_public_url(dataset.get_public_url()),
+        "public_page_size": dataset.public_page_size,
+        "public_password_protected": dataset.is_public_password_protected,
         "created_at": dataset.created_at,
         "updated_at": dataset.updated_at,
         "confirmed_at": dataset.confirmed_at,
@@ -87,6 +92,9 @@ def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int =
         "index_generated",
         "row_count",
         "public_enabled",
+        "public_key",
+        "public_page_size",
+        "public_password_hash",
         "created_at",
         "updated_at",
         "confirmed_at",
@@ -371,6 +379,61 @@ def update_profile_dataset_column_types(
     }
 
 
+def update_profile_dataset_public_preview(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    public_enabled: bool,
+    public_page_size: int | None = None,
+    public_password: str | None = None,
+    clear_public_password: bool = False,
+) -> dict:
+    if clear_public_password and public_password is not None:
+        raise DatasetServiceError(
+            400,
+            "Use either public_password or clear_public_password, not both.",
+        )
+
+    with transaction.atomic():
+        try:
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
+        except Dataset.DoesNotExist as exc:
+            raise DatasetServiceError(404, "Dataset not found.") from exc
+
+        if public_enabled and dataset.status != DatasetStatus.READY:
+            raise DatasetServiceError(
+                409,
+                "Public previews can only be enabled for ready datasets.",
+            )
+
+        dataset.public_enabled = public_enabled
+        if public_page_size is not None:
+            dataset.public_page_size = normalize_public_page_size(public_page_size)
+
+        if clear_public_password:
+            dataset.public_password_hash = ""
+        elif public_password is not None:
+            normalized_password = public_password.strip()
+            if not normalized_password:
+                raise DatasetServiceError(400, "Public preview password cannot be blank.")
+            dataset.public_password_hash = make_password(normalized_password)
+
+        dataset.save(
+            update_fields=[
+                "public_enabled",
+                "public_page_size",
+                "public_password_hash",
+                "updated_at",
+            ]
+        )
+
+    return {
+        "status": "success",
+        "message": "Public preview settings updated.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
 def serialize_dataset_row(row: DatasetRow) -> dict:
     return {
         "id": row.id,
@@ -378,27 +441,6 @@ def serialize_dataset_row(row: DatasetRow) -> dict:
         "index_value": row.index_value,
         "data": row.data,
     }
-
-
-def sync_dataset_source(dataset: Dataset) -> dict | None:
-    if dataset.file_type != GOOGLE_SHEETS_FILE_TYPE:
-        return None
-
-    try:
-        status = sync_dataset_to_google_sheet(dataset)
-    except GoogleSheetsSyncError as exc:
-        return {"status": "failed", "message": str(exc)}
-    if status == "skipped":
-        return None
-    return {"status": "synced", "message": "Google Sheets source updated."}
-
-
-def add_source_sync_result(result: dict, source_sync: dict | None) -> dict:
-    if not source_sync or source_sync["status"] == "synced":
-        return result
-    result["source_sync"] = source_sync
-    result["message"] = f"{result['message']} {source_sync['message']}"
-    return result
 
 
 def list_profile_dataset_rows(
@@ -453,11 +495,7 @@ def create_profile_dataset_row(profile: Profile, dataset_key: str, data: dict) -
         )
         dataset.row_count = dataset.rows.count()
         dataset.save(update_fields=["row_count", "updated_at"])
-    source_sync = sync_dataset_source(dataset)
-    return add_source_sync_result(
-        {"status": "success", "message": "Row created.", "row": serialize_dataset_row(row)},
-        source_sync,
-    )
+    return {"status": "success", "message": "Row created.", "row": serialize_dataset_row(row)}
 
 
 def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
@@ -507,11 +545,7 @@ def patch_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int, d
                 raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
             row.index_value = index_value
         row.save(update_fields=["data", "index_value", "updated_at"])
-    source_sync = sync_dataset_source(dataset)
-    return add_source_sync_result(
-        {"status": "success", "message": "Row updated.", "row": serialize_dataset_row(row)},
-        source_sync,
-    )
+    return {"status": "success", "message": "Row updated.", "row": serialize_dataset_row(row)}
 
 
 def delete_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
@@ -522,8 +556,4 @@ def delete_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) 
             raise DatasetServiceError(404, "Row not found.")
         dataset.row_count = dataset.rows.count()
         dataset.save(update_fields=["row_count", "updated_at"])
-    source_sync = sync_dataset_source(dataset)
-    return add_source_sync_result(
-        {"status": "success", "message": "Row deleted."},
-        source_sync,
-    )
+    return {"status": "success", "message": "Row deleted."}

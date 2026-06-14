@@ -1,10 +1,8 @@
 import pytest
-from allauth.socialaccount.models import SocialAccount, SocialToken
 from django.test import override_settings
 from django.urls import reverse
 
 from apps.core.views import build_absolute_public_url, build_agent_setup_prompt
-from apps.datasets.google_sheets import GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY
 
 
 @pytest.mark.django_db
@@ -19,30 +17,14 @@ class TestHomeView:
         response = auth_client.get(url)
         assert "pages/home.html" in [t.name for t in response.templates]
 
-    @override_settings(SOCIALACCOUNT_PROVIDERS={"google": {}})
-    def test_home_view_shows_connect_google_sheets_cta_when_disconnected(self, auth_client):
+    def test_home_view_leads_with_agent_setup(self, auth_client):
         response = auth_client.get(reverse("home"))
         content = response.content.decode()
 
-        assert "Connect Google Sheets" in content
-        assert "google-sheets-logo.svg" in content
-        assert "Add from Google Sheets" not in content
-
-    @override_settings(SOCIALACCOUNT_PROVIDERS={"google": {}})
-    def test_home_view_shows_add_from_google_sheets_cta_when_connected(self, auth_client, user):
-        account = SocialAccount.objects.create(
-            user=user,
-            provider="google",
-            uid="google-1",
-            extra_data={GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY: True},
-        )
-        SocialToken.objects.create(account=account, token="token")
-
-        response = auth_client.get(reverse("home"))
-        content = response.content.decode()
-
-        assert "Add from Google Sheets" in content
+        assert "Connect your AI agent to FileBridge" in content
+        assert "Copy agent prompt" in content
         assert "Connect Google Sheets" not in content
+        assert "Upload dataset" not in content
 
     @override_settings(SITE_URL="https://filebridge.example")
     def test_home_view_includes_agent_setup_prompt(self, auth_client, profile):
@@ -51,7 +33,6 @@ class TestHomeView:
 
         masked_prompt = response.context["agent_setup_prompt_masked"]
         content = response.content.decode()
-        assert response.context["show_agent_setup_prompt"] is True
         assert "agent_setup_prompt" not in response.context
         assert "FileBridge API key: ***" in masked_prompt
         assert profile.key not in masked_prompt
@@ -59,6 +40,10 @@ class TestHomeView:
         assert profile.key not in content
         assert reverse("agent_setup_prompt") in content
         assert "Only share this prompt with agents and people you trust." in content
+        assert "create_dataset" in masked_prompt
+        assert "update_dataset_public_preview" in masked_prompt
+        assert response.context["mcp_url"] == "https://filebridge.example/mcp/"
+        assert response.context["rest_api_base_url"] == "https://filebridge.example/api/"
 
     @override_settings(SITE_URL="https://filebridge.example")
     def test_agent_setup_prompt_endpoint_returns_full_prompt(self, auth_client, profile):
@@ -72,7 +57,10 @@ class TestHomeView:
         assert "FileBridge REST API base: https://filebridge.example/api/" in prompt
         assert f"FileBridge API key: {profile.key}" in prompt
         assert "FileBridge skill: https://filebridge.example/SKILL.md" in prompt
-        assert "Discover the current tools and API docs at runtime" in prompt
+        assert "get_user_info" in prompt
+        assert "create_dataset" in prompt
+        assert "update_dataset_public_preview" in prompt
+        assert "Discover the current MCP tools and API docs at runtime" in prompt
 
     @override_settings(SITE_URL="https://filebridge.example")
     def test_home_view_creates_missing_profile(self, auth_client, user):
@@ -81,19 +69,9 @@ class TestHomeView:
         response = auth_client.get(reverse("home"))
 
         assert response.status_code == 200
-        assert response.context["show_agent_setup_prompt"] is True
         assert "FileBridge API key: ***" in response.context["agent_setup_prompt_masked"]
         assert "agent_setup_prompt" not in response.context
         assert user.__class__.objects.get(pk=user.pk).profile
-
-    def test_dismiss_agent_setup_prompt_hides_dashboard_card(self, auth_client, profile):
-        response = auth_client.post(reverse("dismiss_agent_setup_prompt"), follow=True)
-        profile.refresh_from_db()
-
-        assert response.status_code == 200
-        assert profile.agent_setup_prompt_dismissed is True
-        assert response.context["show_agent_setup_prompt"] is False
-        assert "agent-setup-prompt" not in response.content.decode()
 
     def test_agent_instructions_markdown_is_public_and_actionable(self, client):
         response = client.get(reverse("agent_instructions_filebridge_mcp"))
@@ -104,9 +82,10 @@ class TestHomeView:
         assert "# FileBridge Agent Skill" in content
         assert "FileBridge turns user-owned tabular data into datasets" in content
         assert "Streamable HTTP" in content
-        assert "Discover the current MCP tools" in content
-        assert "REST API base" in content
-        assert "Keep access scoped" in content
+        assert "get_user_info" in content
+        assert "create_dataset" in content
+        assert "update_dataset_public_preview" in content
+        assert "Keep user data private" in content
 
     @override_settings(SITE_URL="http://filebridge.example")
     def test_build_agent_setup_prompt_uses_https_public_site_url(self, rf, user):
@@ -120,6 +99,7 @@ class TestHomeView:
         assert "FileBridge skill: https://filebridge.example/SKILL.md" in prompt
         assert f"FileBridge API key: {user.profile.key}" in prompt
         assert "API key only when your client needs bearer-token auth" in prompt
+        assert "update_dataset_public_preview" in prompt
 
         masked_prompt = build_agent_setup_prompt(request, mask_api_key=True)
         assert "FileBridge API key: ***" in masked_prompt

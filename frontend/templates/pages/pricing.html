@@ -3,19 +3,19 @@
 
 {% block meta %}
 <title>FileBridge Pricing</title>
-<meta name="description" content="Simple FileBridge pricing for hosted file-to-API workflows and self-hosted teams." />
+<meta name="description" content="Simple FileBridge pricing for hosted agent-managed dataset workflows and self-hosted teams." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://{{ request.get_host }}{% url 'pricing' %}" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="FileBridge Pricing" />
 <meta property="og:url" content="https://{{ request.get_host }}{% url 'pricing' %}" />
-<meta property="og:description" content="Simple FileBridge pricing for hosted file-to-API workflows and self-hosted teams." />
-<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Hosted file-to-API workflows&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta property="og:description" content="Simple FileBridge pricing for hosted agent-managed dataset workflows and self-hosted teams." />
+<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 <meta property="og:locale" content="en_US" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="FileBridge Pricing" />
-<meta name="twitter:description" content="Simple FileBridge pricing for hosted file-to-API workflows and self-hosted teams." />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Hosted file-to-API workflows&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta name="twitter:description" content="Simple FileBridge pricing for hosted agent-managed dataset workflows and self-hosted teams." />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 
 {% block content %}
@@ -37,8 +37,8 @@
         <a href="{% url 'account_signup' %}" aria-describedby="tier-monthly" class="fb-button-primary mt-8 w-full">Start monthly</a>
       {% endif %}
       <ul role="list" class="mt-6 space-y-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-        <li class="flex gap-3"><span class="text-emerald-600" aria-hidden="true">✓</span>Hosted file-to-API workflow</li>
-        <li class="flex gap-3"><span class="text-emerald-600" aria-hidden="true">✓</span>CSV, Parquet, and Google Sheets imports</li>
+        <li class="flex gap-3"><span class="text-emerald-600" aria-hidden="true">✓</span>Hosted MCP and REST dataset workflow</li>
+        <li class="flex gap-3"><span class="text-emerald-600" aria-hidden="true">✓</span>Dataset and row CRUD for trusted agents</li>
         <li class="flex gap-3"><span class="text-emerald-600" aria-hidden="true">✓</span>48-hour support response time</li>
       </ul>
     </section>
@@ -87,6 +87,6 @@
 
 {% block schema %}
 <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"WebSite","name":"FileBridge Pricing","description":"Simple FileBridge pricing for hosted file-to-API workflows and self-hosted teams.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Hosted file-to-API workflows&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'pricing' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
+  {"@context":"https://schema.org","@type":"WebSite","name":"FileBridge Pricing","description":"Simple FileBridge pricing for hosted agent-managed dataset workflows and self-hosted teams.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'pricing' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
 </script>
 {% endblock schema %}

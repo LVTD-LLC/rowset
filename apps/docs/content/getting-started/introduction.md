@@ -1,24 +1,24 @@
 ---
 title: Getting started
-description: Learn how to upload a file and turn it into a FileBridge API.
-keywords: FileBridge, getting started, CSV API
+description: Connect an AI agent to FileBridge and create API-backed datasets.
+keywords: FileBridge, getting started, MCP, dataset API
 ---
 
 # Getting started
 
-FileBridge turns CSVs and operational files into API-backed datasets that apps, scripts, and AI agents can use.
+FileBridge gives AI agents a stable MCP and REST surface for API-backed datasets.
 
 ## What to do first
 
-1. Upload a CSV from the dashboard.
-2. Review the preview, headers, and sample rows.
-3. Choose the index column your workflow uses for lookups.
-4. Confirm the import.
-5. Use the generated API endpoints, CSV export, hosted MCP access, or optional public preview.
+1. Sign in and copy the dashboard agent prompt.
+2. Paste the prompt into a trusted AI agent.
+3. Complete the FileBridge browser authorization flow when the MCP client asks.
+4. Ask the agent to create a dataset from a file, table, or system it can access.
+5. Use MCP or REST for row CRUD, CSV export, and optional public previews.
 
 ## Your API key
 
-Authenticated docs can show the full key so you can copy it into tools:
+MCP OAuth is the default setup path. Use your API key only with trusted agents or tools that cannot complete remote MCP auth:
 
 ```text
 {{ api_key_full }}
@@ -39,9 +39,9 @@ Authorization: Bearer {{ api_key_full }}
 ## Where to go next
 
 - **Working with datasets** explains lifecycle, index columns, and exports.
-- **Public previews** explains browser-friendly, read-only sharing.
+- **Public previews** explains browser-friendly, read-only sharing through API and MCP.
 - **MCP access** explains hosted MCP setup for AI agents.
 - **Agent access** gives the copy/paste prompt and `SKILL.md` guidance.
 - **API Reference → Introduction** explains REST authentication and links to generated API docs.
 - **API Reference → User API** is the safest first request for testing a key.
-- **API Reference → Dataset API** covers row list, lookup, create, update, delete, and CSV export endpoints.
+- **API Reference → Dataset API** covers dataset creation, row CRUD, CSV export, and public preview settings.

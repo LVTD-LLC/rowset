@@ -3,19 +3,19 @@
 
 {% block meta %}
 <title>FileBridge Blog</title>
-<meta name="description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
+<meta name="description" content="Notes on agent-managed datasets, MCP, and FileBridge API workflows." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://{{ request.get_host }}{% url 'blog_posts' %}" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="FileBridge Blog" />
 <meta property="og:url" content="https://{{ request.get_host }}{% url 'blog_posts' %}" />
-<meta property="og:description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
-<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta property="og:description" content="Notes on agent-managed datasets, MCP, and FileBridge API workflows." />
+<meta property="og:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 <meta property="og:locale" content="en_US" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="FileBridge Blog" />
-<meta name="twitter:description" content="Turn uploaded files into clean API endpoints and structured data feeds." />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta name="twitter:description" content="Notes on agent-managed datasets, MCP, and FileBridge API workflows." />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 
 {% block content %}
@@ -50,6 +50,6 @@
 
 {% block schema %}
 <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"WebSite","name":"FileBridge Blog","description":"Turn uploaded files into clean API endpoints and structured data feeds.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Turn uploaded files into clean API endpoints and structured data feeds.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'blog_posts' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
+  {"@context":"https://schema.org","@type":"WebSite","name":"FileBridge Blog","description":"Notes on agent-managed datasets, MCP, and FileBridge API workflows.","thumbnailUrl":"https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge Blog&subtitle=Agent-managed%20datasets.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}","url":"https://{{ request.get_host }}{% url 'blog_posts' %}","author":{"@type":"Person","name":"Rasul Kireev"}}
 </script>
 {% endblock schema %}

@@ -10,7 +10,7 @@
     "author_url": "",
     "generate_blog": "y",
     "generate_docs": "y",
-    "project_description": "Turn uploaded files into clean API endpoints and structured data feeds.",
+    "project_description": "MCP and REST datasets for AI agents.",
     "project_main_color": "green",
     "project_name": "FileBridge",
     "project_slug": "filebridge",

@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: FileBridge
-description: A crisp data-product visual system for turning uploaded files into clean API endpoints.
+description: A crisp product UI system for agent-managed API datasets.
 colors:
   primary: "#07130F"
   primary-strong: "#020617"
@@ -163,11 +163,11 @@ components:
 
 ## Overview
 
-FileBridge should feel like a serious developer/data utility with just enough glow to make plain operational data feel valuable. The core metaphor is **messy file → inspected dataset → product-grade API**.
+FileBridge should feel like a serious developer/data utility with just enough glow to make agent-managed data feel trustworthy. The core metaphor is **agent prompt → authenticated MCP → managed dataset → shareable preview**.
 
 The UI combines dark, high-contrast command-center surfaces with bright emerald/cyan/lime accents. It should feel fast, technical, trustworthy, and pragmatic — closer to a polished internal data platform than a generic SaaS template.
 
-Primary audiences are builders, operators, and AI-agent-heavy teams who want to turn CSV, Parquet, and Google Sheets-backed tables into stable API endpoints without custom backend work.
+Primary audiences are builders, operators, and AI-agent-heavy teams who want agents to create, mutate, export, and share stable datasets without custom backend work.
 
 ## Colors
 
@@ -178,7 +178,7 @@ The palette is built around a dark green-black base and API-like status accents.
 - **Secondary (#10B981):** Emerald interaction color for primary action, success, active states, and the main “bridge” signal.
 - **Tertiary (#22D3EE):** Cyan for API routes, secondary highlights, and technical affordances.
 - **Accent (#BEF264):** Lime for export/share callouts and small high-energy moments; use sparingly.
-- **Neutral/Surface (#F8FAFC / #FFFFFF / #F1F5F9):** Clean, spreadsheet-adjacent light surfaces for explanation sections.
+- **Neutral/Surface (#F8FAFC / #FFFFFF / #F1F5F9):** Clean product surfaces for setup, dataset state, API details, and sharing controls.
 - **Text (#0F172A / #475569):** Slate text keeps the product grounded and avoids pure-black harshness on light pages.
 
 Use emerald as the dominant accent. Cyan and lime should support the API/export story, not compete for primary action ownership.
@@ -187,7 +187,7 @@ Use emerald as the dominant accent. Cyan and lime should support the API/export 
 
 Typography is intentionally system-first and dense enough for product work.
 
-- **Headlines:** Heavy, tightly tracked sans-serif. Use `font-black`-style weight and negative tracking for bold marketing claims like “Your spreadsheet deserves an API endpoint.”
+- **Headlines:** Heavy, tightly tracked sans-serif. Use `font-black`-style weight for concise product claims like “FileBridge gives your AI agent a dataset backend.”
 - **Body:** Neutral, readable sans-serif at comfortable line-height. Product explanations should feel concise, not precious.
 - **Labels:** Uppercase, wide-tracked labels for section eyebrows, status chips, and technical metadata.
 - **Code/data:** Monospace for routes, JSON, row previews, IDs, and API examples. Monospace blocks should reinforce that FileBridge produces real machine-readable interfaces.
@@ -223,20 +223,20 @@ The shape language is rounded and modern, but still structural.
 
 - **Primary button:** Emerald background, deep green-black text, pill radius, bold label, slight lift on hover. Only one dominant primary action per section.
 - **Secondary button:** Subtle bordered or dark-surface pill. It should support sign-in/docs links without stealing attention from the primary action.
-- **Dataset/API mock:** Dark slate shell, small browser/status chrome, dashed upload area, monospace route panel, JSON response block, and compact stat rows.
+- **Dataset/API mock:** Dark slate shell, prompt panel, MCP endpoint, monospace route panel, JSON response block, and compact dataset state rows.
 - **Feature cards:** Large rounded cards with one strong idea each. Use numbered or icon-led headers and concise body copy.
-- **Before/after panels:** Pair light “messy file” table previews with dark “product-grade interface” route panels.
+- **Before/after panels:** Pair agent prompt/setup state with dark product-grade route and tool panels.
 - **FAQ items:** Dark rounded disclosure cards with emerald plus icons and muted answer text.
 - **Forms/app screens:** Prefer clear labels, visible focus rings, generous touch targets, and helpful empty/error states over decoration.
 
 ## Do's and Don'ts
 
-- Do make the API outcome visible quickly: routes, JSON, indexed lookup, export, and share preview.
+- Do make the agent outcome visible quickly: MCP URL, skill URL, dataset key, routes, JSON, indexed lookup, export, and public preview URL.
 - Do keep copy practical and concrete; avoid vague “data transformation platform” language.
 - Do use emerald for the main conversion path and success states.
 - Do preserve WCAG AA contrast, especially on emerald/cyan/lime surfaces.
 - Do treat long file names, column names, API keys, and routes as first-class overflow cases.
 - Don't use generic SaaS gradients without product-specific data/API context.
 - Don't overuse emojis; one small icon per use-case card is enough.
-- Don't imply unsupported file types are available today. CSV, Parquet, and Google Sheets-backed datasets are supported now; additional structured file types are future-facing unless shipped.
+- Don't make manual upload the primary product path. Agents should create and mutate datasets through MCP or REST.
 - Don't make public sharing feel like the default. Private authenticated API access is the core product path.

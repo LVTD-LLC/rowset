@@ -6,6 +6,7 @@ from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
+from django.test import override_settings
 from django.urls import reverse
 
 pytestmark = pytest.mark.django_db
@@ -91,7 +92,19 @@ def test_dashboard_does_not_show_email_confirmation_reminder(client):
     assert response.status_code == 200
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
-    assert "Turn files and Google Sheets into an API" in content
+    assert "Connect your AI agent to FileBridge" in content
+
+
+@override_settings(SITE_URL="http://localhost:8000")
+def test_landing_agent_prompt_keeps_localhost_http(client):
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "FileBridge MCP URL: http://localhost:8000/mcp/" in content
+    assert "FileBridge REST API base: http://localhost:8000/api/" in content
+    assert "update_dataset_public_preview" in content
+    assert "FileBridge MCP URL: https://localhost:8000/mcp/" not in content
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):
@@ -321,4 +334,4 @@ def test_dashboard_suppresses_verification_reminder_without_email_address(client
     assert response.status_code == 200
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
-    assert "Turn files and Google Sheets into an API" in content
+    assert "Connect your AI agent to FileBridge" in content

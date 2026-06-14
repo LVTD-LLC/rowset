@@ -1,6 +1,4 @@
 {% extends 'base_app.html' %}
-{% load static %}
-
 {% block meta %}
   {% if process == "connect" %}
     <title>Connect {{ provider.name }} · FileBridge</title>
@@ -10,19 +8,13 @@
 {% endblock meta %}
 
 {% block content %}
-{% with requested_scope=request.GET.scope|default:"" %}
 <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
   <section class="fb-card overflow-hidden" aria-labelledby="social-login-heading">
     <div class="border-b border-slate-200 bg-slate-50 px-6 py-5 dark:border-slate-800 dark:bg-slate-900/70 sm:px-8">
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Account connection</p>
       {% if process == "connect" %}
-        {% if provider.id == "google" and "spreadsheets" in requested_scope %}
-          <h1 id="social-login-heading" class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Connect Google Sheets</h1>
-          <p class="fb-text-muted mt-2 text-sm leading-6">Give FileBridge permission to import private Google Sheets you can access and write row changes back when you choose to sync.</p>
-        {% else %}
-          <h1 id="social-login-heading" class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Connect {{ provider.name }}</h1>
-          <p class="fb-text-muted mt-2 text-sm leading-6">Connect your {{ provider.name }} account to FileBridge.</p>
-        {% endif %}
+        <h1 id="social-login-heading" class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Connect {{ provider.name }}</h1>
+        <p class="fb-text-muted mt-2 text-sm leading-6">Connect your {{ provider.name }} account to FileBridge.</p>
       {% else %}
         <h1 id="social-login-heading" class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Sign in with {{ provider.name }}</h1>
         <p class="fb-text-muted mt-2 text-sm leading-6">Continue to FileBridge using your {{ provider.name }} account.</p>
@@ -31,18 +23,7 @@
 
     <div class="space-y-6 px-6 py-6 sm:px-8 sm:py-8">
       {% if process == "connect" %}
-        {% if provider.id == "google" and "spreadsheets" in requested_scope %}
-          <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100">
-            <p class="font-semibold">FileBridge will request Google Sheets access only for this connection step.</p>
-            <ul class="mt-2 list-disc space-y-1 pl-5">
-              <li>Basic Google login stays identity-only.</li>
-              <li>Sheets access is used for private sheet import and optional write-back sync.</li>
-              <li>You can manage connected Google accounts from settings.</li>
-            </ul>
-          </div>
-        {% else %}
-          <p class="fb-text-muted text-sm leading-6">You are about to connect a new third-party account from {{ provider.name }}.</p>
-        {% endif %}
+        <p class="fb-text-muted text-sm leading-6">You are about to connect a new third-party account from {{ provider.name }}.</p>
       {% else %}
         <p class="fb-text-muted text-sm leading-6">You are about to sign in using a third-party account from {{ provider.name }}.</p>
       {% endif %}
@@ -51,22 +32,13 @@
         {% csrf_token %}
         <button type="submit" class="fb-button-primary gap-2">
           {% if process == "connect" %}
-            {% if provider.id == "google" and "spreadsheets" in requested_scope %}
-              <img src="{% static 'vendors/images/google-sheets-logo.svg' %}" alt="" class="h-5 w-5 rounded-sm" />
-              <span>Continue to Google Sheets consent</span>
-            {% else %}
-              Continue
-            {% endif %}
+            Continue
           {% else %}
             Continue
           {% endif %}
         </button>
         {% if process == "connect" %}
-          {% if provider.id == "google" and "spreadsheets" in requested_scope %}
-            <a href="{% url 'home' %}" class="fb-button-secondary">Cancel</a>
-          {% else %}
-            <a href="{% url 'settings' %}" class="fb-button-secondary">Cancel</a>
-          {% endif %}
+          <a href="{% url 'settings' %}" class="fb-button-secondary">Cancel</a>
         {% else %}
           <a href="{% url 'landing' %}" class="fb-button-secondary">Back to FileBridge</a>
         {% endif %}
@@ -74,5 +46,4 @@
     </div>
   </section>
 </div>
-{% endwith %}
 {% endblock content %}
