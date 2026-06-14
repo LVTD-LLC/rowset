@@ -1,6 +1,5 @@
 import csv
 import io
-from urllib.request import Request
 
 import polars as pl
 import pytest

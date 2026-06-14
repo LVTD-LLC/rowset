@@ -383,7 +383,7 @@ def update_profile_dataset_public_preview(
     profile: Profile,
     dataset_key: str,
     *,
-    public_enabled: bool,
+    public_enabled: bool | None = None,
     public_page_size: int | None = None,
     public_password: str | None = None,
     clear_public_password: bool = False,
@@ -400,13 +400,15 @@ def update_profile_dataset_public_preview(
         except Dataset.DoesNotExist as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
-        if public_enabled and dataset.status != DatasetStatus.READY:
+        next_public_enabled = dataset.public_enabled if public_enabled is None else public_enabled
+
+        if next_public_enabled and dataset.status != DatasetStatus.READY:
             raise DatasetServiceError(
                 409,
                 "Public previews can only be enabled for ready datasets.",
             )
 
-        dataset.public_enabled = public_enabled
+        dataset.public_enabled = next_public_enabled
         if public_page_size is not None:
             dataset.public_page_size = normalize_public_page_size(public_page_size)
 

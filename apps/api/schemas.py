@@ -147,8 +147,8 @@ class DatasetColumnTypesOut(Schema):
 
 
 class DatasetPublicPreviewPatchIn(Schema):
-    public_enabled: bool
-    public_page_size: int | None = None
+    public_enabled: bool | None = None
+    public_page_size: int | None = Field(default=None, ge=1, le=100)
     public_password: str | None = None
     clear_public_password: bool = False
 

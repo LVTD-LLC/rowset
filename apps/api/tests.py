@@ -414,6 +414,42 @@ def test_update_dataset_public_preview_enables_public_link(django_user_model):
 
 
 @pytest.mark.django_db
+def test_update_dataset_public_preview_preserves_enabled_state_when_omitted(django_user_model):
+    from apps.api.services import update_profile_dataset_public_preview
+
+    user = django_user_model.objects.create_user(
+        username="previewpartial",
+        email="previewpartial@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="People",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email", "name"],
+        index_column="email",
+        row_count=0,
+        public_enabled=True,
+        public_page_size=10,
+    )
+
+    result = update_profile_dataset_public_preview(
+        user.profile,
+        str(dataset.key),
+        public_page_size=25,
+        public_password="share-secret",
+    )
+
+    dataset.refresh_from_db()
+    assert dataset.public_enabled is True
+    assert dataset.public_page_size == 25
+    assert dataset.public_password_matches("share-secret")
+    assert result["dataset"]["public_enabled"] is True
+
+
+@pytest.mark.django_db
 def test_update_dataset_public_preview_requires_ready_dataset(django_user_model):
     from apps.api.services import DatasetServiceError, update_profile_dataset_public_preview
 
