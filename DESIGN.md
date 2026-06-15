@@ -1,242 +1,145 @@
 ---
-version: alpha
+version: beta
 name: Rowset
-description: A crisp product UI system for agent-managed API datasets.
+description: A clean product UI system for agent-managed API datasets.
 colors:
-  primary: "#07130F"
-  primary-strong: "#020617"
-  secondary: "#10B981"
-  tertiary: "#22D3EE"
-  accent: "#BEF264"
-  neutral: "#F8FAFC"
-  surface: "#FFFFFF"
-  surface-muted: "#F1F5F9"
-  surface-dark: "#0F172A"
-  border: "#E2E8F0"
-  border-dark: "#1E293B"
-  text: "#0F172A"
-  text-muted: "#475569"
-  text-inverse: "#FFFFFF"
-  text-inverse-muted: "#D1FAE5"
-  success: "#34D399"
-  warning: "#FDE047"
-  danger: "#F87171"
+  ink: "oklch(18% 0.025 250)"
+  text: "oklch(27% 0.025 250)"
+  text-muted: "oklch(46% 0.025 250)"
+  background: "oklch(100% 0 0)"
+  surface: "oklch(99% 0.004 250)"
+  surface-muted: "oklch(96% 0.006 250)"
+  border: "oklch(88% 0.012 250)"
+  border-strong: "oklch(78% 0.018 250)"
+  accent: "oklch(58% 0.16 158)"
+  accent-muted: "oklch(95% 0.035 158)"
+  code-bg: "oklch(18% 0.025 250)"
+  warning-bg: "oklch(96% 0.07 85)"
+  warning-text: "oklch(34% 0.09 70)"
+  danger-bg: "oklch(96% 0.045 25)"
+  danger-text: "oklch(38% 0.15 25)"
 typography:
-  headline-display:
-    fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
-    fontSize: 72px
-    fontWeight: 900
+  family: "Inter, ui-sans-serif, system-ui, sans-serif"
+  display:
+    fontSize: "clamp(3rem, 8vw, 6rem)"
+    fontWeight: 600
     lineHeight: 1
-    letterSpacing: -0.055em
-  headline-lg:
-    fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
-    fontSize: 60px
-    fontWeight: 900
-    lineHeight: 1
-    letterSpacing: -0.045em
-  headline-md:
-    fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
-    fontSize: 32px
-    fontWeight: 900
+    letterSpacing: "-0.03em"
+  page-title:
+    fontSize: "36px"
+    fontWeight: 600
     lineHeight: 1.1
-    letterSpacing: -0.035em
-  body-lg:
-    fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
-    fontSize: 20px
-    fontWeight: 400
-    lineHeight: 1.6
-  body-md:
-    fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
-    fontSize: 16px
+    letterSpacing: "-0.025em"
+  section-title:
+    fontSize: "18px"
+    fontWeight: 600
+    lineHeight: 1.35
+  body:
+    fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.65
-  body-sm:
-    fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
-    fontSize: 14px
-    fontWeight: 400
-    lineHeight: 1.6
-  label-caps:
-    fontFamily: Inter, ui-sans-serif, system-ui, sans-serif
-    fontSize: 12px
-    fontWeight: 800
-    lineHeight: 1
-    letterSpacing: 0.3em
-  code-sm:
-    fontFamily: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace
-    fontSize: 12px
-    fontWeight: 500
+  label:
+    fontSize: "14px"
+    fontWeight: 600
+    lineHeight: 1.5
+  code:
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    fontSize: "12px"
     lineHeight: 1.7
 rounded:
-  sm: 8px
-  md: 12px
-  lg: 16px
-  xl: 24px
-  xxl: 32px
-  full: 9999px
+  sm: "6px"
+  md: "8px"
+  lg: "10px"
+  full: "9999px"
 spacing:
-  xs: 4px
-  sm: 8px
-  md: 16px
-  lg: 24px
-  xl: 32px
-  2xl: 48px
-  3xl: 64px
-  section-y: 96px
-  page-x: 24px
-  container: 1280px
+  page-x: "24px"
+  page-y: "40px"
+  section-y: "64px"
+  container: "1152px"
 components:
   button-primary:
-    backgroundColor: "{colors.secondary}"
-    textColor: "{colors.primary}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.full}"
-    padding: 16px
-  button-primary-hover:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.primary}"
-  button-secondary:
-    backgroundColor: "{colors.surface-dark}"
-    textColor: "{colors.text-inverse}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.full}"
-    padding: 16px
-  card-light:
-    backgroundColor: "{colors.surface-muted}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.xxl}"
-    padding: 28px
-  card-dark:
-    backgroundColor: "{colors.surface-dark}"
-    textColor: "{colors.text-inverse}"
-    rounded: "{rounded.xxl}"
-    padding: 28px
-  chip-success:
-    backgroundColor: "{colors.success}"
-    textColor: "{colors.primary}"
-    typography: "{typography.label-caps}"
-    rounded: "{rounded.full}"
-    padding: 8px
-  code-panel:
-    backgroundColor: "{colors.primary-strong}"
-    textColor: "{colors.text-inverse-muted}"
-    typography: "{typography.code-sm}"
-    rounded: "{rounded.xl}"
-    padding: 20px
-  chip-api:
-    backgroundColor: "{colors.tertiary}"
-    textColor: "{colors.primary-strong}"
-    typography: "{typography.label-caps}"
-    rounded: "{rounded.full}"
-    padding: 8px
-  chip-export:
     backgroundColor: "{colors.accent}"
-    textColor: "{colors.primary}"
-    typography: "{typography.label-caps}"
-    rounded: "{rounded.full}"
-    padding: 8px
-  page-background:
-    backgroundColor: "{colors.neutral}"
-    textColor: "{colors.text}"
-  divider-light:
-    backgroundColor: "{colors.border}"
-    height: 1px
-  divider-dark:
-    backgroundColor: "{colors.border-dark}"
-    height: 1px
-  muted-copy:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.text-muted}"
-    typography: "{typography.body-sm}"
-  alert-warning:
-    backgroundColor: "{colors.warning}"
-    textColor: "{colors.primary-strong}"
-    rounded: "{rounded.lg}"
-    padding: 16px
-  alert-danger:
-    backgroundColor: "{colors.danger}"
-    textColor: "{colors.primary-strong}"
-    rounded: "{rounded.lg}"
-    padding: 16px
+    textColor: "#ffffff"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+  button-secondary:
+    backgroundColor: "{colors.background}"
+    borderColor: "{colors.border-strong}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+  card:
+    backgroundColor: "{colors.background}"
+    borderColor: "{colors.border}"
+    rounded: "{rounded.md}"
+  panel:
+    backgroundColor: "{colors.surface-muted}"
+    borderColor: "{colors.border}"
+    rounded: "{rounded.md}"
+  table:
+    headerBackground: "{colors.surface-muted}"
+    borderColor: "{colors.border}"
+  code-panel:
+    backgroundColor: "{colors.code-bg}"
+    textColor: "#f8fafc"
+    rounded: "{rounded.md}"
 ---
 
 # Rowset Design System
 
-## Overview
+## Direction
 
-Rowset should feel like a serious developer/data utility with just enough glow to make agent-managed data feel trustworthy. The core metaphor is **agent prompt → authenticated MCP → managed dataset → shareable preview**.
+Rowset now uses a quiet, light-first product system. The UI is a control
+surface for agent setup, dataset visibility, schema review, exports, public
+preview settings, and account recovery. It should not feel like an upload
+wizard, no-code builder, or broad analytics dashboard.
 
-The UI combines dark, high-contrast command-center surfaces with bright emerald/cyan/lime accents. It should feel fast, technical, trustworthy, and pragmatic — closer to a polished internal data platform than a generic SaaS template.
+The first useful action is copying the agent setup prompt. The rest of the UI
+supports verification and control: MCP endpoint, REST base URL, recent datasets,
+schema metadata, public preview settings, and fallback API key handling.
 
-Primary audiences are builders, operators, and AI-agent-heavy teams who want agents to create, mutate, export, and share stable datasets without custom backend work.
+## Visual Principles
 
-## Colors
-
-The palette is built around a dark green-black base and API-like status accents.
-
-- **Primary (#07130F):** Deep green-black for hero sections, CTAs on light backgrounds, and the core brand mood.
-- **Primary Strong (#020617):** Near-black slate for code surfaces, product mocks, and maximum contrast panels.
-- **Secondary (#10B981):** Emerald interaction color for primary action, success, active states, and the main dataset signal.
-- **Tertiary (#22D3EE):** Cyan for API routes, secondary highlights, and technical affordances.
-- **Accent (#BEF264):** Lime for export/share callouts and small high-energy moments; use sparingly.
-- **Neutral/Surface (#F8FAFC / #FFFFFF / #F1F5F9):** Clean product surfaces for setup, dataset state, API details, and sharing controls.
-- **Text (#0F172A / #475569):** Slate text keeps the product grounded and avoids pure-black harshness on light pages.
-
-Use emerald as the dominant accent. Cyan and lime should support the API/export story, not compete for primary action ownership.
-
-## Typography
-
-Typography is intentionally system-first and dense enough for product work.
-
-- **Headlines:** Heavy, tightly tracked sans-serif. Use `font-black`-style weight for concise product claims like “Rowset gives your AI agent a dataset backend.”
-- **Body:** Neutral, readable sans-serif at comfortable line-height. Product explanations should feel concise, not precious.
-- **Labels:** Uppercase, wide-tracked labels for section eyebrows, status chips, and technical metadata.
-- **Code/data:** Monospace for routes, JSON, row previews, IDs, and API examples. Monospace blocks should reinforce that Rowset produces real machine-readable interfaces.
+- Prefer flat, bordered surfaces over shadows and glow.
+- Use cards only when they frame an interaction or record; otherwise use plain
+  layout, dividers, and tables.
+- Keep emerald for primary action, active state, and positive state. Do not use
+  it as decoration.
+- Avoid repeated uppercase section eyebrows. Short labels are sentence case and
+  used only where they orient the user.
+- Keep app headings calm. Marketing display type is allowed on the landing hero
+  only and must not exceed `6rem` or tighter than `-0.03em`.
+- Long routes, API keys, dataset names, filenames, headers, and public URLs must
+  wrap or scroll without breaking layout.
 
 ## Layout
 
-Use a max-width container around 1280px with generous horizontal padding and spacious vertical section rhythm.
+Use a max-width container around `1152px`. The public landing page can use wider
+split sections, but authenticated pages should feel like focused workspaces.
 
-- Landing pages should alternate between immersive dark sections and clean light explanation sections.
-- Hero layouts can use a two-column split: narrative/CTA on the left, API or dataset mock on the right.
-- Product cards should be large, rounded, and grouped in simple grids: 3-up for process steps, 4-up for use cases, 2-up for before/after comparisons.
-- Preserve strong responsive behavior: stack early, keep CTAs large, and avoid horizontal overflow from long API routes.
-
-## Elevation & Depth
-
-Depth comes from tonal layering, subtle borders, gradients, and controlled glow — not heavy generic shadows.
-
-- Dark hero/product panels may use blurred emerald/cyan radial gradients behind the content.
-- Light cards should rely on border contrast first, then soft shadows only on hover or important grouped panels.
-- Code panels should feel inset and glassy with low-opacity white borders.
-- Avoid drop-shadow-heavy “startup template” styling. Rowset should feel engineered.
-
-## Shapes
-
-The shape language is rounded and modern, but still structural.
-
-- Use pill-shaped CTAs and chips (`9999px`) for primary actions and statuses.
-- Use large-radius cards (`24px`–`32px`) for dataset panels, feature blocks, FAQ items, and product mocks.
-- Use smaller radii (`8px`–`16px`) for form controls, table containers, and inline data rows.
-- Keep radii consistent inside a section; do not mix sharp enterprise tables with bubbly marketing cards unless the contrast is intentional.
+- Dashboard: agent setup prompt first, connection details second, recent
+  datasets below.
+- Dataset list: records in rows, not cards.
+- Dataset detail: title/status, API access, schema, sample rows.
+- Dataset settings: schema metadata first, public preview controls second,
+  destructive deletion last.
+- Docs: stable left navigation, readable prose, compact page navigation.
 
 ## Components
 
-- **Primary button:** Emerald background, deep green-black text, pill radius, bold label, slight lift on hover. Only one dominant primary action per section.
-- **Secondary button:** Subtle bordered or dark-surface pill. It should support sign-in/docs links without stealing attention from the primary action.
-- **Dataset/API mock:** Dark slate shell, prompt panel, MCP endpoint, monospace route panel, JSON response block, and compact dataset state rows.
-- **Feature cards:** Large rounded cards with one strong idea each. Use numbered or icon-led headers and concise body copy.
-- **Before/after panels:** Pair agent prompt/setup state with dark product-grade route and tool panels.
-- **FAQ items:** Dark rounded disclosure cards with emerald plus icons and muted answer text.
-- **Forms/app screens:** Prefer clear labels, visible focus rings, generous touch targets, and helpful empty/error states over decoration.
+- **Header:** sticky top bar, single bottom border, no floating pill chrome.
+- **Buttons:** 8px radius, 40px minimum height, clear focus states.
+- **Forms:** visible labels, 8px radius controls, readable placeholder contrast.
+- **Tables:** compact, bordered containers with muted header rows.
+- **Alerts:** full bordered boxes with semantic background tints.
+- **Code panels:** near-black panels for prompts, auth headers, routes, and
+  command examples.
 
-## Do's and Don'ts
+## Product Guardrails
 
-- Do make the agent outcome visible quickly: MCP URL, skill URL, dataset key, routes, JSON, indexed lookup, export, and public preview URL.
-- Do keep copy practical and concrete; avoid vague “data transformation platform” language.
-- Do use emerald for the main conversion path and success states.
-- Do preserve WCAG AA contrast, especially on emerald/cyan/lime surfaces.
-- Do treat long file names, column names, API keys, and routes as first-class overflow cases.
-- Don't use generic SaaS gradients without product-specific data/API context.
-- Don't overuse emojis; one small icon per use-case card is enough.
-- Don't make manual upload the primary product path. Agents should create and mutate datasets through MCP or REST.
-- Don't make public sharing feel like the default. Private authenticated API access is the core product path.
+- Do not make dashboard upload/import the primary path.
+- Do not promote Google Sheets connection, write-back, or sync as active UI
+  promises unless the shipped feature is restored and tested.
+- Public previews are read-only browser sharing, not authentication.
+- Prefer MCP language first, REST fallback second, browser automation last.
+- Never expose full API keys in public pages, screenshots, or docs examples.

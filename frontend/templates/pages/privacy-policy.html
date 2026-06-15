@@ -23,17 +23,17 @@
 {% endblock meta %}
 
 {% block content %}
-<div class="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-  <div class="text-center">
-    <h1 class="text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">
+<div class="fb-page-narrow">
+  <div>
+    <h1 class="fb-page-title">
       Privacy Policy
     </h1>
-    <p class="fb-text-muted mt-4 text-lg">
+    <p class="mt-4 text-lg text-slate-600 dark:text-slate-300">
       Last updated: {{ now|date:"F Y" }}
     </p>
   </div>
 
-  <div class="prose prose-lg mt-12 max-w-none prose-slate prose-headings:font-black prose-a:text-emerald-700 hover:prose-a:text-emerald-800 dark:prose-invert dark:prose-a:text-emerald-300">
+  <div class="prose prose-slate mt-10 max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-emerald-700 hover:prose-a:text-emerald-800 dark:prose-invert dark:prose-a:text-emerald-300">
     <h2>1. Information We Collect</h2>
     <p>
       We collect information you provide directly to us, such as when you create an account,
@@ -42,7 +42,7 @@
     <ul>
       <li>Name and email address</li>
       <li>Account credentials</li>
-      <li>Project information and content</li>
+      <li>Dataset metadata and dataset content you choose to store</li>
       
       <li>Payment information (processed securely through Stripe)</li>
       
@@ -98,7 +98,7 @@
     <p>We use the following types of cookies:</p>
     <ul>
       <li><strong>Essential cookies:</strong> Required for the service to function</li>
-      <li><strong>Analytics cookies:</strong> Help us understand how you use our service (e.g., Google Analytics)</li>
+      <li><strong>Analytics cookies:</strong> Help us understand how you use our service</li>
       <li><strong>Preference cookies:</strong> Remember your settings and preferences</li>
     </ul>
     <p>
@@ -108,7 +108,7 @@
       
       <li>Stripe (payment processing)</li>
       
-      <li>Google Analytics (usage analytics)</li>
+      <li>Plausible or PostHog (usage analytics)</li>
           </ul>
     <p>
       You can control cookies through your browser settings. Note that disabling
@@ -197,19 +197,12 @@
       fraud prevention, and dispute resolution purposes.
     </p>
 
-    <h2>13. AI Service Providers</h2>
+    <h2>13. AI Agents and User Data</h2>
     <p>
-      We use third-party AI services (such as OpenAI, Anthropic, or similar) to provide
-      content generation features. Your content may be processed by these services in
-      accordance with their privacy policies:
-    </p>
-    <ul>
-      <li>OpenAI Privacy Policy: [link]</li>
-      <li>[Other AI providers you use]</li>
-    </ul>
-    <p>
-      We configure these services to not use your data for training their models where
-      possible, but you should review their policies directly.
+      Rowset is designed for agents and trusted tools that you choose to connect.
+      Those agents may process data outside Rowset according to their own providers,
+      settings, and privacy policies. Rowset stores and serves the datasets you or
+      your authorized tools send to the Service.
     </p>
 
     <h2>14. Children's Privacy</h2>
@@ -221,9 +214,8 @@
 
     <h2>15. Automated Decision Making</h2>
     <p>
-      We use AI to generate content suggestions, but all final decisions about content
-      publication remain with you. We do not use automated decision-making that produces
-      legal effects or similarly significant impacts on you.
+      We do not use automated decision-making that produces legal effects or similarly
+      significant impacts on you.
     </p>
 
     <h2>16. Data Breach Notification</h2>

@@ -5,7 +5,7 @@
     data-reveal-target="item"
     data-message-id="{{ forloop.counter }}"
     role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}"
-    class="translate-x-full transform rounded-2xl border p-4 opacity-0 shadow-lg transition-all duration-300 ease-in-out {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950 dark:text-red-100{% else %}border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950 dark:text-emerald-100{% endif %}"
+    class="translate-x-full transform rounded-lg border p-4 opacity-0 transition-all duration-200 ease-out {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950 dark:text-red-100{% else %}border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950 dark:text-emerald-100{% endif %}"
   >
     <div class="flex items-start gap-3">
       <div class="mt-0.5 flex-shrink-0" aria-hidden="true">

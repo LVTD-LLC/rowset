@@ -1,100 +1,104 @@
 {% extends "base_app.html" %}
 
 {% block content %}
-<div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-  <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-    <section class="fb-card p-6 sm:p-8" aria-labelledby="agent-setup-heading">
-      <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-        <div class="max-w-2xl">
-          <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Agent setup</p>
-          <h1 id="agent-setup-heading" class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
-            Connect your AI agent to Rowset
-          </h1>
-          <p class="fb-text-muted mt-4 text-base leading-7">
-            Copy this prompt into a trusted AI agent. It includes your Rowset MCP URL, REST API base, API key, and skill file so the agent can configure MCP, ask for authorization, then create and manage datasets through MCP or REST.
-          </p>
-        </div>
-        <a href="{% url 'dataset_list' %}" class="fb-button-secondary whitespace-nowrap">View datasets</a>
+<div class="fb-page">
+  <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+    <section aria-labelledby="agent-setup-heading">
+      <div class="max-w-3xl">
+        <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Agent setup</p>
+        <h1 id="agent-setup-heading" class="fb-page-title mt-2">
+          Connect your AI agent to Rowset
+        </h1>
+        <p class="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300">
+          Copy this prompt into a trusted AI agent. It includes the MCP URL, REST API base, masked preview of your API key, and the public skill file the agent should read first.
+        </p>
       </div>
 
-      <div class="mt-6" data-controller="copy" data-copy-url-value="{{ agent_setup_prompt_url }}">
-        <p class="mb-2 block text-sm font-medium text-gray-900 dark:text-gray-100">Copy/paste prompt</p>
-        <pre data-copy-target="source" aria-describedby="agent-setup-help agent-setup-warning" class="fb-input block min-h-48 w-full overflow-x-auto whitespace-pre-wrap break-words border border-emerald-200 p-4 font-mono text-xs leading-5 dark:border-emerald-900">{{ agent_setup_prompt_masked }}</pre>
-        <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div class="space-y-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
-            <p id="agent-setup-help">Best path: remote MCP over HTTPS. The copy button includes your full API key for clients that need bearer-token auth.</p>
-            <p id="agent-setup-warning" class="font-semibold text-amber-700 dark:text-amber-300">Only share this prompt with agents and people you trust.</p>
+      <div class="mt-7 rounded-lg border border-slate-200 bg-slate-950 p-4 dark:border-slate-800" data-controller="copy" data-copy-url-value="{{ agent_setup_prompt_url }}">
+        <div class="flex flex-col gap-3 border-b border-slate-800 pb-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 class="text-base font-semibold text-white">Copy/paste prompt</h2>
+            <p id="agent-setup-help" class="mt-1 text-sm leading-6 text-slate-400">Best path: remote MCP over HTTPS. The copy button includes your full API key for clients that need bearer-token auth.</p>
           </div>
-          <button type="button" data-action="copy#copy" class="fb-button-primary">
+          <button type="button" data-action="copy#copy" class="fb-button-primary whitespace-nowrap">
             <span data-copy-target="label">Copy agent prompt</span>
           </button>
         </div>
+        <pre data-copy-target="source" aria-describedby="agent-setup-help agent-setup-warning" class="mt-4 min-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-slate-800 bg-slate-900 p-4 font-mono text-xs leading-5 text-slate-100">{{ agent_setup_prompt_masked }}</pre>
       </div>
+      <p id="agent-setup-warning" class="mt-3 text-sm font-semibold text-amber-700 dark:text-amber-300">Only share this prompt with agents and people you trust.</p>
     </section>
 
-    <aside class="space-y-4" aria-label="Connection details">
-      <div class="fb-panel p-5">
-        <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">MCP endpoint</h2>
-        <p class="mt-2 break-all font-mono text-sm text-slate-700 dark:text-slate-200">{{ mcp_url }}</p>
+    <aside class="grid gap-3" aria-label="Connection details">
+      <div class="fb-panel p-4">
+        <h2 class="text-sm font-semibold text-slate-950 dark:text-slate-100">MCP endpoint</h2>
+        <p class="mt-2 break-all font-mono text-xs leading-5 text-slate-700 dark:text-slate-300">{{ mcp_url }}</p>
       </div>
-      <div class="fb-panel p-5">
-        <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">REST API base</h2>
-        <p class="mt-2 break-all font-mono text-sm text-slate-700 dark:text-slate-200">{{ rest_api_base_url }}</p>
+      <div class="fb-panel p-4">
+        <h2 class="text-sm font-semibold text-slate-950 dark:text-slate-100">REST API base</h2>
+        <p class="mt-2 break-all font-mono text-xs leading-5 text-slate-700 dark:text-slate-300">{{ rest_api_base_url }}</p>
       </div>
-      <div class="fb-card p-5">
-        <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">Agent skill</h2>
-        <p class="fb-text-muted mt-2 text-sm leading-6">The prompt links to a public skill file your agent can read before it touches data.</p>
+      <div class="fb-panel p-4">
+        <h2 class="text-sm font-semibold text-slate-950 dark:text-slate-100">Agent skill</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Public instructions for setup, auth, row tools, exports, and public previews.</p>
         <a href="{{ agent_instructions_url }}" class="fb-button-secondary mt-4 w-full">Open agent skill</a>
       </div>
     </aside>
   </div>
 
-  <section class="mt-10" aria-labelledby="recent-datasets-heading">
+  <section class="mt-12" aria-labelledby="recent-datasets-heading">
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h2 id="recent-datasets-heading" class="text-xl font-bold text-slate-900 dark:text-slate-100">Recent datasets</h2>
-        <p class="fb-text-muted mt-1 text-sm leading-6">Datasets created or managed by API and MCP appear here.</p>
+        <h2 id="recent-datasets-heading" class="fb-section-title">Recent datasets</h2>
+        <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Datasets created or managed by API and MCP appear here.</p>
       </div>
-      <a href="{% url 'settings' %}" class="fb-button-secondary">Open settings</a>
+      <a href="{% url 'dataset_list' %}" class="fb-button-secondary">View all datasets</a>
     </div>
+
     {% if recent_datasets %}
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {% for dataset in recent_datasets %}
-          <div class="fb-card p-5 transition hover:border-emerald-300 dark:hover:border-emerald-700">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-900 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
-                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ dataset.row_count }} rows</p>
-              </div>
-              <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ dataset.status }}</span>
-            </div>
-            <div class="mt-4 flex flex-wrap gap-2">
-              {% if dataset.status == "ready" %}
-                <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary px-3 py-1.5 text-xs">Download CSV</a>
-                <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary px-3 py-1.5 text-xs">Download Parquet</a>
-              {% endif %}
-              <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="home">
-                <button type="submit" class="fb-button-secondary border-red-200 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40">Delete dataset</button>
-              </form>
-            </div>
-          </div>
-        {% endfor %}
+      <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+        <table class="fb-table">
+          <caption class="sr-only">Recent datasets</caption>
+          <thead class="bg-slate-50 dark:bg-slate-900">
+            <tr>
+              <th scope="col">Dataset</th>
+              <th scope="col">Rows</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+            {% for dataset in recent_datasets %}
+              <tr class="align-top">
+                <td class="max-w-md">
+                  <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+                </td>
+                <td>{{ dataset.row_count }}</td>
+                <td><span class="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300">{{ dataset.status }}</span></td>
+                <td>
+                  <div class="flex flex-wrap justify-start gap-2 sm:justify-end">
+                    {% if dataset.status == "ready" %}
+                      <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">CSV</a>
+                      <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Parquet</a>
+                    {% endif %}
+                    <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="home">
+                      <button type="submit" class="fb-button-secondary min-h-8 border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     {% else %}
-      <div class="fb-panel p-8 text-center">
-        <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">No datasets yet</h3>
-        <p class="fb-text-muted mx-auto mt-2 max-w-md text-sm leading-6">Copy the agent prompt, then ask your agent to create a dataset from a local file, table, or other source it can access.</p>
+      <div class="fb-panel p-8">
+        <h3 class="text-base font-semibold text-slate-950 dark:text-slate-100">No datasets yet</h3>
+        <p class="mt-2 max-w-lg text-sm leading-6 text-slate-600 dark:text-slate-300">Copy the agent prompt, then ask your agent to create a dataset from a local file, table, or other source it can access.</p>
       </div>
     {% endif %}
   </section>
 </div>
-
-{% if show_confetti %}
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-<script>
-  confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-</script>
-{% endif %}
 {% endblock content %}

@@ -9,8 +9,8 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Security</p>
-      <h1 class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Passkeys</h1>
-      <p class="fb-text-muted mt-2 text-sm leading-6">Add a passkey to sign in faster and more securely with your device unlock, fingerprint, or face ID.</p>
+      <h1 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Passkeys</h1>
+      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Add a passkey to sign in faster and more securely with your device unlock, fingerprint, or face ID.</p>
     </div>
     <a href="{% url 'settings' %}" class="fb-button-secondary">Back to settings</a>
   </div>
@@ -19,8 +19,8 @@
     <section class="fb-panel mt-8 p-5" aria-labelledby="your-passkeys-heading">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 id="your-passkeys-heading" class="text-lg font-bold text-slate-900 dark:text-slate-100">Your passkeys</h2>
-          <p class="fb-text-muted mt-1 text-sm">
+          <h2 id="your-passkeys-heading" class="text-lg font-semibold text-slate-950 dark:text-slate-100">Your passkeys</h2>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
             {% if authenticators.webauthn|length %}
               You have added {{ authenticators.webauthn|length }} passkey{{ authenticators.webauthn|length|pluralize }}.
             {% else %}
