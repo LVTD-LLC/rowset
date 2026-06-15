@@ -1,19 +1,16 @@
 {% extends "base_landing.html" %}
 
 {% block content %}
-<main class="flex justify-center items-center px-4 py-16 my-4 sm:px-6 lg:px-8">
-  <section class="space-y-6 w-full max-w-md text-center" aria-labelledby="signup-closed-heading">
+<main class="flex items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
+  <section class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950 sm:p-8" aria-labelledby="signup-closed-heading">
     <div>
-      <p class="text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Signups paused</p>
-      <h1 id="signup-closed-heading" class="mt-3 text-3xl font-extrabold text-gray-900 dark:text-gray-100">Rowset is not accepting new accounts right now.</h1>
-      <p class="mt-4 text-sm leading-6 text-gray-600 dark:text-gray-300">
+      <p class="fb-label-caps text-amber-700 dark:text-amber-300">Signups paused</p>
+      <h1 id="signup-closed-heading" class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Rowset is not accepting new accounts right now.</h1>
+      <p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
         Existing users can continue using the product as usual. New account creation is paused for now.
       </p>
     </div>
-    <a href="{% url 'account_login' %}"
-       class="inline-flex justify-center px-5 py-3 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-950">
-      Log in to your account
-    </a>
+    <a href="{% url 'account_login' %}" class="fb-button-primary mt-6">Log in to your account</a>
   </section>
 </main>
 {% endblock content %}

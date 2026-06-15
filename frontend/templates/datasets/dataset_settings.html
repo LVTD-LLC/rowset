@@ -1,10 +1,10 @@
 {% extends "base_app.html" %}
 
 {% block content %}
-<div class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+<div class="fb-page-narrow">
   <div class="space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <a href="{{ dataset.get_absolute_url }}" class="fb-focus inline-flex rounded-full text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300">← Back to dataset</a>
+      <a href="{{ dataset.get_absolute_url }}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← Back to dataset</a>
       <div class="flex flex-wrap gap-2">
         {% if dataset.public_enabled %}
           <a href="{{ public_url }}" class="fb-button-secondary">Open public preview</a>
@@ -17,22 +17,22 @@
     </div>
 
     <div>
-      <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Sharing controls</p>
-      <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Dataset settings</h1>
-      <p class="fb-text-muted mt-2 break-words leading-6">Control public sharing for {{ dataset.name }}. Private authenticated API access remains available even when public preview is off.</p>
+      <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Dataset controls</p>
+      <h1 class="fb-page-title mt-2">Dataset settings</h1>
+      <p class="mt-2 break-words leading-6 text-slate-600 dark:text-slate-300">Control schema metadata and public sharing for {{ dataset.name }}. Private authenticated API access remains available even when public preview is off.</p>
     </div>
 
-    <section class="fb-card p-5" aria-labelledby="column-schema-settings-heading">
+    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="column-schema-settings-heading">
       <form method="post" action="{% url 'dataset_update_column_settings' dataset.key %}" class="space-y-5">
         {% csrf_token %}
         <div>
-          <h2 id="column-schema-settings-heading" class="text-lg font-bold text-slate-900 dark:text-slate-100">Column schema</h2>
-          <p class="fb-text-muted mt-1 text-sm leading-6">Column types are used as dataset metadata for previews, API clients, filtering, exports, and analysis.</p>
+          <h2 id="column-schema-settings-heading" class="fb-section-title">Column schema</h2>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Column types are metadata for previews, API clients, exports, and analysis.</p>
         </div>
 
         <div class="grid gap-3">
           {% for column in column_definitions %}
-            <label class="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-950 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center">
+            <label class="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center">
               <span class="min-w-0 break-words font-semibold text-slate-800 dark:text-slate-100">{{ column.name }}</span>
               <input type="hidden" name="column_name" value="{{ column.name }}">
               <select name="column_type" class="fb-input w-full px-3 py-2 text-sm">
@@ -51,11 +51,12 @@
       </form>
     </section>
 
-    <section class="fb-card p-5" aria-labelledby="public-preview-settings-heading">
+    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="public-preview-settings-heading">
       <form method="post" action="{% url 'dataset_update_public_settings' dataset.key %}" class="space-y-6">
         {% csrf_token %}
-        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
-          Public preview is optional. If enabled, anyone with the link can view this table unless you add a password.
+        <div>
+          <h2 class="fb-section-title">Public preview</h2>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Optional browser sharing for humans. This does not replace authenticated API or MCP access.</p>
         </div>
 
         <div class="flex items-start gap-3">
@@ -91,8 +92,8 @@
       </form>
     </section>
 
-    <section class="rounded-3xl border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30" aria-labelledby="delete-dataset-heading">
-      <h2 id="delete-dataset-heading" class="text-lg font-bold text-red-900 dark:text-red-100">Delete dataset</h2>
+    <section class="rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30" aria-labelledby="delete-dataset-heading">
+      <h2 id="delete-dataset-heading" class="text-lg font-semibold text-red-900 dark:text-red-100">Delete dataset</h2>
       <p class="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">Delete this dataset, its imported rows, and its stored source file. This cannot be undone.</p>
       <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');" class="mt-4">
         {% csrf_token %}

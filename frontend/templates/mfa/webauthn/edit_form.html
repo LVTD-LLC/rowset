@@ -3,12 +3,12 @@
 
 {% block mfa_content %}
   <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Security</p>
-  <h1 class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Rename passkey</h1>
-  <p class="fb-text-muted mt-2 text-sm leading-6">Give this passkey a name you will recognize later.</p>
+  <h1 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Rename passkey</h1>
+  <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Give this passkey a name you will recognize later.</p>
 
   <form class="mt-8 space-y-6" method="post" action="{% url 'mfa_edit_webauthn' pk=object.pk %}">
     {% csrf_token %}
-    {% if form.non_field_errors %}<div class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">{{ form.non_field_errors|safe }}</div>{% endif %}
+    {% if form.non_field_errors %}<div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">{{ form.non_field_errors|safe }}</div>{% endif %}
     <div>
       <label for="{{ form.name.id_for_label }}" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Passkey name</label>
       {% if form.name.errors %}<div id="rename-passkey-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.name.errors|safe }}</div>{% endif %}

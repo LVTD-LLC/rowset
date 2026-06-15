@@ -1,35 +1,35 @@
 {% extends "base_app.html" %}
 
 {% block content %}
-<div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+<div class="fb-page">
   <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Datasets</p>
-      <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Your API-backed datasets</h1>
-      <p class="fb-text-muted mt-2 max-w-2xl text-sm leading-6">Datasets created and managed through Rowset API or MCP.</p>
+      <h1 class="fb-page-title mt-2">API-backed datasets</h1>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Datasets created and managed through Rowset API or MCP.</p>
     </div>
     <a href="{% url 'home' %}" class="fb-button-primary">Copy agent prompt</a>
   </div>
 
   {% if datasets %}
-    <div class="fb-card overflow-hidden">
-      <ul class="divide-y divide-slate-200 dark:divide-slate-800" aria-label="Datasets">
+    <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+      <ul class="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950" aria-label="Datasets">
         {% for dataset in datasets %}
           <li>
-            <div class="flex flex-col gap-3 p-5 transition hover:bg-slate-50 dark:hover:bg-slate-800/60 sm:flex-row sm:items-center sm:justify-between">
+            <div class="grid gap-4 p-4 transition hover:bg-slate-50 dark:hover:bg-slate-900 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div class="min-w-0">
-                <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-900 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
-                <p class="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">{{ dataset.original_filename }} · {{ dataset.row_count }} rows</p>
+                <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+                <p class="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">{{ dataset.original_filename }} · {{ dataset.row_count }} rows</p>
               </div>
               <div class="flex flex-wrap items-center gap-2">
-                <span class="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ dataset.status }}</span>
+                <span class="inline-flex w-fit rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300">{{ dataset.status }}</span>
                 {% if dataset.status == "ready" %}
-                  <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary px-3 py-1.5 text-xs">CSV</a>
-                  <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary px-3 py-1.5 text-xs">Parquet</a>
+                  <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">CSV</a>
+                  <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Parquet</a>
                 {% endif %}
                 <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');">
                   {% csrf_token %}
-                  <button type="submit" class="fb-button-secondary border-red-200 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40">Delete</button>
+                  <button type="submit" class="fb-button-secondary min-h-8 border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40">Delete</button>
                 </form>
               </div>
             </div>
@@ -38,9 +38,9 @@
       </ul>
     </div>
   {% else %}
-    <div class="fb-panel p-10 text-center">
-      <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">No datasets yet</h2>
-      <p class="fb-text-muted mx-auto mt-2 max-w-md text-sm leading-6">Copy the agent prompt, then ask your agent to create a dataset from the source file or table it can access.</p>
+    <div class="fb-panel p-8">
+      <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">No datasets yet</h2>
+      <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Copy the agent prompt, then ask your agent to create a dataset from the source file or table it can access.</p>
       <a href="{% url 'home' %}" class="fb-button-primary mt-6">Copy agent prompt</a>
     </div>
   {% endif %}
