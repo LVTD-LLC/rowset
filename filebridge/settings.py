@@ -225,6 +225,8 @@ STATICFILES_DIRS = [
     BASE_DIR.joinpath("frontend/build"),
 ]
 
+# Keep the historical storage bucket name stable so existing media remains
+# available after the product rename.
 folder_name = f"filebridge-{ENVIRONMENT}"
 aws_s3_endpoint_url = env("AWS_S3_ENDPOINT_URL", default="")
 
@@ -355,7 +357,7 @@ ANYMAIL = {
     "MAILGUN_SENDER_DOMAIN": MAILGUN_SENDER_DOMAIN,
 }
 DEFAULT_FROM_EMAIL = "Rasul Kireev <rasul@lvtd.dev>"
-SERVER_EMAIL = "FileBridge Errors <rasul@lvtd.dev>"
+SERVER_EMAIL = "Rowset Errors <rasul@lvtd.dev>"
 
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -379,7 +381,7 @@ REDIS_DB = env("REDIS_DB", default="0")
 REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 
 Q_CLUSTER = {
-    "name": "filebridge-q",
+    "name": "rowset-q",
     "timeout": 3600,  # 1 hour
     "retry": 4800,  # 80 minutes
     "workers": 4,

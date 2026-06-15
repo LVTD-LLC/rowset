@@ -18,9 +18,10 @@ from apps.mcp_server.models import (
 )
 from apps.mcp_server.oauth import (
     LEGACY_API_KEY_CLIENT_ID,
+    LEGACY_MCP_SCOPE,
     MCP_INTERNAL_PATH,
     MCP_SCOPE,
-    FileBridgeOAuthProvider,
+    RowsetOAuthProvider,
     get_authorization_request,
     hash_token,
     mcp_auth,
@@ -52,8 +53,8 @@ def profile(user):
     return user.profile
 
 
-def _provider() -> FileBridgeOAuthProvider:
-    provider = FileBridgeOAuthProvider(base_url="https://filebridge.example/mcp")
+def _provider() -> RowsetOAuthProvider:
+    provider = RowsetOAuthProvider(base_url="https://rowset.example/mcp")
     provider.set_mcp_path(MCP_INTERNAL_PATH)
     return provider
 
@@ -72,7 +73,7 @@ def _client() -> OAuthClientInformationFull:
     )
 
 
-@override_settings(SITE_URL="https://filebridge.example")
+@override_settings(SITE_URL="https://rowset.example")
 def test_oauth_authorization_approval_issues_access_token(auth_client, profile):
     provider = _provider()
     client_info = _client()
@@ -87,7 +88,7 @@ def test_oauth_authorization_approval_issues_access_token(auth_client, profile):
             code_challenge="challenge",
             redirect_uri="http://127.0.0.1:8765/callback",
             redirect_uri_provided_explicitly=True,
-            resource="https://filebridge.example/mcp/",
+            resource="https://rowset.example/mcp/",
         ),
     )
 
@@ -117,7 +118,57 @@ def test_oauth_authorization_approval_issues_access_token(auth_client, profile):
     assert anyio.run(provider.load_authorization_code, client_info, authorization_code) is None
 
 
-@override_settings(SITE_URL="https://filebridge.example")
+def test_oauth_load_access_token_normalizes_legacy_scope(profile):
+    provider = _provider()
+    expires_at = timezone.now() + timedelta(hours=1)
+    McpOAuthAccessToken.objects.create(
+        token_hash=hash_token("legacy-access"),
+        client_id="client-1",
+        profile=profile,
+        scopes=[LEGACY_MCP_SCOPE],
+        expires_at=expires_at,
+    )
+
+    access_token = anyio.run(provider.load_access_token, "legacy-access")
+
+    assert access_token.scopes == [MCP_SCOPE]
+    assert McpOAuthAccessToken.objects.get(token_hash=hash_token("legacy-access")).scopes == [
+        MCP_SCOPE
+    ]
+
+
+def test_oauth_refresh_with_legacy_scope_issues_rowset_scope(profile):
+    provider = _provider()
+    client_info = _client()
+    expires_at = timezone.now() + timedelta(hours=1)
+    McpOAuthRefreshToken.objects.create(
+        token_hash=hash_token("legacy-refresh"),
+        client_id=client_info.client_id,
+        profile=profile,
+        scopes=[LEGACY_MCP_SCOPE],
+        expires_at=expires_at,
+    )
+
+    loaded_refresh_token = anyio.run(
+        provider.load_refresh_token,
+        client_info,
+        "legacy-refresh",
+    )
+    refreshed_token = anyio.run(
+        provider.exchange_refresh_token,
+        client_info,
+        loaded_refresh_token,
+        [],
+    )
+    access_token = anyio.run(provider.load_access_token, refreshed_token.access_token)
+
+    assert loaded_refresh_token.scopes == [MCP_SCOPE]
+    assert refreshed_token.scope == MCP_SCOPE
+    assert access_token.scopes == [MCP_SCOPE]
+    assert McpOAuthRefreshToken.objects.get(token_hash=hash_token("legacy-refresh")).revoked_at
+
+
+@override_settings(SITE_URL="https://rowset.example")
 def test_oauth_refresh_without_scope_reuses_original_scopes(auth_client):
     provider = _provider()
     client_info = _client()
@@ -132,7 +183,7 @@ def test_oauth_refresh_without_scope_reuses_original_scopes(auth_client):
             code_challenge="challenge",
             redirect_uri="http://127.0.0.1:8765/callback",
             redirect_uri_provided_explicitly=True,
-            resource="https://filebridge.example/mcp/",
+            resource="https://rowset.example/mcp/",
         ),
     )
     transaction_id = parse_qs(urlsplit(authorization_url).query)["transaction"][0]
@@ -163,7 +214,7 @@ def test_oauth_refresh_without_scope_reuses_original_scopes(auth_client):
     assert anyio.run(provider.load_refresh_token, client_info, token.refresh_token) is None
 
 
-@override_settings(SITE_URL="https://filebridge.example")
+@override_settings(SITE_URL="https://rowset.example")
 def test_oauth_authorization_denial_redirects_with_error(auth_client):
     provider = _provider()
     client_info = _client()
@@ -178,7 +229,7 @@ def test_oauth_authorization_denial_redirects_with_error(auth_client):
             code_challenge="challenge",
             redirect_uri="http://127.0.0.1:8765/callback",
             redirect_uri_provided_explicitly=True,
-            resource="https://filebridge.example/mcp/",
+            resource="https://rowset.example/mcp/",
         ),
     )
     transaction_id = parse_qs(urlsplit(authorization_url).query)["transaction"][0]
@@ -194,7 +245,7 @@ def test_oauth_authorization_denial_redirects_with_error(auth_client):
     assert redirect_query["state"] == ["state-123"]
 
 
-@override_settings(SITE_URL="https://filebridge.example")
+@override_settings(SITE_URL="https://rowset.example")
 def test_oauth_authorization_rejects_unknown_post_action(auth_client):
     provider = _provider()
     client_info = _client()
@@ -209,7 +260,7 @@ def test_oauth_authorization_rejects_unknown_post_action(auth_client):
             code_challenge="challenge",
             redirect_uri="http://127.0.0.1:8765/callback",
             redirect_uri_provided_explicitly=True,
-            resource="https://filebridge.example/mcp/",
+            resource="https://rowset.example/mcp/",
         ),
     )
     transaction_id = parse_qs(urlsplit(authorization_url).query)["transaction"][0]
@@ -223,7 +274,7 @@ def test_oauth_authorization_rejects_unknown_post_action(auth_client):
     assert get_authorization_request(transaction_id) is not None
 
 
-@override_settings(SITE_URL="https://filebridge.example")
+@override_settings(SITE_URL="https://rowset.example")
 def test_oauth_authorization_handles_expired_post_race(auth_client, monkeypatch):
     provider = _provider()
     client_info = _client()
@@ -238,7 +289,7 @@ def test_oauth_authorization_handles_expired_post_race(auth_client, monkeypatch)
             code_challenge="challenge",
             redirect_uri="http://127.0.0.1:8765/callback",
             redirect_uri_provided_explicitly=True,
-            resource="https://filebridge.example/mcp/",
+            resource="https://rowset.example/mcp/",
         ),
     )
     transaction_id = parse_qs(urlsplit(authorization_url).query)["transaction"][0]

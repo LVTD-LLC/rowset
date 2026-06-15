@@ -25,7 +25,7 @@ def profile(user):
 
 @pytest.mark.django_db
 class TestDocsView:
-    @override_settings(SITE_URL="http://filebridge.example")
+    @override_settings(SITE_URL="http://rowset.example")
     def test_docs_use_https_public_urls(self, auth_client):
         response = auth_client.get(
             reverse("docs_page", kwargs={"category": "api-reference", "page": "introduction"})
@@ -33,11 +33,11 @@ class TestDocsView:
 
         assert response.status_code == 200
         content = response.content.decode()
-        assert "https://filebridge.example/api" in content
-        assert "https://filebridge.example/api/docs" in content
-        assert "http://filebridge.example" not in content
+        assert "https://rowset.example/api" in content
+        assert "https://rowset.example/api/docs" in content
+        assert "http://rowset.example" not in content
 
-    @override_settings(SITE_URL="https://filebridge.example")
+    @override_settings(SITE_URL="https://rowset.example")
     def test_agent_access_docs_include_dashboard_prompt(self, auth_client, profile):
         response = auth_client.get(
             reverse("docs_page", kwargs={"category": "features", "page": "agent-access"})
@@ -45,8 +45,8 @@ class TestDocsView:
 
         assert response.status_code == 200
         content = response.content.decode()
-        assert "Set up FileBridge for this user." in content
-        assert "FileBridge API key: ***" in content
-        assert f"FileBridge API key: {profile.key}" not in content
+        assert "Set up Rowset for this user." in content
+        assert "Rowset API key: ***" in content
+        assert f"Rowset API key: {profile.key}" not in content
         assert "treat the copied prompt like a password" in content
-        assert "https://filebridge.example/SKILL.md" in content
+        assert "https://rowset.example/SKILL.md" in content

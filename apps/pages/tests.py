@@ -92,7 +92,7 @@ def test_dashboard_does_not_show_email_confirmation_reminder(client):
     assert response.status_code == 200
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
-    assert "Connect your AI agent to FileBridge" in content
+    assert "Connect your AI agent to Rowset" in content
 
 
 @override_settings(SITE_URL="http://localhost:8000")
@@ -101,10 +101,10 @@ def test_landing_agent_prompt_keeps_localhost_http(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "FileBridge MCP URL: http://localhost:8000/mcp/" in content
-    assert "FileBridge REST API base: http://localhost:8000/api/" in content
+    assert "Rowset MCP URL: http://localhost:8000/mcp/" in content
+    assert "Rowset REST API base: http://localhost:8000/api/" in content
     assert "update_dataset_public_preview" in content
-    assert "FileBridge MCP URL: https://localhost:8000/mcp/" not in content
+    assert "Rowset MCP URL: https://localhost:8000/mcp/" not in content
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):
@@ -156,7 +156,7 @@ def test_settings_shows_passkey_manage_link_when_passkey_exists(client):
     assert reverse("mfa_list_webauthn") in content
 
 
-def test_mfa_index_uses_filebridge_styling(client):
+def test_mfa_index_uses_rowset_styling(client):
     user = get_user_model().objects.create_user(
         username="mfauser",
         email="mfauser@example.com",
@@ -176,7 +176,7 @@ def test_mfa_index_uses_filebridge_styling(client):
     assert "Passkeys" in content
     assert "Add passkey" in content
     assert "Menu:" not in content
-    assert "FileBridge Logo" in content
+    assert "Rowset Logo" in content
 
 
 def test_webauthn_add_page_loads_styled_form_and_scripts(client):
@@ -208,7 +208,7 @@ def test_webauthn_add_page_loads_styled_form_and_scripts(client):
     assert "Menu:" not in content
 
 
-def test_reauthenticate_page_uses_filebridge_styling(client):
+def test_reauthenticate_page_uses_rowset_styling(client):
     user = get_user_model().objects.create_user(
         username="reauthuser",
         email="reauthuser@example.com",
@@ -221,17 +221,17 @@ def test_reauthenticate_page_uses_filebridge_styling(client):
     assert response.status_code == 200
     content = response.content.decode()
     assert "Confirm access" in content
-    assert "FileBridge Logo" in content
+    assert "Rowset Logo" in content
     assert "Menu:" not in content
 
 
 def test_mailgun_sender_defaults_to_rasul_lvtd():
     assert settings.DEFAULT_FROM_EMAIL == "Rasul Kireev <rasul@lvtd.dev>"
-    assert settings.SERVER_EMAIL == "FileBridge Errors <rasul@lvtd.dev>"
+    assert settings.SERVER_EMAIL == "Rowset Errors <rasul@lvtd.dev>"
     assert settings.ANYMAIL["MAILGUN_SENDER_DOMAIN"] == "mg.lvtd.dev"
 
 
-def test_account_email_page_uses_filebridge_styling(client):
+def test_account_email_page_uses_rowset_styling(client):
     user = get_user_model().objects.create_user(
         username="emailpageuser",
         email="emailpageuser@example.com",
@@ -250,7 +250,7 @@ def test_account_email_page_uses_filebridge_styling(client):
     content = response.content.decode()
     assert "Email addresses" in content
     assert "Re-send verification" in content
-    assert "FileBridge Logo" in content
+    assert "Rowset Logo" in content
     assert "Menu:" not in content
 
 
@@ -334,4 +334,4 @@ def test_dashboard_suppresses_verification_reminder_without_email_address(client
     assert response.status_code == 200
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
-    assert "Connect your AI agent to FileBridge" in content
+    assert "Connect your AI agent to Rowset" in content

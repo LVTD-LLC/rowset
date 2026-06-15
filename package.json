@@ -1,5 +1,5 @@
 {
-  "name": "filebridge",
+  "name": "rowset",
   "version": "1.0.0",
   "description": "MCP and REST datasets for AI agents.",
   "scripts": {

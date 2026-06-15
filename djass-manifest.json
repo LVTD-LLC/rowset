@@ -12,8 +12,8 @@
     "generate_docs": "y",
     "project_description": "MCP and REST datasets for AI agents.",
     "project_main_color": "green",
-    "project_name": "FileBridge",
-    "project_slug": "filebridge",
+    "project_name": "Rowset",
+    "project_slug": "rowset",
     "repo_url": "",
     "use_ai": "y",
     "use_buttondown": "y",
@@ -45,8 +45,8 @@
   },
   "project": {
     "id": 1,
-    "name": "FileBridge",
-    "slug": "filebridge"
+    "name": "Rowset",
+    "slug": "rowset"
   },
   "timestamps": {
     "created_at": "2026-05-12T10:09:13.139383+00:00",

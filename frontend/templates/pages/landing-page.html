@@ -2,23 +2,23 @@
 {% load static %}
 
 {% block meta %}
-<title>FileBridge - datasets for AI agents</title>
-<meta name="description" content="FileBridge gives AI agents MCP and REST tools to create, update, export, and share API-backed datasets." />
+<title>Rowset - datasets for AI agents</title>
+<meta name="description" content="Rowset gives AI agents MCP and REST tools to create, update, export, and share API-backed datasets." />
 <meta name="keywords" content="AI agent datasets, MCP dataset API, agent file management, dataset CRUD" />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://{{ request.get_host }}/" />
 
 <meta property="og:type" content="website" />
-<meta property="og:title" content="FileBridge - datasets for AI agents" />
+<meta property="og:title" content="Rowset - datasets for AI agents" />
 <meta property="og:url" content="https://{{ request.get_host }}/" />
 <meta property="og:description" content="Give your agent a stable dataset API instead of asking people to manage uploads by hand." />
-<meta property="og:image" content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=FileBridge&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta property="og:image" content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=Rowset&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 <meta property="og:locale" content="en_US" />
 
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="FileBridge - datasets for AI agents" />
-<meta name="twitter:description" content="Copy a prompt, connect FileBridge through MCP, and let your agent manage datasets." />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=FileBridge&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta name="twitter:title" content="Rowset - datasets for AI agents" />
+<meta name="twitter:description" content="Copy a prompt, connect Rowset through MCP, and let your agent manage datasets." />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 
 {% block content %}
@@ -29,7 +29,7 @@
         MCP and REST for agent-managed datasets
       </div>
       <h1 class="max-w-4xl text-5xl font-black tracking-[-0.035em] text-white sm:text-6xl">
-        FileBridge gives your AI agent a dataset backend.
+        Rowset gives your AI agent a dataset backend.
       </h1>
       <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
         Copy the prompt into your agent. It will connect through hosted MCP, ask you to sign in when needed, then create datasets, edit rows, export snapshots, and enable public previews through tools instead of UI imports.
@@ -44,7 +44,7 @@
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 class="text-lg font-bold text-white">Copy before signup</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-300">A trusted agent can read this first. FileBridge will require account authorization before it can access private data.</p>
+          <p class="mt-1 text-sm leading-6 text-slate-300">A trusted agent can read this first. Rowset will require account authorization before it can access private data.</p>
         </div>
         <button type="button" data-action="copy#copy" class="fb-button-primary whitespace-nowrap">
           <span data-copy-target="label">Copy prompt</span>
@@ -59,7 +59,7 @@
   <div class="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
     <div class="fb-panel p-6">
       <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Agents create datasets</h2>
-      <p class="fb-text-muted mt-3 text-sm leading-6">The agent can read a local file, table, or upstream system it already has access to, then call FileBridge MCP or REST to create the dataset.</p>
+      <p class="fb-text-muted mt-3 text-sm leading-6">The agent can read a local file, table, or upstream system it already has access to, then call Rowset MCP or REST to create the dataset.</p>
     </div>
     <div class="fb-panel p-6">
       <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Rows are tool-managed</h2>
@@ -75,7 +75,7 @@
 <section class="bg-slate-100 px-6 py-20 dark:bg-slate-900 lg:px-8">
   <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
     <div>
-      <h2 class="text-3xl font-black tracking-tight text-slate-950 dark:text-white">What FileBridge does now</h2>
+      <h2 class="text-3xl font-black tracking-tight text-slate-950 dark:text-white">What Rowset does now</h2>
       <p class="fb-text-muted mt-4 max-w-xl leading-7">It gives agents a stable place to keep structured data and a small human UI for account setup, recent dataset state, exports, settings, and public preview review.</p>
     </div>
     <div class="grid gap-3">

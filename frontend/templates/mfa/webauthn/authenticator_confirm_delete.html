@@ -3,7 +3,7 @@
 {% block mfa_content %}
   <p class="fb-label-caps text-red-600 dark:text-red-400">Security</p>
   <h1 class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Remove passkey</h1>
-  <p class="fb-text-muted mt-2 text-sm leading-6">Are you sure you want to remove this passkey from your FileBridge account? You can add another one later.</p>
+  <p class="fb-text-muted mt-2 text-sm leading-6">Are you sure you want to remove this passkey from your Rowset account? You can add another one later.</p>
 
   <form class="mt-8 flex flex-col gap-3 sm:flex-row" method="post" action="{% url 'mfa_remove_webauthn' pk=authenticator.pk %}">
     {% csrf_token %}

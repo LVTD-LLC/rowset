@@ -401,24 +401,24 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
     assert response.status_code == 201
     dataset_key = response.json()["dataset"]["key"]
     dataset = Dataset.objects.get(key=dataset_key, profile=profile)
-    assert dataset.headers == ["filebridge_id", "task"]
+    assert dataset.headers == ["rowset_id", "task"]
     assert dataset.column_schema == {
-        "filebridge_id": {"type": "integer"},
+        "rowset_id": {"type": "integer"},
         "task": {"type": "text"},
     }
-    assert dataset.index_column == "filebridge_id"
+    assert dataset.index_column == "rowset_id"
     assert dataset.index_generated is True
-    assert dataset.rows.first().data == {"filebridge_id": "1", "task": "Draft"}
+    assert dataset.rows.first().data == {"rowset_id": "1", "task": "Draft"}
 
     create_response = client.post(
         f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
-        data={"data": {"filebridge_id": "custom", "task": "Ship"}},
+        data={"data": {"rowset_id": "custom", "task": "Ship"}},
         content_type="application/json",
     )
 
     assert create_response.status_code == 200
     assert create_response.json()["row"]["index_value"] == "2"
-    assert create_response.json()["row"]["data"] == {"filebridge_id": "2", "task": "Ship"}
+    assert create_response.json()["row"]["data"] == {"rowset_id": "2", "task": "Ship"}
 
 
 def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
@@ -530,23 +530,23 @@ def test_create_profile_dataset_enforces_initial_row_limit(profile):
 
 def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     dataset = create_ready_dataset(profile)
-    dataset.index_column = "filebridge_id"
+    dataset.index_column = "rowset_id"
     dataset.index_generated = True
-    dataset.headers = ["filebridge_id", "name", "email"]
+    dataset.headers = ["rowset_id", "name", "email"]
     dataset.save(update_fields=["index_column", "index_generated", "headers"])
     row = dataset.rows.first()
     row.index_value = "1"
-    row.data = {"filebridge_id": "1", **row.data}
+    row.data = {"rowset_id": "1", **row.data}
     row.save(update_fields=["index_value", "data"])
 
     response = client.patch(
         f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
-        data={"data": {"filebridge_id": "custom"}},
+        data={"data": {"rowset_id": "custom"}},
         content_type="application/json",
     )
 
     assert response.status_code == 400
-    assert "managed by FileBridge" in response.json()["detail"]
+    assert "managed by Rowset" in response.json()["detail"]
 
 
 def test_dataset_api_rejects_other_users_dataset(client, django_user_model, profile):

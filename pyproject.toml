@@ -1,5 +1,5 @@
 [project]
-name = "filebridge"
+name = "rowset"
 version = "0.1.0"
 description = "MCP and REST datasets for AI agents."
 authors = [{ name = "Rasul Kireev", email = "rasul@lvtd.dev" }]

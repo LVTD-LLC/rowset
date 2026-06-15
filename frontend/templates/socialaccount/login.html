@@ -1,9 +1,9 @@
 {% extends 'base_app.html' %}
 {% block meta %}
   {% if process == "connect" %}
-    <title>Connect {{ provider.name }} · FileBridge</title>
+    <title>Connect {{ provider.name }} · Rowset</title>
   {% else %}
-    <title>Sign in with {{ provider.name }} · FileBridge</title>
+    <title>Sign in with {{ provider.name }} · Rowset</title>
   {% endif %}
 {% endblock meta %}
 
@@ -14,10 +14,10 @@
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Account connection</p>
       {% if process == "connect" %}
         <h1 id="social-login-heading" class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Connect {{ provider.name }}</h1>
-        <p class="fb-text-muted mt-2 text-sm leading-6">Connect your {{ provider.name }} account to FileBridge.</p>
+        <p class="fb-text-muted mt-2 text-sm leading-6">Connect your {{ provider.name }} account to Rowset.</p>
       {% else %}
         <h1 id="social-login-heading" class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Sign in with {{ provider.name }}</h1>
-        <p class="fb-text-muted mt-2 text-sm leading-6">Continue to FileBridge using your {{ provider.name }} account.</p>
+        <p class="fb-text-muted mt-2 text-sm leading-6">Continue to Rowset using your {{ provider.name }} account.</p>
       {% endif %}
     </div>
 
@@ -40,7 +40,7 @@
         {% if process == "connect" %}
           <a href="{% url 'settings' %}" class="fb-button-secondary">Cancel</a>
         {% else %}
-          <a href="{% url 'landing' %}" class="fb-button-secondary">Back to FileBridge</a>
+          <a href="{% url 'landing' %}" class="fb-button-secondary">Back to Rowset</a>
         {% endif %}
       </form>
     </div>

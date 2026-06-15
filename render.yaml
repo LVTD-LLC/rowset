@@ -1,5 +1,7 @@
 services:
   - type: web
+    # Keep the historical Render resource names stable so a product rename does
+    # not provision fresh production infrastructure.
     name: filebridge-web
     runtime: python
     buildCommand: |

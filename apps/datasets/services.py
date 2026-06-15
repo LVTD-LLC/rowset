@@ -17,12 +17,12 @@ class CSVParseError(ValueError):
     pass
 
 
-GENERATED_INDEX_CHOICE = "__filebridge_generated__"
-GENERATED_INDEX_BASENAME = "filebridge_id"
+GENERATED_INDEX_CHOICE = "__rowset_generated__"
+GENERATED_INDEX_BASENAME = "rowset_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
 MAX_PUBLIC_PAGE_SIZE = 100
 # Backward compatibility for datasets that already stored normalized sheet text
-# before FileBridge removed Google Sheets import/sync as an active product path.
+# before Rowset removed Google Sheets import/sync as an active product path.
 LEGACY_GOOGLE_SHEETS_FILE_TYPE = "google_sheets"
 COLUMN_TYPE_SAMPLE_LIMIT = 200
 COLUMN_SCHEMA_TYPE_KEY = "type"
@@ -435,7 +435,7 @@ def parser_for_filename(filename: str) -> TabularParser:
     suffix = Path(filename).suffix.lower()
     parser = PARSERS_BY_EXTENSION.get(suffix)
     if not parser:
-        raise CSVParseError("FileBridge accepts CSV and Parquet files.")
+        raise CSVParseError("Rowset accepts CSV and Parquet files.")
     return parser
 
 
@@ -540,7 +540,7 @@ def prepare_index_config(headers: list[str], selected_index: str) -> tuple[str, 
         return index_column, True, [index_column, *headers]
 
     if selected_index not in headers:
-        raise CSVParseError("Choose a valid index column or let FileBridge generate one.")
+        raise CSVParseError("Choose a valid index column or let Rowset generate one.")
 
     return selected_index, False, headers
 

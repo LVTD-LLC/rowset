@@ -6,24 +6,24 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_DB=filebridge
-      - POSTGRES_USER=filebridge
-      - POSTGRES_PASSWORD=filebridge
+      - POSTGRES_DB=rowset
+      - POSTGRES_USER=rowset
+      - POSTGRES_PASSWORD=rowset
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U filebridge"]
+      test: ["CMD-SHELL", "pg_isready -U rowset"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    command: redis-server --requirepass filebridge
+    command: redis-server --requirepass rowset
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     environment:
-      - REDIS_PASSWORD=filebridge
+      - REDIS_PASSWORD=rowset
 
   backend:
     build:
@@ -115,8 +115,8 @@ services:
     volumes:
       - minio_data:/data
     environment:
-      MINIO_ROOT_USER: filebridge-user
-      MINIO_ROOT_PASSWORD: filebridge-password
+      MINIO_ROOT_USER: rowset-user
+      MINIO_ROOT_PASSWORD: rowset-password
     command: server --console-address ":9001" /data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -132,7 +132,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 5 &&
-      /usr/bin/mc config host add myminio http://minio:9000 filebridge filebridge &&
+      /usr/bin/mc config host add myminio http://minio:9000 rowset-user rowset-password &&
       /usr/bin/mc mb myminio/filebridge-dev &&
       /usr/bin/mc anonymous set download myminio/filebridge-dev &&
       exit 0;

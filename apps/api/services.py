@@ -534,7 +534,7 @@ def patch_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int, d
             if dataset.index_generated:
                 raise DatasetServiceError(
                     400,
-                    f"Index column '{dataset.index_column}' is managed by FileBridge "
+                    f"Index column '{dataset.index_column}' is managed by Rowset "
                     "and cannot be updated.",
                 )
             index_value = str(data.get(dataset.index_column, "")).strip()

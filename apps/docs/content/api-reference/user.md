@@ -1,7 +1,7 @@
 ---
 title: User API
-description: Use the FileBridge user endpoint to verify API access and inspect safe profile details.
-keywords: FileBridge API, user API, profile API
+description: Use the Rowset user endpoint to verify API access and inspect safe profile details.
+keywords: Rowset API, user API, profile API
 ---
 
 # User API
@@ -50,4 +50,4 @@ The response does **not** include your API key.
 
 - Check that an integration is authenticated correctly.
 - Give an AI agent a low-risk connectivity test before it works with datasets.
-- Confirm which FileBridge account a key belongs to.
+- Confirm which Rowset account a key belongs to.

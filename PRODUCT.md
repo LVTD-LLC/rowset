@@ -2,7 +2,7 @@
 
 ## Product
 
-FileBridge gives AI agents a stable backend for user-owned structured datasets.
+Rowset gives AI agents a stable backend for user-owned structured datasets.
 Instead of asking humans to manage upload wizards or fragile third-party sync,
 trusted agents create, inspect, update, export, and share datasets through MCP or
 REST.
@@ -22,7 +22,7 @@ agent, and let it manage API-backed datasets with clear ownership boundaries.
 
 ## Primary Jobs
 
-- Copy a FileBridge setup prompt into a trusted AI agent.
+- Copy a Rowset setup prompt into a trusted AI agent.
 - Let the agent authenticate through hosted MCP or REST fallback.
 - Let agents create ready datasets with headers, rows, and a stable index.
 - Let agents discover datasets, inspect schemas, and perform row operations
@@ -34,7 +34,7 @@ agent, and let it manage API-backed datasets with clear ownership boundaries.
 
 ## Core Workflows
 
-1. A user signs in and copies the FileBridge setup prompt.
+1. A user signs in and copies the Rowset setup prompt.
 2. The agent reads `SKILL.md`, configures hosted MCP, and completes authorization.
 3. The agent creates or discovers datasets through MCP or REST.
 4. The agent performs row CRUD, exports snapshots, or enables a public preview
@@ -43,12 +43,12 @@ agent, and let it manage API-backed datasets with clear ownership boundaries.
    exports, and public preview review.
 
 Agents can read local files, Google Sheets, databases, or other sources using
-their own capabilities, then send structured dataset data to FileBridge through
-MCP or REST. FileBridge does not own those upstream integrations.
+their own capabilities, then send structured dataset data to Rowset through
+MCP or REST. Rowset does not own those upstream integrations.
 
 ## Brand Personality
 
-Direct, technical, and calm. FileBridge should feel like a practical agent
+Direct, technical, and calm. Rowset should feel like a practical agent
 utility, not a spreadsheet replacement or a no-code upload wizard. The voice is
 specific about what agents can do and honest about when users need an account,
 OAuth approval, or API key.
@@ -68,7 +68,7 @@ OAuth approval, or API key.
 ## Out Of Scope
 
 - Dashboard upload/import wizards as the primary product path.
-- FileBridge-managed Google Sheets connection, import, sync, or write-back.
+- Rowset-managed Google Sheets connection, import, sync, or write-back.
 - Public previews as a replacement for private API or MCP authentication.
 - Browser automation as the preferred agent integration path.
 - A general-purpose BI dashboard, warehouse, or ETL orchestration suite.
@@ -87,7 +87,7 @@ OAuth approval, or API key.
 - Treat the UI as a control surface: settings, verification, recent state, and
   recovery belong in the product UI; bulk data operations belong to agents.
 - Remove fragile integrations from the core promise: agents can connect to
-  Google Sheets or read local files themselves, FileBridge does not own that
+  Google Sheets or read local files themselves, Rowset does not own that
   dependency.
 
 ## What Good Looks Like

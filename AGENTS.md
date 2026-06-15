@@ -2,21 +2,20 @@
 
 ## Scope
 
-This is the repo-level operating manual for AI coding agents working on FileBridge.
+This is the repo-level operating manual for AI coding agents working on Rowset.
 Read it before editing, then use `PRODUCT.md`, `TECH.md`, `STRUCTURE.md`,
 `VISION.md`, and `DESIGN.md` for deeper product, technical, repo, and UI context.
 
 ## Project Summary
 
-FileBridge turns tabular files and spreadsheet-like sources into API-addressable
-datasets. Users preview data, choose or generate a stable index column, confirm
-the import, and then use REST endpoints, CSV export, hosted MCP tools, or a
-read-only public preview.
+Rowset gives trusted AI agents a stable backend for user-owned structured
+datasets. Users sign in, copy an agent setup prompt, authorize MCP or REST
+access, and let agents create, inspect, update, export, and share datasets.
 
-The current product centers on CSV, Parquet, and Google Sheets-backed datasets.
-Agents must keep public sharing, API authentication, and MCP access distinct:
-public previews are browser-friendly and read-only; REST and MCP are the private
-programmatic paths.
+The current product centers on authenticated REST and hosted MCP access. Agents
+can read local files, Google Sheets, databases, or other upstream sources with
+their own capabilities, then send structured rows to Rowset. Public previews are
+browser-friendly and read-only; REST and MCP are the private programmatic paths.
 
 ## Workflow
 
@@ -76,13 +75,11 @@ host environment. The supported path is the Docker-backed `make test`.
 - Prefer OAuth for hosted MCP setup. Bearer API keys remain a compatibility path.
 - Ask before destructive data actions such as deleting datasets, rows, OAuth
   artifacts, or generated files outside the requested scope.
-- Be precise about supported file types. CSV, Parquet, and Google Sheets paths
-  exist today; future file types should be described as future-facing until code
-  and tests ship.
+- Be precise about supported paths. Agent-created datasets through MCP and REST
+  are the primary product path; dashboard upload/import wizards and Rowset-owned
+  Google Sheets sync are not active product capabilities.
 - Keep index columns stable, unique, and explicit. If a source has no reliable
-  business key, use the generated `filebridge_id` path.
-- Treat Google Sheets write-back as opt-in. It requires explicit Google Sheets
-  access or service-account configuration.
+  business key, use the generated `rowset_id` path.
 
 ## Code Style
 
@@ -90,8 +87,7 @@ host environment. The supported path is the Docker-backed `make test`.
 - Keep Django views thin. Use service modules for validation, persistence, and
   serialization.
 - Keep Django Ninja schemas in `apps/api/schemas.py`.
-- Keep dataset parsing/import/export behavior in `apps/datasets/services.py`;
-  keep Google Sheets API-specific behavior in `apps/datasets/google_sheets.py`.
+- Keep dataset parsing/import/export behavior in `apps/datasets/services.py`.
 - Keep MCP tool descriptions user-facing and concrete. Tool bodies should
   authenticate, call services, convert service errors, and return structured data.
 - Use Stimulus controllers for browser interactivity in Django templates.

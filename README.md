@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="#" width="230" alt="FileBridge Logo">
+  <img src="#" width="230" alt="Rowset Logo">
 </p>
 
 <!--  -->
 <div align="center">
-  <b>FileBridge</b>
+  <b>Rowset</b>
   <b>MCP and REST datasets for AI agents.</b>
 </div>
 
@@ -95,7 +95,7 @@ Copy the contents of `.env.example` into `.env` and update all the necessary val
 
 Copy the contents of `docker-compose-prod.yml` into `docker-compose-prod.yml` and run the suggested command from the top of the `docker-compose-prod.yml` file.
 
-How you are going to expose the backend container is up to you. I usually do it via Nginx Reverse Proxy with `http://filebridge-backend-1:80` UPSTREAM_HTTP_ADDRESS.
+How you are going to expose the backend container is up to you. I usually do it via Nginx Reverse Proxy with `http://rowset-backend-1:80` UPSTREAM_HTTP_ADDRESS.
 
 
 ### Pure Python / Django deployment
@@ -114,14 +114,14 @@ You'd still need to make sure .env has correct values.
 ### Custom Deployment on Caprover
 
 1. Create 4 apps on CapRover.
-  - `filebridge`
-  - `filebridge-workers`
-  - `filebridge-postgres`
-  - `filebridge-redis`
+  - `rowset`
+  - `rowset-workers`
+  - `rowset-postgres`
+  - `rowset-redis`
 
 2. Create a new CapRover app token for:
-   - `filebridge`
-   - `filebridge-workers`
+   - `rowset`
+   - `rowset-workers`
 
 3. Add Environment Variables to those same apps from `.env`.
 
