@@ -2,15 +2,20 @@ import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
   connect() {
+    this.abortController = new AbortController();
     this.fetchAndStoreSettings();
+  }
+
+  disconnect() {
+    this.abortController?.abort();
   }
 
   async fetchAndStoreSettings() {
     try {
-      const response = await fetch(`/api/user/settings`);
+      const response = await fetch(`/api/user/settings`, {
+        signal: this.abortController.signal,
+      });
       if (!response.ok) {
-        // This is a background task, so just log errors, don't alert the user.
-        console.error("Failed to fetch user settings in the background.");
         return;
       }
       const data = await response.json();
@@ -18,7 +23,9 @@ export default class extends Controller {
       localStorage.setItem(`userSettings`, JSON.stringify(data));
 
     } catch (error) {
-      console.error("Error fetching user settings:", error);
+      if (error.name !== "AbortError") {
+        return;
+      }
     }
   }
 }

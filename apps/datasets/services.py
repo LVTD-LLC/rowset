@@ -75,6 +75,10 @@ class IndexedRow:
     data: dict[str, str]
 
 
+def ordered_row_values(headers: list[str], row_data: dict[str, object]) -> list[object]:
+    return [row_data.get(header, "") for header in headers]
+
+
 class TabularParser(Protocol):
     file_type: str
 

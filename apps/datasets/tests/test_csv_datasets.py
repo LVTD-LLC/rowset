@@ -210,6 +210,35 @@ def test_dataset_list_hides_unconfirmed_preview_dataset(auth_client, profile):
     assert "Preview Only" not in content
 
 
+def test_dataset_detail_orders_sample_cells_by_headers(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Customers",
+        original_filename="customers.csv",
+        source_text="customer_id,name,plan\nC-1001,Ada Lovelace,Scale\n",
+        status=DatasetStatus.READY,
+        headers=["customer_id", "name", "plan"],
+        preview_rows=[{"name": "Ada Lovelace", "plan": "Scale", "customer_id": "C-1001"}],
+        index_column="customer_id",
+        row_count=1,
+    )
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="C-1001",
+        data={"name": "Ada Lovelace", "plan": "Scale", "customer_id": "C-1001"},
+    )
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    customer_id_position = content.index(">C-1001<")
+    name_position = content.index(">Ada Lovelace<")
+    plan_position = content.index(">Scale<")
+    assert customer_id_position < name_position < plan_position
+
+
 def test_dataset_delete_removes_owned_dataset(auth_client, profile):
     dataset = create_ready_dataset(profile)
 
@@ -646,6 +675,35 @@ def test_public_dataset_view_paginates_rows(client, profile):
     page_two = client.get(f"{dataset.get_public_url()}?page=2")
     page_two_content = page_two.content.decode()
     assert "Grace" in page_two_content
+
+
+def test_public_dataset_orders_cells_by_headers(client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Customers",
+        original_filename="customers.csv",
+        source_text="customer_id,name,plan\nC-1001,Ada Lovelace,Scale\n",
+        status=DatasetStatus.READY,
+        headers=["customer_id", "name", "plan"],
+        index_column="customer_id",
+        public_enabled=True,
+        row_count=1,
+    )
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="C-1001",
+        data={"name": "Ada Lovelace", "plan": "Scale", "customer_id": "C-1001"},
+    )
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    customer_id_position = content.index(">C-1001<")
+    name_position = content.index(">Ada Lovelace<")
+    plan_position = content.index(">Scale<")
+    assert customer_id_position < name_position < plan_position
 
 
 def test_public_dataset_password_protection(auth_client, client, profile):

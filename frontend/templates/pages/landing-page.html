@@ -22,85 +22,90 @@
 {% endblock meta %}
 
 {% block content %}
-<section class="-mt-[76px] bg-slate-950 px-6 pb-16 pt-32 text-white sm:pt-36 lg:px-8">
-  <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:items-center">
+<section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+  <div class="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,1fr)] lg:items-center lg:px-8">
     <div>
-      <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-100">
-        MCP and REST for agent-managed datasets
-      </div>
-      <h1 class="max-w-4xl text-5xl font-black tracking-[-0.035em] text-white sm:text-6xl">
-        Rowset gives your AI agent a dataset backend.
+      <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">MCP and REST datasets</p>
+      <h1 class="mt-4 max-w-3xl text-5xl font-semibold text-slate-950 dark:text-white sm:text-6xl">
+        Rowset gives AI agents a dataset backend.
       </h1>
-      <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-        Copy the prompt into your agent. It will connect through hosted MCP, ask you to sign in when needed, then create datasets, edit rows, export snapshots, and enable public previews through tools instead of UI imports.
+      <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-700 dark:text-slate-300">
+        Sign in, copy a setup prompt, and let a trusted agent create datasets, update rows, export snapshots, and manage read-only public previews through authenticated tools.
       </p>
       <div class="mt-8 flex flex-col gap-3 sm:flex-row">
         <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
-        <a href="{% url 'account_login' %}" class="fb-button-secondary border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800">Sign in</a>
+        <a href="{% url 'account_login' %}" class="fb-button-secondary">Sign in</a>
       </div>
     </div>
 
-    <div class="fb-card border-slate-800 bg-slate-900 p-5 sm:p-6" data-controller="copy">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="rounded-lg border border-slate-200 bg-slate-950 p-4 text-slate-100 dark:border-slate-800" data-controller="copy">
+      <div class="flex flex-col gap-3 border-b border-slate-800 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 class="text-lg font-bold text-white">Copy before signup</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-300">A trusted agent can read this first. Rowset will require account authorization before it can access private data.</p>
+          <h2 class="text-base font-semibold text-white">Agent setup prompt</h2>
+          <p class="mt-1 text-sm leading-6 text-slate-400">Safe to preview before signup. Private access still requires authorization.</p>
         </div>
         <button type="button" data-action="copy#copy" class="fb-button-primary whitespace-nowrap">
           <span data-copy-target="label">Copy prompt</span>
         </button>
       </div>
-      <textarea data-copy-target="source" readonly rows="12" class="fb-input mt-5 block w-full border-slate-700 bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-100">{{ landing_agent_setup_prompt }}</textarea>
+      <textarea data-copy-target="source" readonly rows="12" class="mt-4 block w-full resize-none rounded-md border border-slate-800 bg-slate-900 p-4 font-mono text-xs leading-5 text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">{{ landing_agent_setup_prompt }}</textarea>
     </div>
   </div>
 </section>
 
-<section class="bg-white px-6 py-20 text-slate-950 dark:bg-slate-950 dark:text-white lg:px-8">
-  <div class="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
-    <div class="fb-panel p-6">
-      <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Agents create datasets</h2>
-      <p class="fb-text-muted mt-3 text-sm leading-6">The agent can read a local file, table, or upstream system it already has access to, then call Rowset MCP or REST to create the dataset.</p>
-    </div>
-    <div class="fb-panel p-6">
-      <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Rows are tool-managed</h2>
-      <p class="fb-text-muted mt-3 text-sm leading-6">List, create, update, delete, and look up rows by index through authenticated tools. The UI stays focused on setup and verification.</p>
-    </div>
-    <div class="fb-panel p-6">
-      <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Sharing is explicit</h2>
-      <p class="fb-text-muted mt-3 text-sm leading-6">Agents can enable or disable read-only public previews through API and MCP, with optional passwords and page-size controls.</p>
-    </div>
-  </div>
-</section>
-
-<section class="bg-slate-100 px-6 py-20 dark:bg-slate-900 lg:px-8">
-  <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+<section id="workflow" class="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50">
+  <div class="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
     <div>
-      <h2 class="text-3xl font-black tracking-tight text-slate-950 dark:text-white">What Rowset does now</h2>
-      <p class="fb-text-muted mt-4 max-w-xl leading-7">It gives agents a stable place to keep structured data and a small human UI for account setup, recent dataset state, exports, settings, and public preview review.</p>
+      <h2 class="text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">The UI is the handoff surface.</h2>
+      <p class="mt-4 max-w-xl leading-7 text-slate-700 dark:text-slate-300">
+        Rowset does not ask people to shepherd upload wizards. The browser gives users setup, visibility, and recovery; MCP and REST do the dataset work.
+      </p>
     </div>
-    <div class="grid gap-3">
-      <div class="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-950">
-        <div class="font-mono text-sm text-emerald-700 dark:text-emerald-300">create_dataset(name, headers, rows, index_column)</div>
-      </div>
-      <div class="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-950">
-        <div class="font-mono text-sm text-cyan-700 dark:text-cyan-300">update_dataset_row(dataset_key, row_id, data)</div>
-      </div>
-      <div class="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-950">
-        <div class="font-mono text-sm text-lime-700 dark:text-lime-300">update_dataset_public_preview(dataset_key, public_enabled)</div>
-      </div>
+    <ol class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950">
+      <li class="grid gap-2 p-5 sm:grid-cols-[8rem_1fr]">
+        <span class="font-mono text-sm text-emerald-700 dark:text-emerald-300">setup</span>
+        <span class="text-sm leading-6 text-slate-700 dark:text-slate-300">Copy the agent prompt and authorize hosted MCP in the browser.</span>
+      </li>
+      <li class="grid gap-2 p-5 sm:grid-cols-[8rem_1fr]">
+        <span class="font-mono text-sm text-emerald-700 dark:text-emerald-300">datasets</span>
+        <span class="text-sm leading-6 text-slate-700 dark:text-slate-300">Agents create datasets with headers, rows, and a stable index column.</span>
+      </li>
+      <li class="grid gap-2 p-5 sm:grid-cols-[8rem_1fr]">
+        <span class="font-mono text-sm text-emerald-700 dark:text-emerald-300">rows</span>
+        <span class="text-sm leading-6 text-slate-700 dark:text-slate-300">Authenticated tools read, create, update, delete, and export row data.</span>
+      </li>
+      <li class="grid gap-2 p-5 sm:grid-cols-[8rem_1fr]">
+        <span class="font-mono text-sm text-emerald-700 dark:text-emerald-300">preview</span>
+        <span class="text-sm leading-6 text-slate-700 dark:text-slate-300">Public previews stay optional, read-only, and separate from private API access.</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+  <div class="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-3 lg:px-8">
+    <div>
+      <h2 class="text-xl font-semibold text-slate-950 dark:text-white">MCP first</h2>
+      <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">Agents should connect through hosted MCP when their runtime supports it. REST remains the compatibility path.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Private by default</h2>
+      <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">Datasets belong to the authenticated profile. Public links are explicit sharing settings, not authentication.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Structured outputs</h2>
+      <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">Every dataset exposes stable keys, headers, schema metadata, row tools, CSV export, and Parquet export.</p>
     </div>
   </div>
 </section>
 
-<section class="bg-emerald-500 px-6 py-16 text-emerald-950 lg:px-8">
-  <div class="mx-auto flex max-w-7xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+<section class="bg-slate-950 text-white">
+  <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-14 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
     <div>
-      <h2 class="text-3xl font-black tracking-tight">Let the agent do the dataset work.</h2>
-      <p class="mt-2 max-w-2xl text-sm font-medium text-emerald-950/80">Create an account for authorization, then use the dashboard prompt with your MCP-capable agent.</p>
+      <h2 class="text-3xl font-semibold tracking-tight">Connect your AI agent to Rowset.</h2>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Create an account, copy the setup prompt, and let the agent work through MCP or REST.</p>
     </div>
-    <a href="{% url 'account_signup' %}" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-950 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-500">
-      Create account
-    </a>
+    <a href="{% url 'account_signup' %}" class="fb-button-primary bg-emerald-500 text-slate-950 hover:bg-emerald-400">Create account</a>
   </div>
 </section>
 {% endblock content %}

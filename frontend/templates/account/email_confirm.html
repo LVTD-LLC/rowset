@@ -7,15 +7,15 @@
 
 {% block content %}
 <div class="mx-auto max-w-lg px-4 py-16 sm:px-6 lg:px-8">
-  <section class="fb-card p-6 text-center sm:p-8" aria-labelledby="confirm-email-heading">
+  <section class="fb-card p-6 sm:p-8" aria-labelledby="confirm-email-heading">
     <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Email verification</p>
-    <h1 id="confirm-email-heading" class="mt-3 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Confirm email address</h1>
+    <h1 id="confirm-email-heading" class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Confirm email address</h1>
 
     {% if confirmation %}
       {% user_display confirmation.email_address.user as user_display %}
       {% if can_confirm %}
         <p class="fb-text-muted mt-4 text-sm leading-6">
-          Please confirm that <a href="mailto:{{ confirmation.email_address.email }}" class="fb-focus rounded-full font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400">{{ confirmation.email_address.email }}</a> belongs to {{ user_display }}.
+          Please confirm that <a href="mailto:{{ confirmation.email_address.email }}" class="fb-focus rounded-md font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">{{ confirmation.email_address.email }}</a> belongs to {{ user_display }}.
         </p>
         {% url 'account_confirm_email' confirmation.key as action_url %}
         <form method="post" action="{{ action_url }}" class="mt-8 flex justify-center">
@@ -31,7 +31,7 @@
     {% else %}
       {% url 'account_email' as email_url %}
       <p class="fb-text-muted mt-4 text-sm leading-6">
-        This email confirmation link expired or is invalid. Please <a href="{{ email_url }}" class="fb-focus rounded-full font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400">request a new confirmation email</a>.
+        This email confirmation link expired or is invalid. Please <a href="{{ email_url }}" class="fb-focus rounded-md font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">request a new confirmation email</a>.
       </p>
     {% endif %}
   </section>

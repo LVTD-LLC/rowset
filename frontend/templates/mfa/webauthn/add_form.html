@@ -5,15 +5,15 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Security</p>
-      <h1 class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Add passkey</h1>
-      <p class="fb-text-muted mt-2 text-sm leading-6">Use your device unlock, fingerprint, or face ID to create a passkey for this Rowset account.</p>
+      <h1 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Add passkey</h1>
+      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Use your device unlock, fingerprint, or face ID to create a passkey for this Rowset account.</p>
     </div>
     <a href="{% url 'mfa_index' %}" class="fb-button-secondary">Back to passkeys</a>
   </div>
 
   <form class="mt-8 space-y-6" method="post" action="{% url 'mfa_add_webauthn' %}">
     {% csrf_token %}
-    {% if form.non_field_errors %}<div class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">{{ form.non_field_errors|safe }}</div>{% endif %}
+    {% if form.non_field_errors %}<div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">{{ form.non_field_errors|safe }}</div>{% endif %}
     {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 
     <div class="space-y-4">
@@ -24,12 +24,12 @@
       </div>
 
       {% if form.passwordless %}
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
           <label class="flex gap-3 text-sm text-slate-700 dark:text-slate-200" for="{{ form.passwordless.id_for_label }}">
             {% render_field form.passwordless class="fb-focus mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 dark:border-slate-700" %}
             <span>
               <span class="font-semibold text-slate-900 dark:text-slate-100">Enable passwordless sign in</span>
-              <span class="fb-text-muted mt-1 block">This lets you sign in using only the passkey when your device supports biometric or PIN verification.</span>
+              <span class="mt-1 block text-slate-600 dark:text-slate-300">This lets you sign in using only the passkey when your device supports biometric or PIN verification.</span>
             </span>
           </label>
           {{ form.passwordless.errors|safe }}

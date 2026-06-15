@@ -11,8 +11,8 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Account security</p>
-        <h1 id="email-addresses-heading" class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Email addresses</h1>
-        <p class="fb-text-muted mt-2 text-sm leading-6">Manage addresses used for sign-in, verification, and account recovery.</p>
+        <h1 id="email-addresses-heading" class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Email addresses</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Manage addresses used for sign-in, verification, and account recovery.</p>
       </div>
       <a href="{% url 'settings' %}" class="fb-button-secondary">Back to settings</a>
     </div>
@@ -24,7 +24,7 @@
           <legend class="sr-only">Choose an email address to manage</legend>
           {% for radio in emailaddress_radios %}
             {% with emailaddress=radio.emailaddress %}
-              <label for="{{ radio.id }}" class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-950/60 dark:hover:border-emerald-800">
+              <label for="{{ radio.id }}" class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-800">
                 <input id="{{ radio.id }}" type="radio" name="email" value="{{ emailaddress.email }}" {% if radio.checked %}checked{% endif %} class="fb-focus mt-1 h-4 w-4 border-slate-300 text-emerald-600 dark:border-slate-700">
                 <span class="min-w-0 flex-1">
                   <span class="block break-all font-semibold text-slate-900 dark:text-slate-100">{{ emailaddress.email }}</span>
@@ -51,7 +51,7 @@
         </div>
       </form>
     {% else %}
-      <div class="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100" role="status">No email address is currently associated with your account.</div>
+      <div class="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100" role="status">No email address is currently associated with your account.</div>
     {% endif %}
 
     {% if can_add_email %}
@@ -59,7 +59,7 @@
         <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Add email address</h2>
         <form class="mt-4 space-y-4" method="post" action="{% url 'account_email' %}">
           {% csrf_token %}
-          {% if form.non_field_errors %}<div class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">{{ form.non_field_errors|safe }}</div>{% endif %}
+          {% if form.non_field_errors %}<div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">{{ form.non_field_errors|safe }}</div>{% endif %}
           <div>
             <label for="{{ form.email.id_for_label }}" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Email address</label>
             {% if form.email.errors %}<div id="add-email-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.email.errors|safe }}</div>{% endif %}

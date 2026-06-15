@@ -4,20 +4,20 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Security</p>
-      <h1 class="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">Manage passkeys</h1>
-      <p class="fb-text-muted mt-2 text-sm leading-6">Review, rename, or remove passkeys for your Rowset account.</p>
+      <h1 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Manage passkeys</h1>
+      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Review, rename, or remove passkeys for your Rowset account.</p>
     </div>
     <a href="{% url 'mfa_index' %}" class="fb-button-secondary">Back to passkeys</a>
   </div>
 
   {% if authenticators %}
-    <div class="fb-card mt-8 overflow-hidden">
+    <div class="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
       <ul class="divide-y divide-slate-200 dark:divide-slate-800">
         {% for authenticator in authenticators %}
           <li class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p class="font-semibold text-slate-900 dark:text-slate-100">{{ authenticator }}</p>
-              <p class="fb-text-muted mt-1 text-sm">
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
                 Added {{ authenticator.created_at|date:"SHORT_DATE_FORMAT" }}{% if authenticator.last_used_at %}; last used {{ authenticator.last_used_at|date:"SHORT_DATETIME_FORMAT" }}{% else %}; not used yet{% endif %}.
               </p>
             </div>

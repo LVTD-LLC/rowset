@@ -19,6 +19,7 @@ from apps.datasets.services import (
     column_definitions,
     normalize_column_schema,
     normalize_public_page_size,
+    ordered_row_values,
     rows_to_csv_text,
     rows_to_parquet_bytes,
 )
@@ -57,7 +58,14 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         dataset = self.object
-        context["sample_rows"] = dataset.rows.all()[:5]
+        sample_rows = dataset.rows.all()[:5]
+        sample_row_values = [ordered_row_values(dataset.headers, row.data) for row in sample_rows]
+        if not sample_row_values:
+            sample_row_values = [
+                ordered_row_values(dataset.headers, preview_row)
+                for preview_row in dataset.preview_rows[:5]
+            ]
+        context["sample_row_values"] = sample_row_values
         context["api_key"] = self.request.user.profile.key
         context["api_base_url"] = self.request.build_absolute_uri("/api").rstrip("/")
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
@@ -261,9 +269,14 @@ def public_dataset(request, public_key):
         password_error = "That password did not work. Please try again."
 
     page_obj = None
+    public_row_values = []
     if has_access:
         paginator = Paginator(dataset.rows.all(), dataset.public_page_size)
         page_obj = paginator.get_page(request.GET.get("page"))
+        public_row_values = [
+            ordered_row_values(dataset.headers, row.data)
+            for row in page_obj.object_list
+        ]
 
     return render(
         request,
@@ -273,5 +286,6 @@ def public_dataset(request, public_key):
             "has_access": has_access,
             "password_error": password_error,
             "page_obj": page_obj,
+            "public_row_values": public_row_values,
         },
     )

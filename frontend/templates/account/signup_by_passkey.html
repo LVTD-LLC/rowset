@@ -2,15 +2,15 @@
 {% load widget_tweaks %}
 
 {% block content %}
-<div class="flex justify-center items-center px-4 py-12 my-4 sm:px-6 lg:px-8">
-  <div class="space-y-8 w-full max-w-md">
+<div class="flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+  <div class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950 sm:p-8">
       <div>
-          <h2 class="mt-6 text-3xl font-extrabold text-center text-gray-900 dark:text-gray-100">
+          <h2 class="text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
               Create your account with a passkey
           </h2>
-          <p class="mt-2 text-sm text-center text-gray-600 dark:text-gray-300">
+          <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Or
-            <a href="{% url 'account_login' %}" class="font-medium text-green-600 hover:text-green-500">
+            <a href="{% url 'account_login' %}" class="font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">
                 login if you have one already.
             </a>
           </p>
@@ -19,12 +19,12 @@
         {% csrf_token %}
 
         {{ form.non_field_errors | safe }}
-        <div class="-space-y-px rounded-md shadow-sm">
+        <div class="space-y-4">
           {% if form.username %}
           <div>
             {{ form.username.errors | safe }}
             <label for="username" class="sr-only">Username</label>
-            {% render_field form.username placeholder="Username" id="username" name="username" type="text" autocomplete="username" required=True class="block relative px-3 py-2 w-full placeholder-gray-500 text-gray-900 bg-white dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-400 rounded-none rounded-t-md border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm" %}
+            {% render_field form.username placeholder="Username" id="username" name="username" type="text" autocomplete="username" required=True class="fb-input block w-full px-3 py-2 text-sm" %}
           </div>
           {% endif %}
 
@@ -33,9 +33,9 @@
             {{ form.email.errors | safe }}
             <label for="email" class="sr-only">Email</label>
             {% if form.username %}
-            {% render_field form.email id="email" name="email" placeholder="Email" type="email" autocomplete="email" required="True" class="block relative px-3 py-2 w-full placeholder-gray-500 text-gray-900 bg-white dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-400 rounded-none rounded-b-md border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm" %}
+            {% render_field form.email id="email" name="email" placeholder="Email" type="email" autocomplete="email" required="True" class="fb-input block w-full px-3 py-2 text-sm" %}
             {% else %}
-            {% render_field form.email id="email" name="email" placeholder="Email" type="email" autocomplete="email" required="True" class="block relative px-3 py-2 w-full placeholder-gray-500 text-gray-900 bg-white dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-400 rounded-none rounded-md border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm" %}
+            {% render_field form.email id="email" name="email" placeholder="Email" type="email" autocomplete="email" required="True" class="fb-input block w-full px-3 py-2 text-sm" %}
             {% endif %}
           </div>
           {% endif %}
@@ -47,14 +47,14 @@
 
         <div>
             <button type="submit"
-                    class="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent border-solid rounded-md group hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    class="fb-button-primary w-full">
                 Continue with passkey
             </button>
         </div>
       </form>
 
-      <div>
-        <a href="{% url 'account_signup' %}" class="flex justify-center px-4 py-2 w-full text-sm font-medium text-gray-900 bg-white rounded-md border border-gray-300 border-solid hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:text-gray-100 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-gray-800">
+      <div class="mt-4">
+        <a href="{% url 'account_signup' %}" class="fb-button-secondary w-full">
           Use password signup instead
         </a>
       </div>
