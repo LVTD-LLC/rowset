@@ -4,10 +4,7 @@
     <nav class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Footer navigation">
       <a href="{% url 'privacy_policy' %}" class="hover:text-slate-950 dark:hover:text-white">Privacy</a>
       <a href="{% url 'terms_of_service' %}" class="hover:text-slate-950 dark:hover:text-white">Terms</a>
-      <a href="{% url 'uses' %}" class="hover:text-slate-950 dark:hover:text-white">Stack</a>
-      {% if user.is_authenticated %}
-        <a href="{% url 'docs_home' %}" class="hover:text-slate-950 dark:hover:text-white">Docs</a>
-      {% endif %}
+      <a href="{% url 'docs_home' %}" class="hover:text-slate-950 dark:hover:text-white">Docs</a>
     </nav>
   </div>
 </footer>
