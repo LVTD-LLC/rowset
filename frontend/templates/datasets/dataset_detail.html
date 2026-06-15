@@ -42,7 +42,7 @@
             <h2 id="schema-heading" class="fb-section-title">Schema</h2>
             <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Column names, semantic types, and the stable lookup key used by REST and MCP clients.</p>
           </div>
-          <a href="{{ dataset.get_settings_url }}" class="fb-button-secondary w-full px-3 py-2 text-sm sm:w-auto">Edit column types</a>
+          <a href="{{ dataset.get_settings_url }}#column-types" class="fb-button-secondary w-full px-3 py-2 text-sm sm:w-auto">Edit column types</a>
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
           <span class="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ dataset.headers|length }} columns</span>
@@ -56,38 +56,44 @@
         </div>
       </div>
 
-      <div class="hidden border-b border-slate-200 bg-slate-50 px-5 py-2 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:grid sm:grid-cols-[minmax(0,1fr)_9rem_8rem] sm:gap-4">
-        <div>Column</div>
-        <div>Type</div>
-        <div>Role</div>
-      </div>
-
-      <div class="divide-y divide-slate-200 dark:divide-slate-800">
-        {% for column in column_definitions %}
-          <div class="grid gap-3 px-5 py-4 transition hover:bg-slate-50 dark:hover:bg-slate-900/70 sm:grid-cols-[minmax(0,1fr)_9rem_8rem] sm:items-center sm:gap-4">
-            <div class="min-w-0">
-              <div class="flex min-w-0 flex-wrap items-center gap-2">
-                <span class="break-words text-sm font-semibold text-slate-900 dark:text-slate-100">{{ column.name }}</span>
-                {% if column.name == dataset.index_column %}
-                  <span class="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">Index</span>
-                {% endif %}
-              </div>
-              {% if column.name == dataset.index_column %}
-                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Stable row identifier for lookup and updates.</p>
-              {% endif %}
-            </div>
-            <div>
-              <span class="inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:min-w-24 sm:justify-center">{{ column.type_label }}</span>
-            </div>
-            <div class="text-xs font-medium text-slate-500 dark:text-slate-400">
-              {% if column.name == dataset.index_column %}
-                {% if dataset.index_generated %}Generated key{% else %}Lookup key{% endif %}
-              {% else %}
-                Field
-              {% endif %}
-            </div>
-          </div>
-        {% endfor %}
+      <div class="overflow-x-auto">
+        <table class="fb-table">
+          <caption class="sr-only">Schema columns for {{ dataset.name }}</caption>
+          <thead class="bg-slate-50 dark:bg-slate-900">
+            <tr>
+              <th scope="col" class="min-w-72">Column</th>
+              <th scope="col">Type</th>
+              <th scope="col">Role</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950">
+            {% for column in column_definitions %}
+              <tr class="transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+                <td class="min-w-72 align-top">
+                  <div class="flex min-w-0 flex-wrap items-center gap-2">
+                    <span class="break-words font-semibold text-slate-900 dark:text-slate-100">{{ column.name }}</span>
+                    {% if column.name == dataset.index_column %}
+                      <span class="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">Index</span>
+                    {% endif %}
+                  </div>
+                  {% if column.name == dataset.index_column %}
+                    <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Stable row identifier for lookup and updates.</p>
+                  {% endif %}
+                </td>
+                <td class="align-top">
+                  <span class="inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ column.type_label }}</span>
+                </td>
+                <td class="align-top text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {% if column.name == dataset.index_column %}
+                    {% if dataset.index_generated %}Generated key{% else %}Lookup key{% endif %}
+                  {% else %}
+                    Field
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </section>
 
