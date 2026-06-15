@@ -35,18 +35,64 @@
       </div>
     </div>
 
-    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="headers-heading">
-      <h2 id="headers-heading" class="fb-section-title">Schema</h2>
-      <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <section class="fb-card overflow-hidden" aria-labelledby="schema-heading">
+      <div class="border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="min-w-0">
+            <h2 id="schema-heading" class="fb-section-title">Schema</h2>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Column names, semantic types, and the stable lookup key used by REST and MCP clients.</p>
+          </div>
+          <a href="{{ dataset.get_settings_url }}" class="fb-button-secondary w-full px-3 py-2 text-sm sm:w-auto">Edit column types</a>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <span class="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ dataset.headers|length }} columns</span>
+          {% if dataset.index_column %}
+            <span class="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+              <span>Index</span>
+              <span class="min-w-0 truncate font-mono">{{ dataset.index_column }}</span>
+              {% if dataset.index_generated %}<span class="text-emerald-700 dark:text-emerald-300">generated</span>{% endif %}
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="hidden border-b border-slate-200 bg-slate-50 px-5 py-2 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:grid sm:grid-cols-[minmax(0,1fr)_9rem_8rem] sm:gap-4">
+        <div>Column</div>
+        <div>Type</div>
+        <div>Role</div>
+      </div>
+
+      <div class="divide-y divide-slate-200 dark:divide-slate-800">
         {% for column in column_definitions %}
-          <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-            <div class="max-w-full break-words text-sm font-semibold text-slate-900 dark:text-slate-100">{{ column.name }}</div>
-            <div class="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{{ column.type_label }}</div>
+          <div class="grid gap-3 px-5 py-4 transition hover:bg-slate-50 dark:hover:bg-slate-900/70 sm:grid-cols-[minmax(0,1fr)_9rem_8rem] sm:items-center sm:gap-4">
+            <div class="min-w-0">
+              <div class="flex min-w-0 flex-wrap items-center gap-2">
+                <span class="break-words text-sm font-semibold text-slate-900 dark:text-slate-100">{{ column.name }}</span>
+                {% if column.name == dataset.index_column %}
+                  <span class="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">Index</span>
+                {% endif %}
+              </div>
+              {% if column.name == dataset.index_column %}
+                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Stable row identifier for lookup and updates.</p>
+              {% endif %}
+            </div>
+            <div>
+              <span class="inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:min-w-24 sm:justify-center">{{ column.type_label }}</span>
+            </div>
+            <div class="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {% if column.name == dataset.index_column %}
+                {% if dataset.index_generated %}Generated key{% else %}Lookup key{% endif %}
+              {% else %}
+                Field
+              {% endif %}
+            </div>
           </div>
         {% endfor %}
       </div>
+    </section>
 
-      <h2 class="mt-8 fb-section-title">Sample rows</h2>
+    <section class="fb-card p-5" aria-labelledby="sample-rows-heading">
+      <h2 id="sample-rows-heading" class="fb-section-title">Sample rows</h2>
       <div class="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
         <table class="fb-table">
           <caption class="sr-only">Sample rows for {{ dataset.name }}</caption>
