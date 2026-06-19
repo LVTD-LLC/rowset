@@ -17,7 +17,7 @@ export default class extends Controller {
   }
 
   itemTargetConnected(item) {
-    if (item.dataset.messagesInitialized === "true") return;
+    if (this.dismissals.has(item)) return;
 
     item.dataset.messagesInitialized = "true";
 
