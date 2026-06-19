@@ -3,6 +3,7 @@ module.exports = {
   content: [
     './frontend/templates/**/*.html',
     './frontend/src/**/*.js',
+    './core/**/*.py',
     './apps/**/*.py',
     './filebridge/**/*.py',
   ],

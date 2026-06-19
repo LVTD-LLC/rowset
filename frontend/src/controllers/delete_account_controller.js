@@ -35,15 +35,7 @@ export default class extends Controller {
     this.update();
     document.addEventListener("keydown", this.handleKeydown);
 
-    window.requestAnimationFrame(() => {
-      if (
-        this.hasConfirmationTarget &&
-        this.hasModalTarget &&
-        !this.modalTarget.classList.contains("hidden")
-      ) {
-        this.confirmationTarget.focus();
-      }
-    });
+    window.requestAnimationFrame(() => this.focusConfirmationField());
   }
 
   close() {
@@ -84,6 +76,14 @@ export default class extends Controller {
     this.submitTarget.disabled = true;
     this.submitTarget.setAttribute("aria-disabled", "true");
     this.submitTarget.textContent = "Deleting...";
+  }
+
+  focusConfirmationField() {
+    if (!this.hasConfirmationTarget) return;
+
+    if (this.hasModalTarget && this.modalTarget.classList.contains("hidden")) return;
+
+    this.confirmationTarget.focus();
   }
 
   handleKeydown(event) {
