@@ -34,14 +34,17 @@
             data-feedback-target="feedbackInput"
             class="fb-input mt-2 w-full px-3 py-2 text-sm"
             rows="4"
+            maxlength="2000"
+            aria-describedby="feedback-help"
             placeholder="What’s on your mind?"
             required
           ></textarea>
+          <p id="feedback-help" class="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">Up to 2,000 characters.</p>
         </div>
 
         <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button type="button" data-action="click->feedback#closeFeedback" class="fb-button-secondary">Cancel</button>
-          <button type="submit" class="fb-button-primary">Send feedback</button>
+          <button type="submit" data-feedback-target="submit" class="fb-button-primary">Send feedback</button>
         </div>
       </form>
     </div>

@@ -114,17 +114,16 @@
   }
 }
 
-/* Force fenced docs blocks to stay readable over Tailwind Typography defaults. */
+/* Keep fenced docs blocks readable over Tailwind Typography defaults. */
 .docs-code-blocks pre,
-.docs-code-blocks pre code,
-.docs-code-blocks pre code * {
-  color: #f8fafc !important;
+.docs-code-blocks pre code {
+  color: var(--rs-code-text) !important;
   opacity: 1 !important;
 }
 
 .docs-code-blocks pre,
 .docs-code-blocks pre code {
-  background-color: #020617 !important;
+  background-color: var(--rs-code-bg) !important;
 }
 
 .docs-code-blocks pre code {

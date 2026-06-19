@@ -1,0 +1,11 @@
+services:
+  db:
+    ports: !reset []
+    volumes: !reset []
+
+  redis:
+    ports: !reset []
+    volumes: !reset []
+
+  frontend:
+    ports: !reset []

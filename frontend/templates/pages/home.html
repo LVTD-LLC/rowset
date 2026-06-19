@@ -76,15 +76,15 @@
                 <td>{{ dataset.row_count }}</td>
                 <td><span class="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300">{{ dataset.status }}</span></td>
                 <td>
-                  <div class="flex flex-wrap justify-start gap-2 sm:justify-end">
+                  <div class="grid min-w-36 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                     {% if dataset.status == "ready" %}
-                      <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">CSV</a>
-                      <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Parquet</a>
+                      <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary min-h-11 px-3 py-2 text-sm sm:min-h-10 sm:py-1.5 sm:text-xs">CSV</a>
+                      <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary min-h-11 px-3 py-2 text-sm sm:min-h-10 sm:py-1.5 sm:text-xs">Parquet</a>
                     {% endif %}
-                    <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');">
+                    <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');" class="col-span-2 sm:col-span-1">
                       {% csrf_token %}
                       <input type="hidden" name="next" value="home">
-                      <button type="submit" class="fb-button-secondary min-h-8 border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40">Delete</button>
+                      <button type="submit" class="fb-button-secondary min-h-11 w-full border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40 sm:min-h-10 sm:py-1.5 sm:text-xs">Delete</button>
                     </form>
                   </div>
                 </td>

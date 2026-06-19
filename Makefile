@@ -18,7 +18,7 @@ migrate:
 	docker compose -f docker-compose-local.yml run --rm backend python ./manage.py migrate
 
 test:
-	docker compose -f docker-compose-local.yml run --rm backend pytest $(filter-out $@,$(MAKECMDGOALS))
+	docker compose -f docker-compose-local.yml -f docker-compose-test.yml run --rm backend pytest $(filter-out $@,$(MAKECMDGOALS))
 
 restart-worker:
 	docker compose -f docker-compose-local.yml up -d workers --force-recreate
