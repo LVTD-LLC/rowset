@@ -141,10 +141,10 @@ def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
     profile = request.auth
     try:
         Feedback.objects.create(profile=profile, feedback=data.feedback, page=data.page)
-        return {"status": True, "message": "Feedback submitted successfully"}
+        return {"success": True, "message": "Feedback submitted successfully"}
     except Exception as e:
         logger.error("Failed to submit feedback", error=str(e), profile_id=profile.id)
-        return {"status": False, "message": "Failed to submit feedback. Please try again."}
+        return {"success": False, "message": "Failed to submit feedback. Please try again."}
 
 
 def _serialize_blog_post(blog_post: BlogPost) -> BlogPostItemOut:

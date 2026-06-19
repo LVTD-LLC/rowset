@@ -239,6 +239,53 @@ def test_dataset_detail_orders_sample_cells_by_headers(auth_client, profile):
     assert customer_id_position < name_position < plan_position
 
 
+def test_dataset_detail_exposes_processing_status_live_region(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Processing import",
+        original_filename="processing.csv",
+        source_text="name\nAda\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name"],
+        preview_rows=[{"name": "Ada"}],
+        row_count=0,
+    )
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'aria-label="Dataset status: Processing"' in content
+    assert ">Processing</span>" in content
+    assert 'data-dataset-status-target="message"' in content
+    assert 'role="status"' in content
+    assert 'aria-live="polite"' in content
+    assert "Still importing rows" in content
+
+
+def test_dataset_detail_failed_status_has_accessible_fallback_message(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Failed import",
+        original_filename="failed.csv",
+        source_text="name\nAda\n",
+        status=DatasetStatus.FAILED,
+        headers=["name"],
+        preview_rows=[{"name": "Ada"}],
+        row_count=0,
+    )
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'aria-label="Dataset status: Failed"' in content
+    assert ">Failed</span>" in content
+    assert 'role="alert"' in content
+    assert 'aria-live="assertive"' in content
+    assert "Import failed. Check the source data and try again." in content
+
+
 def test_dataset_delete_removes_owned_dataset(auth_client, profile):
     dataset = create_ready_dataset(profile)
 

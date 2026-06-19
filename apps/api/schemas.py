@@ -9,8 +9,8 @@ from apps.blog.choices import BlogPostStatus
 
 
 class SubmitFeedbackIn(Schema):
-    feedback: str
-    page: str
+    feedback: str = Field(..., min_length=1, max_length=2000)
+    page: str = Field("", max_length=255)
 
 
 class SubmitFeedbackOut(Schema):

@@ -1,79 +1,110 @@
 {% if messages %}
-<div class="fixed inset-x-4 top-4 z-50 space-y-3 sm:left-auto sm:right-4 sm:w-full sm:max-w-sm" data-controller="reveal">
+<div
+  class="pointer-events-none fixed inset-x-4 top-4 z-50 max-h-[calc(100vh-2rem)] space-y-3 overflow-y-auto sm:left-auto sm:right-4 sm:w-full sm:max-w-sm"
+  data-controller="messages"
+  data-messages-container="true"
+  aria-label="Notifications"
+>
   {% for message in messages %}
-  <div
-    data-reveal-target="item"
-    data-message-id="{{ forloop.counter }}"
-    role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}"
-    class="translate-x-full transform rounded-lg border p-4 opacity-0 transition-all duration-200 ease-out {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950 dark:text-red-100{% else %}border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950 dark:text-emerald-100{% endif %}"
-  >
-    <div class="flex items-start gap-3">
-      <div class="mt-0.5 flex-shrink-0" aria-hidden="true">
-        {% if message.tags == 'error' %}
-          <svg class="h-5 w-5 text-red-600 dark:text-red-300" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16Zm-1-5a1 1 0 112 0 1 1 0 01-2 0Zm.25-7.25a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5Z" clip-rule="evenodd" />
-          </svg>
-        {% else %}
-          <svg class="h-5 w-5 text-emerald-600 dark:text-emerald-300" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16Zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.45-1.55-1.55a.75.75 0 10-1.06 1.061l2.17 2.17a.75.75 0 001.137-.089l3.753-5.16Z" clip-rule="evenodd" />
-          </svg>
-        {% endif %}
+    {% if "error" in message.tags %}
+      <div
+        data-messages-target="item"
+        data-messages-auto-dismiss="false"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+        class="pointer-events-auto rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 transition duration-200 ease-out motion-reduce:transition-none dark:border-red-900/60 dark:bg-red-950 dark:text-red-100"
+      >
+        <div class="flex items-start gap-3">
+          <div class="mt-0.5 flex-shrink-0" aria-hidden="true">
+            <svg class="h-5 w-5 text-red-600 dark:text-red-300" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16Zm-1-5a1 1 0 112 0 1 1 0 01-2 0Zm.25-7.25a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5Z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <p class="min-w-0 flex-1 break-words text-sm leading-6">{{ message }}</p>
+          <button data-action="click->messages#dismiss" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-red-700 hover:bg-red-100 dark:text-red-200 dark:hover:bg-red-900/60">
+            <span class="sr-only">Dismiss notification</span>
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
-      <p class="min-w-0 flex-1 text-sm leading-6">{{ message }}</p>
-      <button data-action="click->reveal#hide" data-message-id="{{ forloop.counter }}" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full {% if message.tags == 'error' %}text-red-700 hover:bg-red-100 dark:text-red-200 dark:hover:bg-red-900/60{% else %}text-emerald-700 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/60{% endif %}">
-        <span class="sr-only">Dismiss notification</span>
-        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-  </div>
+    {% elif "warning" in message.tags %}
+      <div
+        data-messages-target="item"
+        data-messages-auto-dismiss="false"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        class="pointer-events-auto rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 transition duration-200 ease-out motion-reduce:transition-none dark:border-amber-900/60 dark:bg-amber-950 dark:text-amber-100"
+      >
+        <div class="flex items-start gap-3">
+          <div class="mt-0.5 flex-shrink-0" aria-hidden="true">
+            <svg class="h-5 w-5 text-amber-600 dark:text-amber-300" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.486 0l6.518 11.59c.75 1.333-.213 2.986-1.743 2.986H3.482c-1.53 0-2.493-1.653-1.743-2.986l6.518-11.59ZM10 7a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 0010 7Zm0 7a1 1 0 100-2 1 1 0 000 2Z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <p class="min-w-0 flex-1 break-words text-sm leading-6">{{ message }}</p>
+          <button data-action="click->messages#dismiss" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-amber-800 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/60">
+            <span class="sr-only">Dismiss notification</span>
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    {% elif "info" in message.tags %}
+      <div
+        data-messages-target="item"
+        data-messages-auto-dismiss="true"
+        data-messages-timeout="8000"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        class="pointer-events-auto rounded-lg border border-sky-200 bg-sky-50 p-4 text-sky-950 transition duration-200 ease-out motion-reduce:transition-none dark:border-sky-900/60 dark:bg-sky-950 dark:text-sky-100"
+      >
+        <div class="flex items-start gap-3">
+          <div class="mt-0.5 flex-shrink-0" aria-hidden="true">
+            <svg class="h-5 w-5 text-sky-600 dark:text-sky-300" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16Zm0-11.25a.75.75 0 110-1.5.75.75 0 010 1.5Zm-.75 2.5a.75.75 0 011.5 0v4a.75.75 0 01-1.5 0v-4Z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <p class="min-w-0 flex-1 break-words text-sm leading-6">{{ message }}</p>
+          <button data-action="click->messages#dismiss" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-sky-700 hover:bg-sky-100 dark:text-sky-200 dark:hover:bg-sky-900/60">
+            <span class="sr-only">Dismiss notification</span>
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    {% else %}
+      <div
+        data-messages-target="item"
+        data-messages-auto-dismiss="true"
+        data-messages-timeout="8000"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        class="pointer-events-auto rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 transition duration-200 ease-out motion-reduce:transition-none dark:border-emerald-900/60 dark:bg-emerald-950 dark:text-emerald-100"
+      >
+        <div class="flex items-start gap-3">
+          <div class="mt-0.5 flex-shrink-0" aria-hidden="true">
+            <svg class="h-5 w-5 text-emerald-600 dark:text-emerald-300" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16Zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.45-1.55-1.55a.75.75 0 10-1.06 1.061l2.17 2.17a.75.75 0 001.137-.089l3.753-5.16Z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <p class="min-w-0 flex-1 break-words text-sm leading-6">{{ message }}</p>
+          <button data-action="click->messages#dismiss" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-emerald-700 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/60">
+            <span class="sr-only">Dismiss notification</span>
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    {% endif %}
   {% endfor %}
 </div>
-
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const items = document.querySelectorAll('[data-reveal-target="item"]');
-    items.forEach((item, index) => {
-      setTimeout(() => {
-        item.classList.remove("opacity-0", "translate-x-full");
-        if (item.getAttribute("role") !== "alert") {
-          startTimer(item);
-        }
-      }, index * 100);
-    });
-  });
-
-  function startTimer(item) {
-    let progress = 0;
-    const interval = setInterval(() => {
-      if (item.matches(":hover, :focus-within")) {
-        return;
-      }
-      if (progress >= 160) {
-        clearInterval(interval);
-        hideMessage(item);
-      } else {
-        progress++;
-      }
-    }, 50);
-  }
-
-  function hideMessage(item) {
-    item.classList.add("opacity-0", "translate-x-full");
-    setTimeout(() => {
-      item.remove();
-    }, 300);
-  }
-
-  document.addEventListener("click", (event) => {
-    const dismissButton = event.target.closest('[data-action="click->reveal#hide"]');
-    if (!dismissButton) return;
-    const messageId = dismissButton.getAttribute("data-message-id");
-    const item = document.querySelector(`[data-reveal-target="item"][data-message-id="${messageId}"]`);
-    if (item) {
-      hideMessage(item);
-    }
-  });
-</script>
 {% endif %}
