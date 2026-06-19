@@ -113,7 +113,7 @@ export default class extends Controller {
         throw new Error(this.errorMessageForStatus(response.status, data.message));
       }
 
-      if (data.success === false || data.status === false) {
+      if (data.success === false) {
         throw new Error(data.message || "Failed to submit feedback. Please try again.");
       }
 

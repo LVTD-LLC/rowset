@@ -36,7 +36,13 @@ export default class extends Controller {
     document.addEventListener("keydown", this.handleKeydown);
 
     window.requestAnimationFrame(() => {
-      this.confirmationTarget?.focus();
+      if (
+        this.hasConfirmationTarget &&
+        this.hasModalTarget &&
+        !this.modalTarget.classList.contains("hidden")
+      ) {
+        this.confirmationTarget.focus();
+      }
     });
   }
 
