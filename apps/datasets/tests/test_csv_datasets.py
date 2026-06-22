@@ -551,6 +551,10 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     assert dataset.updated_by_agent_api_key == openclaw.agent_api_key
     assert row.created_by_agent_api_key == openclaw.agent_api_key
     assert row.updated_by_agent_api_key == openclaw.agent_api_key
+    assert dataset.created_by_actor_label == "Codex"
+    assert dataset.updated_by_actor_label == "OpenClaw"
+    assert row.created_by_actor_label == "OpenClaw"
+    assert row.updated_by_actor_label == "OpenClaw"
 
     client.force_login(profile.user)
     list_content = client.get(reverse("dataset_list")).content.decode()
