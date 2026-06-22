@@ -104,4 +104,15 @@ class TestDocsView:
         assert "Rowset API key: ***" in content
         assert f"Rowset API key: {profile.key}" not in content
         assert "treat the copied prompt like a password" in content
+        assert "ROWSET_API_KEY" in content
         assert "https://rowset.example/SKILL.md" in content
+
+    @override_settings(SITE_URL="https://rowset.example")
+    def test_mcp_docs_use_bearer_api_key_instead_of_oauth(self, client):
+        response = client.get(reverse("docs_page", kwargs={"category": "features", "page": "mcp"}))
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content
+        assert "ROWSET_API_KEY" in content
+        assert "OAuth" not in content

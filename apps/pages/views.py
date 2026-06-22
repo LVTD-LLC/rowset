@@ -50,11 +50,12 @@ class LandingPageView(TemplateView):
                 f"Agent instructions/skill: {instructions_url}",
                 "",
                 "Read the skill URL, configure Rowset as a remote Streamable HTTP MCP "
-                "server, and complete the browser authorization flow when your MCP client "
-                f"asks. If I do not have a Rowset account yet, tell me to sign up at "
-                f"{signup_url}. After setup, call get_user_info, then use get_all_datasets, "
-                "create_dataset, row tools, exports, and update_dataset_public_preview as "
-                "needed.",
+                "server, and use an agent API key as the bearer token. If I do not have "
+                f"a Rowset account yet, tell me to sign up at {signup_url}. After signup, "
+                "the key should be stored in a private ROWSET_API_KEY environment variable "
+                "or client secret store, then configured as the MCP bearer-token env var. "
+                "After setup, call get_user_info, then use get_all_datasets, create_dataset, "
+                "row tools, exports, and update_dataset_public_preview as needed.",
             ]
         )
 

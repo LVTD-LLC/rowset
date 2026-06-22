@@ -72,7 +72,9 @@ host environment. The supported path is the Docker-backed `make test`.
 - Do not imply public previews are an authentication mechanism or a replacement
   for REST/MCP access.
 - Prefer MCP tools over browser automation for AI-agent workflows.
-- Prefer OAuth for hosted MCP setup. Bearer API keys remain a compatibility path.
+- Use bearer API keys for hosted MCP setup. Configure clients with
+  `Authorization: Bearer <key>`, usually through a bearer-token environment
+  variable such as `ROWSET_API_KEY`.
 - Ask before destructive data actions such as deleting datasets, rows, OAuth
   artifacts, or generated files outside the requested scope.
 - Be precise about supported paths. Agent-created datasets through MCP and REST

@@ -163,7 +163,7 @@ class TestHomeView:
         assert "Rowset REST API base: https://rowset.example/api/" in prompt
         assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
         assert f"Rowset API key: {user.profile.key}" in prompt
-        assert "API key only when your client needs bearer-token auth" in prompt
+        assert "Configure the MCP client bearer-token env var to ROWSET_API_KEY" in prompt
         assert "update_dataset_public_preview" in prompt
 
         masked_prompt = build_agent_setup_prompt(request, mask_api_key=True)
