@@ -95,7 +95,6 @@ def test_dashboard_does_not_show_email_confirmation_reminder(client):
     assert "Connect your AI agent to Rowset" in content
 
 
-@override_settings(SITE_URL="http://localhost:8000")
 def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     response = client.get(reverse("landing"))
 
