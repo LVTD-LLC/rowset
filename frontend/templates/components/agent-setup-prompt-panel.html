@@ -1,0 +1,21 @@
+<div class="mt-7 rounded-lg border border-slate-200 bg-slate-950 p-4 dark:border-slate-800" data-controller="copy" data-copy-url-value="{{ agent_setup_prompt_url }}">
+  <div class="flex flex-col gap-3 border-b border-slate-800 pb-4 lg:flex-row lg:items-start lg:justify-between">
+    <div>
+      <h2 class="text-base font-semibold text-white">Copy/paste prompt</h2>
+      <p id="agent-setup-help" class="mt-1 text-sm leading-6 text-slate-400">Best path: remote MCP over HTTPS. The copy button includes your full API key for clients that need bearer-token auth.</p>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+      {% if agent_setup_prompt_dismiss_url %}
+        <form method="post" action="{{ agent_setup_prompt_dismiss_url }}">
+          {% csrf_token %}
+          <button type="submit" class="fb-button-secondary w-full whitespace-nowrap sm:w-auto">Remove from dashboard</button>
+        </form>
+      {% endif %}
+      <button type="button" data-action="copy#copy" class="fb-button-primary whitespace-nowrap">
+        <span data-copy-target="label">Copy agent prompt</span>
+      </button>
+    </div>
+  </div>
+  <pre data-copy-target="source" aria-describedby="agent-setup-help agent-setup-warning" class="mt-4 min-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-slate-800 bg-slate-900 p-4 font-mono text-xs leading-5 text-slate-100">{{ agent_setup_prompt_masked }}</pre>
+</div>
+<p id="agent-setup-warning" class="mt-3 text-sm font-semibold text-amber-700 dark:text-amber-300">Only share this prompt with agents and people you trust.</p>

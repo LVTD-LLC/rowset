@@ -3,31 +3,33 @@
 {% block content %}
 <div class="fb-page">
   <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-    <section aria-labelledby="agent-setup-heading">
-      <div class="max-w-3xl">
-        <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Agent setup</p>
-        <h1 id="agent-setup-heading" class="fb-page-title mt-2">
-          Connect your AI agent to Rowset
-        </h1>
-        <p class="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300">
-          Copy this prompt into a trusted AI agent. It includes the MCP URL, REST API base, masked preview of your API key, and the public skill file the agent should read first.
-        </p>
-      </div>
-
-      <div class="mt-7 rounded-lg border border-slate-200 bg-slate-950 p-4 dark:border-slate-800" data-controller="copy" data-copy-url-value="{{ agent_setup_prompt_url }}">
-        <div class="flex flex-col gap-3 border-b border-slate-800 pb-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 class="text-base font-semibold text-white">Copy/paste prompt</h2>
-            <p id="agent-setup-help" class="mt-1 text-sm leading-6 text-slate-400">Best path: remote MCP over HTTPS. The copy button includes your full API key for clients that need bearer-token auth.</p>
-          </div>
-          <button type="button" data-action="copy#copy" class="fb-button-primary whitespace-nowrap">
-            <span data-copy-target="label">Copy agent prompt</span>
-          </button>
+    {% if show_agent_setup_prompt %}
+      <section aria-labelledby="agent-setup-heading">
+        <div class="max-w-3xl">
+          <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Agent setup</p>
+          <h1 id="agent-setup-heading" class="fb-page-title mt-2">
+            Connect your AI agent to Rowset
+          </h1>
+          <p class="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300">
+            Copy this prompt into a trusted AI agent. It includes the MCP URL, REST API base, masked preview of your API key, and the public skill file the agent should read first.
+          </p>
         </div>
-        <pre data-copy-target="source" aria-describedby="agent-setup-help agent-setup-warning" class="mt-4 min-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-slate-800 bg-slate-900 p-4 font-mono text-xs leading-5 text-slate-100">{{ agent_setup_prompt_masked }}</pre>
-      </div>
-      <p id="agent-setup-warning" class="mt-3 text-sm font-semibold text-amber-700 dark:text-amber-300">Only share this prompt with agents and people you trust.</p>
-    </section>
+
+        {% include "components/agent-setup-prompt-panel.html" %}
+      </section>
+    {% else %}
+      <section aria-labelledby="dashboard-heading">
+        <div class="max-w-3xl">
+          <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Dashboard</p>
+          <h1 id="dashboard-heading" class="fb-page-title mt-2">
+            Rowset control surface
+          </h1>
+          <p class="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300">
+            Review connection details, recent datasets, exports, and public preview state for your agent-managed datasets.
+          </p>
+        </div>
+      </section>
+    {% endif %}
 
     <aside class="grid gap-3" aria-label="Connection details">
       <div class="fb-panel p-4">
@@ -96,7 +98,7 @@
     {% else %}
       <div class="fb-panel p-8">
         <h3 class="text-base font-semibold text-slate-950 dark:text-slate-100">No datasets yet</h3>
-        <p class="mt-2 max-w-lg text-sm leading-6 text-slate-600 dark:text-slate-300">Copy the agent prompt, then ask your agent to create a dataset from a local file, table, or other source it can access.</p>
+        <p class="mt-2 max-w-lg text-sm leading-6 text-slate-600 dark:text-slate-300">Ask your connected agent to create a dataset from a local file, table, or other source it can access.</p>
       </div>
     {% endif %}
   </section>

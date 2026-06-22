@@ -210,6 +210,15 @@ def test_dataset_list_hides_unconfirmed_preview_dataset(auth_client, profile):
     assert "Preview Only" not in content
 
 
+def test_dataset_list_does_not_show_agent_prompt_cta(auth_client):
+    response = auth_client.get(reverse("dataset_list"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Copy agent prompt" not in content
+    assert "Copy the agent prompt" not in content
+
+
 def test_dataset_detail_orders_sample_cells_by_headers(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
