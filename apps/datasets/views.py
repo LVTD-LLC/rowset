@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import content_disposition_header
@@ -31,6 +31,10 @@ from apps.datasets.services import (
 )
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
+
+
+def _visible_project_dataset_count():
+    return Count("datasets", filter=~Q(datasets__status=DatasetStatus.PREVIEWED))
 
 
 def _delete_dataset(dataset: Dataset) -> None:
@@ -59,7 +63,9 @@ class ProjectListView(LoginRequiredMixin, ListView):
     context_object_name = "projects"
 
     def get_queryset(self):
-        return self.request.user.profile.projects.annotate(dataset_count=Count("datasets"))
+        return self.request.user.profile.projects.annotate(
+            dataset_count=_visible_project_dataset_count()
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -76,7 +82,9 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.projects.annotate(dataset_count=Count("datasets"))
+        return self.request.user.profile.projects.annotate(
+            dataset_count=_visible_project_dataset_count()
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

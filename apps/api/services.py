@@ -3,7 +3,7 @@ from typing import Any
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from apps.core.models import Profile
@@ -46,6 +46,10 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "confirmed_at",
     "processed_at",
 )
+
+
+def _visible_project_dataset_count():
+    return Count("datasets", filter=~Q(datasets__status=DatasetStatus.PREVIEWED))
 
 
 class DatasetServiceError(Exception):
@@ -102,7 +106,7 @@ def serialize_project_summary(project: Project) -> dict:
     """Return machine-friendly project metadata without row payloads."""
     dataset_count = getattr(project, "dataset_count", None)
     if dataset_count is None:
-        dataset_count = project.datasets.count()
+        dataset_count = project.datasets.exclude(status=DatasetStatus.PREVIEWED).count()
     return {
         "key": str(project.key),
         "name": project.name,
@@ -117,7 +121,7 @@ def serialize_profile_projects(profile: Profile, limit: int = 100, offset: int =
     """Return a bounded page of projects owned by the authenticated profile."""
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    queryset = profile.projects.annotate(dataset_count=Count("datasets")).only(
+    queryset = profile.projects.annotate(dataset_count=_visible_project_dataset_count()).only(
         "key",
         "name",
         "description",
@@ -140,7 +144,7 @@ def create_profile_project(profile: Profile, *, name: str, description: str | No
     """Create a semantic dataset group for an authenticated profile."""
     normalized_name = _normalize_project_name(name)
     normalized_description = _normalize_project_description(description)
-    if Project.objects.filter(profile=profile, name=normalized_name).exists():
+    if Project.objects.filter(profile=profile, name__iexact=normalized_name).exists():
         raise DatasetServiceError(409, "Project name already exists.")
 
     try:
@@ -163,7 +167,7 @@ def create_profile_project(profile: Profile, *, name: str, description: str | No
 def get_profile_project(profile: Profile, project_key: str) -> Project:
     try:
         return (
-            Project.objects.annotate(dataset_count=Count("datasets"))
+            Project.objects.annotate(dataset_count=_visible_project_dataset_count())
             .only("key", "name", "description", "created_at", "updated_at")
             .get(key=project_key, profile=profile)
         )
@@ -181,7 +185,9 @@ def serialize_profile_project_detail(
     project = get_profile_project(profile, project_key)
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    queryset = _dataset_summary_queryset(project.datasets)
+    queryset = _dataset_summary_queryset(
+        project.datasets.exclude(status=DatasetStatus.PREVIEWED)
+    )
     total_count = project.dataset_count
     datasets = list(queryset[offset : offset + limit])
     return {

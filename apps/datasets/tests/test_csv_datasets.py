@@ -562,6 +562,16 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
 
     assert create_dataset_response.status_code == 201
     assert create_dataset_response.json()["dataset"]["project"]["key"] == project_key
+    project = Project.objects.get(key=project_key, profile=profile)
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Draft upload",
+        original_filename="draft.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["email", "name"],
+        index_column="email",
+    )
 
     list_response = client.get(f"/api/projects?api_key={profile.key}")
     assert list_response.status_code == 200
@@ -571,7 +581,25 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
     assert detail_response.status_code == 200
     assert detail_response.json()["project"]["name"] == "Launch"
     assert detail_response.json()["datasets"]["count"] == 1
+    assert detail_response.json()["datasets"]["total_count"] == 1
     assert detail_response.json()["datasets"]["datasets"][0]["name"] == "Launch contacts"
+    assert [dataset["name"] for dataset in detail_response.json()["datasets"]["datasets"]] == [
+        "Launch contacts"
+    ]
+
+
+def test_project_api_rejects_case_insensitive_duplicate_names(client, profile):
+    Project.objects.create(profile=profile, name="Launch")
+
+    response = client.post(
+        f"/api/projects?api_key={profile.key}",
+        data={"name": "launch"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Project name already exists."
+    assert Project.objects.filter(profile=profile).count() == 1
 
 
 def test_dataset_api_updates_project_assignment(client, profile):
@@ -768,12 +796,24 @@ def test_project_detail_paginates_assigned_datasets(auth_client, profile):
             index_column="email",
             row_count=0,
         )
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Draft upload",
+        original_filename="draft.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["email"],
+        index_column="email",
+    )
 
     response = auth_client.get(project.get_absolute_url())
+    content = response.content.decode()
 
     assert response.status_code == 200
     assert len(response.context["datasets"]) == 100
-    assert "Page 1 of 2" in response.content.decode()
+    assert "101 datasets" in content
+    assert "Draft upload" not in content
+    assert "Page 1 of 2" in content
 
     page_two = auth_client.get(f"{project.get_absolute_url()}?page=2")
 

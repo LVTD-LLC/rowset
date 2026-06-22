@@ -3,6 +3,7 @@ import uuid
 from django.contrib.auth.hashers import check_password
 from django.core.validators import MaxLengthValidator
 from django.db import models
+from django.db.models.functions import Lower
 from django.urls import reverse
 
 from apps.core.base_models import BaseModel
@@ -21,8 +22,9 @@ class Project(BaseModel):
         ordering = ["name", "-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["profile", "name"],
-                name="unique_profile_project_name",
+                "profile",
+                Lower("name"),
+                name="unique_profile_project_name_ci",
             )
         ]
 
