@@ -133,11 +133,14 @@ class HomeView(LoginRequiredMixin, TemplateView):
             "total_rows": dashboard_summary["total_rows"] or 0,
             "public_preview_count": dashboard_summary["public_preview_count"] or 0,
         }
-        context["show_agent_setup_prompt"] = (
+        show_agent_setup_prompt = (
             not profile.agent_setup_prompt_dismissed and not recent_datasets
         )
-        if context["show_agent_setup_prompt"]:
-            active_agent_api_key = profile.agent_api_keys.filter(revoked_at__isnull=True).first()
+        context["show_agent_setup_prompt"] = show_agent_setup_prompt
+        if show_agent_setup_prompt:
+            active_agent_api_key = profile.agent_api_keys.filter(
+                revoked_at__isnull=True
+            ).first()
             context["agent_api_key_form"] = AgentApiKeyCreateForm(profile=profile)
             context["active_agent_api_key"] = active_agent_api_key
             if active_agent_api_key:
