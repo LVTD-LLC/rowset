@@ -1,0 +1,16 @@
+<details class="relative inline-block text-left">
+  <summary class="fb-button-secondary fb-menu-summary">
+    Export
+    <span aria-hidden="true" class="ml-2 text-xs text-slate-500 dark:text-slate-400">&#9662;</span>
+  </summary>
+  <div class="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-focus block px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-900">
+      CSV snapshot
+      <span class="mt-1 block text-xs font-normal leading-5 text-slate-600 dark:text-slate-300">Plain text table export.</span>
+    </a>
+    <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-focus block border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 dark:border-slate-800 dark:text-slate-100 dark:hover:bg-slate-900">
+      Parquet snapshot
+      <span class="mt-1 block text-xs font-normal leading-5 text-slate-600 dark:text-slate-300">Columnar file for analytics tools.</span>
+    </a>
+  </div>
+</details>

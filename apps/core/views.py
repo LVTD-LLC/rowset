@@ -12,6 +12,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
+from django.db.models import Count, Q, Sum
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -170,8 +171,21 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
         dashboard_datasets = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)
-        recent_datasets = list(dashboard_datasets[:5])
+        dashboard_summary = dashboard_datasets.aggregate(
+            total_datasets=Count("id"),
+            total_rows=Sum("row_count"),
+            public_preview_count=Count("id", filter=Q(public_enabled=True)),
+        )
+        recent_datasets = list(
+            dashboard_datasets.select_related("project").order_by("-updated_at")[:5]
+        )
         context["recent_datasets"] = recent_datasets
+        context["dashboard_stats"] = {
+            "total_datasets": dashboard_summary["total_datasets"] or 0,
+            "total_projects": profile.projects.count(),
+            "total_rows": dashboard_summary["total_rows"] or 0,
+            "public_preview_count": dashboard_summary["public_preview_count"] or 0,
+        }
         context["show_agent_setup_prompt"] = (
             not profile.agent_setup_prompt_dismissed and not recent_datasets
         )
@@ -481,25 +495,50 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         from django.utils import timezone
 
         from apps.core.models import Feedback, Profile
+        from apps.datasets.models import Dataset, Project
 
         context = super().get_context_data(**kwargs)
 
         now = timezone.now()
         week_ago = now - timedelta(days=7)
         month_ago = now - timedelta(days=30)
+        visible_datasets = Dataset.objects.exclude(status=DatasetStatus.PREVIEWED)
 
         total_users = User.objects.count()
         total_profiles = Profile.objects.count()
         total_feedback = Feedback.objects.count()
+        total_datasets = visible_datasets.count()
+        total_projects = Project.objects.count()
+        dataset_summary = visible_datasets.aggregate(
+            total_rows=Sum("row_count"),
+            public_preview_count=Count("id", filter=Q(public_enabled=True)),
+        )
 
         new_users_week = User.objects.filter(date_joined__gte=week_ago).count()
         new_users_month = User.objects.filter(date_joined__gte=month_ago).count()
         feedback_week = Feedback.objects.filter(created_at__gte=week_ago).count()
+        datasets_week = visible_datasets.filter(created_at__gte=week_ago).count()
+        datasets_month = visible_datasets.filter(created_at__gte=month_ago).count()
+        projects_week = Project.objects.filter(created_at__gte=week_ago).count()
+        projects_month = Project.objects.filter(created_at__gte=month_ago).count()
 
         recent_users = User.objects.select_related("profile").order_by("-date_joined")[:10]
         recent_feedback = Feedback.objects.select_related("profile__user").order_by("-created_at")[
             :10
         ]
+        recent_datasets = visible_datasets.select_related("profile__user", "project").order_by(
+            "-created_at"
+        )[:10]
+        recent_projects = (
+            Project.objects.select_related("profile__user")
+            .annotate(
+                dataset_count=Count(
+                    "datasets",
+                    filter=~Q(datasets__status=DatasetStatus.PREVIEWED),
+                )
+            )
+            .order_by("-created_at")[:10]
+        )
 
         # Calculate average users per day for last 30 days
         avg_users_per_day = new_users_month / 30 if new_users_month > 0 else 0
@@ -509,11 +548,21 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
                 "total_users": total_users,
                 "total_profiles": total_profiles,
                 "total_feedback": total_feedback,
+                "total_datasets": total_datasets,
+                "total_projects": total_projects,
+                "total_rows": dataset_summary["total_rows"] or 0,
+                "public_preview_count": dataset_summary["public_preview_count"] or 0,
                 "new_users_week": new_users_week,
                 "new_users_month": new_users_month,
                 "feedback_week": feedback_week,
+                "datasets_week": datasets_week,
+                "datasets_month": datasets_month,
+                "projects_week": projects_week,
+                "projects_month": projects_month,
                 "recent_users": recent_users,
                 "recent_feedback": recent_feedback,
+                "recent_datasets": recent_datasets,
+                "recent_projects": recent_projects,
                 "avg_users_per_day": avg_users_per_day,
             }
         )

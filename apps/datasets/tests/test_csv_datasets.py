@@ -219,6 +219,43 @@ def test_dataset_list_does_not_show_agent_prompt_cta(auth_client):
     assert "Copy the agent prompt" not in content
 
 
+def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Research")
+    dataset = create_ready_dataset(profile)
+    dataset.project = project
+    dataset.public_enabled = True
+    dataset.save(update_fields=["project", "public_enabled"])
+    Dataset.objects.create(
+        profile=profile,
+        name="Invoices",
+        original_filename="invoices.csv",
+        status=DatasetStatus.READY,
+        headers=["invoice_id"],
+        row_count=10,
+    )
+
+    response = auth_client.get(reverse("dataset_list"), {"q": "people", "sort": "rows"})
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert response.context["search_query"] == "people"
+    assert response.context["selected_sort"] == "rows"
+    assert response.context["dataset_stats"] == {
+        "total_datasets": 2,
+        "total_rows": 12,
+        "public_preview_count": 1,
+        "total_projects": 1,
+    }
+    assert "Search datasets" in content
+    assert "People" in content
+    assert "Research" in content
+    assert "Invoices" not in content
+    assert reverse("dataset_export", args=[dataset.key, "csv"]) not in content
+    assert reverse("dataset_export", args=[dataset.key, "parquet"]) not in content
+    assert reverse("dataset_delete", args=[dataset.key]) not in content
+    assert "Dataset status" not in content
+
+
 def test_dataset_detail_orders_sample_cells_by_headers(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
@@ -246,6 +283,23 @@ def test_dataset_detail_orders_sample_cells_by_headers(auth_client, profile):
     name_position = content.index(">Ada Lovelace<")
     plan_position = content.index(">Scale<")
     assert customer_id_position < name_position < plan_position
+
+
+def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(dataset.get_absolute_url())
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert "Sample rows" in content
+    assert 'id="schema-heading"' not in content
+    assert "Dataset API" not in content
+    assert "Export CSV" not in content
+    assert "Export Parquet" not in content
+    assert "CSV snapshot" in content
+    assert "Parquet snapshot" in content
+    assert 'aria-label="Dataset status: Ready"' not in content
 
 
 def test_dataset_detail_exposes_processing_status_live_region(auth_client, profile):
@@ -293,6 +347,24 @@ def test_dataset_detail_failed_status_has_accessible_fallback_message(auth_clien
     assert 'role="alert"' in content
     assert 'aria-live="assertive"' in content
     assert "Import failed. Check the source data and try again." in content
+
+
+def test_project_detail_dataset_rows_omit_status_and_actions(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+    dataset = create_ready_dataset(profile)
+    dataset.project = project
+    dataset.save(update_fields=["project"])
+
+    response = auth_client.get(project.get_absolute_url())
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert "All datasets" in content
+    assert "People" in content
+    assert reverse("dataset_export", args=[dataset.key, "csv"]) not in content
+    assert reverse("dataset_export", args=[dataset.key, "parquet"]) not in content
+    assert dataset.get_settings_url() not in content
+    assert "Dataset status" not in content
 
 
 def test_dataset_delete_removes_owned_dataset(auth_client, profile):
