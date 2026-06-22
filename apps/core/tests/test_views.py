@@ -1,4 +1,5 @@
 import pytest
+from allauth.account.models import EmailAddress
 from django.test import override_settings
 from django.urls import reverse
 
@@ -121,6 +122,7 @@ class TestHomeView:
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_settings_view_keeps_agent_setup_prompt_after_dismissal(self, auth_client, profile):
+        EmailAddress.objects.create(user=profile.user, email=profile.user.email, verified=True)
         profile.agent_setup_prompt_dismissed = True
         profile.save(update_fields=["agent_setup_prompt_dismissed"])
 

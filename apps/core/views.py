@@ -171,7 +171,7 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        email_address = EmailAddress.objects.filter(user=user, email__iexact=user.email).first()
+        email_address = EmailAddress.objects.get_for_user(user, user.email)
         context["email_verified"] = email_address is None or email_address.verified
         context["resend_confirmation_url"] = reverse("resend_confirmation")
         context["has_subscription"] = user.profile.has_active_subscription
