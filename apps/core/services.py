@@ -1,8 +1,11 @@
+import base64
 import hashlib
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
 
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
+from django.conf import settings
 from django.utils import timezone
 
 from apps.core.models import AgentApiKey, Profile
@@ -31,20 +34,63 @@ def hash_agent_api_key(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _agent_api_key_fernet(secret_key: str) -> Fernet:
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret_key.encode("utf-8")).digest())
+    return Fernet(key)
+
+
+def _agent_api_key_fernets() -> MultiFernet:
+    secret_keys = [
+        settings.SECRET_KEY,
+        *getattr(settings, "SECRET_KEY_FALLBACKS", []),
+    ]
+    return MultiFernet([_agent_api_key_fernet(secret_key) for secret_key in secret_keys])
+
+
+def encrypt_agent_api_key_token(token: str) -> str:
+    return _agent_api_key_fernets().encrypt(token.encode("utf-8")).decode("utf-8")
+
+
+def get_agent_api_key_token(agent_api_key: AgentApiKey) -> str | None:
+    if not agent_api_key.token_ciphertext:
+        return None
+    try:
+        return (
+            _agent_api_key_fernets()
+            .decrypt(agent_api_key.token_ciphertext.encode("utf-8"))
+            .decode("utf-8")
+        )
+    except InvalidToken:
+        return None
+
+
 def generate_agent_api_key_token() -> str:
     return f"{AGENT_API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
 
 
 def create_agent_api_key(profile: Profile, name: str) -> AgentApiKeyCredential:
     normalized_name = normalize_agent_api_key_name(name)
-    raw_key = generate_agent_api_key_token()
-    agent_api_key = AgentApiKey.objects.create(
+    agent_api_key = AgentApiKey(
         profile=profile,
         name=normalized_name,
-        key_prefix=raw_key[:AGENT_API_KEY_VISIBLE_PREFIX_LENGTH],
-        token_hash=hash_agent_api_key(raw_key),
     )
+    raw_key = generate_agent_api_key_token()
+    agent_api_key.key_prefix = raw_key[:AGENT_API_KEY_VISIBLE_PREFIX_LENGTH]
+    agent_api_key.token_hash = hash_agent_api_key(raw_key)
+    agent_api_key.token_ciphertext = encrypt_agent_api_key_token(raw_key)
+    agent_api_key.save()
     return AgentApiKeyCredential(agent_api_key=agent_api_key, raw_key=raw_key)
+
+
+def _resolve_agent_api_key_by_hash(token: str) -> AgentApiKey | None:
+    return (
+        AgentApiKey.objects.select_related("profile__user")
+        .filter(
+            token_hash=hash_agent_api_key(token),
+            revoked_at__isnull=True,
+        )
+        .first()
+    )
 
 
 def _mark_agent_api_key_used(agent_api_key: AgentApiKey) -> None:
@@ -64,14 +110,7 @@ def resolve_api_key_profile(raw_key: str) -> tuple[Profile, AgentApiKey | None] 
     if not token:
         return None
 
-    agent_api_key = (
-        AgentApiKey.objects.select_related("profile__user")
-        .filter(
-            token_hash=hash_agent_api_key(token),
-            revoked_at__isnull=True,
-        )
-        .first()
-    )
+    agent_api_key = _resolve_agent_api_key_by_hash(token)
     if agent_api_key is not None:
         _mark_agent_api_key_used(agent_api_key)
         return agent_api_key.profile, agent_api_key
