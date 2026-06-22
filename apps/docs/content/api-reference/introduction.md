@@ -16,21 +16,21 @@ Rowset exposes authenticated REST endpoints for account checks, dataset creation
 
 ## Authentication
 
-Use your API key as a bearer token:
+Use your API key as a bearer token. After signing in, copy your key from Settings or from the dashboard agent prompt.
 
 ```http
-Authorization: Bearer {{ api_key_full }}
+Authorization: Bearer {{ api_key_placeholder }}
 ```
 
-Clients that cannot send bearer tokens can use `X-API-Key: {{ api_key_full }}` or the `api_key` query parameter.
+Clients that cannot send bearer tokens can use `X-API-Key: {{ api_key_placeholder }}` or the `api_key` query parameter.
 
 Example request:
 
 ```bash
-curl -H "Authorization: Bearer {{ api_key_full }}" "{{ api_base_url }}/user"
+curl -H "Authorization: Bearer {{ api_key_placeholder }}" "{{ api_base_url }}/user"
 ```
 
-Authenticated docs show your full key so you can copy it into trusted tools. Treat it like a password: do not put it in frontend code, public repos, shared screenshots, or logs.
+Treat API keys like passwords: do not put them in frontend code, public repos, shared screenshots, or logs.
 
 ## Interactive API docs
 

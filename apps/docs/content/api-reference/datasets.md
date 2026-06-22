@@ -13,18 +13,18 @@ Every dataset gets a small REST API. Use these endpoints when your app, script, 
 Prefer the `Authorization` header for private API requests:
 
 ```http
-Authorization: Bearer {{ api_key_full }}
+Authorization: Bearer {{ api_key_placeholder }}
 ```
 
 Query-string API keys are supported only for clients that cannot send headers:
 
 ```text
-?api_key={{ api_key_full }}
+?api_key={{ api_key_placeholder }}
 ```
 
-`X-API-Key: {{ api_key_full }}` is also accepted for clients that support custom headers but not bearer tokens.
+`X-API-Key: {{ api_key_placeholder }}` is also accepted for clients that support custom headers but not bearer tokens.
 
-Keep API keys private. Authenticated docs can show the full key, but avoid pasting it into public screenshots, logs, client-side code, or shared tickets.
+Keep API keys private. Copy your real key from Settings or the dashboard agent prompt only when you are configuring a trusted client.
 
 ## Base URL
 
@@ -160,7 +160,7 @@ Exports the dataset as CSV.
 
 ```bash
 curl \
-  -H "Authorization: Bearer {{ api_key_full }}" \
+  -H "Authorization: Bearer {{ api_key_placeholder }}" \
   "{{ api_base_url }}/datasets/{dataset_key}/rows"
 ```
 

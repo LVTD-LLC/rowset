@@ -4,17 +4,18 @@ import frontmatter
 import markdown
 import yaml
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.template import Context, Template
 from django.urls import reverse
 
-from apps.core.models import Profile
-from apps.core.views import build_agent_setup_prompt
+from apps.core.views import AGENT_API_KEY_MASK
 from filebridge.utils import build_absolute_public_url, get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
+
+API_KEY_PLACEHOLDER = "YOUR_ROWSET_API_KEY"
+USER_EMAIL_PLACEHOLDER = "you@example.com"
 
 
 def load_navigation_config():
@@ -162,17 +163,57 @@ def get_previous_and_next_pages(navigation, current_category, current_page):
     return previous_page, next_page
 
 
-@login_required
 def docs_home_view(request):
     return redirect(
         reverse("docs_page", kwargs={"category": "getting-started", "page": "introduction"})
     )
 
 
-@login_required
+def build_docs_agent_setup_prompt():
+    mcp_url = build_absolute_public_url("/mcp/")
+    rest_api_base_url = build_absolute_public_url("/api/")
+    instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
+
+    return "\n".join(
+        [
+            "Set up Rowset for this user.",
+            "",
+            f"Rowset MCP URL: {mcp_url}",
+            f"Rowset REST API base: {rest_api_base_url}",
+            f"Rowset API key: {AGENT_API_KEY_MASK}",
+            f"Rowset skill: {instructions_url}",
+            "",
+            "Read the instructions/skill URL, configure Rowset as a remote Streamable "
+            "HTTP MCP server, and complete the browser authorization flow opened by your "
+            "MCP client. Use the API key only when your client needs bearer-token auth "
+            "or REST fallback. After setup, call get_user_info to verify the connection, "
+            "then call get_all_datasets to discover available datasets. Use "
+            "create_dataset when you need to create a dataset on the fly. Use "
+            "update_dataset_public_preview when the user asks for a shareable read-only "
+            "preview. Discover the current MCP tools and API docs at runtime before "
+            "working with datasets.",
+        ]
+    )
+
+
+def get_docs_template_context():
+    return {
+        "api_base_url": build_absolute_public_url("/api/").rstrip("/"),
+        "api_docs_url": build_absolute_public_url("/api/docs"),
+        "api_key_placeholder": API_KEY_PLACEHOLDER,
+        "agent_setup_prompt_masked": build_docs_agent_setup_prompt(),
+        "dashboard_url": build_absolute_public_url(reverse("home")),
+        "mcp_url": build_absolute_public_url("/mcp/"),
+        "settings_url": build_absolute_public_url(reverse("settings")),
+        "signup_url": build_absolute_public_url(reverse("account_signup")),
+        "site_url": build_absolute_public_url("/").rstrip("/"),
+        "user_email_placeholder": USER_EMAIL_PLACEHOLDER,
+    }
+
+
 def docs_page_view(request, category, page):
     """
-    Render an authenticated documentation page from markdown with frontmatter and user context.
+    Render a public documentation page from markdown with safe template context.
     """
     content_dir = Path(settings.BASE_DIR) / "apps" / "docs" / "content"
     markdown_file = content_dir / category / f"{page}.md"
@@ -184,29 +225,14 @@ def docs_page_view(request, category, page):
         with open(markdown_file, encoding="utf-8") as file:
             post = frontmatter.load(file)
 
-        profile, _created = Profile.objects.get_or_create(user=request.user)
-        api_key = profile.key
-        api_base_url = build_absolute_public_url("/api/").rstrip("/")
-        docs_template_context = {
-            "api_base_url": api_base_url,
-            "api_key": api_key,
-            "api_key_masked": f"{api_key[:8]}••••••••",
-            "api_key_full": api_key,
-            "api_docs_url": build_absolute_public_url("/api/docs"),
-            "agent_setup_prompt_masked": build_agent_setup_prompt(
-                request,
-                mask_api_key=True,
-                profile=profile,
-            ),
-            "mcp_url": build_absolute_public_url("/mcp/"),
-            "site_url": build_absolute_public_url("/").rstrip("/"),
-            "user_email": request.user.email,
-        }
-        rendered_markdown = Template(post.content).render(Context(docs_template_context))
+        rendered_markdown = Template(post.content).render(Context(get_docs_template_context()))
         markdown_html = markdown.markdown(rendered_markdown, extensions=["fenced_code", "tables"])
 
         navigation = get_docs_navigation()
         previous_page, next_page = get_previous_and_next_pages(navigation, category, page)
+        page_url = build_absolute_public_url(
+            reverse("docs_page", kwargs={"category": category, "page": page})
+        )
 
         default_page_title = page.replace("-", " ").title()
         default_category_title = (
@@ -223,9 +249,13 @@ def docs_page_view(request, category, page):
             "meta_description": post.get("description", ""),
             "meta_keywords": post.get("keywords", ""),
             "author": post.get("author", ""),
-            "canonical_url": post.get("canonical_url", ""),
+            "canonical_url": post.get("canonical_url", page_url),
+            "page_url": page_url,
             "previous_page": previous_page,
             "next_page": next_page,
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
         }
 
         return render(request, "docs/docs_page.html", context)
