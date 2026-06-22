@@ -71,6 +71,35 @@ class Profile(BaseModel):
             ProfileStates.SUBSCRIBED,
             ProfileStates.CANCELLED,
         ] or (self.user.is_superuser and settings.ENVIRONMENT == "prod")
+
+
+class AgentApiKey(BaseModel):
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name="agent_api_keys",
+    )
+    name = models.CharField(max_length=80)
+    key_prefix = models.CharField(max_length=16)
+    token_hash = models.CharField(max_length=64, unique=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profile", "name"],
+                name="unique_agent_api_key_name_per_profile",
+            ),
+        ]
+
+    @property
+    def is_active(self):
+        return self.revoked_at is None
+
+    def __str__(self):
+        return f"{self.name} ({self.profile.user.email})"
     
 class ProfileStateTransition(BaseModel):
     profile = models.ForeignKey(

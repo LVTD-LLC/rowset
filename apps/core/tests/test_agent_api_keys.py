@@ -1,0 +1,87 @@
+import pytest
+from django.urls import reverse
+
+from apps.core.models import AgentApiKey
+from apps.core.services import (
+    create_agent_api_key,
+    hash_agent_api_key,
+    resolve_api_key_profile,
+)
+
+
+pytestmark = pytest.mark.django_db
+
+
+def test_create_agent_api_key_stores_hash_and_returns_raw_key(profile):
+    credential = create_agent_api_key(profile, " Codex ")
+
+    agent_api_key = credential.agent_api_key
+    assert credential.raw_key.startswith("rsk_")
+    assert agent_api_key.name == "Codex"
+    assert agent_api_key.key_prefix == credential.raw_key[:12]
+    assert agent_api_key.token_hash == hash_agent_api_key(credential.raw_key)
+    assert credential.raw_key not in agent_api_key.token_hash
+
+
+def test_resolve_api_key_profile_accepts_named_key_and_records_last_used(profile):
+    credential = create_agent_api_key(profile, "Codex")
+
+    resolved_profile, agent_api_key = resolve_api_key_profile(credential.raw_key)
+
+    assert resolved_profile == profile
+    assert agent_api_key == credential.agent_api_key
+    credential.agent_api_key.refresh_from_db()
+    assert credential.agent_api_key.last_used_at is not None
+
+
+def test_resolve_api_key_profile_keeps_legacy_profile_key(profile):
+    resolved_profile, agent_api_key = resolve_api_key_profile(profile.key)
+
+    assert resolved_profile == profile
+    assert agent_api_key is None
+
+
+def test_settings_create_agent_api_key_shows_raw_key_once(auth_client):
+    response = auth_client.post(
+        reverse("create_agent_api_key"),
+        {"name": "Codex"},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    created_key = response.context["created_agent_api_key"]
+    assert created_key["name"] == "Codex"
+    assert created_key["key"].startswith("rsk_")
+
+    agent_api_key = AgentApiKey.objects.get(name="Codex")
+    assert agent_api_key.token_hash == hash_agent_api_key(created_key["key"])
+    assert created_key["key"] in response.content.decode()
+
+    followup = auth_client.get(reverse("settings"))
+    assert followup.context["created_agent_api_key"] is None
+    assert created_key["key"] not in followup.content.decode()
+
+
+def test_settings_lists_agent_api_keys_without_raw_secret(auth_client, profile):
+    credential = create_agent_api_key(profile, "Reporting Agent")
+
+    response = auth_client.get(reverse("settings"))
+    content = response.content.decode()
+
+    assert "Reporting Agent" in content
+    assert f"{credential.agent_api_key.key_prefix}..." in content
+    assert credential.raw_key not in content
+
+
+def test_settings_rejects_duplicate_agent_api_key_names(auth_client, profile):
+    create_agent_api_key(profile, "Codex")
+
+    response = auth_client.post(
+        reverse("create_agent_api_key"),
+        {"name": "Codex"},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert AgentApiKey.objects.filter(profile=profile, name="Codex").count() == 1
+    assert "already exists" in response.content.decode()

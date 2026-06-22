@@ -23,6 +23,7 @@ from apps.api.services import (
     update_profile_dataset_public_preview,
 )
 from apps.core.models import Profile
+from apps.core.services import resolve_api_key_profile
 from apps.mcp_server.oauth import LEGACY_API_KEY_CLIENT_ID, mcp_auth
 from filebridge.utils import get_filebridge_logger
 
@@ -69,11 +70,12 @@ def _authenticate_profile(api_key: str | None = None) -> Profile:
             "MCP client and complete the browser-based authorization flow."
         )
 
-    try:
-        return Profile.objects.select_related("user").get(key=key)
-    except Profile.DoesNotExist as exc:
+    resolved = resolve_api_key_profile(key)
+    if resolved is None:
         logger.warning("[MCP] Invalid API key")
-        raise PermissionError("Invalid Rowset API key.") from exc
+        raise PermissionError("Invalid Rowset API key.")
+    profile, _agent_api_key = resolved
+    return profile
 
 
 def _get_access_token_profile() -> Profile | None:

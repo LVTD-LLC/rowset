@@ -23,6 +23,7 @@ from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOption
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 
 from apps.core.models import Profile
+from apps.core.services import resolve_api_key_profile
 from apps.mcp_server.models import (
     McpOAuthAccessToken,
     McpOAuthAuthorizationCode,
@@ -41,6 +42,7 @@ AUTHORIZATION_CODE_TTL_SECONDS = 10 * 60
 ACCESS_TOKEN_TTL_SECONDS = 60 * 60
 REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60
 LEGACY_API_KEY_CLIENT_ID = "rowset-api-key"
+AGENT_API_KEY_CLIENT_ID = "rowset-agent-api-key"
 
 
 def build_mcp_base_url() -> str:
@@ -454,25 +456,34 @@ class RowsetOAuthProvider(OAuthProvider):
         if access_token is not None:
             return self._to_access_token(token, access_token)
 
-        try:
-            profile = Profile.objects.select_related("user").get(key=token)
-        except Profile.DoesNotExist:
+        resolved = resolve_api_key_profile(token)
+        if resolved is None:
             return None
+        profile, agent_api_key = resolved
+        client_id = (
+            AGENT_API_KEY_CLIENT_ID
+            if agent_api_key is not None
+            else LEGACY_API_KEY_CLIENT_ID
+        )
+        claims = {
+            "iss": str(self.base_url),
+            "sub": str(profile.id),
+            "profile_id": profile.id,
+            "email": profile.user.email,
+            "legacy_api_key": agent_api_key is None,
+        }
+        if agent_api_key is not None:
+            claims["agent_api_key_id"] = agent_api_key.id
+            claims["agent_api_key_name"] = agent_api_key.name
 
         return AccessToken(
             token=token,
-            client_id=LEGACY_API_KEY_CLIENT_ID,
+            client_id=client_id,
             scopes=[MCP_SCOPE],
             expires_at=None,
             resource=str(self._resource_url) if self._resource_url else None,
             subject=str(profile.id),
-            claims={
-                "iss": str(self.base_url),
-                "sub": str(profile.id),
-                "profile_id": profile.id,
-                "email": profile.user.email,
-                "legacy_api_key": True,
-            },
+            claims=claims,
         )
 
     async def revoke_token(

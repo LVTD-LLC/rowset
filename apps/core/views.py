@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
@@ -19,8 +19,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, UpdateView
 
-from apps.core.forms import ProfileUpdateForm
+from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import Profile
+from apps.core.services import create_agent_api_key
 from apps.core.stripe_webhooks import EVENT_HANDLERS
 from apps.datasets.choices import DatasetStatus
 from filebridge.utils import build_absolute_public_url, get_filebridge_logger
@@ -164,7 +165,10 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        email_address = EmailAddress.objects.get_for_user(user, user.email)
+        try:
+            email_address = EmailAddress.objects.get_for_user(user, user.email)
+        except EmailAddress.DoesNotExist:
+            email_address = None
         context["email_verified"] = email_address is None or email_address.verified
         context["resend_confirmation_url"] = reverse("resend_confirmation")
         context["has_subscription"] = user.profile.has_active_subscription
@@ -173,6 +177,9 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             type=Authenticator.Type.WEBAUTHN,
         ).count()
         context["api_key"] = user.profile.key
+        context["agent_api_key_form"] = AgentApiKeyCreateForm(profile=user.profile)
+        context["agent_api_keys"] = user.profile.agent_api_keys.all()
+        context.setdefault("created_agent_api_key", None)
 
         return context
 
@@ -186,6 +193,44 @@ def agent_instructions_rowset_mcp(request):
 def agent_setup_prompt(request):
     profile, _created = Profile.objects.get_or_create(user=request.user)
     response = JsonResponse({"prompt": build_agent_setup_prompt(request, profile=profile)})
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@login_required
+@require_POST
+def create_agent_api_key_view(request):
+    profile = request.user.profile
+    form = AgentApiKeyCreateForm(request.POST, profile=profile)
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for error in errors:
+                messages.error(request, error)
+        return redirect("settings")
+
+    try:
+        credential = create_agent_api_key(profile, form.cleaned_data["name"])
+    except IntegrityError:
+        messages.error(request, "An agent API key with this name already exists.")
+        return redirect("settings")
+
+    messages.success(
+        request,
+        f"Created an agent API key for {credential.agent_api_key.name}. Copy it now.",
+    )
+    settings_view = UserSettingsView()
+    settings_view.setup(request)
+    settings_view.object = profile
+    response = settings_view.render_to_response(
+        settings_view.get_context_data(
+            object=profile,
+            form=ProfileUpdateForm(instance=profile),
+            created_agent_api_key={
+                "name": credential.agent_api_key.name,
+                "key": credential.raw_key,
+            },
+        )
+    )
     response["Cache-Control"] = "no-store"
     return response
 

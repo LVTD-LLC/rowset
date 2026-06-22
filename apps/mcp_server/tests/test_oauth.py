@@ -10,6 +10,7 @@ from fastmcp.server.auth import AccessToken
 from mcp.server.auth.provider import AuthorizationParams
 from mcp.shared.auth import OAuthClientInformationFull
 
+from apps.core.services import create_agent_api_key
 from apps.mcp_server.models import (
     McpOAuthAccessToken,
     McpOAuthAuthorizationCode,
@@ -17,6 +18,7 @@ from apps.mcp_server.models import (
     McpOAuthRefreshToken,
 )
 from apps.mcp_server.oauth import (
+    AGENT_API_KEY_CLIENT_ID,
     LEGACY_API_KEY_CLIENT_ID,
     LEGACY_MCP_SCOPE,
     MCP_INTERNAL_PATH,
@@ -400,6 +402,21 @@ def test_oauth_provider_accepts_legacy_bearer_api_key(profile):
     assert access_token.claims["legacy_api_key"] is True
 
 
+def test_oauth_provider_accepts_named_agent_api_key(profile):
+    provider = _provider()
+    credential = create_agent_api_key(profile, "Codex")
+
+    access_token = anyio.run(provider.load_access_token, credential.raw_key)
+
+    assert access_token.client_id == AGENT_API_KEY_CLIENT_ID
+    assert access_token.subject == str(profile.id)
+    assert access_token.claims["legacy_api_key"] is False
+    assert access_token.claims["agent_api_key_id"] == credential.agent_api_key.id
+    assert access_token.claims["agent_api_key_name"] == "Codex"
+    credential.agent_api_key.refresh_from_db()
+    assert credential.agent_api_key.last_used_at is not None
+
+
 def test_authenticate_profile_uses_oauth_access_token(monkeypatch, profile):
     monkeypatch.setattr(
         "apps.mcp_server.server.get_access_token",
@@ -412,6 +429,12 @@ def test_authenticate_profile_uses_oauth_access_token(monkeypatch, profile):
     )
 
     assert _authenticate_profile() == profile
+
+
+def test_authenticate_profile_accepts_explicit_named_agent_api_key(profile):
+    credential = create_agent_api_key(profile, "OpenClaw")
+
+    assert _authenticate_profile(api_key=credential.raw_key) == profile
 
 
 def test_root_well_known_routes_include_mounted_mcp_metadata():

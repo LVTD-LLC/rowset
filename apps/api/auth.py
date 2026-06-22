@@ -2,6 +2,7 @@ from django.http import HttpRequest
 from ninja.security import APIKeyQuery
 
 from apps.core.models import Profile
+from apps.core.services import resolve_api_key_profile
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -30,11 +31,13 @@ class APIKeyAuth(APIKeyQuery):
         if not key:
             return None
         logger.info("[Django Ninja Auth] API key request")
-        try:
-            return Profile.objects.select_related("user").get(key=key)
-        except Profile.DoesNotExist:
+        resolved = resolve_api_key_profile(key)
+        if resolved is None:
             logger.warning("[Django Ninja Auth] Invalid API key")
             return None
+        profile, agent_api_key = resolved
+        request.agent_api_key = agent_api_key
+        return profile
 
 
 class SessionAuth:
@@ -66,18 +69,19 @@ class SuperuserAPIKeyAuth(APIKeyQuery):
     def authenticate(self, request: HttpRequest, key: str | None) -> Profile | None:
         if not key:
             return None
-        try:
-            profile = Profile.objects.select_related("user").get(key=key)
-            if profile.user.is_superuser:
-                return profile
-            logger.warning(
-                "[Django Ninja Auth] Non-superuser attempted admin access",
-                profile_id=profile.user.id,
-            )
-            return None
-        except Profile.DoesNotExist:
+        resolved = resolve_api_key_profile(key)
+        if resolved is None:
             logger.warning("[Django Ninja Auth] Profile does not exist")
             return None
+        profile, agent_api_key = resolved
+        if profile.user.is_superuser:
+            request.agent_api_key = agent_api_key
+            return profile
+        logger.warning(
+            "[Django Ninja Auth] Non-superuser attempted admin access",
+            profile_id=profile.user.id,
+        )
+        return None
 
 
 api_key_auth = APIKeyAuth()
