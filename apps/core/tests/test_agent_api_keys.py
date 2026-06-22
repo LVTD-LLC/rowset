@@ -1,5 +1,6 @@
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.core.models import AgentApiKey
 from apps.core.services import (
@@ -32,6 +33,20 @@ def test_resolve_api_key_profile_accepts_named_key_and_records_last_used(profile
     assert agent_api_key == credential.agent_api_key
     credential.agent_api_key.refresh_from_db()
     assert credential.agent_api_key.last_used_at is not None
+
+
+def test_resolve_api_key_profile_throttles_recent_last_used_updates(profile):
+    credential = create_agent_api_key(profile, "Codex")
+    recent_last_used_at = timezone.now()
+    credential.agent_api_key.last_used_at = recent_last_used_at
+    credential.agent_api_key.save(update_fields=["last_used_at", "updated_at"])
+
+    resolved_profile, agent_api_key = resolve_api_key_profile(credential.raw_key)
+
+    assert resolved_profile == profile
+    assert agent_api_key == credential.agent_api_key
+    credential.agent_api_key.refresh_from_db()
+    assert credential.agent_api_key.last_used_at == recent_last_used_at
 
 
 def test_resolve_api_key_profile_keeps_legacy_profile_key(profile):

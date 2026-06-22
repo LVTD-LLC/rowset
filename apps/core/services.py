@@ -1,6 +1,7 @@
 import hashlib
 import secrets
 from dataclasses import dataclass
+from datetime import timedelta
 
 from django.utils import timezone
 
@@ -8,6 +9,7 @@ from apps.core.models import AgentApiKey, Profile
 
 AGENT_API_KEY_PREFIX = "rsk_"
 AGENT_API_KEY_VISIBLE_PREFIX_LENGTH = 12
+AGENT_API_KEY_LAST_USED_UPDATE_INTERVAL = timedelta(minutes=5)
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,11 @@ def create_agent_api_key(profile: Profile, name: str) -> AgentApiKeyCredential:
 
 def _mark_agent_api_key_used(agent_api_key: AgentApiKey) -> None:
     now = timezone.now()
+    if (
+        agent_api_key.last_used_at
+        and agent_api_key.last_used_at > now - AGENT_API_KEY_LAST_USED_UPDATE_INTERVAL
+    ):
+        return
     AgentApiKey.objects.filter(pk=agent_api_key.pk).update(last_used_at=now)
     agent_api_key.last_used_at = now
 
