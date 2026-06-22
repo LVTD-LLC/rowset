@@ -126,7 +126,6 @@ class HomeView(LoginRequiredMixin, TemplateView):
                 "-updated_at"
             )[:5]
         )
-        active_agent_api_key = profile.agent_api_keys.filter(revoked_at__isnull=True).first()
         context["recent_datasets"] = recent_datasets
         context["dashboard_stats"] = {
             "total_datasets": dashboard_summary["total_datasets"] or 0,
@@ -138,6 +137,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
             not profile.agent_setup_prompt_dismissed and not recent_datasets
         )
         if context["show_agent_setup_prompt"]:
+            active_agent_api_key = profile.agent_api_keys.filter(revoked_at__isnull=True).first()
             context["agent_api_key_form"] = AgentApiKeyCreateForm(profile=profile)
             context["active_agent_api_key"] = active_agent_api_key
             if active_agent_api_key:
