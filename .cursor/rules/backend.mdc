@@ -1,5 +1,0 @@
----
-alwaysApply: true
----
-
-- Never generate migration files, use `make manage makemigrations` to generate new ones, after models have been updated.
