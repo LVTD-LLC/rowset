@@ -26,19 +26,31 @@ save it in a tracked file.
 
 ## Setup Workflow
 
-1. Configure a remote Streamable HTTP MCP server named `rowset` with the provided
-   MCP URL.
-2. Store the API key in a private environment variable such as `ROWSET_API_KEY`
-   or in the client's secret store.
-3. Configure the MCP client's bearer-token environment variable to
+1. Read the full setup prompt before acting and identify the `Rowset MCP URL`,
+   `Rowset REST API base`, and full `Rowset API key`.
+2. Store the full API key in a private environment variable named
+   `ROWSET_API_KEY` or in the client's secret store. Do not print it, commit it,
+   paste it back to chat, or save it in a tracked config file.
+3. Configure a remote Streamable HTTP MCP server named `rowset` with the
+   provided MCP URL.
+4. Configure the MCP client's bearer-token environment variable to
    `ROWSET_API_KEY` so requests send `Authorization: Bearer <key>`.
-4. If the client only supports custom headers, set `Authorization` to
+5. For Codex/OpenClaw-compatible clients, use this command shape:
+
+   ```bash
+   codex mcp add rowset --url <Rowset MCP URL> --bearer-token-env-var ROWSET_API_KEY
+   ```
+
+   Replace `<Rowset MCP URL>` with the exact URL from the setup prompt. Do not
+   put the raw key in the command.
+6. If the client only supports custom headers, set `Authorization` to
    `Bearer <key>`. Use `X-API-Key` only for REST clients that cannot send bearer
    tokens.
-5. Never print the key in logs, screenshots, public chats, generated files, or
-   final responses.
-6. After connecting, call `get_user_info` to verify authentication.
-7. Discover available MCP tools and their schemas from the connected server
+7. After connecting, call `get_user_info` to verify authentication. If auth
+   fails, confirm `ROWSET_API_KEY` contains the full key, not only the visible
+   prefix.
+8. Call `get_all_datasets` to verify dataset discovery works.
+9. Discover available MCP tools and their schemas from the connected server
    before acting. Treat the live MCP server and REST API docs as the source of
    truth for exact inputs.
 

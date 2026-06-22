@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- Tightened the copyable agent setup prompt, public `/SKILL.md`, and MCP docs with a concrete Codex/OpenClaw `codex mcp add ... --bearer-token-env-var ROWSET_API_KEY` setup path and first-run verification checklist.
 - Repositioned Rowset as an AI-native, agent-first dataset tool centered on MCP and REST workflows.
 - Reworked the dashboard around the copyable agent setup prompt, connection details, recent datasets, and settings access.
 - Reworked the landing page around a pre-signup agent prompt so visitors can hand setup to an AI agent before creating an account.

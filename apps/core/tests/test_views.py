@@ -117,6 +117,12 @@ class TestHomeView:
         assert "get_user_info" in prompt
         assert "create_dataset" in prompt
         assert "update_dataset_public_preview" in prompt
+        assert (
+            "codex mcp add rowset --url <Rowset MCP URL> "
+            "--bearer-token-env-var ROWSET_API_KEY"
+            in prompt
+        )
+        assert "full key, not only its prefix" in prompt
         assert "Discover the current MCP tools and API docs at runtime" in prompt
 
     @override_settings(SITE_URL="https://rowset.example")
@@ -167,6 +173,8 @@ class TestHomeView:
         assert "# Rowset" in content
         assert "Use Rowset as a stable backend for user-owned structured datasets." in content
         assert "Streamable HTTP" in content
+        assert "codex mcp add rowset --url <Rowset MCP URL>" in content
+        assert "not only the visible" in content
         assert "get_user_info" in content
         assert "create_dataset" in content
         assert "update_dataset_public_preview" in content
@@ -201,7 +209,12 @@ class TestHomeView:
         assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
         assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in prompt
         assert f"Rowset API key: {user.profile.key}" in prompt
-        assert "Configure the MCP client bearer-token env var to ROWSET_API_KEY" in prompt
+        assert "bearer-token env var ROWSET_API_KEY" in prompt
+        assert (
+            "codex mcp add rowset --url <Rowset MCP URL> "
+            "--bearer-token-env-var ROWSET_API_KEY"
+            in prompt
+        )
         assert "update_dataset_public_preview" in prompt
 
         masked_prompt = build_agent_setup_prompt(request, mask_api_key=True)
