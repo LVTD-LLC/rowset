@@ -12,20 +12,7 @@
     {% endif %}
 
     {% if not has_access %}
-      <section class="mx-auto max-w-md rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="password-required-heading">
-        <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Protected table</p>
-        <h1 id="password-required-heading" class="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">Password required</h1>
-        <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Enter the password to view this shared table.</p>
-        <form method="post" class="mt-5 space-y-4">
-          {% csrf_token %}
-          <div>
-            <label for="public-dataset-password" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Table password</label>
-            <input id="public-dataset-password" name="password" type="password" autocomplete="current-password" autofocus aria-describedby="{% if password_error %}public-password-error{% else %}public-password-help{% endif %}" class="fb-input mt-2 w-full px-3 py-2 text-sm">
-            {% if password_error %}<p id="public-password-error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ password_error }}</p>{% else %}<p id="public-password-help" class="mt-2 text-xs text-slate-500 dark:text-slate-400">Ask the dataset owner for access if you do not have the password.</p>{% endif %}
-          </div>
-          <button type="submit" class="fb-button-primary">View table</button>
-        </form>
-      </section>
+      {% include "datasets/partials/public_password_form.html" with password_submit_label="View table" %}
     {% else %}
       <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950" aria-labelledby="public-table-heading">
         <h2 id="public-table-heading" class="sr-only">Rows in {{ dataset.name }}</h2>
@@ -39,11 +26,15 @@
                 {% endfor %}
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-              {% for row_values in public_row_values %}
-                <tr>
-                  {% for value in row_values %}
-                    <td class="max-w-xs whitespace-normal break-words">{{ value }}</td>
+            <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+              {% for public_row in public_rows_with_values %}
+                <tr class="transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+                  {% for value in public_row.values %}
+                    <td>
+                      <a href="{{ public_row.url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value }}"{% if forloop.first %} aria-label="View row {{ public_row.row_number }} details"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>
+                        {% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
+                      </a>
+                    </td>
                   {% endfor %}
                 </tr>
               {% empty %}
