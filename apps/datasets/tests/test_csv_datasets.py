@@ -297,6 +297,8 @@ def test_dataset_detail_links_imported_sample_rows_and_truncates_cells(auth_clie
     assert reverse("dataset_row_detail", args=[dataset.key, row.id]) in content
     assert 'class="fb-focus block max-w-64 truncate' in content
     assert 'aria-label="View row 1 details"' in content
+    assert content.count('aria-label="View row 1 details"') == 1
+    assert 'aria-hidden="true" tabindex="-1"' in content
 
 
 def test_dataset_row_detail_displays_full_row_data(auth_client, profile):

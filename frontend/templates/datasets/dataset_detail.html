@@ -77,7 +77,7 @@
                 {% for value in sample_row.values %}
                   <td>
                     {% if sample_row.url %}
-                      <a href="{{ sample_row.url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value }}" aria-label="View row {{ sample_row.row_number }} details">
+                      <a href="{{ sample_row.url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value }}"{% if forloop.first %} aria-label="View row {{ sample_row.row_number }} details"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>
                         {% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
                       </a>
                     {% else %}
@@ -90,7 +90,7 @@
                 {% if sample_rows_show_actor %}
                   <td class="whitespace-nowrap text-xs font-medium text-slate-500 dark:text-slate-400">
                     {% if sample_row.url %}
-                      <a href="{{ sample_row.url }}" class="fb-focus block max-w-40 truncate hover:text-emerald-700 dark:hover:text-emerald-300" title="{{ sample_row.actor_label }}" aria-label="View row {{ sample_row.row_number }} details">{{ sample_row.actor_label }}</a>
+                      <a href="{{ sample_row.url }}" class="fb-focus block max-w-40 truncate hover:text-emerald-700 dark:hover:text-emerald-300" title="{{ sample_row.actor_label }}" aria-hidden="true" tabindex="-1">{{ sample_row.actor_label }}</a>
                     {% else %}
                       {{ sample_row.actor_label }}
                     {% endif %}
