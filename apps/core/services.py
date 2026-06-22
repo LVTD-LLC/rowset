@@ -4,7 +4,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import timedelta
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
 from django.utils import timezone
 
@@ -34,15 +34,21 @@ def hash_agent_api_key(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def _agent_api_key_fernet() -> Fernet:
-    key = base64.urlsafe_b64encode(
-        hashlib.sha256(settings.SECRET_KEY.encode("utf-8")).digest()
-    )
+def _agent_api_key_fernet(secret_key: str) -> Fernet:
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret_key.encode("utf-8")).digest())
     return Fernet(key)
 
 
+def _agent_api_key_fernets() -> MultiFernet:
+    secret_keys = [
+        settings.SECRET_KEY,
+        *getattr(settings, "SECRET_KEY_FALLBACKS", []),
+    ]
+    return MultiFernet([_agent_api_key_fernet(secret_key) for secret_key in secret_keys])
+
+
 def encrypt_agent_api_key_token(token: str) -> str:
-    return _agent_api_key_fernet().encrypt(token.encode("utf-8")).decode("utf-8")
+    return _agent_api_key_fernets().encrypt(token.encode("utf-8")).decode("utf-8")
 
 
 def get_agent_api_key_token(agent_api_key: AgentApiKey) -> str | None:
@@ -50,7 +56,7 @@ def get_agent_api_key_token(agent_api_key: AgentApiKey) -> str | None:
         return None
     try:
         return (
-            _agent_api_key_fernet()
+            _agent_api_key_fernets()
             .decrypt(agent_api_key.token_ciphertext.encode("utf-8"))
             .decode("utf-8")
         )

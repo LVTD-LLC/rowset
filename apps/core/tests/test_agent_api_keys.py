@@ -184,6 +184,24 @@ def test_agent_api_key_setup_prompt_endpoint_rejects_key_without_recoverable_tok
     assert response.status_code == 404
 
 
+@override_settings(
+    SITE_URL="https://rowset.example",
+    SECRET_KEY="old-secret",
+    SECRET_KEY_FALLBACKS=[],
+)
+def test_agent_api_key_setup_prompt_endpoint_uses_secret_key_fallback(client, profile):
+    credential = create_agent_api_key(profile, "Reporting Agent")
+
+    with override_settings(SECRET_KEY="new-secret", SECRET_KEY_FALLBACKS=["old-secret"]):
+        client.force_login(profile.user)
+        response = client.get(
+            reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid])
+        )
+
+    assert response.status_code == 200
+    assert f"Rowset API key: {credential.raw_key}" in response.json()["prompt"]
+
+
 def test_settings_rejects_duplicate_agent_api_key_names(auth_client, profile):
     create_agent_api_key(profile, "Codex")
 
