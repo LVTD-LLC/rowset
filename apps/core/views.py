@@ -15,7 +15,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q, Sum
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -247,12 +247,15 @@ def agent_api_key_setup_prompt(request, agent_api_key_uuid):
         profile=profile,
         revoked_at__isnull=True,
     )
+    api_key = get_agent_api_key_token(agent_api_key)
+    if api_key is None:
+        raise Http404("Agent API key token is unavailable.")
     response = JsonResponse(
         {
             "prompt": build_agent_setup_prompt(
                 request,
                 profile=profile,
-                api_key=get_agent_api_key_token(agent_api_key),
+                api_key=api_key,
             )
         }
     )
@@ -290,7 +293,6 @@ def create_agent_api_key_view(request):
             profile,
             created_agent_api_key={
                 "name": credential.agent_api_key.name,
-                "uuid": credential.agent_api_key.uuid,
             },
         ),
     }

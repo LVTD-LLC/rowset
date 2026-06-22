@@ -8,7 +8,6 @@ from django.utils import timezone
 from apps.core.models import AgentApiKey
 from apps.core.services import (
     create_agent_api_key,
-    generate_agent_api_key_token,
     get_agent_api_key_token,
     hash_agent_api_key,
     resolve_api_key_profile,
@@ -23,10 +22,12 @@ def test_create_agent_api_key_stores_hash_and_returns_raw_key(profile):
     agent_api_key = credential.agent_api_key
     assert credential.raw_key.startswith("rsk_")
     assert agent_api_key.name == "Codex"
-    assert generate_agent_api_key_token(agent_api_key) == credential.raw_key
     assert agent_api_key.key_prefix == credential.raw_key[:12]
     assert agent_api_key.token_hash == hash_agent_api_key(credential.raw_key)
+    assert agent_api_key.token_ciphertext
     assert credential.raw_key not in agent_api_key.token_hash
+    assert credential.raw_key not in agent_api_key.token_ciphertext
+    assert get_agent_api_key_token(agent_api_key) == credential.raw_key
 
 
 def test_resolve_api_key_profile_accepts_named_key_and_records_last_used(profile):
@@ -160,6 +161,24 @@ def test_agent_api_key_setup_prompt_endpoint_rejects_other_profile_key(
 
     response = auth_client.get(
         reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid])
+    )
+
+    assert response.status_code == 404
+
+
+def test_agent_api_key_setup_prompt_endpoint_rejects_key_without_recoverable_token(
+    auth_client,
+    profile,
+):
+    agent_api_key = AgentApiKey.objects.create(
+        profile=profile,
+        name="Old Agent",
+        key_prefix="rsk_oldtoken",
+        token_hash=hash_agent_api_key("rsk_oldtoken"),
+    )
+
+    response = auth_client.get(
+        reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid])
     )
 
     assert response.status_code == 404

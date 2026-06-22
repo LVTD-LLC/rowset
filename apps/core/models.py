@@ -1,19 +1,13 @@
-from decimal import Decimal, InvalidOperation
-
-
-from django.contrib.auth.models import User
-from django.db import models
-from django.urls import reverse
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.mail import send_mail
+from django.db import models
 from django_q.tasks import async_task
 
 from apps.core.base_models import BaseModel
-from apps.core.choices import ProfileStates, EmailType
+from apps.core.choices import EmailType, ProfileStates
 from apps.core.model_utils import generate_random_key
 from apps.core.utils import send_transactional_email
-
-
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -82,6 +76,7 @@ class AgentApiKey(BaseModel):
     name = models.CharField(max_length=80)
     key_prefix = models.CharField(max_length=16)
     token_hash = models.CharField(max_length=64, unique=True)
+    token_ciphertext = models.TextField(blank=True, default="")
     last_used_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
 
