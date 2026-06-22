@@ -22,6 +22,7 @@
               <div class="min-w-0">
                 <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
                 <p class="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">{{ dataset.original_filename }} · {{ dataset.row_count }} rows</p>
+                <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
                 <p class="mt-1 break-words text-xs font-medium text-slate-500 dark:text-slate-400">
                   {% if dataset.project %}
                     Project: <a href="{{ dataset.project.get_absolute_url }}" class="text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ dataset.project.name }}</a>

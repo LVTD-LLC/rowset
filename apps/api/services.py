@@ -6,7 +6,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from apps.core.models import Profile
+from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
@@ -410,6 +410,7 @@ def create_profile_dataset(
     index_column: str | None = None,
     column_types: dict[str, str] | None = None,
     project_key: str | None = None,
+    agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     """Create a ready API-backed dataset for an authenticated profile."""
     normalized_name = _normalize_dataset_name(name)
@@ -462,6 +463,8 @@ def create_profile_dataset(
         dataset = Dataset.objects.create(
             profile=profile,
             project=project,
+            created_by_agent_api_key=agent_api_key,
+            updated_by_agent_api_key=agent_api_key,
             name=normalized_name,
             original_filename="Created via API",
             file_type=API_CREATED_FILE_TYPE,
@@ -479,6 +482,8 @@ def create_profile_dataset(
             [
                 DatasetRow(
                     dataset=dataset,
+                    created_by_agent_api_key=agent_api_key,
+                    updated_by_agent_api_key=agent_api_key,
                     row_number=row_number,
                     index_value=index_value,
                     data=data,
@@ -499,6 +504,7 @@ def update_profile_dataset_column_types(
     profile: Profile,
     dataset_key: str,
     column_types: dict[str, str],
+    agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
         try:
@@ -521,7 +527,14 @@ def update_profile_dataset_column_types(
             )
         except CSVParseError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
-        dataset.save(update_fields=["column_schema", "updated_at"])
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(
+            update_fields=[
+                "column_schema",
+                "updated_by_agent_api_key",
+                "updated_at",
+            ]
+        )
 
     return {
         "status": "success",
@@ -538,6 +551,7 @@ def update_profile_dataset_public_preview(
     public_page_size: int | None = None,
     public_password: str | None = None,
     clear_public_password: bool = False,
+    agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     if clear_public_password and public_password is not None:
         raise DatasetServiceError(
@@ -571,11 +585,13 @@ def update_profile_dataset_public_preview(
                 raise DatasetServiceError(400, "Public preview password cannot be blank.")
             dataset.public_password_hash = make_password(normalized_password)
 
+        dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
             update_fields=[
                 "public_enabled",
                 "public_page_size",
                 "public_password_hash",
+                "updated_by_agent_api_key",
                 "updated_at",
             ]
         )
@@ -591,6 +607,7 @@ def update_profile_dataset_project(
     profile: Profile,
     dataset_key: str,
     project_key: str | None,
+    agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     """Attach an existing dataset to a project owned by the profile, or detach it."""
     normalized_project_key = str(project_key or "").strip()
@@ -607,7 +624,8 @@ def update_profile_dataset_project(
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
         dataset.project = project
-        dataset.save(update_fields=["project", "updated_at"])
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(update_fields=["project", "updated_by_agent_api_key", "updated_at"])
 
     return {
         "status": "success",
@@ -646,7 +664,12 @@ def list_profile_dataset_rows(
     }
 
 
-def create_profile_dataset_row(profile: Profile, dataset_key: str, data: dict) -> dict:
+def create_profile_dataset_row(
+    profile: Profile,
+    dataset_key: str,
+    data: dict,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
 
@@ -671,12 +694,15 @@ def create_profile_dataset_row(profile: Profile, dataset_key: str, data: dict) -
 
         row = DatasetRow.objects.create(
             dataset=dataset,
+            created_by_agent_api_key=agent_api_key,
+            updated_by_agent_api_key=agent_api_key,
             row_number=row_number,
             index_value=index_value,
             data={header: str(row_data.get(header, "")) for header in dataset.headers},
         )
         dataset.row_count = dataset.rows.count()
-        dataset.save(update_fields=["row_count", "updated_at"])
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
     return {"status": "success", "message": "Row created.", "row": serialize_dataset_row(row)}
 
 
@@ -698,7 +724,13 @@ def get_profile_dataset_row_by_index(profile: Profile, dataset_key: str, index_v
     return {"status": "success", "message": "Row retrieved.", "row": serialize_dataset_row(row)}
 
 
-def patch_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int, data: dict) -> dict:
+def patch_profile_dataset_row(
+    profile: Profile,
+    dataset_key: str,
+    row_id: int,
+    data: dict,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
         try:
@@ -726,16 +758,25 @@ def patch_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int, d
             if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
                 raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
             row.index_value = index_value
-        row.save(update_fields=["data", "index_value", "updated_at"])
+        row.updated_by_agent_api_key = agent_api_key
+        row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
     return {"status": "success", "message": "Row updated.", "row": serialize_dataset_row(row)}
 
 
-def delete_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
+def delete_profile_dataset_row(
+    profile: Profile,
+    dataset_key: str,
+    row_id: int,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
         deleted_count, _ = dataset.rows.filter(id=row_id).delete()
         if deleted_count == 0:
             raise DatasetServiceError(404, "Row not found.")
         dataset.row_count = dataset.rows.count()
-        dataset.save(update_fields=["row_count", "updated_at"])
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
     return {"status": "success", "message": "Row deleted."}

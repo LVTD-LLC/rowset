@@ -7,7 +7,7 @@ from django.db.models.functions import Lower
 from django.urls import reverse
 
 from apps.core.base_models import BaseModel
-from apps.core.models import Profile
+from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 
@@ -37,6 +37,20 @@ class Project(BaseModel):
 
 class Dataset(BaseModel):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="datasets")
+    created_by_agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_datasets",
+    )
+    updated_by_agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_datasets",
+    )
     project = models.ForeignKey(
         Project,
         null=True,
@@ -98,9 +112,31 @@ class Dataset(BaseModel):
             return True
         return check_password(password, self.public_password_hash)
 
+    @property
+    def created_by_actor_label(self) -> str:
+        return _agent_actor_label(self.created_by_agent_api_key)
+
+    @property
+    def updated_by_actor_label(self) -> str:
+        return _agent_actor_label(self.updated_by_agent_api_key)
+
 
 class DatasetRow(BaseModel):
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name="rows")
+    created_by_agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_dataset_rows",
+    )
+    updated_by_agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_dataset_rows",
+    )
     row_number = models.PositiveIntegerField()
     index_value = models.CharField(max_length=1024, blank=True, default="")
     data = models.JSONField(default=dict)
@@ -120,3 +156,13 @@ class DatasetRow(BaseModel):
 
     def __str__(self):
         return f"{self.dataset_id} row {self.row_number}"
+
+    @property
+    def updated_by_actor_label(self) -> str:
+        return _agent_actor_label(self.updated_by_agent_api_key)
+
+
+def _agent_actor_label(agent_api_key: AgentApiKey | None) -> str:
+    if agent_api_key is None:
+        return "Account"
+    return agent_api_key.name

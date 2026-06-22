@@ -455,7 +455,36 @@ def test_authenticate_profile_prefers_oauth_access_token_over_explicit_api_key(
 def test_authenticate_profile_accepts_explicit_named_agent_api_key(profile):
     credential = create_agent_api_key(profile, "OpenClaw")
 
-    assert _authenticate_profile(api_key=credential.raw_key) == profile
+    authenticated_profile = _authenticate_profile(api_key=credential.raw_key)
+
+    assert authenticated_profile == profile
+    assert authenticated_profile._rowset_agent_api_key == credential.agent_api_key
+
+
+def test_authenticate_profile_attaches_named_agent_api_key_from_oauth_claims(
+    monkeypatch,
+    profile,
+):
+    credential = create_agent_api_key(profile, "OpenClaw")
+    monkeypatch.setattr(
+        "apps.mcp_server.server.get_access_token",
+        lambda: AccessToken(
+            token="token",
+            client_id=AGENT_API_KEY_CLIENT_ID,
+            scopes=[MCP_SCOPE],
+            subject=str(profile.id),
+            claims={
+                "profile_id": profile.id,
+                "agent_api_key_id": credential.agent_api_key.id,
+                "agent_api_key_name": "OpenClaw",
+            },
+        ),
+    )
+
+    authenticated_profile = _authenticate_profile()
+
+    assert authenticated_profile == profile
+    assert authenticated_profile._rowset_agent_api_key == credential.agent_api_key
 
 
 def test_root_well_known_routes_include_mounted_mcp_metadata():

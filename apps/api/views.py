@@ -71,6 +71,13 @@ def _raise_http_error(exc: DatasetServiceError) -> NoReturn:
     raise HttpError(exc.status_code, exc.message) from exc
 
 
+def _agent_actor_kwargs(request: HttpRequest) -> dict:
+    agent_api_key = getattr(request, "agent_api_key", None)
+    if agent_api_key is None:
+        return {}
+    return {"agent_api_key": agent_api_key}
+
+
 @api.get("/healthcheck", auth=None, include_in_schema=False, tags=["private"])
 def healthcheck(request: HttpRequest):
     """
@@ -466,6 +473,7 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 index_column=payload.index_column,
                 column_types=payload.column_types,
                 project_key=payload.project_key,
+                **_agent_actor_kwargs(request),
             ),
         )
     except DatasetServiceError as exc:
@@ -489,6 +497,7 @@ def patch_dataset_column_types(
             request.auth,
             dataset_key,
             payload.column_types,
+            **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
@@ -507,7 +516,12 @@ def patch_dataset_project(
 ):
     """Attach an existing dataset to a project, or detach it when project_key is null."""
     try:
-        return update_profile_dataset_project(request.auth, dataset_key, payload.project_key)
+        return update_profile_dataset_project(
+            request.auth,
+            dataset_key,
+            payload.project_key,
+            **_agent_actor_kwargs(request),
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 
@@ -532,6 +546,7 @@ def patch_dataset_public_preview(
             public_page_size=payload.public_page_size,
             public_password=payload.public_password,
             clear_public_password=payload.clear_public_password,
+            **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
@@ -558,7 +573,12 @@ def list_dataset_rows(request: HttpRequest, dataset_key: str, limit: int = 100, 
 )
 def create_dataset_row(request: HttpRequest, dataset_key: str, payload: DatasetRowIn):
     try:
-        return create_profile_dataset_row(request.auth, dataset_key, payload.data)
+        return create_profile_dataset_row(
+            request.auth,
+            dataset_key,
+            payload.data,
+            **_agent_actor_kwargs(request),
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 
@@ -602,7 +622,13 @@ def patch_dataset_row(
     payload: DatasetRowPatchIn,
 ):
     try:
-        return patch_profile_dataset_row(request.auth, dataset_key, row_id, payload.data)
+        return patch_profile_dataset_row(
+            request.auth,
+            dataset_key,
+            row_id,
+            payload.data,
+            **_agent_actor_kwargs(request),
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 
@@ -615,7 +641,12 @@ def patch_dataset_row(
 )
 def delete_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
     try:
-        return delete_profile_dataset_row(request.auth, dataset_key, row_id)
+        return delete_profile_dataset_row(
+            request.auth,
+            dataset_key,
+            row_id,
+            **_agent_actor_kwargs(request),
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 

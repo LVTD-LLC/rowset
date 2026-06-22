@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 import stripe
 from allauth.account.internal.flows.email_verification import (
     send_verification_email_to_address,
@@ -169,7 +171,10 @@ class HomeView(LoginRequiredMixin, TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
-        dashboard_datasets = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)
+        dashboard_datasets = profile.datasets.select_related(
+            "created_by_agent_api_key",
+            "updated_by_agent_api_key",
+        ).exclude(status=DatasetStatus.PREVIEWED)
         recent_datasets = list(dashboard_datasets[:5])
         context["recent_datasets"] = recent_datasets
         context["show_agent_setup_prompt"] = (
