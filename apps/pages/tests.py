@@ -103,7 +103,7 @@ def test_landing_agent_prompt_keeps_localhost_http(client):
     content = response.content.decode()
     assert "Rowset MCP URL: http://localhost:8000/mcp/" in content
     assert "Rowset REST API base: http://localhost:8000/api/" in content
-    assert "Agent skill install: npx skills add LVTD-LLC/rowset" in content
+    assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in content
     assert "update_dataset_public_preview" in content
     assert "Rowset MCP URL: https://localhost:8000/mcp/" not in content
 

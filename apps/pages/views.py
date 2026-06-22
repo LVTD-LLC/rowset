@@ -49,7 +49,7 @@ class LandingPageView(TemplateView):
                 f"Rowset MCP URL: {mcp_url}",
                 f"Rowset REST API base: {rest_api_base_url}",
                 f"Agent instructions/skill: {instructions_url}",
-                f"Agent skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
+                f"Rowset skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
                 "",
                 "Read the skill URL or install the repo skill, configure Rowset as a remote "
                 "Streamable HTTP MCP server, and use an agent API key as the bearer token. "

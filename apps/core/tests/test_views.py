@@ -3,6 +3,7 @@ from allauth.account.models import EmailAddress
 from django.test import override_settings
 from django.urls import reverse
 
+from apps.core import agent_skill
 from apps.core.views import build_agent_setup_prompt
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project
@@ -161,6 +162,23 @@ class TestHomeView:
         assert "create_dataset" in content
         assert "update_dataset_public_preview" in content
         assert "Keep user data private" in content
+
+    def test_agent_instructions_markdown_falls_back_when_skill_file_is_missing(
+        self,
+        client,
+        monkeypatch,
+        tmp_path,
+    ):
+        monkeypatch.setattr(agent_skill, "rowset_skill_path", lambda: tmp_path / "missing.md")
+
+        response = client.get(reverse("agent_instructions_rowset_mcp"))
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "text/markdown; charset=utf-8"
+        content = response.content.decode()
+        assert "The checked-in Rowset skill file could not be loaded" in content
+        assert "npx skills add LVTD-LLC/rowset" in content
+        assert "raw.githubusercontent.com/LVTD-LLC/rowset/main" in content
 
     @override_settings(SITE_URL="http://rowset.example")
     def test_build_agent_setup_prompt_uses_https_public_site_url(self, rf, user):

@@ -2,6 +2,10 @@ from pathlib import Path
 
 from django.conf import settings
 
+from filebridge.utils import get_filebridge_logger
+
+logger = get_filebridge_logger(__name__)
+
 ROWSET_SKILL_INSTALL_COMMAND = "npx skills add LVTD-LLC/rowset"
 ROWSET_SKILL_REPOSITORY_PATH = ".agents/skills/rowset/SKILL.md"
 ROWSET_SKILL_SOURCE_URL = (
@@ -21,6 +25,28 @@ ROWSET_AGENT_SETUP_INSTRUCTIONS = (
     "when the user asks for a shareable read-only preview. Discover the current "
     "MCP tools and API docs at runtime before working with datasets."
 )
+ROWSET_SKILL_FALLBACK_MARKDOWN = f"""---
+name: rowset
+description: >
+  Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP or REST
+  access, or manage Rowset datasets.
+---
+
+# Rowset
+
+The checked-in Rowset skill file could not be loaded from this deployment.
+Install the canonical Rowset skill with:
+
+```bash
+{ROWSET_SKILL_INSTALL_COMMAND}
+```
+
+Or read the source text:
+
+```text
+{ROWSET_SKILL_SOURCE_URL}
+```
+"""
 
 
 def rowset_skill_path() -> Path:
@@ -28,4 +54,13 @@ def rowset_skill_path() -> Path:
 
 
 def load_rowset_skill_markdown() -> str:
-    return rowset_skill_path().read_text(encoding="utf-8")
+    path = rowset_skill_path()
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.warning(
+            "Rowset skill file could not be loaded",
+            path=str(path),
+            error=str(exc),
+        )
+        return ROWSET_SKILL_FALLBACK_MARKDOWN
