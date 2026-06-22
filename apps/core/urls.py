@@ -18,6 +18,16 @@ urlpatterns = [
         name="agent_setup_prompt",
     ),
     path(
+        "settings/agent-api-keys/",
+        views.create_agent_api_key_view,
+        name="create_agent_api_key",
+    ),
+    path(
+        "settings/agent-api-keys/<uuid:agent_api_key_uuid>/revoke/",
+        views.revoke_agent_api_key_view,
+        name="revoke_agent_api_key",
+    ),
+    path(
         "home/dismiss-agent-setup-prompt/",
         views.dismiss_agent_setup_prompt,
         name="dismiss_agent_setup_prompt",

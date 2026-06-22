@@ -1,7 +1,8 @@
 from allauth.account.forms import LoginForm, SignupForm
 from django import forms
 
-from apps.core.models import Profile
+from apps.core.models import AgentApiKey, Profile
+from apps.core.services import normalize_agent_api_key_name
 from apps.core.utils import DivErrorList
 
 
@@ -43,3 +44,24 @@ class ProfileUpdateForm(forms.ModelForm):
             user.save()
             profile.save()
         return profile
+
+
+class AgentApiKeyCreateForm(forms.Form):
+    name = forms.CharField(
+        max_length=80,
+        label="Agent name",
+        help_text="Use a clear name such as Codex, OpenClaw, or Reporting Agent.",
+    )
+
+    def __init__(self, *args, profile=None, **kwargs):
+        self.profile = profile
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        name = normalize_agent_api_key_name(self.cleaned_data["name"])
+        if (
+            self.profile
+            and AgentApiKey.objects.filter(profile=self.profile, name=name).exists()
+        ):
+            raise forms.ValidationError("An agent API key with this name already exists.")
+        return name

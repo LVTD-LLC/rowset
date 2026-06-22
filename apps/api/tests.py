@@ -288,7 +288,10 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "row_count": 42,
                 "public_enabled": True,
                 "public_key": "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
-                "public_url": "https://rowset.example/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
+                "public_url": (
+                    "https://rowset.example/share/datasets/"
+                    "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/"
+                ),
                 "public_page_size": 25,
                 "public_password_protected": True,
                 "created_at": "2026-05-14T00:00:00Z",
@@ -303,20 +306,18 @@ class DatasetListApiUnitTests(SimpleTestCase):
 
 def test_api_key_auth_returns_profile_for_valid_key():
     from apps.api.auth import APIKeyAuth
-    from apps.core.models import Profile
 
     profile = SimpleNamespace(id=11)
+    request = HttpRequest()
 
-    with patch("apps.api.auth.Profile.objects") as objects:
-        objects.select_related.return_value.get.return_value = profile
-        response = APIKeyAuth().authenticate(HttpRequest(), "secret-key")
+    with patch("apps.api.auth.resolve_api_key_profile", return_value=(profile, None)) as resolver:
+        response = APIKeyAuth().authenticate(request, "secret-key")
 
     assert response is profile
-    objects.select_related.assert_called_once_with("user")
-    objects.select_related.return_value.get.assert_called_once_with(key="secret-key")
+    assert request.agent_api_key is None
+    resolver.assert_called_once_with("secret-key")
 
-    with patch("apps.api.auth.Profile.objects") as objects:
-        objects.select_related.return_value.get.side_effect = Profile.DoesNotExist
+    with patch("apps.api.auth.resolve_api_key_profile", return_value=None):
         response = APIKeyAuth().authenticate(HttpRequest(), "bad-key")
 
     assert response is None
@@ -329,46 +330,63 @@ def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
 
     bearer_request = HttpRequest()
     bearer_request.META["HTTP_AUTHORIZATION"] = "Bearer secret-key"
-    with patch("apps.api.auth.Profile.objects") as objects:
-        objects.select_related.return_value.get.return_value = profile
+    with patch("apps.api.auth.resolve_api_key_profile", return_value=(profile, None)) as resolver:
         response = APIKeyAuth()(bearer_request)
 
     assert response is profile
-    objects.select_related.return_value.get.assert_called_once_with(key="secret-key")
+    resolver.assert_called_once_with("secret-key")
 
     header_request = HttpRequest()
     header_request.META["HTTP_X_API_KEY"] = "header-key"
-    with patch("apps.api.auth.Profile.objects") as objects:
-        objects.select_related.return_value.get.return_value = profile
+    with patch("apps.api.auth.resolve_api_key_profile", return_value=(profile, None)) as resolver:
         response = APIKeyAuth()(header_request)
 
     assert response is profile
-    objects.select_related.return_value.get.assert_called_once_with(key="header-key")
+    resolver.assert_called_once_with("header-key")
+
+
+@pytest.mark.django_db
+def test_api_key_auth_accepts_named_agent_api_key(django_user_model):
+    from apps.api.auth import APIKeyAuth
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="agentapiuser",
+        email="agentapiuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(user.profile, "Codex")
+    request = HttpRequest()
+
+    response = APIKeyAuth().authenticate(request, credential.raw_key)
+
+    assert response == user.profile
+    assert request.agent_api_key.name == "Codex"
+    request.agent_api_key.refresh_from_db()
+    assert request.agent_api_key.last_used_at is not None
 
 
 def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
     from apps.api.auth import SuperuserAPIKeyAuth
-    from apps.core.models import Profile
 
     superuser_profile = SimpleNamespace(id=11, user=SimpleNamespace(id=21, is_superuser=True))
     regular_profile = SimpleNamespace(id=12, user=SimpleNamespace(id=22, is_superuser=False))
 
-    with patch("apps.api.auth.Profile.objects") as objects:
-        objects.select_related.return_value.get.return_value = superuser_profile
+    with patch(
+        "apps.api.auth.resolve_api_key_profile",
+        return_value=(superuser_profile, None),
+    ) as resolver:
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "secret-key")
 
     assert response is superuser_profile
-    objects.select_related.assert_called_once_with("user")
-    objects.select_related.return_value.get.assert_called_once_with(key="secret-key")
+    resolver.assert_called_once_with("secret-key")
 
-    with patch("apps.api.auth.Profile.objects") as objects:
-        objects.select_related.return_value.get.return_value = regular_profile
+    with patch("apps.api.auth.resolve_api_key_profile", return_value=(regular_profile, None)):
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "regular-key")
 
     assert response is None
 
-    with patch("apps.api.auth.Profile.objects") as objects:
-        objects.select_related.return_value.get.side_effect = Profile.DoesNotExist
+    with patch("apps.api.auth.resolve_api_key_profile", return_value=None):
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "bad-key")
 
     assert response is None

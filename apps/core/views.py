@@ -11,16 +11,18 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, UpdateView
 
-from apps.core.forms import ProfileUpdateForm
-from apps.core.models import Profile
+from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
+from apps.core.models import AgentApiKey, Profile
+from apps.core.services import create_agent_api_key
 from apps.core.stripe_webhooks import EVENT_HANDLERS
 from apps.datasets.choices import DatasetStatus
 from filebridge.utils import build_absolute_public_url, get_filebridge_logger
@@ -83,6 +85,39 @@ The setup prompt should provide:
 - Ask the user before destructive changes such as deleting datasets or rows.
 - Keep user data private and only access the Rowset resources needed for the task.
 """
+
+
+def user_settings_context(
+    request: HttpRequest,
+    profile: Profile,
+    *,
+    created_agent_api_key: dict | None = None,
+) -> dict:
+    user = request.user
+    try:
+        email_address = EmailAddress.objects.get_for_user(user, user.email)
+    except EmailAddress.DoesNotExist:
+        email_address = None
+
+    return {
+        "email_verified": email_address is None or email_address.verified,
+        "resend_confirmation_url": reverse("resend_confirmation"),
+        "has_subscription": profile.has_active_subscription,
+        "passkey_count": Authenticator.objects.filter(
+            user=user,
+            type=Authenticator.Type.WEBAUTHN,
+        ).count(),
+        "api_key": profile.key,
+        "agent_api_key_form": AgentApiKeyCreateForm(profile=profile),
+        "agent_api_keys": profile.agent_api_keys.all(),
+        "created_agent_api_key": created_agent_api_key,
+        "agent_setup_prompt_masked": build_agent_setup_prompt(
+            request,
+            mask_api_key=True,
+            profile=profile,
+        ),
+        "agent_setup_prompt_url": reverse("agent_setup_prompt"),
+    }
 
 
 def build_agent_setup_prompt(
@@ -169,25 +204,7 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user = self.request.user
-
-        email_address = EmailAddress.objects.get_for_user(user, user.email)
-        context["email_verified"] = email_address is None or email_address.verified
-        context["resend_confirmation_url"] = reverse("resend_confirmation")
-        context["has_subscription"] = user.profile.has_active_subscription
-        context["passkey_count"] = Authenticator.objects.filter(
-            user=user,
-            type=Authenticator.Type.WEBAUTHN,
-        ).count()
-        profile = user.profile
-        context["api_key"] = profile.key
-        context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
-            self.request,
-            mask_api_key=True,
-            profile=profile,
-        )
-        context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
-
+        context.update(user_settings_context(self.request, self.request.user.profile))
         return context
 
 
@@ -202,6 +219,62 @@ def agent_setup_prompt(request):
     response = JsonResponse({"prompt": build_agent_setup_prompt(request, profile=profile)})
     response["Cache-Control"] = "no-store"
     return response
+
+
+@login_required
+@require_POST
+def create_agent_api_key_view(request):
+    profile = request.user.profile
+    form = AgentApiKeyCreateForm(request.POST, profile=profile)
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for error in errors:
+                messages.error(request, error)
+        return redirect("settings")
+
+    try:
+        credential = create_agent_api_key(profile, form.cleaned_data["name"])
+    except IntegrityError:
+        messages.error(request, "An agent API key with this name already exists.")
+        return redirect("settings")
+
+    messages.success(
+        request,
+        f"Created an agent API key for {credential.agent_api_key.name}. Copy it now.",
+    )
+    context = {
+        "object": profile,
+        "profile": profile,
+        "form": ProfileUpdateForm(instance=profile),
+        **user_settings_context(
+            request,
+            profile,
+            created_agent_api_key={
+                "name": credential.agent_api_key.name,
+                "key": credential.raw_key,
+            },
+        ),
+    }
+    response = render(request, UserSettingsView.template_name, context)
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@login_required
+@require_POST
+def revoke_agent_api_key_view(request, agent_api_key_uuid):
+    agent_api_key = get_object_or_404(
+        AgentApiKey,
+        uuid=agent_api_key_uuid,
+        profile=request.user.profile,
+    )
+    if agent_api_key.revoked_at is None:
+        agent_api_key.revoked_at = timezone.now()
+        agent_api_key.save(update_fields=["revoked_at", "updated_at"])
+        messages.success(request, f"Revoked {agent_api_key.name}.")
+    else:
+        messages.info(request, f"{agent_api_key.name} is already revoked.")
+    return redirect("settings")
 
 
 @login_required
