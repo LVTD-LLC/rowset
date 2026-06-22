@@ -1,6 +1,9 @@
 import pytest
+from django.http import Http404
 from django.test import override_settings
 from django.urls import reverse
+
+from apps.docs.views import docs_page_view
 
 
 @pytest.fixture
@@ -44,6 +47,25 @@ class TestDocsView:
         content = response.content.decode()
         assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content
         assert "you@example.com" in content
+        assert "Sign in" in content
+        assert "Create account" in content
+
+    def test_docs_page_rejects_path_traversal(self, rf):
+        request = rf.get("/docs/../AGENTS/")
+
+        with pytest.raises(Http404):
+            docs_page_view(request, "..", "AGENTS")
+
+    @override_settings(SITE_URL="https://rowset.example")
+    def test_anonymous_agent_access_docs_use_masked_prompt(self, client, profile):
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "features", "page": "agent-access"})
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Rowset API key: ***" in content
+        assert profile.key not in content
         assert "Sign in" in content
         assert "Create account" in content
 

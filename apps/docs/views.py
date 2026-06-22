@@ -215,10 +215,10 @@ def docs_page_view(request, category, page):
     """
     Render a public documentation page from markdown with safe template context.
     """
-    content_dir = Path(settings.BASE_DIR) / "apps" / "docs" / "content"
-    markdown_file = content_dir / category / f"{page}.md"
+    content_dir = (Path(settings.BASE_DIR) / "apps" / "docs" / "content").resolve()
+    markdown_file = (content_dir / category / f"{page}.md").resolve()
 
-    if not markdown_file.exists():
+    if not markdown_file.is_relative_to(content_dir) or not markdown_file.exists():
         raise Http404("Documentation page not found")
 
     try:
