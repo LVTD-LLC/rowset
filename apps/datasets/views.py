@@ -553,7 +553,7 @@ def public_dataset_row_detail(request, public_key, row_id):
     row_cells = []
     if has_access:
         dataset_row = get_object_or_404(
-            DatasetRow.objects.select_related("dataset"),
+            DatasetRow,
             dataset=dataset,
             id=row_id,
         )
