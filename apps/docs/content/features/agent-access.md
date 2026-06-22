@@ -47,6 +47,16 @@ For MCP, store the key in a private environment variable such as
 `ROWSET_API_KEY`, then configure the MCP client's bearer-token env var to
 `ROWSET_API_KEY`. That makes the client send `Authorization: Bearer <key>`.
 
+For Codex/OpenClaw-compatible clients, the concrete setup command is:
+
+```bash
+codex mcp add rowset --url {{ mcp_url }} --bearer-token-env-var ROWSET_API_KEY
+```
+
+Set `ROWSET_API_KEY` in the agent's private runtime environment before running
+or syncing the client. The command records only the env-var name, not the raw
+key.
+
 If a client only supports custom headers, set `Authorization` to `Bearer <key>`.
 Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 

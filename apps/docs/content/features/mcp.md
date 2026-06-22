@@ -30,18 +30,27 @@ set it to `ROWSET_API_KEY` so MCP requests include:
 Authorization: Bearer {{ api_key_placeholder }}
 ```
 
+For Codex/OpenClaw-compatible clients, use:
+
+```bash
+codex mcp add rowset --url {{ mcp_url }} --bearer-token-env-var ROWSET_API_KEY
+```
+
+Make sure `ROWSET_API_KEY` is present in the agent runtime environment and holds
+the full key, not only the visible key prefix.
+
 If your client only supports custom headers, set a custom `Authorization` header
 with the value `Bearer {{ api_key_placeholder }}`. Use `X-API-Key` only for REST
 clients that cannot send bearer tokens.
 
 ## First checks
 
-After connecting, verify the authenticated user/profile with the user-info tool
-exposed by the current MCP server, then discover the available dataset tools and
-their schemas from your MCP client.
-
 Do not treat this page as the source of truth for tool names or inputs. The MCP
 server and the REST API docs describe the current surface.
+
+After connecting, discover the available tools and schemas from your MCP client,
+then verify the authenticated user/profile with the user-info tool exposed by the
+current MCP server.
 
 Then discover datasets with:
 
