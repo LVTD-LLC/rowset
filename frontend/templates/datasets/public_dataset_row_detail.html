@@ -4,6 +4,7 @@
 <div class="fb-page">
   <div class="space-y-6">
     {% if not has_access %}
+      <a href="{{ dataset.get_public_url }}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← Public preview</a>
       {% include "datasets/partials/public_password_form.html" with password_submit_label="View row" %}
     {% else %}
       <a href="{{ dataset.get_public_url }}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← {{ dataset.name }}</a>

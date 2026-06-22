@@ -1134,6 +1134,8 @@ def test_public_dataset_links_rows_and_truncates_cells(client, profile):
     dataset.public_enabled = True
     dataset.save(update_fields=["public_enabled"])
     row = dataset.rows.first()
+    row.data["email"] = None
+    row.save(update_fields=["data"])
 
     response = client.get(dataset.get_public_url())
     content = response.content.decode()
@@ -1146,6 +1148,8 @@ def test_public_dataset_links_rows_and_truncates_cells(client, profile):
     assert 'aria-label="View row 1 details"' in content
     assert content.count('aria-label="View row 1 details"') == 1
     assert 'aria-hidden="true" tabindex="-1"' in content
+    assert 'title="None"' not in content
+    assert 'title=""' in content
 
 
 def test_public_dataset_row_detail_displays_full_row_data(client, profile):
@@ -1234,9 +1238,13 @@ def test_public_dataset_row_detail_password_protection(auth_client, client, prof
     row_url = reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
 
     locked_response = client.get(row_url)
+    locked_content = locked_response.content.decode()
     assert locked_response.status_code == 200
-    assert "Password required" in locked_response.content.decode()
-    assert "Ada" not in locked_response.content.decode()
+    assert "Password required" in locked_content
+    assert "Public preview" in locked_content
+    assert dataset.get_public_url() in locked_content
+    assert dataset.name not in locked_content
+    assert "Ada" not in locked_content
 
     wrong_response = client.post(row_url, {"password": "wrong"})
     assert "That password did not work" in wrong_response.content.decode()

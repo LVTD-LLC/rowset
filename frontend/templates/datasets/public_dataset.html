@@ -31,7 +31,7 @@
                 <tr class="transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
                   {% for value in public_row.values %}
                     <td>
-                      <a href="{{ public_row.url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value }}"{% if forloop.first %} aria-label="View row {{ public_row.row_number }} details"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>
+                      <a href="{{ public_row.url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value|default_if_none:'' }}"{% if forloop.first %} aria-label="View row {{ public_row.row_number }} details"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>
                         {% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
                       </a>
                     </td>
