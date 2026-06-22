@@ -54,8 +54,9 @@ def _mark_agent_api_key_used(agent_api_key: AgentApiKey) -> None:
         and agent_api_key.last_used_at > now - AGENT_API_KEY_LAST_USED_UPDATE_INTERVAL
     ):
         return
-    AgentApiKey.objects.filter(pk=agent_api_key.pk).update(last_used_at=now)
+    AgentApiKey.objects.filter(pk=agent_api_key.pk).update(last_used_at=now, updated_at=now)
     agent_api_key.last_used_at = now
+    agent_api_key.updated_at = now
 
 
 def resolve_api_key_profile(raw_key: str) -> tuple[Profile, AgentApiKey | None] | None:

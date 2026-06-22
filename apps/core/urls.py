@@ -22,6 +22,11 @@ urlpatterns = [
         views.create_agent_api_key_view,
         name="create_agent_api_key",
     ),
+    path(
+        "settings/agent-api-keys/<uuid:agent_api_key_uuid>/revoke/",
+        views.revoke_agent_api_key_view,
+        name="revoke_agent_api_key",
+    ),
     # Utils
     path("resend-confirmation/", views.resend_confirmation_email, name="resend_confirmation"),
     path("delete-account/", views.delete_account, name="delete_account"),

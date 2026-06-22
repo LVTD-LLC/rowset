@@ -80,18 +80,31 @@
       </form>
 
       <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-        <div class="grid grid-cols-[1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400 sm:grid-cols-[1fr_auto_auto_auto]">
+        <div class="grid grid-cols-[1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
           <span>Name</span>
           <span>Prefix</span>
           <span class="hidden sm:block">Created</span>
           <span class="hidden sm:block">Last used</span>
+          <span class="hidden sm:block">Status</span>
+          <span class="hidden sm:block">Action</span>
         </div>
         {% for agent_api_key in agent_api_keys %}
-        <div class="grid grid-cols-[1fr_auto] gap-3 border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800 sm:grid-cols-[1fr_auto_auto_auto]">
+        <div class="grid grid-cols-[1fr_auto] gap-3 border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
           <span class="min-w-0 font-semibold text-slate-900 dark:text-slate-100">{{ agent_api_key.name }}</span>
           <span class="font-mono text-slate-600 dark:text-slate-300">{{ agent_api_key.key_prefix }}...</span>
           <span class="hidden text-slate-600 dark:text-slate-300 sm:block">{{ agent_api_key.created_at|date:"M j, Y" }}</span>
           <span class="hidden text-slate-600 dark:text-slate-300 sm:block">{% if agent_api_key.last_used_at %}{{ agent_api_key.last_used_at|date:"M j, Y" }}{% else %}Never{% endif %}</span>
+          <span class="text-slate-600 dark:text-slate-300">{% if agent_api_key.revoked_at %}Revoked{% else %}Active{% endif %}</span>
+          <span class="flex justify-end">
+            {% if not agent_api_key.revoked_at %}
+            <form method="post" action="{% url 'revoke_agent_api_key' agent_api_key.uuid %}">
+              {% csrf_token %}
+              <button type="submit" class="fb-button-secondary px-3 py-1.5 text-xs">Revoke</button>
+            </form>
+            {% else %}
+            <span class="text-slate-400 dark:text-slate-500">-</span>
+            {% endif %}
+          </span>
         </div>
         {% empty %}
         <div class="border-t border-slate-200 px-4 py-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">No agent API keys yet.</div>
