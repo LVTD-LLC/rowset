@@ -4,6 +4,7 @@ from django.test import override_settings
 from django.urls import reverse
 
 from apps.core import agent_skill
+from apps.core.services import create_agent_api_key
 from apps.core.views import build_agent_setup_prompt
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project
@@ -27,26 +28,73 @@ class TestHomeView:
         content = response.content.decode()
 
         assert "Connect your AI agent to Rowset" in content
-        assert "Copy agent prompt" in content
+        assert "Setup tasks" in content
+        assert "Create an agent API key" in content
+        assert "Copy the setup prompt" in content
+        assert "Your prompt will appear here" in content
         assert "Connect Google Sheets" not in content
         assert "Upload dataset" not in content
 
     @override_settings(SITE_URL="https://rowset.example")
-    def test_home_view_includes_agent_setup_prompt(self, auth_client, profile):
+    def test_home_view_prompts_for_agent_api_key_before_copy_prompt(
+        self,
+        auth_client,
+        profile,
+    ):
         url = reverse("home")
         response = auth_client.get(url)
 
-        masked_prompt = response.context["agent_setup_prompt_masked"]
         content = response.content.decode()
+        assert "agent_setup_prompt_masked" not in response.context
         assert "agent_setup_prompt" not in response.context
         assert response.context["show_agent_setup_prompt"] is True
+        assert response.context["active_agent_api_key"] is None
+        assert "Create an agent API key" in content
+        assert "Create agent key" in content
+        assert "Your prompt will appear here" in content
+        assert "Copy agent prompt" not in content
+        assert "Copy request" not in content
+        assert "Rowset API key: ***" not in content
+        assert profile.key not in content
+        assert reverse("create_agent_api_key") in content
+        assert 'name="next" value="home"' in content
+        assert reverse("agent_setup_prompt") not in content
+        assert reverse("dismiss_agent_setup_prompt") in content
+        assert "Skip setup for now" in content
+        assert (
+            "Only share this prompt with agents and people you trust."
+            not in content
+        )
+
+    @override_settings(SITE_URL="https://rowset.example")
+    def test_home_view_unlocks_agent_setup_prompt_after_agent_key_exists(
+        self,
+        auth_client,
+        profile,
+    ):
+        credential = create_agent_api_key(profile, "Codex")
+
+        response = auth_client.get(reverse("home"))
+
+        masked_prompt = response.context["agent_setup_prompt_masked"]
+        content = response.content.decode()
+        assert response.context["show_agent_setup_prompt"] is True
+        assert response.context["active_agent_api_key"] == credential.agent_api_key
         assert "Rowset API key: ***" in masked_prompt
+        assert credential.raw_key not in masked_prompt
         assert profile.key not in masked_prompt
         assert "Rowset API key: ***" in content
+        assert credential.raw_key not in content
         assert profile.key not in content
-        assert reverse("agent_setup_prompt") in content
-        assert reverse("dismiss_agent_setup_prompt") in content
-        assert "Remove from dashboard" in content
+        assert (
+            reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid])
+            in content
+        )
+        assert reverse("agent_setup_prompt") not in content
+        assert "Copy agent prompt" in content
+        assert "Copy request" in content
+        assert "Verify Rowset with get_user_info" in content
+        assert "Hide setup guide" in content
         assert "Only share this prompt with agents and people you trust." in content
         assert "create_dataset" in masked_prompt
         assert "update_dataset_public_preview" in masked_prompt
@@ -134,9 +182,25 @@ class TestHomeView:
         response = auth_client.get(reverse("home"))
 
         assert response.status_code == 200
-        assert "Rowset API key: ***" in response.context["agent_setup_prompt_masked"]
+        assert "agent_setup_prompt_masked" not in response.context
         assert "agent_setup_prompt" not in response.context
+        assert response.context["active_agent_api_key"] is None
         assert user.__class__.objects.get(pk=user.pk).profile
+
+    def test_home_create_agent_api_key_redirects_back_to_onboarding(self, auth_client):
+        response = auth_client.post(
+            reverse("create_agent_api_key"),
+            {"name": "Codex", "next": "home"},
+        )
+
+        assert response.status_code == 302
+        assert response["Location"] == reverse("home")
+
+        followup = auth_client.get(reverse("home"))
+        content = followup.content.decode()
+        assert followup.context["active_agent_api_key"].name == "Codex"
+        assert "Copy agent prompt" in content
+        assert "Created an agent API key for Codex." in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_settings_view_omits_prompt_panel_and_legacy_key(self, auth_client, profile):
