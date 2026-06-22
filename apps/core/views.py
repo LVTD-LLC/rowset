@@ -197,11 +197,6 @@ class HomeView(LoginRequiredMixin, TemplateView):
             )
             context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
             context["agent_setup_prompt_dismiss_url"] = reverse("dismiss_agent_setup_prompt")
-        context["agent_instructions_url"] = build_absolute_public_url(
-            reverse("agent_instructions_rowset_mcp")
-        )
-        context["mcp_url"] = build_absolute_public_url("/mcp/")
-        context["rest_api_base_url"] = build_absolute_public_url("/api/")
         return context
 
 

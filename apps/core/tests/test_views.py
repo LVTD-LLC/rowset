@@ -49,8 +49,6 @@ class TestHomeView:
         assert "Only share this prompt with agents and people you trust." in content
         assert "create_dataset" in masked_prompt
         assert "update_dataset_public_preview" in masked_prompt
-        assert response.context["mcp_url"] == "https://rowset.example/mcp/"
-        assert response.context["rest_api_base_url"] == "https://rowset.example/api/"
 
     def test_home_view_hides_agent_setup_prompt_after_dismissal(self, auth_client, profile):
         profile.agent_setup_prompt_dismissed = True
