@@ -98,5 +98,5 @@ MCP, use the REST API only after the user approves REST API authentication.
 ## Agent setup prompt
 
 The dashboard shows a ready-to-copy prompt for setting up an agent. The Agent access
-docs show a masked example and point users back to the dashboard copy button for the
-full prompt.
+docs show a masked example, the `npx skills add LVTD-LLC/rowset` install command,
+and point users back to the dashboard copy button for the full prompt.

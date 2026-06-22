@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rowset"
+  short_description: "Connect agents to Rowset MCP and REST datasets."
+  default_prompt: "Use $rowset to create, inspect, update, export, or share API-backed datasets through MCP or REST."

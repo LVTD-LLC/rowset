@@ -6,7 +6,7 @@ keywords: Rowset, agents, MCP, API key, SKILL.md
 
 # Agent access
 
-Rowset gives signed-in users a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, and an API key for bearer-token auth.
+Rowset gives signed-in users a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, the repo skill install command, and an API key for bearer-token auth.
 
 The dashboard preview masks the API key. The copy button includes the real key, so treat the copied prompt like a password.
 
@@ -20,15 +20,28 @@ The docs show a masked example:
 
 Sign in and use the dashboard copy button when you want the full prompt with the API key included.
 
-## SKILL.md instructions
+## Installable SKILL.md
 
-The prompt links to:
+The canonical skill lives in the Rowset repo. The app also serves that same
+checked-in file as markdown at:
 
 ```text
 {{ site_url }}/SKILL.md
 ```
 
-That file gives an agent durable setup instructions for Rowset MCP and REST fallback. It tells agents how to discover the current tools and API docs instead of hardcoding an endpoint list.
+Agents that support the skills CLI can install it with:
+
+```bash
+{{ skill_install_command }}
+```
+
+The source text is available at:
+
+```text
+{{ skill_source_url }}
+```
+
+The skill gives agents durable setup instructions for Rowset MCP and REST fallback. It tells agents how to discover the current tools and API docs instead of hardcoding an endpoint list.
 
 For MCP, store the key in a private environment variable such as
 `ROWSET_API_KEY`, then configure the MCP client's bearer-token env var to

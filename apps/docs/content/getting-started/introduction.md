@@ -46,7 +46,7 @@ cannot send bearer tokens, `X-API-Key` is accepted as a fallback.
 - **Working with datasets** explains lifecycle, index columns, and exports.
 - **Public previews** explains browser-friendly, read-only sharing through API and MCP.
 - **MCP access** explains hosted MCP setup for AI agents.
-- **Agent access** gives the copy/paste prompt and `SKILL.md` guidance.
+- **Agent access** gives the copy/paste prompt and installable `SKILL.md` guidance.
 - **API Reference → Introduction** explains REST authentication and links to generated API docs.
 - **API Reference → User API** is the safest first request for testing a key.
 - **API Reference → Dataset API** covers dataset creation, row CRUD, CSV export, and public preview settings.
