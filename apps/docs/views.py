@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import frontmatter
@@ -16,6 +17,11 @@ logger = get_filebridge_logger(__name__)
 
 API_KEY_PLACEHOLDER = "YOUR_ROWSET_API_KEY"
 USER_EMAIL_PLACEHOLDER = "you@example.com"
+DOCS_SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+
+def is_docs_slug(value):
+    return bool(DOCS_SLUG_PATTERN.fullmatch(value))
 
 
 def load_navigation_config():
@@ -215,6 +221,9 @@ def docs_page_view(request, category, page):
     """
     Render a public documentation page from markdown with safe template context.
     """
+    if not is_docs_slug(category) or not is_docs_slug(page):
+        raise Http404("Documentation page not found")
+
     content_dir = (Path(settings.BASE_DIR) / "apps" / "docs" / "content").resolve()
     markdown_file = (content_dir / category / f"{page}.md").resolve()
 
