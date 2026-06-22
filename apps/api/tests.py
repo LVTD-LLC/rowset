@@ -11,6 +11,7 @@ from apps.api.views import (
     get_user_info,
     list_datasets,
     list_internal_blog_posts,
+    list_projects,
     patch_internal_blog_post,
     publish_internal_blog_post,
     review_internal_blog_post,
@@ -231,9 +232,15 @@ class UserInfoApiUnitTests(SimpleTestCase):
 class DatasetListApiUnitTests(SimpleTestCase):
     @override_settings(SITE_URL="https://rowset.example")
     def test_list_datasets_returns_profile_dataset_metadata_without_rows(self):
+        project = SimpleNamespace(
+            key="3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
+            name="Launch",
+            description="Launch datasets",
+        )
         dataset = SimpleNamespace(
             key="6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
             name="Customers",
+            project=project,
             original_filename="customers.csv",
             file_type="csv",
             status="ready",
@@ -260,7 +267,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
         queryset.count.return_value = 1
         queryset.__getitem__ = Mock(return_value=[dataset])
         datasets = Mock()
-        datasets.only.return_value = queryset
+        datasets.select_related.return_value.only.return_value = queryset
         request = HttpRequest()
         request.auth = SimpleNamespace(datasets=datasets)
 
@@ -275,6 +282,11 @@ class DatasetListApiUnitTests(SimpleTestCase):
             {
                 "key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
                 "name": "Customers",
+                "project": {
+                    "key": "3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
+                    "name": "Launch",
+                    "description": "Launch datasets",
+                },
                 "original_filename": "customers.csv",
                 "file_type": "csv",
                 "status": "ready",
@@ -300,7 +312,44 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "processed_at": "2026-05-14T00:03:00Z",
             }
         ]
-        datasets.only.assert_called_once()
+        datasets.select_related.assert_called_once_with("project")
+        datasets.select_related.return_value.only.assert_called_once()
+        queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
+
+
+class ProjectListApiUnitTests(SimpleTestCase):
+    def test_list_projects_returns_project_metadata(self):
+        project = SimpleNamespace(
+            key="3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
+            name="Launch",
+            description="Launch datasets",
+            dataset_count=2,
+            created_at="2026-05-14T00:00:00Z",
+            updated_at="2026-05-14T00:01:00Z",
+        )
+        queryset = Mock()
+        queryset.only.return_value = queryset
+        queryset.count.return_value = 1
+        queryset.__getitem__ = Mock(return_value=[project])
+        projects = Mock()
+        projects.annotate.return_value = queryset
+        request = HttpRequest()
+        request.auth = SimpleNamespace(projects=projects)
+
+        response = list_projects(request)
+
+        assert response["count"] == 1
+        assert response["projects"] == [
+            {
+                "key": "3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
+                "name": "Launch",
+                "description": "Launch datasets",
+                "dataset_count": 2,
+                "created_at": "2026-05-14T00:00:00Z",
+                "updated_at": "2026-05-14T00:01:00Z",
+            }
+        ]
+        projects.annotate.assert_called_once()
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
 

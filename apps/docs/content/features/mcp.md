@@ -48,13 +48,23 @@ Then discover datasets with:
 get_all_datasets
 ```
 
+Discover or create project groups with:
+
+```text
+get_all_projects
+create_project
+get_project
+```
+
 To create a new ready dataset from an agent workflow, call:
 
 ```text
 create_dataset
 ```
 
-The tool returns the new dataset key. Agents can use that key immediately with the row tools.
+The tool returns the new dataset key. Pass `project_key` to create it inside an
+existing project, or omit `project_key` to leave it ungrouped. Agents can use
+that dataset key immediately with the row tools.
 
 For a specific ready dataset, agents can use:
 
@@ -66,6 +76,7 @@ get_dataset_row_by_index
 create_dataset_row
 update_dataset_row
 delete_dataset_row
+update_dataset_project
 update_dataset_public_preview
 ```
 
@@ -73,6 +84,9 @@ Dataset and row tools enforce the authenticated user's ownership boundary.
 `create_dataset`, `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`
 change dataset contents, so agents should ask the user before using them unless the
 user explicitly requested the change.
+
+Use `update_dataset_project` when the user asks to organize or move a dataset
+between projects. Passing `null` for `project_key` leaves the dataset ungrouped.
 
 Use `update_dataset_public_preview` only when the user asks to share a read-only
 browser preview. The tool returns the public preview URL.

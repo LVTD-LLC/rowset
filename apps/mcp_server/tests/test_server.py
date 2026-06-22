@@ -20,9 +20,15 @@ def _profile():
         is_superuser=False,
         get_full_name=lambda: "Ada Lovelace",
     )
+    project = SimpleNamespace(
+        key="3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
+        name="Launch",
+        description="Launch datasets",
+    )
     dataset = SimpleNamespace(
         key="6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
         name="Customers",
+        project=project,
         original_filename="customers.csv",
         file_type="csv",
         status="ready",
@@ -54,7 +60,15 @@ def _profile():
             assert key == slice(0, 100, None)
             return [dataset]
 
-    datasets = SimpleNamespace(only=lambda *fields: DatasetQuerySet())
+    class DatasetManager:
+        def select_related(self, *fields):
+            assert fields == ("project",)
+            return self
+
+        def only(self, *fields):
+            return DatasetQuerySet()
+
+    datasets = DatasetManager()
     return SimpleNamespace(
         id=11,
         user=user,
@@ -135,6 +149,87 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
     anyio.run(run)
 
 
+def test_project_mcp_tools_call_project_services(monkeypatch):
+    calls = []
+
+    def list_projects(authenticated_profile, limit=100, offset=0):
+        calls.append(("list_projects", authenticated_profile.id, limit, offset))
+        return {
+            "count": 1,
+            "total_count": 1,
+            "limit": limit,
+            "offset": offset,
+            "has_more": False,
+            "projects": [{"key": "project-key", "name": "Launch"}],
+        }
+
+    def create_project(authenticated_profile, *, name, description=None):
+        calls.append(("create_project", authenticated_profile.id, name, description))
+        return {
+            "status": "success",
+            "message": "Project created.",
+            "project": {"key": "project-key", "name": name, "description": description},
+        }
+
+    def get_project(authenticated_profile, project_key, limit=100, offset=0):
+        calls.append(("get_project", authenticated_profile.id, project_key, limit, offset))
+        return {
+            "status": "success",
+            "message": "Project retrieved.",
+            "project": {"key": project_key, "name": "Launch"},
+            "datasets": {"count": 0, "datasets": []},
+        }
+
+    def update_project(authenticated_profile, dataset_key, project_key):
+        calls.append(("update_project", authenticated_profile.id, dataset_key, project_key))
+        return {
+            "status": "success",
+            "message": "Dataset project updated.",
+            "dataset": {"key": dataset_key, "project": {"key": project_key}},
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr("apps.mcp_server.server.serialize_profile_projects", list_projects)
+        monkeypatch.setattr("apps.mcp_server.server.create_profile_project", create_project)
+        monkeypatch.setattr("apps.mcp_server.server.serialize_profile_project_detail", get_project)
+        monkeypatch.setattr("apps.mcp_server.server.update_profile_dataset_project", update_project)
+
+        async with Client(mcp) as client:
+            list_result = await client.call_tool(
+                "get_all_projects",
+                {"limit": 5},
+            )
+            create_result = await client.call_tool(
+                "create_project",
+                {"name": "Launch", "description": "Launch datasets"},
+            )
+            detail_result = await client.call_tool(
+                "get_project",
+                {"project_key": "project-key", "limit": 2},
+            )
+            update_result = await client.call_tool(
+                "update_dataset_project",
+                {"dataset_key": "dataset-key", "project_key": "project-key"},
+            )
+
+        assert list_result.data["projects"][0]["key"] == "project-key"
+        assert create_result.data["project"]["name"] == "Launch"
+        assert detail_result.data["project"]["key"] == "project-key"
+        assert update_result.data["dataset"]["project"]["key"] == "project-key"
+        assert calls == [
+            ("list_projects", 11, 5, 0),
+            ("create_project", 11, "Launch", "Launch datasets"),
+            ("get_project", 11, "project-key", 2, 0),
+            ("update_project", 11, "dataset-key", "project-key"),
+        ]
+
+    anyio.run(run)
+
+
 def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
     calls = []
 
@@ -146,8 +241,19 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
         rows=None,
         index_column=None,
         column_types=None,
+        project_key=None,
     ):
-        calls.append((authenticated_profile.id, name, headers, rows, index_column, column_types))
+        calls.append(
+            (
+                authenticated_profile.id,
+                name,
+                headers,
+                rows,
+                index_column,
+                column_types,
+                project_key,
+            )
+        )
         return {
             "status": "success",
             "message": "Dataset created.",
@@ -175,6 +281,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                     "rows": [{"sku": "A-1", "name": "Adapter"}],
                     "index_column": "sku",
                     "column_types": {"sku": "text", "name": "text"},
+                    "project_key": "project-key",
                 },
             )
 
@@ -187,6 +294,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                 [{"sku": "A-1", "name": "Adapter"}],
                 "sku",
                 {"sku": "text", "name": "text"},
+                "project-key",
             )
         ]
 

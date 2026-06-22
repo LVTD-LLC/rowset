@@ -1,12 +1,14 @@
 from typing import Any
 
 from django.contrib.auth.hashers import make_password
-from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from apps.core.models import Profile
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.models import Dataset, DatasetRow
+from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
     generated_index_column_name,
@@ -20,6 +22,34 @@ from filebridge.utils import build_absolute_public_url
 
 API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
+DATASET_SUMMARY_ONLY_FIELDS = (
+    "key",
+    "name",
+    "original_filename",
+    "file_type",
+    "status",
+    "headers",
+    "column_schema",
+    "index_column",
+    "index_generated",
+    "row_count",
+    "public_enabled",
+    "public_key",
+    "public_page_size",
+    "public_password_hash",
+    "project",
+    "project__key",
+    "project__name",
+    "project__description",
+    "created_at",
+    "updated_at",
+    "confirmed_at",
+    "processed_at",
+)
+
+
+def _visible_project_dataset_count():
+    return Count("datasets", filter=~Q(datasets__status=DatasetStatus.PREVIEWED))
 
 
 class DatasetServiceError(Exception):
@@ -48,11 +78,139 @@ def serialize_user_info(profile: Profile) -> dict:
     }
 
 
+def _normalize_project_name(name: str) -> str:
+    normalized_name = (name or "").strip()
+    if not normalized_name:
+        raise DatasetServiceError(400, "Project name is required.")
+    if len(normalized_name) > 255:
+        raise DatasetServiceError(400, "Project name must be 255 characters or fewer.")
+    return normalized_name
+
+
+def _normalize_project_description(description: str | None) -> str:
+    return (description or "").strip()
+
+
+def serialize_project_reference(project: Project | None) -> dict | None:
+    """Return the project fields embedded in dataset metadata."""
+    if project is None:
+        return None
+    return {
+        "key": str(project.key),
+        "name": project.name,
+        "description": project.description,
+    }
+
+
+def serialize_project_summary(project: Project) -> dict:
+    """Return machine-friendly project metadata without row payloads."""
+    dataset_count = getattr(project, "dataset_count", None)
+    if dataset_count is None:
+        dataset_count = project.datasets.exclude(status=DatasetStatus.PREVIEWED).count()
+    return {
+        "key": str(project.key),
+        "name": project.name,
+        "description": project.description,
+        "dataset_count": dataset_count,
+        "created_at": project.created_at,
+        "updated_at": project.updated_at,
+    }
+
+
+def serialize_profile_projects(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
+    """Return a bounded page of projects owned by the authenticated profile."""
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+    queryset = profile.projects.annotate(dataset_count=_visible_project_dataset_count()).only(
+        "key",
+        "name",
+        "description",
+        "created_at",
+        "updated_at",
+    )
+    total_count = queryset.count()
+    projects = list(queryset[offset : offset + limit])
+    return {
+        "count": len(projects),
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + len(projects) < total_count,
+        "projects": [serialize_project_summary(project) for project in projects],
+    }
+
+
+def create_profile_project(profile: Profile, *, name: str, description: str | None = None) -> dict:
+    """Create a semantic dataset group for an authenticated profile."""
+    normalized_name = _normalize_project_name(name)
+    normalized_description = _normalize_project_description(description)
+    if Project.objects.filter(profile=profile, name__iexact=normalized_name).exists():
+        raise DatasetServiceError(409, "Project name already exists.")
+
+    try:
+        project = Project.objects.create(
+            profile=profile,
+            name=normalized_name,
+            description=normalized_description,
+        )
+    except IntegrityError as exc:
+        raise DatasetServiceError(409, "Project name already exists.") from exc
+
+    project.dataset_count = 0
+    return {
+        "status": "success",
+        "message": "Project created.",
+        "project": serialize_project_summary(project),
+    }
+
+
+def get_profile_project(profile: Profile, project_key: str) -> Project:
+    try:
+        return (
+            Project.objects.annotate(dataset_count=_visible_project_dataset_count())
+            .only("key", "name", "description", "created_at", "updated_at")
+            .get(key=project_key, profile=profile)
+        )
+    except (Project.DoesNotExist, ValidationError, ValueError) as exc:
+        raise DatasetServiceError(404, "Project not found.") from exc
+
+
+def serialize_profile_project_detail(
+    profile: Profile,
+    project_key: str,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict:
+    """Return one project plus a bounded page of datasets assigned to it."""
+    project = get_profile_project(profile, project_key)
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+    queryset = _dataset_summary_queryset(
+        project.datasets.exclude(status=DatasetStatus.PREVIEWED)
+    )
+    total_count = project.dataset_count
+    datasets = list(queryset[offset : offset + limit])
+    return {
+        "status": "success",
+        "message": "Project retrieved.",
+        "project": serialize_project_summary(project),
+        "datasets": {
+            "count": len(datasets),
+            "total_count": total_count,
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + len(datasets) < total_count,
+            "datasets": [serialize_dataset_summary(dataset) for dataset in datasets],
+        },
+    }
+
+
 def serialize_dataset_summary(dataset: Dataset) -> dict:
     """Return machine-friendly dataset metadata without row payloads."""
     return {
         "key": str(dataset.key),
         "name": dataset.name,
+        "project": serialize_project_reference(getattr(dataset, "project", None)),
         "original_filename": dataset.original_filename,
         "file_type": dataset.file_type,
         "status": dataset.status,
@@ -76,30 +234,15 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
     }
 
 
+def _dataset_summary_queryset(queryset):
+    return queryset.select_related("project").only(*DATASET_SUMMARY_ONLY_FIELDS)
+
+
 def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
     """Return a bounded page of datasets owned by the authenticated profile."""
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    queryset = profile.datasets.only(
-        "key",
-        "name",
-        "original_filename",
-        "file_type",
-        "status",
-        "headers",
-        "column_schema",
-        "index_column",
-        "index_generated",
-        "row_count",
-        "public_enabled",
-        "public_key",
-        "public_page_size",
-        "public_password_hash",
-        "created_at",
-        "updated_at",
-        "confirmed_at",
-        "processed_at",
-    )
+    queryset = _dataset_summary_queryset(profile.datasets)
     total_count = queryset.count()
     datasets = list(queryset[offset : offset + limit])
     return {
@@ -114,7 +257,7 @@ def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int =
 
 def get_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     try:
-        return Dataset.objects.get(key=dataset_key, profile=profile)
+        return Dataset.objects.select_related("project").get(key=dataset_key, profile=profile)
     except Dataset.DoesNotExist as exc:
         raise DatasetServiceError(404, "Dataset not found.") from exc
 
@@ -266,9 +409,16 @@ def create_profile_dataset(
     rows: list[dict[str, Any]] | None = None,
     index_column: str | None = None,
     column_types: dict[str, str] | None = None,
+    project_key: str | None = None,
 ) -> dict:
     """Create a ready API-backed dataset for an authenticated profile."""
     normalized_name = _normalize_dataset_name(name)
+    normalized_project_key = str(project_key or "").strip()
+    project = (
+        get_profile_project(profile, normalized_project_key)
+        if normalized_project_key
+        else None
+    )
     normalized_rows = _normalize_create_rows(rows)
     base_headers = _normalize_create_headers(headers, normalized_rows)
     _validate_rows_match_headers(normalized_rows, base_headers)
@@ -311,6 +461,7 @@ def create_profile_dataset(
     with transaction.atomic():
         dataset = Dataset.objects.create(
             profile=profile,
+            project=project,
             name=normalized_name,
             original_filename="Created via API",
             file_type=API_CREATED_FILE_TYPE,
@@ -352,7 +503,7 @@ def update_profile_dataset_column_types(
     with transaction.atomic():
         try:
             dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except Dataset.DoesNotExist as exc:
+        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
         if dataset.status == DatasetStatus.PROCESSING:
@@ -432,6 +583,35 @@ def update_profile_dataset_public_preview(
     return {
         "status": "success",
         "message": "Public preview settings updated.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
+def update_profile_dataset_project(
+    profile: Profile,
+    dataset_key: str,
+    project_key: str | None,
+) -> dict:
+    """Attach an existing dataset to a project owned by the profile, or detach it."""
+    normalized_project_key = str(project_key or "").strip()
+    project = (
+        get_profile_project(profile, normalized_project_key)
+        if normalized_project_key
+        else None
+    )
+
+    with transaction.atomic():
+        try:
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
+        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
+            raise DatasetServiceError(404, "Dataset not found.") from exc
+
+        dataset.project = project
+        dataset.save(update_fields=["project", "updated_at"])
+
+    return {
+        "status": "success",
+        "message": "Dataset project updated.",
         "dataset": serialize_dataset_summary(dataset),
     }
 

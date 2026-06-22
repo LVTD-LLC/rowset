@@ -25,6 +25,15 @@ Pick the column your apps and agents naturally use to find a row:
 
 If the file does not have a stable key, let Rowset generate one.
 
+## Organizing with projects
+
+Use projects to group related datasets by client, workflow, campaign, or agent
+task. New datasets are ungrouped by default. Agents can create datasets inside an
+existing project or move an existing dataset into one project.
+
+Projects are organization metadata only. They do not change authenticated API or
+MCP access.
+
 ## CSV exports
 
 Use CSV export when a workflow needs a full snapshot instead of row-by-row API access. For automated systems, prefer MCP or the Dataset API unless the consumer explicitly expects CSV.

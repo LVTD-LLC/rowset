@@ -3,6 +3,7 @@ import uuid
 from django.contrib.auth.hashers import check_password
 from django.core.validators import MaxLengthValidator
 from django.db import models
+from django.db.models.functions import Lower
 from django.urls import reverse
 
 from apps.core.base_models import BaseModel
@@ -11,8 +12,38 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 
 
+class Project(BaseModel):
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="projects")
+    key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["name", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                "profile",
+                Lower("name"),
+                name="unique_profile_project_name_ci",
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse("project_detail", kwargs={"project_key": self.key})
+
+
 class Dataset(BaseModel):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="datasets")
+    project = models.ForeignKey(
+        Project,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="datasets",
+    )
     key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=255)
     original_filename = models.CharField(max_length=255)

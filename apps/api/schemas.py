@@ -88,9 +88,42 @@ class UserInfoOut(Schema):
     profile: UserProfileOut
 
 
+class ProjectReferenceOut(Schema):
+    key: str
+    name: str
+    description: str
+
+
+class ProjectSummaryOut(ProjectReferenceOut):
+    dataset_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProjectListOut(Schema):
+    count: int
+    total_count: int
+    limit: int
+    offset: int
+    has_more: bool
+    projects: list[ProjectSummaryOut]
+
+
+class ProjectCreateIn(Schema):
+    name: str
+    description: str | None = None
+
+
+class ProjectCreateOut(Schema):
+    status: str
+    message: str
+    project: ProjectSummaryOut
+
+
 class DatasetSummaryOut(Schema):
     key: str
     name: str
+    project: ProjectReferenceOut | None = None
     original_filename: str
     file_type: str
     status: str
@@ -119,6 +152,13 @@ class DatasetListOut(Schema):
     datasets: list[DatasetSummaryOut]
 
 
+class ProjectDetailOut(Schema):
+    status: str
+    message: str
+    project: ProjectSummaryOut
+    datasets: DatasetListOut
+
+
 class DatasetCreateIn(Schema):
     name: str
     headers: list[str] | None = None
@@ -128,6 +168,7 @@ class DatasetCreateIn(Schema):
     )
     index_column: str | None = None
     column_types: dict[str, str] | None = None
+    project_key: str | None = None
 
 
 class DatasetCreateOut(Schema):
@@ -154,6 +195,16 @@ class DatasetPublicPreviewPatchIn(Schema):
 
 
 class DatasetPublicPreviewOut(Schema):
+    status: str
+    message: str
+    dataset: DatasetSummaryOut
+
+
+class DatasetProjectPatchIn(Schema):
+    project_key: str | None = None
+
+
+class DatasetProjectOut(Schema):
     status: str
     message: str
     dataset: DatasetSummaryOut

@@ -6,12 +6,18 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Count, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
 
+from apps.api.services import (
+    DatasetServiceError,
+    create_profile_project,
+    update_profile_dataset_project,
+)
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset
 from apps.datasets.services import (
@@ -25,6 +31,10 @@ from apps.datasets.services import (
 )
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
+
+
+def _visible_project_dataset_count():
+    return Count("datasets", filter=~Q(datasets__status=DatasetStatus.PREVIEWED))
 
 
 def _delete_dataset(dataset: Dataset) -> None:
@@ -43,7 +53,49 @@ class DatasetListView(LoginRequiredMixin, ListView):
     context_object_name = "datasets"
 
     def get_queryset(self):
-        return self.request.user.profile.datasets.exclude(status=DatasetStatus.PREVIEWED)
+        return self.request.user.profile.datasets.select_related("project").exclude(
+            status=DatasetStatus.PREVIEWED
+        )
+
+
+class ProjectListView(LoginRequiredMixin, ListView):
+    template_name = "datasets/project_list.html"
+    context_object_name = "projects"
+
+    def get_queryset(self):
+        return self.request.user.profile.projects.annotate(
+            dataset_count=_visible_project_dataset_count()
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["ungrouped_dataset_count"] = self.request.user.profile.datasets.filter(
+            project__isnull=True,
+        ).exclude(status=DatasetStatus.PREVIEWED).count()
+        return context
+
+
+class ProjectDetailView(LoginRequiredMixin, DetailView):
+    template_name = "datasets/project_detail.html"
+    context_object_name = "project"
+    slug_url_kwarg = "project_key"
+    slug_field = "key"
+
+    def get_queryset(self):
+        return self.request.user.profile.projects.annotate(
+            dataset_count=_visible_project_dataset_count()
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        paginator = Paginator(
+            self.object.datasets.exclude(status=DatasetStatus.PREVIEWED),
+            100,
+        )
+        page_obj = paginator.get_page(self.request.GET.get("page"))
+        context["page_obj"] = page_obj
+        context["datasets"] = page_obj.object_list
+        return context
 
 
 class DatasetDetailView(LoginRequiredMixin, DetailView):
@@ -53,7 +105,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.datasets.all()
+        return self.request.user.profile.datasets.select_related("project").all()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -83,17 +135,35 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.datasets.all()
+        return self.request.user.profile.datasets.select_related("project").all()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["public_url"] = self.request.build_absolute_uri(self.object.get_public_url())
+        context["project_choices"] = self.request.user.profile.projects.all()
         context["column_definitions"] = column_definitions(
             self.object.headers,
             self.object.column_schema,
         )
         context["column_type_choices"] = DatasetColumnType.choices
         return context
+
+
+@login_required
+@require_POST
+def project_create(request):
+    try:
+        result = create_profile_project(
+            request.user.profile,
+            name=request.POST.get("name", ""),
+            description=request.POST.get("description", ""),
+        )
+    except DatasetServiceError as exc:
+        messages.error(request, exc.message)
+        return redirect("project_list")
+
+    messages.success(request, "Project created.")
+    return redirect("project_detail", project_key=result["project"]["key"])
 
 
 @login_required
@@ -125,6 +195,22 @@ def dataset_update_public_settings(request, dataset_key):
     )
     messages.success(request, "Public sharing settings updated.")
     return redirect(dataset.get_settings_url())
+
+
+@login_required
+@require_POST
+def dataset_update_project(request, dataset_key):
+    project_key = request.POST.get("project_key") or None
+    try:
+        update_profile_dataset_project(request.user.profile, str(dataset_key), project_key)
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, "Project assignment updated.")
+
+    return redirect("dataset_settings", dataset_key=dataset_key)
 
 
 @login_required

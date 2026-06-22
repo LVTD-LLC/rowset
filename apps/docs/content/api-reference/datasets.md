@@ -43,9 +43,13 @@ Content-Type: application/json
 
 Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, Rowset adds a generated `rowset_id` column so the dataset is ready to use immediately. Rowset infers column types from supplied rows; pass `column_types` to override them.
 
+To create the dataset inside an existing project, include `project_key`. Omit it
+to leave the dataset ungrouped.
+
 ```json
 {
   "name": "Products",
+  "project_key": "{project_key}",
   "headers": ["sku", "name", "price"],
   "index_column": "sku",
   "column_types": {"sku": "text", "name": "text", "price": "currency"},
@@ -111,6 +115,29 @@ Updates semantic column metadata without changing stored row values.
 ```
 
 Supported types are `text`, `integer`, `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
+
+## Update project
+
+```http
+PATCH {{ api_base_url }}/datasets/{dataset_key}/project
+Content-Type: application/json
+```
+
+Attach a dataset to one project:
+
+```json
+{
+  "project_key": "{project_key}"
+}
+```
+
+Detach it from a project:
+
+```json
+{
+  "project_key": null
+}
+```
 
 ## Update public preview
 

@@ -10,6 +10,7 @@ from apps.api.services import (
     DatasetServiceError,
     create_profile_dataset,
     create_profile_dataset_row,
+    create_profile_project,
     delete_profile_dataset_row,
     get_profile_dataset,
     get_profile_dataset_row,
@@ -18,8 +19,11 @@ from apps.api.services import (
     patch_profile_dataset_row,
     serialize_dataset_summary,
     serialize_profile_datasets,
+    serialize_profile_project_detail,
+    serialize_profile_projects,
     serialize_user_info,
     update_profile_dataset_column_types,
+    update_profile_dataset_project,
     update_profile_dataset_public_preview,
 )
 from apps.core.models import Profile
@@ -151,6 +155,75 @@ def get_dataset(
 
 
 @mcp.tool(
+    name="get_all_projects",
+    description=(
+        "Return semantic dataset projects available to the authenticated Rowset profile."
+    ),
+)
+def get_all_projects(
+    limit: Annotated[
+        int,
+        Field(default=100, ge=1, le=500, description="Maximum projects to return."),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Field(default=0, ge=0, description="Number of projects to skip."),
+    ] = 0,
+) -> dict:
+    """Return a bounded page of projects for the authenticated Rowset user."""
+    close_old_connections()
+    profile = _authenticate_profile()
+    return serialize_profile_projects(profile, limit=limit, offset=offset)
+
+
+@mcp.tool(
+    name="create_project",
+    description="Create a semantic project for grouping Rowset datasets.",
+)
+def create_project(
+    name: Annotated[str, Field(description="Human-readable project name.")],
+    description: Annotated[
+        str | None,
+        Field(default=None, description="Optional project description."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return create_profile_project(profile, name=name, description=description)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="get_project",
+    description="Return one project and a bounded page of datasets assigned to it.",
+)
+def get_project(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+    limit: Annotated[
+        int,
+        Field(default=100, ge=1, le=500, description="Maximum datasets to return."),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Field(default=0, ge=0, description="Number of datasets to skip."),
+    ] = 0,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return serialize_profile_project_detail(
+            profile,
+            project_key,
+            limit=limit,
+            offset=offset,
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
     name="create_dataset",
     description=(
         "Create a ready API-backed dataset for the authenticated Rowset profile. "
@@ -201,6 +274,16 @@ def create_dataset(
             ),
         ),
     ] = None,
+    project_key: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional Rowset project key. When supplied, the new dataset is assigned "
+                "to that project. Omit for an ungrouped dataset."
+            ),
+        ),
+    ] = None,
 ) -> dict:
     close_old_connections()
     profile = _authenticate_profile()
@@ -212,6 +295,7 @@ def create_dataset(
             rows=rows,
             index_column=index_column,
             column_types=column_types,
+            project_key=project_key,
         )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
@@ -241,6 +325,31 @@ def update_dataset_column_types(
     profile = _authenticate_profile(api_key)
     try:
         return update_profile_dataset_column_types(profile, dataset_key, column_types)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_dataset_project",
+    description=(
+        "Attach an existing Rowset dataset to a project, or detach it from its project by "
+        "passing null for project_key."
+    ),
+)
+def update_dataset_project(
+    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    project_key: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Rowset project key/UUID. Pass null to leave the dataset ungrouped.",
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return update_profile_dataset_project(profile, dataset_key, project_key)
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
 
