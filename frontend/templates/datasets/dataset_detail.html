@@ -73,12 +73,28 @@
           </thead>
           <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
             {% for sample_row in sample_rows_with_values %}
-              <tr>
+              <tr class="{% if sample_row.url %}transition hover:bg-slate-50 dark:hover:bg-slate-900/70{% endif %}">
                 {% for value in sample_row.values %}
-                  <td class="max-w-xs whitespace-normal break-words">{{ value }}</td>
+                  <td>
+                    {% if sample_row.url %}
+                      <a href="{{ sample_row.url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value }}"{% if forloop.first %} aria-label="View row {{ sample_row.row_number }} details"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>
+                        {% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
+                      </a>
+                    {% else %}
+                      <span class="block max-w-64 truncate" title="{{ value }}">
+                        {% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
+                      </span>
+                    {% endif %}
+                  </td>
                 {% endfor %}
                 {% if sample_rows_show_actor %}
-                  <td class="whitespace-nowrap text-xs font-medium text-slate-500 dark:text-slate-400">{{ sample_row.actor_label }}</td>
+                  <td class="whitespace-nowrap text-xs font-medium text-slate-500 dark:text-slate-400">
+                    {% if sample_row.url %}
+                      <a href="{{ sample_row.url }}" class="fb-focus block max-w-40 truncate hover:text-emerald-700 dark:hover:text-emerald-300" title="{{ sample_row.actor_label }}" aria-hidden="true" tabindex="-1">{{ sample_row.actor_label }}</a>
+                    {% else %}
+                      {{ sample_row.actor_label }}
+                    {% endif %}
+                  </td>
                 {% endif %}
               </tr>
             {% empty %}

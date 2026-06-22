@@ -157,6 +157,12 @@ class DatasetRow(BaseModel):
     def __str__(self):
         return f"{self.dataset_id} row {self.row_number}"
 
+    def get_absolute_url(self):
+        return reverse(
+            "dataset_row_detail",
+            kwargs={"dataset_key": self.dataset.key, "row_id": self.id},
+        )
+
     @property
     def created_by_actor_label(self) -> str:
         return _agent_actor_label(self.created_by_agent_api_key)

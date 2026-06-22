@@ -19,7 +19,7 @@ from apps.api.services import (
     update_profile_dataset_project,
 )
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
-from apps.datasets.models import Dataset
+from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
     CSVParseError,
     column_definitions,
@@ -59,6 +59,15 @@ def _delete_dataset(dataset: Dataset) -> None:
 def _dataset_export_filename(dataset: Dataset, extension: str) -> str:
     name = f"{dataset.name or 'dataset'}".strip().replace("/", "-") or "dataset"
     return f"{name}.{extension}"
+
+
+def _row_cells(headers: list[str], row_data: dict[str, object]) -> list[dict[str, str]]:
+    ordered_keys = [*headers, *[key for key in row_data if key not in headers]]
+    cells = []
+    for header in ordered_keys:
+        value = row_data.get(header, "")
+        cells.append({"header": header, "value": "" if value is None else str(value)})
+    return cells
 
 
 class DatasetListView(LoginRequiredMixin, ListView):
@@ -179,11 +188,13 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         dataset = self.object
-        sample_rows = list(dataset.rows.select_related("updated_by_agent_api_key")[:5])
+        sample_rows = list(dataset.rows.select_related("dataset", "updated_by_agent_api_key")[:5])
         sample_rows_with_values = [
             {
                 "values": ordered_row_values(dataset.headers, row.data),
                 "actor_label": row.updated_by_actor_label,
+                "row_number": row.row_number,
+                "url": row.get_absolute_url(),
             }
             for row in sample_rows
         ]
@@ -192,13 +203,45 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 {
                     "values": ordered_row_values(dataset.headers, preview_row),
                     "actor_label": "",
+                    "row_number": row_number,
+                    "url": "",
                 }
-                for preview_row in dataset.preview_rows[:5]
+                for row_number, preview_row in enumerate(
+                    dataset.preview_rows[:5],
+                    start=1,
+                )
             ]
         context["sample_rows_with_values"] = sample_rows_with_values
         context["sample_rows_show_actor"] = bool(sample_rows)
         context["sample_rows_colspan"] = len(dataset.headers) + int(bool(sample_rows))
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
+        return context
+
+
+class DatasetRowDetailView(LoginRequiredMixin, DetailView):
+    template_name = "datasets/dataset_row_detail.html"
+    context_object_name = "dataset_row"
+    pk_url_kwarg = "row_id"
+
+    def get_queryset(self):
+        return DatasetRow.objects.select_related(
+            "created_by_agent_api_key",
+            "updated_by_agent_api_key",
+            "dataset",
+            "dataset__project",
+            "dataset__created_by_agent_api_key",
+            "dataset__updated_by_agent_api_key",
+        ).filter(
+            dataset__key=self.kwargs["dataset_key"],
+            dataset__profile=self.request.user.profile,
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        row = self.object
+        dataset = row.dataset
+        context["dataset"] = dataset
+        context["row_cells"] = _row_cells(dataset.headers, row.data)
         return context
 
 

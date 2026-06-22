@@ -8,6 +8,11 @@ urlpatterns = [
     path("projects/<uuid:project_key>/", views.ProjectDetailView.as_view(), name="project_detail"),
     path("datasets/", views.DatasetListView.as_view(), name="dataset_list"),
     path("datasets/<uuid:dataset_key>/", views.DatasetDetailView.as_view(), name="dataset_detail"),
+    path(
+        "datasets/<uuid:dataset_key>/rows/<int:row_id>/",
+        views.DatasetRowDetailView.as_view(),
+        name="dataset_row_detail",
+    ),
     path("datasets/<uuid:dataset_key>/delete/", views.dataset_delete, name="dataset_delete"),
     path(
         "datasets/<uuid:dataset_key>/export/<str:export_format>/",
