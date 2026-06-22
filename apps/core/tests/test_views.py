@@ -129,7 +129,7 @@ class TestHomeView:
         assert user.__class__.objects.get(pk=user.pk).profile
 
     @override_settings(SITE_URL="https://rowset.example")
-    def test_settings_view_keeps_agent_setup_prompt_after_dismissal(self, auth_client, profile):
+    def test_settings_view_omits_prompt_panel_and_legacy_key(self, auth_client, profile):
         EmailAddress.objects.create(user=profile.user, email=profile.user.email, verified=True)
         profile.agent_setup_prompt_dismissed = True
         profile.save(update_fields=["agent_setup_prompt_dismissed"])
@@ -138,13 +138,22 @@ class TestHomeView:
 
         content = response.content.decode()
         assert response.status_code == 200
-        assert "Agent setup prompt" in content
-        assert "Copy/paste prompt" in content
-        assert "Copy agent prompt" in content
+        assert "Agent setup prompt" not in content
+        assert "Copy/paste prompt" not in content
+        assert "Copy agent prompt" not in content
         assert "Remove from dashboard" not in content
-        assert "Rowset API key: ***" in content
+        assert "Legacy account API key" not in content
+        assert "Copy legacy key" not in content
+        assert "Rowset API key: ***" not in content
         assert f"Rowset API key: {profile.key}" not in content
-        assert reverse("agent_setup_prompt") in content
+        assert reverse("agent_setup_prompt") not in content
+
+    def test_app_header_omits_dataset_and_project_nav_links(self, auth_client):
+        response = auth_client.get(reverse("settings"))
+
+        content = response.content.decode()
+        assert f'href="{reverse("dataset_list")}"' not in content
+        assert f'href="{reverse("project_list")}"' not in content
 
     def test_agent_instructions_markdown_is_public_and_actionable(self, client):
         response = client.get(reverse("agent_instructions_rowset_mcp"))

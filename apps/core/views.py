@@ -25,7 +25,7 @@ from django.views.generic import TemplateView, UpdateView
 
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
-from apps.core.services import create_agent_api_key
+from apps.core.services import create_agent_api_key, get_agent_api_key_token
 from apps.core.stripe_webhooks import EVENT_HANDLERS
 from apps.datasets.choices import DatasetStatus
 from filebridge.utils import build_absolute_public_url, get_filebridge_logger
@@ -114,16 +114,9 @@ def user_settings_context(
             user=user,
             type=Authenticator.Type.WEBAUTHN,
         ).count(),
-        "api_key": profile.key,
         "agent_api_key_form": AgentApiKeyCreateForm(profile=profile),
         "agent_api_keys": profile.agent_api_keys.all(),
         "created_agent_api_key": created_agent_api_key,
-        "agent_setup_prompt_masked": build_agent_setup_prompt(
-            request,
-            mask_api_key=True,
-            profile=profile,
-        ),
-        "agent_setup_prompt_url": reverse("agent_setup_prompt"),
     }
 
 
@@ -132,13 +125,17 @@ def build_agent_setup_prompt(
     *,
     mask_api_key: bool = False,
     profile: Profile | None = None,
+    api_key: str | None = None,
 ) -> str:
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
     if profile is None:
         profile, _created = Profile.objects.get_or_create(user=request.user)
-    api_key = AGENT_API_KEY_MASK if mask_api_key else profile.key
+    if mask_api_key:
+        api_key = AGENT_API_KEY_MASK
+    elif api_key is None:
+        api_key = profile.key
 
     return "\n".join(
         [
@@ -241,6 +238,29 @@ def agent_setup_prompt(request):
 
 
 @login_required
+@require_GET
+def agent_api_key_setup_prompt(request, agent_api_key_uuid):
+    profile = request.user.profile
+    agent_api_key = get_object_or_404(
+        AgentApiKey,
+        uuid=agent_api_key_uuid,
+        profile=profile,
+        revoked_at__isnull=True,
+    )
+    response = JsonResponse(
+        {
+            "prompt": build_agent_setup_prompt(
+                request,
+                profile=profile,
+                api_key=get_agent_api_key_token(agent_api_key),
+            )
+        }
+    )
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@login_required
 @require_POST
 def create_agent_api_key_view(request):
     profile = request.user.profile
@@ -259,7 +279,7 @@ def create_agent_api_key_view(request):
 
     messages.success(
         request,
-        f"Created an agent API key for {credential.agent_api_key.name}. Copy it now.",
+        f"Created an agent API key for {credential.agent_api_key.name}.",
     )
     context = {
         "object": profile,
@@ -270,7 +290,7 @@ def create_agent_api_key_view(request):
             profile,
             created_agent_api_key={
                 "name": credential.agent_api_key.name,
-                "key": credential.raw_key,
+                "uuid": credential.agent_api_key.uuid,
             },
         ),
     }

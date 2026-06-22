@@ -1,12 +1,15 @@
 from datetime import timedelta
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.models import AgentApiKey
 from apps.core.services import (
     create_agent_api_key,
+    generate_agent_api_key_token,
+    get_agent_api_key_token,
     hash_agent_api_key,
     resolve_api_key_profile,
 )
@@ -20,6 +23,7 @@ def test_create_agent_api_key_stores_hash_and_returns_raw_key(profile):
     agent_api_key = credential.agent_api_key
     assert credential.raw_key.startswith("rsk_")
     assert agent_api_key.name == "Codex"
+    assert generate_agent_api_key_token(agent_api_key) == credential.raw_key
     assert agent_api_key.key_prefix == credential.raw_key[:12]
     assert agent_api_key.token_hash == hash_agent_api_key(credential.raw_key)
     assert credential.raw_key not in agent_api_key.token_hash
@@ -74,7 +78,7 @@ def test_resolve_api_key_profile_keeps_legacy_profile_key(profile):
     assert agent_api_key is None
 
 
-def test_settings_create_agent_api_key_shows_raw_key_once(auth_client):
+def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     response = auth_client.post(
         reverse("create_agent_api_key"),
         {"name": "Codex"},
@@ -84,17 +88,19 @@ def test_settings_create_agent_api_key_shows_raw_key_once(auth_client):
     assert response.status_code == 200
     created_key = response.context["created_agent_api_key"]
     assert created_key["name"] == "Codex"
-    assert created_key["key"].startswith("rsk_")
 
     agent_api_key = AgentApiKey.objects.get(name="Codex")
-    assert agent_api_key.token_hash == hash_agent_api_key(created_key["key"])
+    raw_key = get_agent_api_key_token(agent_api_key)
+    assert agent_api_key.token_hash == hash_agent_api_key(raw_key)
     content = response.content.decode()
-    assert created_key["key"] in content
-    assert "ROWSET_API_KEY" in content
+    assert raw_key not in content
+    assert "Created Codex." in content
+    assert "Copy Setup Prompt" in content
+    assert reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid]) in content
 
     followup = auth_client.get(reverse("settings"))
     assert followup.context["created_agent_api_key"] is None
-    assert created_key["key"] not in followup.content.decode()
+    assert raw_key not in followup.content.decode()
 
 
 def test_settings_lists_agent_api_keys_without_raw_secret(auth_client, profile):
@@ -105,7 +111,40 @@ def test_settings_lists_agent_api_keys_without_raw_secret(auth_client, profile):
 
     assert "Reporting Agent" in content
     assert f"{credential.agent_api_key.key_prefix}..." in content
+    assert "Copy Setup Prompt" in content
+    assert reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid]) in content
     assert credential.raw_key not in content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_agent_api_key_setup_prompt_endpoint_returns_selected_key_prompt(auth_client, profile):
+    credential = create_agent_api_key(profile, "Reporting Agent")
+
+    response = auth_client.get(
+        reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid])
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/json"
+    assert response["Cache-Control"] == "no-store"
+    prompt = response.json()["prompt"]
+    assert "Rowset MCP URL: https://rowset.example/mcp/" in prompt
+    assert "Rowset REST API base: https://rowset.example/api/" in prompt
+    assert f"Rowset API key: {credential.raw_key}" in prompt
+    assert f"Rowset API key: {profile.key}" not in prompt
+    assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
+
+
+def test_agent_api_key_setup_prompt_endpoint_rejects_revoked_key(auth_client, profile):
+    credential = create_agent_api_key(profile, "Reporting Agent")
+    credential.agent_api_key.revoked_at = timezone.now()
+    credential.agent_api_key.save(update_fields=["revoked_at", "updated_at"])
+
+    response = auth_client.get(
+        reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid])
+    )
+
+    assert response.status_code == 404
 
 
 def test_settings_rejects_duplicate_agent_api_key_names(auth_client, profile):
