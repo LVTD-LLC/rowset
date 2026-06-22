@@ -754,6 +754,34 @@ def test_dataset_owner_can_create_project(auth_client, profile):
     assert project.description == "Launch datasets"
 
 
+def test_project_detail_paginates_assigned_datasets(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Large project")
+    for index in range(101):
+        Dataset.objects.create(
+            profile=profile,
+            project=project,
+            name=f"Project dataset {index:03}",
+            original_filename="Created via API",
+            file_type="api",
+            status=DatasetStatus.READY,
+            headers=["email"],
+            index_column="email",
+            row_count=0,
+        )
+
+    response = auth_client.get(project.get_absolute_url())
+
+    assert response.status_code == 200
+    assert len(response.context["datasets"]) == 100
+    assert "Page 1 of 2" in response.content.decode()
+
+    page_two = auth_client.get(f"{project.get_absolute_url()}?page=2")
+
+    assert page_two.status_code == 200
+    assert len(page_two.context["datasets"]) == 1
+    assert "Page 2 of 2" in page_two.content.decode()
+
+
 def test_dataset_owner_can_assign_project_from_settings(auth_client, profile):
     dataset = create_ready_dataset(profile)
     project = Project.objects.create(profile=profile, name="Customer work")

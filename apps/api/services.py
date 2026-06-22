@@ -182,7 +182,7 @@ def serialize_profile_project_detail(
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     queryset = _dataset_summary_queryset(project.datasets)
-    total_count = queryset.count()
+    total_count = project.dataset_count
     datasets = list(queryset[offset : offset + limit])
     return {
         "status": "success",

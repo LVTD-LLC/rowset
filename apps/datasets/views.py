@@ -80,9 +80,13 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["datasets"] = self.object.datasets.select_related("project").exclude(
-            status=DatasetStatus.PREVIEWED
+        paginator = Paginator(
+            self.object.datasets.exclude(status=DatasetStatus.PREVIEWED),
+            100,
         )
+        page_obj = paginator.get_page(self.request.GET.get("page"))
+        context["page_obj"] = page_obj
+        context["datasets"] = page_obj.object_list
         return context
 
 
@@ -188,21 +192,17 @@ def dataset_update_public_settings(request, dataset_key):
 @login_required
 @require_POST
 def dataset_update_project(request, dataset_key):
-    dataset = get_object_or_404(
-        Dataset,
-        key=dataset_key,
-        profile=request.user.profile,
-    )
-
     project_key = request.POST.get("project_key") or None
     try:
-        update_profile_dataset_project(request.user.profile, str(dataset.key), project_key)
+        update_profile_dataset_project(request.user.profile, str(dataset_key), project_key)
     except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
         messages.error(request, exc.message)
     else:
         messages.success(request, "Project assignment updated.")
 
-    return redirect(dataset.get_settings_url())
+    return redirect("dataset_settings", dataset_key=dataset_key)
 
 
 @login_required
