@@ -29,8 +29,9 @@ save it in a tracked file.
 1. Read the full setup prompt before acting and identify the `Rowset MCP URL`,
    `Rowset REST API base`, and full `Rowset API key`.
 2. Store the full API key in a private environment variable named
-   `ROWSET_API_KEY` or in the client's secret store. Do not print it, commit it,
-   paste it back to chat, or save it in a tracked config file.
+   `ROWSET_API_KEY` or in the client's secret store. Do not print it in logs,
+   screenshots, public chats, generated files, or final responses. Do not
+   commit it, paste it back to chat, or save it in a tracked config file.
 3. Configure a remote Streamable HTTP MCP server named `rowset` with the
    provided MCP URL.
 4. Configure the MCP client's bearer-token environment variable to
@@ -46,13 +47,13 @@ save it in a tracked file.
 6. If the client only supports custom headers, set `Authorization` to
    `Bearer <key>`. Use `X-API-Key` only for REST clients that cannot send bearer
    tokens.
-7. After connecting, call `get_user_info` to verify authentication. If auth
+7. Discover available MCP tools and their schemas from the connected server
+   before invoking named tools. Treat the live MCP server and REST API docs as
+   the source of truth for exact inputs.
+8. After connecting, call `get_user_info` to verify authentication. If auth
    fails, confirm `ROWSET_API_KEY` contains the full key, not only the visible
    prefix.
-8. Call `get_all_datasets` to verify dataset discovery works.
-9. Discover available MCP tools and their schemas from the connected server
-   before acting. Treat the live MCP server and REST API docs as the source of
-   truth for exact inputs.
+9. Call `get_all_datasets` to verify dataset discovery works.
 
 ## Dataset Workflow
 

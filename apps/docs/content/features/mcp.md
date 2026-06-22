@@ -45,12 +45,12 @@ clients that cannot send bearer tokens.
 
 ## First checks
 
-After connecting, verify the authenticated user/profile with the user-info tool
-exposed by the current MCP server, then discover the available dataset tools and
-their schemas from your MCP client.
-
 Do not treat this page as the source of truth for tool names or inputs. The MCP
 server and the REST API docs describe the current surface.
+
+After connecting, discover the available tools and schemas from your MCP client,
+then verify the authenticated user/profile with the user-info tool exposed by the
+current MCP server.
 
 Then discover datasets with:
 

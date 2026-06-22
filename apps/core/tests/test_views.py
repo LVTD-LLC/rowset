@@ -122,8 +122,10 @@ class TestHomeView:
             "--bearer-token-env-var ROWSET_API_KEY"
             in prompt
         )
+        assert "screenshots, public chats, generated files, or final responses" in prompt
         assert "full key, not only its prefix" in prompt
-        assert "Discover the current MCP tools and API docs at runtime" in prompt
+        assert prompt.index("discover the current MCP tools") < prompt.index("get_user_info")
+        assert "discover the current MCP tools and API docs at runtime" in prompt
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_home_view_creates_missing_profile(self, auth_client, user):
@@ -174,8 +176,10 @@ class TestHomeView:
         assert "Use Rowset as a stable backend for user-owned structured datasets." in content
         assert "Streamable HTTP" in content
         assert "codex mcp add rowset --url <Rowset MCP URL>" in content
+        assert "screenshots, public chats, generated files, or final responses" in content
         assert "not only the visible" in content
         assert "get_user_info" in content
+        assert content.index("Discover available MCP tools") < content.index("get_user_info")
         assert "create_dataset" in content
         assert "update_dataset_public_preview" in content
         assert "Keep user data private" in content
