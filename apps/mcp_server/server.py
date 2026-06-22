@@ -60,7 +60,7 @@ def _get_request_api_key() -> str:
 
 def _authenticate_profile(api_key: str | None = None) -> Profile:
     token_profile = _get_access_token_profile()
-    if token_profile is not None and not api_key:
+    if token_profile is not None:
         return token_profile
 
     key = (api_key or "").strip() or _get_request_api_key()

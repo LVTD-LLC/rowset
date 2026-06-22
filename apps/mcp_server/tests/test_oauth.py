@@ -431,6 +431,27 @@ def test_authenticate_profile_uses_oauth_access_token(monkeypatch, profile):
     assert _authenticate_profile() == profile
 
 
+def test_authenticate_profile_prefers_oauth_access_token_over_explicit_api_key(
+    monkeypatch,
+    profile,
+):
+    monkeypatch.setattr(
+        "apps.mcp_server.server.get_access_token",
+        lambda: AccessToken(
+            token="token",
+            client_id="client-1",
+            scopes=[MCP_SCOPE],
+            subject=str(profile.id),
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.mcp_server.server.resolve_api_key_profile",
+        lambda _key: (_ for _ in ()).throw(AssertionError("unexpected key lookup")),
+    )
+
+    assert _authenticate_profile(api_key="ignored-api-key") == profile
+
+
 def test_authenticate_profile_accepts_explicit_named_agent_api_key(profile):
     credential = create_agent_api_key(profile, "OpenClaw")
 
