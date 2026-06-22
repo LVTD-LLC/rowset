@@ -131,8 +131,12 @@ def _get_access_token_profile() -> Profile | None:
             logger.warning(
                 "[MCP] OAuth token agent API key could not be resolved",
                 error=str(exc),
+                agent_api_key_id=agent_api_key_id,
                 profile_id=profile.id,
             )
+            raise PermissionError(
+                "The Rowset agent API key for this token is no longer active."
+            ) from exc
 
     return _attach_agent_api_key(profile, agent_api_key)
 

@@ -158,6 +158,10 @@ class DatasetRow(BaseModel):
         return f"{self.dataset_id} row {self.row_number}"
 
     @property
+    def created_by_actor_label(self) -> str:
+        return _agent_actor_label(self.created_by_agent_api_key)
+
+    @property
     def updated_by_actor_label(self) -> str:
         return _agent_actor_label(self.updated_by_agent_api_key)
 

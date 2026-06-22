@@ -211,6 +211,7 @@ def dataset_update_public_settings(request, dataset_key):
     elif password:
         dataset.public_password_hash = make_password(password)
 
+    # Browser-initiated saves are attributed to the account, not a named agent.
     dataset.updated_by_agent_api_key = None
     dataset.save(
         update_fields=[
@@ -276,6 +277,7 @@ def dataset_update_column_settings(request, dataset_key):
             messages.error(request, str(exc))
             return redirect(dataset.get_settings_url())
 
+        # Browser-initiated saves are attributed to the account, not a named agent.
         dataset.updated_by_agent_api_key = None
         dataset.save(update_fields=["column_schema", "updated_by_agent_api_key", "updated_at"])
 

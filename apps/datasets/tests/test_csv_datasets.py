@@ -6,6 +6,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
+from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
@@ -518,8 +519,6 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
 
 
 def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profile):
-    from apps.core.services import create_agent_api_key
-
     codex = create_agent_api_key(profile, "Codex")
     openclaw = create_agent_api_key(profile, "OpenClaw")
     project = Project.objects.create(profile=profile, name="Agent work")

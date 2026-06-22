@@ -487,6 +487,26 @@ def test_authenticate_profile_attaches_named_agent_api_key_from_oauth_claims(
     assert authenticated_profile._rowset_agent_api_key == credential.agent_api_key
 
 
+def test_authenticate_profile_rejects_stale_agent_api_key_oauth_claim(monkeypatch, profile):
+    monkeypatch.setattr(
+        "apps.mcp_server.server.get_access_token",
+        lambda: AccessToken(
+            token="token",
+            client_id=AGENT_API_KEY_CLIENT_ID,
+            scopes=[MCP_SCOPE],
+            subject=str(profile.id),
+            claims={
+                "profile_id": profile.id,
+                "agent_api_key_id": 999999,
+                "agent_api_key_name": "Deleted Agent",
+            },
+        ),
+    )
+
+    with pytest.raises(PermissionError, match="no longer active"):
+        _authenticate_profile()
+
+
 def test_root_well_known_routes_include_mounted_mcp_metadata():
     paths = [route.path for route in mcp_auth.get_well_known_routes(mcp_path=MCP_INTERNAL_PATH)]
 
