@@ -629,6 +629,19 @@ def test_dataset_api_updates_project_assignment(client, profile):
     assert dataset.project is None
 
 
+def test_dataset_api_rejects_invalid_project_assignment_dataset_key(client, profile):
+    project = Project.objects.create(profile=profile, name="Customers")
+
+    response = client.patch(
+        f"/api/datasets/not-a-uuid/project?api_key={profile.key}",
+        data={"project_key": str(project.key)},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Dataset not found."
+
+
 def test_dataset_api_rejects_other_users_project_assignment(client, django_user_model, profile):
     dataset = create_ready_dataset(profile)
     other_user = django_user_model.objects.create_user(

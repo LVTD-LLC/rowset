@@ -503,7 +503,7 @@ def update_profile_dataset_column_types(
     with transaction.atomic():
         try:
             dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except Dataset.DoesNotExist as exc:
+        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
         if dataset.status == DatasetStatus.PROCESSING:
@@ -603,7 +603,7 @@ def update_profile_dataset_project(
     with transaction.atomic():
         try:
             dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except Dataset.DoesNotExist as exc:
+        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
         dataset.project = project
