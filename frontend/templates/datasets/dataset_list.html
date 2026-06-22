@@ -8,7 +8,6 @@
       <h1 class="fb-page-title mt-2">API-backed datasets</h1>
       <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Datasets created and managed through Rowset API or MCP.</p>
     </div>
-    <a href="{% url 'home' %}" class="fb-button-primary">Copy agent prompt</a>
   </div>
 
   {% if datasets %}
@@ -40,8 +39,7 @@
   {% else %}
     <div class="fb-panel p-8">
       <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">No datasets yet</h2>
-      <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Copy the agent prompt, then ask your agent to create a dataset from the source file or table it can access.</p>
-      <a href="{% url 'home' %}" class="fb-button-primary mt-6">Copy agent prompt</a>
+      <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Ask your connected agent to create a dataset from the source file or table it can access.</p>
     </div>
   {% endif %}
 </div>

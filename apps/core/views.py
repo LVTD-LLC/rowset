@@ -134,13 +134,20 @@ class HomeView(LoginRequiredMixin, TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
-        context["recent_datasets"] = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)[:5]
-        context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
-            self.request,
-            mask_api_key=True,
-            profile=profile,
+        dashboard_datasets = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)
+        recent_datasets = list(dashboard_datasets[:5])
+        context["recent_datasets"] = recent_datasets
+        context["show_agent_setup_prompt"] = (
+            not profile.agent_setup_prompt_dismissed and not recent_datasets
         )
-        context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
+        if context["show_agent_setup_prompt"]:
+            context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
+                self.request,
+                mask_api_key=True,
+                profile=profile,
+            )
+            context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
+            context["agent_setup_prompt_dismiss_url"] = reverse("dismiss_agent_setup_prompt")
         context["agent_instructions_url"] = build_absolute_public_url(
             reverse("agent_instructions_rowset_mcp")
         )
@@ -172,7 +179,14 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             user=user,
             type=Authenticator.Type.WEBAUTHN,
         ).count()
-        context["api_key"] = user.profile.key
+        profile = user.profile
+        context["api_key"] = profile.key
+        context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
+            self.request,
+            mask_api_key=True,
+            profile=profile,
+        )
+        context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
 
         return context
 
@@ -188,6 +202,16 @@ def agent_setup_prompt(request):
     response = JsonResponse({"prompt": build_agent_setup_prompt(request, profile=profile)})
     response["Cache-Control"] = "no-store"
     return response
+
+
+@login_required
+@require_POST
+def dismiss_agent_setup_prompt(request):
+    profile, _created = Profile.objects.get_or_create(user=request.user)
+    if not profile.agent_setup_prompt_dismissed:
+        profile.agent_setup_prompt_dismissed = True
+        profile.save(update_fields=["agent_setup_prompt_dismissed", "updated_at"])
+    return redirect("home")
 
 
 @login_required
