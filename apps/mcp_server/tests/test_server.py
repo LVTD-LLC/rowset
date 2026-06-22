@@ -421,7 +421,6 @@ def test_update_dataset_column_types_mcp_tool_calls_dataset_service(monkeypatch)
             result = await client.call_tool(
                 "update_dataset_column_types",
                 {
-                    "api_key": "secret-key",
                     "dataset_key": "ds",
                     "column_types": {"email": "text"},
                 },

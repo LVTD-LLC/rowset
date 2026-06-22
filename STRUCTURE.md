@@ -10,7 +10,7 @@
   services, public previews, views, tasks, and dataset tests.
 - `apps/api/` - Django Ninja API object, auth, schemas, REST views, and API
   service wrappers.
-- `apps/mcp_server/` - hosted FastMCP server, MCP OAuth, tools, URLs, and tests.
+- `apps/mcp_server/` - hosted FastMCP server, MCP bearer auth, tools, and tests.
 - `apps/docs/` - in-app documentation renderer, Markdown content, navigation,
   and docs-specific agent guidance.
 - `apps/pages/` - marketing/static pages and page context processors.
@@ -34,7 +34,7 @@
 - Put reusable API-facing dataset orchestration in `apps/api/services.py`.
 - Put MCP tools in `apps/mcp_server/server.py`; keep tool bodies thin and backed
   by the same services as REST endpoints.
-- Put OAuth-specific MCP logic in `apps/mcp_server/oauth.py`.
+- Put MCP auth logic in `apps/mcp_server/auth.py`.
 - Put user-facing docs in `apps/docs/content/...` and update
   `apps/docs/navigation.yaml` when adding a page.
 - Put docs writing guidance in `apps/docs/AGENTS.md`, not repeated in every doc.

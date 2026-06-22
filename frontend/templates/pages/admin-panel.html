@@ -11,10 +11,30 @@
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Internal</p>
       <h1 class="fb-page-title mt-2">Admin panel</h1>
-      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Operational snapshot for users, profiles, and recent feedback.</p>
+      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Operational snapshot for datasets, projects, users, and recent feedback.</p>
     </div>
 
-    <section class="grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Admin metrics">
+    <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4" aria-label="Admin metrics">
+      <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+        <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Total datasets</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ total_datasets }}</p>
+        <p class="mt-4 text-xs text-slate-600 dark:text-slate-300">Week: <strong class="text-slate-900 dark:text-slate-100">{{ datasets_week }}</strong> · Month: <strong class="text-slate-900 dark:text-slate-100">{{ datasets_month }}</strong></p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+        <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Total projects</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ total_projects }}</p>
+        <p class="mt-4 text-xs text-slate-600 dark:text-slate-300">Week: <strong class="text-slate-900 dark:text-slate-100">{{ projects_week }}</strong> · Month: <strong class="text-slate-900 dark:text-slate-100">{{ projects_month }}</strong></p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+        <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Rows stored</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ total_rows }}</p>
+        <p class="mt-4 text-xs text-slate-600 dark:text-slate-300">Across private dataset records.</p>
+      </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+        <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Public previews</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ public_preview_count }}</p>
+        <p class="mt-4 text-xs text-slate-600 dark:text-slate-300">Enabled browser previews.</p>
+      </div>
       <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
         <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Total users</p>
         <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ total_users }}</p>
@@ -22,15 +42,78 @@
       </div>
       <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
         <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Total profiles</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ total_profiles }}</p>
-        {% if total_users > 0 %}<p class="mt-4 text-xs text-slate-600 dark:text-slate-300"><strong class="text-slate-900 dark:text-slate-100">{{ total_profiles|floatformat:0 }}/{{ total_users }}</strong> users ({% widthratio total_profiles total_users 100 %}%)</p>{% endif %}
+        <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ profile_count }}</p>
+        {% if total_users > 0 %}<p class="mt-4 text-xs text-slate-600 dark:text-slate-300"><strong class="text-slate-900 dark:text-slate-100">{{ profile_count|floatformat:0 }}/{{ total_users }}</strong> users ({% widthratio profile_count total_users 100 %}%)</p>{% endif %}
       </div>
       <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
         <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Total feedback</p>
         <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ total_feedback }}</p>
         <p class="mt-4 text-xs text-slate-600 dark:text-slate-300">Week: <strong class="text-slate-900 dark:text-slate-100">{{ feedback_week }}</strong></p>
       </div>
+      <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+        <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">User growth</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{{ avg_users_per_day|floatformat:1 }}</p>
+        <p class="mt-4 text-xs text-slate-600 dark:text-slate-300">Average users per day over 30 days.</p>
+      </div>
     </section>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950" aria-labelledby="latest-datasets-heading">
+        <div class="border-b border-slate-200 p-5 dark:border-slate-800"><h2 id="latest-datasets-heading" class="text-lg font-semibold text-slate-950 dark:text-slate-100">Latest datasets</h2></div>
+        <div class="overflow-x-auto">
+          <table class="fb-table">
+            <caption class="sr-only">Latest datasets</caption>
+            <thead class="bg-slate-50 dark:bg-slate-900"><tr>
+              <th scope="col">Dataset</th>
+              <th scope="col">Owner</th>
+              <th scope="col">Project</th>
+              <th scope="col">Rows</th>
+              <th scope="col">Created</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {% for dataset in recent_datasets %}
+                <tr>
+                  <td class="break-words font-medium text-slate-900 dark:text-slate-100">{{ dataset.name }}</td>
+                  <td class="break-words">{% firstof dataset.profile.user.email dataset.profile.user.username %}</td>
+                  <td class="break-words">{% if dataset.project %}{{ dataset.project.name }}{% else %}<span class="text-slate-500 dark:text-slate-400">No project</span>{% endif %}</td>
+                  <td>{{ dataset.row_count }}</td>
+                  <td class="whitespace-nowrap">{{ dataset.created_at|date:"M d, Y" }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" class="px-5 py-6 text-center text-sm text-slate-500 dark:text-slate-400">No datasets yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950" aria-labelledby="latest-projects-heading">
+        <div class="border-b border-slate-200 p-5 dark:border-slate-800"><h2 id="latest-projects-heading" class="text-lg font-semibold text-slate-950 dark:text-slate-100">Latest projects</h2></div>
+        <div class="overflow-x-auto">
+          <table class="fb-table">
+            <caption class="sr-only">Latest projects</caption>
+            <thead class="bg-slate-50 dark:bg-slate-900"><tr>
+              <th scope="col">Project</th>
+              <th scope="col">Owner</th>
+              <th scope="col">Datasets</th>
+              <th scope="col">Created</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {% for project in recent_projects %}
+                <tr>
+                  <td class="break-words font-medium text-slate-900 dark:text-slate-100">{{ project.name }}</td>
+                  <td class="break-words">{% firstof project.profile.user.email project.profile.user.username %}</td>
+                  <td>{{ project.dataset_count }}</td>
+                  <td class="whitespace-nowrap">{{ project.created_at|date:"M d, Y" }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4" class="px-5 py-6 text-center text-sm text-slate-500 dark:text-slate-400">No projects yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950" aria-labelledby="recent-users-heading">
@@ -38,7 +121,7 @@
         <div class="overflow-x-auto">
           <table class="fb-table">
             <caption class="sr-only">Recently registered users</caption>
-            <thead class="bg-slate-50 dark:bg-slate-950"><tr>
+            <thead class="bg-slate-50 dark:bg-slate-900"><tr>
               <th scope="col">Email</th>
               <th scope="col">Username</th>
               <th scope="col">Joined</th>
@@ -72,11 +155,6 @@
         </ul>
       </section>
     </div>
-
-    <section class="rounded-lg border border-cyan-200 bg-cyan-50 p-5 text-cyan-950 dark:border-cyan-900/60 dark:bg-cyan-950/40 dark:text-cyan-100" aria-labelledby="quick-stats-heading">
-      <h2 id="quick-stats-heading" class="text-sm font-semibold">Quick stats</h2>
-      <p class="mt-2 text-sm leading-6">Average users per day over the last 30 days: <strong>{{ avg_users_per_day|floatformat:1 }}</strong>. Total profiles: <strong>{{ total_profiles }}</strong>.</p>
-    </section>
   </div>
 </div>
 {% endblock content %}

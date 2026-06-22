@@ -1,12 +1,12 @@
 ---
 title: Agent access
 description: Configure AI agents to use Rowset without browser automation.
-keywords: Rowset, agents, MCP, OAuth, SKILL.md
+keywords: Rowset, agents, MCP, API key, SKILL.md
 ---
 
 # Agent access
 
-Rowset gives signed-in users a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, and an API key for clients that need bearer-token auth.
+Rowset gives signed-in users a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, and an API key for bearer-token auth.
 
 The dashboard preview masks the API key. The copy button includes the real key, so treat the copied prompt like a password.
 
@@ -30,6 +30,13 @@ The prompt links to:
 
 That file gives an agent durable setup instructions for Rowset MCP and REST fallback. It tells agents how to discover the current tools and API docs instead of hardcoding an endpoint list.
 
+For MCP, store the key in a private environment variable such as
+`ROWSET_API_KEY`, then configure the MCP client's bearer-token env var to
+`ROWSET_API_KEY`. That makes the client send `Authorization: Bearer <key>`.
+
+If a client only supports custom headers, set `Authorization` to `Bearer <key>`.
+Use `X-API-Key` only for REST clients that cannot send bearer tokens.
+
 ## Recommended agent behavior
 
 - Prefer MCP tools over browser automation.
@@ -48,6 +55,6 @@ That file gives an agent durable setup instructions for Rowset MCP and REST fall
 
 ## Related docs
 
-- MCP access explains the hosted MCP endpoint and auth options.
+- MCP access explains the hosted MCP endpoint and bearer token setup.
 - API Reference explains REST authentication and endpoints.
 - Public previews are for browser sharing, not agent authentication.

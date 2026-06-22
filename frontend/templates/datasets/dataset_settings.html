@@ -10,8 +10,7 @@
           <a href="{{ public_url }}" class="fb-button-secondary">Open public preview</a>
         {% endif %}
         {% if dataset.status == "ready" %}
-          <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary">Export CSV</a>
-          <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary">Export Parquet</a>
+          {% include "components/dataset_export_menu.html" %}
         {% endif %}
       </div>
     </div>

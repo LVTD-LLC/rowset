@@ -25,6 +25,6 @@ vendor-neutral steering set:
 - Dataset import/indexing rules in `apps/datasets/services.py`.
 - Legacy dataset parser/import behavior in `apps/datasets/services.py` and
   `apps/datasets/tasks.py`.
-- MCP OAuth and token handling in `apps/mcp_server/oauth.py`.
+- MCP bearer token handling in `apps/mcp_server/auth.py`.
 - API key handling in `apps/api/auth.py` and MCP auth paths.
 - Shared base templates used by both public and authenticated pages.

@@ -12,23 +12,28 @@ Rowset gives AI agents a stable MCP and REST surface for API-backed datasets.
 
 1. Sign in and copy the dashboard agent prompt.
 2. Paste the prompt into a trusted AI agent.
-3. Complete the Rowset browser authorization flow when the MCP client asks.
-4. Ask the agent to create a dataset from a file, table, or system it can access.
-5. Use MCP or REST for row CRUD, CSV export, and optional public previews.
+3. Store the agent API key in a private `ROWSET_API_KEY` environment variable or client secret store.
+4. Configure the MCP client's bearer-token env var to `ROWSET_API_KEY`.
+5. Ask the agent to create a dataset from a file, table, or system it can access.
+6. Use MCP or REST for row CRUD, CSV export, and optional public previews.
 
-## API key fallback
+## API key setup
 
-MCP OAuth is the default setup path. Use an API key only with trusted agents or tools that cannot complete remote MCP auth. After signing in, copy your key from Settings or from the dashboard agent prompt.
+Use an API key only with trusted agents or tools. After signing in, copy your key from Settings or from the dashboard agent prompt.
 
 ```text
 {{ api_key_placeholder }}
 ```
 
-Prefer sending it as a bearer token:
+For MCP and REST, prefer sending it as a bearer token:
 
 ```http
 Authorization: Bearer {{ api_key_placeholder }}
 ```
+
+For MCP clients with a bearer-token env-var field, store the key as
+`ROWSET_API_KEY` and set that field to `ROWSET_API_KEY`. For REST clients that
+cannot send bearer tokens, `X-API-Key` is accepted as a fallback.
 
 ## Your API base URL
 

@@ -11,7 +11,6 @@ from apps.core.services import (
     resolve_api_key_profile,
 )
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -89,7 +88,9 @@ def test_settings_create_agent_api_key_shows_raw_key_once(auth_client):
 
     agent_api_key = AgentApiKey.objects.get(name="Codex")
     assert agent_api_key.token_hash == hash_agent_api_key(created_key["key"])
-    assert created_key["key"] in response.content.decode()
+    content = response.content.decode()
+    assert created_key["key"] in content
+    assert "ROWSET_API_KEY" in content
 
     followup = auth_client.get(reverse("settings"))
     assert followup.context["created_agent_api_key"] is None

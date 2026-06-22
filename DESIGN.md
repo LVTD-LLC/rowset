@@ -96,7 +96,7 @@ wizard, no-code builder, or broad analytics dashboard.
 
 The first useful action is copying the agent setup prompt. The rest of the UI
 supports verification and control: MCP endpoint, REST base URL, recent datasets,
-schema metadata, public preview settings, and fallback API key handling.
+schema metadata, public preview settings, and bearer API key handling.
 
 ## Visual Principles
 

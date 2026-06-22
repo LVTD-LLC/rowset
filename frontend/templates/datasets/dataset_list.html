@@ -6,51 +6,101 @@
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Datasets</p>
       <h1 class="fb-page-title mt-2">API-backed datasets</h1>
-      <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Datasets created and managed through Rowset API or MCP.</p>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Browse datasets created and managed through Rowset API or MCP.</p>
     </div>
-    <div class="flex flex-col gap-2 sm:flex-row">
-      <a href="{% url 'project_list' %}" class="fb-button-secondary">Projects</a>
-    </div>
+    <a href="{% url 'project_list' %}" class="fb-button-secondary">Projects</a>
   </div>
+
+  <section class="mb-6" aria-labelledby="dataset-stats-heading">
+    <h2 id="dataset-stats-heading" class="sr-only">Dataset stats</h2>
+    <dl class="grid overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="border-b border-slate-200 p-4 dark:border-slate-800 sm:border-r lg:border-b-0">
+        <dt class="text-sm font-semibold text-slate-600 dark:text-slate-300">Datasets</dt>
+        <dd class="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-100">{{ dataset_stats.total_datasets }}</dd>
+      </div>
+      <div class="border-b border-slate-200 p-4 dark:border-slate-800 lg:border-b-0 lg:border-r">
+        <dt class="text-sm font-semibold text-slate-600 dark:text-slate-300">Rows stored</dt>
+        <dd class="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-100">{{ dataset_stats.total_rows }}</dd>
+      </div>
+      <div class="border-b border-slate-200 p-4 dark:border-slate-800 sm:border-b-0 sm:border-r">
+        <dt class="text-sm font-semibold text-slate-600 dark:text-slate-300">Projects</dt>
+        <dd class="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-100">{{ dataset_stats.total_projects }}</dd>
+      </div>
+      <div class="p-4">
+        <dt class="text-sm font-semibold text-slate-600 dark:text-slate-300">Public previews</dt>
+        <dd class="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-100">{{ dataset_stats.public_preview_count }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <form method="get" class="mb-6 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 md:grid-cols-[minmax(0,1fr)_14rem_auto_auto]" role="search">
+    <div>
+      <label for="dataset-search" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Search datasets</label>
+      <input id="dataset-search" name="q" type="search" value="{{ search_query }}" placeholder="Name, source file, or project" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+    </div>
+    <div>
+      <label for="dataset-sort" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Sort</label>
+      <select id="dataset-sort" name="sort" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+        {% for value, label in sort_options %}
+          <option value="{{ value }}" {% if selected_sort == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex items-end">
+      <button type="submit" class="fb-button-primary w-full">Apply</button>
+    </div>
+    {% if has_dataset_filters %}
+      <div class="flex items-end">
+        <a href="{% url 'dataset_list' %}" class="fb-button-secondary w-full">Reset</a>
+      </div>
+    {% endif %}
+  </form>
 
   {% if datasets %}
     <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-      <ul class="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950" aria-label="Datasets">
-        {% for dataset in datasets %}
-          <li>
-            <div class="grid gap-4 p-4 transition hover:bg-slate-50 dark:hover:bg-slate-900 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-              <div class="min-w-0">
+      <table class="fb-table">
+        <caption class="sr-only">Datasets</caption>
+        <thead class="bg-slate-50 dark:bg-slate-900">
+          <tr>
+            <th scope="col">Dataset</th>
+            <th scope="col">Project</th>
+            <th scope="col">Rows</th>
+            <th scope="col">Columns</th>
+            <th scope="col">Updated</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+          {% for dataset in datasets %}
+            <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+              <td class="max-w-md">
                 <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
-                <p class="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">{{ dataset.original_filename }} · {{ dataset.row_count }} rows</p>
+                <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
                 <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
-                <p class="mt-1 break-words text-xs font-medium text-slate-500 dark:text-slate-400">
-                  {% if dataset.project %}
-                    Project: <a href="{{ dataset.project.get_absolute_url }}" class="text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ dataset.project.name }}</a>
-                  {% else %}
-                    No project
-                  {% endif %}
-                </p>
-              </div>
-              <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
-                <span class="col-span-2 inline-flex w-fit rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300 sm:col-span-1">{{ dataset.status }}</span>
-                {% if dataset.status == "ready" %}
-                  <a href="{% url 'dataset_export' dataset.key 'csv' %}" class="fb-button-secondary min-h-11 px-3 py-2 text-sm sm:min-h-10 sm:py-1.5 sm:text-xs">CSV</a>
-                  <a href="{% url 'dataset_export' dataset.key 'parquet' %}" class="fb-button-secondary min-h-11 px-3 py-2 text-sm sm:min-h-10 sm:py-1.5 sm:text-xs">Parquet</a>
+              </td>
+              <td>
+                {% if dataset.project %}
+                  <a href="{{ dataset.project.get_absolute_url }}" class="fb-focus break-words font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ dataset.project.name }}</a>
+                {% else %}
+                  <span class="text-slate-500 dark:text-slate-400">No project</span>
                 {% endif %}
-                <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');" class="col-span-2 sm:col-span-1">
-                  {% csrf_token %}
-                  <button type="submit" class="fb-button-secondary min-h-11 w-full border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40 sm:min-h-10 sm:py-1.5 sm:text-xs">Delete</button>
-                </form>
-              </div>
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
+              </td>
+              <td>{{ dataset.row_count }}</td>
+              <td>{{ dataset.headers|length }}</td>
+              <td class="whitespace-nowrap">{{ dataset.updated_at|date:"M d, Y" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   {% else %}
     <div class="fb-panel p-8">
-      <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">No datasets yet</h2>
-      <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Ask your connected agent to create a dataset from the source file or table it can access.</p>
+      {% if has_dataset_filters %}
+        <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">No matching datasets</h2>
+        <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Adjust the search or sort controls to return to the full dataset list.</p>
+      {% else %}
+        <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">No datasets yet</h2>
+        <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Ask your connected agent to create a dataset from the source file or table it can access.</p>
+      {% endif %}
     </div>
   {% endif %}
 </div>

@@ -28,7 +28,7 @@ from apps.api.services import (
 )
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import resolve_api_key_profile
-from apps.mcp_server.oauth import LEGACY_API_KEY_CLIENT_ID, mcp_auth
+from apps.mcp_server.auth import mcp_auth
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
@@ -39,7 +39,7 @@ mcp = FastMCP(
     instructions=(
         "Rowset lets AI agents create, inspect, update, and share API-addressable datasets. "
         "For hosted MCP requests, add the Rowset MCP server URL to your MCP client "
-        "and complete the browser-based OAuth authorization flow when prompted."
+        "and configure the agent API key as an Authorization: Bearer token."
     ),
     auth=mcp_auth,
 )
@@ -86,8 +86,8 @@ def _authenticate_profile(api_key: str | None = None) -> Profile:
     key = (api_key or "").strip() or _get_request_api_key()
     if not key:
         raise PermissionError(
-            "Missing Rowset authorization. Add the Rowset MCP server URL to your "
-            "MCP client and complete the browser-based authorization flow."
+            "Missing Rowset authorization. Configure the Rowset MCP server request with "
+            "Authorization: Bearer <ROWSET_API_KEY>."
         )
 
     resolved = resolve_api_key_profile(key)
@@ -111,11 +111,7 @@ def _get_access_token_profile() -> Profile | None:
     try:
         profile = Profile.objects.select_related("user").get(id=profile_id)
     except (Profile.DoesNotExist, ValueError) as exc:
-        if access_token.client_id != LEGACY_API_KEY_CLIENT_ID:
-            logger.warning(
-                "[MCP] OAuth token profile could not be resolved",
-                error=str(exc),
-            )
+        logger.warning("[MCP] API-key token profile could not be resolved", error=str(exc))
         return None
 
     agent_api_key = None
@@ -356,13 +352,9 @@ def update_dataset_column_types(
             ),
         ),
     ],
-    api_key: Annotated[
-        str | None,
-        Field(default=None, description="Optional Rowset API key."),
-    ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile(api_key)
+    profile = _authenticate_profile()
     try:
         return update_profile_dataset_column_types(
             profile,

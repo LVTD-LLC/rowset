@@ -14,6 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
+from django.db.models import Count, Q, Sum
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -56,18 +57,22 @@ The setup prompt should provide:
 
 1. Configure your MCP client for a remote Streamable HTTP server named `rowset`.
 2. Use the provided MCP URL exactly as given.
-3. When your MCP client opens the Rowset authorization link, sign in and
-   approve access in the browser.
-4. If your client needs a token, use the API key as a bearer token. Never print it
-   in logs, screenshots, public chats, or generated files.
-5. After connecting, call the `get_user_info` tool to verify the connection.
-6. Use `get_all_datasets` to discover datasets available to the authenticated
+3. Store the API key in a private environment variable such as `ROWSET_API_KEY`
+   or in the client's secret store.
+4. Configure the MCP client's bearer-token environment variable to
+   `ROWSET_API_KEY` so it sends `Authorization: Bearer <key>` on MCP requests.
+5. If the client only supports custom headers, set `Authorization` to
+   `Bearer <key>`. Use `X-API-Key` only for REST clients that cannot send bearer
+   tokens.
+6. Never print the key in logs, screenshots, public chats, or generated files.
+7. After connecting, call the `get_user_info` tool to verify the connection.
+8. Use `get_all_datasets` to discover datasets available to the authenticated
    profile before reading rows.
-7. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
-8. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
+9. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
+10. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
    `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, and
    `delete_dataset_row` to inspect and manage ready dataset rows.
-9. Use `update_dataset_public_preview` when the user asks to enable, disable,
+11. Use `update_dataset_public_preview` when the user asks to enable, disable,
    password-protect, or resize a public read-only preview.
 
 ## How To Work
@@ -145,14 +150,16 @@ def build_agent_setup_prompt(
             f"Rowset skill: {instructions_url}",
             "",
             "Read the instructions/skill URL, configure Rowset as a remote Streamable "
-            "HTTP MCP server, and complete the browser authorization flow opened by your "
-            "MCP client. Use the API key only when your client needs bearer-token auth "
-            "or REST fallback. After setup, call get_user_info to verify the connection, "
-            "then call get_all_datasets to discover available datasets. Use "
-            "create_dataset when you need to create a dataset on the fly. Use "
-            "update_dataset_public_preview when the user asks for a shareable read-only "
-            "preview. Discover the current MCP tools and API docs at runtime before "
-            "working with datasets.",
+            "HTTP MCP server, and store the API key in a private environment variable "
+            "such as ROWSET_API_KEY. Configure the MCP client bearer-token env var to "
+            "ROWSET_API_KEY so requests send Authorization: Bearer <key>. If a client "
+            "only supports custom headers, set Authorization to Bearer <key>; use "
+            "X-API-Key only for REST clients that cannot send bearer tokens. After "
+            "setup, call get_user_info to verify the connection, then call "
+            "get_all_datasets to discover available datasets. Use create_dataset when "
+            "you need to create a dataset on the fly. Use update_dataset_public_preview "
+            "when the user asks for a shareable read-only preview. Discover the current "
+            "MCP tools and API docs at runtime before working with datasets.",
         ]
     )
 
@@ -171,11 +178,24 @@ class HomeView(LoginRequiredMixin, TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
-        dashboard_datasets = profile.datasets.select_related(
-            "updated_by_agent_api_key",
-        ).exclude(status=DatasetStatus.PREVIEWED)
-        recent_datasets = list(dashboard_datasets[:5])
+        dashboard_datasets = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)
+        dashboard_summary = dashboard_datasets.aggregate(
+            total_datasets=Count("id"),
+            total_rows=Sum("row_count"),
+            public_preview_count=Count("id", filter=Q(public_enabled=True)),
+        )
+        recent_datasets = list(
+            dashboard_datasets.select_related("project", "updated_by_agent_api_key").order_by(
+                "-updated_at"
+            )[:5]
+        )
         context["recent_datasets"] = recent_datasets
+        context["dashboard_stats"] = {
+            "total_datasets": dashboard_summary["total_datasets"] or 0,
+            "total_projects": profile.projects.count(),
+            "total_rows": dashboard_summary["total_rows"] or 0,
+            "public_preview_count": dashboard_summary["public_preview_count"] or 0,
+        }
         context["show_agent_setup_prompt"] = (
             not profile.agent_setup_prompt_dismissed and not recent_datasets
         )
@@ -187,11 +207,6 @@ class HomeView(LoginRequiredMixin, TemplateView):
             )
             context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
             context["agent_setup_prompt_dismiss_url"] = reverse("dismiss_agent_setup_prompt")
-        context["agent_instructions_url"] = build_absolute_public_url(
-            reverse("agent_instructions_rowset_mcp")
-        )
-        context["mcp_url"] = build_absolute_public_url("/mcp/")
-        context["rest_api_base_url"] = build_absolute_public_url("/api/")
         return context
 
 
@@ -485,25 +500,50 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         from django.utils import timezone
 
         from apps.core.models import Feedback, Profile
+        from apps.datasets.models import Dataset, Project
 
         context = super().get_context_data(**kwargs)
 
         now = timezone.now()
         week_ago = now - timedelta(days=7)
         month_ago = now - timedelta(days=30)
+        visible_datasets = Dataset.objects.exclude(status=DatasetStatus.PREVIEWED)
 
         total_users = User.objects.count()
-        total_profiles = Profile.objects.count()
+        profile_count = Profile.objects.count()
         total_feedback = Feedback.objects.count()
+        total_datasets = visible_datasets.count()
+        total_projects = Project.objects.count()
+        dataset_summary = visible_datasets.aggregate(
+            total_rows=Sum("row_count"),
+            public_preview_count=Count("id", filter=Q(public_enabled=True)),
+        )
 
         new_users_week = User.objects.filter(date_joined__gte=week_ago).count()
         new_users_month = User.objects.filter(date_joined__gte=month_ago).count()
         feedback_week = Feedback.objects.filter(created_at__gte=week_ago).count()
+        datasets_week = visible_datasets.filter(created_at__gte=week_ago).count()
+        datasets_month = visible_datasets.filter(created_at__gte=month_ago).count()
+        projects_week = Project.objects.filter(created_at__gte=week_ago).count()
+        projects_month = Project.objects.filter(created_at__gte=month_ago).count()
 
         recent_users = User.objects.select_related("profile").order_by("-date_joined")[:10]
         recent_feedback = Feedback.objects.select_related("profile__user").order_by("-created_at")[
             :10
         ]
+        recent_datasets = visible_datasets.select_related("profile__user", "project").order_by(
+            "-created_at"
+        )[:10]
+        recent_projects = (
+            Project.objects.select_related("profile__user")
+            .annotate(
+                dataset_count=Count(
+                    "datasets",
+                    filter=~Q(datasets__status=DatasetStatus.PREVIEWED),
+                )
+            )
+            .order_by("-created_at")[:10]
+        )
 
         # Calculate average users per day for last 30 days
         avg_users_per_day = new_users_month / 30 if new_users_month > 0 else 0
@@ -511,13 +551,23 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         context.update(
             {
                 "total_users": total_users,
-                "total_profiles": total_profiles,
+                "profile_count": profile_count,
                 "total_feedback": total_feedback,
+                "total_datasets": total_datasets,
+                "total_projects": total_projects,
+                "total_rows": dataset_summary["total_rows"] or 0,
+                "public_preview_count": dataset_summary["public_preview_count"] or 0,
                 "new_users_week": new_users_week,
                 "new_users_month": new_users_month,
                 "feedback_week": feedback_week,
+                "datasets_week": datasets_week,
+                "datasets_month": datasets_month,
+                "projects_week": projects_week,
+                "projects_month": projects_month,
                 "recent_users": recent_users,
                 "recent_feedback": recent_feedback,
+                "recent_datasets": recent_datasets,
+                "recent_projects": recent_projects,
                 "avg_users_per_day": avg_users_per_day,
             }
         )

@@ -16,22 +16,23 @@ Rowset includes a hosted MCP endpoint so compatible AI agents can discover and u
 
 ## Authentication
 
-Add the MCP URL to a compatible remote MCP client. The client will discover
-Rowset's OAuth metadata, generate an authorization link, and open it in your
-browser. Sign in to Rowset, approve access, and the MCP client will store the
-OAuth token for future MCP requests.
+Add the MCP URL to a compatible remote MCP client, then configure the agent API
+key as the bearer token for that server.
 
-After signing in, the dashboard setup prompt includes your API key for clients that cannot complete MCP OAuth. The visible preview masks it, but the copied prompt includes the real key.
+The dashboard setup prompt includes your API key. The visible preview masks it,
+but the copied prompt includes the real key.
 
-For older clients that cannot complete MCP OAuth, a bearer API key is still
-accepted as a compatibility path:
+Store the key in a private environment variable such as `ROWSET_API_KEY` or in
+your client's secret store. If your client has a "bearer token env var" setting,
+set it to `ROWSET_API_KEY` so MCP requests include:
 
 ```http
 Authorization: Bearer {{ api_key_placeholder }}
 ```
 
-Prefer OAuth when your client supports it because it avoids copying secrets into
-configuration files.
+If your client only supports custom headers, set a custom `Authorization` header
+with the value `Bearer {{ api_key_placeholder }}`. Use `X-API-Key` only for REST
+clients that cannot send bearer tokens.
 
 ## First checks
 
