@@ -16,7 +16,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "filebridge.settings")
 
 django_application = get_asgi_application()
 
-from apps.mcp_server.oauth import MCP_INTERNAL_PATH, MCP_MOUNT_PATH, mcp_auth  # noqa: E402
+from apps.mcp_server.auth import MCP_INTERNAL_PATH, MCP_MOUNT_PATH  # noqa: E402
 from apps.mcp_server.server import mcp  # noqa: E402
 
 mcp_application = mcp.http_app(path=MCP_INTERNAL_PATH)
@@ -28,7 +28,6 @@ def redirect_mcp(request: Request) -> RedirectResponse:
 
 application = Starlette(
     routes=[
-        *mcp_auth.get_well_known_routes(mcp_path=MCP_INTERNAL_PATH),
         Route("/mcp", endpoint=redirect_mcp, methods=["GET", "POST", "DELETE"]),
         Mount(MCP_MOUNT_PATH, app=mcp_application),
         Mount("/", app=django_application),

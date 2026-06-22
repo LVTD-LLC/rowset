@@ -5,7 +5,7 @@
 - Backend: Django 6, Python `>=3.14,<4.0`.
 - API: Django Ninja in `apps/api`.
 - MCP: FastMCP in `apps/mcp_server`.
-- Auth: Django allauth, session auth, API-key auth, hosted MCP OAuth.
+- Auth: Django allauth, session auth, API-key auth, hosted MCP bearer auth.
 - Data: PostgreSQL, Redis, Django Q workers.
 - Tabular processing: Python `csv` and Polars for dataset parsing, CSV export,
   and Parquet export.
@@ -38,7 +38,7 @@ settings, and Redis settings. Production should use `ENVIRONMENT=prod` and
 `DEBUG=off`.
 
 Keep secrets in environment variables only. Do not commit `.env`, API keys,
-OAuth tokens, service account JSON, Stripe secrets, Sentry DSNs, or user dataset
+service account JSON, Stripe secrets, Sentry DSNs, or user dataset
 contents.
 
 ## Architecture
@@ -48,7 +48,7 @@ contents.
 - `apps/datasets` owns dataset parsing, legacy import support, row storage,
   exports, public previews, and dataset-specific tests.
 - `apps/api` exposes REST endpoints and keeps API schemas/auth/service wrappers.
-- `apps/mcp_server` exposes hosted MCP tools and OAuth-compatible auth.
+- `apps/mcp_server` exposes hosted MCP tools and bearer API-key auth.
 - `apps/core` owns profiles, account state, feedback, email delivery, Stripe
   webhook handling, and shared helpers.
 - `apps/docs` renders Markdown docs from `apps/docs/content` and navigation YAML.
@@ -74,8 +74,11 @@ contents.
 
 - REST endpoints use bearer API-key auth as the preferred private API path.
 - Query-string API keys and `X-API-Key` exist for compatibility only.
-- Hosted MCP should use browser-based OAuth when the client supports it.
-- MCP API-key support is a compatibility fallback for older clients.
+- Hosted MCP uses bearer API-key auth. Configure MCP clients with
+  `Authorization: Bearer <key>`, usually through a bearer-token environment
+  variable such as `ROWSET_API_KEY`.
+- For hosted MCP, use custom headers only when the client cannot set a bearer
+  token; the custom header should still be `Authorization: Bearer <key>`.
 - REST and MCP row operations must enforce the authenticated profile's ownership
   boundary.
 - Keep service-layer errors clear and convert them at the boundary: HTTP errors
@@ -95,7 +98,7 @@ contents.
 ## Testing Notes
 
 - Prefer `make test` over host `pytest`.
-- Dataset parser, API, MCP, OAuth, export, and public-preview changes need
+- Dataset parser, API, MCP auth, export, and public-preview changes need
   focused tests.
 - Template-only changes can be checked with Django template loading and
   `manage.py check`, but asset-related work should also build or run the frontend

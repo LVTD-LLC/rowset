@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 import stripe
 from allauth.account.internal.flows.email_verification import (
     send_verification_email_to_address,
@@ -54,18 +56,22 @@ The setup prompt should provide:
 
 1. Configure your MCP client for a remote Streamable HTTP server named `rowset`.
 2. Use the provided MCP URL exactly as given.
-3. When your MCP client opens the Rowset authorization link, sign in and
-   approve access in the browser.
-4. If your client needs a token, use the API key as a bearer token. Never print it
-   in logs, screenshots, public chats, or generated files.
-5. After connecting, call the `get_user_info` tool to verify the connection.
-6. Use `get_all_datasets` to discover datasets available to the authenticated
+3. Store the API key in a private environment variable such as `ROWSET_API_KEY`
+   or in the client's secret store.
+4. Configure the MCP client's bearer-token environment variable to
+   `ROWSET_API_KEY` so it sends `Authorization: Bearer <key>` on MCP requests.
+5. If the client only supports custom headers, set `Authorization` to
+   `Bearer <key>`. Use `X-API-Key` only for REST clients that cannot send bearer
+   tokens.
+6. Never print the key in logs, screenshots, public chats, or generated files.
+7. After connecting, call the `get_user_info` tool to verify the connection.
+8. Use `get_all_datasets` to discover datasets available to the authenticated
    profile before reading rows.
-7. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
-8. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
+9. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
+10. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
    `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, and
    `delete_dataset_row` to inspect and manage ready dataset rows.
-9. Use `update_dataset_public_preview` when the user asks to enable, disable,
+11. Use `update_dataset_public_preview` when the user asks to enable, disable,
    password-protect, or resize a public read-only preview.
 
 ## How To Work
@@ -143,14 +149,16 @@ def build_agent_setup_prompt(
             f"Rowset skill: {instructions_url}",
             "",
             "Read the instructions/skill URL, configure Rowset as a remote Streamable "
-            "HTTP MCP server, and complete the browser authorization flow opened by your "
-            "MCP client. Use the API key only when your client needs bearer-token auth "
-            "or REST fallback. After setup, call get_user_info to verify the connection, "
-            "then call get_all_datasets to discover available datasets. Use "
-            "create_dataset when you need to create a dataset on the fly. Use "
-            "update_dataset_public_preview when the user asks for a shareable read-only "
-            "preview. Discover the current MCP tools and API docs at runtime before "
-            "working with datasets.",
+            "HTTP MCP server, and store the API key in a private environment variable "
+            "such as ROWSET_API_KEY. Configure the MCP client bearer-token env var to "
+            "ROWSET_API_KEY so requests send Authorization: Bearer <key>. If a client "
+            "only supports custom headers, set Authorization to Bearer <key>; use "
+            "X-API-Key only for REST clients that cannot send bearer tokens. After "
+            "setup, call get_user_info to verify the connection, then call "
+            "get_all_datasets to discover available datasets. Use create_dataset when "
+            "you need to create a dataset on the fly. Use update_dataset_public_preview "
+            "when the user asks for a shareable read-only preview. Discover the current "
+            "MCP tools and API docs at runtime before working with datasets.",
         ]
     )
 

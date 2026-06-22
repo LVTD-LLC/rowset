@@ -61,14 +61,14 @@
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="agent-api-keys-heading" class="fb-section-title">Agent API keys</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Create a named bearer token for each trusted AI agent that needs REST or MCP token access.</p>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Create a named bearer token for each trusted AI agent that needs REST or MCP access.</p>
         </div>
       </div>
 
       {% if created_agent_api_key %}
       <div class="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30" data-controller="copy">
         <label for="created-agent-api-key" class="block text-sm font-semibold text-emerald-950 dark:text-emerald-100">{{ created_agent_api_key.name }} token</label>
-        <p class="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">Copy this now. It will not be shown again.</p>
+        <p class="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">Copy this now. It will not be shown again. Store it as <code>ROWSET_API_KEY</code>, then configure your MCP client bearer-token env var to <code>ROWSET_API_KEY</code>.</p>
         <div class="mt-3 flex flex-col gap-3 sm:flex-row">
           <input id="created-agent-api-key" data-copy-target="source" readonly value="{{ created_agent_api_key.key }}" class="fb-input min-w-0 flex-1 px-3 py-2 font-mono text-sm" />
           <button type="button" data-action="copy#copy" class="fb-button-primary sm:w-auto">

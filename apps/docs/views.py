@@ -190,14 +190,16 @@ def build_docs_agent_setup_prompt():
             f"Rowset skill: {instructions_url}",
             "",
             "Read the instructions/skill URL, configure Rowset as a remote Streamable "
-            "HTTP MCP server, and complete the browser authorization flow opened by your "
-            "MCP client. Use the API key only when your client needs bearer-token auth "
-            "or REST fallback. After setup, call get_user_info to verify the connection, "
-            "then call get_all_datasets to discover available datasets. Use "
-            "create_dataset when you need to create a dataset on the fly. Use "
-            "update_dataset_public_preview when the user asks for a shareable read-only "
-            "preview. Discover the current MCP tools and API docs at runtime before "
-            "working with datasets.",
+            "HTTP MCP server, and store the API key in a private environment variable "
+            "such as ROWSET_API_KEY. Configure the MCP client bearer-token env var to "
+            "ROWSET_API_KEY so requests send Authorization: Bearer <key>. If a client "
+            "only supports custom headers, set Authorization to Bearer <key>; use "
+            "X-API-Key only for REST clients that cannot send bearer tokens. After "
+            "setup, call get_user_info to verify the connection, then call "
+            "get_all_datasets to discover available datasets. Use create_dataset when "
+            "you need to create a dataset on the fly. Use update_dataset_public_preview "
+            "when the user asks for a shareable read-only preview. Discover the current "
+            "MCP tools and API docs at runtime before working with datasets.",
         ]
     )
 

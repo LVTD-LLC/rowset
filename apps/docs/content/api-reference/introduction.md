@@ -22,7 +22,10 @@ Use your API key as a bearer token. After signing in, copy your key from Setting
 Authorization: Bearer {{ api_key_placeholder }}
 ```
 
-Clients that cannot send bearer tokens can use `X-API-Key: {{ api_key_placeholder }}` or the `api_key` query parameter.
+For MCP clients, store the key in a private env var such as `ROWSET_API_KEY` and
+set the client's bearer-token env-var field to `ROWSET_API_KEY`.
+
+REST clients that cannot send bearer tokens can use `X-API-Key: {{ api_key_placeholder }}` or the `api_key` query parameter.
 
 Example request:
 
