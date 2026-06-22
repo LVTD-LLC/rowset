@@ -65,6 +65,7 @@ def generate_agent_api_key_token(agent_api_key: AgentApiKey) -> str:
 
 
 def get_agent_api_key_token(agent_api_key: AgentApiKey) -> str:
+    # Settings can copy setup prompts for existing rows without storing raw tokens.
     return generate_agent_api_key_token(agent_api_key)
 
 
@@ -142,6 +143,8 @@ def resolve_api_key_profile(raw_key: str) -> tuple[Profile, AgentApiKey | None] 
     if not token:
         return None
 
+    # Keep hash lookup first for previously issued random tokens; signed-token lookup
+    # enables prompt copying for named key rows created before this UI change.
     agent_api_key = (
         _resolve_agent_api_key_by_hash(token)
         or _resolve_agent_api_key_by_signed_token(token)

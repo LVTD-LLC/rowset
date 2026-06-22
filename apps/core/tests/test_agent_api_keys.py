@@ -147,6 +147,24 @@ def test_agent_api_key_setup_prompt_endpoint_rejects_revoked_key(auth_client, pr
     assert response.status_code == 404
 
 
+def test_agent_api_key_setup_prompt_endpoint_rejects_other_profile_key(
+    auth_client,
+    django_user_model,
+):
+    other_user = django_user_model.objects.create_user(
+        username="otherpromptkeyuser",
+        email="otherpromptkeyuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(other_user.profile, "Reporting Agent")
+
+    response = auth_client.get(
+        reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid])
+    )
+
+    assert response.status_code == 404
+
+
 def test_settings_rejects_duplicate_agent_api_key_names(auth_client, profile):
     create_agent_api_key(profile, "Codex")
 
