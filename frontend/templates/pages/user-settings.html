@@ -90,7 +90,7 @@
           <span class="hidden text-slate-600 dark:text-slate-300 sm:block">{% if agent_api_key.last_used_at %}{{ agent_api_key.last_used_at|date:"M j, Y" }}{% else %}Never{% endif %}</span>
           <span class="text-slate-600 dark:text-slate-300">{% if agent_api_key.revoked_at %}Revoked{% else %}Active{% endif %}</span>
           <span class="flex flex-wrap justify-end gap-2">
-            {% if not agent_api_key.revoked_at and agent_api_key.token_ciphertext %}
+            {% if not agent_api_key.revoked_at %}
             <span data-controller="copy" data-copy-url-value="{% url 'agent_api_key_setup_prompt' agent_api_key.uuid %}">
               <button type="button" data-action="copy#copy" class="fb-button-primary px-3 py-1.5 text-xs">
                 <span data-copy-target="label">Copy Setup Prompt</span>
