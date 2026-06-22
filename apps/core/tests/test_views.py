@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.core.views import build_agent_setup_prompt
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.models import Dataset
+from apps.datasets.models import Dataset, Project
 from filebridge.utils import build_absolute_public_url
 
 
@@ -49,8 +49,6 @@ class TestHomeView:
         assert "Only share this prompt with agents and people you trust." in content
         assert "create_dataset" in masked_prompt
         assert "update_dataset_public_preview" in masked_prompt
-        assert response.context["mcp_url"] == "https://rowset.example/mcp/"
-        assert response.context["rest_api_base_url"] == "https://rowset.example/api/"
 
     def test_home_view_hides_agent_setup_prompt_after_dismissal(self, auth_client, profile):
         profile.agent_setup_prompt_dismissed = True
@@ -80,9 +78,19 @@ class TestHomeView:
 
         content = response.content.decode()
         assert response.context["show_agent_setup_prompt"] is False
+        assert response.context["dashboard_stats"] == {
+            "total_datasets": 1,
+            "total_projects": 0,
+            "total_rows": 0,
+            "public_preview_count": 0,
+        }
         assert "Copy/paste prompt" not in content
         assert "Copy agent prompt" not in content
+        assert "MCP endpoint" not in content
+        assert "REST API base" not in content
+        assert "Agent skill" not in content
         assert "People" in content
+        assert "Workspace summary" in content
 
     def test_dismiss_agent_setup_prompt_removes_prompt_from_home(self, auth_client, profile):
         response = auth_client.post(reverse("dismiss_agent_setup_prompt"))
@@ -193,3 +201,44 @@ class TestHomeView:
     @override_settings(SITE_URL="http://notlocalhost.example")
     def test_build_absolute_public_url_does_not_substring_match_localhost(self):
         assert build_absolute_public_url("/SKILL.md") == "https://notlocalhost.example/SKILL.md"
+
+    def test_admin_panel_includes_rowset_dataset_project_stats(
+        self,
+        client,
+        django_user_model,
+        profile,
+    ):
+        superuser = django_user_model.objects.create_superuser(
+            username="admin",
+            email="admin@example.com",
+            password="strong-test-pass-123",
+        )
+        project = Project.objects.create(profile=profile, name="Operations")
+        Dataset.objects.create(
+            profile=profile,
+            project=project,
+            name="People",
+            original_filename="people.csv",
+            status=DatasetStatus.READY,
+            headers=["name"],
+            row_count=3,
+            public_enabled=True,
+        )
+        client.force_login(superuser)
+
+        response = client.get(reverse("admin_panel"))
+
+        content = response.content.decode()
+        assert response.status_code == 200
+        assert response.context["total_datasets"] == 1
+        assert response.context["total_projects"] == 1
+        assert response.context["total_rows"] == 3
+        assert response.context["public_preview_count"] == 1
+        assert response.context["profile_count"] >= 1
+        assert "Total datasets" in content
+        assert "Total projects" in content
+        assert "Total profiles" in content
+        assert "Latest datasets" in content
+        assert "Latest projects" in content
+        assert "People" in content
+        assert "Operations" in content

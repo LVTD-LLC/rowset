@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import content_disposition_header
@@ -32,6 +32,19 @@ from apps.datasets.services import (
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
 
+DATASET_SORT_OPTIONS = (
+    ("recent", "Recently updated"),
+    ("name", "Name"),
+    ("rows", "Rows"),
+    ("project", "Project"),
+)
+DATASET_SORT_ORDERING = {
+    "recent": ("-updated_at", "-created_at"),
+    "name": ("name", "-updated_at"),
+    "rows": ("-row_count", "name"),
+    "project": ("project__name", "name"),
+}
+
 
 def _visible_project_dataset_count():
     return Count("datasets", filter=~Q(datasets__status=DatasetStatus.PREVIEWED))
@@ -52,10 +65,55 @@ class DatasetListView(LoginRequiredMixin, ListView):
     template_name = "datasets/dataset_list.html"
     context_object_name = "datasets"
 
+    def get_search_query(self) -> str:
+        return self.request.GET.get("q", "").strip()
+
+    def get_selected_sort(self) -> str:
+        selected_sort = self.request.GET.get("sort", "recent")
+        if selected_sort not in DATASET_SORT_ORDERING:
+            return "recent"
+        return selected_sort
+
+    def get_base_queryset(self):
+        if not hasattr(self, "_base_queryset"):
+            self._base_queryset = self.request.user.profile.datasets.select_related(
+                "project"
+            ).exclude(status=DatasetStatus.PREVIEWED)
+        return self._base_queryset
+
     def get_queryset(self):
-        return self.request.user.profile.datasets.select_related("project").exclude(
-            status=DatasetStatus.PREVIEWED
+        queryset = self.get_base_queryset()
+        search_query = self.get_search_query()
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query)
+                | Q(original_filename__icontains=search_query)
+                | Q(project__name__icontains=search_query)
+            )
+
+        return queryset.order_by(*DATASET_SORT_ORDERING[self.get_selected_sort()])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        base_queryset = self.get_base_queryset()
+        summary = base_queryset.aggregate(
+            total_datasets=Count("id"),
+            total_rows=Sum("row_count"),
+            public_preview_count=Count("id", filter=Q(public_enabled=True)),
         )
+        context["dataset_stats"] = {
+            "total_datasets": summary["total_datasets"] or 0,
+            "total_rows": summary["total_rows"] or 0,
+            "public_preview_count": summary["public_preview_count"] or 0,
+            "total_projects": self.request.user.profile.projects.count(),
+        }
+        context["search_query"] = self.get_search_query()
+        context["selected_sort"] = self.get_selected_sort()
+        context["sort_options"] = DATASET_SORT_OPTIONS
+        context["has_dataset_filters"] = bool(
+            context["search_query"] or context["selected_sort"] != "recent"
+        )
+        return context
 
 
 class ProjectListView(LoginRequiredMixin, ListView):
@@ -89,7 +147,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         paginator = Paginator(
-            self.object.datasets.exclude(status=DatasetStatus.PREVIEWED),
+            self.object.datasets.exclude(status=DatasetStatus.PREVIEWED).order_by("-updated_at"),
             100,
         )
         page_obj = paginator.get_page(self.request.GET.get("page"))
@@ -118,13 +176,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 for preview_row in dataset.preview_rows[:5]
             ]
         context["sample_row_values"] = sample_row_values
-        context["api_key"] = self.request.user.profile.key
-        context["api_base_url"] = self.request.build_absolute_uri("/api").rstrip("/")
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
-        context["column_definitions"] = column_definitions(
-            dataset.headers,
-            dataset.column_schema,
-        )
         return context
 
 
