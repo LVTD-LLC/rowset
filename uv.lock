@@ -2811,6 +2811,7 @@ name = "rowset"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "django" },
     { name = "django-allauth" },
     { name = "django-anymail" },
@@ -2860,6 +2861,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=48.0.1" },
     { name = "django", specifier = ">=6.0.5" },
     { name = "django-allauth", specifier = ">=65.16.1" },
     { name = "django-anymail", specifier = ">=15.0" },
