@@ -15,7 +15,7 @@
           </p>
         </div>
 
-        {% include "components/agent-setup-prompt-panel.html" %}
+        {% include "components/agent-setup-prompt-panel.html" with agent_setup_prompt_help_id="dashboard-agent-setup-help" agent_setup_prompt_warning_id="dashboard-agent-setup-warning" %}
       </section>
     {% else %}
       <section aria-labelledby="dashboard-heading">

@@ -22,7 +22,7 @@
         <h2 id="settings-agent-setup-heading" class="fb-section-title">Agent setup prompt</h2>
         <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Copy this whenever you need to connect a trusted AI agent to Rowset.</p>
       </div>
-      {% include "components/agent-setup-prompt-panel.html" %}
+      {% include "components/agent-setup-prompt-panel.html" with agent_setup_prompt_help_id="settings-agent-setup-help" agent_setup_prompt_warning_id="settings-agent-setup-warning" %}
     </section>
 
     {% if not has_subscription %}
