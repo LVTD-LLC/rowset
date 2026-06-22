@@ -268,11 +268,7 @@ def get_ready_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
 
 def get_ready_profile_dataset_for_update(profile: Profile, dataset_key: str) -> Dataset:
     try:
-        dataset = (
-            Dataset.objects.select_for_update()
-            .select_related("project")
-            .get(key=dataset_key, profile=profile)
-        )
+        dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
     except Dataset.DoesNotExist as exc:
         raise DatasetServiceError(404, "Dataset not found.") from exc
     if dataset.status != DatasetStatus.READY:
@@ -500,11 +496,7 @@ def update_profile_dataset_column_types(
 ) -> dict:
     with transaction.atomic():
         try:
-            dataset = (
-                Dataset.objects.select_for_update()
-                .select_related("project")
-                .get(key=dataset_key, profile=profile)
-            )
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
         except Dataset.DoesNotExist as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
@@ -549,11 +541,7 @@ def update_profile_dataset_public_preview(
 
     with transaction.atomic():
         try:
-            dataset = (
-                Dataset.objects.select_for_update()
-                .select_related("project")
-                .get(key=dataset_key, profile=profile)
-            )
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
         except Dataset.DoesNotExist as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
@@ -608,11 +596,7 @@ def update_profile_dataset_project(
 
     with transaction.atomic():
         try:
-            dataset = (
-                Dataset.objects.select_for_update()
-                .select_related("project")
-                .get(key=dataset_key, profile=profile)
-            )
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
         except Dataset.DoesNotExist as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
