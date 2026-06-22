@@ -106,6 +106,11 @@ class TestDocsView:
         assert "treat the copied prompt like a password" in content
         assert "ROWSET_API_KEY" in content
         assert "https://rowset.example/SKILL.md" in content
+        assert "npx skills add LVTD-LLC/rowset" in content
+        assert (
+            "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
+            ".agents/skills/rowset/SKILL.md"
+        ) in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_mcp_docs_use_bearer_api_key_instead_of_oauth(self, client):

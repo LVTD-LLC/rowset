@@ -23,6 +23,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, UpdateView
 
+from apps.core.agent_skill import (
+    ROWSET_AGENT_SETUP_INSTRUCTIONS,
+    ROWSET_SKILL_INSTALL_COMMAND,
+    load_rowset_skill_markdown,
+)
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import create_agent_api_key
@@ -36,62 +41,6 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 logger = get_filebridge_logger(__name__)
 
 AGENT_API_KEY_MASK = "***"
-
-
-AGENT_INSTRUCTIONS_MARKDOWN = """# Rowset Agent Skill
-
-Use this when a user asks you to connect to Rowset or work with Rowset datasets.
-Rowset turns user-owned tabular data into datasets that agents can discover,
-read, create, update, export, and share through MCP or the REST API.
-
-## Prompt Inputs
-
-The setup prompt should provide:
-
-- `Rowset MCP URL`
-- `Rowset REST API base`
-- `Rowset API key`
-- this `SKILL.md` URL
-
-## Setup
-
-1. Configure your MCP client for a remote Streamable HTTP server named `rowset`.
-2. Use the provided MCP URL exactly as given.
-3. Store the API key in a private environment variable such as `ROWSET_API_KEY`
-   or in the client's secret store.
-4. Configure the MCP client's bearer-token environment variable to
-   `ROWSET_API_KEY` so it sends `Authorization: Bearer <key>` on MCP requests.
-5. If the client only supports custom headers, set `Authorization` to
-   `Bearer <key>`. Use `X-API-Key` only for REST clients that cannot send bearer
-   tokens.
-6. Never print the key in logs, screenshots, public chats, or generated files.
-7. After connecting, call the `get_user_info` tool to verify the connection.
-8. Use `get_all_datasets` to discover datasets available to the authenticated
-   profile before reading rows.
-9. Use `create_dataset` when the user asks you to make a new ready dataset on the fly.
-10. Use `get_dataset`, `list_dataset_rows`, `get_dataset_row`,
-   `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, and
-   `delete_dataset_row` to inspect and manage ready dataset rows.
-11. Use `update_dataset_public_preview` when the user asks to enable, disable,
-   password-protect, or resize a public read-only preview.
-
-## How To Work
-
-- Prefer MCP tools over browser automation when working with Rowset.
-- Use `get_all_datasets` for dataset discovery. It returns paginated dataset
-  metadata only, not row contents.
-- Use `create_dataset` when a workflow needs a new dataset. It returns a dataset
-  key that can be used immediately with row tools.
-- Use row tools for dataset contents. They require a ready dataset and enforce the
-  authenticated user's dataset ownership.
-- Use `update_dataset_public_preview` for public sharing. Public previews are
-  read-only browser pages, not a substitute for authenticated MCP or REST access.
-- If MCP configuration is unavailable in your runtime, ask the user before falling
-  back to REST API authentication. The user can copy their API key from Rowset
-  Settings.
-- Ask the user before destructive changes such as deleting datasets or rows.
-- Keep user data private and only access the Rowset resources needed for the task.
-"""
 
 
 def user_settings_context(
@@ -148,18 +97,9 @@ def build_agent_setup_prompt(
             f"Rowset REST API base: {rest_api_base_url}",
             f"Rowset API key: {api_key}",
             f"Rowset skill: {instructions_url}",
+            f"Rowset skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
             "",
-            "Read the instructions/skill URL, configure Rowset as a remote Streamable "
-            "HTTP MCP server, and store the API key in a private environment variable "
-            "such as ROWSET_API_KEY. Configure the MCP client bearer-token env var to "
-            "ROWSET_API_KEY so requests send Authorization: Bearer <key>. If a client "
-            "only supports custom headers, set Authorization to Bearer <key>; use "
-            "X-API-Key only for REST clients that cannot send bearer tokens. After "
-            "setup, call get_user_info to verify the connection, then call "
-            "get_all_datasets to discover available datasets. Use create_dataset when "
-            "you need to create a dataset on the fly. Use update_dataset_public_preview "
-            "when the user asks for a shareable read-only preview. Discover the current "
-            "MCP tools and API docs at runtime before working with datasets.",
+            ROWSET_AGENT_SETUP_INSTRUCTIONS,
         ]
     )
 
@@ -228,7 +168,7 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
 
 def agent_instructions_rowset_mcp(request):
-    return HttpResponse(AGENT_INSTRUCTIONS_MARKDOWN, content_type="text/markdown; charset=utf-8")
+    return HttpResponse(load_rowset_skill_markdown(), content_type="text/markdown; charset=utf-8")
 
 
 @login_required

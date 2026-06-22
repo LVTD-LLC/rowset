@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
+from apps.core.agent_skill import ROWSET_SKILL_INSTALL_COMMAND
 from apps.core.models import Profile
 from filebridge.utils import build_absolute_public_url, get_filebridge_logger
 
@@ -48,14 +49,16 @@ class LandingPageView(TemplateView):
                 f"Rowset MCP URL: {mcp_url}",
                 f"Rowset REST API base: {rest_api_base_url}",
                 f"Agent instructions/skill: {instructions_url}",
+                f"Agent skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
                 "",
-                "Read the skill URL, configure Rowset as a remote Streamable HTTP MCP "
-                "server, and use an agent API key as the bearer token. If I do not have "
-                f"a Rowset account yet, tell me to sign up at {signup_url}. After signup, "
-                "the key should be stored in a private ROWSET_API_KEY environment variable "
-                "or client secret store, then configured as the MCP bearer-token env var. "
-                "After setup, call get_user_info, then use get_all_datasets, create_dataset, "
-                "row tools, exports, and update_dataset_public_preview as needed.",
+                "Read the skill URL or install the repo skill, configure Rowset as a remote "
+                "Streamable HTTP MCP server, and use an agent API key as the bearer token. "
+                f"If I do not have a Rowset account yet, tell me to sign up at {signup_url}. "
+                "After signup, the key should be stored in a private ROWSET_API_KEY "
+                "environment variable or client secret store, then configured as the MCP "
+                "bearer-token env var. After setup, call get_user_info, then use "
+                "get_all_datasets, create_dataset, row tools, exports, and "
+                "update_dataset_public_preview as needed.",
             ]
         )
 

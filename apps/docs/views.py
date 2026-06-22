@@ -10,6 +10,11 @@ from django.shortcuts import redirect, render
 from django.template import Context, Template
 from django.urls import reverse
 
+from apps.core.agent_skill import (
+    ROWSET_AGENT_SETUP_INSTRUCTIONS,
+    ROWSET_SKILL_INSTALL_COMMAND,
+    ROWSET_SKILL_SOURCE_URL,
+)
 from apps.core.views import AGENT_API_KEY_MASK
 from filebridge.utils import build_absolute_public_url, get_filebridge_logger
 
@@ -188,18 +193,9 @@ def build_docs_agent_setup_prompt():
             f"Rowset REST API base: {rest_api_base_url}",
             f"Rowset API key: {AGENT_API_KEY_MASK}",
             f"Rowset skill: {instructions_url}",
+            f"Rowset skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
             "",
-            "Read the instructions/skill URL, configure Rowset as a remote Streamable "
-            "HTTP MCP server, and store the API key in a private environment variable "
-            "such as ROWSET_API_KEY. Configure the MCP client bearer-token env var to "
-            "ROWSET_API_KEY so requests send Authorization: Bearer <key>. If a client "
-            "only supports custom headers, set Authorization to Bearer <key>; use "
-            "X-API-Key only for REST clients that cannot send bearer tokens. After "
-            "setup, call get_user_info to verify the connection, then call "
-            "get_all_datasets to discover available datasets. Use create_dataset when "
-            "you need to create a dataset on the fly. Use update_dataset_public_preview "
-            "when the user asks for a shareable read-only preview. Discover the current "
-            "MCP tools and API docs at runtime before working with datasets.",
+            ROWSET_AGENT_SETUP_INSTRUCTIONS,
         ]
     )
 
@@ -213,6 +209,8 @@ def get_docs_template_context():
         "dashboard_url": build_absolute_public_url(reverse("home")),
         "mcp_url": build_absolute_public_url("/mcp/"),
         "settings_url": build_absolute_public_url(reverse("settings")),
+        "skill_install_command": ROWSET_SKILL_INSTALL_COMMAND,
+        "skill_source_url": ROWSET_SKILL_SOURCE_URL,
         "signup_url": build_absolute_public_url(reverse("account_signup")),
         "site_url": build_absolute_public_url("/").rstrip("/"),
         "user_email_placeholder": USER_EMAIL_PLACEHOLDER,

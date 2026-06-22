@@ -1,0 +1,107 @@
+---
+name: rowset
+description: Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP or REST access, or manage Rowset datasets. Covers bearer API key setup, hosted MCP discovery, dataset/project creation and lookup, row CRUD, semantic column types, REST CSV export fallback, public preview sharing, and privacy/destructive-action guardrails.
+---
+
+# Rowset
+
+## Overview
+
+Use Rowset as a stable backend for user-owned structured datasets. Prefer the
+hosted MCP server for agent workflows, use the REST API only when MCP cannot be
+configured, and keep browser automation as a last resort.
+
+## Required Prompt Inputs
+
+Expect the user or setup prompt to provide:
+
+- `Rowset MCP URL`
+- `Rowset REST API base`
+- `Rowset API key`
+- A Rowset skill URL or install command
+
+If any required connection value is missing, ask for it before attempting
+authenticated Rowset work. Never ask the user to paste a key into public chat or
+save it in a tracked file.
+
+## Setup Workflow
+
+1. Configure a remote Streamable HTTP MCP server named `rowset` with the provided
+   MCP URL.
+2. Store the API key in a private environment variable such as `ROWSET_API_KEY`
+   or in the client's secret store.
+3. Configure the MCP client's bearer-token environment variable to
+   `ROWSET_API_KEY` so requests send `Authorization: Bearer <key>`.
+4. If the client only supports custom headers, set `Authorization` to
+   `Bearer <key>`. Use `X-API-Key` only for REST clients that cannot send bearer
+   tokens.
+5. Never print the key in logs, screenshots, public chats, generated files, or
+   final responses.
+6. After connecting, call `get_user_info` to verify authentication.
+7. Discover available MCP tools and their schemas from the connected server
+   before acting. Treat the live MCP server and REST API docs as the source of
+   truth for exact inputs.
+
+## Dataset Workflow
+
+Use this default order when the user asks Rowset to work with data:
+
+1. Call `get_all_datasets` to discover datasets available to the authenticated
+   profile. It returns paginated metadata, not row contents.
+2. Call `get_dataset` before row operations on a specific dataset so you know the
+   headers, key, index column, semantic column types, readiness, and public
+   preview state.
+3. Create datasets with `create_dataset` when the user asks for a new structured
+   backend. Provide `headers`, `rows`, or both. If there is no reliable business
+   key, omit `index_column` and let Rowset generate `rowset_id`.
+4. Manage semantic column metadata with `update_dataset_column_types` when the
+   user asks to improve schema types. Supported types include `text`, `integer`,
+   `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
+5. Use `get_all_projects`, `create_project`, `get_project`, and
+   `update_dataset_project` when the user wants to organize datasets into
+   project groups.
+6. Use row tools for dataset contents:
+   `list_dataset_rows`, `get_dataset_row`, `get_dataset_row_by_index`,
+   `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`.
+7. Use REST only after the user approves REST fallback or when MCP cannot perform
+   the requested action. For CSV export, use the current API docs and the
+   `GET /datasets/{dataset_key}/export.csv` REST path under the provided REST API
+   base.
+
+## Public Preview Workflow
+
+Use `update_dataset_public_preview` only when the user asks to share a dataset
+through a read-only browser page. Public previews are not authentication and are
+not a substitute for private MCP or REST access.
+
+When changing preview settings:
+
+- Confirm whether preview access should be enabled or disabled.
+- Ask whether a password is required when the request is ambiguous.
+- Keep page size bounded to the server-supported schema.
+- Return the public preview URL when the tool provides it.
+
+## Safety Rules
+
+- Prefer MCP tools over browser automation.
+- Keep private authenticated dataset access as the default.
+- Keep user data private and only access the Rowset resources needed for the
+  task.
+- Ask before destructive data actions such as deleting rows or datasets, clearing
+  preview passwords, disabling previews someone may depend on, or replacing
+  meaningful data.
+- Do not expose API keys, OAuth tokens, raw secrets, private dataset contents, or
+  row data in logs, screenshots, public pages, commits, or final messages.
+- Do not describe public previews as secure private access.
+- Do not claim Rowset-owned Google Sheets sync, dashboard upload wizards, or
+  spreadsheet write-back flows are active product capabilities.
+
+## If MCP Is Unavailable
+
+1. Explain that MCP is the preferred Rowset path.
+2. Ask the user before using REST API authentication.
+3. Store the API key privately and send it as `Authorization: Bearer <key>`.
+4. Inspect the current REST API docs from the provided REST API base before
+   making dataset or row requests.
+5. Keep the same ownership, privacy, and destructive-action rules as the MCP
+   workflow.
