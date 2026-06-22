@@ -11,7 +11,7 @@ Use the user endpoint to verify an API key and fetch safe account/profile detail
 ## Authentication
 
 ```http
-Authorization: Bearer {{ api_key_full }}
+Authorization: Bearer {{ api_key_placeholder }}
 ```
 
 Your API base URL is:
@@ -29,14 +29,14 @@ GET {{ api_base_url }}/user
 Example:
 
 ```bash
-curl -H "Authorization: Bearer {{ api_key_full }}" "{{ api_base_url }}/user"
+curl -H "Authorization: Bearer {{ api_key_placeholder }}" "{{ api_base_url }}/user"
 ```
 
 Example response:
 
 ```json
 {
-  "email": "{{ user_email }}",
+  "email": "{{ user_email_placeholder }}",
   "profile": {
     "state": "signed_up",
     "has_active_subscription": true

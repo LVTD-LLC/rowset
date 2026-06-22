@@ -21,14 +21,13 @@ Rowset's OAuth metadata, generate an authorization link, and open it in your
 browser. Sign in to Rowset, approve access, and the MCP client will store the
 OAuth token for future MCP requests.
 
-The dashboard setup prompt includes your API key for clients that cannot complete
-MCP OAuth. The visible preview masks it, but the copied prompt includes the real key.
+After signing in, the dashboard setup prompt includes your API key for clients that cannot complete MCP OAuth. The visible preview masks it, but the copied prompt includes the real key.
 
 For older clients that cannot complete MCP OAuth, a bearer API key is still
 accepted as a compatibility path:
 
 ```http
-Authorization: Bearer {{ api_key_full }}
+Authorization: Bearer {{ api_key_placeholder }}
 ```
 
 Prefer OAuth when your client supports it because it avoids copying secrets into

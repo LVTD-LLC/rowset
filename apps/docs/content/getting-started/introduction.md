@@ -16,18 +16,18 @@ Rowset gives AI agents a stable MCP and REST surface for API-backed datasets.
 4. Ask the agent to create a dataset from a file, table, or system it can access.
 5. Use MCP or REST for row CRUD, CSV export, and optional public previews.
 
-## Your API key
+## API key fallback
 
-MCP OAuth is the default setup path. Use your API key only with trusted agents or tools that cannot complete remote MCP auth:
+MCP OAuth is the default setup path. Use an API key only with trusted agents or tools that cannot complete remote MCP auth. After signing in, copy your key from Settings or from the dashboard agent prompt.
 
 ```text
-{{ api_key_full }}
+{{ api_key_placeholder }}
 ```
 
 Prefer sending it as a bearer token:
 
 ```http
-Authorization: Bearer {{ api_key_full }}
+Authorization: Bearer {{ api_key_placeholder }}
 ```
 
 ## Your API base URL

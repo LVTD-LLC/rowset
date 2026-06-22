@@ -6,7 +6,7 @@ keywords: Rowset, agents, MCP, OAuth, SKILL.md
 
 # Agent access
 
-Rowset gives you a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, and your API key for clients that need bearer-token auth.
+Rowset gives signed-in users a short copy/paste setup prompt for trusted AI agents. It includes the hosted MCP URL, REST API base URL, `SKILL.md` instructions URL, and an API key for clients that need bearer-token auth.
 
 The dashboard preview masks the API key. The copy button includes the real key, so treat the copied prompt like a password.
 
@@ -18,7 +18,7 @@ The docs show a masked example:
 {{ agent_setup_prompt_masked }}
 ```
 
-Use the dashboard copy button when you want the full prompt with the API key included.
+Sign in and use the dashboard copy button when you want the full prompt with the API key included.
 
 ## SKILL.md instructions
 

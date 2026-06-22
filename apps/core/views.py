@@ -111,6 +111,12 @@ def user_settings_context(
         "agent_api_key_form": AgentApiKeyCreateForm(profile=profile),
         "agent_api_keys": profile.agent_api_keys.all(),
         "created_agent_api_key": created_agent_api_key,
+        "agent_setup_prompt_masked": build_agent_setup_prompt(
+            request,
+            mask_api_key=True,
+            profile=profile,
+        ),
+        "agent_setup_prompt_url": reverse("agent_setup_prompt"),
     }
 
 
@@ -163,13 +169,20 @@ class HomeView(LoginRequiredMixin, TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
-        context["recent_datasets"] = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)[:5]
-        context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
-            self.request,
-            mask_api_key=True,
-            profile=profile,
+        dashboard_datasets = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)
+        recent_datasets = list(dashboard_datasets[:5])
+        context["recent_datasets"] = recent_datasets
+        context["show_agent_setup_prompt"] = (
+            not profile.agent_setup_prompt_dismissed and not recent_datasets
         )
-        context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
+        if context["show_agent_setup_prompt"]:
+            context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
+                self.request,
+                mask_api_key=True,
+                profile=profile,
+            )
+            context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
+            context["agent_setup_prompt_dismiss_url"] = reverse("dismiss_agent_setup_prompt")
         context["agent_instructions_url"] = build_absolute_public_url(
             reverse("agent_instructions_rowset_mcp")
         )
@@ -262,6 +275,16 @@ def revoke_agent_api_key_view(request, agent_api_key_uuid):
     else:
         messages.info(request, f"{agent_api_key.name} is already revoked.")
     return redirect("settings")
+
+
+@login_required
+@require_POST
+def dismiss_agent_setup_prompt(request):
+    profile, _created = Profile.objects.get_or_create(user=request.user)
+    if not profile.agent_setup_prompt_dismissed:
+        profile.agent_setup_prompt_dismissed = True
+        profile.save(update_fields=["agent_setup_prompt_dismissed", "updated_at"])
+    return redirect("home")
 
 
 @login_required
