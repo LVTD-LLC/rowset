@@ -77,7 +77,9 @@ class DatasetListView(LoginRequiredMixin, ListView):
     def get_base_queryset(self):
         if not hasattr(self, "_base_queryset"):
             self._base_queryset = self.request.user.profile.datasets.select_related(
-                "project"
+                "project",
+                "created_by_agent_api_key",
+                "updated_by_agent_api_key",
             ).exclude(status=DatasetStatus.PREVIEWED)
         return self._base_queryset
 
@@ -147,7 +149,12 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         paginator = Paginator(
-            self.object.datasets.exclude(status=DatasetStatus.PREVIEWED).order_by("-updated_at"),
+            self.object.datasets.select_related(
+                "created_by_agent_api_key",
+                "updated_by_agent_api_key",
+            )
+            .exclude(status=DatasetStatus.PREVIEWED)
+            .order_by("-updated_at"),
             100,
         )
         page_obj = paginator.get_page(self.request.GET.get("page"))
@@ -163,19 +170,34 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.datasets.select_related("project").all()
+        return self.request.user.profile.datasets.select_related(
+            "project",
+            "created_by_agent_api_key",
+            "updated_by_agent_api_key",
+        ).all()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         dataset = self.object
-        sample_rows = dataset.rows.all()[:5]
-        sample_row_values = [ordered_row_values(dataset.headers, row.data) for row in sample_rows]
-        if not sample_row_values:
-            sample_row_values = [
-                ordered_row_values(dataset.headers, preview_row)
+        sample_rows = list(dataset.rows.select_related("updated_by_agent_api_key")[:5])
+        sample_rows_with_values = [
+            {
+                "values": ordered_row_values(dataset.headers, row.data),
+                "actor_label": row.updated_by_actor_label,
+            }
+            for row in sample_rows
+        ]
+        if not sample_rows_with_values:
+            sample_rows_with_values = [
+                {
+                    "values": ordered_row_values(dataset.headers, preview_row),
+                    "actor_label": "",
+                }
                 for preview_row in dataset.preview_rows[:5]
             ]
-        context["sample_row_values"] = sample_row_values
+        context["sample_rows_with_values"] = sample_rows_with_values
+        context["sample_rows_show_actor"] = bool(sample_rows)
+        context["sample_rows_colspan"] = len(dataset.headers) + int(bool(sample_rows))
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
         return context
 
@@ -187,7 +209,11 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.datasets.select_related("project").all()
+        return self.request.user.profile.datasets.select_related(
+            "project",
+            "created_by_agent_api_key",
+            "updated_by_agent_api_key",
+        ).all()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -237,11 +263,14 @@ def dataset_update_public_settings(request, dataset_key):
     elif password:
         dataset.public_password_hash = make_password(password)
 
+    # Browser-initiated saves are attributed to the account, not a named agent.
+    dataset.updated_by_agent_api_key = None
     dataset.save(
         update_fields=[
             "public_enabled",
             "public_page_size",
             "public_password_hash",
+            "updated_by_agent_api_key",
             "updated_at",
         ]
     )
@@ -300,7 +329,9 @@ def dataset_update_column_settings(request, dataset_key):
             messages.error(request, str(exc))
             return redirect(dataset.get_settings_url())
 
-        dataset.save(update_fields=["column_schema", "updated_at"])
+        # Browser-initiated saves are attributed to the account, not a named agent.
+        dataset.updated_by_agent_api_key = None
+        dataset.save(update_fields=["column_schema", "updated_by_agent_api_key", "updated_at"])
 
     messages.success(request, "Column types updated.")
     return redirect(dataset.get_settings_url())

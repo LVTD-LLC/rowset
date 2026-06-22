@@ -6,6 +6,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
+from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
@@ -588,6 +589,60 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
     assert create_response.status_code == 200
     assert create_response.json()["row"]["index_value"] == "2"
     assert create_response.json()["row"]["data"] == {"rowset_id": "2", "task": "Ship"}
+
+
+def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profile):
+    codex = create_agent_api_key(profile, "Codex")
+    openclaw = create_agent_api_key(profile, "OpenClaw")
+    project = Project.objects.create(profile=profile, name="Agent work")
+
+    create_dataset_response = client.post(
+        "/api/datasets",
+        data={
+            "name": "Agent leads",
+            "project_key": str(project.key),
+            "headers": ["email", "name"],
+            "index_column": "email",
+        },
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {codex.raw_key}",
+    )
+    assert create_dataset_response.status_code == 201
+
+    dataset = Dataset.objects.get(key=create_dataset_response.json()["dataset"]["key"])
+    create_row_response = client.post(
+        f"/api/datasets/{dataset.key}/rows",
+        data={"data": {"email": "ada@example.com", "name": "Ada"}},
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {openclaw.raw_key}",
+    )
+    assert create_row_response.status_code == 200
+
+    dataset.refresh_from_db()
+    row = dataset.rows.get()
+    assert dataset.created_by_agent_api_key == codex.agent_api_key
+    assert dataset.updated_by_agent_api_key == openclaw.agent_api_key
+    assert row.created_by_agent_api_key == openclaw.agent_api_key
+    assert row.updated_by_agent_api_key == openclaw.agent_api_key
+    assert dataset.created_by_actor_label == "Codex"
+    assert dataset.updated_by_actor_label == "OpenClaw"
+    assert row.created_by_actor_label == "OpenClaw"
+    assert row.updated_by_actor_label == "OpenClaw"
+
+    client.force_login(profile.user)
+    list_content = client.get(reverse("dataset_list")).content.decode()
+    detail_content = client.get(dataset.get_absolute_url()).content.decode()
+    settings_content = client.get(dataset.get_settings_url()).content.decode()
+    project_content = client.get(project.get_absolute_url()).content.decode()
+    home_content = client.get(reverse("home")).content.decode()
+
+    assert "Created by Codex · Last updated by OpenClaw" in list_content
+    assert "Codex" in detail_content
+    assert "OpenClaw" in settings_content
+    assert "Touched by" in detail_content
+    assert ">OpenClaw</td>" in detail_content
+    assert "Created by Codex · Last updated by OpenClaw" in project_content
+    assert "Updated by OpenClaw" in home_content
 
 
 def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):

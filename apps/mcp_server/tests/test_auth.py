@@ -12,7 +12,7 @@ from apps.mcp_server.auth import (
     RowsetApiKeyAuthProvider,
     mcp_auth,
 )
-from apps.mcp_server.server import _authenticate_profile
+from apps.mcp_server.server import AGENT_API_KEY_PROFILE_ATTR, _authenticate_profile
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -107,7 +107,56 @@ def test_authenticate_profile_prefers_access_token_over_explicit_api_key(
 def test_authenticate_profile_accepts_explicit_named_agent_api_key(profile):
     credential = create_agent_api_key(profile, "OpenClaw")
 
-    assert _authenticate_profile(api_key=credential.raw_key) == profile
+    authenticated_profile = _authenticate_profile(api_key=credential.raw_key)
+
+    assert authenticated_profile == profile
+    assert getattr(authenticated_profile, AGENT_API_KEY_PROFILE_ATTR) == credential.agent_api_key
+
+
+def test_authenticate_profile_attaches_named_agent_api_key_from_access_token(
+    monkeypatch,
+    profile,
+):
+    credential = create_agent_api_key(profile, "OpenClaw")
+    monkeypatch.setattr(
+        "apps.mcp_server.server.get_access_token",
+        lambda: AccessToken(
+            token="token",
+            client_id=AGENT_API_KEY_CLIENT_ID,
+            scopes=[MCP_SCOPE],
+            subject=str(profile.id),
+            claims={
+                "profile_id": profile.id,
+                "agent_api_key_id": credential.agent_api_key.id,
+                "agent_api_key_name": "OpenClaw",
+            },
+        ),
+    )
+
+    authenticated_profile = _authenticate_profile()
+
+    assert authenticated_profile == profile
+    assert getattr(authenticated_profile, AGENT_API_KEY_PROFILE_ATTR) == credential.agent_api_key
+
+
+def test_authenticate_profile_rejects_stale_agent_api_key_access_token(monkeypatch, profile):
+    monkeypatch.setattr(
+        "apps.mcp_server.server.get_access_token",
+        lambda: AccessToken(
+            token="token",
+            client_id=AGENT_API_KEY_CLIENT_ID,
+            scopes=[MCP_SCOPE],
+            subject=str(profile.id),
+            claims={
+                "profile_id": profile.id,
+                "agent_api_key_id": 999999,
+                "agent_api_key_name": "Deleted Agent",
+            },
+        ),
+    )
+
+    with pytest.raises(PermissionError, match="no longer active"):
+        _authenticate_profile()
 
 
 def test_mcp_auth_exposes_no_oauth_well_known_routes():

@@ -185,7 +185,9 @@ class HomeView(LoginRequiredMixin, TemplateView):
             public_preview_count=Count("id", filter=Q(public_enabled=True)),
         )
         recent_datasets = list(
-            dashboard_datasets.select_related("project").order_by("-updated_at")[:5]
+            dashboard_datasets.select_related("project", "updated_by_agent_api_key").order_by(
+                "-updated_at"
+            )[:5]
         )
         context["recent_datasets"] = recent_datasets
         context["dashboard_stats"] = {

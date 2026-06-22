@@ -26,12 +26,13 @@ from apps.api.services import (
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
 )
-from apps.core.models import Profile
+from apps.core.models import AgentApiKey, Profile
 from apps.core.services import resolve_api_key_profile
 from apps.mcp_server.auth import mcp_auth
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
+AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 
 mcp = FastMCP(
     name="Rowset",
@@ -62,6 +63,21 @@ def _get_request_api_key() -> str:
     return request.query_params.get("api_key", "").strip()
 
 
+def _attach_agent_api_key(
+    profile: Profile,
+    agent_api_key: AgentApiKey | None,
+) -> Profile:
+    setattr(profile, AGENT_API_KEY_PROFILE_ATTR, agent_api_key)
+    return profile
+
+
+def _agent_actor_kwargs(profile: Profile) -> dict:
+    agent_api_key = getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None)
+    if agent_api_key is None:
+        return {}
+    return {"agent_api_key": agent_api_key}
+
+
 def _authenticate_profile(api_key: str | None = None) -> Profile:
     token_profile = _get_access_token_profile()
     if token_profile is not None:
@@ -78,8 +94,8 @@ def _authenticate_profile(api_key: str | None = None) -> Profile:
     if resolved is None:
         logger.warning("[MCP] Invalid API key")
         raise PermissionError("Invalid Rowset API key.")
-    profile, _agent_api_key = resolved
-    return profile
+    profile, agent_api_key = resolved
+    return _attach_agent_api_key(profile, agent_api_key)
 
 
 def _get_access_token_profile() -> Profile | None:
@@ -87,15 +103,38 @@ def _get_access_token_profile() -> Profile | None:
     if access_token is None:
         return None
 
-    profile_id = access_token.subject or access_token.claims.get("profile_id")
+    claims = access_token.claims or {}
+    profile_id = access_token.subject or claims.get("profile_id")
     if not profile_id:
         return None
 
     try:
-        return Profile.objects.select_related("user").get(id=profile_id)
+        profile = Profile.objects.select_related("user").get(id=profile_id)
     except (Profile.DoesNotExist, ValueError) as exc:
         logger.warning("[MCP] API-key token profile could not be resolved", error=str(exc))
         return None
+
+    agent_api_key = None
+    agent_api_key_id = claims.get("agent_api_key_id")
+    if agent_api_key_id:
+        try:
+            agent_api_key = AgentApiKey.objects.get(
+                id=agent_api_key_id,
+                profile=profile,
+                revoked_at__isnull=True,
+            )
+        except (AgentApiKey.DoesNotExist, ValueError) as exc:
+            logger.warning(
+                "[MCP] OAuth token agent API key could not be resolved",
+                error=str(exc),
+                agent_api_key_id=agent_api_key_id,
+                profile_id=profile.id,
+            )
+            raise PermissionError(
+                "The Rowset agent API key for this token is no longer active."
+            ) from exc
+
+    return _attach_agent_api_key(profile, agent_api_key)
 
 
 def _service_error_to_value_error(exc: DatasetServiceError) -> ValueError:
@@ -292,6 +331,7 @@ def create_dataset(
             index_column=index_column,
             column_types=column_types,
             project_key=project_key,
+            **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
@@ -316,7 +356,12 @@ def update_dataset_column_types(
     close_old_connections()
     profile = _authenticate_profile()
     try:
-        return update_profile_dataset_column_types(profile, dataset_key, column_types)
+        return update_profile_dataset_column_types(
+            profile,
+            dataset_key,
+            column_types,
+            **_agent_actor_kwargs(profile),
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
 
@@ -341,7 +386,12 @@ def update_dataset_project(
     close_old_connections()
     profile = _authenticate_profile()
     try:
-        return update_profile_dataset_project(profile, dataset_key, project_key)
+        return update_profile_dataset_project(
+            profile,
+            dataset_key,
+            project_key,
+            **_agent_actor_kwargs(profile),
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
 
@@ -396,6 +446,7 @@ def update_dataset_public_preview(
             public_page_size=public_page_size,
             public_password=public_password,
             clear_public_password=clear_public_password,
+            **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
@@ -461,7 +512,12 @@ def create_dataset_row(
     close_old_connections()
     profile = _authenticate_profile()
     try:
-        return create_profile_dataset_row(profile, dataset_key, data)
+        return create_profile_dataset_row(
+            profile,
+            dataset_key,
+            data,
+            **_agent_actor_kwargs(profile),
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
 
@@ -478,7 +534,13 @@ def update_dataset_row(
     close_old_connections()
     profile = _authenticate_profile()
     try:
-        return patch_profile_dataset_row(profile, dataset_key, row_id, data)
+        return patch_profile_dataset_row(
+            profile,
+            dataset_key,
+            row_id,
+            data,
+            **_agent_actor_kwargs(profile),
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc
 
@@ -494,6 +556,11 @@ def delete_dataset_row(
     close_old_connections()
     profile = _authenticate_profile()
     try:
-        return delete_profile_dataset_row(profile, dataset_key, row_id)
+        return delete_profile_dataset_row(
+            profile,
+            dataset_key,
+            row_id,
+            **_agent_actor_kwargs(profile),
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_value_error(exc) from exc

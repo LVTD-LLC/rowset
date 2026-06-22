@@ -80,6 +80,7 @@
               <th scope="col">Dataset</th>
               <th scope="col">Project</th>
               <th scope="col">Rows</th>
+              <th scope="col">Actor</th>
               <th scope="col">Updated</th>
             </tr>
           </thead>
@@ -98,6 +99,7 @@
                   {% endif %}
                 </td>
                 <td>{{ dataset.row_count }}</td>
+                <td class="text-xs font-medium text-slate-500 dark:text-slate-400">Updated by {{ dataset.updated_by_actor_label }}</td>
                 <td class="whitespace-nowrap">{{ dataset.updated_at|date:"M d, Y" }}</td>
               </tr>
             {% endfor %}

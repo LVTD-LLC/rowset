@@ -19,6 +19,7 @@
         </div>
         <h1 class="break-words text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ dataset.name }}</h1>
         <p class="break-words text-sm text-slate-600 dark:text-slate-300">{{ dataset.original_filename }} · {{ dataset.row_count }} rows · {{ dataset.headers|length }} columns</p>
+        <p class="break-words text-sm text-slate-600 dark:text-slate-300">Created by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.created_by_actor_label }}</span> · Last updated by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.updated_by_actor_label }}</span></p>
         <p class="break-words text-sm text-slate-600 dark:text-slate-300">
           Project:
           {% if dataset.project %}
@@ -65,17 +66,23 @@
               {% for header in dataset.headers %}
                 <th scope="col">{{ header }}</th>
               {% endfor %}
+              {% if sample_rows_show_actor %}
+                <th scope="col">Touched by</th>
+              {% endif %}
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
-            {% for row_values in sample_row_values %}
+            {% for sample_row in sample_rows_with_values %}
               <tr>
-                {% for value in row_values %}
+                {% for value in sample_row.values %}
                   <td class="max-w-xs whitespace-normal break-words">{{ value }}</td>
                 {% endfor %}
+                {% if sample_rows_show_actor %}
+                  <td class="whitespace-nowrap text-xs font-medium text-slate-500 dark:text-slate-400">{{ sample_row.actor_label }}</td>
+                {% endif %}
               </tr>
             {% empty %}
-              <tr><td colspan="{{ dataset.headers|length }}" class="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">No sample rows are available yet.</td></tr>
+              <tr><td colspan="{{ sample_rows_colspan }}" class="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">No sample rows are available yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>
