@@ -189,7 +189,7 @@ def agent_api_key_setup_prompt(request, agent_api_key_uuid):
     )
     api_key = get_agent_api_key_token(agent_api_key)
     if api_key is None:
-        raise Http404("Agent API key token is unavailable.")
+        api_key = f"[full {agent_api_key.name} key with prefix {agent_api_key.key_prefix}...]"
     response = JsonResponse(
         {
             "prompt": build_agent_setup_prompt(

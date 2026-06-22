@@ -166,7 +166,7 @@ def test_agent_api_key_setup_prompt_endpoint_rejects_other_profile_key(
     assert response.status_code == 404
 
 
-def test_agent_api_key_setup_prompt_endpoint_rejects_key_without_recoverable_token(
+def test_agent_api_key_setup_prompt_endpoint_uses_placeholder_without_recoverable_token(
     auth_client,
     profile,
 ):
@@ -181,7 +181,11 @@ def test_agent_api_key_setup_prompt_endpoint_rejects_key_without_recoverable_tok
         reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid])
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert (
+        "Rowset API key: [full Old Agent key with prefix rsk_oldtoken...]"
+        in response.json()["prompt"]
+    )
 
 
 @override_settings(
