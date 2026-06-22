@@ -280,10 +280,64 @@ def test_dataset_detail_orders_sample_cells_by_headers(auth_client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
-    customer_id_position = content.index(">C-1001<")
-    name_position = content.index(">Ada Lovelace<")
-    plan_position = content.index(">Scale<")
+    customer_id_position = content.index("C-1001")
+    name_position = content.index("Ada Lovelace")
+    plan_position = content.index("Scale")
     assert customer_id_position < name_position < plan_position
+
+
+def test_dataset_detail_links_imported_sample_rows_and_truncates_cells(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.first()
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert reverse("dataset_row_detail", args=[dataset.key, row.id]) in content
+    assert 'class="fb-focus block max-w-64 truncate' in content
+    assert 'aria-label="View row 1 details"' in content
+
+
+def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "email", "notes"]
+    dataset.save(update_fields=["headers"])
+    row = dataset.rows.first()
+    full_value = "Line one\n" + "Full untruncated value " * 12
+    row.data = {
+        "name": "Ada",
+        "email": "ada@example.com",
+        "notes": full_value,
+        "extra_field": "Stored outside declared headers",
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(reverse("dataset_row_detail", args=[dataset.key, row.id]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Row 1" in content
+    assert "notes" in content
+    assert full_value in content
+    assert "extra_field" in content
+    assert "Stored outside declared headers" in content
+    assert "Back to dataset" in content
+
+
+def test_dataset_row_detail_rejects_other_users_row(client, django_user_model, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.first()
+    other_user = django_user_model.objects.create_user(
+        username="other-row-viewer",
+        email="other-row-viewer@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.get(reverse("dataset_row_detail", args=[dataset.key, row.id]))
+
+    assert response.status_code == 404
 
 
 def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client, profile):
@@ -640,7 +694,8 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     assert "Codex" in detail_content
     assert "OpenClaw" in settings_content
     assert "Touched by" in detail_content
-    assert ">OpenClaw</td>" in detail_content
+    assert f'href="{row.get_absolute_url()}"' in detail_content
+    assert ">OpenClaw</a>" in detail_content
     assert "Created by Codex · Last updated by OpenClaw" in project_content
     assert "Updated by OpenClaw" in home_content
 
