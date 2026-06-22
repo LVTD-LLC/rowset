@@ -172,7 +172,6 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
         dashboard_datasets = profile.datasets.select_related(
-            "created_by_agent_api_key",
             "updated_by_agent_api_key",
         ).exclude(status=DatasetStatus.PREVIEWED)
         recent_datasets = list(dashboard_datasets[:5])

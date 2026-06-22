@@ -13,6 +13,10 @@ class ProjectAdmin(admin.ModelAdmin):
 
 @admin.register(Dataset)
 class DatasetAdmin(admin.ModelAdmin):
+    list_select_related = (
+        "created_by_agent_api_key__profile__user",
+        "updated_by_agent_api_key__profile__user",
+    )
     list_display = (
         "name",
         "profile",
@@ -55,6 +59,10 @@ class DatasetAdmin(admin.ModelAdmin):
 
 @admin.register(DatasetRow)
 class DatasetRowAdmin(admin.ModelAdmin):
+    list_select_related = (
+        "created_by_agent_api_key__profile__user",
+        "updated_by_agent_api_key__profile__user",
+    )
     list_display = (
         "dataset",
         "row_number",
