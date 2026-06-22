@@ -3,6 +3,9 @@ from django.urls import path
 from apps.datasets import views
 
 urlpatterns = [
+    path("projects/", views.ProjectListView.as_view(), name="project_list"),
+    path("projects/create/", views.project_create, name="project_create"),
+    path("projects/<uuid:project_key>/", views.ProjectDetailView.as_view(), name="project_detail"),
     path("datasets/", views.DatasetListView.as_view(), name="dataset_list"),
     path("datasets/<uuid:dataset_key>/", views.DatasetDetailView.as_view(), name="dataset_detail"),
     path("datasets/<uuid:dataset_key>/delete/", views.dataset_delete, name="dataset_delete"),
@@ -20,6 +23,11 @@ urlpatterns = [
         "datasets/<uuid:dataset_key>/settings/public/",
         views.dataset_update_public_settings,
         name="dataset_update_public_settings",
+    ),
+    path(
+        "datasets/<uuid:dataset_key>/settings/project/",
+        views.dataset_update_project,
+        name="dataset_update_project",
     ),
     path(
         "datasets/<uuid:dataset_key>/settings/columns/",

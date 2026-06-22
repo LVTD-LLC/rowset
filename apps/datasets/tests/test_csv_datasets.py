@@ -7,7 +7,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.models import Dataset, DatasetRow
+from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
     infer_column_type,
@@ -424,10 +424,13 @@ def test_dataset_api_crud_and_export(client, profile):
 
 
 def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
+    project = Project.objects.create(profile=profile, name="Catalogs")
+
     response = client.post(
         "/api/datasets",
         data={
             "name": "Products",
+            "project_key": str(project.key),
             "headers": ["sku", "name", "price"],
             "index_column": "sku",
             "rows": [
@@ -443,6 +446,11 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
     payload = response.json()
     assert payload["status"] == "success"
     assert payload["dataset"]["name"] == "Products"
+    assert payload["dataset"]["project"] == {
+        "key": str(project.key),
+        "name": "Catalogs",
+        "description": "",
+    }
     assert payload["dataset"]["file_type"] == "api"
     assert payload["dataset"]["status"] == DatasetStatus.READY
     assert payload["dataset"]["index_column"] == "sku"
@@ -454,6 +462,7 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
     assert payload["dataset"]["row_count"] == 2
 
     dataset = Dataset.objects.get(key=payload["dataset"]["key"], profile=profile)
+    assert dataset.project == project
     assert dataset.headers == ["sku", "name", "price"]
     assert dataset.column_schema == {
         "sku": {"type": "text"},
@@ -486,6 +495,8 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
     assert response.status_code == 201
     dataset_key = response.json()["dataset"]["key"]
     dataset = Dataset.objects.get(key=dataset_key, profile=profile)
+    assert response.json()["dataset"]["project"] is None
+    assert dataset.project is None
     assert dataset.headers == ["rowset_id", "task"]
     assert dataset.column_schema == {
         "rowset_id": {"type": "integer"},
@@ -525,6 +536,90 @@ def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
         "sku": {"type": "text"},
         "price": {"type": "number"},
     }
+
+
+def test_project_api_creates_lists_and_returns_project_datasets(client, profile):
+    create_project_response = client.post(
+        f"/api/projects?api_key={profile.key}",
+        data={"name": "Launch", "description": "Launch datasets"},
+        content_type="application/json",
+    )
+
+    assert create_project_response.status_code == 201
+    project_key = create_project_response.json()["project"]["key"]
+
+    create_dataset_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Launch contacts",
+            "project_key": project_key,
+            "headers": ["email", "name"],
+            "index_column": "email",
+            "rows": [{"email": "ada@example.com", "name": "Ada"}],
+        },
+        content_type="application/json",
+    )
+
+    assert create_dataset_response.status_code == 201
+    assert create_dataset_response.json()["dataset"]["project"]["key"] == project_key
+
+    list_response = client.get(f"/api/projects?api_key={profile.key}")
+    assert list_response.status_code == 200
+    assert list_response.json()["projects"][0]["dataset_count"] == 1
+
+    detail_response = client.get(f"/api/projects/{project_key}?api_key={profile.key}")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["project"]["name"] == "Launch"
+    assert detail_response.json()["datasets"]["count"] == 1
+    assert detail_response.json()["datasets"]["datasets"][0]["name"] == "Launch contacts"
+
+
+def test_dataset_api_updates_project_assignment(client, profile):
+    project = Project.objects.create(profile=profile, name="Customers")
+    dataset = create_ready_dataset(profile)
+
+    attach_response = client.patch(
+        f"/api/datasets/{dataset.key}/project?api_key={profile.key}",
+        data={"project_key": str(project.key)},
+        content_type="application/json",
+    )
+
+    assert attach_response.status_code == 200
+    assert attach_response.json()["dataset"]["project"]["key"] == str(project.key)
+    dataset.refresh_from_db()
+    assert dataset.project == project
+
+    detach_response = client.patch(
+        f"/api/datasets/{dataset.key}/project?api_key={profile.key}",
+        data={"project_key": None},
+        content_type="application/json",
+    )
+
+    assert detach_response.status_code == 200
+    assert detach_response.json()["dataset"]["project"] is None
+    dataset.refresh_from_db()
+    assert dataset.project is None
+
+
+def test_dataset_api_rejects_other_users_project_assignment(client, django_user_model, profile):
+    dataset = create_ready_dataset(profile)
+    other_user = django_user_model.objects.create_user(
+        username="project-owner",
+        email="project-owner@example.com",
+        password="password123",
+    )
+    other_project = Project.objects.create(profile=other_user.profile, name="Other")
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/project?api_key={profile.key}",
+        data={"project_key": str(other_project.key)},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found."
+    dataset.refresh_from_db()
+    assert dataset.project is None
 
 
 def test_dataset_api_updates_column_types(client, profile):
@@ -645,6 +740,41 @@ def test_dataset_api_rejects_other_users_dataset(client, django_user_model, prof
     response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={other_user.profile.key}")
 
     assert response.status_code == 404
+
+
+def test_dataset_owner_can_create_project(auth_client, profile):
+    response = auth_client.post(
+        reverse("project_create"),
+        {"name": "Launch", "description": "Launch datasets"},
+    )
+
+    project = Project.objects.get(profile=profile, name="Launch")
+    assert response.status_code == 302
+    assert response.url == project.get_absolute_url()
+    assert project.description == "Launch datasets"
+
+
+def test_dataset_owner_can_assign_project_from_settings(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    project = Project.objects.create(profile=profile, name="Customer work")
+
+    response = auth_client.post(
+        reverse("dataset_update_project", args=[dataset.key]),
+        {"project_key": str(project.key)},
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.project == project
+
+    detach_response = auth_client.post(
+        reverse("dataset_update_project", args=[dataset.key]),
+        {"project_key": ""},
+    )
+
+    assert detach_response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.project is None
 
 
 def test_dataset_owner_can_update_column_types_from_settings(auth_client, profile):

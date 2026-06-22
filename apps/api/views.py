@@ -22,11 +22,17 @@ from apps.api.schemas import (
     DatasetCreateIn,
     DatasetCreateOut,
     DatasetListOut,
+    DatasetProjectOut,
+    DatasetProjectPatchIn,
     DatasetPublicPreviewOut,
     DatasetPublicPreviewPatchIn,
     DatasetRowIn,
     DatasetRowPatchIn,
     DatasetRowsOut,
+    ProjectCreateIn,
+    ProjectCreateOut,
+    ProjectDetailOut,
+    ProjectListOut,
     SubmitFeedbackIn,
     SubmitFeedbackOut,
     UserInfoOut,
@@ -36,6 +42,7 @@ from apps.api.services import (
     DatasetServiceError,
     create_profile_dataset,
     create_profile_dataset_row,
+    create_profile_project,
     delete_profile_dataset_row,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
@@ -43,8 +50,11 @@ from apps.api.services import (
     list_profile_dataset_rows,
     patch_profile_dataset_row,
     serialize_profile_datasets,
+    serialize_profile_project_detail,
+    serialize_profile_projects,
     serialize_user_info,
     update_profile_dataset_column_types,
+    update_profile_dataset_project,
     update_profile_dataset_public_preview,
 )
 from apps.blog.choices import BlogPostStatus
@@ -376,6 +386,57 @@ def user_settings(request: HttpRequest):
 
 
 @api.get(
+    "/projects",
+    response=ProjectListOut,
+    auth=[api_key_auth],
+    tags=["projects"],
+)
+def list_projects(request: HttpRequest, limit: int = 100, offset: int = 0):
+    """Return a page of semantic dataset projects for the authenticated profile."""
+    return serialize_profile_projects(request.auth, limit=limit, offset=offset)
+
+
+@api.post(
+    "/projects",
+    response={201: ProjectCreateOut},
+    auth=[api_key_auth],
+    tags=["projects"],
+)
+def create_project(request: HttpRequest, payload: ProjectCreateIn):
+    """Create a semantic project for grouping datasets."""
+    try:
+        return Status(
+            201,
+            create_profile_project(
+                request.auth,
+                name=payload.name,
+                description=payload.description,
+            ),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
+    "/projects/{project_key}",
+    response=ProjectDetailOut,
+    auth=[api_key_auth],
+    tags=["projects"],
+)
+def get_project(request: HttpRequest, project_key: str, limit: int = 100, offset: int = 0):
+    """Return one project and a bounded page of assigned datasets."""
+    try:
+        return serialize_profile_project_detail(
+            request.auth,
+            project_key,
+            limit=limit,
+            offset=offset,
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
     "/datasets",
     response=DatasetListOut,
     auth=[api_key_auth],
@@ -404,6 +465,7 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 rows=payload.rows,
                 index_column=payload.index_column,
                 column_types=payload.column_types,
+                project_key=payload.project_key,
             ),
         )
     except DatasetServiceError as exc:
@@ -428,6 +490,24 @@ def patch_dataset_column_types(
             dataset_key,
             payload.column_types,
         )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.patch(
+    "/datasets/{dataset_key}/project",
+    response=DatasetProjectOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def patch_dataset_project(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetProjectPatchIn,
+):
+    """Attach an existing dataset to a project, or detach it when project_key is null."""
+    try:
+        return update_profile_dataset_project(request.auth, dataset_key, payload.project_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 
