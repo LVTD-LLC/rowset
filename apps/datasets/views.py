@@ -75,9 +75,11 @@ class DatasetListView(LoginRequiredMixin, ListView):
         return selected_sort
 
     def get_base_queryset(self):
-        return self.request.user.profile.datasets.select_related("project").exclude(
-            status=DatasetStatus.PREVIEWED
-        )
+        if not hasattr(self, "_base_queryset"):
+            self._base_queryset = self.request.user.profile.datasets.select_related(
+                "project"
+            ).exclude(status=DatasetStatus.PREVIEWED)
+        return self._base_queryset
 
     def get_queryset(self):
         queryset = self.get_base_queryset()

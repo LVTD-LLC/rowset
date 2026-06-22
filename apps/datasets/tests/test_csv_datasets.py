@@ -297,6 +297,7 @@ def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client,
     assert "Dataset API" not in content
     assert "Export CSV" not in content
     assert "Export Parquet" not in content
+    assert 'data-controller="export-menu"' in content
     assert "CSV snapshot" in content
     assert "Parquet snapshot" in content
     assert 'aria-label="Dataset status: Ready"' not in content

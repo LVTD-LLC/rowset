@@ -236,8 +236,10 @@ class TestHomeView:
         assert response.context["total_projects"] == 1
         assert response.context["total_rows"] == 3
         assert response.context["public_preview_count"] == 1
+        assert response.context["profile_count"] >= 1
         assert "Total datasets" in content
         assert "Total projects" in content
+        assert "Total profiles" in content
         assert "Latest datasets" in content
         assert "Latest projects" in content
         assert "People" in content

@@ -505,7 +505,7 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         visible_datasets = Dataset.objects.exclude(status=DatasetStatus.PREVIEWED)
 
         total_users = User.objects.count()
-        total_profiles = Profile.objects.count()
+        profile_count = Profile.objects.count()
         total_feedback = Feedback.objects.count()
         total_datasets = visible_datasets.count()
         total_projects = Project.objects.count()
@@ -546,7 +546,7 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         context.update(
             {
                 "total_users": total_users,
-                "total_profiles": total_profiles,
+                "profile_count": profile_count,
                 "total_feedback": total_feedback,
                 "total_datasets": total_datasets,
                 "total_projects": total_projects,
