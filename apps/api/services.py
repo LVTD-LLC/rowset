@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from typing import Any
 from urllib.parse import unquote, urlparse
 from uuid import UUID
@@ -94,7 +94,7 @@ def _normalize_updated_after(updated_after: str | date | datetime | None) -> dat
             raise DatasetServiceError(400, "updated_after must be an ISO date or datetime.")
 
     if timezone.is_naive(parsed):
-        return timezone.make_aware(parsed, timezone.get_current_timezone())
+        return timezone.make_aware(parsed, UTC)
     return parsed
 
 
@@ -343,8 +343,14 @@ def search_profile_datasets(
             | Q(project__description__icontains=normalized_query)
         )
     if normalized_project_key:
-        project = get_profile_project(profile, normalized_project_key)
-        queryset = queryset.filter(project=project)
+        try:
+            project = get_profile_project(profile, normalized_project_key)
+        except DatasetServiceError as exc:
+            if exc.status_code != 404:
+                raise
+            queryset = queryset.none()
+        else:
+            queryset = queryset.filter(project=project)
     if normalized_status:
         queryset = queryset.filter(status=normalized_status)
     if normalized_updated_after is not None:

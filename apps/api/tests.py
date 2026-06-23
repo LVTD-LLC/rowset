@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -687,6 +687,58 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
     assert response["datasets"][0]["key"] == str(matching_dataset.key)
     assert response["datasets"][0]["project"]["key"] == str(project.key)
     assert "rows" not in response["datasets"][0]
+
+
+@pytest.mark.django_db
+def test_search_profile_datasets_returns_empty_page_for_stale_project_key(django_user_model):
+    from apps.api.services import search_profile_datasets
+
+    user = django_user_model.objects.create_user(
+        username="datasetsearchstaleproject",
+        email="datasetsearchstaleproject@example.com",
+        password="password123",
+    )
+
+    response = search_profile_datasets(
+        user.profile,
+        project_key="d8cb2ebe-5a4e-40fa-8844-3cfc3de3754e",
+    )
+
+    assert response["count"] == 0
+    assert response["total_count"] == 0
+    assert response["datasets"] == []
+
+
+@pytest.mark.django_db
+@override_settings(SITE_URL="https://rowset.example", TIME_ZONE="America/New_York")
+def test_search_profile_datasets_treats_naive_updated_after_as_utc(django_user_model):
+    from apps.api.services import search_profile_datasets
+
+    user = django_user_model.objects.create_user(
+        username="datasetsearchutc",
+        email="datasetsearchutc@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="UTC Search",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+    Dataset.objects.filter(id=dataset.id).update(
+        updated_at=datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+    )
+
+    response = search_profile_datasets(
+        user.profile,
+        updated_after="2026-06-01T10:00:00",
+    )
+
+    assert response["count"] == 1
+    assert response["datasets"][0]["key"] == str(dataset.key)
 
 
 @pytest.mark.django_db
