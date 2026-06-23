@@ -4,7 +4,7 @@ from uuid import UUID
 
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
@@ -1372,46 +1372,83 @@ def patch_profile_dataset_row(
             row = dataset.rows.get(id=row_id)
         except DatasetRow.DoesNotExist as exc:
             raise DatasetServiceError(404, "Row not found.") from exc
-
-        changed_fields = sorted(key for key in data if key in dataset.headers)
-        row.data = {
-            **row.data,
-            **{key: str(value) for key, value in data.items() if key in dataset.headers},
-        }
-        if dataset.index_column in data:
-            if dataset.index_generated:
-                raise DatasetServiceError(
-                    400,
-                    f"Index column '{dataset.index_column}' is managed by Rowset "
-                    "and cannot be updated.",
-                )
-            index_value = str(data.get(dataset.index_column, "")).strip()
-            if not index_value:
-                raise DatasetServiceError(
-                    400,
-                    f"Index column '{dataset.index_column}' cannot be blank.",
-                )
-            if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
-                raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
-            row.index_value = index_value
-        row.updated_by_agent_api_key = agent_api_key
-        row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
-        dataset.updated_by_agent_api_key = agent_api_key
-        dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
-        record_dataset_mutation(
+        return _patch_dataset_row(
             dataset,
-            DatasetMutationType.ROW_UPDATED,
-            f"Row {row.row_number} updated.",
+            row,
+            data,
             agent_api_key=agent_api_key,
-            target_type="row",
-            target_identifier=row.id,
-            metadata={
-                "row_id": row.id,
-                "row_number": row.row_number,
-                "changed_fields": changed_fields,
-                "index_changed": dataset.index_column in data,
-            },
         )
+
+
+def patch_profile_dataset_row_by_index(
+    profile: Profile,
+    dataset_key: str,
+    index_value: str,
+    data: dict,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        try:
+            row = dataset.rows.get(index_value=index_value)
+        except DatasetRow.DoesNotExist as exc:
+            raise DatasetServiceError(404, "Row not found.") from exc
+        return _patch_dataset_row(
+            dataset,
+            row,
+            data,
+            agent_api_key=agent_api_key,
+        )
+
+
+def _patch_dataset_row(
+    dataset: Dataset,
+    row: DatasetRow,
+    data: dict,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    if not connection.in_atomic_block:
+        raise AssertionError("_patch_dataset_row must be called inside transaction.atomic().")
+
+    changed_fields = sorted(key for key in data if key in dataset.headers)
+    row.data = {
+        **row.data,
+        **{key: str(value) for key, value in data.items() if key in dataset.headers},
+    }
+    if dataset.index_column in data:
+        if dataset.index_generated:
+            raise DatasetServiceError(
+                400,
+                f"Index column '{dataset.index_column}' is managed by Rowset "
+                "and cannot be updated.",
+            )
+        index_value = str(data.get(dataset.index_column, "")).strip()
+        if not index_value:
+            raise DatasetServiceError(
+                400,
+                f"Index column '{dataset.index_column}' cannot be blank.",
+            )
+        if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
+            raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
+        row.index_value = index_value
+    row.updated_by_agent_api_key = agent_api_key
+    row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
+    dataset.updated_by_agent_api_key = agent_api_key
+    dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+    record_dataset_mutation(
+        dataset,
+        DatasetMutationType.ROW_UPDATED,
+        f"Row {row.row_number} updated.",
+        agent_api_key=agent_api_key,
+        target_type="row",
+        target_identifier=row.id,
+        metadata={
+            "row_id": row.id,
+            "row_number": row.row_number,
+            "changed_fields": changed_fields,
+            "index_changed": dataset.index_column in data,
+        },
+    )
     return {
         "status": "success",
         "message": "Row updated.",

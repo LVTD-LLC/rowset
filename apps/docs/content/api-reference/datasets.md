@@ -95,6 +95,15 @@ Content-Type: application/json
 
 Use row ids for updates when you already have the Rowset row id from a list or lookup response.
 
+## Update a row by index
+
+```http
+PATCH {{ api_base_url }}/datasets/{dataset_key}/rows/by-index?index_value={index_value}
+Content-Type: application/json
+```
+
+Use this when your workflow has the dataset's stable index value but not the internal Rowset row id.
+
 ## Update column types
 
 ```http
