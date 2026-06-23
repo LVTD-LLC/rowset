@@ -23,6 +23,8 @@ from apps.api.services import (
     rename_profile_dataset_column,
     reorder_profile_dataset_columns,
     restore_profile_dataset,
+    search_profile_datasets,
+    search_profile_projects,
     serialize_dataset_summary,
     serialize_profile_datasets,
     serialize_profile_project_detail,
@@ -180,6 +182,59 @@ def get_all_datasets(
 
 
 @mcp.tool(
+    name="search_datasets",
+    description=(
+        "Search and filter dataset metadata by name, project, header, status, or update time."
+    ),
+)
+def search_datasets(
+    query: Annotated[
+        str | None,
+        Field(default=None, description="Text to match against dataset and project names."),
+    ] = None,
+    project_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional project key/UUID to restrict results."),
+    ] = None,
+    header_contains: Annotated[
+        str | None,
+        Field(default=None, description="Optional exact header name that results must contain."),
+    ] = None,
+    status: Annotated[
+        str | None,
+        Field(default=None, description="Optional dataset status filter, such as ready."),
+    ] = None,
+    updated_after: Annotated[
+        str | None,
+        Field(default=None, description="Optional ISO date or datetime lower bound for updates."),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(default=100, ge=1, le=500, description="Maximum datasets to return."),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Field(default=0, ge=0, description="Number of datasets to skip."),
+    ] = 0,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return search_profile_datasets(
+            profile,
+            query=query,
+            project_key=project_key,
+            header_contains=header_contains,
+            status=status,
+            updated_after=updated_after,
+            limit=limit,
+            offset=offset,
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
     name="get_dataset",
     description="Return metadata for one dataset owned by the authenticated Rowset profile.",
 )
@@ -212,6 +267,29 @@ def get_all_projects(
     close_old_connections()
     profile = _authenticate_profile()
     return serialize_profile_projects(profile, limit=limit, offset=offset)
+
+
+@mcp.tool(
+    name="search_projects",
+    description="Search project metadata by project name or description.",
+)
+def search_projects(
+    query: Annotated[
+        str | None,
+        Field(default=None, description="Text to match against project names and descriptions."),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(default=100, ge=1, le=500, description="Maximum projects to return."),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Field(default=0, ge=0, description="Number of projects to skip."),
+    ] = 0,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    return search_profile_projects(profile, query=query, limit=limit, offset=offset)
 
 
 @mcp.tool(

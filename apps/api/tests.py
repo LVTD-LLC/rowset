@@ -1,9 +1,11 @@
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from django.http import HttpRequest
 from django.test import SimpleTestCase, override_settings
+from django.utils import timezone
 
 from apps.api.views import (
     delete_internal_blog_post,
@@ -20,7 +22,7 @@ from apps.api.views import (
 )
 from apps.blog.choices import BlogPostStatus
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.models import Dataset, DatasetRow
+from apps.datasets.models import Dataset, DatasetRow, Project
 
 
 class BlogPostApiTests(SimpleTestCase):
@@ -593,3 +595,149 @@ def test_dataset_lookup_resolves_owned_public_identifiers(django_user_model):
 
     assert exc.value.status_code == 404
     assert exc.value.message == "Dataset not found."
+
+
+@pytest.mark.django_db
+@override_settings(SITE_URL="https://rowset.example")
+def test_search_profile_datasets_filters_metadata_without_rows(django_user_model):
+    from apps.api.services import search_profile_datasets
+
+    user = django_user_model.objects.create_user(
+        username="datasetsearchowner",
+        email="datasetsearchowner@example.com",
+        password="password123",
+    )
+    other_user = django_user_model.objects.create_user(
+        username="datasetsearchother",
+        email="datasetsearchother@example.com",
+        password="password123",
+    )
+    project = Project.objects.create(
+        profile=user.profile,
+        name="Rowset",
+        description="Rowset product work",
+    )
+    matching_dataset = Dataset.objects.create(
+        profile=user.profile,
+        project=project,
+        name="Rowset Feature Suggestions",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["suggestion_id", "status", "notes"],
+        index_column="suggestion_id",
+        row_count=2,
+    )
+    old_matching_dataset = Dataset.objects.create(
+        profile=user.profile,
+        project=project,
+        name="Old Rowset Feature Suggestions",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["suggestion_id", "status", "notes"],
+        index_column="suggestion_id",
+    )
+    Dataset.objects.filter(id=old_matching_dataset.id).update(
+        updated_at=timezone.now() - timedelta(days=10)
+    )
+    Dataset.objects.create(
+        profile=user.profile,
+        project=project,
+        name="Rowset Feature Suggestions Archive",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["suggestion_id", "status"],
+        index_column="suggestion_id",
+        archived_at=timezone.now(),
+    )
+    Dataset.objects.create(
+        profile=user.profile,
+        project=project,
+        name="Rowset Feature Logs",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["feature_id", "status"],
+        index_column="feature_id",
+    )
+    Dataset.objects.create(
+        profile=other_user.profile,
+        project=None,
+        name="Rowset Feature Suggestions",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["suggestion_id", "status", "notes"],
+        index_column="suggestion_id",
+    )
+
+    response = search_profile_datasets(
+        user.profile,
+        query="feature",
+        project_key=str(project.key),
+        header_contains="suggestion_id",
+        status=DatasetStatus.READY,
+        updated_after=(timezone.now() - timedelta(days=1)).isoformat(),
+    )
+
+    assert response["count"] == 1
+    assert response["total_count"] == 1
+    assert response["datasets"][0]["key"] == str(matching_dataset.key)
+    assert response["datasets"][0]["project"]["key"] == str(project.key)
+    assert "rows" not in response["datasets"][0]
+
+
+@pytest.mark.django_db
+def test_search_profile_datasets_rejects_unknown_status(django_user_model):
+    from apps.api.services import DatasetServiceError, search_profile_datasets
+
+    user = django_user_model.objects.create_user(
+        username="datasetsearchstatus",
+        email="datasetsearchstatus@example.com",
+        password="password123",
+    )
+
+    with pytest.raises(DatasetServiceError) as exc:
+        search_profile_datasets(user.profile, status="missing")
+
+    assert exc.value.status_code == 400
+    assert "Unsupported dataset status" in exc.value.message
+
+
+@pytest.mark.django_db
+def test_search_profile_projects_filters_owned_projects(django_user_model):
+    from apps.api.services import search_profile_projects
+
+    user = django_user_model.objects.create_user(
+        username="projectsearchowner",
+        email="projectsearchowner@example.com",
+        password="password123",
+    )
+    other_user = django_user_model.objects.create_user(
+        username="projectsearchother",
+        email="projectsearchother@example.com",
+        password="password123",
+    )
+    project = Project.objects.create(
+        profile=user.profile,
+        name="Garden of Minds",
+        description="Feature loop tracking",
+    )
+    Project.objects.create(
+        profile=user.profile,
+        name="Launch",
+        description="Marketing work",
+    )
+    Project.objects.create(
+        profile=other_user.profile,
+        name="Other Feature Loop",
+        description="Should not be visible",
+    )
+
+    response = search_profile_projects(user.profile, query="feature")
+
+    assert response["count"] == 1
+    assert response["total_count"] == 1
+    assert response["projects"][0]["key"] == str(project.key)

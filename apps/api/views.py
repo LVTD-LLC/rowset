@@ -61,9 +61,9 @@ from apps.api.services import (
     rename_profile_dataset_column,
     reorder_profile_dataset_columns,
     restore_profile_dataset,
-    serialize_profile_datasets,
+    search_profile_datasets,
+    search_profile_projects,
     serialize_profile_project_detail,
-    serialize_profile_projects,
     serialize_user_info,
     update_profile_dataset_column_types,
     update_profile_dataset_project,
@@ -439,9 +439,14 @@ def user_settings(request: HttpRequest):
     auth=[api_key_auth],
     tags=["projects"],
 )
-def list_projects(request: HttpRequest, limit: int = 100, offset: int = 0):
+def list_projects(
+    request: HttpRequest,
+    limit: int = 100,
+    offset: int = 0,
+    query: str | None = None,
+):
     """Return a page of semantic dataset projects for the authenticated profile."""
-    return serialize_profile_projects(request.auth, limit=limit, offset=offset)
+    return search_profile_projects(request.auth, query=query, limit=limit, offset=offset)
 
 
 @api.post(
@@ -490,9 +495,30 @@ def get_project(request: HttpRequest, project_key: str, limit: int = 100, offset
     auth=[api_key_auth],
     tags=["datasets"],
 )
-def list_datasets(request: HttpRequest, limit: int = 100, offset: int = 0):
+def list_datasets(
+    request: HttpRequest,
+    limit: int = 100,
+    offset: int = 0,
+    query: str | None = None,
+    project_key: str | None = None,
+    header_contains: str | None = None,
+    status: str | None = None,
+    updated_after: str | None = None,
+):
     """Return a page of datasets available to the authenticated profile."""
-    return serialize_profile_datasets(request.auth, limit=limit, offset=offset)
+    try:
+        return search_profile_datasets(
+            request.auth,
+            query=query,
+            project_key=project_key,
+            header_contains=header_contains,
+            status=status,
+            updated_after=updated_after,
+            limit=limit,
+            offset=offset,
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.post(

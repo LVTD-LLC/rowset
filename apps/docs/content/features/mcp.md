@@ -56,12 +56,14 @@ Then discover datasets with:
 
 ```text
 get_all_datasets
+search_datasets
 ```
 
 Discover or create project groups with:
 
 ```text
 get_all_projects
+search_projects
 create_project
 get_project
 ```

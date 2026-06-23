@@ -38,6 +38,12 @@ GET {{ api_base_url }}/projects
 
 Returns project metadata and `dataset_count`.
 
+Search projects by name or description with `query`:
+
+```http
+GET {{ api_base_url }}/projects?query=launch
+```
+
 ## Get a project
 
 ```http

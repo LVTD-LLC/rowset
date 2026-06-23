@@ -158,6 +158,99 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
     anyio.run(run)
 
 
+def test_search_mcp_tools_call_search_services(monkeypatch):
+    calls = []
+
+    def search_datasets(
+        authenticated_profile,
+        *,
+        query=None,
+        project_key=None,
+        header_contains=None,
+        status=None,
+        updated_after=None,
+        limit=100,
+        offset=0,
+    ):
+        calls.append(
+            (
+                "search_datasets",
+                authenticated_profile.id,
+                query,
+                project_key,
+                header_contains,
+                status,
+                updated_after,
+                limit,
+                offset,
+            )
+        )
+        return {
+            "count": 1,
+            "total_count": 1,
+            "limit": limit,
+            "offset": offset,
+            "has_more": False,
+            "datasets": [{"key": "dataset-key", "name": "Feature Suggestions"}],
+        }
+
+    def search_projects(authenticated_profile, *, query=None, limit=100, offset=0):
+        calls.append(("search_projects", authenticated_profile.id, query, limit, offset))
+        return {
+            "count": 1,
+            "total_count": 1,
+            "limit": limit,
+            "offset": offset,
+            "has_more": False,
+            "projects": [{"key": "project-key", "name": "Rowset"}],
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr("apps.mcp_server.server.search_profile_datasets", search_datasets)
+        monkeypatch.setattr("apps.mcp_server.server.search_profile_projects", search_projects)
+
+        async with Client(mcp) as client:
+            dataset_result = await client.call_tool(
+                "search_datasets",
+                {
+                    "query": "feature",
+                    "project_key": "project-key",
+                    "header_contains": "suggestion_id",
+                    "status": "ready",
+                    "updated_after": "2026-06-01",
+                    "limit": 5,
+                    "offset": 2,
+                },
+            )
+            project_result = await client.call_tool(
+                "search_projects",
+                {"query": "rowset", "limit": 3},
+            )
+
+        assert dataset_result.data["datasets"][0]["key"] == "dataset-key"
+        assert project_result.data["projects"][0]["key"] == "project-key"
+        assert calls == [
+            (
+                "search_datasets",
+                11,
+                "feature",
+                "project-key",
+                "suggestion_id",
+                "ready",
+                "2026-06-01",
+                5,
+                2,
+            ),
+            ("search_projects", 11, "rowset", 3, 0),
+        ]
+
+    anyio.run(run)
+
+
 def test_project_mcp_tools_call_project_services(monkeypatch):
     calls = []
 
