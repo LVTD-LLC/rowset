@@ -70,7 +70,7 @@ def _normalize_search_query(query: str | None) -> str:
 
 
 def _normalize_dataset_status(status: str | None) -> str:
-    normalized_status = str(status or "").strip()
+    normalized_status = str(status or "").strip().lower()
     if normalized_status and normalized_status not in DatasetStatus.values:
         raise DatasetServiceError(400, f"Unsupported dataset status '{normalized_status}'.")
     return normalized_status

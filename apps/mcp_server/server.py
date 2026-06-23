@@ -191,7 +191,13 @@ def get_all_datasets(
 def search_datasets(
     query: Annotated[
         str | None,
-        Field(default=None, description="Text to match against dataset and project names."),
+        Field(
+            default=None,
+            description=(
+                "Text to match against dataset name, original filename, project name, "
+                "or project description."
+            ),
+        ),
     ] = None,
     project_key: Annotated[
         str | None,

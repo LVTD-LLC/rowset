@@ -678,7 +678,7 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
         query="feature",
         project_key=str(project.key),
         header_contains="suggestion_id",
-        status=DatasetStatus.READY,
+        status="READY",
         updated_after=(timezone.now() - timedelta(days=1)).isoformat(),
     )
 
