@@ -359,6 +359,34 @@ def _stringify_cell(value: Any) -> str:
     return str(value)
 
 
+def _mutation_value_label(value: str, non_blank_label: str) -> str:
+    if value == "":
+        return "Blank"
+    return non_blank_label
+
+
+def _row_field_changes(
+    current_data: dict,
+    patch_data: dict,
+    changed_fields: list[str],
+) -> list[dict[str, str | bool]]:
+    field_changes = []
+    for field in changed_fields:
+        before_value = _stringify_cell(current_data.get(field, ""))
+        after_value = _stringify_cell(patch_data.get(field, ""))
+        if before_value == after_value:
+            continue
+
+        field_changes.append(
+            {
+                "field": field,
+                "before": _mutation_value_label(before_value, "Previous value"),
+                "after": _mutation_value_label(after_value, "New value"),
+            }
+        )
+    return field_changes
+
+
 def _normalize_dataset_name(name: str) -> str:
     normalized_name = (name or "").strip()
     if not normalized_name:
@@ -1410,11 +1438,12 @@ def _patch_dataset_row(
     if not connection.in_atomic_block:
         raise AssertionError("_patch_dataset_row must be called inside transaction.atomic().")
 
-    changed_fields = sorted(key for key in data if key in dataset.headers)
-    row.data = {
-        **row.data,
-        **{key: str(value) for key, value in data.items() if key in dataset.headers},
+    row_patch = {
+        key: _stringify_cell(value) for key, value in data.items() if key in dataset.headers
     }
+    changed_fields = sorted(row_patch)
+    field_changes = _row_field_changes(row.data or {}, row_patch, changed_fields)
+    row.data = {**row.data, **row_patch}
     if dataset.index_column in data:
         if dataset.index_generated:
             raise DatasetServiceError(
@@ -1446,6 +1475,7 @@ def _patch_dataset_row(
             "row_id": row.id,
             "row_number": row.row_number,
             "changed_fields": changed_fields,
+            "field_changes": field_changes,
             "index_changed": dataset.index_column in data,
         },
     )
