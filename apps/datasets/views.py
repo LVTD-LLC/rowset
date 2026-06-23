@@ -4,7 +4,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, F, FloatField, Q, Sum, TextField, Value, When
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast, Lower, Replace, Trim
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -48,6 +50,21 @@ DATASET_SORT_ORDERING = {
     "project": ("project__name", "name"),
 }
 DATASET_DETAIL_ROW_PAGE_SIZE = 100
+ROW_SEARCH_PARAM = "row_q"
+ROW_SORT_PARAM = "row_sort"
+ROW_SORT_DIRECTION_PARAM = "row_dir"
+ROW_FILTER_PARAM_PREFIX = "filter_"
+ROW_DEFAULT_SORT = "row_number"
+ROW_SORT_DESC = "desc"
+ROW_SEARCH_COLUMN_LIMIT = 20
+ROW_BOOLEAN_TRUE_VALUES = ("true", "1", "yes", "y")
+ROW_BOOLEAN_FALSE_VALUES = ("false", "0", "no", "n")
+ROW_NUMERIC_SORT_TYPES = {
+    DatasetColumnType.CURRENCY,
+    DatasetColumnType.INTEGER,
+    DatasetColumnType.NUMBER,
+}
+ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
 DATASET_EXPORT_FORMATS = {
     "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
     "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
@@ -108,6 +125,195 @@ def _querystring_for_page(request, page_number: int) -> str:
     query_params = request.GET.copy()
     query_params["page"] = page_number
     return f"?{query_params.urlencode()}"
+
+
+def _column_filter_input_type(column_type: str) -> str:
+    return {
+        DatasetColumnType.BOOLEAN: "select",
+        DatasetColumnType.CURRENCY: "number",
+        DatasetColumnType.DATE: "date",
+        DatasetColumnType.DATETIME: "datetime-local",
+        DatasetColumnType.INTEGER: "number",
+        DatasetColumnType.NUMBER: "number",
+    }.get(column_type, "search")
+
+
+def _row_filter_fields(dataset: Dataset, request) -> list[dict[str, object]]:
+    fields = []
+    for index, column in enumerate(column_definitions(dataset.headers, dataset.column_schema)):
+        column_type = column["type"]
+        param_name = f"{ROW_FILTER_PARAM_PREFIX}{index}"
+        fields.append(
+            {
+                "header": column["name"],
+                "type": column_type,
+                "type_label": column["type_label"],
+                "param_name": param_name,
+                "value": request.GET.get(param_name, "").strip(),
+                "input_type": _column_filter_input_type(column_type),
+                "is_boolean": column_type == DatasetColumnType.BOOLEAN,
+                "is_number": column_type in {DatasetColumnType.INTEGER, DatasetColumnType.NUMBER},
+                "is_currency": column_type == DatasetColumnType.CURRENCY,
+                "operator_label": "Contains" if column_type != DatasetColumnType.BOOLEAN else "Is",
+            }
+        )
+    return fields
+
+
+def _row_sort_options(dataset: Dataset, selected_sort: str) -> list[dict[str, object]]:
+    options = [
+        {
+            "label": "Original order",
+            "value": ROW_DEFAULT_SORT,
+            "selected": selected_sort == ROW_DEFAULT_SORT,
+        }
+    ]
+    options.extend(
+        {
+            "label": header,
+            "value": f"col_{index}",
+            "selected": selected_sort == f"col_{index}",
+        }
+        for index, header in enumerate(dataset.headers)
+    )
+    return options
+
+
+def _selected_row_sort(request, dataset: Dataset) -> str:
+    selected_sort = request.GET.get(ROW_SORT_PARAM, ROW_DEFAULT_SORT)
+    valid_sorts = {ROW_DEFAULT_SORT} | {f"col_{index}" for index, _ in enumerate(dataset.headers)}
+    if selected_sort not in valid_sorts:
+        return ROW_DEFAULT_SORT
+    return selected_sort
+
+
+def _selected_row_sort_direction(request) -> str:
+    if request.GET.get(ROW_SORT_DIRECTION_PARAM) == ROW_SORT_DESC:
+        return ROW_SORT_DESC
+    return "asc"
+
+
+def _or_header_value_search(queryset, dataset: Dataset, search_query: str):
+    if not dataset.headers:
+        return queryset.none()
+
+    search_filter = Q()
+    for index, header in enumerate(dataset.headers[:ROW_SEARCH_COLUMN_LIMIT]):
+        alias = f"rowset_search_{index}"
+        queryset = queryset.annotate(**{alias: KeyTextTransform(header, "data")})
+        search_filter |= Q(**{f"{alias}__icontains": search_query})
+    if not search_filter:
+        return queryset
+    return queryset.filter(search_filter)
+
+
+def _boolean_filter_query(alias: str, value: str) -> Q | None:
+    normalized = value.lower()
+    if normalized in ROW_BOOLEAN_TRUE_VALUES:
+        values = ROW_BOOLEAN_TRUE_VALUES
+    elif normalized in ROW_BOOLEAN_FALSE_VALUES:
+        values = ROW_BOOLEAN_FALSE_VALUES
+    else:
+        return None
+
+    query = Q()
+    for candidate in values:
+        query |= Q(**{f"{alias}__iexact": candidate})
+    return query
+
+
+def _apply_row_field_filters(queryset, filter_fields: list[dict[str, object]]):
+    for index, field in enumerate(filter_fields):
+        value = str(field["value"]).strip()
+        if not value:
+            continue
+
+        alias = f"rowset_filter_{index}"
+        queryset = queryset.annotate(**{alias: KeyTextTransform(str(field["header"]), "data")})
+        column_type = field["type"]
+        if column_type == DatasetColumnType.BOOLEAN:
+            boolean_query = _boolean_filter_query(alias, value)
+            if boolean_query is None:
+                return queryset.none()
+            queryset = queryset.filter(boolean_query)
+        else:
+            queryset = queryset.filter(**{f"{alias}__icontains": value})
+    return queryset
+
+
+def _apply_row_sort(queryset, dataset: Dataset, selected_sort: str, sort_direction: str):
+    if selected_sort == ROW_DEFAULT_SORT:
+        ordering = "-row_number" if sort_direction == ROW_SORT_DESC else "row_number"
+        return queryset.order_by(ordering)
+
+    column_index = int(selected_sort.removeprefix("col_"))
+    sort_header = dataset.headers[column_index]
+    sort_column = column_definitions(dataset.headers, dataset.column_schema)[column_index]
+    queryset = queryset.annotate(rowset_sort_text=KeyTextTransform(sort_header, "data"))
+    if sort_column["type"] in ROW_NUMERIC_SORT_TYPES:
+        empty_text = Value("", output_field=TextField())
+        queryset = queryset.annotate(
+            rowset_sort_numeric_text=Replace(
+                Replace(
+                    Trim(Cast("rowset_sort_text", TextField())),
+                    Value("$", output_field=TextField()),
+                    empty_text,
+                    output_field=TextField(),
+                ),
+                Value(",", output_field=TextField()),
+                empty_text,
+                output_field=TextField(),
+            ),
+            rowset_sort_number=Case(
+                When(
+                    rowset_sort_numeric_text__regex=ROW_NUMERIC_SORT_PATTERN,
+                    then=Cast("rowset_sort_numeric_text", FloatField()),
+                ),
+                default=Value(None),
+                output_field=FloatField(),
+            ),
+        )
+        sort_expression = F("rowset_sort_number")
+    else:
+        sort_expression = Lower("rowset_sort_text")
+    if sort_direction == ROW_SORT_DESC:
+        return queryset.order_by(sort_expression.desc(nulls_last=True), "row_number")
+    return queryset.order_by(sort_expression.asc(nulls_last=True), "row_number")
+
+
+def _dataset_row_query_context(request, dataset: Dataset, queryset):
+    search_query = request.GET.get(ROW_SEARCH_PARAM, "").strip()
+    selected_sort = _selected_row_sort(request, dataset)
+    sort_direction = _selected_row_sort_direction(request)
+    filter_fields = _row_filter_fields(dataset, request)
+
+    if search_query:
+        queryset = _or_header_value_search(queryset, dataset, search_query)
+    queryset = _apply_row_field_filters(queryset, filter_fields)
+    queryset = _apply_row_sort(queryset, dataset, selected_sort, sort_direction)
+
+    has_row_filters = bool(
+        search_query
+        or selected_sort != ROW_DEFAULT_SORT
+        or sort_direction == ROW_SORT_DESC
+        or any(field["value"] for field in filter_fields)
+    )
+    return queryset, {
+        "row_search_query": search_query,
+        "row_filter_fields": filter_fields,
+        "row_sort_options": _row_sort_options(dataset, selected_sort),
+        "row_sort_direction": sort_direction,
+        "row_sort_direction_options": [
+            {"label": "Ascending", "value": "asc", "selected": sort_direction != ROW_SORT_DESC},
+            {
+                "label": "Descending",
+                "value": ROW_SORT_DESC,
+                "selected": sort_direction == ROW_SORT_DESC,
+            },
+        ],
+        "has_row_filters": has_row_filters,
+        "row_filters_reset_url": request.path,
+    }
 
 
 class DatasetListView(LoginRequiredMixin, ListView):
@@ -238,8 +444,12 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         dataset = self.object
-        row_queryset = dataset.rows.select_related("updated_by_agent_api_key").order_by(
-            "row_number"
+        base_row_queryset = dataset.rows.select_related("updated_by_agent_api_key")
+        has_imported_rows = dataset.row_count > 0
+        row_queryset, row_query_context = _dataset_row_query_context(
+            self.request,
+            dataset,
+            base_row_queryset,
         )
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
@@ -255,7 +465,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             }
             for row in row_page_obj.object_list
         ]
-        has_imported_rows = row_paginator.count > 0
         if not has_imported_rows:
             rows_with_values = [
                 {
@@ -269,10 +478,16 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                     start=1,
                 )
             ]
+        context.update(row_query_context if has_imported_rows else {})
         context["rows_with_values"] = rows_with_values
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
         context["rows_colspan"] = len(dataset.headers) + int(has_imported_rows)
+        context["rows_empty_message"] = (
+            "No rows match these filters."
+            if context.get("has_row_filters")
+            else "No rows are available yet."
+        )
         context["row_page_obj"] = row_page_obj
         if row_page_obj.has_previous():
             context["previous_row_page_url"] = _querystring_for_page(
@@ -525,7 +740,12 @@ def public_dataset(request, public_key):
     page_obj = None
     public_rows_with_values = []
     if has_access:
-        paginator = Paginator(dataset.rows.all(), dataset.public_page_size)
+        row_queryset, row_query_context = _dataset_row_query_context(
+            request,
+            dataset,
+            dataset.rows.all(),
+        )
+        paginator = Paginator(row_queryset, dataset.public_page_size)
         page_obj = paginator.get_page(request.GET.get("page"))
         public_rows_with_values = [
             {
@@ -538,6 +758,8 @@ def public_dataset(request, public_key):
             }
             for row in page_obj.object_list
         ]
+    else:
+        row_query_context = {}
 
     return render(
         request,
@@ -548,6 +770,22 @@ def public_dataset(request, public_key):
             "password_error": password_error,
             "page_obj": page_obj,
             "public_rows_with_values": public_rows_with_values,
+            "public_empty_message": (
+                "No rows match these filters."
+                if row_query_context.get("has_row_filters")
+                else "No rows are available in this preview."
+            ),
+            "previous_page_url": (
+                _querystring_for_page(request, page_obj.previous_page_number())
+                if page_obj and page_obj.has_previous()
+                else ""
+            ),
+            "next_page_url": (
+                _querystring_for_page(request, page_obj.next_page_number())
+                if page_obj and page_obj.has_next()
+                else ""
+            ),
+            **row_query_context,
         },
     )
 

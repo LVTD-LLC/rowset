@@ -14,6 +14,7 @@
     {% if not has_access %}
       {% include "datasets/partials/public_password_form.html" with password_submit_label="View table" %}
     {% else %}
+      {% include "datasets/partials/row_table_controls.html" %}
       <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950" aria-labelledby="public-table-heading">
         <h2 id="public-table-heading" class="sr-only">Rows in {{ dataset.name }}</h2>
         <div class="overflow-x-auto">
@@ -38,7 +39,7 @@
                   {% endfor %}
                 </tr>
               {% empty %}
-                <tr><td colspan="{{ dataset.headers|length }}" class="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">No rows are available in this preview.</td></tr>
+                <tr><td colspan="{{ dataset.headers|length }}" class="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">{{ public_empty_message }}</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -50,10 +51,10 @@
           <div class="text-sm text-slate-600 dark:text-slate-300">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</div>
           <div class="flex gap-2">
             {% if page_obj.has_previous %}
-              <a href="?page={{ page_obj.previous_page_number }}" class="fb-button-secondary">Previous</a>
+              <a href="{{ previous_page_url }}" class="fb-button-secondary">Previous</a>
             {% endif %}
             {% if page_obj.has_next %}
-              <a href="?page={{ page_obj.next_page_number }}" class="fb-button-secondary">Next</a>
+              <a href="{{ next_page_url }}" class="fb-button-secondary">Next</a>
             {% endif %}
           </div>
         </nav>
