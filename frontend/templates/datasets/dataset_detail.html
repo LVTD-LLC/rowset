@@ -78,21 +78,11 @@
                         <dd class="grid min-w-0 gap-1 font-mono sm:grid-cols-2">
                           <span class="min-w-0 rounded bg-red-50 px-2 py-1 text-red-800 dark:bg-red-950/40 dark:text-red-200">
                             <span aria-hidden="true">- </span>
-                            {% if change.before %}
-                              <span class="break-all">{{ change.before }}</span>
-                            {% else %}
-                              <span class="font-sans italic">Blank</span>
-                            {% endif %}
-                            {% if change.before_truncated %}<span class="font-sans">...</span>{% endif %}
+                            <span class="{% if change.before == "Blank" %}font-sans italic{% else %}break-all{% endif %}">{{ change.before }}</span>
                           </span>
                           <span class="min-w-0 rounded bg-emerald-50 px-2 py-1 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
                             <span aria-hidden="true">+ </span>
-                            {% if change.after %}
-                              <span class="break-all">{{ change.after }}</span>
-                            {% else %}
-                              <span class="font-sans italic">Blank</span>
-                            {% endif %}
-                            {% if change.after_truncated %}<span class="font-sans">...</span>{% endif %}
+                            <span class="{% if change.after == "Blank" %}font-sans italic{% else %}break-all{% endif %}">{{ change.after }}</span>
                           </span>
                         </dd>
                       </div>

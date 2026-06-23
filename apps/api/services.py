@@ -1441,9 +1441,11 @@ def _patch_dataset_row(
     row_patch = {
         key: _stringify_cell(value) for key, value in data.items() if key in dataset.headers
     }
-    changed_fields = sorted(row_patch)
-    field_changes = _row_field_changes(row.data or {}, row_patch, changed_fields)
+    patched_fields = sorted(row_patch)
+    field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
+    changed_fields = [str(change["field"]) for change in field_changes]
     row.data = {**row.data, **row_patch}
+    index_changed = False
     if dataset.index_column in data:
         if dataset.index_generated:
             raise DatasetServiceError(
@@ -1459,6 +1461,7 @@ def _patch_dataset_row(
             )
         if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
             raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
+        index_changed = row.index_value != index_value
         row.index_value = index_value
     row.updated_by_agent_api_key = agent_api_key
     row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
@@ -1476,7 +1479,7 @@ def _patch_dataset_row(
             "row_number": row.row_number,
             "changed_fields": changed_fields,
             "field_changes": field_changes,
-            "index_changed": dataset.index_column in data,
+            "index_changed": index_changed,
         },
     )
     return {

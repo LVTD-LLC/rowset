@@ -1065,6 +1065,27 @@ def test_row_update_mutation_records_field_diffs_and_renders_history(client, pro
     assert "name" in detail_content
 
 
+def test_row_update_mutation_omits_noop_fields(client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+
+    patch_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"email": "ada@example.com", "name": "Ada"}},
+        content_type="application/json",
+    )
+
+    assert patch_response.status_code == 200
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.ROW_UPDATED)
+    assert mutation.metadata == {
+        "row_id": row.id,
+        "row_number": 1,
+        "changed_fields": [],
+        "field_changes": [],
+        "index_changed": False,
+    }
+
+
 def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
     response = client.post(
         f"/api/datasets?api_key={profile.key}",
