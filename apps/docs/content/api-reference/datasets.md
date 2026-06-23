@@ -43,12 +43,25 @@ Content-Type: application/json
 
 Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, Rowset adds a generated `rowset_id` column so the dataset is ready to use immediately. Rowset infers column types from supplied rows; pass `column_types` to override them.
 
+Use `description`, `instructions`, and `metadata` when an agent should remember
+how to use the dataset. For example, a task board can store status rules,
+priority conventions, or review steps in dataset metadata instead of requiring
+the user to explain them on every run.
+
 To create the dataset inside an existing project, include `project_key`. Omit it
 to leave the dataset ungrouped.
 
 ```json
 {
   "name": "Products",
+  "description": "Supplier catalog for the agent-managed store",
+  "instructions": "Keep sku stable. Treat price as USD unless a row says otherwise.",
+  "metadata": {
+    "workflow": {
+      "status_values": ["draft", "active", "retired"],
+      "default_status": "draft"
+    }
+  },
   "project_key": "{project_key}",
   "headers": ["sku", "name", "price"],
   "index_column": "sku",
@@ -68,8 +81,9 @@ GET {{ api_base_url }}/datasets?query=feature&status=ready
 ```
 
 The dataset list endpoint accepts filters for `query`, `project_key`,
-`header_contains`, `status`, and `updated_after`. `header_contains` should be an
-exact header name. Accepted `status` values are `previewed`, `processing`,
+`header_contains`, `status`, and `updated_after`. `query` matches dataset name,
+description, instructions, filename, and project text. `header_contains` should
+be an exact header name. Accepted `status` values are `previewed`, `processing`,
 `ready`, and `failed`. `updated_after` accepts an ISO 8601 date or datetime;
 values without a timezone offset, including bare dates, are interpreted as UTC.
 For example, `2026-06-01` is treated as `2026-06-01T00:00:00Z`. Use these filters
@@ -139,6 +153,29 @@ Updates semantic column metadata without changing stored row values.
 ```
 
 Supported types are `text`, `integer`, `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
+
+## Update dataset context
+
+```http
+PATCH {{ api_base_url }}/datasets/{dataset_key}/metadata
+Content-Type: application/json
+```
+
+Updates the dataset description, persistent agent instructions, or JSON
+metadata without changing rows.
+
+```json
+{
+  "description": "Launch task board",
+  "instructions": "Move blocked tasks back to todo after the blocker is removed.",
+  "metadata": {
+    "status_order": ["todo", "blocked", "doing", "done"]
+  }
+}
+```
+
+Omit fields you want to keep unchanged. Use an empty string to clear
+`description` or `instructions`, and an empty object to clear `metadata`.
 
 ## Change columns
 

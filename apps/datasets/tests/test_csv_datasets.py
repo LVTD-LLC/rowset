@@ -1121,6 +1121,14 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
         "/api/datasets",
         data={
             "name": "Products",
+            "description": "Supplier product catalog for the agent-managed store.",
+            "instructions": "Keep sku stable. Treat price as USD unless a row says otherwise.",
+            "metadata": {
+                "workflow": {
+                    "status_values": ["draft", "active", "retired"],
+                    "default_status": "draft",
+                }
+            },
             "project_key": str(project.key),
             "headers": ["sku", "name", "price"],
             "index_column": "sku",
@@ -1137,6 +1145,18 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
     payload = response.json()
     assert payload["status"] == "success"
     assert payload["dataset"]["name"] == "Products"
+    assert payload["dataset"]["description"] == (
+        "Supplier product catalog for the agent-managed store."
+    )
+    assert payload["dataset"]["instructions"] == (
+        "Keep sku stable. Treat price as USD unless a row says otherwise."
+    )
+    assert payload["dataset"]["metadata"] == {
+        "workflow": {
+            "status_values": ["draft", "active", "retired"],
+            "default_status": "draft",
+        }
+    }
     assert payload["dataset"]["project"] == {
         "key": str(project.key),
         "name": "Catalogs",
@@ -1154,6 +1174,16 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
 
     dataset = Dataset.objects.get(key=payload["dataset"]["key"], profile=profile)
     assert dataset.project == project
+    assert dataset.description == "Supplier product catalog for the agent-managed store."
+    assert dataset.instructions == (
+        "Keep sku stable. Treat price as USD unless a row says otherwise."
+    )
+    assert dataset.metadata == {
+        "workflow": {
+            "status_values": ["draft", "active", "retired"],
+            "default_status": "draft",
+        }
+    }
     assert dataset.headers == ["sku", "name", "price"]
     assert dataset.column_schema == {
         "sku": {"type": "text"},
@@ -1522,6 +1552,90 @@ def test_dataset_api_rejects_other_users_project_assignment(client, django_user_
     assert response.json()["detail"] == "Project not found."
     dataset.refresh_from_db()
     assert dataset.project is None
+
+
+def test_dataset_api_updates_dataset_metadata(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.description = "Initial task board."
+    dataset.instructions = "Use todo, doing, and done."
+    dataset.metadata = {"status_order": ["todo", "doing", "done"]}
+    dataset.save(update_fields=["description", "instructions", "metadata"])
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/metadata?api_key={profile.key}",
+        data={
+            "description": "Agent task board for launch work.",
+            "instructions": (
+                "Keep the priority field stable. Move blocked tasks back to todo "
+                "after the blocker is removed."
+            ),
+            "metadata": {
+                "status_order": ["todo", "blocked", "doing", "done"],
+                "default_assignee": "agent",
+            },
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"] == "Dataset metadata updated."
+    assert payload["dataset"]["description"] == "Agent task board for launch work."
+    assert payload["dataset"]["instructions"] == (
+        "Keep the priority field stable. Move blocked tasks back to todo "
+        "after the blocker is removed."
+    )
+    assert payload["dataset"]["metadata"] == {
+        "status_order": ["todo", "blocked", "doing", "done"],
+        "default_assignee": "agent",
+    }
+    dataset.refresh_from_db()
+    assert dataset.description == "Agent task board for launch work."
+    assert dataset.instructions == (
+        "Keep the priority field stable. Move blocked tasks back to todo "
+        "after the blocker is removed."
+    )
+    assert dataset.metadata == {
+        "status_order": ["todo", "blocked", "doing", "done"],
+        "default_assignee": "agent",
+    }
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.DATASET_METADATA_UPDATED)
+    assert mutation.metadata["previous"] == {
+        "description": "Initial task board.",
+        "instructions": "Use todo, doing, and done.",
+        "metadata": {"status_order": ["todo", "doing", "done"]},
+    }
+    assert mutation.metadata["current"] == {
+        "description": "Agent task board for launch work.",
+        "instructions": (
+            "Keep the priority field stable. Move blocked tasks back to todo "
+            "after the blocker is removed."
+        ),
+        "metadata": {
+            "status_order": ["todo", "blocked", "doing", "done"],
+            "default_assignee": "agent",
+        },
+    }
+    assert mutation.metadata["changed_fields"] == [
+        "description",
+        "instructions",
+        "metadata",
+    ]
+
+
+def test_dataset_api_rejects_non_object_dataset_metadata(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/metadata?api_key={profile.key}",
+        data={"metadata": ["not", "an", "object"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Dataset metadata must be a JSON object."
+    dataset.refresh_from_db()
+    assert dataset.metadata == {}
 
 
 def test_dataset_api_updates_column_types(client, profile):
@@ -1997,6 +2111,28 @@ def test_dataset_owner_can_assign_project_from_settings(auth_client, profile):
     assert detach_response.status_code == 302
     dataset.refresh_from_db()
     assert dataset.project is None
+
+
+def test_dataset_owner_can_update_metadata_from_settings(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.post(
+        reverse("dataset_update_metadata", args=[dataset.key]),
+        {
+            "description": "Human-visible task board.",
+            "instructions": "Keep acceptance criteria in notes before moving to done.",
+            "metadata": json.dumps({"status_order": ["todo", "doing", "done"]}),
+        },
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.description == "Human-visible task board."
+    assert dataset.instructions == "Keep acceptance criteria in notes before moving to done."
+    assert dataset.metadata == {"status_order": ["todo", "doing", "done"]}
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.DATASET_METADATA_UPDATED)
+    assert mutation.actor_label == "Account"
+    assert mutation.metadata["changed_fields"] == ["description", "instructions", "metadata"]
 
 
 def test_dataset_owner_can_update_column_types_from_settings(auth_client, profile):

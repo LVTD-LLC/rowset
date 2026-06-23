@@ -1,4 +1,5 @@
 import hashlib
+import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -18,6 +19,7 @@ from apps.api.services import (
     DatasetServiceError,
     create_profile_project,
     update_profile_dataset_column_types,
+    update_profile_dataset_metadata,
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
 )
@@ -505,6 +507,12 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 row_page_obj.next_page_number(),
             )
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
+        context["metadata_json"] = json.dumps(
+            dataset.metadata or {},
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
         return context
 
 
@@ -581,6 +589,12 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
             self.object.column_schema,
         )
         context["column_type_choices"] = DatasetColumnType.choices
+        context["metadata_json"] = json.dumps(
+            self.object.metadata or {},
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
         return context
 
 
@@ -639,6 +653,37 @@ def dataset_update_project(request, dataset_key):
         messages.error(request, exc.message)
     else:
         messages.success(request, "Project assignment updated.")
+
+    return redirect("dataset_settings", dataset_key=dataset_key)
+
+
+@login_required
+@require_POST
+def dataset_update_metadata(request, dataset_key):
+    raw_metadata = request.POST.get("metadata", "").strip()
+    if raw_metadata:
+        try:
+            metadata = json.loads(raw_metadata)
+        except json.JSONDecodeError:
+            messages.error(request, "Dataset metadata must be valid JSON.")
+            return redirect("dataset_settings", dataset_key=dataset_key)
+    else:
+        metadata = {}
+
+    try:
+        update_profile_dataset_metadata(
+            request.user.profile,
+            str(dataset_key),
+            description=request.POST.get("description", ""),
+            instructions=request.POST.get("instructions", ""),
+            metadata=metadata,
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, "Dataset metadata updated.")
 
     return redirect("dataset_settings", dataset_key=dataset_key)
 

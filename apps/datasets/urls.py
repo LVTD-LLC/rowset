@@ -40,6 +40,11 @@ urlpatterns = [
         name="dataset_update_project",
     ),
     path(
+        "datasets/<uuid:dataset_key>/settings/metadata/",
+        views.dataset_update_metadata,
+        name="dataset_update_metadata",
+    ),
+    path(
         "datasets/<uuid:dataset_key>/settings/columns/",
         views.dataset_update_column_settings,
         name="dataset_update_column_settings",

@@ -34,6 +34,7 @@ from apps.api.services import (
     serialize_profile_projects,
     serialize_user_info,
     update_profile_dataset_column_types,
+    update_profile_dataset_metadata,
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
 )
@@ -528,6 +529,34 @@ def get_project(
 )
 def create_dataset(
     name: Annotated[str, Field(description="Human-readable dataset name.")],
+    description: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional concise description of what the dataset represents and why it exists."
+            ),
+        ),
+    ] = None,
+    instructions: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional persistent operating instructions for agents that use this dataset."
+            ),
+        ),
+    ] = None,
+    metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional machine-readable JSON object for workflow rules, status values, "
+                "owners, or other dataset-specific conventions."
+            ),
+        ),
+    ] = None,
     headers: Annotated[
         list[str] | None,
         Field(
@@ -586,11 +615,74 @@ def create_dataset(
         return create_profile_dataset(
             profile,
             name=name,
+            description=description,
+            instructions=instructions,
+            metadata=metadata,
             headers=headers,
             rows=rows,
             index_column=index_column,
             column_types=column_types,
             project_key=project_key,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_dataset_metadata",
+    description=(
+        "Update persistent dataset context: description, agent instructions, and "
+        "machine-readable JSON metadata."
+    ),
+)
+def update_dataset_metadata(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    description: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional new dataset description. Use an empty string to clear it; "
+                "omit to keep the current value."
+            ),
+        ),
+    ] = None,
+    instructions: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional new persistent agent instructions. Use an empty string to clear "
+                "them; omit to keep the current value."
+            ),
+        ),
+    ] = None,
+    metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional replacement JSON object for dataset-specific conventions. "
+                "Pass an empty object to clear it; omit to keep the current value."
+            ),
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    updates = {}
+    if description is not None:
+        updates["description"] = description
+    if instructions is not None:
+        updates["instructions"] = instructions
+    if metadata is not None:
+        updates["metadata"] = metadata
+    try:
+        return update_profile_dataset_metadata(
+            profile,
+            dataset_key,
+            **updates,
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:

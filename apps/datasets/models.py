@@ -9,7 +9,11 @@ from django.urls import reverse
 from apps.core.base_models import BaseModel
 from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetMutationType, DatasetStatus
-from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
+from apps.datasets.constants import (
+    MAX_CSV_UPLOAD_BYTES,
+    MAX_DATASET_DESCRIPTION_LENGTH,
+    MAX_DATASET_INSTRUCTIONS_LENGTH,
+)
 
 
 class Project(BaseModel):
@@ -67,6 +71,17 @@ class Dataset(BaseModel):
     )
     key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=255)
+    description = models.TextField(
+        blank=True,
+        default="",
+        validators=[MaxLengthValidator(MAX_DATASET_DESCRIPTION_LENGTH)],
+    )
+    instructions = models.TextField(
+        blank=True,
+        default="",
+        validators=[MaxLengthValidator(MAX_DATASET_INSTRUCTIONS_LENGTH)],
+    )
+    metadata = models.JSONField(default=dict, blank=True)
     original_filename = models.CharField(max_length=255)
     file_type = models.CharField(max_length=32, default="csv")
     source_file = models.FileField(upload_to="datasets/csv/%Y/%m/%d/", blank=True)

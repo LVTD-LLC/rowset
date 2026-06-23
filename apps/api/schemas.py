@@ -6,6 +6,10 @@ from pydantic import Field
 
 from apps.api.services import MAX_API_DATASET_CREATE_ROWS
 from apps.blog.choices import BlogPostStatus
+from apps.datasets.constants import (
+    MAX_DATASET_DESCRIPTION_LENGTH,
+    MAX_DATASET_INSTRUCTIONS_LENGTH,
+)
 
 
 class SubmitFeedbackIn(Schema):
@@ -123,6 +127,9 @@ class ProjectCreateOut(Schema):
 class DatasetSummaryOut(Schema):
     key: str
     name: str
+    description: str
+    instructions: str
+    metadata: dict[str, Any]
     project: ProjectReferenceOut | None = None
     original_filename: str
     file_type: str
@@ -162,6 +169,9 @@ class ProjectDetailOut(Schema):
 
 class DatasetCreateIn(Schema):
     name: str
+    description: str | None = Field(default=None, max_length=MAX_DATASET_DESCRIPTION_LENGTH)
+    instructions: str | None = Field(default=None, max_length=MAX_DATASET_INSTRUCTIONS_LENGTH)
+    metadata: Any = None
     headers: list[str] | None = None
     rows: list[dict[str, Any]] = Field(
         default_factory=list,
@@ -183,6 +193,18 @@ class DatasetColumnTypesPatchIn(Schema):
 
 
 class DatasetColumnTypesOut(Schema):
+    status: str
+    message: str
+    dataset: DatasetSummaryOut
+
+
+class DatasetMetadataPatchIn(Schema):
+    description: str | None = Field(default=None, max_length=MAX_DATASET_DESCRIPTION_LENGTH)
+    instructions: str | None = Field(default=None, max_length=MAX_DATASET_INSTRUCTIONS_LENGTH)
+    metadata: Any = None
+
+
+class DatasetMetadataOut(Schema):
     status: str
     message: str
     dataset: DatasetSummaryOut
