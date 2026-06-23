@@ -13,7 +13,7 @@ from apps.mcp_server.server import get_dataset_row as mcp_get_dataset_row
 from apps.mcp_server.server import mcp
 
 
-def _mcp_error_payload(error: Exception) -> dict:
+def _extract_mcp_error_payload(error: Exception) -> dict:
     decoder = json.JSONDecoder()
     text = str(error)
     for index, character in enumerate(text):
@@ -1008,7 +1008,7 @@ def test_dataset_row_mcp_tools_return_service_errors(
             with pytest.raises(Exception) as exc_info:
                 await client.call_tool("get_dataset_row", {"dataset_key": "ds", "row_id": 999})
 
-        assert _mcp_error_payload(exc_info.value) == expected_payload
+        assert _extract_mcp_error_payload(exc_info.value) == expected_payload
 
     anyio.run(run)
 
@@ -1048,7 +1048,7 @@ def test_metadata_mcp_tools_return_service_errors(
             with pytest.raises(Exception) as exc_info:
                 await client.call_tool(tool_name, arguments)
 
-        assert _mcp_error_payload(exc_info.value) == expected_payload
+        assert _extract_mcp_error_payload(exc_info.value) == expected_payload
 
     anyio.run(run)
 
@@ -1107,7 +1107,7 @@ def test_get_user_info_mcp_tool_returns_structured_auth_errors(
             with pytest.raises(Exception) as exc_info:
                 await client.call_tool("get_user_info", {})
 
-        assert _mcp_error_payload(exc_info.value) == {
+        assert _extract_mcp_error_payload(exc_info.value) == {
             "code": expected_code,
             "message": expected_message,
             "retryable": False,
