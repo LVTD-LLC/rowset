@@ -218,7 +218,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             for row in row_page_obj.object_list
         ]
         has_imported_rows = row_paginator.count > 0
-        if not rows_with_values:
+        if not has_imported_rows:
             rows_with_values = [
                 {
                     "values": ordered_row_values(dataset.headers, preview_row),
