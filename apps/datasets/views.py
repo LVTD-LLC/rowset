@@ -133,10 +133,8 @@ def _column_filter_input_type(column_type: str) -> str:
         DatasetColumnType.CURRENCY: "number",
         DatasetColumnType.DATE: "date",
         DatasetColumnType.DATETIME: "datetime-local",
-        DatasetColumnType.EMAIL: "email",
         DatasetColumnType.INTEGER: "number",
         DatasetColumnType.NUMBER: "number",
-        DatasetColumnType.URL: "url",
     }.get(column_type, "search")
 
 

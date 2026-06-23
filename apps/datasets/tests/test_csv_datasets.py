@@ -480,6 +480,31 @@ def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
     )
 
 
+def test_dataset_detail_semantic_text_filters_accept_partial_values(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["email", "website"]
+    dataset.column_schema = {
+        "email": {"type": DatasetColumnType.EMAIL},
+        "website": {"type": DatasetColumnType.URL},
+    }
+    dataset.preview_rows = []
+    dataset.rows.all().delete()
+    dataset.save(update_fields=["headers", "column_schema", "preview_rows"])
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ada@example.com",
+        data={"email": "ada@example.com", "website": "https://example.com/ada"},
+    )
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'name="filter_0"\n              type="search"' in content
+    assert 'name="filter_1"\n              type="search"' in content
+
+
 def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
     dataset = configure_filterable_dataset(create_ready_dataset(profile))
 
