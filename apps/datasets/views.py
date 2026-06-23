@@ -48,7 +48,10 @@ DATASET_SORT_ORDERING = {
 
 
 def _visible_project_dataset_count():
-    return Count("datasets", filter=~Q(datasets__status=DatasetStatus.PREVIEWED))
+    return Count(
+        "datasets",
+        filter=Q(datasets__archived_at__isnull=True) & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+    )
 
 
 def _delete_dataset(dataset: Dataset) -> None:
@@ -86,11 +89,15 @@ class DatasetListView(LoginRequiredMixin, ListView):
 
     def get_base_queryset(self):
         if not hasattr(self, "_base_queryset"):
-            self._base_queryset = self.request.user.profile.datasets.select_related(
-                "project",
-                "created_by_agent_api_key",
-                "updated_by_agent_api_key",
-            ).exclude(status=DatasetStatus.PREVIEWED)
+            self._base_queryset = (
+                self.request.user.profile.datasets.select_related(
+                    "project",
+                    "created_by_agent_api_key",
+                    "updated_by_agent_api_key",
+                )
+                .filter(archived_at__isnull=True)
+                .exclude(status=DatasetStatus.PREVIEWED)
+            )
         return self._base_queryset
 
     def get_queryset(self):
@@ -139,9 +146,14 @@ class ProjectListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["ungrouped_dataset_count"] = self.request.user.profile.datasets.filter(
-            project__isnull=True,
-        ).exclude(status=DatasetStatus.PREVIEWED).count()
+        context["ungrouped_dataset_count"] = (
+            self.request.user.profile.datasets.filter(
+                project__isnull=True,
+                archived_at__isnull=True,
+            )
+            .exclude(status=DatasetStatus.PREVIEWED)
+            .count()
+        )
         return context
 
 
@@ -163,6 +175,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 "created_by_agent_api_key",
                 "updated_by_agent_api_key",
             )
+            .filter(archived_at__isnull=True)
             .exclude(status=DatasetStatus.PREVIEWED)
             .order_by("-updated_at"),
             100,
@@ -489,6 +502,7 @@ def public_dataset(request, public_key):
         public_key=public_key,
         public_enabled=True,
         status=DatasetStatus.READY,
+        archived_at__isnull=True,
     )
 
     has_access, password_error, password_response = _handle_public_password_access(
@@ -536,6 +550,7 @@ def public_dataset_row_detail(request, public_key, row_id):
         public_key=public_key,
         public_enabled=True,
         status=DatasetStatus.READY,
+        archived_at__isnull=True,
     )
     row_url = reverse(
         "public_dataset_row_detail",

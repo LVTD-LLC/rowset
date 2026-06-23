@@ -141,6 +141,7 @@ class DatasetSummaryOut(Schema):
     updated_at: datetime
     confirmed_at: datetime | None = None
     processed_at: datetime | None = None
+    archived_at: datetime | None = None
 
 
 class DatasetListOut(Schema):
@@ -205,6 +206,12 @@ class DatasetProjectPatchIn(Schema):
 
 
 class DatasetProjectOut(Schema):
+    status: str
+    message: str
+    dataset: DatasetSummaryOut
+
+
+class DatasetArchiveOut(Schema):
     status: str
     message: str
     dataset: DatasetSummaryOut

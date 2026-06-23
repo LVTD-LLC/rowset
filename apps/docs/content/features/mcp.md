@@ -88,12 +88,18 @@ update_dataset_row
 delete_dataset_row
 update_dataset_project
 update_dataset_public_preview
+archive_dataset
+restore_dataset
 ```
 
 Dataset and row tools enforce the authenticated user's ownership boundary.
 `create_dataset`, `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`
 change dataset contents, so agents should ask the user before using them unless the
 user explicitly requested the change.
+
+Use `archive_dataset` when the user asks to remove a mistaken dataset. Archive keeps
+rows and schema metadata recoverable, hides the dataset from normal lists, and disables
+public preview sharing. Use `restore_dataset` to bring an archived dataset back.
 
 Use `update_dataset_project` when the user asks to organize or move a dataset
 between projects. Passing `null` for `project_key` leaves the dataset ungrouped.

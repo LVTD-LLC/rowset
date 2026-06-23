@@ -8,6 +8,7 @@ from pydantic import Field
 from apps.api.services import (
     MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
+    archive_profile_dataset,
     create_profile_dataset,
     create_profile_dataset_row,
     create_profile_project,
@@ -17,6 +18,7 @@ from apps.api.services import (
     get_profile_dataset_row_by_index,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
+    restore_profile_dataset,
     serialize_dataset_summary,
     serialize_profile_datasets,
     serialize_profile_project_detail,
@@ -154,9 +156,7 @@ def get_user_info() -> dict:
 
 @mcp.tool(
     name="get_all_datasets",
-    description=(
-        "Return metadata for all datasets available to the authenticated Rowset profile."
-    ),
+    description=("Return metadata for all datasets available to the authenticated Rowset profile."),
 )
 def get_all_datasets(
     limit: Annotated[
@@ -191,9 +191,7 @@ def get_dataset(
 
 @mcp.tool(
     name="get_all_projects",
-    description=(
-        "Return semantic dataset projects available to the authenticated Rowset profile."
-    ),
+    description=("Return semantic dataset projects available to the authenticated Rowset profile."),
 )
 def get_all_projects(
     limit: Annotated[
@@ -446,6 +444,47 @@ def update_dataset_public_preview(
             public_page_size=public_page_size,
             public_password=public_password,
             clear_public_password=clear_public_password,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="archive_dataset",
+    description=(
+        "Archive an existing Rowset dataset without deleting rows. Archived datasets are "
+        "omitted from normal dataset and project lists and can be restored."
+    ),
+)
+def archive_dataset(
+    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return archive_profile_dataset(
+            profile,
+            dataset_key,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="restore_dataset",
+    description="Restore an archived Rowset dataset to normal dataset and project lists.",
+)
+def restore_dataset(
+    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return restore_profile_dataset(
+            profile,
+            dataset_key,
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:

@@ -45,11 +45,27 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "updated_at",
     "confirmed_at",
     "processed_at",
+    "archived_at",
 )
 
 
 def _visible_project_dataset_count():
-    return Count("datasets", filter=~Q(datasets__status=DatasetStatus.PREVIEWED))
+    return Count(
+        "datasets",
+        filter=Q(datasets__archived_at__isnull=True) & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+    )
+
+
+def _active_dataset_queryset(queryset):
+    return queryset.filter(archived_at__isnull=True)
+
+
+def _raise_if_archived(dataset: Dataset) -> None:
+    if dataset.archived_at is not None:
+        raise DatasetServiceError(
+            409,
+            "Dataset is archived. Restore it before making changes.",
+        )
 
 
 class DatasetServiceError(Exception):
@@ -106,7 +122,11 @@ def serialize_project_summary(project: Project) -> dict:
     """Return machine-friendly project metadata without row payloads."""
     dataset_count = getattr(project, "dataset_count", None)
     if dataset_count is None:
-        dataset_count = project.datasets.exclude(status=DatasetStatus.PREVIEWED).count()
+        dataset_count = (
+            _active_dataset_queryset(project.datasets)
+            .exclude(status=DatasetStatus.PREVIEWED)
+            .count()
+        )
     return {
         "key": str(project.key),
         "name": project.name,
@@ -186,7 +206,7 @@ def serialize_profile_project_detail(
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     queryset = _dataset_summary_queryset(
-        project.datasets.exclude(status=DatasetStatus.PREVIEWED)
+        _active_dataset_queryset(project.datasets).exclude(status=DatasetStatus.PREVIEWED)
     )
     total_count = project.dataset_count
     datasets = list(queryset[offset : offset + limit])
@@ -231,6 +251,7 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "updated_at": dataset.updated_at,
         "confirmed_at": dataset.confirmed_at,
         "processed_at": dataset.processed_at,
+        "archived_at": getattr(dataset, "archived_at", None),
     }
 
 
@@ -242,7 +263,7 @@ def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int =
     """Return a bounded page of datasets owned by the authenticated profile."""
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    queryset = _dataset_summary_queryset(profile.datasets)
+    queryset = _dataset_summary_queryset(_active_dataset_queryset(profile.datasets))
     total_count = queryset.count()
     datasets = list(queryset[offset : offset + limit])
     return {
@@ -258,12 +279,13 @@ def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int =
 def get_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     try:
         return Dataset.objects.select_related("project").get(key=dataset_key, profile=profile)
-    except Dataset.DoesNotExist as exc:
+    except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
         raise DatasetServiceError(404, "Dataset not found.") from exc
 
 
 def get_ready_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     dataset = get_profile_dataset(profile, dataset_key)
+    _raise_if_archived(dataset)
     if dataset.status != DatasetStatus.READY:
         raise DatasetServiceError(
             409,
@@ -275,8 +297,9 @@ def get_ready_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
 def get_ready_profile_dataset_for_update(profile: Profile, dataset_key: str) -> Dataset:
     try:
         dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-    except Dataset.DoesNotExist as exc:
+    except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
         raise DatasetServiceError(404, "Dataset not found.") from exc
+    _raise_if_archived(dataset)
     if dataset.status != DatasetStatus.READY:
         raise DatasetServiceError(
             409,
@@ -416,9 +439,7 @@ def create_profile_dataset(
     normalized_name = _normalize_dataset_name(name)
     normalized_project_key = str(project_key or "").strip()
     project = (
-        get_profile_project(profile, normalized_project_key)
-        if normalized_project_key
-        else None
+        get_profile_project(profile, normalized_project_key) if normalized_project_key else None
     )
     normalized_rows = _normalize_create_rows(rows)
     base_headers = _normalize_create_headers(headers, normalized_rows)
@@ -512,6 +533,8 @@ def update_profile_dataset_column_types(
         except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
+        _raise_if_archived(dataset)
+
         if dataset.status == DatasetStatus.PROCESSING:
             raise DatasetServiceError(
                 409,
@@ -562,8 +585,10 @@ def update_profile_dataset_public_preview(
     with transaction.atomic():
         try:
             dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except Dataset.DoesNotExist as exc:
+        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
+
+        _raise_if_archived(dataset)
 
         next_public_enabled = dataset.public_enabled if public_enabled is None else public_enabled
 
@@ -612,9 +637,7 @@ def update_profile_dataset_project(
     """Attach an existing dataset to a project owned by the profile, or detach it."""
     normalized_project_key = str(project_key or "").strip()
     project = (
-        get_profile_project(profile, normalized_project_key)
-        if normalized_project_key
-        else None
+        get_profile_project(profile, normalized_project_key) if normalized_project_key else None
     )
 
     with transaction.atomic():
@@ -623,6 +646,8 @@ def update_profile_dataset_project(
         except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
+        _raise_if_archived(dataset)
+
         dataset.project = project
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(update_fields=["project", "updated_by_agent_api_key", "updated_at"])
@@ -630,6 +655,77 @@ def update_profile_dataset_project(
     return {
         "status": "success",
         "message": "Dataset project updated.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
+def archive_profile_dataset(
+    profile: Profile,
+    dataset_key: str,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    """Archive an owned dataset without deleting rows or schema metadata."""
+    with transaction.atomic():
+        try:
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
+        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
+            raise DatasetServiceError(404, "Dataset not found.") from exc
+
+        update_fields = []
+        if dataset.archived_at is None or dataset.public_enabled:
+            update_fields = ["public_enabled", "updated_at"]
+            dataset.public_enabled = False
+
+        if dataset.archived_at is None:
+            dataset.archived_at = timezone.now()
+            dataset.archived_by_agent_api_key = agent_api_key
+            dataset.updated_by_agent_api_key = agent_api_key
+            update_fields.extend(
+                [
+                    "archived_at",
+                    "archived_by_agent_api_key",
+                    "updated_by_agent_api_key",
+                ]
+            )
+
+        if update_fields:
+            dataset.save(update_fields=update_fields)
+
+    return {
+        "status": "success",
+        "message": "Dataset archived.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
+def restore_profile_dataset(
+    profile: Profile,
+    dataset_key: str,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    """Restore an archived dataset to normal dataset and project listings."""
+    with transaction.atomic():
+        try:
+            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
+        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
+            raise DatasetServiceError(404, "Dataset not found.") from exc
+
+        if dataset.archived_at is not None:
+            dataset.archived_at = None
+            dataset.archived_by_agent_api_key = None
+            dataset.updated_by_agent_api_key = agent_api_key
+            dataset.save(
+                update_fields=[
+                    "archived_at",
+                    "archived_by_agent_api_key",
+                    "updated_by_agent_api_key",
+                    "updated_at",
+                ]
+            )
+
+    return {
+        "status": "success",
+        "message": "Dataset restored.",
         "dataset": serialize_dataset_summary(dataset),
     }
 
