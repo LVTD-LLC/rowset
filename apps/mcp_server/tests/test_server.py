@@ -2,9 +2,13 @@ from types import SimpleNamespace
 
 import anyio
 import pytest
+from django.test import override_settings
 from fastmcp import Client
 
 from apps.api.services import DatasetServiceError
+from apps.datasets.choices import DatasetStatus
+from apps.datasets.models import Dataset, DatasetRow
+from apps.mcp_server.server import get_dataset_row as mcp_get_dataset_row
 from apps.mcp_server.server import mcp
 
 
@@ -308,10 +312,6 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
 
 def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
     calls = []
-    public_row_url = (
-        "https://rowset.example/share/datasets/"
-        "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/rows/7/"
-    )
 
     def profile():
         return _profile()
@@ -367,7 +367,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             )
             get_result = await client.call_tool(
                 "get_dataset_row",
-                {"dataset_key": public_row_url, "row_id": 7},
+                {"dataset_key": "ds", "row_id": 7},
             )
             get_by_index_result = await client.call_tool(
                 "get_dataset_row_by_index",
@@ -395,7 +395,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
 
         assert calls == [
             ("list", "ds", 5, 0),
-            ("get", public_row_url, 7),
+            ("get", "ds", 7),
             ("get_by_index", "ds", "a@example.com"),
             ("create", "ds", {"email": "b@example.com"}),
             ("update", "ds", 7, {"email": "c@example.com"}),
@@ -403,6 +403,45 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
         ]
 
     anyio.run(run)
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(SITE_URL="https://rowset.example")
+def test_dataset_row_mcp_tool_resolves_owned_public_row_url(monkeypatch, django_user_model):
+    user = django_user_model.objects.create_user(
+        username="mcppublicurl",
+        email="mcppublicurl@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="People",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email", "name"],
+        index_column="email",
+        row_count=1,
+        public_enabled=True,
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ada@example.com",
+        data={"email": "ada@example.com", "name": "Ada"},
+    )
+    public_row_url = f"https://rowset.example/share/datasets/{dataset.public_key}/rows/{row.id}/"
+
+    monkeypatch.setattr(
+        "apps.mcp_server.server._authenticate_profile",
+        lambda api_key=None: user.profile,
+    )
+
+    result = mcp_get_dataset_row(public_row_url, row.id)
+
+    assert result["dataset"] == str(dataset.key)
+    assert result["row"]["id"] == row.id
+    assert result["row"]["data"]["email"] == "ada@example.com"
 
 
 def test_update_dataset_column_types_mcp_tool_calls_dataset_service(monkeypatch):
