@@ -7,7 +7,8 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from apps.core.models import AgentApiKey, Profile
-from apps.datasets.choices import DatasetStatus
+from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
@@ -513,6 +514,19 @@ def create_profile_dataset(
             ],
             batch_size=1000,
         )
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.DATASET_CREATED,
+            f"Dataset created with {len(row_payloads)} rows and {len(dataset_headers)} columns.",
+            agent_api_key=agent_api_key,
+            metadata={
+                "headers": dataset_headers,
+                "row_count": len(row_payloads),
+                "index_column": index_column,
+                "index_generated": index_generated,
+                "project_key": str(project.key) if project else "",
+            },
+        )
 
     return {
         "status": "success",
@@ -541,8 +555,9 @@ def update_profile_dataset_column_types(
                 "Column types cannot be updated while the dataset is processing.",
             )
 
+        previous_schema = normalize_column_schema(dataset.headers, dataset.column_schema)
         try:
-            dataset.column_schema = normalize_column_schema(
+            next_schema = normalize_column_schema(
                 dataset.headers,
                 column_types,
                 fallback_schema=dataset.column_schema,
@@ -550,6 +565,7 @@ def update_profile_dataset_column_types(
             )
         except CSVParseError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
+        dataset.column_schema = next_schema
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
             update_fields=[
@@ -557,6 +573,18 @@ def update_profile_dataset_column_types(
                 "updated_by_agent_api_key",
                 "updated_at",
             ]
+        )
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.COLUMN_TYPES_UPDATED,
+            "Column types updated.",
+            agent_api_key=agent_api_key,
+            target_type="schema",
+            metadata={
+                "previous_column_schema": previous_schema,
+                "column_schema": next_schema,
+                "updated_columns": sorted(column_types),
+            },
         )
 
     return {
@@ -684,6 +712,19 @@ def add_profile_dataset_column(
                 "updated_at",
             ]
         )
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.COLUMN_ADDED,
+            f"Column '{column_name}' added.",
+            agent_api_key=agent_api_key,
+            target_type="column",
+            target_identifier=column_name,
+            metadata={
+                "column": column_name,
+                "column_type": dataset.column_schema[column_name]["type"],
+                "default_value_provided": default_value not in ("", None),
+            },
+        )
 
     return {
         "status": "success",
@@ -751,6 +792,19 @@ def rename_profile_dataset_column(
                 "updated_at",
             ]
         )
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.COLUMN_RENAMED,
+            f"Column '{old_column_name}' renamed to '{new_column_name}'.",
+            agent_api_key=agent_api_key,
+            target_type="column",
+            target_identifier=new_column_name,
+            metadata={
+                "old_name": old_column_name,
+                "new_name": new_column_name,
+                "index_column_renamed": dataset.index_column == new_column_name,
+            },
+        )
 
     return {
         "status": "success",
@@ -804,6 +858,18 @@ def drop_profile_dataset_column(
                 "updated_at",
             ]
         )
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.COLUMN_DROPPED,
+            f"Column '{column_name}' dropped.",
+            agent_api_key=agent_api_key,
+            target_type="column",
+            target_identifier=column_name,
+            metadata={
+                "column": column_name,
+                "column_schema": current_schema.get(column_name, {}),
+            },
+        )
 
     return {
         "status": "success",
@@ -848,6 +914,7 @@ def reorder_profile_dataset_columns(
     """Update the display/export order for ready dataset columns."""
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        previous_headers = list(dataset.headers)
         next_headers = _normalize_reordered_headers(dataset, headers)
         current_schema = _normalized_column_schema_for_headers(
             dataset.headers,
@@ -863,6 +930,17 @@ def reorder_profile_dataset_columns(
                 "updated_by_agent_api_key",
                 "updated_at",
             ]
+        )
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.COLUMNS_REORDERED,
+            "Columns reordered.",
+            agent_api_key=agent_api_key,
+            target_type="schema",
+            metadata={
+                "previous_headers": previous_headers,
+                "headers": next_headers,
+            },
         )
 
     return {
@@ -896,6 +974,9 @@ def update_profile_dataset_public_preview(
 
         _raise_if_archived(dataset)
 
+        previous_public_enabled = dataset.public_enabled
+        previous_public_page_size = dataset.public_page_size
+        previous_password_protected = dataset.is_public_password_protected
         next_public_enabled = dataset.public_enabled if public_enabled is None else public_enabled
 
         if next_public_enabled and dataset.status != DatasetStatus.READY:
@@ -926,6 +1007,22 @@ def update_profile_dataset_public_preview(
                 "updated_at",
             ]
         )
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.PUBLIC_PREVIEW_UPDATED,
+            "Public preview settings updated.",
+            agent_api_key=agent_api_key,
+            target_type="public_preview",
+            metadata={
+                "previous_public_enabled": previous_public_enabled,
+                "public_enabled": dataset.public_enabled,
+                "previous_public_page_size": previous_public_page_size,
+                "public_page_size": dataset.public_page_size,
+                "previous_password_protected": previous_password_protected,
+                "password_protected": dataset.is_public_password_protected,
+                "password_changed": clear_public_password or public_password is not None,
+            },
+        )
 
     return {
         "status": "success",
@@ -954,9 +1051,25 @@ def update_profile_dataset_project(
 
         _raise_if_archived(dataset)
 
+        previous_project_key = str(dataset.project.key) if dataset.project else ""
+        previous_project_name = dataset.project.name if dataset.project else ""
         dataset.project = project
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(update_fields=["project", "updated_by_agent_api_key", "updated_at"])
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.DATASET_PROJECT_UPDATED,
+            "Project assignment updated.",
+            agent_api_key=agent_api_key,
+            target_type="project",
+            target_identifier=str(project.key) if project else "",
+            metadata={
+                "previous_project_key": previous_project_key,
+                "previous_project_name": previous_project_name,
+                "project_key": str(project.key) if project else "",
+                "project_name": project.name if project else "",
+            },
+        )
 
     return {
         "status": "success",
@@ -977,6 +1090,7 @@ def archive_profile_dataset(
         except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
+        was_public_enabled = dataset.public_enabled
         message = "Dataset was already archived."
         update_fields = []
         if dataset.archived_at is None or dataset.public_enabled:
@@ -998,6 +1112,13 @@ def archive_profile_dataset(
 
         if update_fields:
             dataset.save(update_fields=update_fields)
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.DATASET_ARCHIVED,
+                "Dataset archived.",
+                agent_api_key=agent_api_key,
+                metadata={"public_preview_disabled": was_public_enabled},
+            )
 
     return {
         "status": "success",
@@ -1031,6 +1152,12 @@ def restore_profile_dataset(
                     "updated_by_agent_api_key",
                     "updated_at",
                 ]
+            )
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.DATASET_RESTORED,
+                "Dataset restored.",
+                agent_api_key=agent_api_key,
             )
 
     return {
@@ -1109,6 +1236,19 @@ def create_profile_dataset_row(
         dataset.row_count = dataset.rows.count()
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.ROW_CREATED,
+            f"Row {row.row_number} added.",
+            agent_api_key=agent_api_key,
+            target_type="row",
+            target_identifier=row.id,
+            metadata={
+                "row_id": row.id,
+                "row_number": row.row_number,
+                "changed_fields": sorted(row.data),
+            },
+        )
     return {"status": "success", "message": "Row created.", "row": serialize_dataset_row(row)}
 
 
@@ -1144,6 +1284,7 @@ def patch_profile_dataset_row(
         except DatasetRow.DoesNotExist as exc:
             raise DatasetServiceError(404, "Row not found.") from exc
 
+        changed_fields = sorted(key for key in data if key in dataset.headers)
         row.data = {
             **row.data,
             **{key: str(value) for key, value in data.items() if key in dataset.headers},
@@ -1168,6 +1309,20 @@ def patch_profile_dataset_row(
         row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.ROW_UPDATED,
+            f"Row {row.row_number} updated.",
+            agent_api_key=agent_api_key,
+            target_type="row",
+            target_identifier=row.id,
+            metadata={
+                "row_id": row.id,
+                "row_number": row.row_number,
+                "changed_fields": changed_fields,
+                "index_changed": dataset.index_column in data,
+            },
+        )
     return {"status": "success", "message": "Row updated.", "row": serialize_dataset_row(row)}
 
 
@@ -1179,10 +1334,25 @@ def delete_profile_dataset_row(
 ) -> dict:
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
-        deleted_count, _ = dataset.rows.filter(id=row_id).delete()
-        if deleted_count == 0:
-            raise DatasetServiceError(404, "Row not found.")
+        try:
+            row = dataset.rows.get(id=row_id)
+        except DatasetRow.DoesNotExist as exc:
+            raise DatasetServiceError(404, "Row not found.") from exc
+        row_number = row.row_number
+        row.delete()
         dataset.row_count = dataset.rows.count()
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.ROW_DELETED,
+            f"Row {row_number} deleted.",
+            agent_api_key=agent_api_key,
+            target_type="row",
+            target_identifier=row_id,
+            metadata={
+                "row_id": row_id,
+                "row_number": row_number,
+            },
+        )
     return {"status": "success", "message": "Row deleted."}

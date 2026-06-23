@@ -18,3 +18,19 @@ class DatasetColumnType(models.TextChoices):
     DATETIME = "datetime", "Date/time"
     EMAIL = "email", "Email"
     URL = "url", "URL"
+
+
+class DatasetMutationType(models.TextChoices):
+    DATASET_CREATED = "dataset.created", "Dataset created"
+    DATASET_ARCHIVED = "dataset.archived", "Dataset archived"
+    DATASET_RESTORED = "dataset.restored", "Dataset restored"
+    DATASET_PROJECT_UPDATED = "dataset.project_updated", "Project updated"
+    PUBLIC_PREVIEW_UPDATED = "dataset.public_preview_updated", "Public preview updated"
+    COLUMN_TYPES_UPDATED = "schema.column_types_updated", "Column types updated"
+    COLUMN_ADDED = "schema.column_added", "Column added"
+    COLUMN_RENAMED = "schema.column_renamed", "Column renamed"
+    COLUMN_DROPPED = "schema.column_dropped", "Column dropped"
+    COLUMNS_REORDERED = "schema.columns_reordered", "Columns reordered"
+    ROW_CREATED = "row.created", "Row created"
+    ROW_UPDATED = "row.updated", "Row updated"
+    ROW_DELETED = "row.deleted", "Row deleted"

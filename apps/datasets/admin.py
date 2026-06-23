@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.datasets.models import Dataset, DatasetRow, Project
+from apps.datasets.models import Dataset, DatasetMutation, DatasetRow, Project
 
 
 @admin.register(Project)
@@ -87,3 +87,38 @@ class DatasetRowAdmin(admin.ModelAdmin):
         "updated_by_agent_api_key__name",
     )
     list_filter = ("created_by_agent_api_key", "updated_by_agent_api_key", "created_at")
+
+
+@admin.register(DatasetMutation)
+class DatasetMutationAdmin(admin.ModelAdmin):
+    list_display = (
+        "dataset",
+        "mutation_type",
+        "actor_label",
+        "target_type",
+        "target_identifier",
+        "created_at",
+    )
+    list_select_related = ("dataset", "profile__user", "agent_api_key__profile__user")
+    search_fields = (
+        "dataset__name",
+        "profile__user__email",
+        "agent_api_key__name",
+        "actor_label",
+        "summary",
+        "target_identifier",
+    )
+    list_filter = ("mutation_type", "target_type", "agent_api_key", "created_at")
+    readonly_fields = (
+        "dataset",
+        "profile",
+        "agent_api_key",
+        "actor_label",
+        "mutation_type",
+        "summary",
+        "target_type",
+        "target_identifier",
+        "metadata",
+        "created_at",
+        "updated_at",
+    )
