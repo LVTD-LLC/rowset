@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.api.services import patch_profile_dataset_row
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
@@ -1082,6 +1083,32 @@ def test_row_update_mutation_omits_noop_fields(client, profile):
         "row_number": 1,
         "changed_fields": [],
         "field_changes": [],
+        "index_changed": False,
+    }
+
+
+def test_row_update_service_null_patch_keeps_existing_stringification(profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+
+    result = patch_profile_dataset_row(profile, str(dataset.key), row.id, {"name": None})
+
+    assert result["row"]["data"]["name"] == "None"
+    row.refresh_from_db()
+    assert row.data["name"] == "None"
+
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.ROW_UPDATED)
+    assert mutation.metadata == {
+        "row_id": row.id,
+        "row_number": 1,
+        "changed_fields": ["name"],
+        "field_changes": [
+            {
+                "field": "name",
+                "before": "Previous value",
+                "after": "New value",
+            }
+        ],
         "index_changed": False,
     }
 

@@ -1438,9 +1438,7 @@ def _patch_dataset_row(
     if not connection.in_atomic_block:
         raise AssertionError("_patch_dataset_row must be called inside transaction.atomic().")
 
-    row_patch = {
-        key: _stringify_cell(value) for key, value in data.items() if key in dataset.headers
-    }
+    row_patch = {key: str(value) for key, value in data.items() if key in dataset.headers}
     patched_fields = sorted(row_patch)
     field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
     changed_fields = [str(change["field"]) for change in field_changes]
