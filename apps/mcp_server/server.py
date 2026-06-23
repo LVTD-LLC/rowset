@@ -238,7 +238,7 @@ def _dataset_service_error_suggested_action(code: str) -> str:
         "NOT_FOUND": "Check the identifier and try again.",
         "ROWSET_ERROR": "Check the request and try again.",
     }
-    return suggestions[code]
+    return suggestions.get(code, suggestions["ROWSET_ERROR"])
 
 
 def _service_error_to_tool_error(exc: DatasetServiceError) -> ToolError:
@@ -255,13 +255,14 @@ def _service_error_to_tool_error(exc: DatasetServiceError) -> ToolError:
 
 
 def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
-    message = _error_message_sentence(str(exc))
-    if "missing" in message.lower():
+    raw_message = str(exc)
+    normalized_message = raw_message.lower()
+    if "missing" in normalized_message:
         code = "AUTHORIZATION_MISSING"
         suggested_action = (
             "Configure the MCP request with Authorization: Bearer <ROWSET_API_KEY>."
         )
-    elif "no longer active" in message.lower():
+    elif "no longer active" in normalized_message:
         code = "API_KEY_INACTIVE"
         suggested_action = "Create or select an active Rowset agent API key and retry."
     else:
@@ -274,7 +275,7 @@ def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
     return _mcp_tool_error(
         _mcp_error_payload(
             code=code,
-            message=message,
+            message=raw_message,
             retryable=False,
             suggested_action=suggested_action,
             details={"http_status": 401},
