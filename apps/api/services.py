@@ -989,40 +989,51 @@ def update_profile_dataset_public_preview(
         if public_page_size is not None:
             dataset.public_page_size = normalize_public_page_size(public_page_size)
 
+        password_changed = False
         if clear_public_password:
-            dataset.public_password_hash = ""
+            password_changed = bool(dataset.public_password_hash)
+            if password_changed:
+                dataset.public_password_hash = ""
         elif public_password is not None:
             normalized_password = public_password.strip()
             if not normalized_password:
                 raise DatasetServiceError(400, "Public preview password cannot be blank.")
             dataset.public_password_hash = make_password(normalized_password)
+            password_changed = True
 
-        dataset.updated_by_agent_api_key = agent_api_key
-        dataset.save(
-            update_fields=[
-                "public_enabled",
-                "public_page_size",
-                "public_password_hash",
-                "updated_by_agent_api_key",
-                "updated_at",
-            ]
+        settings_changed = (
+            dataset.public_enabled != previous_public_enabled
+            or dataset.public_page_size != previous_public_page_size
+            or password_changed
         )
-        record_dataset_mutation(
-            dataset,
-            DatasetMutationType.PUBLIC_PREVIEW_UPDATED,
-            "Public preview settings updated.",
-            agent_api_key=agent_api_key,
-            target_type="public_preview",
-            metadata={
-                "previous_public_enabled": previous_public_enabled,
-                "public_enabled": dataset.public_enabled,
-                "previous_public_page_size": previous_public_page_size,
-                "public_page_size": dataset.public_page_size,
-                "previous_password_protected": previous_password_protected,
-                "password_protected": dataset.is_public_password_protected,
-                "password_changed": clear_public_password or public_password is not None,
-            },
-        )
+
+        if settings_changed:
+            dataset.updated_by_agent_api_key = agent_api_key
+            dataset.save(
+                update_fields=[
+                    "public_enabled",
+                    "public_page_size",
+                    "public_password_hash",
+                    "updated_by_agent_api_key",
+                    "updated_at",
+                ]
+            )
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.PUBLIC_PREVIEW_UPDATED,
+                "Public preview settings updated.",
+                agent_api_key=agent_api_key,
+                target_type="public_preview",
+                metadata={
+                    "previous_public_enabled": previous_public_enabled,
+                    "public_enabled": dataset.public_enabled,
+                    "previous_public_page_size": previous_public_page_size,
+                    "public_page_size": dataset.public_page_size,
+                    "previous_password_protected": previous_password_protected,
+                    "password_protected": dataset.is_public_password_protected,
+                    "password_changed": password_changed,
+                },
+            )
 
     return {
         "status": "success",

@@ -1499,6 +1499,20 @@ def test_dataset_owner_can_enable_public_sharing(auth_client, profile):
     assert mutation.metadata["previous_public_enabled"] is False
     assert mutation.metadata["public_enabled"] is True
 
+    duplicate_response = auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "1",
+        },
+    )
+
+    assert duplicate_response.status_code == 302
+    assert (
+        dataset.mutations.filter(mutation_type=DatasetMutationType.PUBLIC_PREVIEW_UPDATED).count()
+        == 1
+    )
+
 
 def test_public_dataset_view_paginates_rows(client, profile):
     dataset = create_ready_dataset(profile)
