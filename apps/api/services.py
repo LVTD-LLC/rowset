@@ -413,7 +413,11 @@ def _get_profile_dataset_from_queryset(
     # pasted Rowset URLs intentionally resolve through a scoped fallback.
     try:
         return queryset.get(key=identifier, profile=profile)
-    except Dataset.DoesNotExist, ValidationError, ValueError:
+    except (
+        Dataset.DoesNotExist,
+        ValidationError,
+        ValueError,
+    ):
         pass
 
     try:
