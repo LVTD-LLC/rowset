@@ -28,6 +28,23 @@ def _mcp_error_payload(error: Exception) -> dict:
     pytest.fail(f"No JSON error payload found in: {text}")
 
 
+def _expected_mcp_error(
+    *,
+    code: str,
+    message: str,
+    suggested_action: str,
+    http_status: int,
+    retryable: bool = False,
+) -> dict:
+    return {
+        "code": code,
+        "message": message,
+        "retryable": retryable,
+        "suggested_action": suggested_action,
+        "details": {"http_status": http_status},
+    }
+
+
 def _profile():
     user = SimpleNamespace(
         id=7,
@@ -835,23 +852,129 @@ def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
     [
         (
             DatasetServiceError(404, "Row not found."),
-            {
-                "code": "ROW_NOT_FOUND",
-                "message": "Row not found.",
-                "retryable": False,
-                "suggested_action": "Check the row id or index value and try again.",
-                "details": {"http_status": 404},
-            },
+            _expected_mcp_error(
+                code="ROW_NOT_FOUND",
+                message="Row not found.",
+                suggested_action="Check the row id or index value and try again.",
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(404, "Dataset not found."),
+            _expected_mcp_error(
+                code="DATASET_NOT_FOUND",
+                message="Dataset not found.",
+                suggested_action=(
+                    "Check that dataset_key is a private key, public key, or Rowset URL "
+                    "for a dataset owned by this profile."
+                ),
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(404, "Project not found."),
+            _expected_mcp_error(
+                code="PROJECT_NOT_FOUND",
+                message="Project not found.",
+                suggested_action="Check the project key and try again.",
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(404, "Column not found."),
+            _expected_mcp_error(
+                code="COLUMN_NOT_FOUND",
+                message="Column not found.",
+                suggested_action="Check the column name against the dataset headers and try again.",
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(404, "Thing not found."),
+            _expected_mcp_error(
+                code="NOT_FOUND",
+                message="Thing not found.",
+                suggested_action="Check the identifier and try again.",
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(400, "Invalid input."),
+            _expected_mcp_error(
+                code="VALIDATION_ERROR",
+                message="Invalid input.",
+                suggested_action=(
+                    "Check the tool arguments against the dataset schema and try again."
+                ),
+                http_status=400,
+            ),
+        ),
+        (
+            DatasetServiceError(409, "Dataset is archived. Restore it before making changes."),
+            _expected_mcp_error(
+                code="DATASET_ARCHIVED",
+                message="Dataset is archived. Restore it before making changes.",
+                suggested_action="Restore the dataset before making changes.",
+                http_status=409,
+            ),
+        ),
+        (
+            DatasetServiceError(409, "Dataset is not ready yet."),
+            _expected_mcp_error(
+                code="DATASET_NOT_READY",
+                message="Dataset is not ready yet.",
+                suggested_action="Confirm and wait for dataset import to finish before retrying.",
+                http_status=409,
+            ),
+        ),
+        (
+            DatasetServiceError(409, "Row with index already exists."),
+            _expected_mcp_error(
+                code="CONFLICT",
+                message="Row with index already exists.",
+                suggested_action=(
+                    "Refresh the dataset or row state, resolve the conflict, and try again."
+                ),
+                http_status=409,
+            ),
+        ),
+        (
+            DatasetServiceError(403, "Forbidden."),
+            _expected_mcp_error(
+                code="AUTHORIZATION_FAILED",
+                message="Forbidden.",
+                suggested_action="Check that the API key has access to this Rowset resource.",
+                http_status=403,
+            ),
         ),
         (
             DatasetServiceError(429, "Rate limited."),
-            {
-                "code": "RATE_LIMITED",
-                "message": "Rate limited.",
-                "retryable": True,
-                "suggested_action": "Back off before retrying the request.",
-                "details": {"http_status": 429},
-            },
+            _expected_mcp_error(
+                code="RATE_LIMITED",
+                message="Rate limited.",
+                retryable=True,
+                suggested_action="Back off before retrying the request.",
+                http_status=429,
+            ),
+        ),
+        (
+            DatasetServiceError(500, "Rowset exploded."),
+            _expected_mcp_error(
+                code="ROWSET_SERVICE_ERROR",
+                message="Rowset exploded.",
+                retryable=True,
+                suggested_action="Retry the request. If it keeps failing, report the error.",
+                http_status=500,
+            ),
+        ),
+        (
+            DatasetServiceError(418, "Unexpected teapot."),
+            _expected_mcp_error(
+                code="ROWSET_ERROR",
+                message="Unexpected teapot.",
+                suggested_action="Check the request and try again.",
+                http_status=418,
+            ),
         ),
     ],
 )
@@ -898,6 +1021,15 @@ def test_dataset_row_mcp_tools_return_service_errors(
             "Invalid Rowset API key",
             "AUTHENTICATION_FAILED",
             "Invalid Rowset API key.",
+            (
+                "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
+                "with an active Rowset API key."
+            ),
+        ),
+        (
+            "A required field is missing",
+            "AUTHENTICATION_FAILED",
+            "A required field is missing.",
             (
                 "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
                 "with an active Rowset API key."

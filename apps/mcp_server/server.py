@@ -260,7 +260,7 @@ def _service_error_to_tool_error(exc: DatasetServiceError) -> ToolError:
 def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
     raw_message = str(exc)
     normalized_message = raw_message.lower()
-    if "missing" in normalized_message:
+    if "missing" in normalized_message and "authorization" in normalized_message:
         code = "AUTHORIZATION_MISSING"
         suggested_action = (
             "Configure the MCP request with Authorization: Bearer <ROWSET_API_KEY>."
