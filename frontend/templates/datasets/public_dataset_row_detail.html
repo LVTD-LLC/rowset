@@ -1,0 +1,48 @@
+{% extends "base_landing.html" %}
+
+{% block content %}
+<div class="fb-page">
+  <div class="space-y-6">
+    {% if not has_access %}
+      <a href="{{ dataset.get_public_url }}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← Public preview</a>
+      {% include "datasets/partials/public_password_form.html" with password_submit_label="View row" %}
+    {% else %}
+      <a href="{{ dataset.get_public_url }}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← {{ dataset.name }}</a>
+
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0 space-y-3">
+          <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Shared Rowset row</p>
+          <h1 class="break-words text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Row {{ dataset_row.row_number }}</h1>
+          <p class="break-words text-sm text-slate-600 dark:text-slate-300">
+            {{ dataset.name }} · {{ dataset.headers|length }} columns{% if dataset.index_column %} · {{ dataset.index_column }}: <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset_row.index_value }}</span>{% endif %}
+          </p>
+        </div>
+        <a href="{{ dataset.get_public_url }}" class="fb-button-secondary">Back to preview</a>
+      </div>
+
+      <section class="fb-card p-5" aria-labelledby="row-data-heading">
+        <h2 id="row-data-heading" class="fb-section-title">Row data</h2>
+        <div class="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <table class="fb-table">
+            <caption class="sr-only">Full row data for row {{ dataset_row.row_number }} in {{ dataset.name }}</caption>
+            <thead class="bg-slate-50 dark:bg-slate-900">
+              <tr>
+                <th scope="col">Column</th>
+                <th scope="col">Value</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+              {% for cell in row_cells %}
+                <tr class="align-top">
+                  <th scope="row" class="w-56 max-w-xs break-words px-3 py-2 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">{{ cell.header }}</th>
+                  <td class="min-w-96 whitespace-pre-wrap break-words">{% if cell.value %}{{ cell.value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock content %}

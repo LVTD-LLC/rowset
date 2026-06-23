@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
@@ -458,6 +459,29 @@ def _public_access_session_value(dataset: Dataset) -> str:
     return hashlib.sha256(dataset.public_password_hash.encode()).hexdigest()
 
 
+def _has_public_dataset_access(request, dataset: Dataset) -> bool:
+    return not dataset.is_public_password_protected or request.session.get(
+        _public_access_session_key(dataset)
+    ) == _public_access_session_value(dataset)
+
+
+def _handle_public_password_access(
+    request,
+    dataset: Dataset,
+    success_url: str,
+) -> tuple[bool, str, HttpResponse | None]:
+    password_error = ""
+    if request.method == "POST" and dataset.is_public_password_protected:
+        password = request.POST.get("password", "")
+        if dataset.public_password_matches(password):
+            session_key = _public_access_session_key(dataset)
+            request.session[session_key] = _public_access_session_value(dataset)
+            return True, password_error, redirect(success_url)
+        password_error = "That password did not work. Please try again."
+
+    return _has_public_dataset_access(request, dataset), password_error, None
+
+
 @require_http_methods(["GET", "POST"])
 def public_dataset(request, public_key):
     dataset = get_object_or_404(
@@ -467,26 +491,28 @@ def public_dataset(request, public_key):
         status=DatasetStatus.READY,
     )
 
-    session_key = _public_access_session_key(dataset)
-    password_error = ""
-    has_access = not dataset.is_public_password_protected or request.session.get(
-        session_key
-    ) == _public_access_session_value(dataset)
-
-    if request.method == "POST" and dataset.is_public_password_protected:
-        password = request.POST.get("password", "")
-        if dataset.public_password_matches(password):
-            request.session[session_key] = _public_access_session_value(dataset)
-            return redirect(dataset.get_public_url())
-        password_error = "That password did not work. Please try again."
+    has_access, password_error, password_response = _handle_public_password_access(
+        request,
+        dataset,
+        dataset.get_public_url(),
+    )
+    if password_response is not None:
+        return password_response
 
     page_obj = None
-    public_row_values = []
+    public_rows_with_values = []
     if has_access:
         paginator = Paginator(dataset.rows.all(), dataset.public_page_size)
         page_obj = paginator.get_page(request.GET.get("page"))
-        public_row_values = [
-            ordered_row_values(dataset.headers, row.data)
+        public_rows_with_values = [
+            {
+                "values": ordered_row_values(dataset.headers, row.data),
+                "row_number": row.row_number,
+                "url": reverse(
+                    "public_dataset_row_detail",
+                    kwargs={"public_key": dataset.public_key, "row_id": row.id},
+                ),
+            }
             for row in page_obj.object_list
         ]
 
@@ -498,6 +524,49 @@ def public_dataset(request, public_key):
             "has_access": has_access,
             "password_error": password_error,
             "page_obj": page_obj,
-            "public_row_values": public_row_values,
+            "public_rows_with_values": public_rows_with_values,
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def public_dataset_row_detail(request, public_key, row_id):
+    dataset = get_object_or_404(
+        Dataset,
+        public_key=public_key,
+        public_enabled=True,
+        status=DatasetStatus.READY,
+    )
+    row_url = reverse(
+        "public_dataset_row_detail",
+        kwargs={"public_key": dataset.public_key, "row_id": row_id},
+    )
+    has_access, password_error, password_response = _handle_public_password_access(
+        request,
+        dataset,
+        row_url,
+    )
+    if password_response is not None:
+        return password_response
+
+    dataset_row = None
+    row_cells = []
+    if has_access:
+        dataset_row = get_object_or_404(
+            DatasetRow,
+            dataset=dataset,
+            id=row_id,
+        )
+        row_cells = _row_cells(dataset.headers, dataset_row.data)
+
+    return render(
+        request,
+        "datasets/public_dataset_row_detail.html",
+        {
+            "dataset": dataset,
+            "dataset_row": dataset_row,
+            "has_access": has_access,
+            "password_error": password_error,
+            "row_cells": row_cells,
         },
     )
