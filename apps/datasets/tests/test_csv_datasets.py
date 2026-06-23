@@ -675,6 +675,20 @@ def test_dataset_api_crud_and_export(client, profile):
     row_id = create_response.json()["row"]["id"]
     assert create_response.json()["row"]["index_value"] == "kat@example.com"
 
+    missing_index_patch_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=missing@example.com",
+        data={"data": {"name": "Missing"}},
+        content_type="application/json",
+    )
+    assert missing_index_patch_response.status_code == 404
+
+    conflicting_index_patch_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=kat@example.com",
+        data={"data": {"email": "ada@example.com"}},
+        content_type="application/json",
+    )
+    assert conflicting_index_patch_response.status_code == 409
+
     get_by_index_response = client.get(
         f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=kat@example.com"
     )
@@ -1493,6 +1507,15 @@ def test_dataset_api_rejects_patch_to_generated_index(client, profile):
 
     assert response.status_code == 400
     assert "managed by Rowset" in response.json()["detail"]
+
+    by_index_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?api_key={profile.key}&index_value=1",
+        data={"data": {"rowset_id": "custom"}},
+        content_type="application/json",
+    )
+
+    assert by_index_response.status_code == 400
+    assert "managed by Rowset" in by_index_response.json()["detail"]
 
 
 def test_dataset_api_rejects_other_users_dataset(client, django_user_model, profile):

@@ -2,7 +2,7 @@ from typing import Any
 
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
@@ -1343,6 +1343,9 @@ def _patch_dataset_row(
     data: dict,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
+    if not connection.in_atomic_block:
+        raise AssertionError("_patch_dataset_row must be called inside transaction.atomic().")
+
     changed_fields = sorted(key for key in data if key in dataset.headers)
     row.data = {
         **row.data,
