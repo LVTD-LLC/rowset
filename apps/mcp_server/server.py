@@ -215,6 +215,8 @@ def _dataset_service_error_code(exc: DatasetServiceError) -> str:
         )
     if status_code in {401, 403}:
         return "AUTHORIZATION_FAILED"
+    if status_code == 429:
+        return "RATE_LIMITED"
     if status_code >= 500:
         return "ROWSET_SERVICE_ERROR"
     return "ROWSET_ERROR"
@@ -234,6 +236,7 @@ def _dataset_service_error_suggested_action(code: str) -> str:
         "DATASET_NOT_READY": "Confirm and wait for dataset import to finish before retrying.",
         "CONFLICT": "Refresh the dataset or row state, resolve the conflict, and try again.",
         "AUTHORIZATION_FAILED": "Check that the API key has access to this Rowset resource.",
+        "RATE_LIMITED": "Back off before retrying the request.",
         "ROWSET_SERVICE_ERROR": "Retry the request. If it keeps failing, report the error.",
         "NOT_FOUND": "Check the identifier and try again.",
         "ROWSET_ERROR": "Check the request and try again.",
@@ -247,7 +250,7 @@ def _service_error_to_tool_error(exc: DatasetServiceError) -> ToolError:
         _mcp_error_payload(
             code=code,
             message=exc.message,
-            retryable=exc.status_code >= 500,
+            retryable=exc.status_code >= 500 or exc.status_code == 429,
             suggested_action=_dataset_service_error_suggested_action(code),
             details={"http_status": exc.status_code},
         )
