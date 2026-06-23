@@ -605,20 +605,35 @@ def _transform_dataset_rows(
     *,
     agent_api_key: AgentApiKey | None,
 ) -> list[dict[str, str]]:
-    rows = list(dataset.rows.order_by("row_number"))
+    batch_size = 1000
+    batch = []
+    preview_rows = []
     now = timezone.now()
-    for row in rows:
+    for row in dataset.rows.order_by("row_number", "id").iterator(chunk_size=batch_size):
         row.data = transform(row.data or {})
         row.updated_by_agent_api_key = agent_api_key
         row.updated_at = now
+        batch.append(row)
+        if len(preview_rows) < 5:
+            preview_rows.append(row.data)
 
-    if rows:
+        if len(batch) >= batch_size:
+            DatasetRow.objects.bulk_update(
+                batch,
+                ["data", "updated_by_agent_api_key", "updated_at"],
+                batch_size=batch_size,
+            )
+            batch = []
+
+    if batch:
         DatasetRow.objects.bulk_update(
-            rows,
+            batch,
             ["data", "updated_by_agent_api_key", "updated_at"],
-            batch_size=1000,
+            batch_size=batch_size,
         )
-        return [row.data for row in rows[:5]]
+
+    if preview_rows:
+        return preview_rows
 
     return [transform(preview_row or {}) for preview_row in dataset.preview_rows[:5]]
 

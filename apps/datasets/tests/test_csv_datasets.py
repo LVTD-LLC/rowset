@@ -947,6 +947,47 @@ def test_dataset_api_adds_column_and_backfills_existing_rows(client, profile):
     ]
 
 
+def test_dataset_api_add_column_backfills_rows_across_bulk_update_chunks(client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Large People",
+        original_filename="large.csv",
+        status=DatasetStatus.READY,
+        headers=["email"],
+        index_column="email",
+        row_count=1001,
+    )
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=row_number,
+                index_value=f"user-{row_number}@example.com",
+                data={"email": f"user-{row_number}@example.com"},
+            )
+            for row_number in range(1, 1002)
+        ]
+    )
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={"name": "verification_ref", "default_value": "pending"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    dataset.refresh_from_db()
+    assert dataset.headers == ["email", "verification_ref"]
+    assert dataset.preview_rows == [
+        {"email": f"user-{row_number}@example.com", "verification_ref": "pending"}
+        for row_number in range(1, 6)
+    ]
+    assert dataset.rows.get(row_number=1001).data == {
+        "email": "user-1001@example.com",
+        "verification_ref": "pending",
+    }
+
+
 def test_dataset_api_renames_column_and_preserves_values(client, profile):
     dataset = create_ready_dataset(profile)
 
