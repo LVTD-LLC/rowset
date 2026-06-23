@@ -1039,31 +1039,30 @@ def test_row_update_mutation_records_field_diffs_and_renders_history(client, pro
         "field_changes": [
             {
                 "field": "email",
-                "before": "ada@example.com",
-                "after": "ada+updated@example.com",
-                "before_truncated": False,
-                "after_truncated": False,
+                "before": "Previous value",
+                "after": "New value",
             },
             {
                 "field": "name",
-                "before": "Ada",
-                "after": "Ada Lovelace",
-                "before_truncated": False,
-                "after_truncated": False,
+                "before": "Previous value",
+                "after": "New value",
             },
         ],
         "index_changed": True,
     }
+    serialized_metadata = str(mutation.metadata)
+    assert "ada@example.com" not in serialized_metadata
+    assert "ada+updated@example.com" not in serialized_metadata
+    assert "Ada Lovelace" not in serialized_metadata
 
     client.force_login(profile.user)
     detail_content = client.get(dataset.get_absolute_url()).content.decode()
 
     assert "Row 1 updated." in detail_content
     assert "email" in detail_content
-    assert "ada@example.com" in detail_content
-    assert "ada+updated@example.com" in detail_content
+    assert "Previous value" in detail_content
+    assert "New value" in detail_content
     assert "name" in detail_content
-    assert "Ada Lovelace" in detail_content
 
 
 def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
@@ -1469,16 +1468,16 @@ def test_dataset_mutation_history_records_row_update_diffs_without_schema_backfi
         "field_changes": [
             {
                 "field": "name",
-                "before": "Ada Private",
-                "after": "New Private",
-                "before_truncated": False,
-                "after_truncated": False,
+                "before": "Previous value",
+                "after": "New value",
             }
         ],
         "index_changed": False,
     }
 
     serialized_metadata = "\n".join(str(mutation.metadata) for mutation in mutations)
+    assert "Ada Private" not in serialized_metadata
+    assert "New Private" not in serialized_metadata
     assert "secret-default" not in serialized_metadata
     assert "ada@example.com" not in serialized_metadata
 

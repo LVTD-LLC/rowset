@@ -25,7 +25,6 @@ from filebridge.utils import build_absolute_public_url
 
 API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
-ROW_UPDATE_DIFF_VALUE_PREVIEW_LENGTH = 500
 DATASET_SUMMARY_ONLY_FIELDS = (
     "key",
     "name",
@@ -360,12 +359,10 @@ def _stringify_cell(value: Any) -> str:
     return str(value)
 
 
-def _mutation_value_preview(value: Any) -> tuple[str, bool]:
-    text = _stringify_cell(value)
-    is_truncated = len(text) > ROW_UPDATE_DIFF_VALUE_PREVIEW_LENGTH
-    if is_truncated:
-        text = text[:ROW_UPDATE_DIFF_VALUE_PREVIEW_LENGTH]
-    return text, is_truncated
+def _mutation_value_label(value: str, non_blank_label: str) -> str:
+    if value == "":
+        return "Blank"
+    return non_blank_label
 
 
 def _row_field_changes(
@@ -380,15 +377,11 @@ def _row_field_changes(
         if before_value == after_value:
             continue
 
-        before_preview, before_truncated = _mutation_value_preview(before_value)
-        after_preview, after_truncated = _mutation_value_preview(after_value)
         field_changes.append(
             {
                 "field": field,
-                "before": before_preview,
-                "after": after_preview,
-                "before_truncated": before_truncated,
-                "after_truncated": after_truncated,
+                "before": _mutation_value_label(before_value, "Previous value"),
+                "after": _mutation_value_label(after_value, "New value"),
             }
         )
     return field_changes
