@@ -1,3 +1,5 @@
+import json
+import re
 from types import SimpleNamespace
 
 import anyio
@@ -10,6 +12,12 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.mcp_server.server import get_dataset_row as mcp_get_dataset_row
 from apps.mcp_server.server import mcp
+
+
+def _mcp_error_payload(error: Exception) -> dict:
+    match = re.search(r"\{.*\}", str(error), flags=re.DOTALL)
+    assert match is not None
+    return json.loads(match.group(0))
 
 
 def _profile():
@@ -828,13 +836,21 @@ def test_dataset_row_mcp_tools_return_service_errors(monkeypatch):
         )
 
         async with Client(mcp) as client:
-            with pytest.raises(Exception, match="404: Row not found"):
+            with pytest.raises(Exception) as exc_info:
                 await client.call_tool("get_dataset_row", {"dataset_key": "ds", "row_id": 999})
+
+        assert _mcp_error_payload(exc_info.value) == {
+            "code": "ROW_NOT_FOUND",
+            "message": "Row not found.",
+            "retryable": False,
+            "suggested_action": "Check the row id or index value and try again.",
+            "details": {"http_status": 404},
+        }
 
     anyio.run(run)
 
 
-def test_get_user_info_mcp_tool_rejects_invalid_api_key(monkeypatch):
+def test_get_user_info_mcp_tool_returns_structured_auth_errors(monkeypatch):
     def reject(api_key=None):
         raise PermissionError("Invalid Rowset API key")
 
@@ -842,7 +858,18 @@ def test_get_user_info_mcp_tool_rejects_invalid_api_key(monkeypatch):
         monkeypatch.setattr("apps.mcp_server.server._authenticate_profile", reject)
 
         async with Client(mcp) as client:
-            with pytest.raises(Exception, match="Invalid Rowset API key"):
+            with pytest.raises(Exception) as exc_info:
                 await client.call_tool("get_user_info", {})
+
+        assert _mcp_error_payload(exc_info.value) == {
+            "code": "AUTHENTICATION_FAILED",
+            "message": "Invalid Rowset API key.",
+            "retryable": False,
+            "suggested_action": (
+                "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
+                "with an active Rowset API key."
+            ),
+            "details": {"http_status": 401},
+        }
 
     anyio.run(run)
