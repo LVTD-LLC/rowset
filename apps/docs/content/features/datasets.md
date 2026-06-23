@@ -34,9 +34,17 @@ existing project or move an existing dataset into one project.
 Projects are organization metadata only. They do not change authenticated API or
 MCP access.
 
-## CSV exports
+## Exports
 
-Use CSV export when a workflow needs a full snapshot instead of row-by-row API access. For automated systems, prefer MCP or the Dataset API unless the consumer explicitly expects CSV.
+Use exports when a workflow needs a full snapshot instead of row-by-row API access.
+For automated systems, prefer MCP or the Dataset API unless the consumer
+explicitly expects a file.
+
+- `CSV` is the most portable table format.
+- `JSONL` is useful for agents, scripts, and streaming-style processing.
+- `XLSX` is useful when a teammate needs a spreadsheet file.
+- `SQLite` is useful when a local tool needs a queryable database file.
+- `Parquet` is useful for analytics tools from the dashboard export menu.
 
 ## Sharing
 

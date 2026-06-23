@@ -49,4 +49,4 @@ If the data is not meant for casual forwarding, add a password. Anyone with the 
 ## Public preview vs API
 
 - **Public preview**: browser page, read-only, optional password.
-- **Dataset API**: authenticated HTTP endpoints, supports row reads/writes and CSV export.
+- **Dataset API**: authenticated HTTP endpoints, supports row reads/writes and exports.
