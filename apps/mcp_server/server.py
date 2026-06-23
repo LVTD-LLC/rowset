@@ -223,7 +223,8 @@ def search_datasets(
             default=None,
             description=(
                 "Optional ISO date or datetime lower bound for updates. "
-                "Datetime values without a timezone offset are interpreted as UTC."
+                "Values without a timezone offset, including bare dates, "
+                "are interpreted as UTC."
             ),
         ),
     ] = None,
