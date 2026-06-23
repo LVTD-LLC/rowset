@@ -411,18 +411,15 @@ def _get_profile_dataset_from_queryset(
     identifier = _dataset_identifier_uuid(dataset_identifier)
     # Keep the canonical private key path first for existing clients; public keys and
     # pasted Rowset URLs intentionally resolve through a scoped fallback.
+    lookup_errors = (Dataset.DoesNotExist, ValidationError, ValueError)
     try:
         return queryset.get(key=identifier, profile=profile)
-    except (
-        Dataset.DoesNotExist,
-        ValidationError,
-        ValueError,
-    ):
+    except lookup_errors:
         pass
 
     try:
         return queryset.get(public_key=identifier, profile=profile)
-    except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
+    except lookup_errors as exc:
         raise DatasetServiceError(404, "Dataset not found.") from exc
 
 
