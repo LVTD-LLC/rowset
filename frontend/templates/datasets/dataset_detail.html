@@ -115,10 +115,10 @@
           <p class="text-slate-600 dark:text-slate-300">Page {{ row_page_obj.number }} of {{ row_page_obj.paginator.num_pages }}</p>
           <div class="flex flex-wrap gap-2">
             {% if row_page_obj.has_previous %}
-              <a href="?page={{ row_page_obj.previous_page_number }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Previous</a>
+              <a href="{{ previous_row_page_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Previous</a>
             {% endif %}
             {% if row_page_obj.has_next %}
-              <a href="?page={{ row_page_obj.next_page_number }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Next</a>
+              <a href="{{ next_row_page_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Next</a>
             {% endif %}
           </div>
         </nav>

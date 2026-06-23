@@ -75,6 +75,12 @@ def _row_cells(headers: list[str], row_data: dict[str, object]) -> list[dict[str
     return cells
 
 
+def _querystring_for_page(request, page_number: int) -> str:
+    query_params = request.GET.copy()
+    query_params["page"] = page_number
+    return f"?{query_params.urlencode()}"
+
+
 class DatasetListView(LoginRequiredMixin, ListView):
     template_name = "datasets/dataset_list.html"
     context_object_name = "datasets"
@@ -203,7 +209,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         dataset = self.object
-        row_queryset = dataset.rows.select_related("dataset", "updated_by_agent_api_key").order_by(
+        row_queryset = dataset.rows.select_related("updated_by_agent_api_key").order_by(
             "row_number"
         )
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
@@ -213,7 +219,10 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 "values": ordered_row_values(dataset.headers, row.data),
                 "actor_label": row.updated_by_actor_label,
                 "row_number": row.row_number,
-                "url": row.get_absolute_url(),
+                "url": reverse(
+                    "dataset_row_detail",
+                    kwargs={"dataset_key": dataset.key, "row_id": row.id},
+                ),
             }
             for row in row_page_obj.object_list
         ]
@@ -236,6 +245,16 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context["rows_show_actor"] = has_imported_rows
         context["rows_colspan"] = len(dataset.headers) + int(has_imported_rows)
         context["row_page_obj"] = row_page_obj
+        if row_page_obj.has_previous():
+            context["previous_row_page_url"] = _querystring_for_page(
+                self.request,
+                row_page_obj.previous_page_number(),
+            )
+        if row_page_obj.has_next():
+            context["next_row_page_url"] = _querystring_for_page(
+                self.request,
+                row_page_obj.next_page_number(),
+            )
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
         return context
 

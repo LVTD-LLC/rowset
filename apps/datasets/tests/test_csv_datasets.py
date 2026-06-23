@@ -324,17 +324,18 @@ def test_dataset_detail_paginates_imported_rows_without_public_preview(auth_clie
     dataset.public_enabled = False
     dataset.save(update_fields=["row_count", "public_enabled"])
 
-    response = auth_client.get(dataset.get_absolute_url())
+    response = auth_client.get(f"{dataset.get_absolute_url()}?view=compact")
     content = response.content.decode()
 
     assert response.status_code == 200
     assert "Public preview:" not in content
     assert f"Showing 1-{DATASET_DETAIL_ROW_PAGE_SIZE} of {total_rows} rows" in content
     assert "Page 1 of 2" in content
+    assert 'href="?view=compact&amp;page=2"' in content
     assert "Detail row 001" in content
     assert f"Detail row {total_rows:03}" not in content
 
-    page_two = auth_client.get(f"{dataset.get_absolute_url()}?page=2")
+    page_two = auth_client.get(f"{dataset.get_absolute_url()}?view=compact&page=2")
     page_two_content = page_two.content.decode()
     assert page_two.status_code == 200
     assert "Page 2 of 2" in page_two_content
