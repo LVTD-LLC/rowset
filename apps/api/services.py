@@ -25,6 +25,7 @@ from filebridge.utils import build_absolute_public_url
 
 API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
+ROW_UPDATE_DIFF_VALUE_PREVIEW_LENGTH = 500
 DATASET_SUMMARY_ONLY_FIELDS = (
     "key",
     "name",
@@ -357,6 +358,40 @@ def _stringify_cell(value: Any) -> str:
     if value is None:
         return ""
     return str(value)
+
+
+def _mutation_value_preview(value: Any) -> tuple[str, bool]:
+    text = _stringify_cell(value)
+    is_truncated = len(text) > ROW_UPDATE_DIFF_VALUE_PREVIEW_LENGTH
+    if is_truncated:
+        text = text[:ROW_UPDATE_DIFF_VALUE_PREVIEW_LENGTH]
+    return text, is_truncated
+
+
+def _row_field_changes(
+    current_data: dict,
+    patch_data: dict,
+    changed_fields: list[str],
+) -> list[dict[str, str | bool]]:
+    field_changes = []
+    for field in changed_fields:
+        before_value = _stringify_cell(current_data.get(field, ""))
+        after_value = _stringify_cell(patch_data.get(field, ""))
+        if before_value == after_value:
+            continue
+
+        before_preview, before_truncated = _mutation_value_preview(before_value)
+        after_preview, after_truncated = _mutation_value_preview(after_value)
+        field_changes.append(
+            {
+                "field": field,
+                "before": before_preview,
+                "after": after_preview,
+                "before_truncated": before_truncated,
+                "after_truncated": after_truncated,
+            }
+        )
+    return field_changes
 
 
 def _normalize_dataset_name(name: str) -> str:
@@ -1410,11 +1445,12 @@ def _patch_dataset_row(
     if not connection.in_atomic_block:
         raise AssertionError("_patch_dataset_row must be called inside transaction.atomic().")
 
-    changed_fields = sorted(key for key in data if key in dataset.headers)
-    row.data = {
-        **row.data,
-        **{key: str(value) for key, value in data.items() if key in dataset.headers},
+    row_patch = {
+        key: _stringify_cell(value) for key, value in data.items() if key in dataset.headers
     }
+    changed_fields = sorted(row_patch)
+    field_changes = _row_field_changes(row.data or {}, row_patch, changed_fields)
+    row.data = {**row.data, **row_patch}
     if dataset.index_column in data:
         if dataset.index_generated:
             raise DatasetServiceError(
@@ -1446,6 +1482,7 @@ def _patch_dataset_row(
             "row_id": row.id,
             "row_number": row.row_number,
             "changed_fields": changed_fields,
+            "field_changes": field_changes,
             "index_changed": dataset.index_column in data,
         },
     )

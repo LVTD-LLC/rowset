@@ -1015,6 +1015,57 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     assert "Updated by OpenClaw" in home_content
 
 
+def test_row_update_mutation_records_field_diffs_and_renders_history(client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+
+    patch_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={
+            "data": {
+                "email": "ada+updated@example.com",
+                "name": "Ada Lovelace",
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert patch_response.status_code == 200
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.ROW_UPDATED)
+    assert mutation.metadata == {
+        "row_id": row.id,
+        "row_number": 1,
+        "changed_fields": ["email", "name"],
+        "field_changes": [
+            {
+                "field": "email",
+                "before": "ada@example.com",
+                "after": "ada+updated@example.com",
+                "before_truncated": False,
+                "after_truncated": False,
+            },
+            {
+                "field": "name",
+                "before": "Ada",
+                "after": "Ada Lovelace",
+                "before_truncated": False,
+                "after_truncated": False,
+            },
+        ],
+        "index_changed": True,
+    }
+
+    client.force_login(profile.user)
+    detail_content = client.get(dataset.get_absolute_url()).content.decode()
+
+    assert "Row 1 updated." in detail_content
+    assert "email" in detail_content
+    assert "ada@example.com" in detail_content
+    assert "ada+updated@example.com" in detail_content
+    assert "name" in detail_content
+    assert "Ada Lovelace" in detail_content
+
+
 def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
     response = client.post(
         f"/api/datasets?api_key={profile.key}",
@@ -1358,7 +1409,10 @@ def test_dataset_api_reorders_columns(client, profile):
     }
 
 
-def test_dataset_mutation_history_does_not_copy_private_row_values(client, profile):
+def test_dataset_mutation_history_records_row_update_diffs_without_schema_backfill_values(
+    client,
+    profile,
+):
     create_response = client.post(
         f"/api/datasets?api_key={profile.key}",
         data={
@@ -1412,12 +1466,19 @@ def test_dataset_mutation_history_does_not_copy_private_row_values(client, profi
         "row_id": row.id,
         "row_number": 1,
         "changed_fields": ["name"],
+        "field_changes": [
+            {
+                "field": "name",
+                "before": "Ada Private",
+                "after": "New Private",
+                "before_truncated": False,
+                "after_truncated": False,
+            }
+        ],
         "index_changed": False,
     }
 
     serialized_metadata = "\n".join(str(mutation.metadata) for mutation in mutations)
-    assert "Ada Private" not in serialized_metadata
-    assert "New Private" not in serialized_metadata
     assert "secret-default" not in serialized_metadata
     assert "ada@example.com" not in serialized_metadata
 
