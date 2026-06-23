@@ -5,10 +5,12 @@ import polars as pl
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.core.services import create_agent_api_key
-from apps.datasets.choices import DatasetStatus
-from apps.datasets.models import Dataset, DatasetRow, Project
+from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.history import record_dataset_mutation
+from apps.datasets.models import Dataset, DatasetMutation, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
     infer_column_type,
@@ -642,6 +644,32 @@ def test_dataset_api_archives_and_restores_dataset(client, profile):
     restored_list_response = client.get(f"/api/datasets?api_key={profile.key}")
     assert restored_list_response.status_code == 200
     assert [item["key"] for item in restored_list_response.json()["datasets"]] == [str(dataset.key)]
+    assert list(dataset.mutations.values_list("mutation_type", flat=True)) == [
+        DatasetMutationType.DATASET_RESTORED,
+        DatasetMutationType.DATASET_ARCHIVED,
+    ]
+
+
+def test_archiving_already_archived_dataset_records_public_preview_disable(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.public_enabled = True
+    dataset.save(update_fields=["archived_at", "public_enabled"])
+
+    response = client.delete(f"/api/datasets/{dataset.key}?api_key={profile.key}")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Dataset archived."
+    dataset.refresh_from_db()
+    assert dataset.archived_at is not None
+    assert dataset.public_enabled is False
+    mutation = dataset.mutations.get()
+    assert mutation.mutation_type == DatasetMutationType.PUBLIC_PREVIEW_UPDATED
+    assert mutation.summary == "Public preview disabled."
+    assert mutation.metadata == {
+        "previous_public_enabled": True,
+        "public_enabled": False,
+    }
 
 
 def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
@@ -776,6 +804,13 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     assert row.created_by_actor_label == "OpenClaw"
     assert row.updated_by_actor_label == "OpenClaw"
 
+    mutations = list(dataset.mutations.order_by("created_at", "id"))
+    assert [mutation.mutation_type for mutation in mutations] == [
+        DatasetMutationType.DATASET_CREATED,
+        DatasetMutationType.ROW_CREATED,
+    ]
+    assert [mutation.actor_label for mutation in mutations] == ["Codex", "OpenClaw"]
+
     client.force_login(profile.user)
     list_content = client.get(reverse("dataset_list")).content.decode()
     detail_content = client.get(dataset.get_absolute_url()).content.decode()
@@ -789,6 +824,9 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     assert "Touched by" in detail_content
     assert f'href="{row.get_absolute_url()}"' in detail_content
     assert ">OpenClaw</a>" in detail_content
+    assert "Recent changes" in detail_content
+    assert "Dataset created with 0 rows and 2 columns." in detail_content
+    assert "Row 1 added." in detail_content
     assert "Created by Codex · Last updated by OpenClaw" in project_content
     assert "Updated by OpenClaw" in home_content
 
@@ -1136,6 +1174,83 @@ def test_dataset_api_reorders_columns(client, profile):
     }
 
 
+def test_dataset_mutation_history_does_not_copy_private_row_values(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Sensitive contacts",
+            "headers": ["email", "name"],
+            "index_column": "email",
+            "rows": [{"email": "ada@example.com", "name": "Ada Private"}],
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"])
+    row = dataset.rows.get()
+
+    add_column_response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={"name": "private_note", "default_value": "secret-default"},
+        content_type="application/json",
+    )
+    assert add_column_response.status_code == 200
+
+    patch_row_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"name": "New Private"}},
+        content_type="application/json",
+    )
+    assert patch_row_response.status_code == 200
+
+    delete_row_response = client.delete(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}"
+    )
+    assert delete_row_response.status_code == 200
+
+    mutations = DatasetMutation.objects.filter(dataset=dataset)
+    assert set(mutations.values_list("mutation_type", flat=True)) == {
+        DatasetMutationType.DATASET_CREATED,
+        DatasetMutationType.COLUMN_ADDED,
+        DatasetMutationType.ROW_UPDATED,
+        DatasetMutationType.ROW_DELETED,
+    }
+
+    column_mutation = mutations.get(mutation_type=DatasetMutationType.COLUMN_ADDED)
+    assert column_mutation.metadata == {
+        "column": "private_note",
+        "column_type": "text",
+        "default_value_provided": True,
+    }
+
+    row_update_mutation = mutations.get(mutation_type=DatasetMutationType.ROW_UPDATED)
+    assert row_update_mutation.metadata == {
+        "row_id": row.id,
+        "row_number": 1,
+        "changed_fields": ["name"],
+        "index_changed": False,
+    }
+
+    serialized_metadata = "\n".join(str(mutation.metadata) for mutation in mutations)
+    assert "Ada Private" not in serialized_metadata
+    assert "New Private" not in serialized_metadata
+    assert "secret-default" not in serialized_metadata
+    assert "ada@example.com" not in serialized_metadata
+
+
+def test_dataset_mutation_history_preserves_zero_target_identifier(profile):
+    dataset = create_ready_dataset(profile)
+
+    mutation = record_dataset_mutation(
+        dataset,
+        DatasetMutationType.ROW_UPDATED,
+        "Row updated.",
+        target_identifier=0,
+    )
+
+    assert mutation.target_identifier == "0"
+
+
 def test_dataset_api_rejects_unknown_column_type_header(client, profile):
     dataset = create_ready_dataset(profile)
 
@@ -1298,6 +1413,9 @@ def test_dataset_owner_can_assign_project_from_settings(auth_client, profile):
     assert response.status_code == 302
     dataset.refresh_from_db()
     assert dataset.project == project
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.DATASET_PROJECT_UPDATED)
+    assert mutation.actor_label == "Account"
+    assert mutation.metadata["project_name"] == "Customer work"
 
     detach_response = auth_client.post(
         reverse("dataset_update_project", args=[dataset.key]),
@@ -1326,6 +1444,9 @@ def test_dataset_owner_can_update_column_types_from_settings(auth_client, profil
         "name": {"type": "text"},
         "email": {"type": "text"},
     }
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.COLUMN_TYPES_UPDATED)
+    assert mutation.actor_label == "Account"
+    assert mutation.metadata["updated_columns"] == ["email", "name"]
 
 
 def test_dataset_owner_cannot_update_column_types_while_processing(auth_client, profile):
@@ -1373,6 +1494,24 @@ def test_dataset_owner_can_enable_public_sharing(auth_client, profile):
     dataset.refresh_from_db()
     assert dataset.public_enabled is True
     assert dataset.public_page_size == 1
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.PUBLIC_PREVIEW_UPDATED)
+    assert mutation.actor_label == "Account"
+    assert mutation.metadata["previous_public_enabled"] is False
+    assert mutation.metadata["public_enabled"] is True
+
+    duplicate_response = auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "1",
+        },
+    )
+
+    assert duplicate_response.status_code == 302
+    assert (
+        dataset.mutations.filter(mutation_type=DatasetMutationType.PUBLIC_PREVIEW_UPDATED).count()
+        == 1
+    )
 
 
 def test_public_dataset_view_paginates_rows(client, profile):

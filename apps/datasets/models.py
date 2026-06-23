@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from apps.core.base_models import BaseModel
 from apps.core.models import AgentApiKey, Profile
-from apps.datasets.choices import DatasetStatus
+from apps.datasets.choices import DatasetMutationType, DatasetStatus
 from apps.datasets.constants import MAX_CSV_UPLOAD_BYTES
 
 
@@ -122,11 +122,11 @@ class Dataset(BaseModel):
 
     @property
     def created_by_actor_label(self) -> str:
-        return _agent_actor_label(self.created_by_agent_api_key)
+        return agent_actor_label(self.created_by_agent_api_key)
 
     @property
     def updated_by_actor_label(self) -> str:
-        return _agent_actor_label(self.updated_by_agent_api_key)
+        return agent_actor_label(self.updated_by_agent_api_key)
 
 
 class DatasetRow(BaseModel):
@@ -173,14 +173,44 @@ class DatasetRow(BaseModel):
 
     @property
     def created_by_actor_label(self) -> str:
-        return _agent_actor_label(self.created_by_agent_api_key)
+        return agent_actor_label(self.created_by_agent_api_key)
 
     @property
     def updated_by_actor_label(self) -> str:
-        return _agent_actor_label(self.updated_by_agent_api_key)
+        return agent_actor_label(self.updated_by_agent_api_key)
 
 
-def _agent_actor_label(agent_api_key: AgentApiKey | None) -> str:
+class DatasetMutation(BaseModel):
+    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name="mutations")
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="dataset_mutations")
+    agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="dataset_mutations",
+    )
+    actor_label = models.CharField(max_length=120, default="Account")
+    mutation_type = models.CharField(max_length=64, choices=DatasetMutationType.choices)
+    summary = models.CharField(max_length=255)
+    target_type = models.CharField(max_length=32, blank=True, default="")
+    target_identifier = models.CharField(max_length=255, blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(
+                fields=["dataset", "-created_at"],
+                name="dataset_mut_dataset_time_idx",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.dataset_id} {self.mutation_type}"
+
+
+def agent_actor_label(agent_api_key: AgentApiKey | None) -> str:
     if agent_api_key is None:
         return "Account"
     return agent_api_key.name

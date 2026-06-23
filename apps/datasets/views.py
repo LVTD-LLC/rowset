@@ -2,10 +2,8 @@ import hashlib
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.hashers import make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,14 +15,14 @@ from django.views.generic import DetailView, ListView
 from apps.api.services import (
     DatasetServiceError,
     create_profile_project,
+    update_profile_dataset_column_types,
     update_profile_dataset_project,
+    update_profile_dataset_public_preview,
 )
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
-    CSVParseError,
     column_definitions,
-    normalize_column_schema,
     normalize_public_page_size,
     ordered_row_values,
     rows_to_csv_text,
@@ -255,6 +253,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 self.request,
                 row_page_obj.next_page_number(),
             )
+        context["mutation_history"] = dataset.mutations.all()[:10]
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
         return context
 
@@ -331,35 +330,27 @@ def project_create(request):
 @login_required
 @require_POST
 def dataset_update_public_settings(request, dataset_key):
-    dataset = get_object_or_404(
-        Dataset,
-        key=dataset_key,
-        profile=request.user.profile,
-    )
+    clear_public_password = request.POST.get("clear_public_password") == "on"
+    public_password = None
+    if not clear_public_password:
+        public_password = request.POST.get("public_password") or None
+    try:
+        update_profile_dataset_public_preview(
+            request.user.profile,
+            str(dataset_key),
+            public_enabled=request.POST.get("public_enabled") == "on",
+            public_page_size=normalize_public_page_size(request.POST.get("public_page_size")),
+            public_password=public_password,
+            clear_public_password=clear_public_password,
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, "Public sharing settings updated.")
 
-    dataset.public_enabled = request.POST.get("public_enabled") == "on"
-    dataset.public_page_size = normalize_public_page_size(request.POST.get("public_page_size"))
-
-    password = request.POST.get("public_password", "")
-    clear_password = request.POST.get("clear_public_password") == "on"
-    if clear_password:
-        dataset.public_password_hash = ""
-    elif password:
-        dataset.public_password_hash = make_password(password)
-
-    # Browser-initiated saves are attributed to the account, not a named agent.
-    dataset.updated_by_agent_api_key = None
-    dataset.save(
-        update_fields=[
-            "public_enabled",
-            "public_page_size",
-            "public_password_hash",
-            "updated_by_agent_api_key",
-            "updated_at",
-        ]
-    )
-    messages.success(request, "Public sharing settings updated.")
-    return redirect(dataset.get_settings_url())
+    return redirect("dataset_settings", dataset_key=dataset_key)
 
 
 @login_required
@@ -384,41 +375,24 @@ def dataset_update_column_settings(request, dataset_key):
     column_names = request.POST.getlist("column_name")
     column_types = request.POST.getlist("column_type")
 
-    with transaction.atomic():
-        dataset = get_object_or_404(
-            Dataset.objects.select_for_update(),
-            key=dataset_key,
-            profile=request.user.profile,
+    if len(column_names) != len(column_types):
+        messages.error(request, "Column type settings were incomplete.")
+        return redirect("dataset_settings", dataset_key=dataset_key)
+
+    try:
+        update_profile_dataset_column_types(
+            request.user.profile,
+            str(dataset_key),
+            dict(zip(column_names, column_types, strict=True)),
         )
-
-        if len(column_names) != len(column_types):
-            messages.error(request, "Column type settings were incomplete.")
-            return redirect(dataset.get_settings_url())
-
-        if dataset.status == DatasetStatus.PROCESSING:
-            messages.error(
-                request,
-                "Column types cannot be updated while the dataset is processing.",
-            )
-            return redirect(dataset.get_settings_url())
-
-        try:
-            dataset.column_schema = normalize_column_schema(
-                dataset.headers,
-                dict(zip(column_names, column_types, strict=True)),
-                fallback_schema=dataset.column_schema,
-                reject_unknown=True,
-            )
-        except CSVParseError as exc:
-            messages.error(request, str(exc))
-            return redirect(dataset.get_settings_url())
-
-        # Browser-initiated saves are attributed to the account, not a named agent.
-        dataset.updated_by_agent_api_key = None
-        dataset.save(update_fields=["column_schema", "updated_by_agent_api_key", "updated_at"])
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+        return redirect("dataset_settings", dataset_key=dataset_key)
 
     messages.success(request, "Column types updated.")
-    return redirect(dataset.get_settings_url())
+    return redirect("dataset_settings", dataset_key=dataset_key)
 
 
 @login_required

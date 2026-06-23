@@ -56,6 +56,28 @@
       </div>
     </div>
 
+    <section class="fb-card p-5" aria-labelledby="dataset-history-heading">
+      <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 id="dataset-history-heading" class="fb-section-title">Recent changes</h2>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Latest recorded dataset changes.</p>
+        </div>
+      </div>
+      <ol class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
+        {% for mutation in mutation_history %}
+          <li class="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+            <div class="min-w-0">
+              <p class="break-words text-sm font-semibold text-slate-900 dark:text-slate-100">{{ mutation.summary }}</p>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ mutation.actor_label }} · {{ mutation.created_at|date:"M j, Y H:i" }}</p>
+            </div>
+            <span class="inline-flex w-fit rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300">{{ mutation.get_mutation_type_display }}</span>
+          </li>
+        {% empty %}
+          <li class="py-3 text-sm text-slate-500 dark:text-slate-400">No recorded changes yet.</li>
+        {% endfor %}
+      </ol>
+    </section>
+
     <section class="fb-card p-5" aria-labelledby="dataset-rows-heading">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
