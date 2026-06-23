@@ -24,7 +24,7 @@ from apps.datasets.services import (
     rows_to_sqlite_bytes,
 )
 from apps.datasets.tasks import import_dataset_rows
-from apps.datasets.views import DATASET_DETAIL_ROW_PAGE_SIZE
+from apps.datasets.views import DATASET_CHANGES_PAGE_SIZE, DATASET_DETAIL_ROW_PAGE_SIZE
 
 pytestmark = pytest.mark.django_db
 
@@ -644,6 +644,38 @@ def test_dataset_changes_rejects_other_users_dataset(client, django_user_model, 
     response = client.get(dataset.get_changes_url())
 
     assert response.status_code == 404
+
+
+def test_dataset_changes_paginates_mutation_history(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    total_changes = DATASET_CHANGES_PAGE_SIZE + 1
+    for number in range(1, total_changes + 1):
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.ROW_UPDATED,
+            f"Change {number:03}",
+        )
+
+    response = auth_client.get(dataset.get_changes_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f"Showing 1-{DATASET_CHANGES_PAGE_SIZE} of {total_changes} recorded changes." in content
+    assert "Page 1 of 2" in content
+    assert 'href="?page=2"' in content
+    assert f"Change {total_changes:03}" in content
+    assert "Change 001" not in content
+
+    page_two = auth_client.get(f"{dataset.get_changes_url()}?page=2")
+    page_two_content = page_two.content.decode()
+    assert page_two.status_code == 200
+    page_two_summary = (
+        f"Showing {total_changes}-{total_changes} of {total_changes} recorded changes."
+    )
+    assert page_two_summary in page_two_content
+    assert "Page 2 of 2" in page_two_content
+    assert "Change 001" in page_two_content
+    assert f"Change {total_changes:03}" not in page_two_content
 
 
 def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client, profile):

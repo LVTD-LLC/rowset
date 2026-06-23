@@ -21,7 +21,11 @@
       <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="dataset-history-heading" class="fb-section-title">Change log</h2>
-          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Latest recorded dataset changes.</p>
+          {% if mutation_page_obj.paginator.count %}
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Showing {{ mutation_page_obj.start_index }}-{{ mutation_page_obj.end_index }} of {{ mutation_page_obj.paginator.count }} recorded changes.</p>
+          {% else %}
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Latest recorded dataset changes.</p>
+          {% endif %}
         </div>
       </div>
       <ol class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
@@ -60,6 +64,19 @@
           <li class="py-3 text-sm text-slate-500 dark:text-slate-400">No recorded changes yet.</li>
         {% endfor %}
       </ol>
+      {% if mutation_page_obj.has_other_pages %}
+        <nav class="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between" aria-label="Dataset change pagination">
+          <p class="text-slate-600 dark:text-slate-300">Page {{ mutation_page_obj.number }} of {{ mutation_page_obj.paginator.num_pages }}</p>
+          <div class="flex flex-wrap gap-2">
+            {% if mutation_page_obj.has_previous %}
+              <a href="{{ previous_mutation_page_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Previous</a>
+            {% endif %}
+            {% if mutation_page_obj.has_next %}
+              <a href="{{ next_mutation_page_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Next</a>
+            {% endif %}
+          </div>
+        </nav>
+      {% endif %}
     </section>
   </div>
 </div>
