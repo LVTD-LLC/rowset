@@ -23,6 +23,7 @@ from sentry_sdk.integrations.redis import RedisIntegration
 from structlog_sentry import SentryProcessor
 
 from filebridge.logging_utils import scrubbing_callback
+from filebridge.sentry_metrics import install_sentry_metrics_middleware
 from filebridge.sentry_utils import CustomLoggingIntegration, before_send
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -138,7 +139,7 @@ MIDDLEWARE = [
 ]
 
 if SENTRY_DSN and ENVIRONMENT == "prod" and SENTRY_ENABLE_METRICS:
-    MIDDLEWARE.append("filebridge.sentry_metrics.SentryMetricsMiddleware")
+    install_sentry_metrics_middleware(MIDDLEWARE)
 
 ROOT_URLCONF = "filebridge.urls"
 

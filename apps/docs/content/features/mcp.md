@@ -87,6 +87,7 @@ get_dataset_row
 get_dataset_row_by_index
 create_dataset_row
 update_dataset_row
+update_dataset_row_by_index
 delete_dataset_row
 add_column
 rename_column
