@@ -28,6 +28,8 @@ from apps.api.schemas import (
     DatasetCreateIn,
     DatasetCreateOut,
     DatasetListOut,
+    DatasetMetadataOut,
+    DatasetMetadataPatchIn,
     DatasetProjectOut,
     DatasetProjectPatchIn,
     DatasetPublicPreviewOut,
@@ -67,6 +69,7 @@ from apps.api.services import (
     serialize_profile_project_detail,
     serialize_user_info,
     update_profile_dataset_column_types,
+    update_profile_dataset_metadata,
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
 )
@@ -539,6 +542,9 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
             create_profile_dataset(
                 request.auth,
                 name=payload.name,
+                description=payload.description,
+                instructions=payload.instructions,
+                metadata=payload.metadata,
                 headers=payload.headers,
                 rows=payload.rows,
                 index_column=payload.index_column,
@@ -546,6 +552,34 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 project_key=payload.project_key,
                 **_agent_actor_kwargs(request),
             ),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.patch(
+    "/datasets/{dataset_key}/metadata",
+    response=DatasetMetadataOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def patch_dataset_metadata(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetMetadataPatchIn,
+):
+    """Update persistent dataset description, agent instructions, and JSON metadata."""
+    updates = {
+        key: value
+        for key, value in payload.model_dump(exclude_unset=True).items()
+        if value is not None
+    }
+    try:
+        return update_profile_dataset_metadata(
+            request.auth,
+            dataset_key,
+            **updates,
+            **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)

@@ -57,6 +57,38 @@
       </div>
     </div>
 
+    {% if dataset.description or dataset.instructions or dataset.metadata %}
+      <section class="fb-card p-5" aria-labelledby="dataset-context-heading">
+        <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 id="dataset-context-heading" class="fb-section-title">Dataset context</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Persistent metadata returned to authenticated API and MCP clients.</p>
+          </div>
+          <a href="{{ dataset.get_settings_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Edit</a>
+        </div>
+        <div class="mt-4 grid gap-4">
+          {% if dataset.description %}
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Description</h3>
+              <p class="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 dark:text-slate-200">{{ dataset.description }}</p>
+            </div>
+          {% endif %}
+          {% if dataset.instructions %}
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Agent instructions</h3>
+              <p class="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 dark:text-slate-200">{{ dataset.instructions }}</p>
+            </div>
+          {% endif %}
+          {% if dataset.metadata %}
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</h3>
+              <pre class="mt-2 max-h-72 overflow-auto rounded-md border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">{{ metadata_json }}</pre>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    {% endif %}
+
     <section class="fb-card p-5" aria-labelledby="dataset-rows-heading">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>

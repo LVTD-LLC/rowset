@@ -25,6 +25,7 @@ class DatasetMutationType(models.TextChoices):
     DATASET_CREATED = "dataset.created", "Dataset created"
     DATASET_ARCHIVED = "dataset.archived", "Dataset archived"
     DATASET_RESTORED = "dataset.restored", "Dataset restored"
+    DATASET_METADATA_UPDATED = "dataset.metadata_updated", "Metadata updated"
     DATASET_PROJECT_UPDATED = "dataset.project_updated", "Project updated"
     PUBLIC_PREVIEW_UPDATED = "dataset.public_preview_updated", "Public preview updated"
     COLUMN_TYPES_UPDATED = "schema.column_types_updated", "Column types updated"
