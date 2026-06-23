@@ -296,7 +296,10 @@ def search_projects(
 ) -> dict:
     close_old_connections()
     profile = _authenticate_profile()
-    return search_profile_projects(profile, query=query, limit=limit, offset=offset)
+    try:
+        return search_profile_projects(profile, query=query, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
 
 
 @mcp.tool(
