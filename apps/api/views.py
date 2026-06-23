@@ -447,7 +447,10 @@ def list_projects(
     query: str | None = None,
 ):
     """Return a page of semantic dataset projects for the authenticated profile."""
-    return search_profile_projects(request.auth, query=query, limit=limit, offset=offset)
+    try:
+        return search_profile_projects(request.auth, query=query, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.post(
