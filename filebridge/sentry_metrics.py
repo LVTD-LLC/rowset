@@ -10,8 +10,9 @@ MIDDLEWARE_PATH = "filebridge.sentry_metrics.SentryMetricsMiddleware"
 
 
 def install_sentry_metrics_middleware(middleware: list[str]) -> None:
-    if MIDDLEWARE_PATH not in middleware:
-        middleware.insert(0, MIDDLEWARE_PATH)
+    if MIDDLEWARE_PATH in middleware:
+        middleware.remove(MIDDLEWARE_PATH)
+    middleware.insert(0, MIDDLEWARE_PATH)
 
 
 def _route_name(request: HttpRequest) -> str:

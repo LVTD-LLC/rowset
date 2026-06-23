@@ -25,6 +25,24 @@ def test_install_sentry_metrics_middleware_wraps_full_stack():
     assert middleware.count(MIDDLEWARE_PATH) == 1
 
 
+def test_install_sentry_metrics_middleware_moves_existing_entry_to_front():
+    middleware = [
+        "django.middleware.security.SecurityMiddleware",
+        "whitenoise.middleware.WhiteNoiseMiddleware",
+        MIDDLEWARE_PATH,
+        "django.contrib.sessions.middleware.SessionMiddleware",
+    ]
+
+    install_sentry_metrics_middleware(middleware)
+
+    assert middleware == [
+        MIDDLEWARE_PATH,
+        "django.middleware.security.SecurityMiddleware",
+        "whitenoise.middleware.WhiteNoiseMiddleware",
+        "django.contrib.sessions.middleware.SessionMiddleware",
+    ]
+
+
 @override_settings(SENTRY_ENABLE_METRICS=True)
 def test_sentry_metrics_middleware_records_request_metrics(monkeypatch):
     counts = []
