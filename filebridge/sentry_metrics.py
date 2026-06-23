@@ -6,6 +6,13 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from sentry_sdk import metrics
 
+MIDDLEWARE_PATH = "filebridge.sentry_metrics.SentryMetricsMiddleware"
+
+
+def install_sentry_metrics_middleware(middleware: list[str]) -> None:
+    if MIDDLEWARE_PATH not in middleware:
+        middleware.insert(0, MIDDLEWARE_PATH)
+
 
 def _route_name(request: HttpRequest) -> str:
     resolver_match = getattr(request, "resolver_match", None)
