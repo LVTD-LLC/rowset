@@ -47,7 +47,6 @@ AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
 RETRYABLE_ERROR_CODES = {
     "DATASET_NOT_READY",
-    "CONFLICT",
     "RATE_LIMITED",
     "ROWSET_SERVICE_ERROR",
 }
