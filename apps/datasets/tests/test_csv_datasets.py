@@ -494,6 +494,42 @@ def test_dataset_detail_unknown_boolean_filter_returns_no_rows(auth_client, prof
     assert "Katherine Johnson" not in content
 
 
+def test_dataset_detail_row_search_caps_wide_schema(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    headers = [f"field_{index:02d}" for index in range(25)]
+    dataset.headers = headers
+    dataset.column_schema = {header: {"type": DatasetColumnType.TEXT} for header in headers}
+    dataset.row_count = 1
+    dataset.preview_rows = []
+    dataset.rows.all().delete()
+    dataset.save(update_fields=["headers", "column_schema", "row_count", "preview_rows"])
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="wide-row",
+        data={
+            **{header: "" for header in headers},
+            "field_19": "Visible within cap",
+            "field_20": "Hidden outside cap",
+        },
+    )
+
+    within_cap_response = auth_client.get(dataset.get_absolute_url(), {"row_q": "visible"})
+    within_cap_content = within_cap_response.content.decode()
+
+    assert within_cap_response.status_code == 200
+    assert within_cap_response.context["row_page_obj"].paginator.count == 1
+    assert "Visible within cap" in within_cap_content
+
+    outside_cap_response = auth_client.get(dataset.get_absolute_url(), {"row_q": "hidden"})
+    outside_cap_content = outside_cap_response.content.decode()
+
+    assert outside_cap_response.status_code == 200
+    assert outside_cap_response.context["row_page_obj"].paginator.count == 0
+    assert "No rows match these filters." in outside_cap_content
+    assert "Hidden outside cap" not in outside_cap_content
+
+
 def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.headers = ["name", "email", "notes"]

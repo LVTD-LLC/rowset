@@ -56,6 +56,7 @@ ROW_SORT_DIRECTION_PARAM = "row_dir"
 ROW_FILTER_PARAM_PREFIX = "filter_"
 ROW_DEFAULT_SORT = "row_number"
 ROW_SORT_DESC = "desc"
+ROW_SEARCH_COLUMN_LIMIT = 20
 ROW_BOOLEAN_TRUE_VALUES = ("true", "1", "yes", "y")
 ROW_BOOLEAN_FALSE_VALUES = ("false", "0", "no", "n")
 ROW_TEXT_FILTER_TYPES = {
@@ -195,7 +196,7 @@ def _selected_row_sort_direction(request) -> str:
 
 def _or_header_value_search(queryset, dataset: Dataset, search_query: str):
     search_filter = Q()
-    for index, header in enumerate(dataset.headers):
+    for index, header in enumerate(dataset.headers[:ROW_SEARCH_COLUMN_LIMIT]):
         alias = f"rowset_search_{index}"
         queryset = queryset.annotate(**{alias: KeyTextTransform(header, "data")})
         search_filter |= Q(**{f"{alias}__icontains": search_query})
@@ -416,7 +417,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         dataset = self.object
         base_row_queryset = dataset.rows.select_related("updated_by_agent_api_key")
-        has_imported_rows = base_row_queryset.exists()
+        has_imported_rows = dataset.row_count > 0
         row_queryset, row_query_context = _dataset_row_query_context(
             self.request,
             dataset,
