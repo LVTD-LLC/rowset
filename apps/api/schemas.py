@@ -269,4 +269,5 @@ class DatasetRowsOut(Schema):
 class DatasetApiOut(Schema):
     status: str
     message: str
+    dataset: str | None = None
     row: DatasetRowOut | None = None
