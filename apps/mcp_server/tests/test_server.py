@@ -1012,6 +1012,46 @@ def test_dataset_row_mcp_tools_return_service_errors(
 
 
 @pytest.mark.parametrize(
+    ("tool_name", "arguments", "serializer_path"),
+    [
+        ("get_user_info", {}, "apps.mcp_server.server.serialize_user_info"),
+        ("get_all_datasets", {}, "apps.mcp_server.server.serialize_profile_datasets"),
+        ("get_all_projects", {}, "apps.mcp_server.server.serialize_profile_projects"),
+    ],
+)
+def test_metadata_mcp_tools_return_service_errors(
+    monkeypatch,
+    tool_name,
+    arguments,
+    serializer_path,
+):
+    expected_payload = _expected_mcp_error(
+        code="VALIDATION_ERROR",
+        message="Invalid metadata.",
+        suggested_action="Check the tool arguments against the dataset schema and try again.",
+        http_status=400,
+    )
+
+    def raise_service_error(*args, **kwargs):
+        raise DatasetServiceError(400, "Invalid metadata.")
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(serializer_path, raise_service_error)
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool(tool_name, arguments)
+
+        assert _mcp_error_payload(exc_info.value) == expected_payload
+
+    anyio.run(run)
+
+
+@pytest.mark.parametrize(
     ("message", "expected_code", "expected_message", "expected_suggested_action"),
     [
         (
