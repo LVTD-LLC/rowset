@@ -325,7 +325,12 @@ def search_profile_datasets(
     limit: int = 100,
     offset: int = 0,
 ) -> dict:
-    """Return a bounded, optionally filtered page of datasets owned by the profile."""
+    """
+    Return a bounded, optionally filtered page of datasets owned by the profile.
+
+    Query text matches dataset name, original filename, and assigned project metadata.
+    Ungrouped datasets match only on dataset fields because they have no project metadata.
+    """
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     normalized_query = _normalize_search_query(query)

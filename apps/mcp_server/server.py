@@ -209,7 +209,13 @@ def search_datasets(
     ] = None,
     status: Annotated[
         str | None,
-        Field(default=None, description="Optional dataset status filter, such as ready."),
+        Field(
+            default=None,
+            description=(
+                "Optional dataset status filter. "
+                "Accepted values: previewed, processing, ready, failed."
+            ),
+        ),
     ] = None,
     updated_after: Annotated[
         str | None,
