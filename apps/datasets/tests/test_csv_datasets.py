@@ -673,11 +673,12 @@ def test_dataset_api_crud_and_export(client, profile):
     assert public_key_list_response.json()["dataset"] == str(dataset.key)
 
     create_response = client.post(
-        f"/api/datasets/{dataset.key}/rows?api_key={api_key}",
+        f"/api/datasets/{dataset.public_key}/rows?api_key={api_key}",
         data={"data": {"name": "Katherine", "email": "kat@example.com"}},
         content_type="application/json",
     )
     assert create_response.status_code == 200
+    assert create_response.json()["dataset"] == str(dataset.key)
     row_id = create_response.json()["row"]["id"]
     assert create_response.json()["row"]["index_value"] == "kat@example.com"
 
@@ -688,11 +689,12 @@ def test_dataset_api_crud_and_export(client, profile):
     assert get_by_index_response.json()["row"]["data"]["name"] == "Katherine"
 
     patch_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={api_key}",
+        f"/api/datasets/{dataset.public_key}/rows/{row_id}?api_key={api_key}",
         data={"data": {"email": "katherine@example.com", "ignored": "nope"}},
         content_type="application/json",
     )
     assert patch_response.status_code == 200
+    assert patch_response.json()["dataset"] == str(dataset.key)
     assert patch_response.json()["row"]["data"] == {
         "name": "Katherine",
         "email": "katherine@example.com",
@@ -703,8 +705,11 @@ def test_dataset_api_crud_and_export(client, profile):
     exported = list(csv.DictReader(io.StringIO(export_response.content.decode())))
     assert exported[0] == {"name": "Ada", "email": "ada@example.com"}
 
-    delete_response = client.delete(f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={api_key}")
+    delete_response = client.delete(
+        f"/api/datasets/{dataset.public_key}/rows/{row_id}?api_key={api_key}"
+    )
     assert delete_response.status_code == 200
+    assert delete_response.json()["dataset"] == str(dataset.key)
     assert not DatasetRow.objects.filter(id=row_id).exists()
 
 
