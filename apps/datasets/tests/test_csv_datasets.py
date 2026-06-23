@@ -16,6 +16,7 @@ from apps.datasets.services import (
     preview_uploaded_table,
 )
 from apps.datasets.tasks import import_dataset_rows
+from apps.datasets.views import DATASET_DETAIL_ROW_PAGE_SIZE
 
 pytestmark = pytest.mark.django_db
 
@@ -257,7 +258,7 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     assert "Dataset status" not in content
 
 
-def test_dataset_detail_orders_sample_cells_by_headers(auth_client, profile):
+def test_dataset_detail_orders_row_cells_by_headers(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Customers",
@@ -286,7 +287,7 @@ def test_dataset_detail_orders_sample_cells_by_headers(auth_client, profile):
     assert customer_id_position < name_position < plan_position
 
 
-def test_dataset_detail_links_imported_sample_rows_and_truncates_cells(auth_client, profile):
+def test_dataset_detail_links_imported_rows_and_truncates_cells(auth_client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.first()
 
@@ -299,6 +300,45 @@ def test_dataset_detail_links_imported_sample_rows_and_truncates_cells(auth_clie
     assert 'aria-label="View row 1 details"' in content
     assert content.count('aria-label="View row 1 details"') == 1
     assert 'aria-hidden="true" tabindex="-1"' in content
+
+
+def test_dataset_detail_paginates_imported_rows_without_public_preview(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.rows.all().delete()
+    total_rows = DATASET_DETAIL_ROW_PAGE_SIZE + 1
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=row_number,
+                index_value=f"person-{row_number:03}",
+                data={
+                    "name": f"Detail row {row_number:03}",
+                    "email": f"person-{row_number:03}@example.com",
+                },
+            )
+            for row_number in range(1, total_rows + 1)
+        ]
+    )
+    dataset.row_count = total_rows
+    dataset.public_enabled = False
+    dataset.save(update_fields=["row_count", "public_enabled"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Public preview:" not in content
+    assert f"Showing 1-{DATASET_DETAIL_ROW_PAGE_SIZE} of {total_rows} rows" in content
+    assert "Page 1 of 2" in content
+    assert "Detail row 001" in content
+    assert f"Detail row {total_rows:03}" not in content
+
+    page_two = auth_client.get(f"{dataset.get_absolute_url()}?page=2")
+    page_two_content = page_two.content.decode()
+    assert page_two.status_code == 200
+    assert "Page 2 of 2" in page_two_content
+    assert f"Detail row {total_rows:03}" in page_two_content
 
 
 def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
@@ -349,7 +389,8 @@ def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client,
 
     content = response.content.decode()
     assert response.status_code == 200
-    assert "Sample rows" in content
+    assert 'id="dataset-rows-heading"' in content
+    assert ">Rows</h2>" in content
     assert 'id="schema-heading"' not in content
     assert "Dataset API" not in content
     assert "Export CSV" not in content
