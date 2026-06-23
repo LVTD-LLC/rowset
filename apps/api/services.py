@@ -251,7 +251,7 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "updated_at": dataset.updated_at,
         "confirmed_at": dataset.confirmed_at,
         "processed_at": dataset.processed_at,
-        "archived_at": getattr(dataset, "archived_at", None),
+        "archived_at": dataset.archived_at,
     }
 
 
@@ -671,8 +671,10 @@ def archive_profile_dataset(
         except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
+        message = "Dataset was already archived."
         update_fields = []
         if dataset.archived_at is None or dataset.public_enabled:
+            message = "Dataset archived."
             update_fields = ["public_enabled", "updated_at"]
             dataset.public_enabled = False
 
@@ -693,7 +695,7 @@ def archive_profile_dataset(
 
     return {
         "status": "success",
-        "message": "Dataset archived.",
+        "message": message,
         "dataset": serialize_dataset_summary(dataset),
     }
 
@@ -710,7 +712,9 @@ def restore_profile_dataset(
         except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
+        message = "Dataset was not archived."
         if dataset.archived_at is not None:
+            message = "Dataset restored."
             dataset.archived_at = None
             dataset.archived_by_agent_api_key = None
             dataset.updated_by_agent_api_key = agent_api_key
@@ -725,7 +729,7 @@ def restore_profile_dataset(
 
     return {
         "status": "success",
-        "message": "Dataset restored.",
+        "message": message,
         "dataset": serialize_dataset_summary(dataset),
     }
 

@@ -579,6 +579,10 @@ def test_dataset_api_archives_and_restores_dataset(client, profile):
     public_response = client.get(public_url)
     assert public_response.status_code == 404
 
+    already_archived_response = client.delete(f"/api/datasets/{dataset.key}?api_key={profile.key}")
+    assert already_archived_response.status_code == 200
+    assert already_archived_response.json()["message"] == "Dataset was already archived."
+
     restore_response = client.post(f"/api/datasets/{dataset.key}/restore?api_key={profile.key}")
 
     assert restore_response.status_code == 200
@@ -586,6 +590,12 @@ def test_dataset_api_archives_and_restores_dataset(client, profile):
     dataset.refresh_from_db()
     assert dataset.archived_at is None
     assert dataset.public_enabled is False
+
+    already_restored_response = client.post(
+        f"/api/datasets/{dataset.key}/restore?api_key={profile.key}"
+    )
+    assert already_restored_response.status_code == 200
+    assert already_restored_response.json()["message"] == "Dataset was not archived."
 
     restored_list_response = client.get(f"/api/datasets?api_key={profile.key}")
     assert restored_list_response.status_code == 200

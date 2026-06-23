@@ -49,6 +49,7 @@ def _profile():
         updated_at="2026-05-14T00:01:00Z",
         confirmed_at=None,
         processed_at=None,
+        archived_at=None,
         get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
     )
 

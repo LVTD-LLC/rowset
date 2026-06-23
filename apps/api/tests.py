@@ -260,6 +260,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
             updated_at="2026-05-14T00:01:00Z",
             confirmed_at="2026-05-14T00:02:00Z",
             processed_at="2026-05-14T00:03:00Z",
+            archived_at=None,
             is_public_password_protected=True,
             get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
         )
