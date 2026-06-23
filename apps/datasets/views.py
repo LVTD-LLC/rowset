@@ -4,9 +4,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, F, FloatField, Q, Sum, TextField, Value, When
 from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Lower
+from django.db.models.functions import Cast, Lower, Replace, Trim
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -59,6 +59,12 @@ ROW_SORT_DESC = "desc"
 ROW_SEARCH_COLUMN_LIMIT = 20
 ROW_BOOLEAN_TRUE_VALUES = ("true", "1", "yes", "y")
 ROW_BOOLEAN_FALSE_VALUES = ("false", "0", "no", "n")
+ROW_NUMERIC_SORT_TYPES = {
+    DatasetColumnType.CURRENCY,
+    DatasetColumnType.INTEGER,
+    DatasetColumnType.NUMBER,
+}
+ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
 DATASET_EXPORT_FORMATS = {
     "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
     "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
@@ -244,8 +250,34 @@ def _apply_row_sort(queryset, dataset: Dataset, selected_sort: str, sort_directi
 
     column_index = int(selected_sort.removeprefix("col_"))
     sort_header = dataset.headers[column_index]
-    queryset = queryset.annotate(rowset_sort=KeyTextTransform(sort_header, "data"))
-    sort_expression = Lower("rowset_sort")
+    sort_column = column_definitions(dataset.headers, dataset.column_schema)[column_index]
+    queryset = queryset.annotate(rowset_sort_text=KeyTextTransform(sort_header, "data"))
+    if sort_column["type"] in ROW_NUMERIC_SORT_TYPES:
+        empty_text = Value("", output_field=TextField())
+        queryset = queryset.annotate(
+            rowset_sort_numeric_text=Replace(
+                Replace(
+                    Trim(Cast("rowset_sort_text", TextField())),
+                    Value("$", output_field=TextField()),
+                    empty_text,
+                    output_field=TextField(),
+                ),
+                Value(",", output_field=TextField()),
+                empty_text,
+                output_field=TextField(),
+            ),
+            rowset_sort_number=Case(
+                When(
+                    rowset_sort_numeric_text__regex=ROW_NUMERIC_SORT_PATTERN,
+                    then=Cast("rowset_sort_numeric_text", FloatField()),
+                ),
+                default=Value(None),
+                output_field=FloatField(),
+            ),
+        )
+        sort_expression = F("rowset_sort_number")
+    else:
+        sort_expression = Lower("rowset_sort_text")
     if sort_direction == ROW_SORT_DESC:
         return queryset.order_by(sort_expression.desc(nulls_last=True), "row_number")
     return queryset.order_by(sort_expression.asc(nulls_last=True), "row_number")

@@ -467,6 +467,18 @@ def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
     assert sort_content.index("Katherine Johnson") < sort_content.index("Grace Hopper")
     assert sort_content.index("Grace Hopper") < sort_content.index("Ada Lovelace")
 
+    numeric_sort_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"row_sort": "col_2"},
+    )
+    numeric_sort_content = numeric_sort_response.content.decode()
+
+    assert numeric_sort_response.status_code == 200
+    assert numeric_sort_content.index("Grace Hopper") < numeric_sort_content.index("Ada Lovelace")
+    assert numeric_sort_content.index("Ada Lovelace") < numeric_sort_content.index(
+        "Katherine Johnson"
+    )
+
 
 def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
     dataset = configure_filterable_dataset(create_ready_dataset(profile))
