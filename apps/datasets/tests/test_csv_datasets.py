@@ -632,6 +632,20 @@ def test_dataset_row_detail_rejects_other_users_row(client, django_user_model, p
     assert response.status_code == 404
 
 
+def test_dataset_changes_rejects_other_users_dataset(client, django_user_model, profile):
+    dataset = create_ready_dataset(profile)
+    other_user = django_user_model.objects.create_user(
+        username="other-changes-viewer",
+        email="other-changes-viewer@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.get(dataset.get_changes_url())
+
+    assert response.status_code == 404
+
+
 def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client, profile):
     dataset = create_ready_dataset(profile)
 
@@ -1210,19 +1224,25 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     client.force_login(profile.user)
     list_content = client.get(reverse("dataset_list")).content.decode()
     detail_content = client.get(dataset.get_absolute_url()).content.decode()
+    changes_response = client.get(dataset.get_changes_url())
+    changes_content = changes_response.content.decode()
     settings_content = client.get(dataset.get_settings_url()).content.decode()
     project_content = client.get(project.get_absolute_url()).content.decode()
     home_content = client.get(reverse("home")).content.decode()
 
+    assert changes_response.status_code == 200
     assert "Created by Codex · Last updated by OpenClaw" in list_content
     assert "Codex" in detail_content
     assert "OpenClaw" in settings_content
     assert "Touched by" in detail_content
     assert f'href="{row.get_absolute_url()}"' in detail_content
     assert ">OpenClaw</a>" in detail_content
-    assert "Recent changes" in detail_content
-    assert "Dataset created with 0 rows and 2 columns." in detail_content
-    assert "Row 1 added." in detail_content
+    assert f'href="{dataset.get_changes_url()}"' in detail_content
+    assert "Dataset created with 0 rows and 2 columns." not in detail_content
+    assert "Row 1 added." not in detail_content
+    assert "Recent changes" in changes_content
+    assert "Dataset created with 0 rows and 2 columns." in changes_content
+    assert "Row 1 added." in changes_content
     assert "Created by Codex · Last updated by OpenClaw" in project_content
     assert "Updated by OpenClaw" in home_content
 
@@ -1269,12 +1289,14 @@ def test_row_update_mutation_records_field_diffs_and_renders_history(client, pro
 
     client.force_login(profile.user)
     detail_content = client.get(dataset.get_absolute_url()).content.decode()
+    changes_content = client.get(dataset.get_changes_url()).content.decode()
 
-    assert "Row 1 updated." in detail_content
-    assert "email" in detail_content
-    assert "Previous value" in detail_content
-    assert "New value" in detail_content
-    assert "name" in detail_content
+    assert "Row 1 updated." not in detail_content
+    assert "Row 1 updated." in changes_content
+    assert "email" in changes_content
+    assert "Previous value" in changes_content
+    assert "New value" in changes_content
+    assert "name" in changes_content
 
 
 def test_row_update_mutation_omits_noop_fields(client, profile):

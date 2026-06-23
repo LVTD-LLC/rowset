@@ -499,8 +499,26 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 self.request,
                 row_page_obj.next_page_number(),
             )
-        context["mutation_history"] = dataset.mutations.all()[:10]
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
+        return context
+
+
+class DatasetChangesView(LoginRequiredMixin, DetailView):
+    template_name = "datasets/dataset_changes.html"
+    context_object_name = "dataset"
+    slug_url_kwarg = "dataset_key"
+    slug_field = "key"
+
+    def get_queryset(self):
+        return self.request.user.profile.datasets.select_related(
+            "project",
+            "created_by_agent_api_key",
+            "updated_by_agent_api_key",
+        ).all()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["mutation_history"] = self.object.mutations.all()[:10]
         return context
 
 
