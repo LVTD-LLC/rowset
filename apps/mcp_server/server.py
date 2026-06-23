@@ -301,7 +301,10 @@ def get_user_info() -> dict:
     """Return safe user/profile details for the authenticated Rowset user."""
     close_old_connections()
     profile = _mcp_authenticated_profile()
-    return serialize_user_info(profile)
+    try:
+        return serialize_user_info(profile)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -321,7 +324,10 @@ def get_all_datasets(
     """Return a bounded page of datasets for the authenticated Rowset user."""
     close_old_connections()
     profile = _mcp_authenticated_profile()
-    return serialize_profile_datasets(profile, limit=limit, offset=offset)
+    try:
+        return serialize_profile_datasets(profile, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -428,7 +434,10 @@ def get_all_projects(
     """Return a bounded page of projects for the authenticated Rowset user."""
     close_old_connections()
     profile = _mcp_authenticated_profile()
-    return serialize_profile_projects(profile, limit=limit, offset=offset)
+    try:
+        return serialize_profile_projects(profile, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
