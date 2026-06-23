@@ -95,17 +95,18 @@ def test_dashboard_does_not_show_email_confirmation_reminder(client):
     assert "Connect your AI agent to Rowset" in content
 
 
-@override_settings(SITE_URL="http://localhost:8000")
-def test_landing_agent_prompt_keeps_localhost_http(client):
+def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     response = client.get(reverse("landing"))
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Rowset MCP URL: http://localhost:8000/mcp/" in content
-    assert "Rowset REST API base: http://localhost:8000/api/" in content
-    assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in content
-    assert "update_dataset_public_preview" in content
-    assert "Rowset MCP URL: https://localhost:8000/mcp/" not in content
+    assert "Agent setup prompt" not in content
+    assert "Rowset MCP URL:" not in content
+    assert "Rowset skill install:" not in content
+    assert "One place for the tools your agents invent." in content
+    assert "Feedback and Canny-style boards" in content
+    assert "Content and pSEO pipelines" in content
+    assert "Agent loops and delegation" in content
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):
