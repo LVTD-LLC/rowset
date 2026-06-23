@@ -5,9 +5,11 @@ import polars as pl
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetMutation, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
@@ -648,6 +650,28 @@ def test_dataset_api_archives_and_restores_dataset(client, profile):
     ]
 
 
+def test_archiving_already_archived_dataset_records_public_preview_disable(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.public_enabled = True
+    dataset.save(update_fields=["archived_at", "public_enabled"])
+
+    response = client.delete(f"/api/datasets/{dataset.key}?api_key={profile.key}")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Dataset archived."
+    dataset.refresh_from_db()
+    assert dataset.archived_at is not None
+    assert dataset.public_enabled is False
+    mutation = dataset.mutations.get()
+    assert mutation.mutation_type == DatasetMutationType.PUBLIC_PREVIEW_UPDATED
+    assert mutation.summary == "Public preview disabled."
+    assert mutation.metadata == {
+        "previous_public_enabled": True,
+        "public_enabled": False,
+    }
+
+
 def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
     project = Project.objects.create(profile=profile, name="Catalogs")
 
@@ -1212,6 +1236,19 @@ def test_dataset_mutation_history_does_not_copy_private_row_values(client, profi
     assert "New Private" not in serialized_metadata
     assert "secret-default" not in serialized_metadata
     assert "ada@example.com" not in serialized_metadata
+
+
+def test_dataset_mutation_history_preserves_zero_target_identifier(profile):
+    dataset = create_ready_dataset(profile)
+
+    mutation = record_dataset_mutation(
+        dataset,
+        DatasetMutationType.ROW_UPDATED,
+        "Row updated.",
+        target_identifier=0,
+    )
+
+    assert mutation.target_identifier == "0"
 
 
 def test_dataset_api_rejects_unknown_column_type_header(client, profile):

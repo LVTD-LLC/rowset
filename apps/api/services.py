@@ -1090,6 +1090,7 @@ def archive_profile_dataset(
         except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Dataset not found.") from exc
 
+        was_archived = dataset.archived_at is not None
         was_public_enabled = dataset.public_enabled
         message = "Dataset was already archived."
         update_fields = []
@@ -1112,13 +1113,26 @@ def archive_profile_dataset(
 
         if update_fields:
             dataset.save(update_fields=update_fields)
-            record_dataset_mutation(
-                dataset,
-                DatasetMutationType.DATASET_ARCHIVED,
-                "Dataset archived.",
-                agent_api_key=agent_api_key,
-                metadata={"public_preview_disabled": was_public_enabled},
-            )
+            if was_archived:
+                record_dataset_mutation(
+                    dataset,
+                    DatasetMutationType.PUBLIC_PREVIEW_UPDATED,
+                    "Public preview disabled.",
+                    agent_api_key=agent_api_key,
+                    target_type="public_preview",
+                    metadata={
+                        "previous_public_enabled": was_public_enabled,
+                        "public_enabled": dataset.public_enabled,
+                    },
+                )
+            else:
+                record_dataset_mutation(
+                    dataset,
+                    DatasetMutationType.DATASET_ARCHIVED,
+                    "Dataset archived.",
+                    agent_api_key=agent_api_key,
+                    metadata={"public_preview_disabled": was_public_enabled},
+                )
 
     return {
         "status": "success",

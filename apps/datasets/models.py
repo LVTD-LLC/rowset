@@ -122,11 +122,11 @@ class Dataset(BaseModel):
 
     @property
     def created_by_actor_label(self) -> str:
-        return _agent_actor_label(self.created_by_agent_api_key)
+        return agent_actor_label(self.created_by_agent_api_key)
 
     @property
     def updated_by_actor_label(self) -> str:
-        return _agent_actor_label(self.updated_by_agent_api_key)
+        return agent_actor_label(self.updated_by_agent_api_key)
 
 
 class DatasetRow(BaseModel):
@@ -173,11 +173,11 @@ class DatasetRow(BaseModel):
 
     @property
     def created_by_actor_label(self) -> str:
-        return _agent_actor_label(self.created_by_agent_api_key)
+        return agent_actor_label(self.created_by_agent_api_key)
 
     @property
     def updated_by_actor_label(self) -> str:
-        return _agent_actor_label(self.updated_by_agent_api_key)
+        return agent_actor_label(self.updated_by_agent_api_key)
 
 
 class DatasetMutation(BaseModel):
@@ -210,7 +210,7 @@ class DatasetMutation(BaseModel):
         return f"{self.dataset_id} {self.mutation_type}"
 
 
-def _agent_actor_label(agent_api_key: AgentApiKey | None) -> str:
+def agent_actor_label(agent_api_key: AgentApiKey | None) -> str:
     if agent_api_key is None:
         return "Account"
     return agent_api_key.name

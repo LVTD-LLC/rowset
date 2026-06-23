@@ -253,7 +253,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 self.request,
                 row_page_obj.next_page_number(),
             )
-        context["mutation_history"] = dataset.mutations.select_related("agent_api_key")[:10]
+        context["mutation_history"] = dataset.mutations.all()[:10]
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
         return context
 
