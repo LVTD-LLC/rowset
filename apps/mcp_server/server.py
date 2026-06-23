@@ -39,6 +39,7 @@ from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
 AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
+DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
 
 mcp = FastMCP(
     name="Rowset",
@@ -183,7 +184,7 @@ def get_all_datasets(
     description="Return metadata for one dataset owned by the authenticated Rowset profile.",
 )
 def get_dataset(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
 ) -> dict:
     close_old_connections()
     profile = _authenticate_profile()
@@ -344,7 +345,7 @@ def create_dataset(
     description="Update semantic column type metadata for an existing Rowset dataset.",
 )
 def update_dataset_column_types(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     column_types: Annotated[
         dict[str, str],
         Field(
@@ -376,7 +377,7 @@ def update_dataset_column_types(
     ),
 )
 def add_column(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     name: Annotated[str, Field(description="New dataset column name.")],
     default_value: Annotated[
         str | None,
@@ -418,7 +419,7 @@ def add_column(
     ),
 )
 def rename_column(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     old_name: Annotated[str, Field(description="Existing dataset column name.")],
     new_name: Annotated[str, Field(description="New dataset column name.")],
 ) -> dict:
@@ -441,7 +442,7 @@ def rename_column(
     description="Drop one non-index column from an existing ready Rowset dataset and its rows.",
 )
 def drop_column(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     name: Annotated[str, Field(description="Existing non-index dataset column name.")],
 ) -> dict:
     close_old_connections()
@@ -465,7 +466,7 @@ def drop_column(
     ),
 )
 def reorder_columns(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     headers: Annotated[
         list[str],
         Field(description="All existing dataset headers in the desired order."),
@@ -492,7 +493,7 @@ def reorder_columns(
     ),
 )
 def update_dataset_project(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     project_key: Annotated[
         str | None,
         Field(
@@ -522,7 +523,7 @@ def update_dataset_project(
     ),
 )
 def update_dataset_public_preview(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     public_enabled: Annotated[
         bool | None,
         Field(
@@ -578,7 +579,7 @@ def update_dataset_public_preview(
     ),
 )
 def archive_dataset(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
 ) -> dict:
     close_old_connections()
     profile = _authenticate_profile()
@@ -597,7 +598,7 @@ def archive_dataset(
     description="Restore an archived Rowset dataset to normal dataset and project lists.",
 )
 def restore_dataset(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
 ) -> dict:
     close_old_connections()
     profile = _authenticate_profile()
@@ -616,7 +617,7 @@ def restore_dataset(
     description="Return a bounded page of rows for a ready dataset.",
 )
 def list_dataset_rows(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     limit: Annotated[int, Field(default=100, ge=1, le=500)] = 100,
     offset: Annotated[int, Field(default=0, ge=0)] = 0,
 ) -> dict:
@@ -633,7 +634,7 @@ def list_dataset_rows(
     description="Return one row from a ready dataset by internal row id.",
 )
 def get_dataset_row(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     row_id: Annotated[int, Field(ge=1, description="Internal Rowset row id.")],
 ) -> dict:
     close_old_connections()
@@ -649,7 +650,7 @@ def get_dataset_row(
     description="Return one row from a ready dataset by its configured index value.",
 )
 def get_dataset_row_by_index(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     index_value: Annotated[str, Field(description="Value from the dataset index column.")],
 ) -> dict:
     close_old_connections()
@@ -665,7 +666,7 @@ def get_dataset_row_by_index(
     description="Create one row in a ready dataset. Provide values keyed by dataset header.",
 )
 def create_dataset_row(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     data: Annotated[dict[str, str], Field(description="Row values keyed by dataset header.")],
 ) -> dict:
     close_old_connections()
@@ -686,7 +687,7 @@ def create_dataset_row(
     description="Patch one row in a ready dataset. Unknown headers are ignored.",
 )
 def update_dataset_row(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     row_id: Annotated[int, Field(ge=1, description="Internal Rowset row id.")],
     data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
 ) -> dict:
@@ -709,7 +710,7 @@ def update_dataset_row(
     description="Delete one row from a ready dataset by internal row id.",
 )
 def delete_dataset_row(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     row_id: Annotated[int, Field(ge=1, description="Internal Rowset row id.")],
 ) -> dict:
     close_old_connections()

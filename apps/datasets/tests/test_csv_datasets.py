@@ -558,6 +558,12 @@ def test_dataset_api_crud_and_export(client, profile):
     assert list_response.status_code == 200
     assert list_response.json()["count"] == 2
 
+    public_key_list_response = client.get(
+        f"/api/datasets/{dataset.public_key}/rows?api_key={api_key}"
+    )
+    assert public_key_list_response.status_code == 200
+    assert public_key_list_response.json()["dataset"] == str(dataset.key)
+
     create_response = client.post(
         f"/api/datasets/{dataset.key}/rows?api_key={api_key}",
         data={"data": {"name": "Katherine", "email": "kat@example.com"}},
@@ -1347,6 +1353,12 @@ def test_dataset_api_rejects_other_users_dataset(client, django_user_model, prof
     response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={other_user.profile.key}")
 
     assert response.status_code == 404
+
+    public_key_response = client.get(
+        f"/api/datasets/{dataset.public_key}/rows?api_key={other_user.profile.key}"
+    )
+
+    assert public_key_response.status_code == 404
 
 
 def test_dataset_owner_can_create_project(auth_client, profile):

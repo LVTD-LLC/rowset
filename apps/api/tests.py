@@ -20,7 +20,7 @@ from apps.api.views import (
 )
 from apps.blog.choices import BlogPostStatus
 from apps.datasets.choices import DatasetStatus
-from apps.datasets.models import Dataset
+from apps.datasets.models import Dataset, DatasetRow
 
 
 class BlogPostApiTests(SimpleTestCase):
@@ -548,3 +548,48 @@ def test_update_dataset_public_preview_requires_ready_dataset(django_user_model)
 
     assert exc.value.status_code == 409
     assert "ready datasets" in exc.value.message
+
+
+@pytest.mark.django_db
+def test_dataset_lookup_resolves_owned_public_identifiers(django_user_model):
+    from apps.api.services import DatasetServiceError, get_ready_profile_dataset
+
+    owner = django_user_model.objects.create_user(
+        username="publicidentifierowner",
+        email="publicidentifierowner@example.com",
+        password="password123",
+    )
+    other_user = django_user_model.objects.create_user(
+        username="publicidentifierother",
+        email="publicidentifierother@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=owner.profile,
+        name="People",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email", "name"],
+        index_column="email",
+        row_count=1,
+        public_enabled=True,
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ada@example.com",
+        data={"email": "ada@example.com", "name": "Ada"},
+    )
+    public_dataset_url = f"https://rowset.example/share/datasets/{dataset.public_key}/"
+    public_row_url = f"{public_dataset_url}rows/{row.id}/"
+
+    assert get_ready_profile_dataset(owner.profile, str(dataset.public_key)) == dataset
+    assert get_ready_profile_dataset(owner.profile, public_dataset_url) == dataset
+    assert get_ready_profile_dataset(owner.profile, public_row_url) == dataset
+
+    with pytest.raises(DatasetServiceError) as exc:
+        get_ready_profile_dataset(other_user.profile, public_dataset_url)
+
+    assert exc.value.status_code == 404
+    assert exc.value.message == "Dataset not found."

@@ -1,4 +1,6 @@
 from typing import Any
+from urllib.parse import unquote, urlparse
+from uuid import UUID
 
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
@@ -277,11 +279,50 @@ def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int =
     }
 
 
-def get_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
+def _extract_dataset_identifier(dataset_identifier: str) -> str:
+    identifier = str(dataset_identifier or "").strip()
+    if not identifier:
+        return ""
+
+    parsed = urlparse(identifier)
+    segments = [unquote(segment) for segment in parsed.path.split("/") if segment]
+    for index, segment in enumerate(segments[:-1]):
+        if segment == "datasets":
+            return segments[index + 1]
+
+    return unquote(identifier).strip("/")
+
+
+def _dataset_identifier_uuid(dataset_identifier: str) -> UUID:
     try:
-        return Dataset.objects.select_related("project").get(key=dataset_key, profile=profile)
+        return UUID(_extract_dataset_identifier(dataset_identifier))
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise DatasetServiceError(404, "Dataset not found.") from exc
+
+
+def _get_profile_dataset_from_queryset(
+    queryset,
+    profile: Profile,
+    dataset_identifier: str,
+) -> Dataset:
+    identifier = _dataset_identifier_uuid(dataset_identifier)
+    try:
+        return queryset.get(key=identifier, profile=profile)
+    except (Dataset.DoesNotExist, ValidationError, ValueError):
+        pass
+
+    try:
+        return queryset.get(public_key=identifier, profile=profile)
     except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
         raise DatasetServiceError(404, "Dataset not found.") from exc
+
+
+def get_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
+    return _get_profile_dataset_from_queryset(
+        Dataset.objects.select_related("project"),
+        profile,
+        dataset_key,
+    )
 
 
 def get_ready_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
@@ -296,10 +337,11 @@ def get_ready_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
 
 
 def get_ready_profile_dataset_for_update(profile: Profile, dataset_key: str) -> Dataset:
-    try:
-        dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-    except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
-        raise DatasetServiceError(404, "Dataset not found.") from exc
+    dataset = _get_profile_dataset_from_queryset(
+        Dataset.objects.select_for_update(),
+        profile,
+        dataset_key,
+    )
     _raise_if_archived(dataset)
     if dataset.status != DatasetStatus.READY:
         raise DatasetServiceError(
@@ -542,10 +584,11 @@ def update_profile_dataset_column_types(
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
-        try:
-            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
-            raise DatasetServiceError(404, "Dataset not found.") from exc
+        dataset = _get_profile_dataset_from_queryset(
+            Dataset.objects.select_for_update(),
+            profile,
+            dataset_key,
+        )
 
         _raise_if_archived(dataset)
 
@@ -967,10 +1010,11 @@ def update_profile_dataset_public_preview(
         )
 
     with transaction.atomic():
-        try:
-            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
-            raise DatasetServiceError(404, "Dataset not found.") from exc
+        dataset = _get_profile_dataset_from_queryset(
+            Dataset.objects.select_for_update(),
+            profile,
+            dataset_key,
+        )
 
         _raise_if_archived(dataset)
 
@@ -1055,10 +1099,11 @@ def update_profile_dataset_project(
     )
 
     with transaction.atomic():
-        try:
-            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
-            raise DatasetServiceError(404, "Dataset not found.") from exc
+        dataset = _get_profile_dataset_from_queryset(
+            Dataset.objects.select_for_update(),
+            profile,
+            dataset_key,
+        )
 
         _raise_if_archived(dataset)
 
@@ -1096,10 +1141,11 @@ def archive_profile_dataset(
 ) -> dict:
     """Archive an owned dataset without deleting rows or schema metadata."""
     with transaction.atomic():
-        try:
-            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
-            raise DatasetServiceError(404, "Dataset not found.") from exc
+        dataset = _get_profile_dataset_from_queryset(
+            Dataset.objects.select_for_update(),
+            profile,
+            dataset_key,
+        )
 
         was_archived = dataset.archived_at is not None
         was_public_enabled = dataset.public_enabled
@@ -1159,10 +1205,11 @@ def restore_profile_dataset(
 ) -> dict:
     """Restore an archived dataset to normal dataset and project listings."""
     with transaction.atomic():
-        try:
-            dataset = Dataset.objects.select_for_update().get(key=dataset_key, profile=profile)
-        except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
-            raise DatasetServiceError(404, "Dataset not found.") from exc
+        dataset = _get_profile_dataset_from_queryset(
+            Dataset.objects.select_for_update(),
+            profile,
+            dataset_key,
+        )
 
         message = "Dataset was not archived."
         if dataset.archived_at is not None:
@@ -1274,7 +1321,12 @@ def create_profile_dataset_row(
                 "changed_fields": sorted(row.data),
             },
         )
-    return {"status": "success", "message": "Row created.", "row": serialize_dataset_row(row)}
+    return {
+        "status": "success",
+        "message": "Row created.",
+        "dataset": str(dataset.key),
+        "row": serialize_dataset_row(row),
+    }
 
 
 def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
@@ -1283,7 +1335,12 @@ def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> 
         row = dataset.rows.get(id=row_id)
     except DatasetRow.DoesNotExist as exc:
         raise DatasetServiceError(404, "Row not found.") from exc
-    return {"status": "success", "message": "Row retrieved.", "row": serialize_dataset_row(row)}
+    return {
+        "status": "success",
+        "message": "Row retrieved.",
+        "dataset": str(dataset.key),
+        "row": serialize_dataset_row(row),
+    }
 
 
 def get_profile_dataset_row_by_index(profile: Profile, dataset_key: str, index_value: str) -> dict:
@@ -1292,7 +1349,12 @@ def get_profile_dataset_row_by_index(profile: Profile, dataset_key: str, index_v
         row = dataset.rows.get(index_value=index_value)
     except DatasetRow.DoesNotExist as exc:
         raise DatasetServiceError(404, "Row not found.") from exc
-    return {"status": "success", "message": "Row retrieved.", "row": serialize_dataset_row(row)}
+    return {
+        "status": "success",
+        "message": "Row retrieved.",
+        "dataset": str(dataset.key),
+        "row": serialize_dataset_row(row),
+    }
 
 
 def patch_profile_dataset_row(
@@ -1348,7 +1410,12 @@ def patch_profile_dataset_row(
                 "index_changed": dataset.index_column in data,
             },
         )
-    return {"status": "success", "message": "Row updated.", "row": serialize_dataset_row(row)}
+    return {
+        "status": "success",
+        "message": "Row updated.",
+        "dataset": str(dataset.key),
+        "row": serialize_dataset_row(row),
+    }
 
 
 def delete_profile_dataset_row(
@@ -1380,4 +1447,4 @@ def delete_profile_dataset_row(
                 "row_number": row_number,
             },
         )
-    return {"status": "success", "message": "Row deleted."}
+    return {"status": "success", "message": "Row deleted.", "dataset": str(dataset.key)}

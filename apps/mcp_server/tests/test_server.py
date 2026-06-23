@@ -308,6 +308,10 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
 
 def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
     calls = []
+    public_row_url = (
+        "https://rowset.example/share/datasets/"
+        "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/rows/7/"
+    )
 
     def profile():
         return _profile()
@@ -363,7 +367,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             )
             get_result = await client.call_tool(
                 "get_dataset_row",
-                {"dataset_key": "ds", "row_id": 7},
+                {"dataset_key": public_row_url, "row_id": 7},
             )
             get_by_index_result = await client.call_tool(
                 "get_dataset_row_by_index",
@@ -391,7 +395,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
 
         assert calls == [
             ("list", "ds", 5, 0),
-            ("get", "ds", 7),
+            ("get", public_row_url, 7),
             ("get_by_index", "ds", "a@example.com"),
             ("create", "ds", {"email": "b@example.com"}),
             ("update", "ds", 7, {"email": "c@example.com"}),
