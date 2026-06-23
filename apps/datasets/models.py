@@ -105,6 +105,9 @@ class Dataset(BaseModel):
     def get_absolute_url(self):
         return reverse("dataset_detail", kwargs={"dataset_key": self.key})
 
+    def get_changes_url(self):
+        return reverse("dataset_changes", kwargs={"dataset_key": self.key})
+
     def get_settings_url(self):
         return reverse("dataset_settings", kwargs={"dataset_key": self.key})
 

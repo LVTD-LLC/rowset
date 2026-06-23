@@ -50,6 +50,7 @@ DATASET_SORT_ORDERING = {
     "project": ("project__name", "name"),
 }
 DATASET_DETAIL_ROW_PAGE_SIZE = 100
+DATASET_CHANGES_PAGE_SIZE = 25
 ROW_SEARCH_PARAM = "row_q"
 ROW_SORT_PARAM = "row_sort"
 ROW_SORT_DIRECTION_PARAM = "row_dir"
@@ -88,6 +89,14 @@ def _delete_dataset(dataset: Dataset) -> None:
     if dataset.source_file:
         dataset.source_file.delete(save=False)
     dataset.delete()
+
+
+def _owned_dataset_queryset(profile):
+    return profile.datasets.select_related(
+        "project",
+        "created_by_agent_api_key",
+        "updated_by_agent_api_key",
+    ).all()
 
 
 def _dataset_export_filename(dataset: Dataset, extension: str) -> str:
@@ -435,11 +444,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.datasets.select_related(
-            "project",
-            "created_by_agent_api_key",
-            "updated_by_agent_api_key",
-        ).all()
+        return _owned_dataset_queryset(self.request.user.profile)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -499,8 +504,35 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 self.request,
                 row_page_obj.next_page_number(),
             )
-        context["mutation_history"] = dataset.mutations.all()[:10]
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
+        return context
+
+
+class DatasetChangesView(LoginRequiredMixin, DetailView):
+    template_name = "datasets/dataset_changes.html"
+    context_object_name = "dataset"
+    slug_url_kwarg = "dataset_key"
+    slug_field = "key"
+
+    def get_queryset(self):
+        return _owned_dataset_queryset(self.request.user.profile)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mutation_paginator = Paginator(self.object.mutations.all(), DATASET_CHANGES_PAGE_SIZE)
+        mutation_page_obj = mutation_paginator.get_page(self.request.GET.get("page"))
+        context["mutation_page_obj"] = mutation_page_obj
+        context["mutation_history"] = mutation_page_obj.object_list
+        if mutation_page_obj.has_previous():
+            context["previous_mutation_page_url"] = _querystring_for_page(
+                self.request,
+                mutation_page_obj.previous_page_number(),
+            )
+        if mutation_page_obj.has_next():
+            context["next_mutation_page_url"] = _querystring_for_page(
+                self.request,
+                mutation_page_obj.next_page_number(),
+            )
         return context
 
 
@@ -538,11 +570,7 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.datasets.select_related(
-            "project",
-            "created_by_agent_api_key",
-            "updated_by_agent_api_key",
-        ).all()
+        return _owned_dataset_queryset(self.request.user.profile)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
