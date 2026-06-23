@@ -380,6 +380,10 @@ These variables enhance functionality but aren't required:
 - Set to `True` to enable Sentry structured logs support
 - Defaults to `True`
 
+**SENTRY_ENABLE_METRICS**
+- Set to `True` to emit low-cardinality HTTP request count and duration metrics
+- Defaults to `True`
+
 **SENTRY_SEND_DEFAULT_PII**
 - Set to `True` to attach authenticated user/request PII to Sentry events
 - Defaults to `False`; only enable when your privacy policy and data handling allow it

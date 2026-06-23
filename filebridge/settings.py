@@ -49,6 +49,7 @@ SENTRY_RELEASE = env("SENTRY_RELEASE", default="")
 SENTRY_TRACES_SAMPLE_RATE = env.float("SENTRY_TRACES_SAMPLE_RATE", default=1.0)
 SENTRY_PROFILE_SESSION_SAMPLE_RATE = env.float("SENTRY_PROFILE_SESSION_SAMPLE_RATE", default=1.0)
 SENTRY_ENABLE_LOGS = env.bool("SENTRY_ENABLE_LOGS", default=True)
+SENTRY_ENABLE_METRICS = env.bool("SENTRY_ENABLE_METRICS", default=True)
 SENTRY_SEND_DEFAULT_PII = env.bool("SENTRY_SEND_DEFAULT_PII", default=False)
 SENTRY_INCLUDE_LOCAL_VARIABLES = env.bool("SENTRY_INCLUDE_LOCAL_VARIABLES", default=False)
 SENTRY_MAX_BREADCRUMBS = env.int("SENTRY_MAX_BREADCRUMBS", default=100)
@@ -135,6 +136,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # "django_structlog.middlewares.RequestMiddleware",
 ]
+
+if SENTRY_DSN and ENVIRONMENT == "prod" and SENTRY_ENABLE_METRICS:
+    MIDDLEWARE.append("filebridge.sentry_metrics.SentryMetricsMiddleware")
 
 ROOT_URLCONF = "filebridge.urls"
 
