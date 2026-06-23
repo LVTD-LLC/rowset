@@ -41,6 +41,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- API and MCP clients can now patch a row directly by the dataset's configured index value.
 - API and MCP clients can now enable, disable, password-protect, and resize public dataset previews.
 - API and MCP clients can now create ready API-backed datasets on the fly, with optional initial rows and either a supplied unique index column or a generated Rowset ID.
 - Google OAuth can now be enabled with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` for Google signup/login.

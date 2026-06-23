@@ -688,6 +688,23 @@ def test_dataset_api_crud_and_export(client, profile):
     assert get_by_index_response.status_code == 200
     assert get_by_index_response.json()["row"]["data"]["name"] == "Katherine"
 
+    patch_by_index_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=kat@example.com",
+        data={"data": {"name": "Katherine Johnson", "email": "katherine.johnson@example.com"}},
+        content_type="application/json",
+    )
+    assert patch_by_index_response.status_code == 200
+    assert patch_by_index_response.json()["row"]["id"] == row_id
+    assert patch_by_index_response.json()["row"]["index_value"] == "katherine.johnson@example.com"
+    assert patch_by_index_response.json()["row"]["data"]["name"] == "Katherine Johnson"
+
+    get_updated_index_response = client.get(
+        f"/api/datasets/{dataset.key}/rows/by-index"
+        f"?api_key={api_key}&index_value=katherine.johnson@example.com"
+    )
+    assert get_updated_index_response.status_code == 200
+    assert get_updated_index_response.json()["row"]["id"] == row_id
+
     patch_response = client.patch(
         f"/api/datasets/{dataset.public_key}/rows/{row_id}?api_key={api_key}",
         data={"data": {"email": "katherine@example.com", "ignored": "nope"}},
@@ -696,7 +713,7 @@ def test_dataset_api_crud_and_export(client, profile):
     assert patch_response.status_code == 200
     assert patch_response.json()["dataset"] == str(dataset.key)
     assert patch_response.json()["row"]["data"] == {
-        "name": "Katherine",
+        "name": "Katherine Johnson",
         "email": "katherine@example.com",
     }
 

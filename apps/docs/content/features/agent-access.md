@@ -70,7 +70,8 @@ Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 - Create new ready datasets with `create_dataset` when the user asks for an on-the-fly dataset.
 - Inspect one dataset with `get_dataset` before row operations.
 - Read rows with `list_dataset_rows`, `get_dataset_row`, or `get_dataset_row_by_index`.
-- Modify rows with `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row` only when requested.
+- Modify rows with `create_dataset_row`, `update_dataset_row`,
+  `update_dataset_row_by_index`, and `delete_dataset_row` only when requested.
 - Enable or disable read-only public previews with `update_dataset_public_preview` only when the user asks to share a dataset.
 - Archive mistaken datasets with `archive_dataset`, and restore them with `restore_dataset` when recovery is needed.
 - Use the Dataset API only if MCP configuration is unavailable and the user approves REST API authentication. The user can copy the API key from Settings.

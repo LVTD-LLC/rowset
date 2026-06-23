@@ -20,6 +20,7 @@ from apps.api.services import (
     get_profile_dataset_row_by_index,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
+    patch_profile_dataset_row_by_index,
     rename_profile_dataset_column,
     reorder_profile_dataset_columns,
     restore_profile_dataset,
@@ -698,6 +699,29 @@ def update_dataset_row(
             profile,
             dataset_key,
             row_id,
+            data,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_dataset_row_by_index",
+    description="Patch one row in a ready dataset by its configured index value.",
+)
+def update_dataset_row_by_index(
+    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    index_value: Annotated[str, Field(description="Value from the dataset index column.")],
+    data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return patch_profile_dataset_row_by_index(
+            profile,
+            dataset_key,
+            index_value,
             data,
             **_agent_actor_kwargs(profile),
         )
