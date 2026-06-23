@@ -711,7 +711,7 @@ def update_dataset_row(
     description="Patch one row in a ready dataset by its configured index value.",
 )
 def update_dataset_row_by_index(
-    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     index_value: Annotated[str, Field(description="Value from the dataset index column.")],
     data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
 ) -> dict:
