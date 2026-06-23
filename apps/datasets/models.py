@@ -94,7 +94,7 @@ class Dataset(BaseModel):
     parse_error = models.TextField(blank=True, default="")
     confirmed_at = models.DateTimeField(null=True, blank=True)
     processed_at = models.DateTimeField(null=True, blank=True)
-    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ["-created_at"]

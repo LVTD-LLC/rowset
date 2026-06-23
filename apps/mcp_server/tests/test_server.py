@@ -509,7 +509,7 @@ def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatc
 def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
     calls = []
 
-    def archive_dataset(authenticated_profile, dataset_key):
+    def archive_dataset(authenticated_profile, dataset_key, agent_api_key=None):
         calls.append(("archive", authenticated_profile.id, dataset_key))
         return {
             "status": "success",
@@ -517,7 +517,7 @@ def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
             "dataset": {"key": dataset_key, "archived_at": "2026-05-14T00:00:00Z"},
         }
 
-    def restore_dataset(authenticated_profile, dataset_key):
+    def restore_dataset(authenticated_profile, dataset_key, agent_api_key=None):
         calls.append(("restore", authenticated_profile.id, dataset_key))
         return {
             "status": "success",
