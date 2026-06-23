@@ -219,7 +219,13 @@ def search_datasets(
     ] = None,
     updated_after: Annotated[
         str | None,
-        Field(default=None, description="Optional ISO date or datetime lower bound for updates."),
+        Field(
+            default=None,
+            description=(
+                "Optional ISO date or datetime lower bound for updates. "
+                "Datetime values without a timezone offset are interpreted as UTC."
+            ),
+        ),
     ] = None,
     limit: Annotated[
         int,
