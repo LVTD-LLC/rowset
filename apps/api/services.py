@@ -1,3 +1,4 @@
+from datetime import UTC, date, datetime, time
 from typing import Any
 from urllib.parse import unquote, urlparse
 from uuid import UUID
@@ -7,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 
 from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetMutationType, DatasetStatus
@@ -63,19 +65,54 @@ def _active_dataset_queryset(queryset):
     return queryset.filter(archived_at__isnull=True)
 
 
+class DatasetServiceError(Exception):
+    def __init__(self, status_code: int, message: str):
+        self.status_code = status_code
+        self.message = message
+        super().__init__(message)
+
+
+def _normalize_search_query(query: str | None) -> str:
+    return str(query or "").strip()
+
+
+def _normalize_dataset_status(status: str | None) -> str:
+    normalized_status = str(status or "").strip().lower()
+    if normalized_status and normalized_status not in DatasetStatus.values:
+        raise DatasetServiceError(400, f"Unsupported dataset status '{normalized_status}'.")
+    return normalized_status
+
+
+def _normalize_updated_after(updated_after: str | date | datetime | None) -> datetime | None:
+    if updated_after in (None, ""):
+        return None
+
+    if isinstance(updated_after, datetime):
+        parsed = updated_after
+    elif isinstance(updated_after, date):
+        parsed = datetime.combine(updated_after, time.min)
+    else:
+        value = str(updated_after).strip()
+        if not value:
+            return None
+        parsed = parse_datetime(value)
+        if parsed is None:
+            parsed_date = parse_date(value)
+            parsed = datetime.combine(parsed_date, time.min) if parsed_date else None
+        if parsed is None:
+            raise DatasetServiceError(400, "updated_after must be an ISO date or datetime.")
+
+    if timezone.is_naive(parsed):
+        return timezone.make_aware(parsed, UTC)
+    return parsed
+
+
 def _raise_if_archived(dataset: Dataset) -> None:
     if dataset.archived_at is not None:
         raise DatasetServiceError(
             409,
             "Dataset is archived. Restore it before making changes.",
         )
-
-
-class DatasetServiceError(Exception):
-    def __init__(self, status_code: int, message: str):
-        self.status_code = status_code
-        self.message = message
-        super().__init__(message)
 
 
 def serialize_user_info(profile: Profile) -> dict:
@@ -140,10 +177,17 @@ def serialize_project_summary(project: Project) -> dict:
     }
 
 
-def serialize_profile_projects(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
-    """Return a bounded page of projects owned by the authenticated profile."""
+def search_profile_projects(
+    profile: Profile,
+    *,
+    query: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict:
+    """Return a bounded, optionally filtered page of projects owned by the profile."""
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
+    normalized_query = _normalize_search_query(query)
     queryset = profile.projects.annotate(dataset_count=_visible_project_dataset_count()).only(
         "key",
         "name",
@@ -151,6 +195,11 @@ def serialize_profile_projects(profile: Profile, limit: int = 100, offset: int =
         "created_at",
         "updated_at",
     )
+    if normalized_query:
+        queryset = queryset.filter(
+            Q(name__icontains=normalized_query)
+            | Q(description__icontains=normalized_query)
+        )
     total_count = queryset.count()
     projects = list(queryset[offset : offset + limit])
     return {
@@ -161,6 +210,11 @@ def serialize_profile_projects(profile: Profile, limit: int = 100, offset: int =
         "has_more": offset + len(projects) < total_count,
         "projects": [serialize_project_summary(project) for project in projects],
     }
+
+
+def serialize_profile_projects(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
+    """Return a bounded page of projects owned by the authenticated profile."""
+    return search_profile_projects(profile, limit=limit, offset=offset)
 
 
 def create_profile_project(profile: Profile, *, name: str, description: str | None = None) -> dict:
@@ -262,21 +316,69 @@ def _dataset_summary_queryset(queryset):
     return queryset.select_related("project").only(*DATASET_SUMMARY_ONLY_FIELDS)
 
 
-def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
-    """Return a bounded page of datasets owned by the authenticated profile."""
+def search_profile_datasets(
+    profile: Profile,
+    *,
+    query: str | None = None,
+    project_key: str | None = None,
+    header_contains: str | None = None,
+    status: str | None = None,
+    updated_after: str | date | datetime | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict:
+    """
+    Return a bounded, optionally filtered page of datasets owned by the profile.
+
+    Query text matches dataset name, original filename, and assigned project metadata.
+    Ungrouped datasets match only on dataset fields because they have no project metadata.
+    """
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
+    normalized_query = _normalize_search_query(query)
+    normalized_project_key = str(project_key or "").strip()
+    normalized_header = str(header_contains or "").strip()
+    normalized_status = _normalize_dataset_status(status)
+    normalized_updated_after = _normalize_updated_after(updated_after)
+
     queryset = _dataset_summary_queryset(_active_dataset_queryset(profile.datasets))
+    if normalized_query:
+        queryset = queryset.filter(
+            Q(name__icontains=normalized_query)
+            | Q(original_filename__icontains=normalized_query)
+            | Q(project__name__icontains=normalized_query)
+            | Q(project__description__icontains=normalized_query)
+        )
+    if normalized_project_key:
+        try:
+            project_key_uuid = UUID(normalized_project_key)
+        except ValueError as exc:
+            raise DatasetServiceError(400, "project_key must be a valid UUID.") from exc
+        else:
+            queryset = queryset.filter(project__key=project_key_uuid)
+    if normalized_status:
+        queryset = queryset.filter(status=normalized_status)
+    if normalized_updated_after is not None:
+        queryset = queryset.filter(updated_at__gte=normalized_updated_after)
+    if normalized_header:
+        queryset = queryset.filter(headers__contains=[normalized_header])
+
     total_count = queryset.count()
-    datasets = list(queryset[offset : offset + limit])
+    page = list(queryset[offset : offset + limit])
+
     return {
-        "count": len(datasets),
+        "count": len(page),
         "total_count": total_count,
         "limit": limit,
         "offset": offset,
-        "has_more": offset + len(datasets) < total_count,
-        "datasets": [serialize_dataset_summary(dataset) for dataset in datasets],
+        "has_more": offset + len(page) < total_count,
+        "datasets": [serialize_dataset_summary(dataset) for dataset in page],
     }
+
+
+def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
+    """Return a bounded page of datasets owned by the authenticated profile."""
+    return search_profile_datasets(profile, limit=limit, offset=offset)
 
 
 def _extract_dataset_identifier(dataset_identifier: str) -> str:
