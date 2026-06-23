@@ -1,9 +1,9 @@
-import csv
 from typing import NoReturn
 
 from django.core.cache import cache
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
+from django.utils.http import content_disposition_header
 from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.responses import Status
@@ -72,15 +72,51 @@ from apps.api.services import (
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
 from apps.core.models import Feedback
+from apps.datasets.services import (
+    rows_to_csv_text,
+    rows_to_jsonl_text,
+    rows_to_sqlite_bytes,
+    rows_to_xlsx_bytes,
+)
 from filebridge.utils import get_filebridge_logger
 
 logger = get_filebridge_logger(__name__)
 
 api = NinjaAPI()
+DATASET_EXPORT_FORMATS = {
+    "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
+    "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
+    "sqlite": ("application/vnd.sqlite3", rows_to_sqlite_bytes),
+    "xlsx": (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        rows_to_xlsx_bytes,
+    ),
+}
 
 
 def _raise_http_error(exc: DatasetServiceError) -> NoReturn:
     raise HttpError(exc.status_code, exc.message) from exc
+
+
+def _dataset_export_rows(dataset):
+    return (
+        dataset.rows.order_by("row_number")
+        .values_list("data", flat=True)
+        .iterator(chunk_size=1000)
+    )
+
+
+def _export_dataset_response(dataset, export_format: str) -> HttpResponse:
+    content_type, serializer = DATASET_EXPORT_FORMATS[export_format]
+    response = HttpResponse(
+        serializer(dataset.headers, _dataset_export_rows(dataset)),
+        content_type=content_type,
+    )
+    response["Content-Disposition"] = content_disposition_header(
+        True,
+        f"{dataset.name or 'dataset'}.{export_format}",
+    )
+    return response
 
 
 def _agent_actor_kwargs(request: HttpRequest) -> dict:
@@ -804,10 +840,43 @@ def export_dataset_csv(request: HttpRequest, dataset_key: str):
         dataset = get_ready_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f'attachment; filename="{dataset.name}.csv"'
-    writer = csv.DictWriter(response, fieldnames=dataset.headers)
-    writer.writeheader()
-    for row in dataset.rows.all().iterator():
-        writer.writerow({header: row.data.get(header, "") for header in dataset.headers})
-    return response
+    return _export_dataset_response(dataset, "csv")
+
+
+@api.get(
+    "/datasets/{dataset_key}/export.jsonl",
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def export_dataset_jsonl(request: HttpRequest, dataset_key: str):
+    try:
+        dataset = get_ready_profile_dataset(request.auth, dataset_key)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+    return _export_dataset_response(dataset, "jsonl")
+
+
+@api.get(
+    "/datasets/{dataset_key}/export.xlsx",
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def export_dataset_xlsx(request: HttpRequest, dataset_key: str):
+    try:
+        dataset = get_ready_profile_dataset(request.auth, dataset_key)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+    return _export_dataset_response(dataset, "xlsx")
+
+
+@api.get(
+    "/datasets/{dataset_key}/export.sqlite",
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def export_dataset_sqlite(request: HttpRequest, dataset_key: str):
+    try:
+        dataset = get_ready_profile_dataset(request.auth, dataset_key)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+    return _export_dataset_response(dataset, "sqlite")

@@ -1,5 +1,9 @@
 import csv
 import io
+import json
+import sqlite3
+import xml.etree.ElementTree as ET
+import zipfile
 
 import polars as pl
 import pytest
@@ -62,6 +66,24 @@ def parquet_upload(data=None):
         buffer.getvalue(),
         content_type="application/vnd.apache.parquet",
     )
+
+
+def xlsx_cell_texts(content: bytes) -> list[str]:
+    with zipfile.ZipFile(io.BytesIO(content)) as workbook:
+        sheet_xml = workbook.read("xl/worksheets/sheet1.xml")
+    root = ET.fromstring(sheet_xml)
+    namespace = {"xlsx": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    return [element.text or "" for element in root.findall(".//xlsx:t", namespace)]
+
+
+def sqlite_rows(content: bytes) -> list[dict[str, str]]:
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    try:
+        connection.deserialize(content)
+        return [dict(row) for row in connection.execute("SELECT name, email FROM rows")]
+    finally:
+        connection.close()
 
 
 def create_ready_dataset(profile):
@@ -400,6 +422,9 @@ def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client,
     assert "Export Parquet" not in content
     assert 'data-controller="export-menu"' in content
     assert "CSV snapshot" in content
+    assert "JSONL snapshot" in content
+    assert "XLSX snapshot" in content
+    assert "SQLite snapshot" in content
     assert "Parquet snapshot" in content
     assert 'aria-label="Dataset status: Ready"' not in content
 
@@ -534,6 +559,56 @@ def test_dataset_export_parquet_download(auth_client, profile):
     ]
 
 
+def test_dataset_export_jsonl_download(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "jsonl"]))
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/x-ndjson; charset=utf-8"
+    assert response["Content-Disposition"].endswith('.jsonl"')
+    exported = [json.loads(line) for line in response.content.decode().splitlines()]
+    assert exported == [
+        {"name": "Ada", "email": "ada@example.com"},
+        {"name": "Grace", "email": "grace@example.com"},
+    ]
+
+
+def test_dataset_export_xlsx_download(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "xlsx"]))
+
+    assert response.status_code == 200
+    assert (
+        response["Content-Type"]
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert response["Content-Disposition"].endswith('.xlsx"')
+    assert xlsx_cell_texts(response.content) == [
+        "name",
+        "email",
+        "Ada",
+        "ada@example.com",
+        "Grace",
+        "grace@example.com",
+    ]
+
+
+def test_dataset_export_sqlite_download(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "sqlite"]))
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/vnd.sqlite3"
+    assert response["Content-Disposition"].endswith('.sqlite"')
+    assert sqlite_rows(response.content) == [
+        {"name": "Ada", "email": "ada@example.com"},
+        {"name": "Grace", "email": "grace@example.com"},
+    ]
+
+
 def test_dataset_export_requires_ready_dataset(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
@@ -592,6 +667,40 @@ def test_dataset_api_crud_and_export(client, profile):
     delete_response = client.delete(f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={api_key}")
     assert delete_response.status_code == 200
     assert not DatasetRow.objects.filter(id=row_id).exists()
+
+
+def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):
+    dataset = create_ready_dataset(profile)
+    api_key = profile.key
+
+    jsonl_response = client.get(f"/api/datasets/{dataset.key}/export.jsonl?api_key={api_key}")
+    assert jsonl_response.status_code == 200
+    assert jsonl_response["Content-Type"] == "application/x-ndjson; charset=utf-8"
+    assert [json.loads(line) for line in jsonl_response.content.decode().splitlines()] == [
+        {"name": "Ada", "email": "ada@example.com"},
+        {"name": "Grace", "email": "grace@example.com"},
+    ]
+
+    xlsx_response = client.get(f"/api/datasets/{dataset.key}/export.xlsx?api_key={api_key}")
+    assert xlsx_response.status_code == 200
+    assert (
+        xlsx_response["Content-Type"]
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert xlsx_cell_texts(xlsx_response.content)[:4] == [
+        "name",
+        "email",
+        "Ada",
+        "ada@example.com",
+    ]
+
+    sqlite_response = client.get(f"/api/datasets/{dataset.key}/export.sqlite?api_key={api_key}")
+    assert sqlite_response.status_code == 200
+    assert sqlite_response["Content-Type"] == "application/vnd.sqlite3"
+    assert sqlite_rows(sqlite_response.content)[0] == {
+        "name": "Ada",
+        "email": "ada@example.com",
+    }
 
 
 def test_dataset_api_archives_and_restores_dataset(client, profile):

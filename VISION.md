@@ -33,7 +33,8 @@ Rowset should feel like a crisp developer/data utility:
 - Technical without making users assemble every part themselves.
 
 Avoid vague platform language. Prefer specific nouns like dataset, row, index
-column, API key, MCP tool, public preview, CSV export, and Parquet export.
+column, API key, MCP tool, public preview, CSV export, JSONL export, XLSX
+export, SQLite export, and Parquet export.
 
 ## Long-Term Direction
 

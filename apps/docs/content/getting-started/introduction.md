@@ -15,7 +15,7 @@ Rowset gives AI agents a stable MCP and REST surface for API-backed datasets.
 3. Store the agent API key in a private `ROWSET_API_KEY` environment variable or client secret store.
 4. Configure the MCP client's bearer-token env var to `ROWSET_API_KEY`.
 5. Ask the agent to create a dataset from a file, table, or system it can access.
-6. Use MCP or REST for row CRUD, CSV export, and optional public previews.
+6. Use MCP or REST for row CRUD, exports, and optional public previews.
 
 ## API key setup
 
@@ -49,4 +49,4 @@ cannot send bearer tokens, `X-API-Key` is accepted as a fallback.
 - **Agent access** gives the copy/paste prompt and installable `SKILL.md` guidance.
 - **API Reference → Introduction** explains REST authentication and links to generated API docs.
 - **API Reference → User API** is the safest first request for testing a key.
-- **API Reference → Dataset API** covers dataset creation, row CRUD, CSV export, and public preview settings.
+- **API Reference → Dataset API** covers dataset creation, row CRUD, exports, and public preview settings.

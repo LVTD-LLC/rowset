@@ -6,7 +6,7 @@ keywords: Rowset API, API authentication, OpenAPI docs
 
 # API Reference introduction
 
-Rowset exposes authenticated REST endpoints for account checks, dataset creation, dataset rows, CSV exports, and public preview settings.
+Rowset exposes authenticated REST endpoints for account checks, dataset creation, dataset rows, exports, and public preview settings.
 
 ## Base URL
 

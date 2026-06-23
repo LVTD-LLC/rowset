@@ -29,8 +29,8 @@ clear ownership boundaries.
 - Let agents discover datasets, inspect schemas, and perform row operations
   through authenticated MCP or REST.
 - Share read-only public previews with humans when a browser page is enough.
-- Export CSV or Parquet snapshots when a consumer needs a file rather than row
-  access.
+- Export CSV, JSONL, XLSX, SQLite, or Parquet snapshots when a consumer needs a
+  file rather than row access.
 - Manage public preview settings through API and MCP.
 
 ## Core Workflows
