@@ -65,6 +65,9 @@ def _profile():
     dataset = SimpleNamespace(
         key="6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
         name="Customers",
+        description="Customers eligible for launch outreach.",
+        instructions="Use email as the stable identity. Do not rewrite names from guesses.",
+        metadata={"workflow": {"default_status": "new"}},
         project=project,
         original_filename="customers.csv",
         file_type="csv",
@@ -156,6 +159,11 @@ def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
         assert payload["has_more"] is False
         assert payload["datasets"][0]["key"] == "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7"
         assert payload["datasets"][0]["name"] == "Customers"
+        assert payload["datasets"][0]["description"] == "Customers eligible for launch outreach."
+        assert payload["datasets"][0]["instructions"] == (
+            "Use email as the stable identity. Do not rewrite names from guesses."
+        )
+        assert payload["datasets"][0]["metadata"] == {"workflow": {"default_status": "new"}}
         assert payload["datasets"][0]["row_count"] == 42
         assert "rows" not in payload["datasets"][0]
 
@@ -186,6 +194,11 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
         payload = result.data
         assert payload["key"] == "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7"
         assert payload["name"] == "Customers"
+        assert payload["description"] == "Customers eligible for launch outreach."
+        assert payload["instructions"] == (
+            "Use email as the stable identity. Do not rewrite names from guesses."
+        )
+        assert payload["metadata"] == {"workflow": {"default_status": "new"}}
         assert "rows" not in payload
 
     anyio.run(run)
@@ -372,6 +385,9 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
         authenticated_profile,
         *,
         name,
+        description=None,
+        instructions=None,
+        metadata=None,
         headers=None,
         rows=None,
         index_column=None,
@@ -382,6 +398,9 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
             (
                 authenticated_profile.id,
                 name,
+                description,
+                instructions,
+                metadata,
                 headers,
                 rows,
                 index_column,
@@ -412,6 +431,9 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                 "create_dataset",
                 {
                     "name": "Products",
+                    "description": "Supplier catalog.",
+                    "instructions": "Use sku as the stable identity.",
+                    "metadata": {"workflow": {"default_status": "draft"}},
                     "headers": ["sku", "name"],
                     "rows": [{"sku": "A-1", "name": "Adapter"}],
                     "index_column": "sku",
@@ -425,11 +447,120 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
             (
                 11,
                 "Products",
+                "Supplier catalog.",
+                "Use sku as the stable identity.",
+                {"workflow": {"default_status": "draft"}},
                 ["sku", "name"],
                 [{"sku": "A-1", "name": "Adapter"}],
                 "sku",
                 {"sku": "text", "name": "text"},
                 "project-key",
+            )
+        ]
+
+    anyio.run(run)
+
+
+def test_update_dataset_metadata_mcp_tool_calls_dataset_service(monkeypatch):
+    calls = []
+
+    def update_metadata(
+        authenticated_profile,
+        dataset_key,
+        *,
+        description=None,
+        instructions=None,
+        metadata=None,
+    ):
+        calls.append((authenticated_profile.id, dataset_key, description, instructions, metadata))
+        return {
+            "status": "success",
+            "message": "Dataset metadata updated.",
+            "dataset": {
+                "key": dataset_key,
+                "description": description,
+                "instructions": instructions,
+                "metadata": metadata,
+            },
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_dataset_metadata",
+            update_metadata,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "update_dataset_metadata",
+                {
+                    "dataset_key": "ds",
+                    "description": "Task board.",
+                    "instructions": "Keep status transitions explicit.",
+                    "metadata": {"status_order": ["todo", "doing", "done"]},
+                },
+            )
+
+        assert result.data["message"] == "Dataset metadata updated."
+        assert calls == [
+            (
+                11,
+                "ds",
+                "Task board.",
+                "Keep status transitions explicit.",
+                {"status_order": ["todo", "doing", "done"]},
+            )
+        ]
+
+    anyio.run(run)
+
+
+def test_update_dataset_metadata_mcp_tool_treats_null_metadata_as_omitted(monkeypatch):
+    calls = []
+
+    def update_metadata(authenticated_profile, dataset_key, **kwargs):
+        calls.append((authenticated_profile.id, dataset_key, kwargs))
+        return {
+            "status": "success",
+            "message": "Dataset metadata updated.",
+            "dataset": {
+                "key": dataset_key,
+                "description": "Existing task board.",
+                "instructions": kwargs.get("instructions", "Existing instructions."),
+                "metadata": {"status_order": ["todo", "doing", "done"]},
+            },
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_dataset_metadata",
+            update_metadata,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "update_dataset_metadata",
+                {
+                    "dataset_key": "ds",
+                    "instructions": "Keep status transitions explicit.",
+                    "metadata": None,
+                },
+            )
+
+        assert result.data["message"] == "Dataset metadata updated."
+        assert calls == [
+            (
+                11,
+                "ds",
+                {"instructions": "Keep status transitions explicit."},
             )
         ]
 

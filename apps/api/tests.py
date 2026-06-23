@@ -242,6 +242,9 @@ class DatasetListApiUnitTests(SimpleTestCase):
         dataset = SimpleNamespace(
             key="6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
             name="Customers",
+            description="Customers eligible for launch outreach.",
+            instructions="Use email as the stable identity. Do not rewrite names from guesses.",
+            metadata={"workflow": {"default_status": "new"}},
             project=project,
             original_filename="customers.csv",
             file_type="csv",
@@ -286,6 +289,11 @@ class DatasetListApiUnitTests(SimpleTestCase):
             {
                 "key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
                 "name": "Customers",
+                "description": "Customers eligible for launch outreach.",
+                "instructions": (
+                    "Use email as the stable identity. Do not rewrite names from guesses."
+                ),
+                "metadata": {"workflow": {"default_status": "new"}},
                 "project": {
                     "key": "3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
                     "name": "Launch",
@@ -687,6 +695,46 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
     assert response["datasets"][0]["key"] == str(matching_dataset.key)
     assert response["datasets"][0]["project"]["key"] == str(project.key)
     assert "rows" not in response["datasets"][0]
+
+
+@pytest.mark.django_db
+@override_settings(SITE_URL="https://rowset.example")
+def test_search_profile_datasets_matches_description_and_instructions(django_user_model):
+    from apps.api.services import search_profile_datasets
+
+    user = django_user_model.objects.create_user(
+        username="datasetsearchmetadata",
+        email="datasetsearchmetadata@example.com",
+        password="password123",
+    )
+    Dataset.objects.create(
+        profile=user.profile,
+        name="Launch tasks",
+        description="Persistent planning board for launch execution.",
+        instructions="Use the blocked status only when another person must act.",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["task_id", "status"],
+        index_column="task_id",
+    )
+    Dataset.objects.create(
+        profile=user.profile,
+        name="Contacts",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email"],
+        index_column="email",
+    )
+
+    description_response = search_profile_datasets(user.profile, query="planning board")
+    instructions_response = search_profile_datasets(user.profile, query="blocked status")
+
+    assert description_response["count"] == 1
+    assert description_response["datasets"][0]["name"] == "Launch tasks"
+    assert instructions_response["count"] == 1
+    assert instructions_response["datasets"][0]["name"] == "Launch tasks"
 
 
 @pytest.mark.django_db

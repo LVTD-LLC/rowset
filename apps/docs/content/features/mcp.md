@@ -76,7 +76,9 @@ create_dataset
 
 The tool returns the new dataset key. Pass `project_key` to create it inside an
 existing project, or omit `project_key` to leave it ungrouped. Agents can use
-that dataset key immediately with the row tools.
+that dataset key immediately with the row tools. Pass `description`,
+`instructions`, or `metadata` when the dataset should carry persistent operating
+context for future agent runs.
 
 For a specific ready dataset, agents can use:
 
@@ -93,6 +95,7 @@ add_column
 rename_column
 drop_column
 reorder_columns
+update_dataset_metadata
 update_dataset_project
 update_dataset_public_preview
 archive_dataset
@@ -108,6 +111,10 @@ Use `add_column`, `rename_column`, `drop_column`, and `reorder_columns` when an
 existing ready dataset needs schema changes without recreating it. Existing rows
 receive blank or default values when adding a column. Index columns cannot be dropped,
 and generated index columns cannot be renamed.
+
+Use `update_dataset_metadata` when the user wants agents to remember dataset
+purpose, workflow rules, status conventions, or other JSON context without
+changing rows.
 
 Use `archive_dataset` when the user asks to remove a mistaken dataset. Archive keeps
 rows and schema metadata recoverable, hides the dataset from normal lists, and disables

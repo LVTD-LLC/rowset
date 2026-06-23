@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, date, datetime, time
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -12,6 +13,11 @@ from django.utils.dateparse import parse_date, parse_datetime
 
 from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.constants import (
+    MAX_DATASET_DESCRIPTION_LENGTH,
+    MAX_DATASET_INSTRUCTIONS_LENGTH,
+    MAX_DATASET_METADATA_BYTES,
+)
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
@@ -30,6 +36,9 @@ MAX_API_DATASET_CREATE_ROWS = 1000
 DATASET_SUMMARY_ONLY_FIELDS = (
     "key",
     "name",
+    "description",
+    "instructions",
+    "metadata",
     "original_filename",
     "file_type",
     "status",
@@ -52,6 +61,7 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "processed_at",
     "archived_at",
 )
+UNSET = object()
 
 
 def _visible_project_dataset_count():
@@ -287,6 +297,9 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
     return {
         "key": str(dataset.key),
         "name": dataset.name,
+        "description": dataset.description,
+        "instructions": dataset.instructions,
+        "metadata": dataset.metadata or {},
         "project": serialize_project_reference(getattr(dataset, "project", None)),
         "original_filename": dataset.original_filename,
         "file_type": dataset.file_type,
@@ -345,6 +358,8 @@ def search_profile_datasets(
     if normalized_query:
         queryset = queryset.filter(
             Q(name__icontains=normalized_query)
+            | Q(description__icontains=normalized_query)
+            | Q(instructions__icontains=normalized_query)
             | Q(original_filename__icontains=normalized_query)
             | Q(project__name__icontains=normalized_query)
             | Q(project__description__icontains=normalized_query)
@@ -498,6 +513,58 @@ def _normalize_dataset_name(name: str) -> str:
     return normalized_name
 
 
+def _normalize_dataset_description(description: str | None) -> str:
+    normalized_description = (description or "").strip()
+    if len(normalized_description) > MAX_DATASET_DESCRIPTION_LENGTH:
+        raise DatasetServiceError(
+            400,
+            f"Dataset description must be {MAX_DATASET_DESCRIPTION_LENGTH} characters or fewer.",
+        )
+    return normalized_description
+
+
+def _normalize_dataset_instructions(instructions: str | None) -> str:
+    normalized_instructions = (instructions or "").strip()
+    if len(normalized_instructions) > MAX_DATASET_INSTRUCTIONS_LENGTH:
+        raise DatasetServiceError(
+            400,
+            f"Dataset instructions must be {MAX_DATASET_INSTRUCTIONS_LENGTH} characters or fewer.",
+        )
+    return normalized_instructions
+
+
+def _normalize_dataset_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+    if metadata is None:
+        return {}
+    if not isinstance(metadata, dict):
+        raise DatasetServiceError(400, "Dataset metadata must be a JSON object.")
+
+    for key in metadata:
+        if not isinstance(key, str) or not key.strip():
+            raise DatasetServiceError(
+                400,
+                "Dataset metadata keys must be non-empty strings.",
+            )
+
+    try:
+        serialized_metadata = json.dumps(
+            metadata,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise DatasetServiceError(400, "Dataset metadata must be JSON serializable.") from exc
+
+    if len(serialized_metadata.encode("utf-8")) > MAX_DATASET_METADATA_BYTES:
+        raise DatasetServiceError(
+            400,
+            f"Dataset metadata must be {MAX_DATASET_METADATA_BYTES} bytes or fewer.",
+        )
+
+    return metadata
+
+
 def _normalize_create_rows(rows: list[dict[str, Any]] | None) -> list[dict[str, str]]:
     if rows and len(rows) > MAX_API_DATASET_CREATE_ROWS:
         raise DatasetServiceError(
@@ -603,6 +670,9 @@ def create_profile_dataset(
     profile: Profile,
     *,
     name: str,
+    description: str | None = None,
+    instructions: str | None = None,
+    metadata: dict[str, Any] | None = None,
     headers: list[str] | None = None,
     rows: list[dict[str, Any]] | None = None,
     index_column: str | None = None,
@@ -612,6 +682,9 @@ def create_profile_dataset(
 ) -> dict:
     """Create a ready API-backed dataset for an authenticated profile."""
     normalized_name = _normalize_dataset_name(name)
+    normalized_description = _normalize_dataset_description(description)
+    normalized_instructions = _normalize_dataset_instructions(instructions)
+    normalized_metadata = _normalize_dataset_metadata(metadata)
     normalized_project_key = str(project_key or "").strip()
     project = (
         get_profile_project(profile, normalized_project_key) if normalized_project_key else None
@@ -662,6 +735,9 @@ def create_profile_dataset(
             created_by_agent_api_key=agent_api_key,
             updated_by_agent_api_key=agent_api_key,
             name=normalized_name,
+            description=normalized_description,
+            instructions=normalized_instructions,
+            metadata=normalized_metadata,
             original_filename="Created via API",
             file_type=API_CREATED_FILE_TYPE,
             status=DatasetStatus.READY,
@@ -698,6 +774,9 @@ def create_profile_dataset(
                 "row_count": len(row_payloads),
                 "index_column": index_column,
                 "index_generated": index_generated,
+                "description": normalized_description,
+                "instructions": normalized_instructions,
+                "metadata": normalized_metadata,
                 "project_key": str(project.key) if project else "",
             },
         )
@@ -765,6 +844,92 @@ def update_profile_dataset_column_types(
     return {
         "status": "success",
         "message": "Column types updated.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
+def _dataset_metadata_state(dataset: Dataset) -> dict[str, Any]:
+    return {
+        "description": dataset.description,
+        "instructions": dataset.instructions,
+        "metadata": dataset.metadata or {},
+    }
+
+
+def update_profile_dataset_metadata(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    description: Any = UNSET,
+    instructions: Any = UNSET,
+    metadata: Any = UNSET,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    """Update persistent dataset context for agents and authenticated users."""
+    if description is UNSET and instructions is UNSET and metadata is UNSET:
+        raise DatasetServiceError(
+            400,
+            "Provide description, instructions, or metadata to update.",
+        )
+
+    with transaction.atomic():
+        dataset = _get_profile_dataset_from_queryset(
+            Dataset.objects.select_for_update(),
+            profile,
+            dataset_key,
+        )
+        _raise_if_archived(dataset)
+
+        previous_state = _dataset_metadata_state(dataset)
+        changed_fields = []
+        update_fields = []
+
+        if description is not UNSET:
+            next_description = _normalize_dataset_description(description)
+            if dataset.description != next_description:
+                dataset.description = next_description
+                changed_fields.append("description")
+                update_fields.append("description")
+
+        if instructions is not UNSET:
+            next_instructions = _normalize_dataset_instructions(instructions)
+            if dataset.instructions != next_instructions:
+                dataset.instructions = next_instructions
+                changed_fields.append("instructions")
+                update_fields.append("instructions")
+
+        if metadata is not UNSET:
+            next_metadata = _normalize_dataset_metadata(metadata)
+            if (dataset.metadata or {}) != next_metadata:
+                dataset.metadata = next_metadata
+                changed_fields.append("metadata")
+                update_fields.append("metadata")
+
+        if changed_fields:
+            dataset.updated_by_agent_api_key = agent_api_key
+            update_fields.extend(["updated_by_agent_api_key", "updated_at"])
+            dataset.save(update_fields=update_fields)
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.DATASET_METADATA_UPDATED,
+                "Dataset metadata updated.",
+                agent_api_key=agent_api_key,
+                target_type="dataset",
+                target_identifier=str(dataset.key),
+                metadata={
+                    "previous": previous_state,
+                    "current": _dataset_metadata_state(dataset),
+                    "changed_fields": changed_fields,
+                },
+            )
+
+    return {
+        "status": "success",
+        "message": (
+            "Dataset metadata updated."
+            if changed_fields
+            else "No dataset metadata changes detected."
+        ),
         "dataset": serialize_dataset_summary(dataset),
     }
 

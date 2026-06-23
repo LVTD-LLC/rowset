@@ -35,6 +35,8 @@ class DatasetAdmin(admin.ModelAdmin):
     )
     search_fields = (
         "name",
+        "description",
+        "instructions",
         "original_filename",
         "project__name",
         "profile__user__email",
