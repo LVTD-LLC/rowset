@@ -948,6 +948,15 @@ def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
             ),
         ),
         (
+            DatasetServiceError(401, "Unauthorized."),
+            _expected_mcp_error(
+                code="AUTHORIZATION_FAILED",
+                message="Unauthorized.",
+                suggested_action="Check that the API key has access to this Rowset resource.",
+                http_status=401,
+            ),
+        ),
+        (
             DatasetServiceError(429, "Rate limited."),
             _expected_mcp_error(
                 code="RATE_LIMITED",
