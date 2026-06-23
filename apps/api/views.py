@@ -58,6 +58,7 @@ from apps.api.services import (
     get_ready_profile_dataset,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
+    patch_profile_dataset_row_by_index,
     rename_profile_dataset_column,
     reorder_profile_dataset_columns,
     restore_profile_dataset,
@@ -764,6 +765,30 @@ def create_dataset_row(request: HttpRequest, dataset_key: str, payload: DatasetR
 def get_dataset_row_by_index(request: HttpRequest, dataset_key: str, index_value: str):
     try:
         return get_profile_dataset_row_by_index(request.auth, dataset_key, index_value)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.patch(
+    "/datasets/{dataset_key}/rows/by-index",
+    response=DatasetApiOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def patch_dataset_row_by_index(
+    request: HttpRequest,
+    dataset_key: str,
+    index_value: str,
+    payload: DatasetRowPatchIn,
+):
+    try:
+        return patch_profile_dataset_row_by_index(
+            request.auth,
+            dataset_key,
+            index_value,
+            payload.data,
+            **_agent_actor_kwargs(request),
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 

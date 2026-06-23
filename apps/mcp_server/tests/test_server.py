@@ -340,6 +340,14 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
         calls.append(("update", dataset_key, row_id, data))
         return {"status": "success", "message": "Row updated.", "row": {"id": row_id, "data": data}}
 
+    def update_row_by_index(authenticated_profile, dataset_key, index_value, data):
+        calls.append(("update_by_index", dataset_key, index_value, data))
+        return {
+            "status": "success",
+            "message": "Row updated.",
+            "row": {"index_value": index_value, "data": data},
+        }
+
     def delete_row(authenticated_profile, dataset_key, row_id):
         calls.append(("delete", dataset_key, row_id))
         return {"status": "success", "message": "Row deleted."}
@@ -354,6 +362,10 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
         monkeypatch.setattr("apps.mcp_server.server.get_profile_dataset_row_by_index", get_by_index)
         monkeypatch.setattr("apps.mcp_server.server.create_profile_dataset_row", create_row)
         monkeypatch.setattr("apps.mcp_server.server.patch_profile_dataset_row", update_row)
+        monkeypatch.setattr(
+            "apps.mcp_server.server.patch_profile_dataset_row_by_index",
+            update_row_by_index,
+        )
         monkeypatch.setattr("apps.mcp_server.server.delete_profile_dataset_row", delete_row)
 
         async with Client(mcp) as client:
@@ -377,6 +389,14 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
                 "update_dataset_row",
                 {"dataset_key": "ds", "row_id": 7, "data": {"email": "c@example.com"}},
             )
+            update_by_index_result = await client.call_tool(
+                "update_dataset_row_by_index",
+                {
+                    "dataset_key": "ds",
+                    "index_value": "c@example.com",
+                    "data": {"name": "Ada"},
+                },
+            )
             delete_result = await client.call_tool(
                 "delete_dataset_row",
                 {"dataset_key": "ds", "row_id": 7},
@@ -387,6 +407,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
         assert get_by_index_result.data["row"]["index_value"] == "a@example.com"
         assert create_result.data["row"]["data"]["email"] == "b@example.com"
         assert update_result.data["row"]["data"]["email"] == "c@example.com"
+        assert update_by_index_result.data["row"]["data"]["name"] == "Ada"
         assert delete_result.data["message"] == "Row deleted."
 
         assert calls == [
@@ -395,6 +416,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             ("get_by_index", "ds", "a@example.com"),
             ("create", "ds", {"email": "b@example.com"}),
             ("update", "ds", 7, {"email": "c@example.com"}),
+            ("update_by_index", "ds", "c@example.com", {"name": "Ada"}),
             ("delete", "ds", 7),
         ]
 
