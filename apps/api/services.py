@@ -4,7 +4,7 @@ from uuid import UUID
 
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
@@ -310,7 +310,7 @@ def _get_profile_dataset_from_queryset(
     # pasted Rowset URLs intentionally resolve through a scoped fallback.
     try:
         return queryset.get(key=identifier, profile=profile)
-    except (Dataset.DoesNotExist, ValidationError, ValueError):
+    except Dataset.DoesNotExist, ValidationError, ValueError:
         pass
 
     try:
@@ -1407,6 +1407,9 @@ def _patch_dataset_row(
     data: dict,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
+    if not connection.in_atomic_block:
+        raise AssertionError("_patch_dataset_row must be called inside transaction.atomic().")
+
     changed_fields = sorted(key for key in data if key in dataset.headers)
     row.data = {
         **row.data,
