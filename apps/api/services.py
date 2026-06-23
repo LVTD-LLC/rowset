@@ -344,13 +344,11 @@ def search_profile_datasets(
         )
     if normalized_project_key:
         try:
-            project = get_profile_project(profile, normalized_project_key)
-        except DatasetServiceError as exc:
-            if exc.status_code != 404:
-                raise
+            project_key_uuid = UUID(normalized_project_key)
+        except ValueError:
             queryset = queryset.none()
         else:
-            queryset = queryset.filter(project=project)
+            queryset = queryset.filter(project__key=project_key_uuid)
     if normalized_status:
         queryset = queryset.filter(status=normalized_status)
     if normalized_updated_after is not None:
