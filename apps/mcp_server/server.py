@@ -1,7 +1,9 @@
+import json
 from typing import Annotated, Any
 
 from django.db import close_old_connections
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from pydantic import Field
 
@@ -43,6 +45,11 @@ from filebridge.utils import get_filebridge_logger
 logger = get_filebridge_logger(__name__)
 AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
+RETRYABLE_ERROR_CODES = {
+    "DATASET_NOT_READY",
+    "RATE_LIMITED",
+    "ROWSET_SERVICE_ERROR",
+}
 
 mcp = FastMCP(
     name="Rowset",
@@ -147,8 +154,148 @@ def _get_access_token_profile() -> Profile | None:
     return _attach_agent_api_key(profile, agent_api_key)
 
 
-def _service_error_to_value_error(exc: DatasetServiceError) -> ValueError:
-    return ValueError(f"{exc.status_code}: {exc.message}")
+def _error_message_sentence(message: str) -> str:
+    text = str(message or "Rowset request failed.").strip()
+    if text.endswith((".", "?", "!")):
+        return text
+    return f"{text}."
+
+
+def _mcp_error_payload(
+    *,
+    code: str,
+    message: str,
+    retryable: bool,
+    suggested_action: str,
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "code": code,
+        "message": _error_message_sentence(message),
+        "retryable": retryable,
+        "suggested_action": suggested_action,
+        "details": details or {},
+    }
+
+
+def _mcp_tool_error(payload: dict[str, Any]) -> ToolError:
+    return ToolError(json.dumps(payload, sort_keys=True))
+
+
+def _message_error_code(
+    message: str,
+    matches: tuple[tuple[str, str], ...],
+    fallback: str,
+) -> str:
+    for needle, code in matches:
+        if needle in message:
+            return code
+    return fallback
+
+
+def _dataset_service_error_code(exc: DatasetServiceError) -> str:
+    status_code = exc.status_code
+    message = exc.message.lower()
+    if status_code == 404:
+        return _message_error_code(
+            message,
+            (
+                ("row not found", "ROW_NOT_FOUND"),
+                ("dataset not found", "DATASET_NOT_FOUND"),
+                ("project not found", "PROJECT_NOT_FOUND"),
+                ("column not found", "COLUMN_NOT_FOUND"),
+            ),
+            "NOT_FOUND",
+        )
+    if status_code == 400:
+        return "VALIDATION_ERROR"
+    if status_code == 409:
+        return _message_error_code(
+            message,
+            (
+                ("archived", "DATASET_ARCHIVED"),
+                ("not ready", "DATASET_NOT_READY"),
+            ),
+            "CONFLICT",
+        )
+    if status_code in {401, 403}:
+        return "AUTHORIZATION_FAILED"
+    if status_code == 429:
+        return "RATE_LIMITED"
+    if status_code >= 500:
+        return "ROWSET_SERVICE_ERROR"
+    return "ROWSET_ERROR"
+
+
+def _dataset_service_error_suggested_action(code: str) -> str:
+    suggestions = {
+        "ROW_NOT_FOUND": "Check the row id or index value and try again.",
+        "DATASET_NOT_FOUND": (
+            "Check that dataset_key is a private key, public key, or Rowset URL "
+            "for a dataset owned by this profile."
+        ),
+        "PROJECT_NOT_FOUND": "Check the project key and try again.",
+        "COLUMN_NOT_FOUND": "Check the column name against the dataset headers and try again.",
+        "VALIDATION_ERROR": "Check the tool arguments against the dataset schema and try again.",
+        "DATASET_ARCHIVED": "Restore the dataset before making changes.",
+        "DATASET_NOT_READY": "Confirm and wait for dataset import to finish before retrying.",
+        "CONFLICT": "Refresh the dataset or row state, resolve the conflict, and try again.",
+        "AUTHORIZATION_FAILED": "Check that the API key has access to this Rowset resource.",
+        "RATE_LIMITED": "Back off before retrying the request.",
+        "ROWSET_SERVICE_ERROR": "Retry the request. If it keeps failing, report the error.",
+        "NOT_FOUND": "Check the identifier and try again.",
+        "ROWSET_ERROR": "Check the request and try again.",
+    }
+    return suggestions.get(code, suggestions["ROWSET_ERROR"])
+
+
+def _service_error_to_tool_error(exc: DatasetServiceError) -> ToolError:
+    code = _dataset_service_error_code(exc)
+    return _mcp_tool_error(
+        _mcp_error_payload(
+            code=code,
+            message=exc.message,
+            retryable=code in RETRYABLE_ERROR_CODES,
+            suggested_action=_dataset_service_error_suggested_action(code),
+            details={"http_status": exc.status_code},
+        )
+    )
+
+
+def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
+    raw_message = str(exc)
+    normalized_message = raw_message.lower()
+    if "missing" in normalized_message and "authorization" in normalized_message:
+        code = "AUTHORIZATION_MISSING"
+        suggested_action = (
+            "Configure the MCP request with Authorization: Bearer <ROWSET_API_KEY>."
+        )
+    elif "no longer active" in normalized_message:
+        code = "API_KEY_INACTIVE"
+        suggested_action = "Create or select an active Rowset agent API key and retry."
+    else:
+        code = "AUTHENTICATION_FAILED"
+        suggested_action = (
+            "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
+            "with an active Rowset API key."
+        )
+
+    return _mcp_tool_error(
+        _mcp_error_payload(
+            code=code,
+            message=raw_message,
+            retryable=False,
+            suggested_action=suggested_action,
+            details={"http_status": 401},
+        )
+    )
+
+
+def _mcp_authenticated_profile() -> Profile:
+    try:
+        return _authenticate_profile()
+    except PermissionError as exc:
+        raise _permission_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -158,8 +305,11 @@ def _service_error_to_value_error(exc: DatasetServiceError) -> ValueError:
 def get_user_info() -> dict:
     """Return safe user/profile details for the authenticated Rowset user."""
     close_old_connections()
-    profile = _authenticate_profile()
-    return serialize_user_info(profile)
+    profile = _mcp_authenticated_profile()
+    try:
+        return serialize_user_info(profile)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -178,8 +328,11 @@ def get_all_datasets(
 ) -> dict:
     """Return a bounded page of datasets for the authenticated Rowset user."""
     close_old_connections()
-    profile = _authenticate_profile()
-    return serialize_profile_datasets(profile, limit=limit, offset=offset)
+    profile = _mcp_authenticated_profile()
+    try:
+        return serialize_profile_datasets(profile, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -238,7 +391,7 @@ def search_datasets(
     ] = 0,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return search_profile_datasets(
             profile,
@@ -251,7 +404,7 @@ def search_datasets(
             offset=offset,
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -262,11 +415,11 @@ def get_dataset(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return serialize_dataset_summary(get_profile_dataset(profile, dataset_key))
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -285,8 +438,11 @@ def get_all_projects(
 ) -> dict:
     """Return a bounded page of projects for the authenticated Rowset user."""
     close_old_connections()
-    profile = _authenticate_profile()
-    return serialize_profile_projects(profile, limit=limit, offset=offset)
+    profile = _mcp_authenticated_profile()
+    try:
+        return serialize_profile_projects(profile, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -308,11 +464,11 @@ def search_projects(
     ] = 0,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return search_profile_projects(profile, query=query, limit=limit, offset=offset)
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -327,11 +483,11 @@ def create_project(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return create_profile_project(profile, name=name, description=description)
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -350,7 +506,7 @@ def get_project(
     ] = 0,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return serialize_profile_project_detail(
             profile,
@@ -359,7 +515,7 @@ def get_project(
             offset=offset,
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -425,7 +581,7 @@ def create_dataset(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return create_profile_dataset(
             profile,
@@ -438,7 +594,7 @@ def create_dataset(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -458,7 +614,7 @@ def update_dataset_column_types(
     ],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return update_profile_dataset_column_types(
             profile,
@@ -467,7 +623,7 @@ def update_dataset_column_types(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -499,7 +655,7 @@ def add_column(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return add_profile_dataset_column(
             profile,
@@ -510,7 +666,7 @@ def add_column(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -525,7 +681,7 @@ def rename_column(
     new_name: Annotated[str, Field(description="New dataset column name.")],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return rename_profile_dataset_column(
             profile,
@@ -535,7 +691,7 @@ def rename_column(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -547,7 +703,7 @@ def drop_column(
     name: Annotated[str, Field(description="Existing non-index dataset column name.")],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return drop_profile_dataset_column(
             profile,
@@ -556,7 +712,7 @@ def drop_column(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -574,7 +730,7 @@ def reorder_columns(
     ],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return reorder_profile_dataset_columns(
             profile,
@@ -583,7 +739,7 @@ def reorder_columns(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -604,7 +760,7 @@ def update_dataset_project(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return update_profile_dataset_project(
             profile,
@@ -613,7 +769,7 @@ def update_dataset_project(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -657,7 +813,7 @@ def update_dataset_public_preview(
     ] = False,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return update_profile_dataset_public_preview(
             profile,
@@ -669,7 +825,7 @@ def update_dataset_public_preview(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -683,7 +839,7 @@ def archive_dataset(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return archive_profile_dataset(
             profile,
@@ -691,7 +847,7 @@ def archive_dataset(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -702,7 +858,7 @@ def restore_dataset(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return restore_profile_dataset(
             profile,
@@ -710,7 +866,7 @@ def restore_dataset(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -723,11 +879,11 @@ def list_dataset_rows(
     offset: Annotated[int, Field(default=0, ge=0)] = 0,
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return list_profile_dataset_rows(profile, dataset_key, limit=limit, offset=offset)
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -739,11 +895,11 @@ def get_dataset_row(
     row_id: Annotated[int, Field(ge=1, description="Internal Rowset row id.")],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return get_profile_dataset_row(profile, dataset_key, row_id)
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -755,11 +911,11 @@ def get_dataset_row_by_index(
     index_value: Annotated[str, Field(description="Value from the dataset index column.")],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return get_profile_dataset_row_by_index(profile, dataset_key, index_value)
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -771,7 +927,7 @@ def create_dataset_row(
     data: Annotated[dict[str, str], Field(description="Row values keyed by dataset header.")],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return create_profile_dataset_row(
             profile,
@@ -780,7 +936,7 @@ def create_dataset_row(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -793,7 +949,7 @@ def update_dataset_row(
     data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return patch_profile_dataset_row(
             profile,
@@ -803,7 +959,7 @@ def update_dataset_row(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -816,7 +972,7 @@ def update_dataset_row_by_index(
     data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return patch_profile_dataset_row_by_index(
             profile,
@@ -826,7 +982,7 @@ def update_dataset_row_by_index(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc
 
 
 @mcp.tool(
@@ -838,7 +994,7 @@ def delete_dataset_row(
     row_id: Annotated[int, Field(ge=1, description="Internal Rowset row id.")],
 ) -> dict:
     close_old_connections()
-    profile = _authenticate_profile()
+    profile = _mcp_authenticated_profile()
     try:
         return delete_profile_dataset_row(
             profile,
@@ -847,4 +1003,4 @@ def delete_dataset_row(
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
-        raise _service_error_to_value_error(exc) from exc
+        raise _service_error_to_tool_error(exc) from exc

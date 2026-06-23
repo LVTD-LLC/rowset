@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import anyio
@@ -10,6 +11,38 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.mcp_server.server import get_dataset_row as mcp_get_dataset_row
 from apps.mcp_server.server import mcp
+
+
+def _extract_mcp_error_payload(error: Exception) -> dict:
+    decoder = json.JSONDecoder()
+    text = str(error)
+    for index, character in enumerate(text):
+        if character != "{":
+            continue
+        try:
+            payload, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    pytest.fail(f"No JSON error payload found in: {text}")
+
+
+def _expected_mcp_error(
+    *,
+    code: str,
+    message: str,
+    suggested_action: str,
+    http_status: int,
+    retryable: bool = False,
+) -> dict:
+    return {
+        "code": code,
+        "message": message,
+        "retryable": retryable,
+        "suggested_action": suggested_action,
+        "details": {"http_status": http_status},
+    }
 
 
 def _profile():
@@ -814,7 +847,152 @@ def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
     anyio.run(run)
 
 
-def test_dataset_row_mcp_tools_return_service_errors(monkeypatch):
+@pytest.mark.parametrize(
+    ("service_error", "expected_payload"),
+    [
+        (
+            DatasetServiceError(404, "Row not found."),
+            _expected_mcp_error(
+                code="ROW_NOT_FOUND",
+                message="Row not found.",
+                suggested_action="Check the row id or index value and try again.",
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(404, "Dataset not found."),
+            _expected_mcp_error(
+                code="DATASET_NOT_FOUND",
+                message="Dataset not found.",
+                suggested_action=(
+                    "Check that dataset_key is a private key, public key, or Rowset URL "
+                    "for a dataset owned by this profile."
+                ),
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(404, "Project not found."),
+            _expected_mcp_error(
+                code="PROJECT_NOT_FOUND",
+                message="Project not found.",
+                suggested_action="Check the project key and try again.",
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(404, "Column not found."),
+            _expected_mcp_error(
+                code="COLUMN_NOT_FOUND",
+                message="Column not found.",
+                suggested_action="Check the column name against the dataset headers and try again.",
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(404, "Thing not found."),
+            _expected_mcp_error(
+                code="NOT_FOUND",
+                message="Thing not found.",
+                suggested_action="Check the identifier and try again.",
+                http_status=404,
+            ),
+        ),
+        (
+            DatasetServiceError(400, "Invalid input."),
+            _expected_mcp_error(
+                code="VALIDATION_ERROR",
+                message="Invalid input.",
+                suggested_action=(
+                    "Check the tool arguments against the dataset schema and try again."
+                ),
+                http_status=400,
+            ),
+        ),
+        (
+            DatasetServiceError(409, "Dataset is archived. Restore it before making changes."),
+            _expected_mcp_error(
+                code="DATASET_ARCHIVED",
+                message="Dataset is archived. Restore it before making changes.",
+                suggested_action="Restore the dataset before making changes.",
+                http_status=409,
+            ),
+        ),
+        (
+            DatasetServiceError(409, "Dataset is not ready yet."),
+            _expected_mcp_error(
+                code="DATASET_NOT_READY",
+                message="Dataset is not ready yet.",
+                retryable=True,
+                suggested_action="Confirm and wait for dataset import to finish before retrying.",
+                http_status=409,
+            ),
+        ),
+        (
+            DatasetServiceError(409, "Row with index already exists."),
+            _expected_mcp_error(
+                code="CONFLICT",
+                message="Row with index already exists.",
+                suggested_action=(
+                    "Refresh the dataset or row state, resolve the conflict, and try again."
+                ),
+                http_status=409,
+            ),
+        ),
+        (
+            DatasetServiceError(403, "Forbidden."),
+            _expected_mcp_error(
+                code="AUTHORIZATION_FAILED",
+                message="Forbidden.",
+                suggested_action="Check that the API key has access to this Rowset resource.",
+                http_status=403,
+            ),
+        ),
+        (
+            DatasetServiceError(401, "Unauthorized."),
+            _expected_mcp_error(
+                code="AUTHORIZATION_FAILED",
+                message="Unauthorized.",
+                suggested_action="Check that the API key has access to this Rowset resource.",
+                http_status=401,
+            ),
+        ),
+        (
+            DatasetServiceError(429, "Rate limited."),
+            _expected_mcp_error(
+                code="RATE_LIMITED",
+                message="Rate limited.",
+                retryable=True,
+                suggested_action="Back off before retrying the request.",
+                http_status=429,
+            ),
+        ),
+        (
+            DatasetServiceError(500, "Rowset exploded."),
+            _expected_mcp_error(
+                code="ROWSET_SERVICE_ERROR",
+                message="Rowset exploded.",
+                retryable=True,
+                suggested_action="Retry the request. If it keeps failing, report the error.",
+                http_status=500,
+            ),
+        ),
+        (
+            DatasetServiceError(418, "Unexpected teapot."),
+            _expected_mcp_error(
+                code="ROWSET_ERROR",
+                message="Unexpected teapot.",
+                suggested_action="Check the request and try again.",
+                http_status=418,
+            ),
+        ),
+    ],
+)
+def test_dataset_row_mcp_tools_return_service_errors(
+    monkeypatch,
+    service_error,
+    expected_payload,
+):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -822,27 +1000,118 @@ def test_dataset_row_mcp_tools_return_service_errors(monkeypatch):
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.get_profile_dataset_row",
-            lambda profile, dataset_key, row_id: (_ for _ in ()).throw(
-                DatasetServiceError(404, "Row not found.")
-            ),
+            lambda profile, dataset_key, row_id: (_ for _ in ()).throw(service_error),
         )
 
         async with Client(mcp) as client:
-            with pytest.raises(Exception, match="404: Row not found"):
+            with pytest.raises(Exception) as exc_info:
                 await client.call_tool("get_dataset_row", {"dataset_key": "ds", "row_id": 999})
+
+        assert _extract_mcp_error_payload(exc_info.value) == expected_payload
 
     anyio.run(run)
 
 
-def test_get_user_info_mcp_tool_rejects_invalid_api_key(monkeypatch):
+@pytest.mark.parametrize(
+    ("tool_name", "arguments", "serializer_path"),
+    [
+        ("get_user_info", {}, "apps.mcp_server.server.serialize_user_info"),
+        ("get_all_datasets", {}, "apps.mcp_server.server.serialize_profile_datasets"),
+        ("get_all_projects", {}, "apps.mcp_server.server.serialize_profile_projects"),
+    ],
+)
+def test_metadata_mcp_tools_return_service_errors(
+    monkeypatch,
+    tool_name,
+    arguments,
+    serializer_path,
+):
+    expected_payload = _expected_mcp_error(
+        code="VALIDATION_ERROR",
+        message="Invalid metadata.",
+        suggested_action="Check the tool arguments against the dataset schema and try again.",
+        http_status=400,
+    )
+
+    def raise_service_error(*args, **kwargs):
+        raise DatasetServiceError(400, "Invalid metadata.")
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(serializer_path, raise_service_error)
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool(tool_name, arguments)
+
+        assert _extract_mcp_error_payload(exc_info.value) == expected_payload
+
+    anyio.run(run)
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_code", "expected_message", "expected_suggested_action"),
+    [
+        (
+            "Missing Rowset authorization. Configure the Rowset MCP server request with "
+            "Authorization: Bearer <ROWSET_API_KEY>.",
+            "AUTHORIZATION_MISSING",
+            "Missing Rowset authorization. Configure the Rowset MCP server request with "
+            "Authorization: Bearer <ROWSET_API_KEY>.",
+            "Configure the MCP request with Authorization: Bearer <ROWSET_API_KEY>.",
+        ),
+        (
+            "The Rowset agent API key for this token is no longer active.",
+            "API_KEY_INACTIVE",
+            "The Rowset agent API key for this token is no longer active.",
+            "Create or select an active Rowset agent API key and retry.",
+        ),
+        (
+            "Invalid Rowset API key",
+            "AUTHENTICATION_FAILED",
+            "Invalid Rowset API key.",
+            (
+                "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
+                "with an active Rowset API key."
+            ),
+        ),
+        (
+            "A required field is missing",
+            "AUTHENTICATION_FAILED",
+            "A required field is missing.",
+            (
+                "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
+                "with an active Rowset API key."
+            ),
+        ),
+    ],
+)
+def test_get_user_info_mcp_tool_returns_structured_auth_errors(
+    monkeypatch,
+    message,
+    expected_code,
+    expected_message,
+    expected_suggested_action,
+):
     def reject(api_key=None):
-        raise PermissionError("Invalid Rowset API key")
+        raise PermissionError(message)
 
     async def run():
         monkeypatch.setattr("apps.mcp_server.server._authenticate_profile", reject)
 
         async with Client(mcp) as client:
-            with pytest.raises(Exception, match="Invalid Rowset API key"):
+            with pytest.raises(Exception) as exc_info:
                 await client.call_tool("get_user_info", {})
+
+        assert _extract_mcp_error_payload(exc_info.value) == {
+            "code": expected_code,
+            "message": expected_message,
+            "retryable": False,
+            "suggested_action": expected_suggested_action,
+            "details": {"http_status": 401},
+        }
 
     anyio.run(run)
