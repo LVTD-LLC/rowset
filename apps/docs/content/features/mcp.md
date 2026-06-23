@@ -86,6 +86,10 @@ get_dataset_row_by_index
 create_dataset_row
 update_dataset_row
 delete_dataset_row
+add_column
+rename_column
+drop_column
+reorder_columns
 update_dataset_project
 update_dataset_public_preview
 archive_dataset
@@ -93,9 +97,14 @@ restore_dataset
 ```
 
 Dataset and row tools enforce the authenticated user's ownership boundary.
-`create_dataset`, `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`
-change dataset contents, so agents should ask the user before using them unless the
-user explicitly requested the change.
+`create_dataset`, row mutation tools, and schema mutation tools change dataset
+contents, so agents should ask the user before using them unless the user explicitly
+requested the change.
+
+Use `add_column`, `rename_column`, `drop_column`, and `reorder_columns` when an
+existing ready dataset needs schema changes without recreating it. Existing rows
+receive blank or default values when adding a column. Index columns cannot be dropped,
+and generated index columns cannot be renamed.
 
 Use `archive_dataset` when the user asks to remove a mistaken dataset. Archive keeps
 rows and schema metadata recoverable, hides the dataset from normal lists, and disables

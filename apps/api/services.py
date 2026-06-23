@@ -566,6 +566,300 @@ def update_profile_dataset_column_types(
     }
 
 
+def _normalize_existing_column_name(dataset: Dataset, name: str) -> str:
+    normalized_name = str(name or "").strip()
+    if normalized_name not in dataset.headers:
+        raise DatasetServiceError(404, "Column not found.")
+    return normalized_name
+
+
+def _normalize_new_column_name(dataset: Dataset, name: str, *, replacing: str | None = None) -> str:
+    normalized_name = str(name or "").strip()
+    if replacing is None:
+        next_headers = [*dataset.headers, normalized_name]
+    else:
+        next_headers = [
+            normalized_name if header == replacing else header for header in dataset.headers
+        ]
+
+    try:
+        validate_headers(next_headers, "Dataset")
+    except CSVParseError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+    return normalized_name
+
+
+def _normalized_column_schema_for_headers(
+    headers: list[str],
+    column_schema: dict,
+) -> dict[str, dict[str, str]]:
+    try:
+        return normalize_column_schema(headers, column_schema)
+    except CSVParseError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+
+def _transform_dataset_rows(
+    dataset: Dataset,
+    transform,
+    *,
+    agent_api_key: AgentApiKey | None,
+) -> list[dict[str, str]]:
+    rows = list(dataset.rows.order_by("row_number"))
+    now = timezone.now()
+    for row in rows:
+        row.data = transform(row.data or {})
+        row.updated_by_agent_api_key = agent_api_key
+        row.updated_at = now
+
+    if rows:
+        DatasetRow.objects.bulk_update(
+            rows,
+            ["data", "updated_by_agent_api_key", "updated_at"],
+            batch_size=1000,
+        )
+        return [row.data for row in rows[:5]]
+
+    return [transform(preview_row or {}) for preview_row in dataset.preview_rows[:5]]
+
+
+def add_profile_dataset_column(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    name: str,
+    default_value: Any = "",
+    column_type: str | None = None,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    """Add one column to a ready dataset and backfill existing rows."""
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        column_name = _normalize_new_column_name(dataset, name)
+        default_cell = _stringify_cell(default_value)
+        next_headers = [*dataset.headers, column_name]
+        try:
+            dataset.column_schema = normalize_column_schema(
+                next_headers,
+                {column_name: column_type} if column_type is not None else {},
+                fallback_schema=dataset.column_schema,
+                reject_unknown=True,
+            )
+        except CSVParseError as exc:
+            raise DatasetServiceError(400, str(exc)) from exc
+
+        def add_column(data: dict) -> dict[str, str]:
+            next_data = dict(data)
+            next_data[column_name] = _stringify_cell(next_data.get(column_name, default_cell))
+            return next_data
+
+        dataset.headers = next_headers
+        dataset.preview_rows = _transform_dataset_rows(
+            dataset,
+            add_column,
+            agent_api_key=agent_api_key,
+        )
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(
+            update_fields=[
+                "headers",
+                "column_schema",
+                "preview_rows",
+                "updated_by_agent_api_key",
+                "updated_at",
+            ]
+        )
+
+    return {
+        "status": "success",
+        "message": "Column added.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
+def rename_profile_dataset_column(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    old_name: str,
+    new_name: str,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    """Rename one column on a ready dataset while preserving row values."""
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        old_column_name = _normalize_existing_column_name(dataset, old_name)
+        if dataset.index_generated and old_column_name == dataset.index_column:
+            raise DatasetServiceError(
+                400,
+                f"Generated index column '{dataset.index_column}' cannot be renamed.",
+            )
+
+        new_column_name = _normalize_new_column_name(
+            dataset,
+            new_name,
+            replacing=old_column_name,
+        )
+        current_schema = _normalized_column_schema_for_headers(
+            dataset.headers,
+            dataset.column_schema,
+        )
+        next_headers = [
+            new_column_name if header == old_column_name else header for header in dataset.headers
+        ]
+        dataset.column_schema = {
+            new_column_name if header == old_column_name else header: current_schema[header]
+            for header in dataset.headers
+        }
+
+        def rename_column(data: dict) -> dict[str, str]:
+            if old_column_name not in data:
+                return {**data, new_column_name: ""}
+            return {
+                new_column_name if key == old_column_name else key: _stringify_cell(value)
+                for key, value in data.items()
+            }
+
+        dataset.headers = next_headers
+        if dataset.index_column == old_column_name:
+            dataset.index_column = new_column_name
+        dataset.preview_rows = _transform_dataset_rows(
+            dataset,
+            rename_column,
+            agent_api_key=agent_api_key,
+        )
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(
+            update_fields=[
+                "headers",
+                "column_schema",
+                "index_column",
+                "preview_rows",
+                "updated_by_agent_api_key",
+                "updated_at",
+            ]
+        )
+
+    return {
+        "status": "success",
+        "message": "Column renamed.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
+def drop_profile_dataset_column(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    name: str,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    """Drop one non-index column from a ready dataset and stored rows."""
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        column_name = _normalize_existing_column_name(dataset, name)
+        if column_name == dataset.index_column:
+            raise DatasetServiceError(
+                400,
+                f"Index column '{dataset.index_column}' cannot be dropped.",
+            )
+
+        current_schema = _normalized_column_schema_for_headers(
+            dataset.headers,
+            dataset.column_schema,
+        )
+        next_headers = [header for header in dataset.headers if header != column_name]
+        dataset.column_schema = {header: current_schema[header] for header in next_headers}
+
+        def drop_column(data: dict) -> dict[str, str]:
+            next_data = dict(data)
+            next_data.pop(column_name, None)
+            return next_data
+
+        dataset.headers = next_headers
+        dataset.preview_rows = _transform_dataset_rows(
+            dataset,
+            drop_column,
+            agent_api_key=agent_api_key,
+        )
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(
+            update_fields=[
+                "headers",
+                "column_schema",
+                "preview_rows",
+                "updated_by_agent_api_key",
+                "updated_at",
+            ]
+        )
+
+    return {
+        "status": "success",
+        "message": "Column dropped.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
+def _normalize_reordered_headers(dataset: Dataset, headers: list[str]) -> list[str]:
+    try:
+        normalized_headers = validate_headers(
+            [str(header or "").strip() for header in headers],
+            "Dataset",
+        )
+    except CSVParseError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+    missing_headers = [header for header in dataset.headers if header not in normalized_headers]
+    unknown_headers = [header for header in normalized_headers if header not in dataset.headers]
+    if missing_headers or unknown_headers:
+        details = []
+        if missing_headers:
+            details.append(f"missing headers: {', '.join(missing_headers)}")
+        if unknown_headers:
+            details.append(f"unknown headers: {', '.join(unknown_headers)}")
+        joined = "; ".join(details)
+        raise DatasetServiceError(
+            400,
+            f"Reordered headers must include each existing header exactly once ({joined}).",
+        )
+
+    return normalized_headers
+
+
+def reorder_profile_dataset_columns(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    headers: list[str],
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    """Update the display/export order for ready dataset columns."""
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        next_headers = _normalize_reordered_headers(dataset, headers)
+        current_schema = _normalized_column_schema_for_headers(
+            dataset.headers,
+            dataset.column_schema,
+        )
+        dataset.headers = next_headers
+        dataset.column_schema = {header: current_schema[header] for header in next_headers}
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(
+            update_fields=[
+                "headers",
+                "column_schema",
+                "updated_by_agent_api_key",
+                "updated_at",
+            ]
+        )
+
+    return {
+        "status": "success",
+        "message": "Columns reordered.",
+        "dataset": serialize_dataset_summary(dataset),
+    }
+
+
 def update_profile_dataset_public_preview(
     profile: Profile,
     dataset_key: str,

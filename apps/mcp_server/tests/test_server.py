@@ -437,6 +437,100 @@ def test_update_dataset_column_types_mcp_tool_calls_dataset_service(monkeypatch)
     anyio.run(run)
 
 
+def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
+    calls = []
+
+    def add_column(
+        authenticated_profile,
+        dataset_key,
+        *,
+        name,
+        default_value="",
+        column_type=None,
+    ):
+        calls.append(
+            ("add", authenticated_profile.id, dataset_key, name, default_value, column_type)
+        )
+        return {
+            "status": "success",
+            "message": "Column added.",
+            "dataset": {"key": dataset_key, "headers": ["email", name]},
+        }
+
+    def rename_column(authenticated_profile, dataset_key, *, old_name, new_name):
+        calls.append(("rename", authenticated_profile.id, dataset_key, old_name, new_name))
+        return {
+            "status": "success",
+            "message": "Column renamed.",
+            "dataset": {"key": dataset_key, "headers": [new_name]},
+        }
+
+    def drop_column(authenticated_profile, dataset_key, *, name):
+        calls.append(("drop", authenticated_profile.id, dataset_key, name))
+        return {
+            "status": "success",
+            "message": "Column dropped.",
+            "dataset": {"key": dataset_key, "headers": ["email"]},
+        }
+
+    def reorder_columns(authenticated_profile, dataset_key, *, headers):
+        calls.append(("reorder", authenticated_profile.id, dataset_key, headers))
+        return {
+            "status": "success",
+            "message": "Columns reordered.",
+            "dataset": {"key": dataset_key, "headers": headers},
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr("apps.mcp_server.server.add_profile_dataset_column", add_column)
+        monkeypatch.setattr("apps.mcp_server.server.rename_profile_dataset_column", rename_column)
+        monkeypatch.setattr("apps.mcp_server.server.drop_profile_dataset_column", drop_column)
+        monkeypatch.setattr(
+            "apps.mcp_server.server.reorder_profile_dataset_columns",
+            reorder_columns,
+        )
+
+        async with Client(mcp) as client:
+            add_result = await client.call_tool(
+                "add_column",
+                {
+                    "dataset_key": "ds",
+                    "name": "visibility_level",
+                    "default_value": "internal",
+                    "column_type": "text",
+                },
+            )
+            rename_result = await client.call_tool(
+                "rename_column",
+                {"dataset_key": "ds", "old_name": "name", "new_name": "full_name"},
+            )
+            drop_result = await client.call_tool(
+                "drop_column",
+                {"dataset_key": "ds", "name": "notes"},
+            )
+            reorder_result = await client.call_tool(
+                "reorder_columns",
+                {"dataset_key": "ds", "headers": ["email", "full_name"]},
+            )
+
+        assert add_result.data["message"] == "Column added."
+        assert rename_result.data["message"] == "Column renamed."
+        assert drop_result.data["message"] == "Column dropped."
+        assert reorder_result.data["dataset"]["headers"] == ["email", "full_name"]
+        assert calls == [
+            ("add", 11, "ds", "visibility_level", "internal", "text"),
+            ("rename", 11, "ds", "name", "full_name"),
+            ("drop", 11, "ds", "notes"),
+            ("reorder", 11, "ds", ["email", "full_name"]),
+        ]
+
+    anyio.run(run)
+
+
 def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatch):
     calls = []
 

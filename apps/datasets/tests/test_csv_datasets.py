@@ -919,6 +919,108 @@ def test_dataset_api_updates_column_types(client, profile):
     }
 
 
+def test_dataset_api_adds_column_and_backfills_existing_rows(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={
+            "name": "visibility_level",
+            "default_value": "internal",
+            "column_type": "text",
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["headers"] == ["name", "email", "visibility_level"]
+    assert response.json()["dataset"]["column_schema"]["visibility_level"] == {"type": "text"}
+    dataset.refresh_from_db()
+    assert dataset.headers == ["name", "email", "visibility_level"]
+    assert dataset.preview_rows == [
+        {"name": "Ada", "email": "ada@example.com", "visibility_level": "internal"},
+        {"name": "Grace", "email": "grace@example.com", "visibility_level": "internal"},
+    ]
+    assert list(dataset.rows.values_list("data", flat=True)) == [
+        {"name": "Ada", "email": "ada@example.com", "visibility_level": "internal"},
+        {"name": "Grace", "email": "grace@example.com", "visibility_level": "internal"},
+    ]
+
+
+def test_dataset_api_renames_column_and_preserves_values(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+        data={"old_name": "name", "new_name": "full_name"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["headers"] == ["full_name", "email"]
+    dataset.refresh_from_db()
+    assert dataset.headers == ["full_name", "email"]
+    assert dataset.column_schema == {
+        "full_name": {"type": "text"},
+        "email": {"type": "text"},
+    }
+    assert dataset.rows.first().data == {
+        "full_name": "Ada",
+        "email": "ada@example.com",
+    }
+
+
+def test_dataset_api_drops_non_index_column(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+        data={"name": "name"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["headers"] == ["email"]
+    dataset.refresh_from_db()
+    assert dataset.headers == ["email"]
+    assert dataset.column_schema == {"email": {"type": "text"}}
+    assert dataset.rows.first().data == {"email": "ada@example.com"}
+
+
+def test_dataset_api_rejects_dropping_index_column(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+        data={"name": "email"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert "Index column" in response.json()["detail"]
+    dataset.refresh_from_db()
+    assert dataset.headers == ["name", "email"]
+
+
+def test_dataset_api_reorders_columns(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/reorder?api_key={profile.key}",
+        data={"headers": ["email", "name"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["headers"] == ["email", "name"]
+    dataset.refresh_from_db()
+    assert dataset.headers == ["email", "name"]
+    assert dataset.rows.first().data == {
+        "name": "Ada",
+        "email": "ada@example.com",
+    }
+
+
 def test_dataset_api_rejects_unknown_column_type_header(client, profile):
     dataset = create_ready_dataset(profile)
 

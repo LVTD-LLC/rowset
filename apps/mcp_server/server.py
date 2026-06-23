@@ -8,16 +8,20 @@ from pydantic import Field
 from apps.api.services import (
     MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
+    add_profile_dataset_column,
     archive_profile_dataset,
     create_profile_dataset,
     create_profile_dataset_row,
     create_profile_project,
     delete_profile_dataset_row,
+    drop_profile_dataset_column,
     get_profile_dataset,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
+    rename_profile_dataset_column,
+    reorder_profile_dataset_columns,
     restore_profile_dataset,
     serialize_dataset_summary,
     serialize_profile_datasets,
@@ -358,6 +362,122 @@ def update_dataset_column_types(
             profile,
             dataset_key,
             column_types,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="add_column",
+    description=(
+        "Add one column to an existing ready Rowset dataset and backfill existing rows "
+        "with a blank or default value."
+    ),
+)
+def add_column(
+    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    name: Annotated[str, Field(description="New dataset column name.")],
+    default_value: Annotated[
+        str | None,
+        Field(
+            default="",
+            description="Optional value assigned to existing rows. Defaults to blank.",
+        ),
+    ] = "",
+    column_type: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional semantic type for the new column. Supported values include text, "
+                "integer, number, currency, boolean, date, datetime, email, and url."
+            ),
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return add_profile_dataset_column(
+            profile,
+            dataset_key,
+            name=name,
+            default_value=default_value,
+            column_type=column_type,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="rename_column",
+    description=(
+        "Rename one column on an existing ready Rowset dataset while preserving row values."
+    ),
+)
+def rename_column(
+    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    old_name: Annotated[str, Field(description="Existing dataset column name.")],
+    new_name: Annotated[str, Field(description="New dataset column name.")],
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return rename_profile_dataset_column(
+            profile,
+            dataset_key,
+            old_name=old_name,
+            new_name=new_name,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="drop_column",
+    description="Drop one non-index column from an existing ready Rowset dataset and its rows.",
+)
+def drop_column(
+    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    name: Annotated[str, Field(description="Existing non-index dataset column name.")],
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return drop_profile_dataset_column(
+            profile,
+            dataset_key,
+            name=name,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_value_error(exc) from exc
+
+
+@mcp.tool(
+    name="reorder_columns",
+    description=(
+        "Set the display and export order for existing dataset columns. Provide each "
+        "current header exactly once."
+    ),
+)
+def reorder_columns(
+    dataset_key: Annotated[str, Field(description="Rowset dataset key/UUID.")],
+    headers: Annotated[
+        list[str],
+        Field(description="All existing dataset headers in the desired order."),
+    ],
+) -> dict:
+    close_old_connections()
+    profile = _authenticate_profile()
+    try:
+        return reorder_profile_dataset_columns(
+            profile,
+            dataset_key,
+            headers=headers,
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
