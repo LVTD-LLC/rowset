@@ -45,6 +45,7 @@ DATASET_SORT_ORDERING = {
     "rows": ("-row_count", "name"),
     "project": ("project__name", "name"),
 }
+DATASET_DETAIL_ROW_PAGE_SIZE = 100
 
 
 def _visible_project_dataset_count():
@@ -72,6 +73,12 @@ def _row_cells(headers: list[str], row_data: dict[str, object]) -> list[dict[str
         value = row_data.get(header, "")
         cells.append({"header": header, "value": "" if value is None else str(value)})
     return cells
+
+
+def _querystring_for_page(request, page_number: int) -> str:
+    query_params = request.GET.copy()
+    query_params["page"] = page_number
+    return f"?{query_params.urlencode()}"
 
 
 class DatasetListView(LoginRequiredMixin, ListView):
@@ -202,18 +209,26 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         dataset = self.object
-        sample_rows = list(dataset.rows.select_related("dataset", "updated_by_agent_api_key")[:5])
-        sample_rows_with_values = [
+        row_queryset = dataset.rows.select_related("updated_by_agent_api_key").order_by(
+            "row_number"
+        )
+        row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
+        row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
+        rows_with_values = [
             {
                 "values": ordered_row_values(dataset.headers, row.data),
                 "actor_label": row.updated_by_actor_label,
                 "row_number": row.row_number,
-                "url": row.get_absolute_url(),
+                "url": reverse(
+                    "dataset_row_detail",
+                    kwargs={"dataset_key": dataset.key, "row_id": row.id},
+                ),
             }
-            for row in sample_rows
+            for row in row_page_obj.object_list
         ]
-        if not sample_rows_with_values:
-            sample_rows_with_values = [
+        has_imported_rows = row_paginator.count > 0
+        if not has_imported_rows:
+            rows_with_values = [
                 {
                     "values": ordered_row_values(dataset.headers, preview_row),
                     "actor_label": "",
@@ -221,13 +236,25 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                     "url": "",
                 }
                 for row_number, preview_row in enumerate(
-                    dataset.preview_rows[:5],
+                    dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE],
                     start=1,
                 )
             ]
-        context["sample_rows_with_values"] = sample_rows_with_values
-        context["sample_rows_show_actor"] = bool(sample_rows)
-        context["sample_rows_colspan"] = len(dataset.headers) + int(bool(sample_rows))
+        context["rows_with_values"] = rows_with_values
+        context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
+        context["rows_show_actor"] = has_imported_rows
+        context["rows_colspan"] = len(dataset.headers) + int(has_imported_rows)
+        context["row_page_obj"] = row_page_obj
+        if row_page_obj.has_previous():
+            context["previous_row_page_url"] = _querystring_for_page(
+                self.request,
+                row_page_obj.previous_page_number(),
+            )
+        if row_page_obj.has_next():
+            context["next_row_page_url"] = _querystring_for_page(
+                self.request,
+                row_page_obj.next_page_number(),
+            )
         context["public_url"] = self.request.build_absolute_uri(dataset.get_public_url())
         return context
 
