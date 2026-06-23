@@ -419,7 +419,7 @@ def normalize_dataset_row_filters(
             if strict:
                 raise DatasetRowQueryError(f"Column '{header}' is not in this dataset.")
             continue
-        value = str(raw_value or "").strip()
+        value = "" if raw_value is None else str(raw_value).strip()
         if value:
             normalized_filters[header] = value
     return normalized_filters

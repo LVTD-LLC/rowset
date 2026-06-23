@@ -11,7 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.api.services import patch_profile_dataset_row
+from apps.api.services import list_profile_dataset_rows, patch_profile_dataset_row
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
@@ -1064,6 +1064,20 @@ def test_dataset_api_filters_and_sorts_rows(client, profile):
     )
     assert malformed_filters_response.status_code == 400
     assert "filters must be a JSON object" in malformed_filters_response.json()["detail"]
+
+
+def test_dataset_row_service_preserves_native_falsy_filter_values(profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+
+    payload = list_profile_dataset_rows(
+        profile,
+        str(dataset.key),
+        filters={"active": False},
+    )
+
+    assert payload["count"] == 1
+    assert payload["filters"] == {"active": "False"}
+    assert [row["data"]["name"] for row in payload["rows"]] == ["Grace Hopper"]
 
 
 def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):
