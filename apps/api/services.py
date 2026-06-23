@@ -306,6 +306,8 @@ def _get_profile_dataset_from_queryset(
     dataset_identifier: str,
 ) -> Dataset:
     identifier = _dataset_identifier_uuid(dataset_identifier)
+    # Keep the canonical private key path first for existing clients; public keys and
+    # pasted Rowset URLs intentionally resolve through a scoped fallback.
     try:
         return queryset.get(key=identifier, profile=profile)
     except (Dataset.DoesNotExist, ValidationError, ValueError):
