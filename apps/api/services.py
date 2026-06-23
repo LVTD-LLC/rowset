@@ -728,12 +728,9 @@ def rename_profile_dataset_column(
         }
 
         def rename_column(data: dict) -> dict[str, str]:
-            if old_column_name not in data:
-                return {**data, new_column_name: ""}
-            return {
-                new_column_name if key == old_column_name else key: _stringify_cell(value)
-                for key, value in data.items()
-            }
+            next_data = dict(data)
+            next_data[new_column_name] = _stringify_cell(next_data.pop(old_column_name, ""))
+            return next_data
 
         dataset.headers = next_headers
         if dataset.index_column == old_column_name:

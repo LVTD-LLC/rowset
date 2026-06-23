@@ -1011,6 +1011,38 @@ def test_dataset_api_renames_column_and_preserves_values(client, profile):
     }
 
 
+def test_dataset_api_rename_only_stringifies_renamed_value(client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Mixed",
+        original_filename="mixed.csv",
+        status=DatasetStatus.READY,
+        headers=["name", "email", "score"],
+        index_column="email",
+        row_count=1,
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ada@example.com",
+        data={"name": 10, "email": "ada@example.com", "score": 99},
+    )
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+        data={"old_name": "name", "new_name": "full_name"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    row.refresh_from_db()
+    assert row.data == {
+        "email": "ada@example.com",
+        "score": 99,
+        "full_name": "10",
+    }
+
+
 def test_dataset_api_drops_non_index_column(client, profile):
     dataset = create_ready_dataset(profile)
 
