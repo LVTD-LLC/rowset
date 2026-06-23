@@ -530,6 +530,30 @@ def test_dataset_detail_row_search_caps_wide_schema(auth_client, profile):
     assert "Hidden outside cap" not in outside_cap_content
 
 
+def test_dataset_detail_row_search_empty_headers_returns_no_rows(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = []
+    dataset.column_schema = {}
+    dataset.row_count = 1
+    dataset.preview_rows = []
+    dataset.rows.all().delete()
+    dataset.save(update_fields=["headers", "column_schema", "row_count", "preview_rows"])
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="empty-header-row",
+        data={"stored_field": "Invisible to header search"},
+    )
+
+    response = auth_client.get(dataset.get_absolute_url(), {"row_q": "invisible"})
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["row_page_obj"].paginator.count == 0
+    assert "No rows match these filters." in content
+    assert "Invisible to header search" not in content
+
+
 def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.headers = ["name", "email", "notes"]

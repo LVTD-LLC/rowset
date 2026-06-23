@@ -59,11 +59,6 @@ ROW_SORT_DESC = "desc"
 ROW_SEARCH_COLUMN_LIMIT = 20
 ROW_BOOLEAN_TRUE_VALUES = ("true", "1", "yes", "y")
 ROW_BOOLEAN_FALSE_VALUES = ("false", "0", "no", "n")
-ROW_TEXT_FILTER_TYPES = {
-    DatasetColumnType.TEXT,
-    DatasetColumnType.EMAIL,
-    DatasetColumnType.URL,
-}
 DATASET_EXPORT_FORMATS = {
     "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
     "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
@@ -195,6 +190,9 @@ def _selected_row_sort_direction(request) -> str:
 
 
 def _or_header_value_search(queryset, dataset: Dataset, search_query: str):
+    if not dataset.headers:
+        return queryset.none()
+
     search_filter = Q()
     for index, header in enumerate(dataset.headers[:ROW_SEARCH_COLUMN_LIMIT]):
         alias = f"rowset_search_{index}"
