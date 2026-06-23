@@ -45,6 +45,12 @@ from filebridge.utils import get_filebridge_logger
 logger = get_filebridge_logger(__name__)
 AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
+RETRYABLE_ERROR_CODES = {
+    "DATASET_NOT_READY",
+    "CONFLICT",
+    "RATE_LIMITED",
+    "ROWSET_SERVICE_ERROR",
+}
 
 mcp = FastMCP(
     name="Rowset",
@@ -250,7 +256,7 @@ def _service_error_to_tool_error(exc: DatasetServiceError) -> ToolError:
         _mcp_error_payload(
             code=code,
             message=exc.message,
-            retryable=exc.status_code >= 500 or exc.status_code == 429,
+            retryable=code in RETRYABLE_ERROR_CODES,
             suggested_action=_dataset_service_error_suggested_action(code),
             details={"http_status": exc.status_code},
         )

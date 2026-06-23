@@ -923,6 +923,7 @@ def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
             _expected_mcp_error(
                 code="DATASET_NOT_READY",
                 message="Dataset is not ready yet.",
+                retryable=True,
                 suggested_action="Confirm and wait for dataset import to finish before retrying.",
                 http_status=409,
             ),
@@ -932,6 +933,7 @@ def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
             _expected_mcp_error(
                 code="CONFLICT",
                 message="Row with index already exists.",
+                retryable=True,
                 suggested_action=(
                     "Refresh the dataset or row state, resolve the conflict, and try again."
                 ),
