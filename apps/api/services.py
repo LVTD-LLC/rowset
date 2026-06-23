@@ -86,6 +86,8 @@ def _normalize_updated_after(updated_after: str | date | datetime | None) -> dat
         parsed = datetime.combine(updated_after, time.min)
     else:
         value = str(updated_after).strip()
+        if not value:
+            return None
         parsed = parse_datetime(value)
         if parsed is None:
             parsed_date = parse_date(value)

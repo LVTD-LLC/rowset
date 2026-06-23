@@ -742,6 +742,55 @@ def test_search_profile_datasets_treats_naive_updated_after_as_utc(django_user_m
 
 
 @pytest.mark.django_db
+def test_search_profile_datasets_ignores_blank_updated_after(django_user_model):
+    from apps.api.services import search_profile_datasets
+
+    user = django_user_model.objects.create_user(
+        username="datasetsearchblankdate",
+        email="datasetsearchblankdate@example.com",
+        password="password123",
+    )
+    Dataset.objects.create(
+        profile=user.profile,
+        name="Blank Date Search",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+
+    response = search_profile_datasets(user.profile, updated_after="   ")
+
+    assert response["count"] == 1
+
+
+@pytest.mark.django_db
+def test_search_profile_datasets_query_matches_projectless_dataset(django_user_model):
+    from apps.api.services import search_profile_datasets
+
+    user = django_user_model.objects.create_user(
+        username="datasetsearchprojectless",
+        email="datasetsearchprojectless@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Ungrouped Feature Notes",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+
+    response = search_profile_datasets(user.profile, query="ungrouped")
+
+    assert response["count"] == 1
+    assert response["datasets"][0]["key"] == str(dataset.key)
+
+
+@pytest.mark.django_db
 def test_search_profile_datasets_rejects_unknown_status(django_user_model):
     from apps.api.services import DatasetServiceError, search_profile_datasets
 
