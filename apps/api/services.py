@@ -65,6 +65,13 @@ def _active_dataset_queryset(queryset):
     return queryset.filter(archived_at__isnull=True)
 
 
+class DatasetServiceError(Exception):
+    def __init__(self, status_code: int, message: str):
+        self.status_code = status_code
+        self.message = message
+        super().__init__(message)
+
+
 def _normalize_search_query(query: str | None) -> str:
     return str(query or "").strip()
 
@@ -106,13 +113,6 @@ def _raise_if_archived(dataset: Dataset) -> None:
             409,
             "Dataset is archived. Restore it before making changes.",
         )
-
-
-class DatasetServiceError(Exception):
-    def __init__(self, status_code: int, message: str):
-        self.status_code = status_code
-        self.message = message
-        super().__init__(message)
 
 
 def serialize_user_info(profile: Profile) -> dict:
