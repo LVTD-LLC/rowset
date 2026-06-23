@@ -1684,6 +1684,30 @@ def test_dataset_api_treats_null_dataset_metadata_fields_as_omitted(client, prof
     assert mutation.metadata["changed_fields"] == ["instructions"]
 
 
+def test_dataset_api_reports_no_dataset_metadata_changes(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.description = "Initial task board."
+    dataset.instructions = "Use todo, doing, and done."
+    dataset.metadata = {"status_order": ["todo", "doing", "done"]}
+    dataset.save(update_fields=["description", "instructions", "metadata"])
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/metadata?api_key={profile.key}",
+        data={
+            "description": "Initial task board.",
+            "instructions": "Use todo, doing, and done.",
+            "metadata": {"status_order": ["todo", "doing", "done"]},
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "No dataset metadata changes detected."
+    assert not dataset.mutations.filter(
+        mutation_type=DatasetMutationType.DATASET_METADATA_UPDATED
+    ).exists()
+
+
 def test_dataset_api_updates_column_types(client, profile):
     dataset = create_ready_dataset(profile)
 

@@ -1,6 +1,7 @@
 import uuid
 
 from django.contrib.auth.hashers import check_password
+from django.contrib.postgres.indexes import GinIndex
 from django.core.validators import MaxLengthValidator
 from django.db import models
 from django.db.models.functions import Lower
@@ -113,6 +114,18 @@ class Dataset(BaseModel):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            GinIndex(
+                fields=["description"],
+                name="dataset_desc_trgm_idx",
+                opclasses=["gin_trgm_ops"],
+            ),
+            GinIndex(
+                fields=["instructions"],
+                name="dataset_instr_trgm_idx",
+                opclasses=["gin_trgm_ops"],
+            ),
+        ]
 
     def __str__(self):
         return self.name

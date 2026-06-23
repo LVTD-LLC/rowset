@@ -925,7 +925,11 @@ def update_profile_dataset_metadata(
 
     return {
         "status": "success",
-        "message": "Dataset metadata updated.",
+        "message": (
+            "Dataset metadata updated."
+            if changed_fields
+            else "No dataset metadata changes detected."
+        ),
         "dataset": serialize_dataset_summary(dataset),
     }
 
