@@ -352,8 +352,8 @@ def search_profile_datasets(
     if normalized_project_key:
         try:
             project_key_uuid = UUID(normalized_project_key)
-        except ValueError:
-            queryset = queryset.none()
+        except ValueError as exc:
+            raise DatasetServiceError(400, "project_key must be a valid UUID.") from exc
         else:
             queryset = queryset.filter(project__key=project_key_uuid)
     if normalized_status:

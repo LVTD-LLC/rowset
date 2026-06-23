@@ -710,6 +710,23 @@ def test_search_profile_datasets_returns_empty_page_for_stale_project_key(django
 
 
 @pytest.mark.django_db
+def test_search_profile_datasets_rejects_malformed_project_key(django_user_model):
+    from apps.api.services import DatasetServiceError, search_profile_datasets
+
+    user = django_user_model.objects.create_user(
+        username="datasetsearchbadproject",
+        email="datasetsearchbadproject@example.com",
+        password="password123",
+    )
+
+    with pytest.raises(DatasetServiceError) as exc:
+        search_profile_datasets(user.profile, project_key="not-a-uuid")
+
+    assert exc.value.status_code == 400
+    assert "project_key" in exc.value.message
+
+
+@pytest.mark.django_db
 @override_settings(SITE_URL="https://rowset.example", TIME_ZONE="America/New_York")
 def test_search_profile_datasets_treats_naive_updated_after_as_utc(django_user_model):
     from apps.api.services import search_profile_datasets
