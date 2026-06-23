@@ -692,7 +692,9 @@ def _xlsx_row_xml(row_number: int, values) -> str:
 
 def _xlsx_cell_xml(*, row_number: int, column_number: int, value) -> str:
     cell_ref = f"{_xlsx_column_name(column_number)}{row_number}"
-    return f'<c r="{cell_ref}" t="inlineStr"><is><t>{_xlsx_escape(value)}</t></is></c>'
+    text = _strip_invalid_xml_chars(_export_value(value))
+    preserve = ' xml:space="preserve"' if _xlsx_needs_preserved_space(text) else ""
+    return f'<c r="{cell_ref}" t="inlineStr"><is><t{preserve}>{escape(text)}</t></is></c>'
 
 
 def _xlsx_column_name(column_number: int) -> str:
@@ -703,8 +705,8 @@ def _xlsx_column_name(column_number: int) -> str:
     return name
 
 
-def _xlsx_escape(value) -> str:
-    return escape(_strip_invalid_xml_chars(_export_value(value)))
+def _xlsx_needs_preserved_space(value: str) -> bool:
+    return bool(value) and (value != value.strip() or "\n" in value or "\t" in value)
 
 
 def _strip_invalid_xml_chars(value: str) -> str:

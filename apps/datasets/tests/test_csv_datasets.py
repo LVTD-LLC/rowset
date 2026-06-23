@@ -70,11 +70,14 @@ def parquet_upload(data=None):
 
 
 def xlsx_cell_texts(content: bytes) -> list[str]:
-    with zipfile.ZipFile(io.BytesIO(content)) as workbook:
-        sheet_xml = workbook.read("xl/worksheets/sheet1.xml")
-    root = ET.fromstring(sheet_xml)
+    root = ET.fromstring(xlsx_sheet_xml(content))
     namespace = {"xlsx": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
     return [element.text or "" for element in root.findall(".//xlsx:t", namespace)]
+
+
+def xlsx_sheet_xml(content: bytes) -> str:
+    with zipfile.ZipFile(io.BytesIO(content)) as workbook:
+        return workbook.read("xl/worksheets/sheet1.xml").decode()
 
 
 def sqlite_rows(content: bytes) -> list[dict[str, str]]:
@@ -603,6 +606,19 @@ def test_dataset_export_xlsx_download(auth_client, profile):
         "Grace",
         "grace@example.com",
     ]
+
+
+def test_dataset_export_xlsx_preserves_cell_whitespace(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+    row.data = {"name": " Ada ", "email": "ada@example.com"}
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "xlsx"]))
+
+    assert response.status_code == 200
+    assert '<t xml:space="preserve"> Ada </t>' in xlsx_sheet_xml(response.content)
+    assert xlsx_cell_texts(response.content)[2] == " Ada "
 
 
 def test_dataset_export_sqlite_download(auth_client, profile):
