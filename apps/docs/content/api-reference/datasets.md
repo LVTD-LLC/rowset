@@ -176,6 +176,7 @@ metadata without changing rows.
 
 Omit fields you want to keep unchanged. Use an empty string to clear
 `description` or `instructions`, and an empty object to clear `metadata`.
+Passing `null` leaves that field unchanged.
 
 ## Change columns
 

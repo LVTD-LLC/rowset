@@ -171,7 +171,7 @@ class DatasetCreateIn(Schema):
     name: str
     description: str | None = Field(default=None, max_length=MAX_DATASET_DESCRIPTION_LENGTH)
     instructions: str | None = Field(default=None, max_length=MAX_DATASET_INSTRUCTIONS_LENGTH)
-    metadata: Any = None
+    metadata: dict[str, Any] | None = None
     headers: list[str] | None = None
     rows: list[dict[str, Any]] = Field(
         default_factory=list,
@@ -201,7 +201,7 @@ class DatasetColumnTypesOut(Schema):
 class DatasetMetadataPatchIn(Schema):
     description: str | None = Field(default=None, max_length=MAX_DATASET_DESCRIPTION_LENGTH)
     instructions: str | None = Field(default=None, max_length=MAX_DATASET_INSTRUCTIONS_LENGTH)
-    metadata: Any = None
+    metadata: dict[str, Any] | None = None
 
 
 class DatasetMetadataOut(Schema):

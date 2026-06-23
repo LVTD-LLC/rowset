@@ -644,7 +644,7 @@ def update_dataset_metadata(
             default=None,
             description=(
                 "Optional new dataset description. Use an empty string to clear it; "
-                "omit to keep the current value."
+                "omit or pass null to keep the current value."
             ),
         ),
     ] = None,
@@ -654,7 +654,7 @@ def update_dataset_metadata(
             default=None,
             description=(
                 "Optional new persistent agent instructions. Use an empty string to clear "
-                "them; omit to keep the current value."
+                "them; omit or pass null to keep the current value."
             ),
         ),
     ] = None,
@@ -664,7 +664,7 @@ def update_dataset_metadata(
             default=None,
             description=(
                 "Optional replacement JSON object for dataset-specific conventions. "
-                "Pass an empty object to clear it; omit to keep the current value."
+                "Pass an empty object to clear it; omit or pass null to keep the current value."
             ),
         ),
     ] = None,

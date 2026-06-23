@@ -519,6 +519,54 @@ def test_update_dataset_metadata_mcp_tool_calls_dataset_service(monkeypatch):
     anyio.run(run)
 
 
+def test_update_dataset_metadata_mcp_tool_treats_null_metadata_as_omitted(monkeypatch):
+    calls = []
+
+    def update_metadata(authenticated_profile, dataset_key, **kwargs):
+        calls.append((authenticated_profile.id, dataset_key, kwargs))
+        return {
+            "status": "success",
+            "message": "Dataset metadata updated.",
+            "dataset": {
+                "key": dataset_key,
+                "description": "Existing task board.",
+                "instructions": kwargs.get("instructions", "Existing instructions."),
+                "metadata": {"status_order": ["todo", "doing", "done"]},
+            },
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_dataset_metadata",
+            update_metadata,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "update_dataset_metadata",
+                {
+                    "dataset_key": "ds",
+                    "instructions": "Keep status transitions explicit.",
+                    "metadata": None,
+                },
+            )
+
+        assert result.data["message"] == "Dataset metadata updated."
+        assert calls == [
+            (
+                11,
+                "ds",
+                {"instructions": "Keep status transitions explicit."},
+            )
+        ]
+
+    anyio.run(run)
+
+
 def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
     calls = []
 

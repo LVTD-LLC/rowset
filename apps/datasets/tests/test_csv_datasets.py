@@ -1238,6 +1238,22 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
     assert create_response.json()["row"]["data"] == {"rowset_id": "2", "task": "Ship"}
 
 
+def test_dataset_api_rejects_non_object_initial_dataset_metadata(client, profile):
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Invalid metadata",
+            "headers": ["name"],
+            "metadata": ["not", "an", "object"],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "payload", "metadata"]
+    assert not Dataset.objects.filter(profile=profile, name="Invalid metadata").exists()
+
+
 def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profile):
     codex = create_agent_api_key(profile, "Codex")
     openclaw = create_agent_api_key(profile, "OpenClaw")
@@ -1632,10 +1648,40 @@ def test_dataset_api_rejects_non_object_dataset_metadata(client, profile):
         content_type="application/json",
     )
 
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Dataset metadata must be a JSON object."
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "payload", "metadata"]
     dataset.refresh_from_db()
     assert dataset.metadata == {}
+
+
+def test_dataset_api_treats_null_dataset_metadata_fields_as_omitted(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.description = "Initial task board."
+    dataset.instructions = "Use todo, doing, and done."
+    dataset.metadata = {"status_order": ["todo", "doing", "done"]}
+    dataset.save(update_fields=["description", "instructions", "metadata"])
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/metadata?api_key={profile.key}",
+        data={
+            "description": None,
+            "instructions": "Keep status transitions explicit.",
+            "metadata": None,
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["dataset"]["description"] == "Initial task board."
+    assert payload["dataset"]["instructions"] == "Keep status transitions explicit."
+    assert payload["dataset"]["metadata"] == {"status_order": ["todo", "doing", "done"]}
+    dataset.refresh_from_db()
+    assert dataset.description == "Initial task board."
+    assert dataset.instructions == "Keep status transitions explicit."
+    assert dataset.metadata == {"status_order": ["todo", "doing", "done"]}
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.DATASET_METADATA_UPDATED)
+    assert mutation.metadata["changed_fields"] == ["instructions"]
 
 
 def test_dataset_api_updates_column_types(client, profile):

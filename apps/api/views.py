@@ -569,11 +569,16 @@ def patch_dataset_metadata(
     payload: DatasetMetadataPatchIn,
 ):
     """Update persistent dataset description, agent instructions, and JSON metadata."""
+    updates = {
+        key: value
+        for key, value in payload.model_dump(exclude_unset=True).items()
+        if value is not None
+    }
     try:
         return update_profile_dataset_metadata(
             request.auth,
             dataset_key,
-            **payload.model_dump(exclude_unset=True),
+            **updates,
             **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:
