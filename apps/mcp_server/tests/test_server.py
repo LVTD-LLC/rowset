@@ -1015,9 +1015,11 @@ def test_dataset_row_mcp_tools_return_service_errors(
     ("message", "expected_code", "expected_message", "expected_suggested_action"),
     [
         (
-            "Missing Rowset authorization",
+            "Missing Rowset authorization. Configure the Rowset MCP server request with "
+            "Authorization: Bearer <ROWSET_API_KEY>.",
             "AUTHORIZATION_MISSING",
-            "Missing Rowset authorization.",
+            "Missing Rowset authorization. Configure the Rowset MCP server request with "
+            "Authorization: Bearer <ROWSET_API_KEY>.",
             "Configure the MCP request with Authorization: Bearer <ROWSET_API_KEY>.",
         ),
         (
