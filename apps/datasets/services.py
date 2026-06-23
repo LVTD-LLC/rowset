@@ -451,25 +451,43 @@ def _choice_cell_value(value) -> str:
     return str(value)
 
 
+def choice_constraints_from_schema(
+    headers: list[str],
+    column_schema: dict | None,
+    *,
+    normalized: bool = False,
+) -> dict[str, list[str]]:
+    normalized_schema = (
+        column_schema if normalized else normalize_column_schema(headers, column_schema)
+    )
+    constraints = {}
+    for header in headers:
+        schema_entry = normalized_schema.get(header, {})
+        if not isinstance(schema_entry, dict):
+            continue
+        if schema_entry.get(COLUMN_SCHEMA_TYPE_KEY) == DatasetColumnType.CHOICE:
+            constraints[header] = schema_entry[COLUMN_SCHEMA_CHOICES_KEY]
+    return constraints
+
+
 def validate_choice_row_values(
     headers: list[str],
     column_schema: dict | None,
     row_data: dict,
     *,
     columns: list[str] | set[str] | None = None,
+    choice_constraints: dict[str, list[str]] | None = None,
 ) -> None:
-    normalized_schema = normalize_column_schema(headers, column_schema)
-    selected_columns = set(columns or headers)
-    for header in headers:
+    constraints = choice_constraints
+    if constraints is None:
+        constraints = choice_constraints_from_schema(headers, column_schema)
+    selected_columns = set(columns or constraints)
+    for header, choices in constraints.items():
         if header not in selected_columns:
-            continue
-        schema_entry = normalized_schema[header]
-        if schema_entry[COLUMN_SCHEMA_TYPE_KEY] != DatasetColumnType.CHOICE:
             continue
         value = _choice_cell_value(row_data.get(header, ""))
         if value == "":
             continue
-        choices = schema_entry[COLUMN_SCHEMA_CHOICES_KEY]
         if value not in choices:
             allowed = ", ".join(choices)
             raise CSVParseError(f"Column '{header}' must be blank or one of: {allowed}.")
@@ -480,12 +498,7 @@ def invalid_choice_values_by_column(
     column_schema: dict | None,
     rows: list[dict] | Any,
 ) -> dict[str, set[str]]:
-    normalized_schema = normalize_column_schema(headers, column_schema)
-    choice_columns = {
-        header: set(schema_entry[COLUMN_SCHEMA_CHOICES_KEY])
-        for header, schema_entry in normalized_schema.items()
-        if schema_entry[COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.CHOICE
-    }
+    choice_columns = choice_constraints_from_schema(headers, column_schema)
     if not choice_columns:
         return {}
 

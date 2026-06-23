@@ -1550,6 +1550,41 @@ def test_dataset_api_rejects_existing_values_when_setting_choice_schema(client, 
     )
 
 
+def test_dataset_api_choice_schema_ignores_stale_preview_rows(client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(index_value="ada@example.com")
+
+    patch_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"name": "Ada Lovelace"}},
+        content_type="application/json",
+    )
+    assert patch_response.status_code == 200
+
+    dataset.refresh_from_db()
+    assert dataset.preview_rows == [{"name": "Ada", "email": "ada@example.com"}]
+    assert dataset.rows.get(index_value="ada@example.com").data["name"] == "Ada Lovelace"
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+        data={
+            "column_types": {
+                "name": {
+                    "type": "choice",
+                    "choices": ["Ada Lovelace", "Grace"],
+                }
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["column_schema"]["name"] == {
+        "type": "choice",
+        "choices": ["Ada Lovelace", "Grace"],
+    }
+
+
 def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
     dataset = create_ready_dataset(profile)
 

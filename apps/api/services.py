@@ -16,6 +16,7 @@ from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
+    choice_constraints_from_schema,
     generated_index_column_name,
     generated_index_column_schema,
     infer_column_schema,
@@ -29,6 +30,7 @@ from filebridge.utils import build_absolute_public_url
 
 API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
+ColumnTypeSpec = str | dict[str, Any]
 DATASET_SUMMARY_ONLY_FIELDS = (
     "key",
     "name",
@@ -565,9 +567,23 @@ def _validate_choice_row_data(
     row_data: dict,
     *,
     columns: list[str] | set[str] | None = None,
+    choice_constraints: dict[str, list[str]] | None = None,
 ) -> None:
+    constraints = choice_constraints
+    if constraints is None:
+        constraints = choice_constraints_from_schema(
+            headers,
+            column_schema,
+            normalized=True,
+        )
     try:
-        validate_choice_row_values(headers, column_schema, row_data, columns=columns)
+        validate_choice_row_values(
+            headers,
+            column_schema,
+            row_data,
+            columns=columns,
+            choice_constraints=constraints,
+        )
     except CSVParseError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
@@ -577,12 +593,21 @@ def _validate_choice_rows(
     column_schema: dict,
     rows: list[dict[str, str]],
 ) -> None:
+    choice_constraints = choice_constraints_from_schema(
+        headers,
+        column_schema,
+        normalized=True,
+    )
     for row_data in rows:
-        _validate_choice_row_data(headers, column_schema, row_data)
+        _validate_choice_row_data(
+            headers,
+            column_schema,
+            row_data,
+            choice_constraints=choice_constraints,
+        )
 
 
 def _iter_dataset_row_data(dataset: Dataset):
-    yield from dataset.preview_rows or []
     yield from dataset.rows.order_by("row_number", "id").values_list("data", flat=True).iterator(
         chunk_size=1000
     )
@@ -626,7 +651,7 @@ def _normalize_dataset_column_schema(
     index_column: str,
     index_generated: bool,
     rows: list[dict[str, str]],
-    column_types: dict[str, Any] | None,
+    column_types: dict[str, ColumnTypeSpec] | None,
 ) -> dict[str, dict[str, Any]]:
     inferred_schema = infer_column_schema(base_headers, rows)
     try:
@@ -654,7 +679,7 @@ def create_profile_dataset(
     headers: list[str] | None = None,
     rows: list[dict[str, Any]] | None = None,
     index_column: str | None = None,
-    column_types: dict[str, Any] | None = None,
+    column_types: dict[str, ColumnTypeSpec] | None = None,
     project_key: str | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
@@ -761,7 +786,7 @@ def create_profile_dataset(
 def update_profile_dataset_column_types(
     profile: Profile,
     dataset_key: str,
-    column_types: dict[str, Any],
+    column_types: dict[str, ColumnTypeSpec],
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
@@ -897,7 +922,7 @@ def add_profile_dataset_column(
     *,
     name: str,
     default_value: Any = "",
-    column_type: str | dict[str, Any] | None = None,
+    column_type: ColumnTypeSpec | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     """Add one column to a ready dataset and backfill existing rows."""

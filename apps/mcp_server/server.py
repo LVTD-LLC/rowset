@@ -45,6 +45,7 @@ from filebridge.utils import get_filebridge_logger
 logger = get_filebridge_logger(__name__)
 AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
+ColumnTypeSpec = str | dict[str, Any]
 RETRYABLE_ERROR_CODES = {
     "DATASET_NOT_READY",
     "RATE_LIMITED",
@@ -549,7 +550,7 @@ def create_dataset(
         ),
     ] = None,
     column_types: Annotated[
-        dict[str, Any] | None,
+        dict[str, ColumnTypeSpec] | None,
         Field(
             default=None,
             description=(
@@ -605,7 +606,7 @@ def create_dataset(
 def update_dataset_column_types(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     column_types: Annotated[
-        dict[str, Any],
+        dict[str, ColumnTypeSpec],
         Field(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
@@ -647,7 +648,7 @@ def add_column(
         ),
     ] = "",
     column_type: Annotated[
-        str | dict[str, Any] | None,
+        ColumnTypeSpec | None,
         Field(
             default=None,
             description=(

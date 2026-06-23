@@ -7,6 +7,8 @@ from pydantic import Field
 from apps.api.services import MAX_API_DATASET_CREATE_ROWS
 from apps.blog.choices import BlogPostStatus
 
+ColumnTypeIn = str | dict[str, Any]
+
 
 class SubmitFeedbackIn(Schema):
     feedback: str = Field(..., min_length=1, max_length=2000)
@@ -168,7 +170,7 @@ class DatasetCreateIn(Schema):
         max_length=MAX_API_DATASET_CREATE_ROWS,
     )
     index_column: str | None = None
-    column_types: dict[str, Any] | None = None
+    column_types: dict[str, ColumnTypeIn] | None = None
     project_key: str | None = None
 
 
@@ -179,7 +181,7 @@ class DatasetCreateOut(Schema):
 
 
 class DatasetColumnTypesPatchIn(Schema):
-    column_types: dict[str, Any]
+    column_types: dict[str, ColumnTypeIn]
 
 
 class DatasetColumnTypesOut(Schema):
@@ -191,7 +193,7 @@ class DatasetColumnTypesOut(Schema):
 class DatasetColumnAddIn(Schema):
     name: str
     default_value: Any = ""
-    column_type: str | dict[str, Any] | None = None
+    column_type: ColumnTypeIn | None = None
 
 
 class DatasetColumnRenameIn(Schema):
