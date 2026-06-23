@@ -133,16 +133,26 @@ class HomeView(LoginRequiredMixin, TemplateView):
             "total_rows": dashboard_summary["total_rows"] or 0,
             "public_preview_count": dashboard_summary["public_preview_count"] or 0,
         }
-        context["show_agent_setup_prompt"] = (
+        show_agent_setup_prompt = (
             not profile.agent_setup_prompt_dismissed and not recent_datasets
         )
-        if context["show_agent_setup_prompt"]:
-            context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
-                self.request,
-                mask_api_key=True,
-                profile=profile,
-            )
-            context["agent_setup_prompt_url"] = reverse("agent_setup_prompt")
+        context["show_agent_setup_prompt"] = show_agent_setup_prompt
+        if show_agent_setup_prompt:
+            active_agent_api_key = profile.agent_api_keys.filter(
+                revoked_at__isnull=True
+            ).first()
+            context["agent_api_key_form"] = AgentApiKeyCreateForm(profile=profile)
+            context["active_agent_api_key"] = active_agent_api_key
+            if active_agent_api_key:
+                context["agent_setup_prompt_masked"] = build_agent_setup_prompt(
+                    self.request,
+                    mask_api_key=True,
+                    profile=profile,
+                )
+                context["agent_setup_prompt_url"] = reverse(
+                    "agent_api_key_setup_prompt",
+                    args=[active_agent_api_key.uuid],
+                )
             context["agent_setup_prompt_dismiss_url"] = reverse("dismiss_agent_setup_prompt")
         return context
 
@@ -207,23 +217,30 @@ def agent_api_key_setup_prompt(request, agent_api_key_uuid):
 @require_POST
 def create_agent_api_key_view(request):
     profile = request.user.profile
+    return_home = request.POST.get("next") == "home"
     form = AgentApiKeyCreateForm(request.POST, profile=profile)
     if not form.is_valid():
         for errors in form.errors.values():
             for error in errors:
                 messages.error(request, error)
+        if return_home:
+            return redirect("home")
         return redirect("settings")
 
     try:
         credential = create_agent_api_key(profile, form.cleaned_data["name"])
     except IntegrityError:
         messages.error(request, "An agent API key with this name already exists.")
+        if return_home:
+            return redirect("home")
         return redirect("settings")
 
     messages.success(
         request,
         f"Created an agent API key for {credential.agent_api_key.name}.",
     )
+    if return_home:
+        return redirect("home")
     context = {
         "object": profile,
         "profile": profile,
