@@ -19,7 +19,11 @@ django_application = get_asgi_application()
 from apps.mcp_server.auth import MCP_INTERNAL_PATH, MCP_MOUNT_PATH  # noqa: E402
 from apps.mcp_server.server import mcp  # noqa: E402
 
-mcp_application = mcp.http_app(path=MCP_INTERNAL_PATH)
+mcp_application = mcp.http_app(
+    path=MCP_INTERNAL_PATH,
+    json_response=True,
+    stateless_http=True,
+)
 
 
 def redirect_mcp(request: Request) -> RedirectResponse:
