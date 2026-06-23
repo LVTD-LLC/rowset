@@ -69,8 +69,11 @@ GET {{ api_base_url }}/datasets?query=feature&status=ready
 
 The dataset list endpoint accepts filters for `query`, `project_key`,
 `header_contains`, `status`, and `updated_after`. `header_contains` should be an
-exact header name. Use these filters when an agent needs to find the right
-dataset before reading rows or making updates.
+exact header name. Accepted `status` values are `previewed`, `processing`,
+`ready`, and `failed`. `updated_after` accepts an ISO 8601 date or datetime;
+datetime values without a timezone offset are interpreted as UTC. Use these
+filters when an agent needs to find the right dataset before reading rows or
+making updates.
 
 ## List rows
 
