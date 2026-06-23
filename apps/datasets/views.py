@@ -63,13 +63,6 @@ ROW_TEXT_FILTER_TYPES = {
     DatasetColumnType.EMAIL,
     DatasetColumnType.URL,
 }
-ROW_EXACT_FILTER_TYPES = {
-    DatasetColumnType.INTEGER,
-    DatasetColumnType.NUMBER,
-    DatasetColumnType.CURRENCY,
-    DatasetColumnType.DATE,
-    DatasetColumnType.DATETIME,
-}
 DATASET_EXPORT_FORMATS = {
     "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
     "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
@@ -161,7 +154,7 @@ def _row_filter_fields(dataset: Dataset, request) -> list[dict[str, object]]:
                 "is_boolean": column_type == DatasetColumnType.BOOLEAN,
                 "is_number": column_type in {DatasetColumnType.INTEGER, DatasetColumnType.NUMBER},
                 "is_currency": column_type == DatasetColumnType.CURRENCY,
-                "operator_label": "Contains" if column_type in ROW_TEXT_FILTER_TYPES else "Equals",
+                "operator_label": "Contains" if column_type != DatasetColumnType.BOOLEAN else "Is",
             }
         )
     return fields
@@ -211,14 +204,14 @@ def _or_header_value_search(queryset, dataset: Dataset, search_query: str):
     return queryset.filter(search_filter)
 
 
-def _boolean_filter_query(alias: str, value: str) -> Q:
+def _boolean_filter_query(alias: str, value: str) -> Q | None:
     normalized = value.lower()
-    if normalized == "true":
+    if normalized in ROW_BOOLEAN_TRUE_VALUES:
         values = ROW_BOOLEAN_TRUE_VALUES
-    elif normalized == "false":
+    elif normalized in ROW_BOOLEAN_FALSE_VALUES:
         values = ROW_BOOLEAN_FALSE_VALUES
     else:
-        return Q()
+        return None
 
     query = Q()
     for candidate in values:
@@ -236,9 +229,10 @@ def _apply_row_field_filters(queryset, filter_fields: list[dict[str, object]]):
         queryset = queryset.annotate(**{alias: KeyTextTransform(str(field["header"]), "data")})
         column_type = field["type"]
         if column_type == DatasetColumnType.BOOLEAN:
-            queryset = queryset.filter(_boolean_filter_query(alias, value))
-        elif column_type in ROW_EXACT_FILTER_TYPES:
-            queryset = queryset.filter(**{f"{alias}__iexact": value})
+            boolean_query = _boolean_filter_query(alias, value)
+            if boolean_query is None:
+                return queryset.none()
+            queryset = queryset.filter(boolean_query)
         else:
             queryset = queryset.filter(**{f"{alias}__icontains": value})
     return queryset

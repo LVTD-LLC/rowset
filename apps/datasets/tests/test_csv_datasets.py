@@ -147,7 +147,7 @@ def configure_filterable_dataset(dataset):
                 data={
                     "name": "Ada Lovelace",
                     "email": "ada@example.com",
-                    "score": "10",
+                    "score": "10.0",
                     "active": "true",
                 },
             ),
@@ -169,7 +169,7 @@ def configure_filterable_dataset(dataset):
                 data={
                     "name": "Katherine Johnson",
                     "email": "katherine@example.com",
-                    "score": "10",
+                    "score": "010",
                     "active": "true",
                 },
             ),
@@ -478,6 +478,20 @@ def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_cli
     assert response.context["row_page_obj"].paginator.count == 0
     assert "No rows match these filters." in content
     assert "Ada" not in content
+
+
+def test_dataset_detail_unknown_boolean_filter_returns_no_rows(auth_client, profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+
+    response = auth_client.get(dataset.get_absolute_url(), {"filter_3": "maybe"})
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["row_page_obj"].paginator.count == 0
+    assert "No rows match these filters." in content
+    assert "Ada Lovelace" not in content
+    assert "Grace Hopper" not in content
+    assert "Katherine Johnson" not in content
 
 
 def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
