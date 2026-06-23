@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from apps.api.services import patch_profile_dataset_row
 from apps.core.services import create_agent_api_key
-from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetMutation, DatasetRow, Project
 from apps.datasets.services import (
@@ -123,6 +123,57 @@ def create_ready_dataset(profile):
         row_number=2,
         index_value="grace@example.com",
         data={"name": "Grace", "email": "grace@example.com"},
+    )
+    return dataset
+
+
+def configure_filterable_dataset(dataset):
+    dataset.headers = ["name", "email", "score", "active"]
+    dataset.column_schema = {
+        "name": {"type": DatasetColumnType.TEXT},
+        "email": {"type": DatasetColumnType.EMAIL},
+        "score": {"type": DatasetColumnType.NUMBER},
+        "active": {"type": DatasetColumnType.BOOLEAN},
+    }
+    dataset.row_count = 3
+    dataset.rows.all().delete()
+    dataset.save(update_fields=["headers", "column_schema", "row_count"])
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=1,
+                index_value="ada@example.com",
+                data={
+                    "name": "Ada Lovelace",
+                    "email": "ada@example.com",
+                    "score": "10",
+                    "active": "true",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=2,
+                index_value="grace@example.com",
+                data={
+                    "name": "Grace Hopper",
+                    "email": "grace@example.com",
+                    "score": "8",
+                    "active": "false",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=3,
+                index_value="katherine@example.com",
+                data={
+                    "name": "Katherine Johnson",
+                    "email": "katherine@example.com",
+                    "score": "10",
+                    "active": "true",
+                },
+            ),
+        ]
     )
     return dataset
 
@@ -378,6 +429,55 @@ def test_dataset_detail_paginates_imported_rows_without_public_preview(auth_clie
     assert page_two.status_code == 200
     assert "Page 2 of 2" in page_two_content
     assert f"Detail row {total_rows:03}" in page_two_content
+
+
+def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+
+    search_response = auth_client.get(dataset.get_absolute_url(), {"row_q": "grace"})
+    search_content = search_response.content.decode()
+
+    assert search_response.status_code == 200
+    assert search_response.context["row_page_obj"].paginator.count == 1
+    assert "Grace Hopper" in search_content
+    assert "Ada Lovelace" not in search_content
+    assert "Katherine Johnson" not in search_content
+    assert 'value="grace"' in search_content
+
+    filter_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_2": "10", "filter_3": "true"},
+    )
+    filter_content = filter_response.content.decode()
+
+    assert filter_response.status_code == 200
+    assert filter_response.context["row_page_obj"].paginator.count == 2
+    assert "Ada Lovelace" in filter_content
+    assert "Katherine Johnson" in filter_content
+    assert "Grace Hopper" not in filter_content
+    assert ">Clear</a>" in filter_content
+
+    sort_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"row_sort": "col_0", "row_dir": "desc"},
+    )
+    sort_content = sort_response.content.decode()
+
+    assert sort_response.status_code == 200
+    assert sort_content.index("Katherine Johnson") < sort_content.index("Grace Hopper")
+    assert sort_content.index("Grace Hopper") < sort_content.index("Ada Lovelace")
+
+
+def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+
+    response = auth_client.get(dataset.get_absolute_url(), {"row_q": "missing"})
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["row_page_obj"].paginator.count == 0
+    assert "No rows match these filters." in content
+    assert "Ada" not in content
 
 
 def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
@@ -1839,6 +1939,54 @@ def test_public_dataset_view_paginates_rows(client, profile):
     page_two = client.get(f"{dataset.get_public_url()}?page=2")
     page_two_content = page_two.content.decode()
     assert "Grace" in page_two_content
+
+
+def test_public_dataset_view_filters_and_sorts_rows(client, profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    search_response = client.get(dataset.get_public_url(), {"row_q": "grace"})
+    search_content = search_response.content.decode()
+
+    assert search_response.status_code == 200
+    assert search_response.context["page_obj"].paginator.count == 1
+    assert "Grace Hopper" in search_content
+    assert "Ada Lovelace" not in search_content
+    assert "Katherine Johnson" not in search_content
+
+    sort_response = client.get(
+        dataset.get_public_url(),
+        {"row_sort": "col_0", "row_dir": "desc"},
+    )
+    sort_content = sort_response.content.decode()
+
+    assert sort_response.status_code == 200
+    assert sort_content.index("Katherine Johnson") < sort_content.index("Grace Hopper")
+    assert sort_content.index("Grace Hopper") < sort_content.index("Ada Lovelace")
+
+
+def test_public_dataset_pagination_preserves_row_filters(client, profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+    dataset.public_enabled = True
+    dataset.public_page_size = 1
+    dataset.save(update_fields=["public_enabled", "public_page_size"])
+
+    response = client.get(dataset.get_public_url(), {"filter_2": "10"})
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["page_obj"].paginator.count == 2
+    assert "Ada Lovelace" in content
+    assert "Katherine Johnson" not in content
+    assert 'href="?filter_2=10&amp;page=2"' in content
+
+    page_two = client.get(dataset.get_public_url(), {"filter_2": "10", "page": "2"})
+    page_two_content = page_two.content.decode()
+
+    assert page_two.status_code == 200
+    assert "Katherine Johnson" in page_two_content
+    assert "Grace Hopper" not in page_two_content
 
 
 def test_public_dataset_links_rows_and_truncates_cells(client, profile):

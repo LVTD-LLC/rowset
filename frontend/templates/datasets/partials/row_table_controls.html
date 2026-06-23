@@ -1,0 +1,77 @@
+<form method="get" action="" class="mt-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+  <div class="grid gap-3 lg:grid-cols-[minmax(12rem,1.2fr)_minmax(10rem,0.8fr)_minmax(9rem,0.6fr)_auto] lg:items-end">
+    <div>
+      <label for="row-search" class="block text-sm font-semibold text-slate-800 dark:text-slate-100">Search rows</label>
+      <input
+        id="row-search"
+        name="row_q"
+        type="search"
+        value="{{ row_search_query }}"
+        placeholder="Any column"
+        class="mt-1 block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+      >
+    </div>
+    <div>
+      <label for="row-sort" class="block text-sm font-semibold text-slate-800 dark:text-slate-100">Sort by</label>
+      <select
+        id="row-sort"
+        name="row_sort"
+        class="mt-1 block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+      >
+        {% for option in row_sort_options %}
+          <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="row-sort-direction" class="block text-sm font-semibold text-slate-800 dark:text-slate-100">Direction</label>
+      <select
+        id="row-sort-direction"
+        name="row_dir"
+        class="mt-1 block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+      >
+        {% for option in row_sort_direction_options %}
+          <option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="submit" class="fb-button-primary min-h-10">Apply</button>
+      {% if has_row_filters %}
+        <a href="{{ row_filters_reset_url }}" class="fb-button-secondary min-h-10">Clear</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <details class="mt-3"{% if has_row_filters %} open{% endif %}>
+    <summary class="fb-focus inline-flex cursor-pointer rounded-md text-sm font-semibold text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300">Column filters</summary>
+    <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {% for row_filter in row_filter_fields %}
+        <div>
+          <label for="row-filter-{{ row_filter.param_name }}" class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title="{{ row_filter.header }}">{{ row_filter.header }}</label>
+          {% if row_filter.is_boolean %}
+            <select
+              id="row-filter-{{ row_filter.param_name }}"
+              name="{{ row_filter.param_name }}"
+              class="mt-1 block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+            >
+              <option value="">Any</option>
+              <option value="true"{% if row_filter.value == "true" %} selected{% endif %}>True</option>
+              <option value="false"{% if row_filter.value == "false" %} selected{% endif %}>False</option>
+            </select>
+          {% else %}
+            <input
+              id="row-filter-{{ row_filter.param_name }}"
+              name="{{ row_filter.param_name }}"
+              type="{{ row_filter.input_type }}"
+              value="{{ row_filter.value }}"
+              {% if row_filter.is_number or row_filter.is_currency %}step="any"{% endif %}
+              placeholder="{{ row_filter.operator_label }} {{ row_filter.type_label|lower }}"
+              class="mt-1 block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+            >
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </details>
+</form>

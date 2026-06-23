@@ -110,6 +110,9 @@
           {% endif %}
         </div>
       </div>
+      {% if rows_show_actor %}
+        {% include "datasets/partials/row_table_controls.html" %}
+      {% endif %}
       <div class="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
         <table class="fb-table">
           <caption class="sr-only">{{ rows_heading }} for {{ dataset.name }}</caption>
@@ -150,7 +153,7 @@
                 {% endif %}
               </tr>
             {% empty %}
-              <tr><td colspan="{{ rows_colspan }}" class="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">No rows are available yet.</td></tr>
+              <tr><td colspan="{{ rows_colspan }}" class="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">{{ rows_empty_message }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
