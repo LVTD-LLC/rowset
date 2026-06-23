@@ -549,13 +549,14 @@ def create_dataset(
         ),
     ] = None,
     column_types: Annotated[
-        dict[str, str] | None,
+        dict[str, Any] | None,
         Field(
             default=None,
             description=(
-                "Optional mapping from header name to semantic column type. "
-                "Supported values include text, integer, number, currency, boolean, "
-                "date, datetime, email, and url."
+                "Optional mapping from header name to semantic column type or metadata. "
+                "Supported types include text, choice, integer, number, currency, boolean, "
+                "date, datetime, email, and url. For choice columns, pass metadata like "
+                '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}.'
             ),
         ),
     ] = None,
@@ -604,11 +605,13 @@ def create_dataset(
 def update_dataset_column_types(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     column_types: Annotated[
-        dict[str, str],
+        dict[str, Any],
         Field(
             description=(
-                "Mapping from dataset header to semantic type. Supported values include "
-                "text, integer, number, currency, boolean, date, datetime, email, and url."
+                "Mapping from dataset header to semantic type or metadata. Supported types "
+                "include text, choice, integer, number, currency, boolean, date, datetime, "
+                'email, and url. For choice columns, pass {"type": "choice", "choices": '
+                '["Ready to do", "Doing", "Done"]}.'
             ),
         ),
     ],
@@ -644,12 +647,14 @@ def add_column(
         ),
     ] = "",
     column_type: Annotated[
-        str | None,
+        str | dict[str, Any] | None,
         Field(
             default=None,
             description=(
-                "Optional semantic type for the new column. Supported values include text, "
-                "integer, number, currency, boolean, date, datetime, email, and url."
+                "Optional semantic type or metadata for the new column. Supported types "
+                "include text, choice, integer, number, currency, boolean, date, datetime, "
+                'email, and url. For a choice column, pass {"type": "choice", "choices": '
+                '["Ready to do", "Doing", "Done"]}.'
             ),
         ),
     ] = None,

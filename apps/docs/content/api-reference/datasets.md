@@ -61,6 +61,23 @@ to leave the dataset ungrouped.
 
 The response includes `dataset.key`; use that key with the row endpoints below.
 
+Choice columns are experimental. Use them when an agent should keep a text value
+inside a fixed set:
+
+```json
+{
+  "column_types": {
+    "status": {
+      "type": "choice",
+      "choices": ["Ready to do", "Doing", "Done"]
+    }
+  }
+}
+```
+
+Choice cells can be blank. Non-blank row values must match one of the configured
+choices exactly.
+
 ## Find datasets
 
 ```http
@@ -132,13 +149,20 @@ Updates semantic column metadata without changing stored row values.
 {
   "column_types": {
     "sku": "text",
+    "status": {
+      "type": "choice",
+      "choices": ["Ready to do", "Doing", "Done"]
+    },
     "price": "currency",
     "updated_at": "datetime"
   }
 }
 ```
 
-Supported types are `text`, `integer`, `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
+Supported types are `text`, `choice`, `integer`, `number`, `currency`, `boolean`,
+`date`, `datetime`, `email`, and `url`. For `choice`, pass a metadata object with
+`type` and `choices`. Updating an existing column to `choice` fails if stored
+values are outside the allowed choices.
 
 ## Change columns
 
@@ -155,7 +179,10 @@ Content-Type: application/json
 {
   "name": "visibility_level",
   "default_value": "internal",
-  "column_type": "text"
+  "column_type": {
+    "type": "choice",
+    "choices": ["internal", "shared"]
+  }
 }
 ```
 

@@ -19,6 +19,7 @@ from apps.datasets.models import Dataset, DatasetMutation, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
     infer_column_type,
+    normalize_column_schema,
     preview_csv_file,
     preview_uploaded_table,
     rows_to_sqlite_bytes,
@@ -1397,6 +1398,206 @@ def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
         "sku": {"type": "text"},
         "price": {"type": "number"},
     }
+
+
+def test_normalize_column_schema_accepts_choice_metadata():
+    schema = normalize_column_schema(
+        ["status"],
+        {
+            "status": {
+                "type": "choice",
+                "choices": ["Ready to do", "Doing", "Done"],
+            }
+        },
+        reject_unknown=True,
+    )
+
+    assert schema == {
+        "status": {
+            "type": "choice",
+            "choices": ["Ready to do", "Doing", "Done"],
+        }
+    }
+
+
+def test_dataset_api_enforces_choice_values(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Task board",
+            "headers": ["task_id", "status", "title"],
+            "index_column": "task_id",
+            "column_types": {
+                "status": {
+                    "type": "choice",
+                    "choices": ["Ready to do", "Doing", "Done"],
+                }
+            },
+            "rows": [
+                {
+                    "task_id": "T-1",
+                    "status": "Ready to do",
+                    "title": "Draft API docs",
+                }
+            ],
+        },
+        content_type="application/json",
+    )
+
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+    assert create_response.json()["dataset"]["column_schema"]["status"] == {
+        "type": "choice",
+        "choices": ["Ready to do", "Doing", "Done"],
+    }
+    assert dataset.column_schema["status"] == {
+        "type": "choice",
+        "choices": ["Ready to do", "Doing", "Done"],
+    }
+
+    invalid_create = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "task_id": "T-2",
+                "status": "Blocked",
+                "title": "Ship choice columns",
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert invalid_create.status_code == 400
+    assert invalid_create.json()["detail"] == (
+        "Column 'status' must be blank or one of: Ready to do, Doing, Done."
+    )
+    assert dataset.rows.filter(index_value="T-2").exists() is False
+
+    valid_create = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "task_id": "T-2",
+                "status": "Doing",
+                "title": "Ship choice columns",
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert valid_create.status_code == 200
+
+    row = dataset.rows.get(index_value="T-1")
+    invalid_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"status": "Blocked"}},
+        content_type="application/json",
+    )
+
+    assert invalid_patch.status_code == 400
+    assert invalid_patch.json()["detail"] == (
+        "Column 'status' must be blank or one of: Ready to do, Doing, Done."
+    )
+    row.refresh_from_db()
+    assert row.data["status"] == "Ready to do"
+
+    valid_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"status": "Done"}},
+        content_type="application/json",
+    )
+
+    assert valid_patch.status_code == 200
+    assert valid_patch.json()["row"]["data"]["status"] == "Done"
+
+
+def test_dataset_api_rejects_choice_column_without_choices(client, profile):
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Task board",
+            "headers": ["task_id", "status"],
+            "index_column": "task_id",
+            "column_types": {"status": {"type": "choice", "choices": []}},
+            "rows": [{"task_id": "T-1", "status": "Ready to do"}],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Choice column 'status' requires at least one choice."
+
+
+def test_dataset_api_rejects_existing_values_when_setting_choice_schema(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+        data={
+            "column_types": {
+                "name": {
+                    "type": "choice",
+                    "choices": ["Ada"],
+                }
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Column 'name' has existing values outside the allowed choices: Grace."
+    )
+
+
+def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={
+            "name": "visibility_level",
+            "default_value": "internal",
+            "column_type": {
+                "type": "choice",
+                "choices": ["internal", "shared"],
+            },
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["column_schema"]["visibility_level"] == {
+        "type": "choice",
+        "choices": ["internal", "shared"],
+    }
+    dataset.refresh_from_db()
+    assert dataset.column_schema["visibility_level"] == {
+        "type": "choice",
+        "choices": ["internal", "shared"],
+    }
+    assert list(dataset.rows.values_list("data", flat=True)) == [
+        {"name": "Ada", "email": "ada@example.com", "visibility_level": "internal"},
+        {"name": "Grace", "email": "grace@example.com", "visibility_level": "internal"},
+    ]
+
+    invalid_response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={
+            "name": "workflow_state",
+            "default_value": "blocked",
+            "column_type": {
+                "type": "choice",
+                "choices": ["ready", "done"],
+            },
+        },
+        content_type="application/json",
+    )
+
+    assert invalid_response.status_code == 400
+    assert invalid_response.json()["detail"] == (
+        "Column 'workflow_state' must be blank or one of: ready, done."
+    )
 
 
 def test_project_api_creates_lists_and_returns_project_datasets(client, profile):
