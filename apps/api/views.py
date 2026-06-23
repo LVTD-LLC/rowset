@@ -18,6 +18,11 @@ from apps.api.schemas import (
     BlogPostUpdateIn,
     DatasetApiOut,
     DatasetArchiveOut,
+    DatasetColumnAddIn,
+    DatasetColumnDropIn,
+    DatasetColumnMutationOut,
+    DatasetColumnRenameIn,
+    DatasetColumnReorderIn,
     DatasetColumnTypesOut,
     DatasetColumnTypesPatchIn,
     DatasetCreateIn,
@@ -41,16 +46,20 @@ from apps.api.schemas import (
 )
 from apps.api.services import (
     DatasetServiceError,
+    add_profile_dataset_column,
     archive_profile_dataset,
     create_profile_dataset,
     create_profile_dataset_row,
     create_profile_project,
     delete_profile_dataset_row,
+    drop_profile_dataset_column,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
     get_ready_profile_dataset,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
+    rename_profile_dataset_column,
+    reorder_profile_dataset_columns,
     restore_profile_dataset,
     serialize_profile_datasets,
     serialize_profile_project_detail,
@@ -536,6 +545,101 @@ def patch_dataset_column_types(
             request.auth,
             dataset_key,
             payload.column_types,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/columns",
+    response=DatasetColumnMutationOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def add_dataset_column(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetColumnAddIn,
+):
+    """Add one column to a ready dataset and backfill existing rows."""
+    try:
+        return add_profile_dataset_column(
+            request.auth,
+            dataset_key,
+            name=payload.name,
+            default_value=payload.default_value,
+            column_type=payload.column_type,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/columns/rename",
+    response=DatasetColumnMutationOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def rename_dataset_column(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetColumnRenameIn,
+):
+    """Rename one column on a ready dataset while preserving row values."""
+    try:
+        return rename_profile_dataset_column(
+            request.auth,
+            dataset_key,
+            old_name=payload.old_name,
+            new_name=payload.new_name,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/columns/drop",
+    response=DatasetColumnMutationOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def drop_dataset_column(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetColumnDropIn,
+):
+    """Drop one non-index column from a ready dataset and stored rows."""
+    try:
+        return drop_profile_dataset_column(
+            request.auth,
+            dataset_key,
+            name=payload.name,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/columns/reorder",
+    response=DatasetColumnMutationOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def reorder_dataset_columns(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetColumnReorderIn,
+):
+    """Update the display and export order for ready dataset columns."""
+    try:
+        return reorder_profile_dataset_columns(
+            request.auth,
+            dataset_key,
+            headers=payload.headers,
             **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:

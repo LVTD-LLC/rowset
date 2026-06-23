@@ -188,6 +188,31 @@ class DatasetColumnTypesOut(Schema):
     dataset: DatasetSummaryOut
 
 
+class DatasetColumnAddIn(Schema):
+    name: str
+    default_value: Any = ""
+    column_type: str | None = None
+
+
+class DatasetColumnRenameIn(Schema):
+    old_name: str
+    new_name: str
+
+
+class DatasetColumnDropIn(Schema):
+    name: str
+
+
+class DatasetColumnReorderIn(Schema):
+    headers: list[str]
+
+
+class DatasetColumnMutationOut(Schema):
+    status: str
+    message: str
+    dataset: DatasetSummaryOut
+
+
 class DatasetPublicPreviewPatchIn(Schema):
     public_enabled: bool | None = None
     public_page_size: int | None = Field(default=None, ge=1, le=100)

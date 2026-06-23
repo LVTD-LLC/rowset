@@ -961,6 +961,181 @@ def test_dataset_api_updates_column_types(client, profile):
     }
 
 
+def test_dataset_api_adds_column_and_backfills_existing_rows(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={
+            "name": "visibility_level",
+            "default_value": "internal",
+            "column_type": "text",
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["headers"] == ["name", "email", "visibility_level"]
+    assert response.json()["dataset"]["column_schema"]["visibility_level"] == {"type": "text"}
+    dataset.refresh_from_db()
+    assert dataset.headers == ["name", "email", "visibility_level"]
+    assert dataset.preview_rows == [
+        {"name": "Ada", "email": "ada@example.com", "visibility_level": "internal"},
+        {"name": "Grace", "email": "grace@example.com", "visibility_level": "internal"},
+    ]
+    assert list(dataset.rows.values_list("data", flat=True)) == [
+        {"name": "Ada", "email": "ada@example.com", "visibility_level": "internal"},
+        {"name": "Grace", "email": "grace@example.com", "visibility_level": "internal"},
+    ]
+
+
+def test_dataset_api_add_column_backfills_rows_across_bulk_update_chunks(client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Large People",
+        original_filename="large.csv",
+        status=DatasetStatus.READY,
+        headers=["email"],
+        index_column="email",
+        row_count=1001,
+    )
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=row_number,
+                index_value=f"user-{row_number}@example.com",
+                data={"email": f"user-{row_number}@example.com"},
+            )
+            for row_number in range(1, 1002)
+        ]
+    )
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={"name": "verification_ref", "default_value": "pending"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    dataset.refresh_from_db()
+    assert dataset.headers == ["email", "verification_ref"]
+    assert dataset.preview_rows == [
+        {"email": f"user-{row_number}@example.com", "verification_ref": "pending"}
+        for row_number in range(1, 6)
+    ]
+    assert dataset.rows.get(row_number=1001).data == {
+        "email": "user-1001@example.com",
+        "verification_ref": "pending",
+    }
+
+
+def test_dataset_api_renames_column_and_preserves_values(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+        data={"old_name": "name", "new_name": "full_name"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["headers"] == ["full_name", "email"]
+    dataset.refresh_from_db()
+    assert dataset.headers == ["full_name", "email"]
+    assert dataset.column_schema == {
+        "full_name": {"type": "text"},
+        "email": {"type": "text"},
+    }
+    assert dataset.rows.first().data == {
+        "full_name": "Ada",
+        "email": "ada@example.com",
+    }
+
+
+def test_dataset_api_rename_only_stringifies_renamed_value(client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Mixed",
+        original_filename="mixed.csv",
+        status=DatasetStatus.READY,
+        headers=["name", "email", "score"],
+        index_column="email",
+        row_count=1,
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ada@example.com",
+        data={"name": 10, "email": "ada@example.com", "score": 99},
+    )
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+        data={"old_name": "name", "new_name": "full_name"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    row.refresh_from_db()
+    assert row.data == {
+        "email": "ada@example.com",
+        "score": 99,
+        "full_name": "10",
+    }
+
+
+def test_dataset_api_drops_non_index_column(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+        data={"name": "name"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["headers"] == ["email"]
+    dataset.refresh_from_db()
+    assert dataset.headers == ["email"]
+    assert dataset.column_schema == {"email": {"type": "text"}}
+    assert dataset.rows.first().data == {"email": "ada@example.com"}
+
+
+def test_dataset_api_rejects_dropping_index_column(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+        data={"name": "email"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert "Index column" in response.json()["detail"]
+    dataset.refresh_from_db()
+    assert dataset.headers == ["name", "email"]
+
+
+def test_dataset_api_reorders_columns(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.post(
+        f"/api/datasets/{dataset.key}/columns/reorder?api_key={profile.key}",
+        data={"headers": ["email", "name"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["headers"] == ["email", "name"]
+    dataset.refresh_from_db()
+    assert dataset.headers == ["email", "name"]
+    assert dataset.rows.first().data == {
+        "name": "Ada",
+        "email": "ada@example.com",
+    }
+
+
 def test_dataset_api_rejects_unknown_column_type_header(client, profile):
     dataset = create_ready_dataset(profile)
 

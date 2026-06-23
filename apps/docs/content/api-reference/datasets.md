@@ -116,6 +116,67 @@ Updates semantic column metadata without changing stored row values.
 
 Supported types are `text`, `integer`, `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
 
+## Change columns
+
+Use schema mutation endpoints when an agent needs to evolve an existing ready dataset in place.
+
+Add a column and backfill existing rows with a blank or default value:
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/columns
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "visibility_level",
+  "default_value": "internal",
+  "column_type": "text"
+}
+```
+
+Rename a column while preserving row values:
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/columns/rename
+Content-Type: application/json
+```
+
+```json
+{
+  "old_name": "name",
+  "new_name": "full_name"
+}
+```
+
+Drop a non-index column:
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/columns/drop
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "notes"
+}
+```
+
+Reorder columns for display and export:
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/columns/reorder
+Content-Type: application/json
+```
+
+```json
+{
+  "headers": ["sku", "name", "visibility_level", "price"]
+}
+```
+
+Reorder requests must include every current header exactly once. Index columns cannot be dropped, and generated index columns cannot be renamed.
+
 ## Update project
 
 ```http
