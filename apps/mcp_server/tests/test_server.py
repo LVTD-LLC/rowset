@@ -442,11 +442,28 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
     def profile():
         return _profile()
 
-    def list_rows(authenticated_profile, dataset_key, limit=100, offset=0):
-        calls.append(("list", dataset_key, limit, offset))
+    def list_rows(
+        authenticated_profile,
+        dataset_key,
+        limit=100,
+        offset=0,
+        query=None,
+        filters=None,
+        sort=None,
+        direction=None,
+    ):
+        calls.append(("list", dataset_key, limit, offset, query, filters, sort, direction))
         return {
             "dataset": dataset_key,
             "count": 1,
+            "total_count": 2,
+            "limit": limit,
+            "offset": offset,
+            "has_more": False,
+            "query": query or "",
+            "filters": filters or {},
+            "sort": sort or "row_number",
+            "direction": direction or "asc",
             "rows": [{"id": 1, "data": {"email": "a@example.com"}}],
         }
 
@@ -501,7 +518,14 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
         async with Client(mcp) as client:
             list_result = await client.call_tool(
                 "list_dataset_rows",
-                {"dataset_key": "ds", "limit": 5},
+                {
+                    "dataset_key": "ds",
+                    "limit": 5,
+                    "query": "ada",
+                    "filters": {"active": "true"},
+                    "sort": "email",
+                    "direction": "desc",
+                },
             )
             get_result = await client.call_tool(
                 "get_dataset_row",
@@ -540,8 +564,11 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
         assert update_by_index_result.data["row"]["data"]["name"] == "Ada"
         assert delete_result.data["message"] == "Row deleted."
 
+        assert list_result.data["filters"] == {"active": "true"}
+        assert list_result.data["sort"] == "email"
+
         assert calls == [
-            ("list", "ds", 5, 0),
+            ("list", "ds", 5, 0, "ada", {"active": "true"}, "email", "desc"),
             ("get", "ds", 7),
             ("get_by_index", "ds", "a@example.com"),
             ("create", "ds", {"email": "b@example.com"}),

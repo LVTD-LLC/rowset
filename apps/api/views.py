@@ -1,3 +1,4 @@
+import json
 from typing import NoReturn
 
 from django.core.cache import cache
@@ -98,6 +99,21 @@ DATASET_EXPORT_FORMATS = {
 
 def _raise_http_error(exc: DatasetServiceError) -> NoReturn:
     raise HttpError(exc.status_code, exc.message) from exc
+
+
+def _parse_row_filters(filters: str | None) -> dict[str, str]:
+    if not filters:
+        return {}
+    try:
+        payload = json.loads(filters)
+    except json.JSONDecodeError as exc:
+        raise DatasetServiceError(
+            400,
+            "filters must be a JSON object keyed by dataset header.",
+        ) from exc
+    if not isinstance(payload, dict):
+        raise DatasetServiceError(400, "filters must be a JSON object keyed by dataset header.")
+    return {str(header): "" if value is None else str(value) for header, value in payload.items()}
 
 
 def _export_dataset_response(dataset, export_format: str) -> HttpResponse:
@@ -760,9 +776,28 @@ def patch_dataset_public_preview(
     auth=[api_key_auth],
     tags=["datasets"],
 )
-def list_dataset_rows(request: HttpRequest, dataset_key: str, limit: int = 100, offset: int = 0):
+def list_dataset_rows(
+    request: HttpRequest,
+    dataset_key: str,
+    limit: int = 100,
+    offset: int = 0,
+    query: str | None = None,
+    filters: str | None = None,
+    sort: str | None = None,
+    direction: str | None = None,
+):
+    """Return a bounded, optionally filtered and sorted page of rows for a dataset."""
     try:
-        return list_profile_dataset_rows(request.auth, dataset_key, limit=limit, offset=offset)
+        return list_profile_dataset_rows(
+            request.auth,
+            dataset_key,
+            limit=limit,
+            offset=offset,
+            query=query,
+            filters=_parse_row_filters(filters),
+            sort=sort,
+            direction=direction,
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 
