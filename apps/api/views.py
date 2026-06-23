@@ -17,6 +17,7 @@ from apps.api.schemas import (
     BlogPostOut,
     BlogPostUpdateIn,
     DatasetApiOut,
+    DatasetArchiveOut,
     DatasetColumnTypesOut,
     DatasetColumnTypesPatchIn,
     DatasetCreateIn,
@@ -40,6 +41,7 @@ from apps.api.schemas import (
 )
 from apps.api.services import (
     DatasetServiceError,
+    archive_profile_dataset,
     create_profile_dataset,
     create_profile_dataset_row,
     create_profile_project,
@@ -49,6 +51,7 @@ from apps.api.services import (
     get_ready_profile_dataset,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
+    restore_profile_dataset,
     serialize_profile_datasets,
     serialize_profile_project_detail,
     serialize_profile_projects,
@@ -475,6 +478,42 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 project_key=payload.project_key,
                 **_agent_actor_kwargs(request),
             ),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.delete(
+    "/datasets/{dataset_key}",
+    response=DatasetArchiveOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def archive_dataset(request: HttpRequest, dataset_key: str):
+    """Archive a dataset without deleting its rows or schema metadata."""
+    try:
+        return archive_profile_dataset(
+            request.auth,
+            dataset_key,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/restore",
+    response=DatasetArchiveOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def restore_dataset(request: HttpRequest, dataset_key: str):
+    """Restore an archived dataset to normal dataset and project listings."""
+    try:
+        return restore_profile_dataset(
+            request.auth,
+            dataset_key,
+            **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)

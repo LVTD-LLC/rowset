@@ -473,10 +473,7 @@ def test_dataset_export_escapes_content_disposition_filename(auth_client, profil
     response = auth_client.get(reverse("dataset_export", args=[dataset.key, "csv"]))
 
     assert response.status_code == 200
-    assert (
-        response["Content-Disposition"]
-        == 'attachment; filename="R&D \\"People\\"-2026.csv"'
-    )
+    assert response["Content-Disposition"] == 'attachment; filename="R&D \\"People\\"-2026.csv"'
 
 
 def test_dataset_export_parquet_download(auth_client, profile):
@@ -551,6 +548,58 @@ def test_dataset_api_crud_and_export(client, profile):
     delete_response = client.delete(f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={api_key}")
     assert delete_response.status_code == 200
     assert not DatasetRow.objects.filter(id=row_id).exists()
+
+
+def test_dataset_api_archives_and_restores_dataset(client, profile):
+    project = Project.objects.create(profile=profile, name="Cleanup")
+    dataset = create_ready_dataset(profile)
+    dataset.project = project
+    dataset.public_enabled = True
+    dataset.save(update_fields=["project", "public_enabled"])
+    public_url = reverse("public_dataset", args=[dataset.public_key])
+
+    archive_response = client.delete(f"/api/datasets/{dataset.key}?api_key={profile.key}")
+
+    assert archive_response.status_code == 200
+    assert archive_response.json()["message"] == "Dataset archived."
+    dataset.refresh_from_db()
+    assert dataset.archived_at is not None
+    assert dataset.public_enabled is False
+    assert DatasetRow.objects.filter(dataset=dataset).count() == 2
+
+    list_response = client.get(f"/api/datasets?api_key={profile.key}")
+    assert list_response.status_code == 200
+    assert list_response.json()["datasets"] == []
+
+    project_response = client.get(f"/api/projects/{project.key}?api_key={profile.key}")
+    assert project_response.status_code == 200
+    assert project_response.json()["project"]["dataset_count"] == 0
+    assert project_response.json()["datasets"]["datasets"] == []
+
+    public_response = client.get(public_url)
+    assert public_response.status_code == 404
+
+    already_archived_response = client.delete(f"/api/datasets/{dataset.key}?api_key={profile.key}")
+    assert already_archived_response.status_code == 200
+    assert already_archived_response.json()["message"] == "Dataset was already archived."
+
+    restore_response = client.post(f"/api/datasets/{dataset.key}/restore?api_key={profile.key}")
+
+    assert restore_response.status_code == 200
+    assert restore_response.json()["message"] == "Dataset restored."
+    dataset.refresh_from_db()
+    assert dataset.archived_at is None
+    assert dataset.public_enabled is False
+
+    already_restored_response = client.post(
+        f"/api/datasets/{dataset.key}/restore?api_key={profile.key}"
+    )
+    assert already_restored_response.status_code == 200
+    assert already_restored_response.json()["message"] == "Dataset was not archived."
+
+    restored_list_response = client.get(f"/api/datasets?api_key={profile.key}")
+    assert restored_list_response.status_code == 200
+    assert [item["key"] for item in restored_list_response.json()["datasets"]] == [str(dataset.key)]
 
 
 def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
@@ -1141,9 +1190,7 @@ def test_public_dataset_links_rows_and_truncates_cells(client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert (
-        reverse("public_dataset_row_detail", args=[dataset.public_key, row.id]) in content
-    )
+    assert reverse("public_dataset_row_detail", args=[dataset.public_key, row.id]) in content
     assert 'class="fb-focus block max-w-64 truncate' in content
     assert 'aria-label="View row 1 details"' in content
     assert content.count('aria-label="View row 1 details"') == 1
@@ -1167,9 +1214,7 @@ def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     }
     row.save(update_fields=["data"])
 
-    response = client.get(
-        reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
-    )
+    response = client.get(reverse("public_dataset_row_detail", args=[dataset.public_key, row.id]))
     content = response.content.decode()
 
     assert response.status_code == 200
@@ -1187,9 +1232,7 @@ def test_public_dataset_row_detail_requires_public_preview(client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.first()
 
-    response = client.get(
-        reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
-    )
+    response = client.get(reverse("public_dataset_row_detail", args=[dataset.public_key, row.id]))
 
     assert response.status_code == 404
 

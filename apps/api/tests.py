@@ -260,6 +260,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
             updated_at="2026-05-14T00:01:00Z",
             confirmed_at="2026-05-14T00:02:00Z",
             processed_at="2026-05-14T00:03:00Z",
+            archived_at=None,
             is_public_password_protected=True,
             get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
         )
@@ -267,7 +268,8 @@ class DatasetListApiUnitTests(SimpleTestCase):
         queryset.count.return_value = 1
         queryset.__getitem__ = Mock(return_value=[dataset])
         datasets = Mock()
-        datasets.select_related.return_value.only.return_value = queryset
+        active_datasets = datasets.filter.return_value
+        active_datasets.select_related.return_value.only.return_value = queryset
         request = HttpRequest()
         request.auth = SimpleNamespace(datasets=datasets)
 
@@ -301,8 +303,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "public_enabled": True,
                 "public_key": "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
                 "public_url": (
-                    "https://rowset.example/share/datasets/"
-                    "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/"
+                    "https://rowset.example/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/"
                 ),
                 "public_page_size": 25,
                 "public_password_protected": True,
@@ -310,10 +311,12 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "updated_at": "2026-05-14T00:01:00Z",
                 "confirmed_at": "2026-05-14T00:02:00Z",
                 "processed_at": "2026-05-14T00:03:00Z",
+                "archived_at": None,
             }
         ]
-        datasets.select_related.assert_called_once_with("project")
-        datasets.select_related.return_value.only.assert_called_once()
+        datasets.filter.assert_called_once_with(archived_at__isnull=True)
+        active_datasets.select_related.assert_called_once_with("project")
+        active_datasets.select_related.return_value.only.assert_called_once()
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
 

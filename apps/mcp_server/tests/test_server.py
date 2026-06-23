@@ -49,6 +49,7 @@ def _profile():
         updated_at="2026-05-14T00:01:00Z",
         confirmed_at=None,
         processed_at=None,
+        archived_at=None,
         get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
     )
 
@@ -61,6 +62,10 @@ def _profile():
             return [dataset]
 
     class DatasetManager:
+        def filter(self, **kwargs):
+            assert kwargs == {"archived_at__isnull": True}
+            return self
+
         def select_related(self, *fields):
             assert fields == ("project",)
             return self
@@ -497,6 +502,61 @@ def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatc
         assert calls == [
             (11, "ds", True, 25, "secret", False),
             (11, "ds", None, 50, None, False),
+        ]
+
+    anyio.run(run)
+
+
+def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
+    calls = []
+
+    def archive_dataset(authenticated_profile, dataset_key, agent_api_key=None):
+        calls.append(("archive", authenticated_profile.id, dataset_key))
+        return {
+            "status": "success",
+            "message": "Dataset archived.",
+            "dataset": {"key": dataset_key, "archived_at": "2026-05-14T00:00:00Z"},
+        }
+
+    def restore_dataset(authenticated_profile, dataset_key, agent_api_key=None):
+        calls.append(("restore", authenticated_profile.id, dataset_key))
+        return {
+            "status": "success",
+            "message": "Dataset restored.",
+            "dataset": {"key": dataset_key, "archived_at": None},
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.archive_profile_dataset",
+            archive_dataset,
+            raising=False,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.restore_profile_dataset",
+            restore_dataset,
+            raising=False,
+        )
+
+        async with Client(mcp) as client:
+            archive_result = await client.call_tool(
+                "archive_dataset",
+                {"dataset_key": "ds"},
+            )
+            restore_result = await client.call_tool(
+                "restore_dataset",
+                {"dataset_key": "ds"},
+            )
+
+        assert archive_result.data["message"] == "Dataset archived."
+        assert restore_result.data["dataset"]["archived_at"] is None
+        assert calls == [
+            ("archive", 11, "ds"),
+            ("restore", 11, "ds"),
         ]
 
     anyio.run(run)

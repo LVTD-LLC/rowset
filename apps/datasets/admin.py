@@ -20,8 +20,10 @@ class DatasetAdmin(admin.ModelAdmin):
         "status",
         "row_count",
         "public_enabled",
+        "archived_at",
         "created_by_agent_api_key",
         "updated_by_agent_api_key",
+        "archived_by_agent_api_key",
         "created_at",
     )
     list_select_related = (
@@ -29,6 +31,7 @@ class DatasetAdmin(admin.ModelAdmin):
         "project",
         "created_by_agent_api_key__profile__user",
         "updated_by_agent_api_key__profile__user",
+        "archived_by_agent_api_key__profile__user",
     )
     search_fields = (
         "name",
@@ -37,13 +40,16 @@ class DatasetAdmin(admin.ModelAdmin):
         "profile__user__email",
         "created_by_agent_api_key__name",
         "updated_by_agent_api_key__name",
+        "archived_by_agent_api_key__name",
     )
     list_filter = (
         "status",
         "project",
         "public_enabled",
+        "archived_at",
         "created_by_agent_api_key",
         "updated_by_agent_api_key",
+        "archived_by_agent_api_key",
         "created_at",
     )
     readonly_fields = (
@@ -54,6 +60,8 @@ class DatasetAdmin(admin.ModelAdmin):
         "parse_error",
         "created_by_agent_api_key",
         "updated_by_agent_api_key",
+        "archived_by_agent_api_key",
+        "archived_at",
         "created_at",
         "updated_at",
     )

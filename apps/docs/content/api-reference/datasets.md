@@ -6,7 +6,7 @@ keywords: Rowset API, dataset API, CSV API, REST endpoints
 
 # Dataset API
 
-Every dataset gets a small REST API. Use these endpoints when your app, script, or agent needs to create datasets, read/update rows, export rows, or configure public preview sharing.
+Every dataset gets a small REST API. Use these endpoints when your app, script, or agent needs to create datasets, read/update rows, export rows, archive datasets, or configure public preview sharing.
 
 ## Authentication
 
@@ -166,6 +166,22 @@ To remove an existing preview password:
 ```
 
 The response includes `dataset.public_url`.
+
+## Archive a dataset
+
+```http
+DELETE {{ api_base_url }}/datasets/{dataset_key}
+```
+
+Archives a dataset without deleting rows or schema metadata. Archived datasets disappear from normal dataset and project lists, public previews are disabled, and the dataset can be restored by key.
+
+## Restore a dataset
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/restore
+```
+
+Restores an archived dataset to normal dataset and project lists. Restoring does not automatically re-enable a public preview.
 
 ## Delete a row
 

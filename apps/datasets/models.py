@@ -51,6 +51,13 @@ class Dataset(BaseModel):
         on_delete=models.SET_NULL,
         related_name="updated_datasets",
     )
+    archived_by_agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="archived_datasets",
+    )
     project = models.ForeignKey(
         Project,
         null=True,
@@ -87,6 +94,7 @@ class Dataset(BaseModel):
     parse_error = models.TextField(blank=True, default="")
     confirmed_at = models.DateTimeField(null=True, blank=True)
     processed_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -151,7 +159,7 @@ class DatasetRow(BaseModel):
             models.UniqueConstraint(
                 fields=["dataset", "index_value"],
                 name="unique_dataset_index_value",
-            )
+            ),
         ]
 
     def __str__(self):

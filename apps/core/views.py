@@ -15,7 +15,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q, Sum
-from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -115,7 +115,9 @@ class HomeView(LoginRequiredMixin, TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         profile, _created = Profile.objects.get_or_create(user=self.request.user)
-        dashboard_datasets = profile.datasets.exclude(status=DatasetStatus.PREVIEWED)
+        dashboard_datasets = profile.datasets.filter(archived_at__isnull=True).exclude(
+            status=DatasetStatus.PREVIEWED
+        )
         dashboard_summary = dashboard_datasets.aggregate(
             total_datasets=Count("id"),
             total_rows=Sum("row_count"),
@@ -133,14 +135,10 @@ class HomeView(LoginRequiredMixin, TemplateView):
             "total_rows": dashboard_summary["total_rows"] or 0,
             "public_preview_count": dashboard_summary["public_preview_count"] or 0,
         }
-        show_agent_setup_prompt = (
-            not profile.agent_setup_prompt_dismissed and not recent_datasets
-        )
+        show_agent_setup_prompt = not profile.agent_setup_prompt_dismissed and not recent_datasets
         context["show_agent_setup_prompt"] = show_agent_setup_prompt
         if show_agent_setup_prompt:
-            active_agent_api_key = profile.agent_api_keys.filter(
-                revoked_at__isnull=True
-            ).first()
+            active_agent_api_key = profile.agent_api_keys.filter(revoked_at__isnull=True).first()
             context["agent_api_key_form"] = AgentApiKeyCreateForm(profile=profile)
             context["active_agent_api_key"] = active_agent_api_key
             if active_agent_api_key:
@@ -486,7 +484,9 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         now = timezone.now()
         week_ago = now - timedelta(days=7)
         month_ago = now - timedelta(days=30)
-        visible_datasets = Dataset.objects.exclude(status=DatasetStatus.PREVIEWED)
+        visible_datasets = Dataset.objects.filter(archived_at__isnull=True).exclude(
+            status=DatasetStatus.PREVIEWED
+        )
 
         total_users = User.objects.count()
         profile_count = Profile.objects.count()
@@ -518,7 +518,8 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
             .annotate(
                 dataset_count=Count(
                     "datasets",
-                    filter=~Q(datasets__status=DatasetStatus.PREVIEWED),
+                    filter=Q(datasets__archived_at__isnull=True)
+                    & ~Q(datasets__status=DatasetStatus.PREVIEWED),
                 )
             )
             .order_by("-created_at")[:10]
