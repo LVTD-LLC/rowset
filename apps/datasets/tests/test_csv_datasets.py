@@ -20,6 +20,7 @@ from apps.datasets.services import (
     infer_column_type,
     preview_csv_file,
     preview_uploaded_table,
+    rows_to_sqlite_bytes,
 )
 from apps.datasets.tasks import import_dataset_rows
 from apps.datasets.views import DATASET_DETAIL_ROW_PAGE_SIZE
@@ -81,7 +82,16 @@ def sqlite_rows(content: bytes) -> list[dict[str, str]]:
     connection.row_factory = sqlite3.Row
     try:
         connection.deserialize(content)
-        return [dict(row) for row in connection.execute("SELECT name, email FROM rows")]
+        return [dict(row) for row in connection.execute("SELECT * FROM rows")]
+    finally:
+        connection.close()
+
+
+def sqlite_table_columns(content: bytes, table_name: str = "rows") -> list[str]:
+    connection = sqlite3.connect(":memory:")
+    try:
+        connection.deserialize(content)
+        return [row[1] for row in connection.execute(f"PRAGMA table_info({table_name})")]
     finally:
         connection.close()
 
@@ -607,6 +617,13 @@ def test_dataset_export_sqlite_download(auth_client, profile):
         {"name": "Ada", "email": "ada@example.com"},
         {"name": "Grace", "email": "grace@example.com"},
     ]
+
+
+def test_sqlite_export_handles_empty_headers():
+    content = rows_to_sqlite_bytes([], [])
+
+    assert sqlite_table_columns(content) == ["_rowset_empty_export"]
+    assert sqlite_rows(content) == []
 
 
 def test_dataset_export_requires_ready_dataset(auth_client, profile):

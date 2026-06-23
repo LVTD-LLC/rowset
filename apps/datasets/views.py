@@ -23,6 +23,7 @@ from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
     column_definitions,
+    iter_export_row_data,
     normalize_public_page_size,
     ordered_row_values,
     rows_to_csv_text,
@@ -77,14 +78,6 @@ def _dataset_export_filename(dataset: Dataset, extension: str) -> str:
     return f"{name}.{extension}"
 
 
-def _dataset_export_rows(dataset: Dataset):
-    return (
-        dataset.rows.order_by("row_number")
-        .values_list("data", flat=True)
-        .iterator(chunk_size=1000)
-    )
-
-
 def _dataset_export_response(dataset: Dataset, export_format: str) -> HttpResponse:
     try:
         content_type, serializer = DATASET_EXPORT_FORMATS[export_format]
@@ -92,7 +85,7 @@ def _dataset_export_response(dataset: Dataset, export_format: str) -> HttpRespon
         raise Http404("Unsupported export format.") from exc
 
     response = HttpResponse(
-        serializer(dataset.headers, _dataset_export_rows(dataset)),
+        serializer(dataset.headers, iter_export_row_data(dataset)),
         content_type=content_type,
     )
     response["Content-Disposition"] = content_disposition_header(

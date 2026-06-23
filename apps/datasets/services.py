@@ -562,19 +562,31 @@ def rows_to_xlsx_bytes(headers: list[str], rows) -> bytes:
 def rows_to_sqlite_bytes(headers: list[str], rows) -> bytes:
     connection = sqlite3.connect(":memory:")
     try:
+        if not headers:
+            connection.execute('CREATE TABLE rows ("_rowset_empty_export" TEXT)')
+            connection.commit()
+            return connection.serialize()
+
         quoted_columns = ", ".join(f"{_quote_sqlite_identifier(header)} TEXT" for header in headers)
         connection.execute(f"CREATE TABLE rows ({quoted_columns})")
-        if headers:
-            column_names = ", ".join(_quote_sqlite_identifier(header) for header in headers)
-            placeholders = ", ".join("?" for _ in headers)
-            connection.executemany(
-                f"INSERT INTO rows ({column_names}) VALUES ({placeholders})",
-                (_export_row_tuple(headers, row) for row in rows),
-            )
+        column_names = ", ".join(_quote_sqlite_identifier(header) for header in headers)
+        placeholders = ", ".join("?" for _ in headers)
+        connection.executemany(
+            f"INSERT INTO rows ({column_names}) VALUES ({placeholders})",
+            (_export_row_tuple(headers, row) for row in rows),
+        )
         connection.commit()
         return connection.serialize()
     finally:
         connection.close()
+
+
+def iter_export_row_data(dataset):
+    return (
+        dataset.rows.order_by("row_number")
+        .values_list("data", flat=True)
+        .iterator(chunk_size=1000)
+    )
 
 
 def _row_data(row) -> dict:

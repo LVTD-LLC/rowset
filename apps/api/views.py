@@ -73,6 +73,7 @@ from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
 from apps.core.models import Feedback
 from apps.datasets.services import (
+    iter_export_row_data,
     rows_to_csv_text,
     rows_to_jsonl_text,
     rows_to_sqlite_bytes,
@@ -98,18 +99,10 @@ def _raise_http_error(exc: DatasetServiceError) -> NoReturn:
     raise HttpError(exc.status_code, exc.message) from exc
 
 
-def _dataset_export_rows(dataset):
-    return (
-        dataset.rows.order_by("row_number")
-        .values_list("data", flat=True)
-        .iterator(chunk_size=1000)
-    )
-
-
 def _export_dataset_response(dataset, export_format: str) -> HttpResponse:
     content_type, serializer = DATASET_EXPORT_FORMATS[export_format]
     response = HttpResponse(
-        serializer(dataset.headers, _dataset_export_rows(dataset)),
+        serializer(dataset.headers, iter_export_row_data(dataset)),
         content_type=content_type,
     )
     response["Content-Disposition"] = content_disposition_header(
