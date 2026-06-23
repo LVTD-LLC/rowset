@@ -1,7 +1,7 @@
 ---
 title: Dataset API
-description: Use Rowset dataset endpoints for row CRUD, indexed lookup, CSV export, and public previews.
-keywords: Rowset API, dataset API, CSV API, REST endpoints
+description: Use Rowset dataset endpoints for row CRUD, indexed lookup, exports, and public previews.
+keywords: Rowset API, dataset API, CSV API, JSONL API, XLSX API, SQLite API, REST endpoints
 ---
 
 # Dataset API
@@ -252,13 +252,31 @@ DELETE {{ api_base_url }}/datasets/{dataset_key}/rows/{row_id}
 
 Deletes a row by Rowset row id.
 
-## Export CSV
+## Export a snapshot
 
 ```http
 GET {{ api_base_url }}/datasets/{dataset_key}/export.csv
 ```
 
 Exports the dataset as CSV.
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}/export.jsonl
+```
+
+Exports one JSON object per line.
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}/export.xlsx
+```
+
+Exports a spreadsheet workbook.
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}/export.sqlite
+```
+
+Exports a SQLite database with a `rows` table.
 
 ## Example
 

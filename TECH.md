@@ -7,8 +7,8 @@
 - MCP: FastMCP in `apps/mcp_server`.
 - Auth: Django allauth, session auth, API-key auth, hosted MCP bearer auth.
 - Data: PostgreSQL, Redis, Django Q workers.
-- Tabular processing: Python `csv` and Polars for dataset parsing, CSV export,
-  and Parquet export.
+- Tabular processing: Python `csv`, `json`, `sqlite3`, and `zipfile` plus
+  Polars for dataset parsing and CSV, JSONL, XLSX, SQLite, and Parquet exports.
 - Frontend: Django templates, Stimulus, Webpack, Tailwind, Bootstrap.
 - Local containers: Docker Compose with Postgres, Redis, backend, workers,
   frontend Node 24, Mailhog, Stripe CLI, MJML, and MinIO.

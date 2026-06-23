@@ -1,6 +1,6 @@
 ---
 name: rowset
-description: Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP or REST access, or manage Rowset datasets. Covers bearer API key setup, hosted MCP discovery, dataset/project creation and lookup, row CRUD, semantic column types, REST CSV export fallback, public preview sharing, and privacy/destructive-action guardrails.
+description: Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP or REST access, or manage Rowset datasets. Covers bearer API key setup, hosted MCP discovery, dataset/project creation and lookup, row CRUD, semantic column types, REST file export fallback, public preview sharing, and privacy/destructive-action guardrails.
 ---
 
 # Rowset
@@ -77,9 +77,12 @@ Use this default order when the user asks Rowset to work with data:
    `list_dataset_rows`, `get_dataset_row`, `get_dataset_row_by_index`,
    `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`.
 7. Use REST only after the user approves REST fallback or when MCP cannot perform
-   the requested action. For CSV export, use the current API docs and the
-   `GET /datasets/{dataset_key}/export.csv` REST path under the provided REST API
-   base.
+   the requested action. For file exports, use the current API docs and the REST
+   paths under the provided REST API base:
+   `GET /datasets/{dataset_key}/export.csv`,
+   `GET /datasets/{dataset_key}/export.jsonl`,
+   `GET /datasets/{dataset_key}/export.xlsx`, or
+   `GET /datasets/{dataset_key}/export.sqlite`.
 
 ## Public Preview Workflow
 

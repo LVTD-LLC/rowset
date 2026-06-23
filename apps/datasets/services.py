@@ -1,12 +1,16 @@
 import csv
 import io
+import json
 import re
+import sqlite3
+import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Protocol
 from urllib.parse import urlparse
+from xml.sax.saxutils import escape
 
 import polars as pl
 
@@ -524,18 +528,193 @@ def rows_to_csv_text(headers: list[str], rows) -> str:
     writer = csv.DictWriter(buffer, fieldnames=headers, extrasaction="ignore")
     writer.writeheader()
     for row in rows:
-        writer.writerow({header: row.data.get(header, "") for header in headers})
+        writer.writerow(_export_row(headers, row))
     return buffer.getvalue()
 
 
 def rows_to_parquet_bytes(headers: list[str], rows) -> bytes:
     dataframe = pl.DataFrame(
-        [{header: row.data.get(header, "") for header in headers} for row in rows],
+        [_export_row(headers, row) for row in rows],
         schema={header: pl.String for header in headers},
     )
     buffer = io.BytesIO()
     dataframe.write_parquet(buffer)
     return buffer.getvalue()
+
+
+def rows_to_jsonl_text(headers: list[str], rows) -> str:
+    return "".join(
+        f"{json.dumps(_export_row(headers, row), ensure_ascii=False)}\n" for row in rows
+    )
+
+
+def rows_to_xlsx_bytes(headers: list[str], rows) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as workbook:
+        workbook.writestr("[Content_Types].xml", _xlsx_content_types_xml())
+        workbook.writestr("_rels/.rels", _xlsx_package_relationships_xml())
+        workbook.writestr("xl/workbook.xml", _xlsx_workbook_xml())
+        workbook.writestr("xl/_rels/workbook.xml.rels", _xlsx_workbook_relationships_xml())
+        workbook.writestr("xl/worksheets/sheet1.xml", _xlsx_sheet_xml(headers, rows))
+    return buffer.getvalue()
+
+
+def rows_to_sqlite_bytes(headers: list[str], rows) -> bytes:
+    connection = sqlite3.connect(":memory:")
+    try:
+        if not headers:
+            connection.execute('CREATE TABLE rows ("_rowset_empty_export" TEXT)')
+            connection.commit()
+            return connection.serialize()
+
+        quoted_columns = ", ".join(f"{_quote_sqlite_identifier(header)} TEXT" for header in headers)
+        connection.execute(f"CREATE TABLE rows ({quoted_columns})")
+        column_names = ", ".join(_quote_sqlite_identifier(header) for header in headers)
+        placeholders = ", ".join("?" for _ in headers)
+        connection.executemany(
+            f"INSERT INTO rows ({column_names}) VALUES ({placeholders})",
+            (_export_row_tuple(headers, row) for row in rows),
+        )
+        connection.commit()
+        return connection.serialize()
+    finally:
+        connection.close()
+
+
+def iter_export_row_data(dataset):
+    return (
+        dataset.rows.order_by("row_number")
+        .values_list("data", flat=True)
+        .iterator(chunk_size=1000)
+    )
+
+
+def _row_data(row) -> dict:
+    if isinstance(row, dict):
+        return row
+    return row.data
+
+
+def _export_row(headers: list[str], row) -> dict[str, str]:
+    row_data = _row_data(row)
+    return {header: _export_value(row_data.get(header, "")) for header in headers}
+
+
+def _export_row_tuple(headers: list[str], row) -> tuple[str, ...]:
+    row_data = _row_data(row)
+    return tuple(_export_value(row_data.get(header, "")) for header in headers)
+
+
+def _export_value(value) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _quote_sqlite_identifier(identifier: str) -> str:
+    return f'"{identifier.replace(chr(34), chr(34) + chr(34))}"'
+
+
+def _xlsx_content_types_xml() -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n'
+        '  <Default Extension="rels" '
+        'ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n'
+        '  <Default Extension="xml" ContentType="application/xml"/>\n'
+        '  <Override PartName="/xl/workbook.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.'
+        'sheet.main+xml"/>\n'
+        '  <Override PartName="/xl/worksheets/sheet1.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.'
+        'worksheet+xml"/>\n'
+        "</Types>\n"
+    )
+
+
+def _xlsx_package_relationships_xml() -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/'
+        'relationships">\n'
+        '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/'
+        'officeDocument/2006/relationships/officeDocument" '
+        'Target="xl/workbook.xml"/>\n'
+        "</Relationships>\n"
+    )
+
+
+def _xlsx_workbook_xml() -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/'
+        'relationships">\n'
+        "  <sheets>\n"
+        '    <sheet name="Rows" sheetId="1" r:id="rId1"/>\n'
+        "  </sheets>\n"
+        "</workbook>\n"
+    )
+
+
+def _xlsx_workbook_relationships_xml() -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/'
+        'relationships">\n'
+        '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/'
+        'officeDocument/2006/relationships/worksheet" '
+        'Target="worksheets/sheet1.xml"/>\n'
+        "</Relationships>\n"
+    )
+
+
+def _xlsx_sheet_xml(headers: list[str], rows) -> str:
+    row_xml = [_xlsx_row_xml(1, headers)]
+    for index, row in enumerate(rows, start=2):
+        row_xml.append(_xlsx_row_xml(index, _export_row(headers, row).values()))
+    return f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    {"".join(row_xml)}
+  </sheetData>
+</worksheet>
+"""
+
+
+def _xlsx_row_xml(row_number: int, values) -> str:
+    cells = [
+        _xlsx_cell_xml(row_number=row_number, column_number=column_number, value=value)
+        for column_number, value in enumerate(values, start=1)
+    ]
+    return f'<row r="{row_number}">{"".join(cells)}</row>'
+
+
+def _xlsx_cell_xml(*, row_number: int, column_number: int, value) -> str:
+    cell_ref = f"{_xlsx_column_name(column_number)}{row_number}"
+    text = _strip_invalid_xml_chars(_export_value(value))
+    preserve = ' xml:space="preserve"' if _xlsx_needs_preserved_space(text) else ""
+    return f'<c r="{cell_ref}" t="inlineStr"><is><t{preserve}>{escape(text)}</t></is></c>'
+
+
+def _xlsx_column_name(column_number: int) -> str:
+    name = ""
+    while column_number:
+        column_number, remainder = divmod(column_number - 1, 26)
+        name = f"{chr(65 + remainder)}{name}"
+    return name
+
+
+def _xlsx_needs_preserved_space(value: str) -> bool:
+    return bool(value) and (value != value.strip() or "\n" in value or "\t" in value)
+
+
+def _strip_invalid_xml_chars(value: str) -> str:
+    return "".join(
+        char
+        for char in value
+        if char in {"\t", "\n", "\r"} or ord(char) >= 0x20
+    )
 
 
 def prepare_index_config(headers: list[str], selected_index: str) -> tuple[str, bool, list[str]]:

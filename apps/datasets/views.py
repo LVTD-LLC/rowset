@@ -23,10 +23,14 @@ from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
     column_definitions,
+    iter_export_row_data,
     normalize_public_page_size,
     ordered_row_values,
     rows_to_csv_text,
+    rows_to_jsonl_text,
     rows_to_parquet_bytes,
+    rows_to_sqlite_bytes,
+    rows_to_xlsx_bytes,
 )
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
@@ -44,6 +48,16 @@ DATASET_SORT_ORDERING = {
     "project": ("project__name", "name"),
 }
 DATASET_DETAIL_ROW_PAGE_SIZE = 100
+DATASET_EXPORT_FORMATS = {
+    "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
+    "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
+    "parquet": ("application/vnd.apache.parquet", rows_to_parquet_bytes),
+    "sqlite": ("application/vnd.sqlite3", rows_to_sqlite_bytes),
+    "xlsx": (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        rows_to_xlsx_bytes,
+    ),
+}
 
 
 def _visible_project_dataset_count():
@@ -62,6 +76,23 @@ def _delete_dataset(dataset: Dataset) -> None:
 def _dataset_export_filename(dataset: Dataset, extension: str) -> str:
     name = f"{dataset.name or 'dataset'}".strip().replace("/", "-") or "dataset"
     return f"{name}.{extension}"
+
+
+def _dataset_export_response(dataset: Dataset, export_format: str) -> HttpResponse:
+    try:
+        content_type, serializer = DATASET_EXPORT_FORMATS[export_format]
+    except KeyError as exc:
+        raise Http404("Unsupported export format.") from exc
+
+    response = HttpResponse(
+        serializer(dataset.headers, iter_export_row_data(dataset)),
+        content_type=content_type,
+    )
+    response["Content-Disposition"] = content_disposition_header(
+        True,
+        _dataset_export_filename(dataset, export_format),
+    )
+    return response
 
 
 def _row_cells(headers: list[str], row_data: dict[str, object]) -> list[dict[str, str]]:
@@ -423,30 +454,7 @@ def dataset_export(request, dataset_key, export_format):
     if dataset.status != DatasetStatus.READY:
         raise Http404("Dataset exports are available after import completes.")
 
-    rows = list(dataset.rows.all())
-    if export_format == "csv":
-        response = HttpResponse(
-            rows_to_csv_text(dataset.headers, rows),
-            content_type="text/csv; charset=utf-8",
-        )
-        response["Content-Disposition"] = content_disposition_header(
-            True,
-            _dataset_export_filename(dataset, "csv"),
-        )
-        return response
-
-    if export_format == "parquet":
-        response = HttpResponse(
-            rows_to_parquet_bytes(dataset.headers, rows),
-            content_type="application/vnd.apache.parquet",
-        )
-        response["Content-Disposition"] = content_disposition_header(
-            True,
-            _dataset_export_filename(dataset, "parquet"),
-        )
-        return response
-
-    raise Http404("Unsupported export format.")
+    return _dataset_export_response(dataset, export_format)
 
 
 @login_required
