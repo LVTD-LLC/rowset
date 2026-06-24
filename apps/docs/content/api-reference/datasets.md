@@ -41,7 +41,7 @@ POST {{ api_base_url }}/datasets
 Content-Type: application/json
 ```
 
-Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, Rowset adds a generated `rowset_id` column so the dataset is ready to use immediately. Rowset infers column types from supplied rows; pass `column_types` to override them.
+Send a dataset name plus `headers`, `rows`, or both. Initial creation accepts up to 1,000 rows; add more rows afterward with the row create endpoint. If `index_column` is omitted, Rowset adds a generated `rowset_id` column so the dataset is ready to use immediately. Rowset infers column types from supplied rows; pass `column_types` to override them or add column descriptions for agents.
 
 Use `description`, `instructions`, and `metadata` when an agent should remember
 how to use the dataset. For example, a task board can store status rules,
@@ -65,14 +65,24 @@ to leave the dataset ungrouped.
   "project_key": "{project_key}",
   "headers": ["sku", "name", "price"],
   "index_column": "sku",
-  "column_types": {"sku": "text", "name": "text", "price": "currency"},
+  "column_types": {
+    "sku": {
+      "type": "text",
+      "description": "Stable supplier SKU used for row lookup"
+    },
+    "name": "text",
+    "price": {
+      "type": "currency",
+      "description": "Current retail price in USD"
+    }
+  },
   "rows": [
     {"sku": "A-1", "name": "Adapter", "price": "19.99"}
   ]
 }
 ```
 
-The response includes `dataset.key`; use that key with the row endpoints below.
+The response includes `dataset.key`; use that key with the row endpoints below. It also returns `column_schema`, including any column descriptions, so agents can keep that context while reading or updating rows.
 
 Choice columns are experimental. Use them when an agent should keep a text value
 inside a fixed set:
@@ -82,6 +92,7 @@ inside a fixed set:
   "column_types": {
     "status": {
       "type": "choice",
+      "description": "Current workflow state for the task",
       "choices": ["Ready to do", "Doing", "Done"]
     }
   }
@@ -165,6 +176,7 @@ Updates semantic column metadata without changing stored row values.
     "sku": "text",
     "status": {
       "type": "choice",
+      "description": "Current workflow state for the task",
       "choices": ["Ready to do", "Doing", "Done"]
     },
     "price": "currency",
@@ -174,9 +186,10 @@ Updates semantic column metadata without changing stored row values.
 ```
 
 Supported types are `text`, `choice`, `integer`, `number`, `currency`, `boolean`,
-`date`, `datetime`, `email`, and `url`. For `choice`, pass a metadata object with
-`type` and `choices`. Updating an existing column to `choice` fails if stored
-values are outside the allowed choices.
+`date`, `datetime`, `email`, and `url`. Pass a metadata object when a column
+needs `description`, or when a `choice` column needs `type` and `choices`.
+Updating an existing column to `choice` fails if stored values are outside the
+allowed choices.
 
 ## Update dataset context
 
@@ -219,6 +232,7 @@ Content-Type: application/json
   "default_value": "internal",
   "column_type": {
     "type": "choice",
+    "description": "Controls whether this row can be shared outside the team",
     "choices": ["internal", "shared"]
   }
 }

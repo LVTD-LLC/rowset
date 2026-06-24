@@ -251,7 +251,10 @@ class DatasetListApiUnitTests(SimpleTestCase):
             status="ready",
             headers=["email", "name"],
             column_schema={
-                "email": {"type": "email"},
+                "email": {
+                    "type": "email",
+                    "description": "Primary contact address for the customer.",
+                },
                 "name": {"type": "text"},
             },
             index_column="email",
@@ -304,7 +307,10 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "status": "ready",
                 "headers": ["email", "name"],
                 "column_schema": {
-                    "email": {"type": "email"},
+                    "email": {
+                        "type": "email",
+                        "description": "Primary contact address for the customer.",
+                    },
                     "name": {"type": "text"},
                 },
                 "index_column": "email",

@@ -18,6 +18,7 @@ from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast, Lower, Replace, Trim
 
 from apps.datasets.choices import DatasetColumnType
+from apps.datasets.constants import MAX_COLUMN_DESCRIPTION_LENGTH
 
 
 class CSVParseError(ValueError):
@@ -38,6 +39,7 @@ LEGACY_GOOGLE_SHEETS_FILE_TYPE = "google_sheets"
 COLUMN_TYPE_SAMPLE_LIMIT = 200
 COLUMN_SCHEMA_TYPE_KEY = "type"
 COLUMN_SCHEMA_CHOICES_KEY = "choices"
+COLUMN_SCHEMA_DESCRIPTION_KEY = "description"
 ROW_DEFAULT_SORT = "row_number"
 ROW_SORT_DESC = "desc"
 ROW_SEARCH_COLUMN_LIMIT = 20
@@ -355,10 +357,36 @@ def normalize_column_type(column_type: str | None) -> str:
     return normalized
 
 
-def _column_type_from_schema_entry(entry) -> str | None:
+def _column_type_from_schema_entry(entry, fallback_entry=None) -> str | None:
     if isinstance(entry, dict):
-        return entry.get(COLUMN_SCHEMA_TYPE_KEY)
+        raw_type = entry.get(COLUMN_SCHEMA_TYPE_KEY)
+        if raw_type is None and isinstance(fallback_entry, dict):
+            return fallback_entry.get(COLUMN_SCHEMA_TYPE_KEY)
+        return raw_type
     return entry
+
+
+def _normalize_column_description(header: str, raw_description) -> str:
+    if raw_description is None:
+        return ""
+    if not isinstance(raw_description, str):
+        raise CSVParseError(f"Column '{header}' description must be a string.")
+    description = raw_description.strip()
+    if len(description) > MAX_COLUMN_DESCRIPTION_LENGTH:
+        raise CSVParseError(
+            f"Column '{header}' description must be "
+            f"{MAX_COLUMN_DESCRIPTION_LENGTH} characters or fewer."
+        )
+    return description
+
+
+def _column_description_from_schema_entry(header: str, entry, fallback_entry) -> str:
+    raw_description = None
+    if isinstance(entry, dict) and COLUMN_SCHEMA_DESCRIPTION_KEY in entry:
+        raw_description = entry.get(COLUMN_SCHEMA_DESCRIPTION_KEY)
+    elif isinstance(fallback_entry, dict) and COLUMN_SCHEMA_DESCRIPTION_KEY in fallback_entry:
+        raw_description = fallback_entry.get(COLUMN_SCHEMA_DESCRIPTION_KEY)
+    return _normalize_column_description(header, raw_description)
 
 
 def _normalize_choice_values(header: str, raw_choices) -> list[str]:
@@ -398,11 +426,14 @@ def _choice_source_entry(header: str, entry, fallback_entry):
 
 
 def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[str, Any]:
-    raw_type = _column_type_from_schema_entry(entry)
+    raw_type = _column_type_from_schema_entry(entry, fallback_entry)
     if raw_type is None:
         raw_type = DatasetColumnType.TEXT
     column_type = normalize_column_type(raw_type)
     normalized_entry: dict[str, Any] = {COLUMN_SCHEMA_TYPE_KEY: column_type}
+    description = _column_description_from_schema_entry(header, entry, fallback_entry)
+    if description:
+        normalized_entry[COLUMN_SCHEMA_DESCRIPTION_KEY] = description
     if column_type == DatasetColumnType.CHOICE:
         source_entry = _choice_source_entry(header, entry, fallback_entry)
         normalized_entry[COLUMN_SCHEMA_CHOICES_KEY] = _normalize_choice_values(
@@ -456,6 +487,7 @@ def column_definitions(
             "name": header,
             "type": schema_entry[COLUMN_SCHEMA_TYPE_KEY],
             "type_label": labels.get(schema_entry[COLUMN_SCHEMA_TYPE_KEY], "Text"),
+            "description": schema_entry.get(COLUMN_SCHEMA_DESCRIPTION_KEY, ""),
         }
         if schema_entry[COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.CHOICE:
             definition["choices"] = schema_entry[COLUMN_SCHEMA_CHOICES_KEY]

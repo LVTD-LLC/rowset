@@ -115,12 +115,26 @@ def _dataset_export_response(dataset: Dataset, export_format: str) -> HttpRespon
     return response
 
 
-def _row_cells(headers: list[str], row_data: dict[str, object]) -> list[dict[str, str]]:
+def _row_cells(
+    headers: list[str],
+    row_data: dict[str, object],
+    column_schema: dict | None = None,
+) -> list[dict[str, str]]:
     ordered_keys = [*headers, *[key for key in row_data if key not in headers]]
+    descriptions = {
+        column["name"]: column["description"]
+        for column in column_definitions(headers, column_schema or {})
+    }
     cells = []
     for header in ordered_keys:
         value = row_data.get(header, "")
-        cells.append({"header": header, "value": "" if value is None else str(value)})
+        cells.append(
+            {
+                "header": header,
+                "description": descriptions.get(header, ""),
+                "value": "" if value is None else str(value),
+            }
+        )
     return cells
 
 
@@ -141,7 +155,12 @@ def _column_filter_input_type(column_type: str) -> str:
     }.get(column_type, "search")
 
 
-def _row_filter_fields(dataset: Dataset, request) -> list[dict[str, object]]:
+def _row_filter_fields(
+    dataset: Dataset,
+    request,
+    *,
+    include_column_descriptions: bool = True,
+) -> list[dict[str, object]]:
     fields = []
     for index, column in enumerate(column_definitions(dataset.headers, dataset.column_schema)):
         column_type = column["type"]
@@ -151,6 +170,9 @@ def _row_filter_fields(dataset: Dataset, request) -> list[dict[str, object]]:
                 "header": column["name"],
                 "type": column_type,
                 "type_label": column["type_label"],
+                "description": (
+                    column["description"] if include_column_descriptions else ""
+                ),
                 "param_name": param_name,
                 "value": request.GET.get(param_name, "").strip(),
                 "input_type": _column_filter_input_type(column_type),
@@ -190,11 +212,21 @@ def _selected_row_sort_direction(request) -> str:
     return normalize_dataset_row_sort_direction(request.GET.get(ROW_SORT_DIRECTION_PARAM))
 
 
-def _dataset_row_query_context(request, dataset: Dataset, queryset):
+def _dataset_row_query_context(
+    request,
+    dataset: Dataset,
+    queryset,
+    *,
+    include_column_descriptions: bool = True,
+):
     search_query = request.GET.get(ROW_SEARCH_PARAM, "").strip()
     selected_sort = _selected_row_sort(request, dataset)
     sort_direction = _selected_row_sort_direction(request)
-    filter_fields = _row_filter_fields(dataset, request)
+    filter_fields = _row_filter_fields(
+        dataset,
+        request,
+        include_column_descriptions=include_column_descriptions,
+    )
     filters = {
         str(field["header"]): str(field["value"])
         for field in filter_fields
@@ -391,6 +423,10 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             ]
         context.update(row_query_context if has_imported_rows else {})
         context["rows_with_values"] = rows_with_values
+        context["column_definitions"] = column_definitions(
+            dataset.headers,
+            dataset.column_schema,
+        )
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
         context["rows_colspan"] = len(dataset.headers) + int(has_imported_rows)
@@ -471,7 +507,7 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
         row = self.object
         dataset = row.dataset
         context["dataset"] = dataset
-        context["row_cells"] = _row_cells(dataset.headers, row.data)
+        context["row_cells"] = _row_cells(dataset.headers, row.data, dataset.column_schema)
         return context
 
 
@@ -597,16 +633,35 @@ def dataset_update_metadata(request, dataset_key):
 def dataset_update_column_settings(request, dataset_key):
     column_names = request.POST.getlist("column_name")
     column_types = request.POST.getlist("column_type")
+    column_descriptions = request.POST.getlist("column_description")
 
-    if len(column_names) != len(column_types):
-        messages.error(request, "Column type settings were incomplete.")
+    has_description_fields = "column_description" in request.POST
+    if len(column_names) != len(column_types) or (
+        has_description_fields and len(column_names) != len(column_descriptions)
+    ):
+        messages.error(request, "Column schema settings were incomplete.")
         return redirect("dataset_settings", dataset_key=dataset_key)
+
+    column_schema = {}
+    if has_description_fields:
+        for column_name, column_type, column_description in zip(
+            column_names,
+            column_types,
+            column_descriptions,
+            strict=True,
+        ):
+            column_schema[column_name] = {
+                "type": column_type,
+                "description": column_description,
+            }
+    else:
+        column_schema = dict(zip(column_names, column_types, strict=True))
 
     try:
         update_profile_dataset_column_types(
             request.user.profile,
             str(dataset_key),
-            dict(zip(column_names, column_types, strict=True)),
+            column_schema,
         )
     except DatasetServiceError as exc:
         if exc.status_code == 404:
@@ -614,7 +669,7 @@ def dataset_update_column_settings(request, dataset_key):
         messages.error(request, exc.message)
         return redirect("dataset_settings", dataset_key=dataset_key)
 
-    messages.success(request, "Column types updated.")
+    messages.success(request, "Column schema updated.")
     return redirect("dataset_settings", dataset_key=dataset_key)
 
 
@@ -721,6 +776,7 @@ def public_dataset(request, public_key):
             request,
             dataset,
             dataset.rows.all(),
+            include_column_descriptions=False,
         )
         paginator = Paginator(row_queryset, dataset.public_page_size)
         page_obj = paginator.get_page(request.GET.get("page"))
