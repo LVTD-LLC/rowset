@@ -8,6 +8,8 @@ import zipfile
 
 import polars as pl
 import pytest
+from django.contrib import messages as message_constants
+from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
@@ -344,10 +346,120 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     assert "People" in content
     assert "Research" in content
     assert "Invoices" not in content
+    assert reverse("archived_dataset_list") in content
     assert reverse("dataset_export", args=[dataset.key, "csv"]) not in content
     assert reverse("dataset_export", args=[dataset.key, "parquet"]) not in content
     assert reverse("dataset_delete", args=[dataset.key]) not in content
     assert "Dataset status" not in content
+
+
+def test_archived_dataset_list_shows_archived_datasets_only(
+    auth_client,
+    django_user_model,
+    profile,
+):
+    project = Project.objects.create(profile=profile, name="Research")
+    active_project = Project.objects.create(profile=profile, name="Active only")
+    active_dataset = create_ready_dataset(profile)
+    active_dataset.name = "Archived active people"
+    active_dataset.project = active_project
+    active_dataset.save(update_fields=["name", "project"])
+    archived_dataset = Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Archived people",
+        original_filename="archived-people.csv",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email"],
+        index_column="email",
+        row_count=4,
+        archived_at=timezone.now(),
+    )
+    Dataset.objects.create(
+        profile=profile,
+        name="Archived draft",
+        original_filename="draft.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["email"],
+        index_column="email",
+        archived_at=timezone.now(),
+    )
+    other_user = django_user_model.objects.create_user(
+        username="other-archive-list",
+        email="other-archive-list@example.com",
+        password="password123",
+    )
+    Dataset.objects.create(
+        profile=other_user.profile,
+        name="Archived other account dataset",
+        original_filename="other.csv",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email"],
+        index_column="email",
+        archived_at=timezone.now(),
+    )
+
+    response = auth_client.get(
+        reverse("archived_dataset_list"),
+        {"q": "archived", "sort": "archived"},
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert [dataset.key for dataset in response.context["datasets"]] == [archived_dataset.key]
+    assert response.context["search_query"] == "archived"
+    assert response.context["selected_sort"] == "archived"
+    assert response.context["dataset_stats"] == {
+        "total_datasets": 1,
+        "total_rows": 4,
+        "public_preview_count": 0,
+        "total_projects": 1,
+    }
+    assert "Archived datasets" in content
+    assert "Archived rows" in content
+    assert "Archived projects" in content
+    assert "Search archived datasets" in content
+    assert "Active datasets" in content
+    assert "Archived people" in content
+    assert "Research" in content
+    assert "Active only" not in content
+    assert "Archived active people" not in content
+    assert "Archived draft" not in content
+    assert "Archived other account dataset" not in content
+    assert reverse("dataset_list") in content
+    assert reverse("project_list") in content
+    assert reverse("dataset_export", args=[archived_dataset.key, "csv"]) not in content
+    assert reverse("dataset_delete", args=[archived_dataset.key]) not in content
+
+
+def test_archived_dataset_list_paginates_archived_datasets(auth_client, profile):
+    for index in range(101):
+        Dataset.objects.create(
+            profile=profile,
+            name=f"Archived dataset {index:03}",
+            original_filename="Created via API",
+            file_type="api",
+            status=DatasetStatus.READY,
+            headers=["email"],
+            index_column="email",
+            row_count=0,
+            archived_at=timezone.now(),
+        )
+
+    response = auth_client.get(reverse("archived_dataset_list"))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert len(response.context["datasets"]) == 100
+    assert "Page 1 of 2" in content
+
+    page_two = auth_client.get(f"{reverse('archived_dataset_list')}?page=2")
+
+    assert page_two.status_code == 200
+    assert len(page_two.context["datasets"]) == 1
+    assert "Page 2 of 2" in page_two.content.decode()
 
 
 def test_dataset_detail_orders_row_cells_by_headers(auth_client, profile):
@@ -812,6 +924,51 @@ def test_dataset_detail_context_is_collapsed_by_default_and_wraps_content(auth_c
         assert class_name in content
 
 
+def test_dataset_detail_shows_archive_action_for_active_dataset(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert reverse("dataset_archive", args=[dataset.key]) in content
+    assert "Archive" in content
+    assert "Dataset archived" not in content
+
+
+def test_dataset_detail_hides_archive_action_for_non_ready_dataset(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Processing import",
+        original_filename="processing.csv",
+        source_text="name\nAda\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name"],
+        preview_rows=[{"name": "Ada"}],
+        row_count=0,
+    )
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert reverse("dataset_archive", args=[dataset.key]) not in content
+    assert "Archive" not in content
+
+
+def test_dataset_detail_shows_archived_badge_without_archive_action(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'aria-label="Dataset archived"' in content
+    assert reverse("dataset_archive", args=[dataset.key]) not in content
+
+
 def test_dataset_detail_exposes_processing_status_live_region(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
@@ -875,6 +1032,83 @@ def test_project_detail_dataset_rows_omit_status_and_actions(auth_client, profil
     assert reverse("dataset_export", args=[dataset.key, "parquet"]) not in content
     assert dataset.get_settings_url() not in content
     assert "Dataset status" not in content
+
+
+def test_dataset_archive_archives_owned_dataset(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    response = auth_client.post(reverse("dataset_archive", args=[dataset.key]))
+
+    assert response.status_code == 302
+    assert response.url == reverse("dataset_list")
+    dataset.refresh_from_db()
+    assert dataset.archived_at is not None
+    assert dataset.public_enabled is False
+
+
+def test_dataset_archive_rejects_non_ready_dataset(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Processing import",
+        original_filename="processing.csv",
+        source_text="name\nAda\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name"],
+        preview_rows=[{"name": "Ada"}],
+        row_count=0,
+    )
+
+    response = auth_client.post(reverse("dataset_archive", args=[dataset.key]))
+
+    assert response.status_code == 302
+    assert response.url == dataset.get_absolute_url()
+    dataset.refresh_from_db()
+    assert dataset.archived_at is None
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == "Only ready datasets can be archived from the dataset page."
+
+
+def test_dataset_archive_requires_post(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_archive", args=[dataset.key]))
+
+    assert response.status_code == 405
+
+
+def test_dataset_archive_uses_info_message_for_already_archived_dataset(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at"])
+
+    response = auth_client.post(reverse("dataset_archive", args=[dataset.key]))
+
+    assert response.status_code == 302
+    assert response.url == reverse("dataset_list")
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.INFO
+    assert str(flash_messages[0]) == "Dataset was already archived."
+
+
+def test_dataset_archive_rejects_other_users_dataset(client, django_user_model, profile):
+    dataset = create_ready_dataset(profile)
+    other_user = django_user_model.objects.create_user(
+        username="other-archive",
+        email="other-archive@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.post(reverse("dataset_archive", args=[dataset.key]))
+
+    assert response.status_code == 404
+    dataset.refresh_from_db()
+    assert dataset.archived_at is None
 
 
 def test_dataset_delete_removes_owned_dataset(auth_client, profile):

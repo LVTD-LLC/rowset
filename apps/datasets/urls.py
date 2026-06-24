@@ -7,6 +7,11 @@ urlpatterns = [
     path("projects/create/", views.project_create, name="project_create"),
     path("projects/<uuid:project_key>/", views.ProjectDetailView.as_view(), name="project_detail"),
     path("datasets/", views.DatasetListView.as_view(), name="dataset_list"),
+    path(
+        "datasets/archived/",
+        views.ArchivedDatasetListView.as_view(),
+        name="archived_dataset_list",
+    ),
     path("datasets/<uuid:dataset_key>/", views.DatasetDetailView.as_view(), name="dataset_detail"),
     path(
         "datasets/<uuid:dataset_key>/changes/",
@@ -17,6 +22,11 @@ urlpatterns = [
         "datasets/<uuid:dataset_key>/rows/<int:row_id>/",
         views.DatasetRowDetailView.as_view(),
         name="dataset_row_detail",
+    ),
+    path(
+        "datasets/<uuid:dataset_key>/archive/",
+        views.dataset_archive,
+        name="dataset_archive",
     ),
     path("datasets/<uuid:dataset_key>/delete/", views.dataset_delete, name="dataset_delete"),
     path(
