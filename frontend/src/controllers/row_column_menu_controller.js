@@ -4,8 +4,10 @@ export default class extends Controller {
   static targets = ["dialog"];
 
   connect() {
+    this.repositionFrame = null;
     this.returnFocus = this.returnFocus.bind(this);
     this.repositionDialog = this.repositionDialog.bind(this);
+    this.scheduleRepositionDialog = this.scheduleRepositionDialog.bind(this);
     this.dialogTarget.addEventListener("close", this.returnFocus);
   }
 
@@ -96,6 +98,8 @@ export default class extends Controller {
   }
 
   repositionDialog() {
+    this.repositionFrame = null;
+
     if (!this.dialogTarget.open) {
       return;
     }
@@ -103,13 +107,31 @@ export default class extends Controller {
     this.positionDialog(this.triggerElement);
   }
 
+  scheduleRepositionDialog() {
+    if (this.repositionFrame !== null) {
+      return;
+    }
+
+    this.repositionFrame = window.requestAnimationFrame(this.repositionDialog);
+  }
+
   addPositionListeners() {
-    window.addEventListener("resize", this.repositionDialog);
-    window.addEventListener("scroll", this.repositionDialog, true);
+    window.addEventListener("resize", this.scheduleRepositionDialog);
+    window.addEventListener("scroll", this.scheduleRepositionDialog, true);
   }
 
   removePositionListeners() {
-    window.removeEventListener("resize", this.repositionDialog);
-    window.removeEventListener("scroll", this.repositionDialog, true);
+    window.removeEventListener("resize", this.scheduleRepositionDialog);
+    window.removeEventListener("scroll", this.scheduleRepositionDialog, true);
+    this.cancelScheduledReposition();
+  }
+
+  cancelScheduledReposition() {
+    if (this.repositionFrame === null) {
+      return;
+    }
+
+    window.cancelAnimationFrame(this.repositionFrame);
+    this.repositionFrame = null;
   }
 }
