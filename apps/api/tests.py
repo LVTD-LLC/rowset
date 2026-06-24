@@ -913,3 +913,53 @@ def test_search_profile_projects_filters_owned_projects(django_user_model):
     assert response["count"] == 1
     assert response["total_count"] == 1
     assert response["projects"][0]["key"] == str(project.key)
+
+
+@pytest.mark.django_db
+def test_update_profile_project_changes_name_and_description(django_user_model):
+    from apps.api.services import update_profile_project
+
+    user = django_user_model.objects.create_user(
+        username="projectupdateowner",
+        email="projectupdateowner@example.com",
+        password="password123",
+    )
+    project = Project.objects.create(
+        profile=user.profile,
+        name="Launch",
+        description="Initial launch datasets.",
+    )
+
+    response = update_profile_project(
+        user.profile,
+        str(project.key),
+        name="Launch operations",
+        description="Updated launch context.",
+    )
+
+    assert response["status"] == "success"
+    assert response["message"] == "Project updated."
+    assert response["project"]["name"] == "Launch operations"
+    assert response["project"]["description"] == "Updated launch context."
+    project.refresh_from_db()
+    assert project.name == "Launch operations"
+    assert project.description == "Updated launch context."
+
+
+@pytest.mark.django_db
+def test_update_profile_project_rejects_duplicate_name(django_user_model):
+    from apps.api.services import DatasetServiceError, update_profile_project
+
+    user = django_user_model.objects.create_user(
+        username="projectupdateduplicate",
+        email="projectupdateduplicate@example.com",
+        password="password123",
+    )
+    Project.objects.create(profile=user.profile, name="Launch")
+    project = Project.objects.create(profile=user.profile, name="Operations")
+
+    with pytest.raises(DatasetServiceError) as exc:
+        update_profile_project(user.profile, str(project.key), name="launch")
+
+    assert exc.value.status_code == 409
+    assert exc.value.message == "Project name already exists."

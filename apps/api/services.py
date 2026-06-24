@@ -256,6 +256,62 @@ def create_profile_project(profile: Profile, *, name: str, description: str | No
     }
 
 
+def update_profile_project(
+    profile: Profile,
+    project_key: str,
+    *,
+    name: Any = UNSET,
+    description: Any = UNSET,
+) -> dict:
+    """Update project metadata for an authenticated profile."""
+    if name is UNSET and description is UNSET:
+        raise DatasetServiceError(400, "Provide name or description to update.")
+
+    normalized_name = _normalize_project_name(name) if name is not UNSET else UNSET
+    normalized_description = (
+        _normalize_project_description(description) if description is not UNSET else UNSET
+    )
+
+    with transaction.atomic():
+        try:
+            project = (
+                Project.objects.select_for_update()
+                .get(key=project_key, profile=profile)
+            )
+        except (Project.DoesNotExist, ValidationError, ValueError) as exc:
+            raise DatasetServiceError(404, "Project not found.") from exc
+
+        update_fields = []
+        if normalized_name is not UNSET and project.name != normalized_name:
+            if (
+                Project.objects.filter(profile=profile, name__iexact=normalized_name)
+                .exclude(pk=project.pk)
+                .exists()
+            ):
+                raise DatasetServiceError(409, "Project name already exists.")
+            project.name = normalized_name
+            update_fields.append("name")
+
+        if (
+            normalized_description is not UNSET
+            and project.description != normalized_description
+        ):
+            project.description = normalized_description
+            update_fields.append("description")
+
+        if update_fields:
+            try:
+                project.save(update_fields=[*update_fields, "updated_at"])
+            except IntegrityError as exc:
+                raise DatasetServiceError(409, "Project name already exists.") from exc
+
+    return {
+        "status": "success",
+        "message": "Project updated." if update_fields else "No project changes detected.",
+        "project": serialize_project_summary(project),
+    }
+
+
 def get_profile_project(profile: Profile, project_key: str) -> Project:
     try:
         return (

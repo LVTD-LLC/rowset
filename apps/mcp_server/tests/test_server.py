@@ -337,8 +337,24 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "datasets": {"count": 0, "datasets": []},
         }
 
-    def update_project(authenticated_profile, dataset_key, project_key):
-        calls.append(("update_project", authenticated_profile.id, dataset_key, project_key))
+    def update_project_details(authenticated_profile, project_key, *, name=None, description=None):
+        calls.append(
+            (
+                "update_project_details",
+                authenticated_profile.id,
+                project_key,
+                name,
+                description,
+            )
+        )
+        return {
+            "status": "success",
+            "message": "Project updated.",
+            "project": {"key": project_key, "name": name, "description": description},
+        }
+
+    def update_dataset_project(authenticated_profile, dataset_key, project_key):
+        calls.append(("update_dataset_project", authenticated_profile.id, dataset_key, project_key))
         return {
             "status": "success",
             "message": "Dataset project updated.",
@@ -353,7 +369,11 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
         monkeypatch.setattr("apps.mcp_server.server.serialize_profile_projects", list_projects)
         monkeypatch.setattr("apps.mcp_server.server.create_profile_project", create_project)
         monkeypatch.setattr("apps.mcp_server.server.serialize_profile_project_detail", get_project)
-        monkeypatch.setattr("apps.mcp_server.server.update_profile_dataset_project", update_project)
+        monkeypatch.setattr("apps.mcp_server.server.update_profile_project", update_project_details)
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_dataset_project",
+            update_dataset_project,
+        )
 
         async with Client(mcp) as client:
             list_result = await client.call_tool(
@@ -368,6 +388,14 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                 "get_project",
                 {"project_key": "project-key", "limit": 2},
             )
+            update_project_result = await client.call_tool(
+                "update_project",
+                {
+                    "project_key": "project-key",
+                    "name": "Launch operations",
+                    "description": "",
+                },
+            )
             update_result = await client.call_tool(
                 "update_dataset_project",
                 {"dataset_key": "dataset-key", "project_key": "project-key"},
@@ -376,12 +404,21 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
         assert list_result.data["projects"][0]["key"] == "project-key"
         assert create_result.data["project"]["name"] == "Launch"
         assert detail_result.data["project"]["key"] == "project-key"
+        assert update_project_result.data["project"]["name"] == "Launch operations"
+        assert update_project_result.data["project"]["description"] == ""
         assert update_result.data["dataset"]["project"]["key"] == "project-key"
         assert calls == [
             ("list_projects", 11, 5, 0),
             ("create_project", 11, "Launch", "Launch datasets"),
             ("get_project", 11, "project-key", 2, 0),
-            ("update_project", 11, "dataset-key", "project-key"),
+            (
+                "update_project_details",
+                11,
+                "project-key",
+                "Launch operations",
+                "",
+            ),
+            ("update_dataset_project", 11, "dataset-key", "project-key"),
         ]
 
     anyio.run(run)

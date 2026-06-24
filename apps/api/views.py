@@ -42,6 +42,7 @@ from apps.api.schemas import (
     ProjectCreateOut,
     ProjectDetailOut,
     ProjectListOut,
+    ProjectUpdateIn,
     SubmitFeedbackIn,
     SubmitFeedbackOut,
     UserInfoOut,
@@ -73,6 +74,7 @@ from apps.api.services import (
     update_profile_dataset_metadata,
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
+    update_profile_project,
 )
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
@@ -508,6 +510,25 @@ def get_project(request: HttpRequest, project_key: str, limit: int = 100, offset
             limit=limit,
             offset=offset,
         )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.patch(
+    "/projects/{project_key}",
+    response=ProjectCreateOut,
+    auth=[api_key_auth],
+    tags=["projects"],
+)
+def patch_project(request: HttpRequest, project_key: str, payload: ProjectUpdateIn):
+    """Update semantic project metadata for the authenticated profile."""
+    updates = {
+        key: value
+        for key, value in payload.model_dump(exclude_unset=True).items()
+        if value is not None
+    }
+    try:
+        return update_profile_project(request.auth, project_key, **updates)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 

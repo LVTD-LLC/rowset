@@ -1887,6 +1887,29 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
     ]
 
 
+def test_project_api_updates_project_details(client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+
+    response = client.patch(
+        f"/api/projects/{project.key}?api_key={profile.key}",
+        data={"name": "Launch operations", "description": ""},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"] == "Project updated."
+    assert payload["project"]["name"] == "Launch operations"
+    assert payload["project"]["description"] == ""
+    project.refresh_from_db()
+    assert project.name == "Launch operations"
+    assert project.description == ""
+
+
 def test_project_api_rejects_case_insensitive_duplicate_names(client, profile):
     Project.objects.create(profile=profile, name="Launch")
 
@@ -2593,6 +2616,44 @@ def test_dataset_owner_can_create_project(auth_client, profile):
     assert response.status_code == 302
     assert response.url == project.get_absolute_url()
     assert project.description == "Launch datasets"
+
+
+def test_dataset_owner_can_update_project_details(auth_client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+
+    response = auth_client.post(
+        reverse("project_update", args=[project.key]),
+        {"name": "Launch operations", "description": ""},
+    )
+
+    assert response.status_code == 302
+    assert response.url == project.get_absolute_url()
+    project.refresh_from_db()
+    assert project.name == "Launch operations"
+    assert project.description == ""
+
+
+def test_project_update_rejects_other_users_project(client, django_user_model, profile):
+    other_user = django_user_model.objects.create_user(
+        username="other-project-owner",
+        email="other-project-owner@example.com",
+        password="password123",
+    )
+    project = Project.objects.create(profile=other_user.profile, name="Other")
+    client.force_login(profile.user)
+
+    response = client.post(
+        reverse("project_update", args=[project.key]),
+        {"name": "Stolen", "description": "Nope"},
+    )
+
+    assert response.status_code == 404
+    project.refresh_from_db()
+    assert project.name == "Other"
 
 
 def test_project_detail_paginates_assigned_datasets(auth_client, profile):

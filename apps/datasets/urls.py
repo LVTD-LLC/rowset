@@ -6,6 +6,7 @@ urlpatterns = [
     path("projects/", views.ProjectListView.as_view(), name="project_list"),
     path("projects/create/", views.project_create, name="project_create"),
     path("projects/<uuid:project_key>/", views.ProjectDetailView.as_view(), name="project_detail"),
+    path("projects/<uuid:project_key>/update/", views.project_update, name="project_update"),
     path("datasets/", views.DatasetListView.as_view(), name="dataset_list"),
     path("datasets/<uuid:dataset_key>/", views.DatasetDetailView.as_view(), name="dataset_detail"),
     path(

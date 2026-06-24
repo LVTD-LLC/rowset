@@ -17,6 +17,22 @@
       <a href="{% url 'dataset_list' %}" class="fb-button-secondary">View all datasets</a>
     </div>
 
+    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-details-heading">
+      <form method="post" action="{% url 'project_update' project.key %}" class="space-y-4">
+        {% csrf_token %}
+        <h2 id="project-details-heading" class="fb-section-title">Project details</h2>
+        <div>
+          <label for="project_name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
+          <input id="project_name" name="name" type="text" maxlength="255" required value="{{ project.name }}" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label for="project_description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
+          <textarea id="project_description" name="description" rows="4" class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ project.description }}</textarea>
+        </div>
+        <button type="submit" class="fb-button-primary">Save project</button>
+      </form>
+    </section>
+
     <section class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800" aria-labelledby="project-datasets-heading">
       <div class="border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
         <h2 id="project-datasets-heading" class="fb-section-title">All datasets</h2>
