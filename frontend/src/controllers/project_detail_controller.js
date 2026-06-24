@@ -1,7 +1,8 @@
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["display", "editButton", "error", "form", "nameInput"];
+  static targets = ["descriptionInput", "display", "editButton", "error", "form", "nameInput"];
+  static values = { description: String, name: String };
 
   edit(event) {
     event.preventDefault();
@@ -10,7 +11,7 @@ export default class extends Controller {
 
   cancel(event) {
     event.preventDefault();
-    this.formTarget.reset();
+    this.restoreSavedValues();
     this.clearServerError();
     this.showDisplay();
   }
@@ -47,6 +48,16 @@ export default class extends Controller {
     if (this.hasNameInputTarget) {
       this.nameInputTarget.removeAttribute("aria-describedby");
       this.nameInputTarget.removeAttribute("aria-invalid");
+    }
+  }
+
+  restoreSavedValues() {
+    if (this.hasNameInputTarget) {
+      this.nameInputTarget.value = this.nameValue || "";
+    }
+
+    if (this.hasDescriptionInputTarget) {
+      this.descriptionInputTarget.value = this.descriptionValue || "";
     }
   }
 }

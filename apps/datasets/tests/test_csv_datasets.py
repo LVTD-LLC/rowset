@@ -3137,6 +3137,35 @@ def test_project_detail_update_rejects_other_users_project(client, django_user_m
     assert project.description == "Launch datasets"
 
 
+def test_project_detail_update_raises_not_found_for_service_404(
+    auth_client,
+    monkeypatch,
+    profile,
+):
+    from apps.api.services import DatasetServiceError
+
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+
+    def raise_not_found(*args, **kwargs):
+        raise DatasetServiceError(404, "Project not found.")
+
+    monkeypatch.setattr("apps.datasets.views.update_profile_project", raise_not_found)
+
+    response = auth_client.post(
+        project.get_absolute_url(),
+        {"name": "Launch operations", "description": "Updated plan"},
+    )
+
+    assert response.status_code == 404
+    project.refresh_from_db()
+    assert project.name == "Launch"
+    assert project.description == "Launch datasets"
+
+
 def test_project_detail_paginates_assigned_datasets(auth_client, profile):
     project = Project.objects.create(profile=profile, name="Large project")
     for index in range(101):

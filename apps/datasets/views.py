@@ -598,6 +598,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 description=form_values["description"],
             )
         except DatasetServiceError as exc:
+            if exc.status_code == 404:
+                raise Http404(exc.message) from exc
             context = self.get_context_data(
                 object=self.object,
                 project_edit_mode=True,

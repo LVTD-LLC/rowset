@@ -2,7 +2,12 @@
 
 {% block content %}
 <div class="fb-page">
-  <div class="space-y-6" data-controller="project-detail">
+  <div
+    class="space-y-6"
+    data-controller="project-detail"
+    data-project-detail-name-value="{{ project.name }}"
+    data-project-detail-description-value="{{ project.description }}"
+  >
     <a href="{% url 'project_list' %}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All projects</a>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -26,7 +31,7 @@
         </div>
         <div>
           <label for="project-description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
-          <textarea id="project-description" name="description" rows="4" class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ project_form_values.description }}</textarea>
+          <textarea id="project-description" data-project-detail-target="descriptionInput" name="description" rows="4" class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ project_form_values.description }}</textarea>
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="submit" class="fb-button-primary">Save project</button>
