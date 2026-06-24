@@ -566,12 +566,17 @@ def project_create(request):
 @login_required
 @require_POST
 def project_update(request, project_key):
+    updates = {}
+    if "name" in request.POST:
+        updates["name"] = request.POST["name"]
+    if "description" in request.POST:
+        updates["description"] = request.POST["description"]
+
     try:
         update_profile_project(
             request.user.profile,
             str(project_key),
-            name=request.POST.get("name", ""),
-            description=request.POST.get("description", ""),
+            **updates,
         )
     except DatasetServiceError as exc:
         if exc.status_code == 404:

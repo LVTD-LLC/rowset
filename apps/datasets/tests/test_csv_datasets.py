@@ -1910,6 +1910,27 @@ def test_project_api_updates_project_details(client, profile):
     assert project.description == ""
 
 
+def test_project_api_rejects_null_project_name(client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+
+    response = client.patch(
+        f"/api/projects/{project.key}?api_key={profile.key}",
+        data={"name": None},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Project name cannot be null. Omit it to leave the current value unchanged."
+    )
+    project.refresh_from_db()
+    assert project.name == "Launch"
+
+
 def test_project_api_rejects_case_insensitive_duplicate_names(client, profile):
     Project.objects.create(profile=profile, name="Launch")
 
@@ -2635,6 +2656,24 @@ def test_dataset_owner_can_update_project_details(auth_client, profile):
     project.refresh_from_db()
     assert project.name == "Launch operations"
     assert project.description == ""
+
+
+def test_project_update_preserves_description_when_post_omits_field(auth_client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+
+    response = auth_client.post(
+        reverse("project_update", args=[project.key]),
+        {"name": "Launch operations"},
+    )
+
+    assert response.status_code == 302
+    project.refresh_from_db()
+    assert project.name == "Launch operations"
+    assert project.description == "Launch datasets"
 
 
 def test_project_update_rejects_other_users_project(client, django_user_model, profile):

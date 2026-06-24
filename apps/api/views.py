@@ -522,11 +522,14 @@ def get_project(request: HttpRequest, project_key: str, limit: int = 100, offset
 )
 def patch_project(request: HttpRequest, project_key: str, payload: ProjectUpdateIn):
     """Update semantic project metadata for the authenticated profile."""
-    updates = {
-        key: value
-        for key, value in payload.model_dump(exclude_unset=True).items()
-        if value is not None
-    }
+    updates = payload.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        if value is None:
+            raise HttpError(
+                400,
+                f"Project {key} cannot be null. "
+                "Omit it to leave the current value unchanged.",
+            )
     try:
         return update_profile_project(request.auth, project_key, **updates)
     except DatasetServiceError as exc:
