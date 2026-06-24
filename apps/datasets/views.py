@@ -685,6 +685,15 @@ def dataset_update_column_settings(request, dataset_key):
 @login_required
 @require_POST
 def dataset_archive(request, dataset_key):
+    dataset = get_object_or_404(
+        Dataset,
+        key=dataset_key,
+        profile=request.user.profile,
+    )
+    if dataset.status != DatasetStatus.READY:
+        messages.error(request, "Only ready datasets can be archived from the dataset page.")
+        return redirect("dataset_detail", dataset_key=dataset_key)
+
     try:
         result = archive_profile_dataset(request.user.profile, str(dataset_key))
     except DatasetServiceError as exc:
@@ -693,7 +702,10 @@ def dataset_archive(request, dataset_key):
         messages.error(request, exc.message)
         return redirect("dataset_detail", dataset_key=dataset_key)
 
-    messages.success(request, result["message"])
+    if result["message"] == "Dataset was already archived.":
+        messages.info(request, result["message"])
+    else:
+        messages.success(request, result["message"])
     return redirect("dataset_list")
 
 

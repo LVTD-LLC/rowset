@@ -57,7 +57,7 @@
         {% endif %}
         <a href="{{ dataset.get_changes_url }}" class="fb-button-secondary">Changes</a>
         <a href="{{ dataset.get_settings_url }}" class="fb-button-secondary">Settings</a>
-        {% if not dataset.archived_at %}
+        {% if dataset.status == "ready" and not dataset.archived_at %}
           <form method="post" action="{% url 'dataset_archive' dataset.key %}" onsubmit="return confirm('Archive {{ dataset.name|escapejs }}? It will leave normal lists and public preview sharing will turn off.');">
             {% csrf_token %}
             <button type="submit" class="fb-button-secondary border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950/30">Archive</button>
