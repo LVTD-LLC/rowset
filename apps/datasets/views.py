@@ -21,6 +21,7 @@ from apps.api.services import (
     update_profile_dataset_metadata,
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
+    update_profile_project,
 )
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
@@ -673,6 +674,31 @@ def project_create(request):
 
     messages.success(request, "Project created.")
     return redirect("project_detail", project_key=result["project"]["key"])
+
+
+@login_required
+@require_POST
+def project_update(request, project_key):
+    updates = {}
+    if "name" in request.POST:
+        updates["name"] = request.POST["name"]
+    if "description" in request.POST:
+        updates["description"] = request.POST["description"]
+
+    try:
+        update_profile_project(
+            request.user.profile,
+            str(project_key),
+            **updates,
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, "Project updated.")
+
+    return redirect("project_detail", project_key=project_key)
 
 
 @login_required

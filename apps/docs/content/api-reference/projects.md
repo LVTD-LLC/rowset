@@ -1,6 +1,6 @@
 ---
 title: Project API
-description: Create Rowset projects and assign datasets to semantic groups.
+description: Create and update Rowset projects, then assign datasets to semantic groups.
 keywords: Rowset projects, dataset projects, project API
 ---
 
@@ -51,6 +51,23 @@ GET {{ api_base_url }}/projects/{project_key}
 ```
 
 Returns the project plus a page of datasets currently assigned to it.
+
+## Update a project
+
+```http
+PATCH {{ api_base_url }}/projects/{project_key}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Launch operations",
+  "description": "Datasets used by the launch agent"
+}
+```
+
+Send only the fields you want to change. Use an empty string to clear
+`description`.
 
 ## Assign a dataset
 

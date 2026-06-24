@@ -66,6 +66,7 @@ get_all_projects
 search_projects
 create_project
 get_project
+update_project
 ```
 
 To create a new ready dataset from an agent workflow, call:
@@ -115,6 +116,9 @@ and generated index columns cannot be renamed.
 Use `update_dataset_metadata` when the user wants agents to remember dataset
 purpose, workflow rules, status conventions, or other JSON context without
 changing rows.
+
+Use `update_project` when the user asks to rename a project or change its
+description. Passing an empty string for `description` clears it.
 
 Use `archive_dataset` when the user asks to remove a mistaken dataset. Archive keeps
 rows and schema metadata recoverable, hides the dataset from normal lists, and disables

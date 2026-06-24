@@ -37,6 +37,7 @@ from apps.api.services import (
     update_profile_dataset_metadata,
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
+    update_profile_project,
 )
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import resolve_api_key_profile
@@ -514,6 +515,47 @@ def get_project(
             limit=limit,
             offset=offset,
         )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_project",
+    description=(
+        "Update a semantic project name or description for the authenticated Rowset profile."
+    ),
+)
+def update_project(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+    name: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional new project name. Omit or pass null to keep the current name."
+            ),
+        ),
+    ] = None,
+    description: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional new project description. Use an empty string to clear it; "
+                "omit or pass null to keep the current description."
+            ),
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    updates = {}
+    if name is not None:
+        updates["name"] = name
+    if description is not None:
+        updates["description"] = description
+    try:
+        return update_profile_project(profile, project_key, **updates)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 
