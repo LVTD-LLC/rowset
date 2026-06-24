@@ -5,17 +5,21 @@ export default class extends Controller {
 
   connect() {
     this.returnFocus = this.returnFocus.bind(this);
+    this.repositionDialog = this.repositionDialog.bind(this);
     this.dialogTarget.addEventListener("close", this.returnFocus);
   }
 
   disconnect() {
     this.dialogTarget.removeEventListener("close", this.returnFocus);
+    this.removePositionListeners();
   }
 
   open(event) {
     event.preventDefault();
+    this.triggerElement = event.currentTarget;
 
     if (this.dialogTarget.open) {
+      this.positionDialog(this.triggerElement);
       return;
     }
 
@@ -25,6 +29,8 @@ export default class extends Controller {
       this.dialogTarget.setAttribute("open", "");
     }
 
+    this.positionDialog(this.triggerElement);
+    this.addPositionListeners();
     this.dialogTarget
       .querySelector("select, input:not([type='hidden']), button[type='submit']")
       ?.focus();
@@ -53,6 +59,57 @@ export default class extends Controller {
   }
 
   returnFocus() {
-    this.element.querySelector("button")?.focus();
+    this.removePositionListeners();
+    this.triggerElement?.focus();
+    this.triggerElement = null;
+  }
+
+  positionDialog(triggerElement) {
+    if (!triggerElement) {
+      return;
+    }
+
+    const viewportPadding = 16;
+    const triggerGap = 6;
+    const triggerRect = triggerElement.getBoundingClientRect();
+    const dialogRect = this.dialogTarget.getBoundingClientRect();
+    const maxLeft = window.innerWidth - dialogRect.width - viewportPadding;
+    const preferredTop = triggerRect.bottom + triggerGap;
+    const maxTop = window.innerHeight - dialogRect.height - viewportPadding;
+    const canOpenAbove = triggerRect.top - dialogRect.height - triggerGap >= viewportPadding;
+    const top =
+      preferredTop <= maxTop || !canOpenAbove
+        ? Math.min(Math.max(preferredTop, viewportPadding), Math.max(maxTop, viewportPadding))
+        : triggerRect.top - dialogRect.height - triggerGap;
+    const left = Math.min(
+      Math.max(triggerRect.left, viewportPadding),
+      Math.max(maxLeft, viewportPadding)
+    );
+
+    Object.assign(this.dialogTarget.style, {
+      inset: "auto",
+      left: `${Math.round(left)}px`,
+      margin: "0",
+      position: "fixed",
+      top: `${Math.round(top)}px`,
+    });
+  }
+
+  repositionDialog() {
+    if (!this.dialogTarget.open) {
+      return;
+    }
+
+    this.positionDialog(this.triggerElement);
+  }
+
+  addPositionListeners() {
+    window.addEventListener("resize", this.repositionDialog);
+    window.addEventListener("scroll", this.repositionDialog, true);
+  }
+
+  removePositionListeners() {
+    window.removeEventListener("resize", this.repositionDialog);
+    window.removeEventListener("scroll", this.repositionDialog, true);
   }
 }
