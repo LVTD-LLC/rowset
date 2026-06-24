@@ -121,7 +121,7 @@
           <caption class="sr-only">{{ rows_heading }} for {{ dataset.name }}</caption>
           <thead class="bg-slate-50 dark:bg-slate-900">
             <tr>
-              {% if row_filter_fields %}
+              {% if row_show_column_controls %}
                 {% for column in row_filter_fields %}
                   {% include "datasets/partials/row_column_header.html" with column=column %}
                 {% endfor %}

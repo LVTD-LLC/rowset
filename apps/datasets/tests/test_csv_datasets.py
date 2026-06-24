@@ -3053,7 +3053,7 @@ def test_dataset_detail_shows_column_descriptions_on_header_hover(
     assert 'data-action="click->row-column-menu#open contextmenu->row-column-menu#open"' in content
     assert '<dialog' in content
     assert 'name="row_sort" value="col_0"' in content
-    assert "Text contains" in content
+    assert "Contains text" in content
 
 
 def test_dataset_owner_cannot_update_column_types_while_processing(auth_client, profile):

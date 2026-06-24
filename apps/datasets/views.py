@@ -632,6 +632,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context["column_definitions"] = column_definition_list
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
+        context["row_show_column_controls"] = has_imported_rows
         context["rows_colspan"] = len(dataset.headers) + int(has_imported_rows)
         context["rows_empty_message"] = (
             "No rows match these filters."

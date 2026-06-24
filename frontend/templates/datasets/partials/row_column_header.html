@@ -116,7 +116,7 @@
                 name="{{ column.param_name }}"
                 type="{{ column.input_type }}"
                 value="{{ column.value }}"
-                placeholder="Text contains"
+                placeholder="{{ column.operator_label }} {{ column.type_label|lower }}"
                 class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
               >
             {% endif %}
