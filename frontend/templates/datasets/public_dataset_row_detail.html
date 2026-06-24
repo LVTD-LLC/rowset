@@ -35,11 +35,7 @@
               {% for cell in row_cells %}
                 <tr class="align-top">
                   <th scope="row" class="w-56 max-w-xs break-words px-3 py-2 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {% if cell.description %}
-                      <span title="{{ cell.description }}">{{ cell.header }}</span>
-                    {% else %}
-                      {{ cell.header }}
-                    {% endif %}
+                    {{ cell.header }}
                   </th>
                   <td class="min-w-96 whitespace-pre-wrap break-words">{% if cell.value %}{{ cell.value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}</td>
                 </tr>
