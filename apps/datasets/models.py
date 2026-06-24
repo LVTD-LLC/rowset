@@ -22,6 +22,7 @@ class Project(BaseModel):
     key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["name", "-created_at"]

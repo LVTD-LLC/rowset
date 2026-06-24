@@ -42,6 +42,8 @@ from apps.api.schemas import (
     ProjectCreateOut,
     ProjectDetailOut,
     ProjectListOut,
+    ProjectMetadataOut,
+    ProjectMetadataPatchIn,
     ProjectUpdateIn,
     ProjectUpdateOut,
     SubmitFeedbackIn,
@@ -76,6 +78,7 @@ from apps.api.services import (
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
     update_profile_project,
+    update_profile_project_metadata,
 )
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
@@ -490,6 +493,7 @@ def create_project(request: HttpRequest, payload: ProjectCreateIn):
                 request.auth,
                 name=payload.name,
                 description=payload.description,
+                metadata=payload.metadata,
             ),
         )
     except DatasetServiceError as exc:
@@ -533,6 +537,28 @@ def patch_project(request: HttpRequest, project_key: str, payload: ProjectUpdate
             )
     try:
         return update_profile_project(request.auth, project_key, **updates)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.patch(
+    "/projects/{project_key}/metadata",
+    response=ProjectMetadataOut,
+    auth=[api_key_auth],
+    tags=["projects"],
+)
+def patch_project_metadata(
+    request: HttpRequest,
+    project_key: str,
+    payload: ProjectMetadataPatchIn,
+):
+    """Replace arbitrary JSON metadata for a project owned by the authenticated profile."""
+    try:
+        return update_profile_project_metadata(
+            request.auth,
+            project_key,
+            metadata=payload.metadata,
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 

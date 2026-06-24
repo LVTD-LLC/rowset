@@ -2198,12 +2198,27 @@ def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
 def test_project_api_creates_lists_and_returns_project_datasets(client, profile):
     create_project_response = client.post(
         f"/api/projects?api_key={profile.key}",
-        data={"name": "Launch", "description": "Launch datasets"},
+        data={
+            "name": "Launch",
+            "description": "Launch datasets",
+            "metadata": {
+                "github_repo": "https://github.com/acme/launch",
+                "source_thread": {
+                    "url": "https://acme.slack.com/archives/C123/p456",
+                },
+            },
+        },
         content_type="application/json",
     )
 
     assert create_project_response.status_code == 201
     project_key = create_project_response.json()["project"]["key"]
+    assert create_project_response.json()["project"]["metadata"] == {
+        "github_repo": "https://github.com/acme/launch",
+        "source_thread": {
+            "url": "https://acme.slack.com/archives/C123/p456",
+        },
+    }
 
     create_dataset_response = client.post(
         f"/api/datasets?api_key={profile.key}",
@@ -2233,10 +2248,16 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
     list_response = client.get(f"/api/projects?api_key={profile.key}")
     assert list_response.status_code == 200
     assert list_response.json()["projects"][0]["dataset_count"] == 1
+    assert list_response.json()["projects"][0]["metadata"]["github_repo"] == (
+        "https://github.com/acme/launch"
+    )
 
     detail_response = client.get(f"/api/projects/{project_key}?api_key={profile.key}")
     assert detail_response.status_code == 200
     assert detail_response.json()["project"]["name"] == "Launch"
+    assert detail_response.json()["project"]["metadata"]["source_thread"]["url"] == (
+        "https://acme.slack.com/archives/C123/p456"
+    )
     assert detail_response.json()["datasets"]["count"] == 1
     assert detail_response.json()["datasets"]["total_count"] == 1
     assert detail_response.json()["datasets"]["datasets"][0]["name"] == "Launch contacts"
@@ -2319,6 +2340,67 @@ def test_project_api_rejects_case_insensitive_duplicate_names(client, profile):
     assert response.status_code == 409
     assert response.json()["detail"] == "Project name already exists."
     assert Project.objects.filter(profile=profile).count() == 1
+
+
+def test_project_api_updates_project_metadata(client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        metadata={"github_repo": "https://github.com/acme/old"},
+    )
+
+    response = client.patch(
+        f"/api/projects/{project.key}/metadata?api_key={profile.key}",
+        data={
+            "metadata": {
+                "github_repo": "https://github.com/acme/launch",
+                "notion_doc": "https://notion.so/acme/launch",
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Project metadata updated."
+    assert response.json()["project"]["metadata"] == {
+        "github_repo": "https://github.com/acme/launch",
+        "notion_doc": "https://notion.so/acme/launch",
+    }
+    project.refresh_from_db()
+    assert project.metadata == {
+        "github_repo": "https://github.com/acme/launch",
+        "notion_doc": "https://notion.so/acme/launch",
+    }
+
+
+def test_project_api_rejects_non_object_project_metadata(client, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+
+    response = client.patch(
+        f"/api/projects/{project.key}/metadata?api_key={profile.key}",
+        data={"metadata": ["not", "an", "object"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "payload", "metadata"]
+    project.refresh_from_db()
+    assert project.metadata == {}
+
+
+def test_project_api_rejects_null_project_metadata(client, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+
+    response = client.patch(
+        f"/api/projects/{project.key}/metadata?api_key={profile.key}",
+        data={"metadata": None},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "payload", "metadata"]
+    project.refresh_from_db()
+    assert project.metadata == {}
 
 
 def test_dataset_api_updates_project_assignment(client, profile):
@@ -3006,13 +3088,46 @@ def test_dataset_api_rejects_other_users_dataset(client, django_user_model, prof
 def test_dataset_owner_can_create_project(auth_client, profile):
     response = auth_client.post(
         reverse("project_create"),
-        {"name": "Launch", "description": "Launch datasets"},
+        {
+            "name": "Launch",
+            "description": "Launch datasets",
+            "metadata": json.dumps({"github_repo": "https://github.com/acme/launch"}),
+        },
     )
 
     project = Project.objects.get(profile=profile, name="Launch")
     assert response.status_code == 302
     assert response.url == project.get_absolute_url()
     assert project.description == "Launch datasets"
+    assert project.metadata == {"github_repo": "https://github.com/acme/launch"}
+
+
+def test_project_owner_can_update_metadata_from_detail(auth_client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        metadata={"github_repo": "https://github.com/acme/old"},
+    )
+
+    response = auth_client.post(
+        reverse("project_update_metadata", args=[project.key]),
+        {
+            "metadata": json.dumps(
+                {
+                    "github_repo": "https://github.com/acme/launch",
+                    "slack_thread": "https://acme.slack.com/archives/C123/p456",
+                }
+            )
+        },
+    )
+
+    assert response.status_code == 302
+    assert response.url == project.get_absolute_url()
+    project.refresh_from_db()
+    assert project.metadata == {
+        "github_repo": "https://github.com/acme/launch",
+        "slack_thread": "https://acme.slack.com/archives/C123/p456",
+    }
 
 
 def test_dataset_owner_can_update_project_details(auth_client, profile):

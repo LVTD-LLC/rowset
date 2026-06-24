@@ -23,7 +23,11 @@ Content-Type: application/json
 ```json
 {
   "name": "Launch",
-  "description": "Datasets used for launch operations"
+  "description": "Datasets used for launch operations",
+  "metadata": {
+    "github_repo": "https://github.com/acme/launch",
+    "source_thread": "https://acme.slack.com/archives/C123/p456"
+  }
 }
 ```
 
@@ -36,9 +40,9 @@ assigning an existing dataset.
 GET {{ api_base_url }}/projects
 ```
 
-Returns project metadata and `dataset_count`.
+Returns project description, JSON metadata, and `dataset_count`.
 
-Search projects by name or description with `query`:
+Search projects by name, description, or JSON metadata with `query`:
 
 ```http
 GET {{ api_base_url }}/projects?query=launch
@@ -68,6 +72,24 @@ Content-Type: application/json
 
 Send only the fields you want to change. Use an empty string to clear
 `description`.
+
+## Update project metadata
+
+```http
+PATCH {{ api_base_url }}/projects/{project_key}/metadata
+Content-Type: application/json
+```
+
+```json
+{
+  "metadata": {
+    "notion_doc": "https://notion.so/acme/launch-plan",
+    "slack_thread": "https://acme.slack.com/archives/C123/p456"
+  }
+}
+```
+
+Send an empty object to clear project metadata.
 
 ## Assign a dataset
 

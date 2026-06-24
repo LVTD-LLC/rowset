@@ -57,6 +57,10 @@
           <label for="project_description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
           <textarea id="project_description" name="description" rows="4" class="fb-input mt-2 block w-full px-3 py-2 text-sm"></textarea>
         </div>
+        <div>
+          <label for="project_metadata" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
+          <textarea id="project_metadata" name="metadata" rows="6" spellcheck="false" class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6" placeholder='{"github_repo":"https://github.com/acme/app"}'></textarea>
+        </div>
         <button type="submit" class="fb-button-primary w-full">Create project</button>
       </form>
     </section>

@@ -342,6 +342,7 @@ class ProjectListApiUnitTests(SimpleTestCase):
             key="3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
             name="Launch",
             description="Launch datasets",
+            metadata={"github_repo": "https://github.com/acme/launch"},
             dataset_count=2,
             created_at="2026-05-14T00:00:00Z",
             updated_at="2026-05-14T00:01:00Z",
@@ -363,6 +364,7 @@ class ProjectListApiUnitTests(SimpleTestCase):
                 "key": "3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
                 "name": "Launch",
                 "description": "Launch datasets",
+                "metadata": {"github_repo": "https://github.com/acme/launch"},
                 "dataset_count": 2,
                 "created_at": "2026-05-14T00:00:00Z",
                 "updated_at": "2026-05-14T00:01:00Z",
@@ -896,23 +898,29 @@ def test_search_profile_projects_filters_owned_projects(django_user_model):
         profile=user.profile,
         name="Garden of Minds",
         description="Feature loop tracking",
+        metadata={"github_repo": "https://github.com/acme/feature-loop"},
     )
     Project.objects.create(
         profile=user.profile,
         name="Launch",
         description="Marketing work",
+        metadata={"notion_doc": "https://notion.so/acme/launch"},
     )
     Project.objects.create(
         profile=other_user.profile,
         name="Other Feature Loop",
         description="Should not be visible",
+        metadata={"github_repo": "https://github.com/other/feature-loop"},
     )
 
-    response = search_profile_projects(user.profile, query="feature")
+    response = search_profile_projects(user.profile, query="github.com/acme/feature-loop")
 
     assert response["count"] == 1
     assert response["total_count"] == 1
     assert response["projects"][0]["key"] == str(project.key)
+    assert response["projects"][0]["metadata"] == {
+        "github_repo": "https://github.com/acme/feature-loop"
+    }
 
 
 @pytest.mark.django_db
