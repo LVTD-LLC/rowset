@@ -574,7 +574,40 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         page_obj = paginator.get_page(self.request.GET.get("page"))
         context["page_obj"] = page_obj
         context["datasets"] = page_obj.object_list
+        context.setdefault("project_edit_mode", self.request.GET.get("edit") == "1")
+        context.setdefault(
+            "project_form_values",
+            {
+                "name": self.object.name,
+                "description": self.object.description,
+            },
+        )
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form_values = {
+            "name": request.POST.get("name", ""),
+            "description": request.POST.get("description", ""),
+        }
+        try:
+            update_profile_project(
+                request.user.profile,
+                str(self.object.key),
+                name=form_values["name"],
+                description=form_values["description"],
+            )
+        except DatasetServiceError as exc:
+            context = self.get_context_data(
+                object=self.object,
+                project_edit_mode=True,
+                project_form_values=form_values,
+                project_form_error=exc.message,
+            )
+            return self.render_to_response(context)
+
+        messages.success(request, "Project updated.")
+        return redirect(self.object.get_absolute_url())
 
 
 class DatasetDetailView(LoginRequiredMixin, DetailView):
