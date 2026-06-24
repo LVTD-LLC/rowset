@@ -2,11 +2,16 @@
 
 {% block content %}
 <div class="fb-page">
-  <div class="space-y-6">
+  <div
+    class="space-y-6"
+    data-controller="project-detail"
+    data-project-detail-name-value="{{ project.name }}"
+    data-project-detail-description-value="{{ project.description }}"
+  >
     <a href="{% url 'project_list' %}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All projects</a>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div class="min-w-0 space-y-3">
+      <div data-project-detail-target="display" class="{% if project_edit_mode %}hidden {% endif %}min-w-0 flex-1 space-y-3">
         <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Project</p>
         <h1 class="break-words text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ project.name }}</h1>
         {% if project.description %}
@@ -14,24 +19,30 @@
         {% endif %}
         <p class="text-sm text-slate-600 dark:text-slate-300">{{ project.dataset_count }} datasets</p>
       </div>
-      <a href="{% url 'dataset_list' %}" class="fb-button-secondary">View all datasets</a>
-    </div>
-
-    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-details-heading">
-      <form method="post" action="{% url 'project_update' project.key %}" class="space-y-4">
+      <form method="post" action="{{ project.get_absolute_url }}" data-project-detail-target="form" class="{% if not project_edit_mode %}hidden {% endif %}min-w-0 flex-1 space-y-4">
         {% csrf_token %}
-        <h2 id="project-details-heading" class="fb-section-title">Project details</h2>
+        <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Project</p>
+        {% if project_form_error %}
+          <div id="project-form-error" data-project-detail-target="error" role="alert" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">{{ project_form_error }}</div>
+        {% endif %}
         <div>
-          <label for="project_name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
-          <input id="project_name" name="name" type="text" maxlength="255" required value="{{ project.name }}" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+          <label for="project-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
+          <input id="project-name" data-project-detail-target="nameInput" name="name" type="text" maxlength="255" required value="{{ project_form_values.name }}" {% if project_form_error %}aria-describedby="project-form-error" aria-invalid="true"{% endif %} class="fb-input mt-2 block w-full px-3 py-2 text-sm">
         </div>
         <div>
-          <label for="project_description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
-          <textarea id="project_description" name="description" rows="4" class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ project.description }}</textarea>
+          <label for="project-description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
+          <textarea id="project-description" data-project-detail-target="descriptionInput" name="description" rows="4" class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ project_form_values.description }}</textarea>
         </div>
-        <button type="submit" class="fb-button-primary">Save project</button>
+        <div class="flex flex-wrap gap-2">
+          <button type="submit" class="fb-button-primary">Save project</button>
+          <a href="{{ project.get_absolute_url }}" data-action="project-detail#cancel" class="fb-button-secondary">Cancel</a>
+        </div>
       </form>
-    </section>
+      <div class="flex flex-wrap gap-2 sm:justify-end">
+        <a href="{% url 'dataset_list' %}" class="fb-button-secondary">View all datasets</a>
+        <a href="?edit=1" data-project-detail-target="editButton" data-action="project-detail#edit" class="{% if project_edit_mode %}hidden {% endif %}fb-button-secondary">Edit</a>
+      </div>
+    </div>
 
     <section class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800" aria-labelledby="project-datasets-heading">
       <div class="border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">

@@ -1034,6 +1034,49 @@ def test_project_detail_dataset_rows_omit_status_and_actions(auth_client, profil
     assert "Dataset status" not in content
 
 
+def test_project_detail_shows_inline_project_summary_editor(auth_client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Frontier",
+        description="Canonical Rowset project for Frontier.",
+    )
+
+    response = auth_client.get(project.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Project details" not in content
+    assert 'data-controller="project-detail"' in content
+    assert 'data-project-detail-target="display"' in content
+    assert 'data-project-detail-target="form" class="hidden min-w-0 flex-1 space-y-4"' in content
+    assert ">Frontier</h1>" in content
+    assert "Canonical Rowset project for Frontier." in content
+    assert "View all datasets" in content
+    assert 'data-project-detail-target="editButton"' in content
+
+
+def test_project_detail_edit_query_shows_inline_project_form(auth_client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Frontier",
+        description="Canonical Rowset project for Frontier.",
+    )
+
+    response = auth_client.get(project.get_absolute_url(), {"edit": "1"})
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["project_edit_mode"] is True
+    assert 'data-project-detail-target="display" class="hidden min-w-0 flex-1 space-y-3"' in content
+    assert 'data-project-detail-target="form" class="min-w-0 flex-1 space-y-4"' in content
+    assert 'value="Frontier"' in content
+    assert ">Canonical Rowset project for Frontier.</textarea>" in content
+    assert (
+        'data-project-detail-target="editButton" '
+        'data-action="project-detail#edit" class="hidden fb-button-secondary"'
+    ) in content
+
+
 def test_dataset_archive_archives_owned_dataset(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
@@ -3026,6 +3069,101 @@ def test_project_update_rejects_other_users_project(client, django_user_model, p
     assert response.status_code == 404
     project.refresh_from_db()
     assert project.name == "Other"
+
+
+def test_dataset_owner_can_update_project_from_detail(auth_client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+
+    response = auth_client.post(
+        project.get_absolute_url(),
+        {"name": " Frontier ", "description": " Updated plan "},
+    )
+
+    assert response.status_code == 302
+    assert response.url == project.get_absolute_url()
+    project.refresh_from_db()
+    assert project.name == "Frontier"
+    assert project.description == "Updated plan"
+
+
+def test_project_detail_update_rejects_duplicate_project_name(auth_client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+    Project.objects.create(profile=profile, name="Frontier")
+
+    response = auth_client.post(
+        project.get_absolute_url(),
+        {"name": "frontier", "description": "Updated plan"},
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert response.context["project_edit_mode"] is True
+    assert "Project name already exists." in content
+    assert 'data-project-detail-target="form" class="min-w-0 flex-1 space-y-4"' in content
+    project.refresh_from_db()
+    assert project.name == "Launch"
+    assert project.description == "Launch datasets"
+
+
+def test_project_detail_update_rejects_other_users_project(client, django_user_model, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+    other_user = django_user_model.objects.create_user(
+        username="projectother",
+        email="projectother@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.post(
+        project.get_absolute_url(),
+        {"name": "Frontier", "description": "Updated plan"},
+    )
+
+    assert response.status_code == 404
+    project.refresh_from_db()
+    assert project.name == "Launch"
+    assert project.description == "Launch datasets"
+
+
+def test_project_detail_update_raises_not_found_for_service_404(
+    auth_client,
+    monkeypatch,
+    profile,
+):
+    from apps.api.services import DatasetServiceError
+
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+
+    def raise_not_found(*args, **kwargs):
+        raise DatasetServiceError(404, "Project not found.")
+
+    monkeypatch.setattr("apps.datasets.views.update_profile_project", raise_not_found)
+
+    response = auth_client.post(
+        project.get_absolute_url(),
+        {"name": "Launch operations", "description": "Updated plan"},
+    )
+
+    assert response.status_code == 404
+    project.refresh_from_db()
+    assert project.name == "Launch"
+    assert project.description == "Launch datasets"
 
 
 def test_project_detail_paginates_assigned_datasets(auth_client, profile):
