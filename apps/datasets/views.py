@@ -15,6 +15,7 @@ from django.views.generic import DetailView, ListView
 
 from apps.api.services import (
     DatasetServiceError,
+    archive_profile_dataset,
     create_profile_project,
     update_profile_dataset_column_types,
     update_profile_dataset_metadata,
@@ -791,6 +792,33 @@ def dataset_update_column_settings(request, dataset_key):
 
     messages.success(request, "Column schema updated.")
     return redirect("dataset_settings", dataset_key=dataset_key)
+
+
+@login_required
+@require_POST
+def dataset_archive(request, dataset_key):
+    dataset = get_object_or_404(
+        Dataset,
+        key=dataset_key,
+        profile=request.user.profile,
+    )
+    if dataset.status != DatasetStatus.READY:
+        messages.error(request, "Only ready datasets can be archived from the dataset page.")
+        return redirect("dataset_detail", dataset_key=dataset_key)
+
+    try:
+        result = archive_profile_dataset(request.user.profile, str(dataset_key))
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+        return redirect("dataset_detail", dataset_key=dataset_key)
+
+    if result["message"] == "Dataset was already archived.":
+        messages.info(request, result["message"])
+    else:
+        messages.success(request, result["message"])
+    return redirect("dataset_list")
 
 
 @login_required
