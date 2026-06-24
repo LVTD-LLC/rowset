@@ -2840,6 +2840,16 @@ def test_public_dataset_does_not_expose_column_descriptions(client, profile):
     assert "name" in content
     assert "Internal scoring context for trusted agents only." not in content
 
+    row = dataset.rows.first()
+    row_detail_response = client.get(
+        reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+    )
+
+    assert row_detail_response.status_code == 200
+    row_detail_content = row_detail_response.content.decode()
+    assert "name" in row_detail_content
+    assert "Internal scoring context for trusted agents only." not in row_detail_content
+
 
 def test_public_dataset_view_filters_and_sorts_rows(client, profile):
     dataset = configure_filterable_dataset(create_ready_dataset(profile))

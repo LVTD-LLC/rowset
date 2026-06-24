@@ -655,6 +655,7 @@ def dataset_update_column_settings(request, dataset_key):
                 "description": column_description,
             }
     else:
+        # Keep accepting legacy/programmatic POSTs that submit only type values.
         column_schema = dict(zip(column_names, column_types, strict=True))
 
     try:
