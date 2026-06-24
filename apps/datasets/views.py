@@ -160,9 +160,12 @@ def _row_filter_fields(
     request,
     *,
     include_column_descriptions: bool = True,
+    columns: list[dict[str, object]] | None = None,
 ) -> list[dict[str, object]]:
     fields = []
-    for index, column in enumerate(column_definitions(dataset.headers, dataset.column_schema)):
+    if columns is None:
+        columns = column_definitions(dataset.headers, dataset.column_schema)
+    for index, column in enumerate(columns):
         column_type = column["type"]
         param_name = f"{ROW_FILTER_PARAM_PREFIX}{index}"
         fields.append(
@@ -218,6 +221,7 @@ def _dataset_row_query_context(
     queryset,
     *,
     include_column_descriptions: bool = True,
+    columns: list[dict[str, object]] | None = None,
 ):
     search_query = request.GET.get(ROW_SEARCH_PARAM, "").strip()
     selected_sort = _selected_row_sort(request, dataset)
@@ -226,6 +230,7 @@ def _dataset_row_query_context(
         dataset,
         request,
         include_column_descriptions=include_column_descriptions,
+        columns=columns,
     )
     filters = {
         str(field["header"]): str(field["value"])
@@ -389,10 +394,15 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         dataset = self.object
         base_row_queryset = dataset.rows.select_related("updated_by_agent_api_key")
         has_imported_rows = dataset.row_count > 0
+        column_definition_list = column_definitions(
+            dataset.headers,
+            dataset.column_schema,
+        )
         row_queryset, row_query_context = _dataset_row_query_context(
             self.request,
             dataset,
             base_row_queryset,
+            columns=column_definition_list,
         )
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
@@ -423,10 +433,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             ]
         context.update(row_query_context if has_imported_rows else {})
         context["rows_with_values"] = rows_with_values
-        context["column_definitions"] = column_definitions(
-            dataset.headers,
-            dataset.column_schema,
-        )
+        context["column_definitions"] = column_definition_list
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
         context["rows_colspan"] = len(dataset.headers) + int(has_imported_rows)
