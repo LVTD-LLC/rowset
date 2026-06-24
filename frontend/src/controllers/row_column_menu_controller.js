@@ -24,7 +24,7 @@ export default class extends Controller {
   close(event) {
     event.preventDefault();
     this.closeDialog();
-    this.element.querySelector("button")?.focus();
+    this.returnFocus();
   }
 
   closeFromBackdrop(event) {
@@ -33,6 +33,7 @@ export default class extends Controller {
     }
 
     this.closeDialog();
+    this.returnFocus();
   }
 
   closeDialog() {
@@ -41,5 +42,9 @@ export default class extends Controller {
     } else {
       this.dialogTarget.removeAttribute("open");
     }
+  }
+
+  returnFocus() {
+    this.element.querySelector("button")?.focus();
   }
 }
