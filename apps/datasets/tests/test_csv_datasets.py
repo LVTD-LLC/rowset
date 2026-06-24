@@ -731,6 +731,31 @@ def test_dataset_detail_context_is_collapsed_by_default_and_wraps_content(auth_c
         assert class_name in content
 
 
+def test_dataset_detail_shows_archive_action_for_active_dataset(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert reverse("dataset_archive", args=[dataset.key]) in content
+    assert "Archive" in content
+    assert "Dataset archived" not in content
+
+
+def test_dataset_detail_shows_archived_badge_without_archive_action(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'aria-label="Dataset archived"' in content
+    assert reverse("dataset_archive", args=[dataset.key]) not in content
+
+
 def test_dataset_detail_exposes_processing_status_live_region(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
@@ -794,6 +819,36 @@ def test_project_detail_dataset_rows_omit_status_and_actions(auth_client, profil
     assert reverse("dataset_export", args=[dataset.key, "parquet"]) not in content
     assert dataset.get_settings_url() not in content
     assert "Dataset status" not in content
+
+
+def test_dataset_archive_archives_owned_dataset(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    response = auth_client.post(reverse("dataset_archive", args=[dataset.key]))
+
+    assert response.status_code == 302
+    assert response.url == reverse("dataset_list")
+    dataset.refresh_from_db()
+    assert dataset.archived_at is not None
+    assert dataset.public_enabled is False
+
+
+def test_dataset_archive_rejects_other_users_dataset(client, django_user_model, profile):
+    dataset = create_ready_dataset(profile)
+    other_user = django_user_model.objects.create_user(
+        username="other-archive",
+        email="other-archive@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.post(reverse("dataset_archive", args=[dataset.key]))
+
+    assert response.status_code == 404
+    dataset.refresh_from_db()
+    assert dataset.archived_at is None
 
 
 def test_dataset_delete_removes_owned_dataset(auth_client, profile):
