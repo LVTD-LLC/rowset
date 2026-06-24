@@ -3,6 +3,15 @@ import { Controller } from "@hotwired/stimulus";
 export default class extends Controller {
   static targets = ["dialog"];
 
+  connect() {
+    this.returnFocus = this.returnFocus.bind(this);
+    this.dialogTarget.addEventListener("close", this.returnFocus);
+  }
+
+  disconnect() {
+    this.dialogTarget.removeEventListener("close", this.returnFocus);
+  }
+
   open(event) {
     event.preventDefault();
 
@@ -24,7 +33,6 @@ export default class extends Controller {
   close(event) {
     event.preventDefault();
     this.closeDialog();
-    this.returnFocus();
   }
 
   closeFromBackdrop(event) {
@@ -33,7 +41,6 @@ export default class extends Controller {
     }
 
     this.closeDialog();
-    this.returnFocus();
   }
 
   closeDialog() {
@@ -41,6 +48,7 @@ export default class extends Controller {
       this.dialogTarget.close();
     } else {
       this.dialogTarget.removeAttribute("open");
+      this.returnFocus();
     }
   }
 

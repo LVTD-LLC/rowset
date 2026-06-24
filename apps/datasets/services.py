@@ -55,6 +55,7 @@ ROW_NUMERIC_SORT_TYPES = {
     DatasetColumnType.NUMBER,
 }
 ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
+ROW_NUMERIC_FILTER_PATTERN = r"-?\d+(\.\d+)?"
 ROW_FILTER_OPERATOR_ALIASES = {
     "eq": ROW_FILTER_IS,
     "equals": ROW_FILTER_IS,
@@ -722,7 +723,7 @@ def _normalize_numeric_filter_value(value: str) -> float | None:
     for symbol in CURRENCY_SYMBOLS:
         normalized = normalized.replace(symbol, "")
     normalized = normalized.replace(",", "").strip()
-    if not re.fullmatch(ROW_NUMERIC_SORT_PATTERN, normalized):
+    if not re.fullmatch(ROW_NUMERIC_FILTER_PATTERN, normalized):
         return None
     return float(normalized)
 
