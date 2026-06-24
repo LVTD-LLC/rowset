@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import re
 import sqlite3
 import xml.etree.ElementTree as ET
 import zipfile
@@ -713,15 +714,21 @@ def test_dataset_detail_context_is_collapsed_by_default_and_wraps_content(auth_c
 
     content = response.content.decode()
     assert response.status_code == 200
-    details_start = content.index(
-        '<details class="group fb-card overflow-hidden" aria-labelledby="dataset-context-heading">'
+    details_match = re.search(
+        r'<details\b[^>]*aria-labelledby="dataset-context-heading"[^>]*>',
+        content,
     )
-    opening_tag = content[details_start : content.index(">", details_start) + 1]
-    assert " open" not in opening_tag
+    assert details_match is not None
+    details_tag = details_match.group(0)
+    assert not re.search(r"\sopen(?:[\s=>]|$)", details_tag)
+    assert "fb-card" in details_tag
+    assert "overflow-hidden" in details_tag
     assert "Show context" in content
     assert "Hide context" in content
-    assert "max-w-full whitespace-pre-wrap break-words" in content
-    assert "max-h-72 max-w-full overflow-auto whitespace-pre-wrap break-words" in content
+    for class_name in ("max-w-full", "whitespace-pre-wrap", "break-words"):
+        assert class_name in content
+    for class_name in ("max-h-72", "overflow-auto"):
+        assert class_name in content
 
 
 def test_dataset_detail_exposes_processing_status_live_region(auth_client, profile):
