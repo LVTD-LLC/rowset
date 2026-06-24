@@ -584,7 +584,8 @@ def create_dataset(
                 "Optional mapping from header name to semantic column type or metadata. "
                 "Supported types include text, choice, integer, number, currency, boolean, "
                 "date, datetime, email, and url. For choice columns, pass metadata like "
-                '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}.'
+                '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}. '
+                'Add "description" to any metadata object to give agents column context.'
             ),
         ),
     ] = None,
@@ -702,7 +703,8 @@ def update_dataset_column_types(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
                 "include text, choice, integer, number, currency, boolean, date, datetime, "
                 'email, and url. For choice columns, pass {"type": "choice", "choices": '
-                '["Ready to do", "Doing", "Done"]}.'
+                '["Ready to do", "Doing", "Done"]}. Add "description" to any metadata '
+                "object to give agents column context."
             ),
         ),
     ],
@@ -745,7 +747,8 @@ def add_column(
                 "Optional semantic type or metadata for the new column. Supported types "
                 "include text, choice, integer, number, currency, boolean, date, datetime, "
                 'email, and url. For a choice column, pass {"type": "choice", "choices": '
-                '["Ready to do", "Doing", "Done"]}.'
+                '["Ready to do", "Doing", "Done"]}. Add "description" to the metadata '
+                "object to give agents column context."
             ),
         ),
     ] = None,

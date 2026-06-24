@@ -74,7 +74,10 @@ def _profile():
         status="ready",
         headers=["email", "name"],
         column_schema={
-            "email": {"type": "email"},
+            "email": {
+                "type": "email",
+                "description": "Primary contact address for the customer.",
+            },
             "name": {"type": "text"},
         },
         index_column="email",
@@ -164,6 +167,9 @@ def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
             "Use email as the stable identity. Do not rewrite names from guesses."
         )
         assert payload["datasets"][0]["metadata"] == {"workflow": {"default_status": "new"}}
+        assert payload["datasets"][0]["column_schema"]["email"]["description"] == (
+            "Primary contact address for the customer."
+        )
         assert payload["datasets"][0]["row_count"] == 42
         assert "rows" not in payload["datasets"][0]
 
@@ -199,6 +205,9 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
             "Use email as the stable identity. Do not rewrite names from guesses."
         )
         assert payload["metadata"] == {"workflow": {"default_status": "new"}}
+        assert payload["column_schema"]["email"]["description"] == (
+            "Primary contact address for the customer."
+        )
         assert "rows" not in payload
 
     anyio.run(run)

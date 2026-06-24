@@ -48,7 +48,7 @@
     <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {% for row_filter in row_filter_fields %}
         <div>
-          <label for="row-filter-{{ row_filter.param_name }}" class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title="{{ row_filter.header }}">{{ row_filter.header }}</label>
+          <label for="row-filter-{{ row_filter.param_name }}" class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title="{% firstof row_filter.description row_filter.header %}">{{ row_filter.header }}</label>
           {% if row_filter.is_boolean %}
             <select
               id="row-filter-{{ row_filter.param_name }}"

@@ -1540,7 +1540,16 @@ def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
             "name": "Products",
             "headers": ["sku", "price"],
             "index_column": "sku",
-            "column_types": {"sku": "text", "price": "number"},
+            "column_types": {
+                "sku": {
+                    "type": "text",
+                    "description": "Stable supplier SKU used for row lookup.",
+                },
+                "price": {
+                    "type": "number",
+                    "description": "Current retail price in USD.",
+                },
+            },
             "rows": [{"sku": "A-1", "price": "19.99"}],
         },
         content_type="application/json",
@@ -1549,8 +1558,14 @@ def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
     assert response.status_code == 201
     dataset = Dataset.objects.get(key=response.json()["dataset"]["key"], profile=profile)
     assert dataset.column_schema == {
-        "sku": {"type": "text"},
-        "price": {"type": "number"},
+        "sku": {
+            "type": "text",
+            "description": "Stable supplier SKU used for row lookup.",
+        },
+        "price": {
+            "type": "number",
+            "description": "Current retail price in USD.",
+        },
     }
 
 
@@ -1571,6 +1586,35 @@ def test_normalize_column_schema_accepts_choice_metadata():
             "type": "choice",
             "choices": ["Ready to do", "Doing", "Done"],
         }
+    }
+
+
+def test_normalize_column_schema_accepts_description_metadata():
+    schema = normalize_column_schema(
+        ["email", "price"],
+        {
+            "email": {
+                "type": "email",
+                "description": " Primary customer contact address. ",
+            },
+            "price": {"description": " Current retail price in USD. "},
+        },
+        fallback_schema={
+            "email": {"type": "text"},
+            "price": {"type": "currency"},
+        },
+        reject_unknown=True,
+    )
+
+    assert schema == {
+        "email": {
+            "type": "email",
+            "description": "Primary customer contact address.",
+        },
+        "price": {
+            "type": "currency",
+            "description": "Current retail price in USD.",
+        },
     }
 
 
@@ -2061,20 +2105,40 @@ def test_dataset_api_updates_column_types(client, profile):
 
     response = client.patch(
         f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
-        data={"column_types": {"email": "text"}},
+        data={
+            "column_types": {
+                "email": {
+                    "type": "text",
+                    "description": "Primary contact email for row lookup.",
+                },
+                "name": {"description": "Human-readable full name."},
+            }
+        },
         content_type="application/json",
     )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["dataset"]["column_schema"] == {
-        "name": {"type": "text"},
-        "email": {"type": "text"},
+        "name": {
+            "type": "text",
+            "description": "Human-readable full name.",
+        },
+        "email": {
+            "type": "text",
+            "description": "Primary contact email for row lookup.",
+        },
     }
     dataset.refresh_from_db()
     assert dataset.column_schema == {
-        "name": {"type": "text"},
-        "email": {"type": "text"},
+        "name": {
+            "type": "text",
+            "description": "Human-readable full name.",
+        },
+        "email": {
+            "type": "text",
+            "description": "Primary contact email for row lookup.",
+        },
     }
 
 
@@ -2167,6 +2231,72 @@ def test_dataset_api_renames_column_and_preserves_values(client, profile):
     assert dataset.rows.first().data == {
         "full_name": "Ada",
         "email": "ada@example.com",
+    }
+
+
+def test_dataset_api_schema_mutations_preserve_column_descriptions(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.column_schema = {
+        "name": {
+            "type": "text",
+            "description": "Person name used in greetings.",
+        },
+        "email": {
+            "type": "email",
+            "description": "Stable contact address and index value.",
+        },
+    }
+    dataset.save(update_fields=["column_schema"])
+
+    rename_response = client.post(
+        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+        data={"old_name": "name", "new_name": "full_name"},
+        content_type="application/json",
+    )
+
+    assert rename_response.status_code == 200
+    assert rename_response.json()["dataset"]["column_schema"]["full_name"] == {
+        "type": "text",
+        "description": "Person name used in greetings.",
+    }
+    dataset.refresh_from_db()
+    assert dataset.column_schema["full_name"] == {
+        "type": "text",
+        "description": "Person name used in greetings.",
+    }
+
+    reorder_response = client.post(
+        f"/api/datasets/{dataset.key}/columns/reorder?api_key={profile.key}",
+        data={"headers": ["email", "full_name"]},
+        content_type="application/json",
+    )
+
+    assert reorder_response.status_code == 200
+    dataset.refresh_from_db()
+    assert dataset.column_schema == {
+        "email": {
+            "type": "email",
+            "description": "Stable contact address and index value.",
+        },
+        "full_name": {
+            "type": "text",
+            "description": "Person name used in greetings.",
+        },
+    }
+
+    drop_response = client.post(
+        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+        data={"name": "full_name"},
+        content_type="application/json",
+    )
+
+    assert drop_response.status_code == 200
+    dataset.refresh_from_db()
+    assert dataset.column_schema == {
+        "email": {
+            "type": "email",
+            "description": "Stable contact address and index value.",
+        }
     }
 
 
@@ -2561,18 +2691,49 @@ def test_dataset_owner_can_update_column_types_from_settings(auth_client, profil
         {
             "column_name": ["name", "email"],
             "column_type": ["text", "text"],
+            "column_description": [
+                "Human-readable full name.",
+                "Primary contact email for row lookup.",
+            ],
         },
     )
 
     assert response.status_code == 302
     dataset.refresh_from_db()
     assert dataset.column_schema == {
-        "name": {"type": "text"},
-        "email": {"type": "text"},
+        "name": {
+            "type": "text",
+            "description": "Human-readable full name.",
+        },
+        "email": {
+            "type": "text",
+            "description": "Primary contact email for row lookup.",
+        },
     }
     mutation = dataset.mutations.get(mutation_type=DatasetMutationType.COLUMN_TYPES_UPDATED)
     assert mutation.actor_label == "Account"
     assert mutation.metadata["updated_columns"] == ["email", "name"]
+
+
+def test_dataset_detail_shows_column_descriptions_on_header_hover(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    dataset.column_schema = {
+        "name": {
+            "type": "text",
+            "description": "Human-readable full name.",
+        },
+        "email": {"type": "email"},
+    }
+    dataset.save(update_fields=["column_schema"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert '<span title="Human-readable full name.">name</span>' in content
 
 
 def test_dataset_owner_cannot_update_column_types_while_processing(auth_client, profile):
@@ -2658,6 +2819,36 @@ def test_public_dataset_view_paginates_rows(client, profile):
     page_two = client.get(f"{dataset.get_public_url()}?page=2")
     page_two_content = page_two.content.decode()
     assert "Grace" in page_two_content
+
+
+def test_public_dataset_does_not_expose_column_descriptions(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.column_schema = {
+        "name": {
+            "type": "text",
+            "description": "Internal scoring context for trusted agents only.",
+        },
+        "email": {"type": "email"},
+    }
+    dataset.save(update_fields=["public_enabled", "column_schema"])
+
+    response = client.get(dataset.get_public_url())
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "name" in content
+    assert "Internal scoring context for trusted agents only." not in content
+
+    row = dataset.rows.first()
+    row_detail_response = client.get(
+        reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+    )
+
+    assert row_detail_response.status_code == 200
+    row_detail_content = row_detail_response.content.decode()
+    assert "name" in row_detail_content
+    assert "Internal scoring context for trusted agents only." not in row_detail_content
 
 
 def test_public_dataset_view_filters_and_sorts_rows(client, profile):

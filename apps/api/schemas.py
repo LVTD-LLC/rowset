@@ -12,6 +12,10 @@ from apps.datasets.constants import (
 )
 
 ColumnTypeIn = str | dict[str, Any]
+COLUMN_TYPE_DESCRIPTION = (
+    "Semantic column type string or metadata object. Metadata supports type, "
+    "description, and choice columns with choices."
+)
 
 
 class SubmitFeedbackIn(Schema):
@@ -180,7 +184,10 @@ class DatasetCreateIn(Schema):
         max_length=MAX_API_DATASET_CREATE_ROWS,
     )
     index_column: str | None = None
-    column_types: dict[str, ColumnTypeIn] | None = None
+    column_types: dict[str, ColumnTypeIn] | None = Field(
+        default=None,
+        description=COLUMN_TYPE_DESCRIPTION,
+    )
     project_key: str | None = None
 
 
@@ -191,7 +198,10 @@ class DatasetCreateOut(Schema):
 
 
 class DatasetColumnTypesPatchIn(Schema):
-    column_types: dict[str, ColumnTypeIn]
+    column_types: dict[str, ColumnTypeIn] = Field(
+        ...,
+        description=COLUMN_TYPE_DESCRIPTION,
+    )
 
 
 class DatasetColumnTypesOut(Schema):
@@ -215,7 +225,10 @@ class DatasetMetadataOut(Schema):
 class DatasetColumnAddIn(Schema):
     name: str
     default_value: Any = ""
-    column_type: ColumnTypeIn | None = None
+    column_type: ColumnTypeIn | None = Field(
+        default=None,
+        description=COLUMN_TYPE_DESCRIPTION,
+    )
 
 
 class DatasetColumnRenameIn(Schema):

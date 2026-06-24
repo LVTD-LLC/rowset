@@ -112,8 +112,14 @@
           <caption class="sr-only">{{ rows_heading }} for {{ dataset.name }}</caption>
           <thead class="bg-slate-50 dark:bg-slate-900">
             <tr>
-              {% for header in dataset.headers %}
-                <th scope="col">{{ header }}</th>
+              {% for column in column_definitions %}
+                <th scope="col">
+                  {% if column.description %}
+                    <span title="{{ column.description }}">{{ column.name }}</span>
+                  {% else %}
+                    {{ column.name }}
+                  {% endif %}
+                </th>
               {% endfor %}
               {% if rows_show_actor %}
                 <th scope="col">Touched by</th>

@@ -43,6 +43,16 @@ fixed set. For example, a task board can define `status` with choices like
 Choice cells may be blank. When a row includes a non-blank choice value, Rowset
 requires it to match one of the configured choices exactly.
 
+## Column descriptions
+
+Add column descriptions when a header needs extra context that should travel
+with the dataset. Rowset returns descriptions in `column_schema` through REST and
+MCP, and the authenticated dashboard keeps them hidden until someone hovers over
+a column name. Public previews do not expose column descriptions.
+
+Use descriptions for conventions an agent should not guess, such as whether
+`owner` means the account executive, the product team, or the external customer.
+
 ## Exports
 
 Use exports when a workflow needs a full snapshot instead of row-by-row API access.
