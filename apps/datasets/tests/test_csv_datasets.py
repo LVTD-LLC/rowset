@@ -881,6 +881,14 @@ def test_dataset_archive_rejects_non_ready_dataset(auth_client, profile):
     assert str(flash_messages[0]) == "Only ready datasets can be archived from the dataset page."
 
 
+def test_dataset_archive_requires_post(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_archive", args=[dataset.key]))
+
+    assert response.status_code == 405
+
+
 def test_dataset_archive_uses_info_message_for_already_archived_dataset(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.archived_at = timezone.now()
