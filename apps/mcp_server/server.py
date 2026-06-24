@@ -588,23 +588,18 @@ def update_project(
 def update_project_metadata(
     project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
     metadata: Annotated[
-        dict[str, Any] | None,
+        dict[str, Any],
         Field(
-            default=None,
             description=(
-                "Replacement JSON object for arbitrary project metadata. Omit or pass null "
-                "to keep the current value; pass {} to clear it."
+                "Replacement JSON object for arbitrary project metadata. Pass {} to clear it."
             ),
         ),
-    ] = None,
+    ],
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile()
-    updates = {}
-    if metadata is not None:
-        updates["metadata"] = metadata
     try:
-        return update_profile_project_metadata(profile, project_key, **updates)
+        return update_profile_project_metadata(profile, project_key, metadata=metadata)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 

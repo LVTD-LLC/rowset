@@ -553,13 +553,12 @@ def patch_project_metadata(
     payload: ProjectMetadataPatchIn,
 ):
     """Replace arbitrary JSON metadata for a project owned by the authenticated profile."""
-    updates = {
-        key: value
-        for key, value in payload.model_dump(exclude_unset=True).items()
-        if value is not None
-    }
     try:
-        return update_profile_project_metadata(request.auth, project_key, **updates)
+        return update_profile_project_metadata(
+            request.auth,
+            project_key,
+            metadata=payload.metadata,
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 

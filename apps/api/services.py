@@ -252,10 +252,7 @@ def search_profile_projects(
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     normalized_query = _normalize_search_query(query)
-    queryset = profile.projects.annotate(
-        dataset_count=_visible_project_dataset_count(),
-        metadata_text=Cast("metadata", TextField()),
-    ).only(
+    queryset = profile.projects.annotate(dataset_count=_visible_project_dataset_count()).only(
         "key",
         "name",
         "description",
@@ -264,7 +261,7 @@ def search_profile_projects(
         "updated_at",
     )
     if normalized_query:
-        queryset = queryset.filter(
+        queryset = queryset.annotate(metadata_text=Cast("metadata", TextField())).filter(
             Q(name__icontains=normalized_query)
             | Q(description__icontains=normalized_query)
             | Q(metadata_text__icontains=normalized_query)

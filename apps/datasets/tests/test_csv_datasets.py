@@ -2388,6 +2388,21 @@ def test_project_api_rejects_non_object_project_metadata(client, profile):
     assert project.metadata == {}
 
 
+def test_project_api_rejects_null_project_metadata(client, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+
+    response = client.patch(
+        f"/api/projects/{project.key}/metadata?api_key={profile.key}",
+        data={"metadata": None},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "payload", "metadata"]
+    project.refresh_from_db()
+    assert project.metadata == {}
+
+
 def test_dataset_api_updates_project_assignment(client, profile):
     project = Project.objects.create(profile=profile, name="Customers")
     dataset = create_ready_dataset(profile)

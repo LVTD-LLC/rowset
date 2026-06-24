@@ -144,7 +144,7 @@ class ProjectUpdateOut(Schema):
 
 
 class ProjectMetadataPatchIn(Schema):
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, Any]
 
 
 class ProjectMetadataOut(Schema):
