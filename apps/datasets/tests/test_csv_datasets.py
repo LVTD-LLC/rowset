@@ -357,9 +357,11 @@ def test_archived_dataset_list_shows_archived_datasets_only(
     profile,
 ):
     project = Project.objects.create(profile=profile, name="Research")
+    active_project = Project.objects.create(profile=profile, name="Active only")
     active_dataset = create_ready_dataset(profile)
     active_dataset.name = "Archived active people"
-    active_dataset.save(update_fields=["name"])
+    active_dataset.project = active_project
+    active_dataset.save(update_fields=["name", "project"])
     archived_dataset = Dataset.objects.create(
         profile=profile,
         project=project,
@@ -414,9 +416,13 @@ def test_archived_dataset_list_shows_archived_datasets_only(
         "total_projects": 1,
     }
     assert "Archived datasets" in content
+    assert "Archived rows" in content
+    assert "Archived projects" in content
+    assert "Search archived datasets" in content
     assert "Active datasets" in content
     assert "Archived people" in content
     assert "Research" in content
+    assert "Active only" not in content
     assert "Archived active people" not in content
     assert "Archived draft" not in content
     assert "Archived other account dataset" not in content

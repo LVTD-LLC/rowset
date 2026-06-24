@@ -296,6 +296,13 @@ class DatasetListView(LoginRequiredMixin, ListView):
     dataset_list_description = "Browse datasets created and managed through Rowset API or MCP."
     dataset_table_caption = "Datasets"
     dataset_table_date_heading = "Updated"
+    dataset_stats_heading = "Dataset stats"
+    dataset_stats_dataset_label = "Datasets"
+    dataset_stats_rows_label = "Rows stored"
+    dataset_stats_projects_label = "Projects"
+    dataset_stats_public_preview_label = "Public previews"
+    dataset_search_label = "Search datasets"
+    dataset_search_placeholder = "Name, source file, or project"
     dataset_empty_title = "No datasets yet"
     dataset_empty_body = (
         "Ask your connected agent to create a dataset from the source file or table it can access."
@@ -339,6 +346,9 @@ class DatasetListView(LoginRequiredMixin, ListView):
 
         return queryset.order_by(*self.sort_ordering[self.get_selected_sort()])
 
+    def get_total_projects(self, base_queryset):
+        return self.request.user.profile.projects.count()
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         base_queryset = self.get_base_queryset()
@@ -351,7 +361,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
             "total_datasets": summary["total_datasets"] or 0,
             "total_rows": summary["total_rows"] or 0,
             "public_preview_count": summary["public_preview_count"] or 0,
-            "total_projects": self.request.user.profile.projects.count(),
+            "total_projects": self.get_total_projects(base_queryset),
         }
         context["search_query"] = self.get_search_query()
         context["selected_sort"] = self.get_selected_sort()
@@ -366,6 +376,13 @@ class DatasetListView(LoginRequiredMixin, ListView):
         context["dataset_list_description"] = self.dataset_list_description
         context["dataset_table_caption"] = self.dataset_table_caption
         context["dataset_table_date_heading"] = self.dataset_table_date_heading
+        context["dataset_stats_heading"] = self.dataset_stats_heading
+        context["dataset_stats_dataset_label"] = self.dataset_stats_dataset_label
+        context["dataset_stats_rows_label"] = self.dataset_stats_rows_label
+        context["dataset_stats_projects_label"] = self.dataset_stats_projects_label
+        context["dataset_stats_public_preview_label"] = self.dataset_stats_public_preview_label
+        context["dataset_search_label"] = self.dataset_search_label
+        context["dataset_search_placeholder"] = self.dataset_search_placeholder
         context["dataset_empty_title"] = self.dataset_empty_title
         context["dataset_empty_body"] = self.dataset_empty_body
         context["dataset_filtered_empty_title"] = self.dataset_filtered_empty_title
@@ -399,6 +416,13 @@ class ArchivedDatasetListView(DatasetListView):
     )
     dataset_table_caption = "Archived datasets"
     dataset_table_date_heading = "Archived"
+    dataset_stats_heading = "Archived dataset stats"
+    dataset_stats_dataset_label = "Archived datasets"
+    dataset_stats_rows_label = "Archived rows"
+    dataset_stats_projects_label = "Archived projects"
+    dataset_stats_public_preview_label = "Archived public previews"
+    dataset_search_label = "Search archived datasets"
+    dataset_search_placeholder = "Archived name, source file, or project"
     dataset_empty_title = "No archived datasets"
     dataset_empty_body = (
         "Archived datasets will appear here after an agent or API client archives one."
@@ -407,6 +431,14 @@ class ArchivedDatasetListView(DatasetListView):
     dataset_filtered_empty_body = (
         "Adjust the search or sort controls to return to the full archived dataset list."
     )
+
+    def get_total_projects(self, base_queryset):
+        return (
+            base_queryset.filter(project__isnull=False)
+            .values("project_id")
+            .distinct()
+            .count()
+        )
 
 
 class ProjectListView(LoginRequiredMixin, ListView):
