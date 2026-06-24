@@ -268,9 +268,7 @@ def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
     normalized_message = raw_message.lower()
     if "missing" in normalized_message and "authorization" in normalized_message:
         code = "AUTHORIZATION_MISSING"
-        suggested_action = (
-            "Configure the MCP request with Authorization: Bearer <ROWSET_API_KEY>."
-        )
+        suggested_action = "Configure the MCP request with Authorization: Bearer <ROWSET_API_KEY>."
     elif "no longer active" in normalized_message:
         code = "API_KEY_INACTIVE"
         suggested_action = "Create or select an active Rowset agent API key and retry."
@@ -963,17 +961,55 @@ def restore_dataset(
 
 @mcp.tool(
     name="list_dataset_rows",
-    description="Return a bounded page of rows for a ready dataset.",
+    description=(
+        "Return a bounded page of rows for a ready dataset. Optionally search across "
+        "row values, filter by column values, and sort by row_number or a dataset header."
+    ),
 )
 def list_dataset_rows(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     limit: Annotated[int, Field(default=100, ge=1, le=500)] = 100,
     offset: Annotated[int, Field(default=0, ge=0)] = 0,
+    query: Annotated[
+        str | None,
+        Field(default=None, description="Optional text to search across row values."),
+    ] = None,
+    filters: Annotated[
+        dict[str, str] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional mapping from dataset header to a value to filter by. "
+                "Text-like filters use case-insensitive contains matching; boolean "
+                "filters accept true/false, yes/no, y/n, or 1/0."
+            ),
+        ),
+    ] = None,
+    sort: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Optional sort key: row_number or one of the dataset headers.",
+        ),
+    ] = None,
+    direction: Annotated[
+        str | None,
+        Field(default=None, description="Optional sort direction: asc or desc."),
+    ] = None,
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile()
     try:
-        return list_profile_dataset_rows(profile, dataset_key, limit=limit, offset=offset)
+        return list_profile_dataset_rows(
+            profile,
+            dataset_key,
+            limit=limit,
+            offset=offset,
+            query=query,
+            filters=filters,
+            sort=sort,
+            direction=direction,
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 

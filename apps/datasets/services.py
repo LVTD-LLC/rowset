@@ -13,11 +13,18 @@ from urllib.parse import urlparse
 from xml.sax.saxutils import escape
 
 import polars as pl
+from django.db.models import Case, F, FloatField, Q, TextField, Value, When
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast, Lower, Replace, Trim
 
 from apps.datasets.choices import DatasetColumnType
 
 
 class CSVParseError(ValueError):
+    pass
+
+
+class DatasetRowQueryError(ValueError):
     pass
 
 
@@ -30,6 +37,17 @@ MAX_PUBLIC_PAGE_SIZE = 100
 LEGACY_GOOGLE_SHEETS_FILE_TYPE = "google_sheets"
 COLUMN_TYPE_SAMPLE_LIMIT = 200
 COLUMN_SCHEMA_TYPE_KEY = "type"
+ROW_DEFAULT_SORT = "row_number"
+ROW_SORT_DESC = "desc"
+ROW_SEARCH_COLUMN_LIMIT = 20
+ROW_BOOLEAN_TRUE_VALUES = ("true", "1", "yes", "y")
+ROW_BOOLEAN_FALSE_VALUES = ("false", "0", "no", "n")
+ROW_NUMERIC_SORT_TYPES = {
+    DatasetColumnType.CURRENCY,
+    DatasetColumnType.INTEGER,
+    DatasetColumnType.NUMBER,
+}
+ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 INTEGER_RE = re.compile(r"^[+-]?\d+$")
@@ -383,6 +401,215 @@ def column_definitions(
     ]
 
 
+def normalize_dataset_row_filters(
+    headers: list[str],
+    filters: dict | None,
+    *,
+    strict: bool = False,
+) -> dict[str, str]:
+    normalized_filters = {}
+    header_set = set(headers)
+    for raw_header, raw_value in (filters or {}).items():
+        header = str(raw_header or "").strip()
+        if not header:
+            if strict:
+                raise DatasetRowQueryError("Row filter headers must be non-empty.")
+            continue
+        if header not in header_set:
+            if strict:
+                raise DatasetRowQueryError(f"Column '{header}' is not in this dataset.")
+            continue
+        value = "" if raw_value is None else str(raw_value).strip()
+        if value:
+            normalized_filters[header] = value
+    return normalized_filters
+
+
+def normalize_dataset_row_sort(
+    headers: list[str],
+    sort: str | None,
+    *,
+    strict: bool = False,
+) -> str:
+    selected_sort = str(sort or ROW_DEFAULT_SORT).strip()
+    if not selected_sort or selected_sort == ROW_DEFAULT_SORT:
+        return ROW_DEFAULT_SORT
+    if selected_sort in headers:
+        return selected_sort
+    if selected_sort.startswith("col_"):
+        try:
+            column_index = int(selected_sort.removeprefix("col_"))
+        except ValueError:
+            column_index = -1
+        if 0 <= column_index < len(headers):
+            return selected_sort
+    if strict:
+        raise DatasetRowQueryError("Row sort must be 'row_number' or one of the dataset headers.")
+    return ROW_DEFAULT_SORT
+
+
+def normalize_dataset_row_sort_direction(direction: str | None, *, strict: bool = False) -> str:
+    normalized_direction = str(direction or "asc").strip().lower()
+    if normalized_direction in {"", "asc"}:
+        return "asc"
+    if normalized_direction == ROW_SORT_DESC:
+        return ROW_SORT_DESC
+    if strict:
+        raise DatasetRowQueryError("Row sort direction must be 'asc' or 'desc'.")
+    return "asc"
+
+
+def _dataset_row_sort_header(headers: list[str], selected_sort: str) -> str | None:
+    if selected_sort == ROW_DEFAULT_SORT:
+        return None
+    if selected_sort in headers:
+        return selected_sort
+    if selected_sort.startswith("col_"):
+        column_index = int(selected_sort.removeprefix("col_"))
+        return headers[column_index]
+    return None
+
+
+def _or_header_value_search(queryset, headers: list[str], search_query: str):
+    if not headers:
+        return queryset.none()
+
+    search_filter = Q()
+    for index, header in enumerate(headers[:ROW_SEARCH_COLUMN_LIMIT]):
+        alias = f"rowset_search_{index}"
+        queryset = queryset.annotate(**{alias: KeyTextTransform(header, "data")})
+        search_filter |= Q(**{f"{alias}__icontains": search_query})
+    if not search_filter:
+        return queryset
+    return queryset.filter(search_filter)
+
+
+def _boolean_filter_query(alias: str, value: str) -> Q | None:
+    normalized = value.lower()
+    if normalized in ROW_BOOLEAN_TRUE_VALUES:
+        values = ROW_BOOLEAN_TRUE_VALUES
+    elif normalized in ROW_BOOLEAN_FALSE_VALUES:
+        values = ROW_BOOLEAN_FALSE_VALUES
+    else:
+        return None
+
+    query = Q()
+    for candidate in values:
+        query |= Q(**{f"{alias}__iexact": candidate})
+    return query
+
+
+def _apply_row_field_filters(
+    queryset,
+    headers: list[str],
+    column_schema: dict | None,
+    filters: dict[str, str],
+):
+    column_map = {column["name"]: column for column in column_definitions(headers, column_schema)}
+    for index, header in enumerate(headers):
+        value = filters.get(header, "")
+        if not value:
+            continue
+
+        alias = f"rowset_filter_{index}"
+        queryset = queryset.annotate(**{alias: KeyTextTransform(header, "data")})
+        column = column_map[header]
+        if column["type"] == DatasetColumnType.BOOLEAN:
+            boolean_query = _boolean_filter_query(alias, value)
+            if boolean_query is None:
+                return queryset.none()
+            queryset = queryset.filter(boolean_query)
+        else:
+            queryset = queryset.filter(**{f"{alias}__icontains": value})
+    return queryset
+
+
+def apply_dataset_row_query(
+    queryset,
+    dataset,
+    *,
+    query: str | None = None,
+    filters: dict | None = None,
+    sort: str | None = None,
+    direction: str | None = None,
+    strict: bool = False,
+):
+    search_query = str(query or "").strip()
+    normalized_filters = normalize_dataset_row_filters(
+        dataset.headers,
+        filters,
+        strict=strict,
+    )
+    selected_sort = normalize_dataset_row_sort(dataset.headers, sort, strict=strict)
+    sort_direction = normalize_dataset_row_sort_direction(direction, strict=strict)
+
+    if search_query:
+        queryset = _or_header_value_search(queryset, dataset.headers, search_query)
+    queryset = _apply_row_field_filters(
+        queryset,
+        dataset.headers,
+        dataset.column_schema,
+        normalized_filters,
+    )
+    queryset = apply_dataset_row_sort(queryset, dataset, selected_sort, sort_direction)
+
+    return queryset, {
+        "query": search_query,
+        "filters": normalized_filters,
+        "sort": selected_sort,
+        "direction": sort_direction,
+        "has_filters": bool(
+            search_query
+            or normalized_filters
+            or selected_sort != ROW_DEFAULT_SORT
+            or sort_direction == ROW_SORT_DESC
+        ),
+    }
+
+
+def apply_dataset_row_sort(queryset, dataset, selected_sort: str, sort_direction: str):
+    sort_header = _dataset_row_sort_header(dataset.headers, selected_sort)
+    if sort_header is None:
+        ordering = "-row_number" if sort_direction == ROW_SORT_DESC else "row_number"
+        return queryset.order_by(ordering)
+
+    sort_column = next(
+        column
+        for column in column_definitions(dataset.headers, dataset.column_schema)
+        if column["name"] == sort_header
+    )
+    queryset = queryset.annotate(rowset_sort_text=KeyTextTransform(sort_header, "data"))
+    if sort_column["type"] in ROW_NUMERIC_SORT_TYPES:
+        empty_text = Value("", output_field=TextField())
+        queryset = queryset.annotate(
+            rowset_sort_numeric_text=Replace(
+                Replace(
+                    Trim(Cast("rowset_sort_text", TextField())),
+                    Value("$", output_field=TextField()),
+                    empty_text,
+                    output_field=TextField(),
+                ),
+                Value(",", output_field=TextField()),
+                empty_text,
+                output_field=TextField(),
+            ),
+            rowset_sort_number=Case(
+                When(
+                    rowset_sort_numeric_text__regex=ROW_NUMERIC_SORT_PATTERN,
+                    then=Cast("rowset_sort_numeric_text", FloatField()),
+                ),
+                default=Value(None),
+                output_field=FloatField(),
+            ),
+        )
+        sort_expression = F("rowset_sort_number")
+    else:
+        sort_expression = Lower("rowset_sort_text")
+    if sort_direction == ROW_SORT_DESC:
+        return queryset.order_by(sort_expression.desc(nulls_last=True), "row_number")
+    return queryset.order_by(sort_expression.asc(nulls_last=True), "row_number")
+
+
 def generated_index_column_schema() -> dict[str, str]:
     return {COLUMN_SCHEMA_TYPE_KEY: DatasetColumnType.INTEGER}
 
@@ -543,9 +770,7 @@ def rows_to_parquet_bytes(headers: list[str], rows) -> bytes:
 
 
 def rows_to_jsonl_text(headers: list[str], rows) -> str:
-    return "".join(
-        f"{json.dumps(_export_row(headers, row), ensure_ascii=False)}\n" for row in rows
-    )
+    return "".join(f"{json.dumps(_export_row(headers, row), ensure_ascii=False)}\n" for row in rows)
 
 
 def rows_to_xlsx_bytes(headers: list[str], rows) -> bytes:
@@ -583,9 +808,7 @@ def rows_to_sqlite_bytes(headers: list[str], rows) -> bytes:
 
 def iter_export_row_data(dataset):
     return (
-        dataset.rows.order_by("row_number")
-        .values_list("data", flat=True)
-        .iterator(chunk_size=1000)
+        dataset.rows.order_by("row_number").values_list("data", flat=True).iterator(chunk_size=1000)
     )
 
 
@@ -710,11 +933,7 @@ def _xlsx_needs_preserved_space(value: str) -> bool:
 
 
 def _strip_invalid_xml_chars(value: str) -> str:
-    return "".join(
-        char
-        for char in value
-        if char in {"\t", "\n", "\r"} or ord(char) >= 0x20
-    )
+    return "".join(char for char in value if char in {"\t", "\n", "\r"} or ord(char) >= 0x20)
 
 
 def prepare_index_config(headers: list[str], selected_index: str) -> tuple[str, bool, list[str]]:

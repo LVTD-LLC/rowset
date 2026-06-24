@@ -5,9 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Case, Count, F, FloatField, Q, Sum, TextField, Value, When
-from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast, Lower, Replace, Trim
+from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -26,8 +24,13 @@ from apps.api.services import (
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
+    ROW_DEFAULT_SORT,
+    ROW_SORT_DESC,
+    apply_dataset_row_query,
     column_definitions,
     iter_export_row_data,
+    normalize_dataset_row_sort,
+    normalize_dataset_row_sort_direction,
     normalize_public_page_size,
     ordered_row_values,
     rows_to_csv_text,
@@ -57,17 +60,6 @@ ROW_SEARCH_PARAM = "row_q"
 ROW_SORT_PARAM = "row_sort"
 ROW_SORT_DIRECTION_PARAM = "row_dir"
 ROW_FILTER_PARAM_PREFIX = "filter_"
-ROW_DEFAULT_SORT = "row_number"
-ROW_SORT_DESC = "desc"
-ROW_SEARCH_COLUMN_LIMIT = 20
-ROW_BOOLEAN_TRUE_VALUES = ("true", "1", "yes", "y")
-ROW_BOOLEAN_FALSE_VALUES = ("false", "0", "no", "n")
-ROW_NUMERIC_SORT_TYPES = {
-    DatasetColumnType.CURRENCY,
-    DatasetColumnType.INTEGER,
-    DatasetColumnType.NUMBER,
-}
-ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
 DATASET_EXPORT_FORMATS = {
     "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
     "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
@@ -191,105 +183,11 @@ def _row_sort_options(dataset: Dataset, selected_sort: str) -> list[dict[str, ob
 
 
 def _selected_row_sort(request, dataset: Dataset) -> str:
-    selected_sort = request.GET.get(ROW_SORT_PARAM, ROW_DEFAULT_SORT)
-    valid_sorts = {ROW_DEFAULT_SORT} | {f"col_{index}" for index, _ in enumerate(dataset.headers)}
-    if selected_sort not in valid_sorts:
-        return ROW_DEFAULT_SORT
-    return selected_sort
+    return normalize_dataset_row_sort(dataset.headers, request.GET.get(ROW_SORT_PARAM))
 
 
 def _selected_row_sort_direction(request) -> str:
-    if request.GET.get(ROW_SORT_DIRECTION_PARAM) == ROW_SORT_DESC:
-        return ROW_SORT_DESC
-    return "asc"
-
-
-def _or_header_value_search(queryset, dataset: Dataset, search_query: str):
-    if not dataset.headers:
-        return queryset.none()
-
-    search_filter = Q()
-    for index, header in enumerate(dataset.headers[:ROW_SEARCH_COLUMN_LIMIT]):
-        alias = f"rowset_search_{index}"
-        queryset = queryset.annotate(**{alias: KeyTextTransform(header, "data")})
-        search_filter |= Q(**{f"{alias}__icontains": search_query})
-    if not search_filter:
-        return queryset
-    return queryset.filter(search_filter)
-
-
-def _boolean_filter_query(alias: str, value: str) -> Q | None:
-    normalized = value.lower()
-    if normalized in ROW_BOOLEAN_TRUE_VALUES:
-        values = ROW_BOOLEAN_TRUE_VALUES
-    elif normalized in ROW_BOOLEAN_FALSE_VALUES:
-        values = ROW_BOOLEAN_FALSE_VALUES
-    else:
-        return None
-
-    query = Q()
-    for candidate in values:
-        query |= Q(**{f"{alias}__iexact": candidate})
-    return query
-
-
-def _apply_row_field_filters(queryset, filter_fields: list[dict[str, object]]):
-    for index, field in enumerate(filter_fields):
-        value = str(field["value"]).strip()
-        if not value:
-            continue
-
-        alias = f"rowset_filter_{index}"
-        queryset = queryset.annotate(**{alias: KeyTextTransform(str(field["header"]), "data")})
-        column_type = field["type"]
-        if column_type == DatasetColumnType.BOOLEAN:
-            boolean_query = _boolean_filter_query(alias, value)
-            if boolean_query is None:
-                return queryset.none()
-            queryset = queryset.filter(boolean_query)
-        else:
-            queryset = queryset.filter(**{f"{alias}__icontains": value})
-    return queryset
-
-
-def _apply_row_sort(queryset, dataset: Dataset, selected_sort: str, sort_direction: str):
-    if selected_sort == ROW_DEFAULT_SORT:
-        ordering = "-row_number" if sort_direction == ROW_SORT_DESC else "row_number"
-        return queryset.order_by(ordering)
-
-    column_index = int(selected_sort.removeprefix("col_"))
-    sort_header = dataset.headers[column_index]
-    sort_column = column_definitions(dataset.headers, dataset.column_schema)[column_index]
-    queryset = queryset.annotate(rowset_sort_text=KeyTextTransform(sort_header, "data"))
-    if sort_column["type"] in ROW_NUMERIC_SORT_TYPES:
-        empty_text = Value("", output_field=TextField())
-        queryset = queryset.annotate(
-            rowset_sort_numeric_text=Replace(
-                Replace(
-                    Trim(Cast("rowset_sort_text", TextField())),
-                    Value("$", output_field=TextField()),
-                    empty_text,
-                    output_field=TextField(),
-                ),
-                Value(",", output_field=TextField()),
-                empty_text,
-                output_field=TextField(),
-            ),
-            rowset_sort_number=Case(
-                When(
-                    rowset_sort_numeric_text__regex=ROW_NUMERIC_SORT_PATTERN,
-                    then=Cast("rowset_sort_numeric_text", FloatField()),
-                ),
-                default=Value(None),
-                output_field=FloatField(),
-            ),
-        )
-        sort_expression = F("rowset_sort_number")
-    else:
-        sort_expression = Lower("rowset_sort_text")
-    if sort_direction == ROW_SORT_DESC:
-        return queryset.order_by(sort_expression.desc(nulls_last=True), "row_number")
-    return queryset.order_by(sort_expression.asc(nulls_last=True), "row_number")
+    return normalize_dataset_row_sort_direction(request.GET.get(ROW_SORT_DIRECTION_PARAM))
 
 
 def _dataset_row_query_context(request, dataset: Dataset, queryset):
@@ -297,32 +195,38 @@ def _dataset_row_query_context(request, dataset: Dataset, queryset):
     selected_sort = _selected_row_sort(request, dataset)
     sort_direction = _selected_row_sort_direction(request)
     filter_fields = _row_filter_fields(dataset, request)
+    filters = {
+        str(field["header"]): str(field["value"])
+        for field in filter_fields
+        if str(field["value"]).strip()
+    }
 
-    if search_query:
-        queryset = _or_header_value_search(queryset, dataset, search_query)
-    queryset = _apply_row_field_filters(queryset, filter_fields)
-    queryset = _apply_row_sort(queryset, dataset, selected_sort, sort_direction)
-
-    has_row_filters = bool(
-        search_query
-        or selected_sort != ROW_DEFAULT_SORT
-        or sort_direction == ROW_SORT_DESC
-        or any(field["value"] for field in filter_fields)
+    queryset, row_query = apply_dataset_row_query(
+        queryset,
+        dataset,
+        query=search_query,
+        filters=filters,
+        sort=selected_sort,
+        direction=sort_direction,
     )
     return queryset, {
-        "row_search_query": search_query,
+        "row_search_query": row_query["query"],
         "row_filter_fields": filter_fields,
-        "row_sort_options": _row_sort_options(dataset, selected_sort),
-        "row_sort_direction": sort_direction,
+        "row_sort_options": _row_sort_options(dataset, row_query["sort"]),
+        "row_sort_direction": row_query["direction"],
         "row_sort_direction_options": [
-            {"label": "Ascending", "value": "asc", "selected": sort_direction != ROW_SORT_DESC},
+            {
+                "label": "Ascending",
+                "value": "asc",
+                "selected": row_query["direction"] != ROW_SORT_DESC,
+            },
             {
                 "label": "Descending",
                 "value": ROW_SORT_DESC,
-                "selected": sort_direction == ROW_SORT_DESC,
+                "selected": row_query["direction"] == ROW_SORT_DESC,
             },
         ],
-        "has_row_filters": has_row_filters,
+        "has_row_filters": row_query["has_filters"],
         "row_filters_reset_url": request.path,
     }
 

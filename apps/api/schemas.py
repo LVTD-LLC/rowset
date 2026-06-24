@@ -282,9 +282,14 @@ class DatasetRowOut(Schema):
 class DatasetRowsOut(Schema):
     dataset: str
     count: int
+    total_count: int
     limit: int
     offset: int
     has_more: bool
+    query: str
+    filters: dict[str, str] = Field(default_factory=dict)
+    sort: str
+    direction: str
     rows: list[DatasetRowOut]
 
 

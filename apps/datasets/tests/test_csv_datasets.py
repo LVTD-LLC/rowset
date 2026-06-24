@@ -11,7 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.api.services import patch_profile_dataset_row
+from apps.api.services import list_profile_dataset_rows, patch_profile_dataset_row
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
@@ -1000,6 +1000,84 @@ def test_dataset_api_crud_and_export(client, profile):
     assert delete_response.status_code == 200
     assert delete_response.json()["dataset"] == str(dataset.key)
     assert not DatasetRow.objects.filter(id=row_id).exists()
+
+
+def test_dataset_api_filters_and_sorts_rows(client, profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+    api_key = profile.key
+
+    filtered_response = client.get(
+        f"/api/datasets/{dataset.key}/rows",
+        {
+            "api_key": api_key,
+            "filters": json.dumps({"active": "true"}),
+            "sort": "name",
+            "direction": "desc",
+        },
+    )
+
+    assert filtered_response.status_code == 200
+    payload = filtered_response.json()
+    assert payload["count"] == 2
+    assert payload["total_count"] == 3
+    assert payload["filters"] == {"active": "true"}
+    assert payload["sort"] == "name"
+    assert payload["direction"] == "desc"
+    assert [row["data"]["name"] for row in payload["rows"]] == [
+        "Katherine Johnson",
+        "Ada Lovelace",
+    ]
+
+    search_response = client.get(
+        f"/api/datasets/{dataset.key}/rows",
+        {
+            "api_key": api_key,
+            "query": "grace",
+            "sort": "score",
+        },
+    )
+
+    assert search_response.status_code == 200
+    assert search_response.json()["count"] == 1
+    assert search_response.json()["rows"][0]["data"]["name"] == "Grace Hopper"
+
+    invalid_sort_response = client.get(
+        f"/api/datasets/{dataset.key}/rows",
+        {"api_key": api_key, "sort": "missing"},
+    )
+    assert invalid_sort_response.status_code == 400
+    assert "Row sort" in invalid_sort_response.json()["detail"]
+
+    invalid_filter_response = client.get(
+        f"/api/datasets/{dataset.key}/rows",
+        {
+            "api_key": api_key,
+            "filters": json.dumps({"missing": "value"}),
+        },
+    )
+    assert invalid_filter_response.status_code == 400
+    assert "not in this dataset" in invalid_filter_response.json()["detail"]
+
+    malformed_filters_response = client.get(
+        f"/api/datasets/{dataset.key}/rows",
+        {"api_key": api_key, "filters": "not-json"},
+    )
+    assert malformed_filters_response.status_code == 400
+    assert "filters must be a JSON object" in malformed_filters_response.json()["detail"]
+
+
+def test_dataset_row_service_preserves_native_falsy_filter_values(profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+
+    payload = list_profile_dataset_rows(
+        profile,
+        str(dataset.key),
+        filters={"active": False},
+    )
+
+    assert payload["count"] == 1
+    assert payload["filters"] == {"active": "False"}
+    assert [row["data"]["name"] for row in payload["rows"]] == ["Grace Hopper"]
 
 
 def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):
