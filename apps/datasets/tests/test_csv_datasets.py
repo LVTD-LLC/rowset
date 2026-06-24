@@ -344,10 +344,114 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     assert "People" in content
     assert "Research" in content
     assert "Invoices" not in content
+    assert reverse("archived_dataset_list") in content
     assert reverse("dataset_export", args=[dataset.key, "csv"]) not in content
     assert reverse("dataset_export", args=[dataset.key, "parquet"]) not in content
     assert reverse("dataset_delete", args=[dataset.key]) not in content
     assert "Dataset status" not in content
+
+
+def test_archived_dataset_list_shows_archived_datasets_only(
+    auth_client,
+    django_user_model,
+    profile,
+):
+    project = Project.objects.create(profile=profile, name="Research")
+    active_dataset = create_ready_dataset(profile)
+    active_dataset.name = "Archived active people"
+    active_dataset.save(update_fields=["name"])
+    archived_dataset = Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Archived people",
+        original_filename="archived-people.csv",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email"],
+        index_column="email",
+        row_count=4,
+        archived_at=timezone.now(),
+    )
+    Dataset.objects.create(
+        profile=profile,
+        name="Archived draft",
+        original_filename="draft.csv",
+        status=DatasetStatus.PREVIEWED,
+        headers=["email"],
+        index_column="email",
+        archived_at=timezone.now(),
+    )
+    other_user = django_user_model.objects.create_user(
+        username="other-archive-list",
+        email="other-archive-list@example.com",
+        password="password123",
+    )
+    Dataset.objects.create(
+        profile=other_user.profile,
+        name="Archived other account dataset",
+        original_filename="other.csv",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email"],
+        index_column="email",
+        archived_at=timezone.now(),
+    )
+
+    response = auth_client.get(
+        reverse("archived_dataset_list"),
+        {"q": "archived", "sort": "archived"},
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert [dataset.key for dataset in response.context["datasets"]] == [archived_dataset.key]
+    assert response.context["search_query"] == "archived"
+    assert response.context["selected_sort"] == "archived"
+    assert response.context["dataset_stats"] == {
+        "total_datasets": 1,
+        "total_rows": 4,
+        "public_preview_count": 0,
+        "total_projects": 1,
+    }
+    assert "Archived datasets" in content
+    assert "Active datasets" in content
+    assert "Archived people" in content
+    assert "Research" in content
+    assert "Archived active people" not in content
+    assert "Archived draft" not in content
+    assert "Archived other account dataset" not in content
+    assert reverse("dataset_list") in content
+    assert reverse("project_list") in content
+    assert reverse("dataset_export", args=[archived_dataset.key, "csv"]) not in content
+    assert reverse("dataset_delete", args=[archived_dataset.key]) not in content
+
+
+def test_archived_dataset_list_paginates_archived_datasets(auth_client, profile):
+    for index in range(101):
+        Dataset.objects.create(
+            profile=profile,
+            name=f"Archived dataset {index:03}",
+            original_filename="Created via API",
+            file_type="api",
+            status=DatasetStatus.READY,
+            headers=["email"],
+            index_column="email",
+            row_count=0,
+            archived_at=timezone.now(),
+        )
+
+    response = auth_client.get(reverse("archived_dataset_list"))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert len(response.context["datasets"]) == 100
+    assert "Page 1 of 2" in content
+
+    page_two = auth_client.get(f"{reverse('archived_dataset_list')}?page=2")
+
+    assert page_two.status_code == 200
+    assert len(page_two.context["datasets"]) == 1
+    assert "Page 2 of 2" in page_two.content.decode()
 
 
 def test_dataset_detail_orders_row_cells_by_headers(auth_client, profile):

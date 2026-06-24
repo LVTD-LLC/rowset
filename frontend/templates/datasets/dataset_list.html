@@ -4,11 +4,18 @@
 <div class="fb-page">
   <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Datasets</p>
-      <h1 class="fb-page-title mt-2">API-backed datasets</h1>
-      <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Browse datasets created and managed through Rowset API or MCP.</p>
+      <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">{{ dataset_list_eyebrow }}</p>
+      <h1 class="fb-page-title mt-2">{{ dataset_list_title }}</h1>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">{{ dataset_list_description }}</p>
     </div>
-    <a href="{% url 'project_list' %}" class="fb-button-secondary">Projects</a>
+    <div class="flex flex-wrap gap-2">
+      {% if dataset_list_is_archived %}
+        <a href="{% url 'dataset_list' %}" class="fb-button-secondary">Active datasets</a>
+      {% else %}
+        <a href="{% url 'archived_dataset_list' %}" class="fb-button-secondary">Archived</a>
+      {% endif %}
+      <a href="{% url 'project_list' %}" class="fb-button-secondary">Projects</a>
+    </div>
   </div>
 
   <section class="mb-6" aria-labelledby="dataset-stats-heading">
@@ -51,7 +58,7 @@
     </div>
     {% if has_dataset_filters %}
       <div class="flex items-end">
-        <a href="{% url 'dataset_list' %}" class="fb-button-secondary w-full">Reset</a>
+        <a href="{{ dataset_list_reset_url }}" class="fb-button-secondary w-full">Reset</a>
       </div>
     {% endif %}
   </form>
@@ -59,14 +66,14 @@
   {% if datasets %}
     <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
       <table class="fb-table">
-        <caption class="sr-only">Datasets</caption>
+        <caption class="sr-only">{{ dataset_table_caption }}</caption>
         <thead class="bg-slate-50 dark:bg-slate-900">
           <tr>
             <th scope="col">Dataset</th>
             <th scope="col">Project</th>
             <th scope="col">Rows</th>
             <th scope="col">Columns</th>
-            <th scope="col">Updated</th>
+            <th scope="col">{{ dataset_table_date_heading }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
@@ -86,20 +93,39 @@
               </td>
               <td>{{ dataset.row_count }}</td>
               <td>{{ dataset.headers|length }}</td>
-              <td class="whitespace-nowrap">{{ dataset.updated_at|date:"M d, Y" }}</td>
+              <td class="whitespace-nowrap">
+                {% if dataset_list_is_archived %}
+                  {{ dataset.archived_at|date:"M d, Y" }}
+                {% else %}
+                  {{ dataset.updated_at|date:"M d, Y" }}
+                {% endif %}
+              </td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
+      {% if page_obj.has_other_pages %}
+        <nav class="flex flex-col gap-3 border-t border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between" aria-label="Dataset pagination">
+          <p class="text-slate-600 dark:text-slate-300">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>
+          <div class="flex flex-wrap gap-2">
+            {% if page_obj.has_previous %}
+              <a href="{{ previous_dataset_page_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Previous</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+              <a href="{{ next_dataset_page_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Next</a>
+            {% endif %}
+          </div>
+        </nav>
+      {% endif %}
     </div>
   {% else %}
     <div class="fb-panel p-8">
       {% if has_dataset_filters %}
-        <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">No matching datasets</h2>
-        <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Adjust the search or sort controls to return to the full dataset list.</p>
+        <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">{{ dataset_filtered_empty_title }}</h2>
+        <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">{{ dataset_filtered_empty_body }}</p>
       {% else %}
-        <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">No datasets yet</h2>
-        <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">Ask your connected agent to create a dataset from the source file or table it can access.</p>
+        <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">{{ dataset_empty_title }}</h2>
+        <p class="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">{{ dataset_empty_body }}</p>
       {% endif %}
     </div>
   {% endif %}
