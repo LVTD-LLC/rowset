@@ -49,7 +49,18 @@
       {% for row_filter in row_filter_fields %}
         <div>
           <label for="row-filter-{{ row_filter.param_name }}" class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title="{% firstof row_filter.description row_filter.header %}">{{ row_filter.header }}</label>
-          {% if row_filter.is_boolean %}
+          {% if row_filter.is_choice %}
+            <select
+              id="row-filter-{{ row_filter.param_name }}"
+              name="{{ row_filter.param_name }}"
+              class="mt-1 block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+            >
+              <option value="">Any choice</option>
+              {% for choice in row_filter.choices %}
+                <option value="{{ choice }}"{% if row_filter.value == choice %} selected{% endif %}>{{ choice }}</option>
+              {% endfor %}
+            </select>
+          {% elif row_filter.is_boolean %}
             <select
               id="row-filter-{{ row_filter.param_name }}"
               name="{{ row_filter.param_name }}"
@@ -59,13 +70,34 @@
               <option value="true"{% if row_filter.value == "true" %} selected{% endif %}>True</option>
               <option value="false"{% if row_filter.value == "false" %} selected{% endif %}>False</option>
             </select>
+          {% elif row_filter.is_numeric_filter %}
+            <div class="mt-1 grid gap-2 sm:grid-cols-[8rem_1fr]">
+              <label for="row-filter-operator-{{ row_filter.param_name }}" class="sr-only">Operator</label>
+              <select
+                id="row-filter-operator-{{ row_filter.param_name }}"
+                name="{{ row_filter.operator_param_name }}"
+                class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+              >
+                {% for operator in row_filter.operator_options %}
+                  <option value="{{ operator.value }}"{% if operator.selected %} selected{% endif %}>{{ operator.label }}</option>
+                {% endfor %}
+              </select>
+              <input
+                id="row-filter-{{ row_filter.param_name }}"
+                name="{{ row_filter.param_name }}"
+                type="{{ row_filter.input_type }}"
+                value="{{ row_filter.value }}"
+                step="any"
+                placeholder="{{ row_filter.type_label }}"
+                class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+              >
+            </div>
           {% else %}
             <input
               id="row-filter-{{ row_filter.param_name }}"
               name="{{ row_filter.param_name }}"
               type="{{ row_filter.input_type }}"
               value="{{ row_filter.value }}"
-              {% if row_filter.is_number or row_filter.is_currency %}step="any"{% endif %}
               placeholder="{{ row_filter.operator_label }} {{ row_filter.type_label|lower }}"
               class="mt-1 block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
             >

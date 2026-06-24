@@ -1,0 +1,137 @@
+<th scope="col" class="min-w-40">
+  <div data-controller="row-column-menu">
+    <button
+      type="button"
+      class="fb-focus inline-flex max-w-64 items-center gap-1 rounded-md px-1 py-0.5 text-left font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
+      title="{% firstof column.description column.header %}"
+      aria-haspopup="dialog"
+      data-action="click->row-column-menu#open contextmenu->row-column-menu#open"
+    >
+      <span class="truncate">{{ column.header }}</span>
+      {% if column.is_active_filter or column.is_active_sort %}
+        <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></span>
+        <span class="sr-only">Active column control</span>
+      {% endif %}
+      <span class="text-slate-400 dark:text-slate-500" aria-hidden="true">v</span>
+    </button>
+
+    <dialog
+      data-row-column-menu-target="dialog"
+      data-action="click->row-column-menu#closeFromBackdrop"
+      aria-labelledby="row-column-menu-title-{{ column.index }}"
+      class="w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-0 text-left text-slate-900 shadow-xl backdrop:bg-slate-950/30 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:backdrop:bg-slate-950/70"
+    >
+      <div class="flex items-start justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800">
+        <div class="min-w-0">
+          <h3 id="row-column-menu-title-{{ column.index }}" class="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{{ column.header }}</h3>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ column.type_label }} column</p>
+        </div>
+        <button
+          type="button"
+          class="fb-focus inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+          aria-label="Close column controls"
+          data-action="row-column-menu#close"
+        >&times;</button>
+      </div>
+
+      <div class="grid gap-4 p-4">
+        <fieldset>
+          <legend class="text-xs font-semibold text-slate-500 dark:text-slate-400">Sort</legend>
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <form method="get" action="">
+              {% include "datasets/partials/row_query_hidden_inputs.html" with preserve_row_sort=False preserve_row_direction=False %}
+              <input type="hidden" name="row_sort" value="{{ column.sort_value }}">
+              <input type="hidden" name="row_dir" value="asc">
+              <button type="submit" class="fb-button-secondary min-h-9 w-full px-2 py-1 text-xs">{{ column.sort_ascending_label }}</button>
+            </form>
+            <form method="get" action="">
+              {% include "datasets/partials/row_query_hidden_inputs.html" with preserve_row_sort=False preserve_row_direction=False %}
+              <input type="hidden" name="row_sort" value="{{ column.sort_value }}">
+              <input type="hidden" name="row_dir" value="desc">
+              <button type="submit" class="fb-button-secondary min-h-9 w-full px-2 py-1 text-xs">{{ column.sort_descending_label }}</button>
+            </form>
+          </div>
+          {% if column.is_active_sort %}
+            <form method="get" action="" class="mt-2">
+              {% include "datasets/partials/row_query_hidden_inputs.html" with preserve_row_sort=False preserve_row_direction=False %}
+              <button type="submit" class="fb-focus rounded-md text-xs font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">Original order</button>
+            </form>
+          {% endif %}
+        </fieldset>
+
+        <fieldset>
+          <legend class="text-xs font-semibold text-slate-500 dark:text-slate-400">Filter</legend>
+          <form method="get" action="" class="mt-2 space-y-3">
+            {% include "datasets/partials/row_query_hidden_inputs.html" with current_filter_param=column.param_name preserve_row_sort=True preserve_row_direction=True %}
+            {% if column.is_choice %}
+              <label for="row-column-filter-{{ column.index }}" class="sr-only">{{ column.header }}</label>
+              <select
+                id="row-column-filter-{{ column.index }}"
+                name="{{ column.param_name }}"
+                class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+              >
+                <option value="">Any choice</option>
+                {% for choice in column.choices %}
+                  <option value="{{ choice }}"{% if column.value == choice %} selected{% endif %}>{{ choice }}</option>
+                {% endfor %}
+              </select>
+            {% elif column.is_boolean %}
+              <label for="row-column-filter-{{ column.index }}" class="sr-only">{{ column.header }}</label>
+              <select
+                id="row-column-filter-{{ column.index }}"
+                name="{{ column.param_name }}"
+                class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+              >
+                <option value="">Any value</option>
+                <option value="true"{% if column.value == "true" %} selected{% endif %}>True</option>
+                <option value="false"{% if column.value == "false" %} selected{% endif %}>False</option>
+              </select>
+            {% elif column.is_numeric_filter %}
+              <div class="grid gap-2 sm:grid-cols-[8rem_1fr]">
+                <label for="row-column-filter-operator-{{ column.index }}" class="sr-only">Operator</label>
+                <select
+                  id="row-column-filter-operator-{{ column.index }}"
+                  name="{{ column.operator_param_name }}"
+                  class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+                >
+                  {% for operator in column.operator_options %}
+                    <option value="{{ operator.value }}"{% if operator.selected %} selected{% endif %}>{{ operator.label }}</option>
+                  {% endfor %}
+                </select>
+                <label for="row-column-filter-{{ column.index }}" class="sr-only">{{ column.header }}</label>
+                <input
+                  id="row-column-filter-{{ column.index }}"
+                  name="{{ column.param_name }}"
+                  type="{{ column.input_type }}"
+                  value="{{ column.value }}"
+                  step="any"
+                  placeholder="Number"
+                  class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+                >
+              </div>
+            {% else %}
+              <label for="row-column-filter-{{ column.index }}" class="sr-only">{{ column.header }}</label>
+              <input
+                id="row-column-filter-{{ column.index }}"
+                name="{{ column.param_name }}"
+                type="{{ column.input_type }}"
+                value="{{ column.value }}"
+                placeholder="Text contains"
+                class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
+              >
+            {% endif %}
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="submit" class="fb-button-primary min-h-9 px-3 py-1 text-xs">Apply filter</button>
+            </div>
+          </form>
+          {% if column.value %}
+            <form method="get" action="" class="mt-2">
+              {% include "datasets/partials/row_query_hidden_inputs.html" with current_filter_param=column.param_name preserve_row_sort=True preserve_row_direction=True %}
+              <button type="submit" class="fb-focus rounded-md text-xs font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">Clear filter</button>
+            </form>
+          {% endif %}
+        </fieldset>
+      </div>
+    </dialog>
+  </div>
+</th>
