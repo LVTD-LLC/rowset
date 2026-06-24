@@ -457,9 +457,10 @@ def choice_constraints_from_schema(
     *,
     normalized: bool = False,
 ) -> dict[str, list[str]]:
-    normalized_schema = (
-        column_schema if normalized else normalize_column_schema(headers, column_schema)
-    )
+    if normalized:
+        normalized_schema = column_schema or {}
+    else:
+        normalized_schema = normalize_column_schema(headers, column_schema)
     constraints = {}
     for header in headers:
         schema_entry = normalized_schema.get(header, {})

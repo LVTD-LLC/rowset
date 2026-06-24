@@ -18,6 +18,7 @@ from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetMutation, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
+    choice_constraints_from_schema,
     infer_column_type,
     normalize_column_schema,
     preview_csv_file,
@@ -1464,6 +1465,10 @@ def test_normalize_column_schema_accepts_choice_metadata():
             "choices": ["Ready to do", "Doing", "Done"],
         }
     }
+
+
+def test_choice_constraints_from_normalized_schema_allows_none():
+    assert choice_constraints_from_schema(["status"], None, normalized=True) == {}
 
 
 def test_dataset_api_enforces_choice_values(client, profile):
