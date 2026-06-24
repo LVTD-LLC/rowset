@@ -22,6 +22,8 @@ from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
+    DatasetRowQueryError,
+    apply_dataset_row_query,
     choice_constraints_from_schema,
     generated_index_column_name,
     generated_index_column_schema,
@@ -211,8 +213,7 @@ def search_profile_projects(
     )
     if normalized_query:
         queryset = queryset.filter(
-            Q(name__icontains=normalized_query)
-            | Q(description__icontains=normalized_query)
+            Q(name__icontains=normalized_query) | Q(description__icontains=normalized_query)
         )
     total_count = queryset.count()
     projects = list(queryset[offset : offset + limit])
@@ -429,14 +430,15 @@ def _get_profile_dataset_from_queryset(
     identifier = _dataset_identifier_uuid(dataset_identifier)
     # Keep the canonical private key path first for existing clients; public keys and
     # pasted Rowset URLs intentionally resolve through a scoped fallback.
+    lookup_errors = (Dataset.DoesNotExist, ValidationError, ValueError)
     try:
         return queryset.get(key=identifier, profile=profile)
-    except (Dataset.DoesNotExist, ValidationError, ValueError):
+    except lookup_errors:
         pass
 
     try:
         return queryset.get(public_key=identifier, profile=profile)
-    except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
+    except lookup_errors as exc:
         raise DatasetServiceError(404, "Dataset not found.") from exc
 
 
@@ -1631,18 +1633,42 @@ def list_profile_dataset_rows(
     dataset_key: str,
     limit: int = 100,
     offset: int = 0,
+    query: str | None = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | None = None,
+    direction: str | None = None,
 ) -> dict:
     dataset = get_ready_profile_dataset(profile, dataset_key)
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     total_count = dataset.rows.count()
-    rows = dataset.rows.all()[offset : offset + limit]
+    try:
+        row_queryset, row_query = apply_dataset_row_query(
+            dataset.rows.all(),
+            dataset,
+            query=query,
+            filters=filters,
+            sort=sort,
+            direction=direction,
+            strict=True,
+        )
+    except DatasetRowQueryError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+    has_restrictive_query = bool(row_query["query"] or row_query["filters"])
+    filtered_count = row_queryset.count() if has_restrictive_query else total_count
+    rows = list(row_queryset[offset : offset + limit])
     return {
         "dataset": str(dataset.key),
-        "count": total_count,
+        "count": filtered_count,
+        "total_count": total_count,
         "limit": limit,
         "offset": offset,
-        "has_more": offset + len(rows) < total_count,
+        "has_more": offset + len(rows) < filtered_count,
+        "query": row_query["query"],
+        "filters": row_query["filters"],
+        "sort": row_query["sort"],
+        "direction": row_query["direction"],
         "rows": [serialize_dataset_row(row) for row in rows],
     }
 
