@@ -571,6 +571,7 @@ def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
     assert "Katherine Johnson" in filter_content
     assert "Grace Hopper" not in filter_content
     assert ">Clear</a>" in filter_content
+    assert "Column filters" not in filter_content
 
     sort_response = auth_client.get(
         dataset.get_absolute_url(),
@@ -697,8 +698,11 @@ def test_dataset_detail_semantic_text_filters_accept_partial_values(auth_client,
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert 'name="filter_0"\n              type="search"' in content
-    assert 'name="filter_1"\n              type="search"' in content
+    assert "Column filters" not in content
+    assert 'id="row-column-filter-0"' in content
+    assert 'id="row-column-filter-1"' in content
+    assert 'name="filter_0"' in content
+    assert 'name="filter_1"' in content
 
 
 def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
