@@ -320,12 +320,17 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "projects": [{"key": "project-key", "name": "Launch"}],
         }
 
-    def create_project(authenticated_profile, *, name, description=None):
-        calls.append(("create_project", authenticated_profile.id, name, description))
+    def create_project(authenticated_profile, *, name, description=None, metadata=None):
+        calls.append(("create_project", authenticated_profile.id, name, description, metadata))
         return {
             "status": "success",
             "message": "Project created.",
-            "project": {"key": "project-key", "name": name, "description": description},
+            "project": {
+                "key": "project-key",
+                "name": name,
+                "description": description,
+                "metadata": metadata,
+            },
         }
 
     def get_project(authenticated_profile, project_key, limit=100, offset=0):
@@ -361,6 +366,14 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "dataset": {"key": dataset_key, "project": {"key": project_key}},
         }
 
+    def update_project_metadata(authenticated_profile, project_key, **kwargs):
+        calls.append(("update_project_metadata", authenticated_profile.id, project_key, kwargs))
+        return {
+            "status": "success",
+            "message": "Project metadata updated.",
+            "project": {"key": project_key, "metadata": kwargs.get("metadata", {})},
+        }
+
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -374,6 +387,10 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "apps.mcp_server.server.update_profile_dataset_project",
             update_dataset_project,
         )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_project_metadata",
+            update_project_metadata,
+        )
 
         async with Client(mcp) as client:
             list_result = await client.call_tool(
@@ -382,7 +399,11 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             )
             create_result = await client.call_tool(
                 "create_project",
-                {"name": "Launch", "description": "Launch datasets"},
+                {
+                    "name": "Launch",
+                    "description": "Launch datasets",
+                    "metadata": {"github_repo": "https://github.com/acme/launch"},
+                },
             )
             detail_result = await client.call_tool(
                 "get_project",
@@ -396,6 +417,13 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                     "description": "",
                 },
             )
+            metadata_result = await client.call_tool(
+                "update_project_metadata",
+                {
+                    "project_key": "project-key",
+                    "metadata": {"notion_doc": "https://notion.so/acme/launch"},
+                },
+            )
             update_result = await client.call_tool(
                 "update_dataset_project",
                 {"dataset_key": "dataset-key", "project_key": "project-key"},
@@ -403,13 +431,25 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
 
         assert list_result.data["projects"][0]["key"] == "project-key"
         assert create_result.data["project"]["name"] == "Launch"
+        assert create_result.data["project"]["metadata"]["github_repo"] == (
+            "https://github.com/acme/launch"
+        )
         assert detail_result.data["project"]["key"] == "project-key"
         assert update_project_result.data["project"]["name"] == "Launch operations"
         assert update_project_result.data["project"]["description"] == ""
+        assert metadata_result.data["project"]["metadata"]["notion_doc"] == (
+            "https://notion.so/acme/launch"
+        )
         assert update_result.data["dataset"]["project"]["key"] == "project-key"
         assert calls == [
             ("list_projects", 11, 5, 0),
-            ("create_project", 11, "Launch", "Launch datasets"),
+            (
+                "create_project",
+                11,
+                "Launch",
+                "Launch datasets",
+                {"github_repo": "https://github.com/acme/launch"},
+            ),
             ("get_project", 11, "project-key", 2, 0),
             (
                 "update_project_details",
@@ -417,6 +457,12 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                 "project-key",
                 "Launch operations",
                 "",
+            ),
+            (
+                "update_project_metadata",
+                11,
+                "project-key",
+                {"metadata": {"notion_doc": "https://notion.so/acme/launch"}},
             ),
             ("update_dataset_project", 11, "dataset-key", "project-key"),
         ]

@@ -22,6 +22,7 @@ from apps.api.services import (
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
     update_profile_project,
+    update_profile_project_metadata,
 )
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
@@ -582,6 +583,12 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 "description": self.object.description,
             },
         )
+        context["metadata_json"] = json.dumps(
+            self.object.metadata or {},
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
         return context
 
     def post(self, request, *args, **kwargs):
@@ -781,11 +788,22 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
 @login_required
 @require_POST
 def project_create(request):
+    raw_metadata = request.POST.get("metadata", "").strip()
+    if raw_metadata:
+        try:
+            metadata = json.loads(raw_metadata)
+        except json.JSONDecodeError:
+            messages.error(request, "Project metadata must be valid JSON.")
+            return redirect("project_list")
+    else:
+        metadata = {}
+
     try:
         result = create_profile_project(
             request.user.profile,
             name=request.POST.get("name", ""),
             description=request.POST.get("description", ""),
+            metadata=metadata,
         )
     except DatasetServiceError as exc:
         messages.error(request, exc.message)
@@ -816,6 +834,38 @@ def project_update(request, project_key):
         messages.error(request, exc.message)
     else:
         messages.success(request, "Project updated.")
+
+    return redirect("project_detail", project_key=project_key)
+
+
+@login_required
+@require_POST
+def project_update_metadata(request, project_key):
+    raw_metadata = request.POST.get("metadata", "").strip()
+    if raw_metadata:
+        try:
+            metadata = json.loads(raw_metadata)
+        except json.JSONDecodeError:
+            messages.error(request, "Project metadata must be valid JSON.")
+            return redirect("project_detail", project_key=project_key)
+    else:
+        metadata = {}
+
+    try:
+        result = update_profile_project_metadata(
+            request.user.profile,
+            str(project_key),
+            metadata=metadata,
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        if result["message"] == "No project metadata changes detected.":
+            messages.info(request, result["message"])
+        else:
+            messages.success(request, result["message"])
 
     return redirect("project_detail", project_key=project_key)
 

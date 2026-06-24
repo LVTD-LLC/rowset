@@ -67,7 +67,12 @@ search_projects
 create_project
 get_project
 update_project
+update_project_metadata
 ```
+
+Use project metadata for source links, kickoff threads, planning docs, or other
+JSON context that should stay with the project. Pass an empty object to
+`update_project_metadata` to clear it.
 
 To create a new ready dataset from an agent workflow, call:
 

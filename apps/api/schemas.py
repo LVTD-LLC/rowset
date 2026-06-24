@@ -105,6 +105,7 @@ class ProjectReferenceOut(Schema):
 
 
 class ProjectSummaryOut(ProjectReferenceOut):
+    metadata: dict[str, Any]
     dataset_count: int
     created_at: datetime
     updated_at: datetime
@@ -122,6 +123,7 @@ class ProjectListOut(Schema):
 class ProjectCreateIn(Schema):
     name: str
     description: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class ProjectUpdateIn(Schema):
@@ -136,6 +138,16 @@ class ProjectCreateOut(Schema):
 
 
 class ProjectUpdateOut(Schema):
+    status: str
+    message: str
+    project: ProjectSummaryOut
+
+
+class ProjectMetadataPatchIn(Schema):
+    metadata: dict[str, Any] | None = None
+
+
+class ProjectMetadataOut(Schema):
     status: str
     message: str
     project: ProjectSummaryOut

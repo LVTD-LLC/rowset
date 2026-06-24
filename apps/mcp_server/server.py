@@ -38,6 +38,7 @@ from apps.api.services import (
     update_profile_dataset_project,
     update_profile_dataset_public_preview,
     update_profile_project,
+    update_profile_project_metadata,
 )
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import resolve_api_key_profile
@@ -448,12 +449,15 @@ def get_all_projects(
 
 @mcp.tool(
     name="search_projects",
-    description="Search project metadata by project name or description.",
+    description="Search project metadata by project name, description, or JSON metadata.",
 )
 def search_projects(
     query: Annotated[
         str | None,
-        Field(default=None, description="Text to match against project names and descriptions."),
+        Field(
+            default=None,
+            description="Text to match against project names, descriptions, and JSON metadata.",
+        ),
     ] = None,
     limit: Annotated[
         int,
@@ -482,11 +486,26 @@ def create_project(
         str | None,
         Field(default=None, description="Optional project description."),
     ] = None,
+    metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional JSON object for arbitrary project metadata, such as source links "
+                "or agent workflow context."
+            ),
+        ),
+    ] = None,
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile()
     try:
-        return create_profile_project(profile, name=name, description=description)
+        return create_profile_project(
+            profile,
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 
@@ -556,6 +575,36 @@ def update_project(
         updates["description"] = description
     try:
         return update_profile_project(profile, project_key, **updates)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_project_metadata",
+    description=(
+        "Replace arbitrary JSON metadata for a Rowset project. Pass an empty object to clear it."
+    ),
+)
+def update_project_metadata(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+    metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            default=None,
+            description=(
+                "Replacement JSON object for arbitrary project metadata. Omit or pass null "
+                "to keep the current value; pass {} to clear it."
+            ),
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    updates = {}
+    if metadata is not None:
+        updates["metadata"] = metadata
+    try:
+        return update_profile_project_metadata(profile, project_key, **updates)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 

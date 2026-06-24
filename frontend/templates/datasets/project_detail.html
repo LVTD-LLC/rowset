@@ -44,6 +44,26 @@
       </div>
     </div>
 
+    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-metadata-settings-heading">
+      <form method="post" action="{% url 'project_update_metadata' project.key %}" class="space-y-5">
+        {% csrf_token %}
+        <div>
+          <h2 id="project-metadata-settings-heading" class="fb-section-title">Project metadata</h2>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Persistent JSON returned through REST and MCP project metadata.</p>
+        </div>
+
+        <div>
+          <label for="metadata" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
+          <textarea id="metadata" name="metadata" rows="8" spellcheck="false" class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6">{{ metadata_json }}</textarea>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <button type="submit" class="fb-button-primary">Save metadata</button>
+          <a href="{% url 'project_list' %}" class="fb-button-secondary">Cancel</a>
+        </div>
+      </form>
+    </section>
+
     <section class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800" aria-labelledby="project-datasets-heading">
       <div class="border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
         <h2 id="project-datasets-heading" class="fb-section-title">All datasets</h2>

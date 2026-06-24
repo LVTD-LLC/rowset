@@ -7,7 +7,8 @@ from uuid import UUID
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, TextField
+from django.db.models.functions import Cast
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
@@ -17,6 +18,7 @@ from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
     MAX_DATASET_METADATA_BYTES,
+    MAX_PROJECT_METADATA_BYTES,
 )
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetRow, Project
@@ -163,6 +165,51 @@ def _normalize_project_description(description: str | None) -> str:
     return (description or "").strip()
 
 
+def _normalize_metadata_object(
+    metadata: dict[str, Any] | None,
+    *,
+    label: str,
+    max_bytes: int,
+) -> dict[str, Any]:
+    if metadata is None:
+        return {}
+    if not isinstance(metadata, dict):
+        raise DatasetServiceError(400, f"{label} metadata must be a JSON object.")
+
+    for key in metadata:
+        if not isinstance(key, str) or not key.strip():
+            raise DatasetServiceError(
+                400,
+                f"{label} metadata keys must be non-empty strings.",
+            )
+
+    try:
+        serialized_metadata = json.dumps(
+            metadata,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise DatasetServiceError(400, f"{label} metadata must be JSON serializable.") from exc
+
+    if len(serialized_metadata.encode("utf-8")) > max_bytes:
+        raise DatasetServiceError(
+            400,
+            f"{label} metadata must be {max_bytes} bytes or fewer.",
+        )
+
+    return metadata
+
+
+def _normalize_project_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+    return _normalize_metadata_object(
+        metadata,
+        label="Project",
+        max_bytes=MAX_PROJECT_METADATA_BYTES,
+    )
+
+
 def serialize_project_reference(project: Project | None) -> dict | None:
     """Return the project fields embedded in dataset metadata."""
     if project is None:
@@ -187,6 +234,7 @@ def serialize_project_summary(project: Project) -> dict:
         "key": str(project.key),
         "name": project.name,
         "description": project.description,
+        "metadata": project.metadata or {},
         "dataset_count": dataset_count,
         "created_at": project.created_at,
         "updated_at": project.updated_at,
@@ -204,16 +252,22 @@ def search_profile_projects(
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     normalized_query = _normalize_search_query(query)
-    queryset = profile.projects.annotate(dataset_count=_visible_project_dataset_count()).only(
+    queryset = profile.projects.annotate(
+        dataset_count=_visible_project_dataset_count(),
+        metadata_text=Cast("metadata", TextField()),
+    ).only(
         "key",
         "name",
         "description",
+        "metadata",
         "created_at",
         "updated_at",
     )
     if normalized_query:
         queryset = queryset.filter(
-            Q(name__icontains=normalized_query) | Q(description__icontains=normalized_query)
+            Q(name__icontains=normalized_query)
+            | Q(description__icontains=normalized_query)
+            | Q(metadata_text__icontains=normalized_query)
         )
     total_count = queryset.count()
     projects = list(queryset[offset : offset + limit])
@@ -232,10 +286,17 @@ def serialize_profile_projects(profile: Profile, limit: int = 100, offset: int =
     return search_profile_projects(profile, limit=limit, offset=offset)
 
 
-def create_profile_project(profile: Profile, *, name: str, description: str | None = None) -> dict:
+def create_profile_project(
+    profile: Profile,
+    *,
+    name: str,
+    description: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict:
     """Create a semantic dataset group for an authenticated profile."""
     normalized_name = _normalize_project_name(name)
     normalized_description = _normalize_project_description(description)
+    normalized_metadata = _normalize_project_metadata(metadata)
     if Project.objects.filter(profile=profile, name__iexact=normalized_name).exists():
         raise DatasetServiceError(409, "Project name already exists.")
 
@@ -244,6 +305,7 @@ def create_profile_project(profile: Profile, *, name: str, description: str | No
             profile=profile,
             name=normalized_name,
             description=normalized_description,
+            metadata=normalized_metadata,
         )
     except IntegrityError as exc:
         raise DatasetServiceError(409, "Project name already exists.") from exc
@@ -316,11 +378,43 @@ def get_profile_project(profile: Profile, project_key: str) -> Project:
     try:
         return (
             Project.objects.annotate(dataset_count=_visible_project_dataset_count())
-            .only("key", "name", "description", "created_at", "updated_at")
+            .only("key", "name", "description", "metadata", "created_at", "updated_at")
             .get(key=project_key, profile=profile)
         )
     except (Project.DoesNotExist, ValidationError, ValueError) as exc:
         raise DatasetServiceError(404, "Project not found.") from exc
+
+
+def update_profile_project_metadata(
+    profile: Profile,
+    project_key: str,
+    *,
+    metadata=UNSET,
+) -> dict:
+    """Replace arbitrary JSON metadata on a project owned by the authenticated profile."""
+    with transaction.atomic():
+        try:
+            project = Project.objects.select_for_update().get(key=project_key, profile=profile)
+        except (Project.DoesNotExist, ValidationError, ValueError) as exc:
+            raise DatasetServiceError(404, "Project not found.") from exc
+
+        changed = False
+        if metadata is not UNSET:
+            next_metadata = _normalize_project_metadata(metadata)
+            if project.metadata != next_metadata:
+                project.metadata = next_metadata
+                changed = True
+
+        message = "No project metadata changes detected."
+        if changed:
+            project.save(update_fields=["metadata", "updated_at"])
+            message = "Project metadata updated."
+
+    return {
+        "status": "success",
+        "message": message,
+        "project": serialize_project_summary(project),
+    }
 
 
 def serialize_profile_project_detail(
@@ -596,35 +690,11 @@ def _normalize_dataset_instructions(instructions: str | None) -> str:
 
 
 def _normalize_dataset_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
-    if metadata is None:
-        return {}
-    if not isinstance(metadata, dict):
-        raise DatasetServiceError(400, "Dataset metadata must be a JSON object.")
-
-    for key in metadata:
-        if not isinstance(key, str) or not key.strip():
-            raise DatasetServiceError(
-                400,
-                "Dataset metadata keys must be non-empty strings.",
-            )
-
-    try:
-        serialized_metadata = json.dumps(
-            metadata,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        )
-    except (TypeError, ValueError) as exc:
-        raise DatasetServiceError(400, "Dataset metadata must be JSON serializable.") from exc
-
-    if len(serialized_metadata.encode("utf-8")) > MAX_DATASET_METADATA_BYTES:
-        raise DatasetServiceError(
-            400,
-            f"Dataset metadata must be {MAX_DATASET_METADATA_BYTES} bytes or fewer.",
-        )
-
-    return metadata
+    return _normalize_metadata_object(
+        metadata,
+        label="Dataset",
+        max_bytes=MAX_DATASET_METADATA_BYTES,
+    )
 
 
 def _normalize_create_rows(rows: list[dict[str, Any]] | None) -> list[dict[str, str]]:
