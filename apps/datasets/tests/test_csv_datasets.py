@@ -702,6 +702,28 @@ def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client,
     assert 'aria-label="Dataset status: Ready"' not in content
 
 
+def test_dataset_detail_context_is_collapsed_by_default_and_wraps_content(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.description = "A" * 180
+    dataset.instructions = "Keep " + ("agent-instruction-token" * 12)
+    dataset.metadata = {"long_key": "metadata-value-token" * 12}
+    dataset.save(update_fields=["description", "instructions", "metadata"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    details_start = content.index(
+        '<details class="group fb-card overflow-hidden" aria-labelledby="dataset-context-heading">'
+    )
+    opening_tag = content[details_start : content.index(">", details_start) + 1]
+    assert " open" not in opening_tag
+    assert "Show context" in content
+    assert "Hide context" in content
+    assert "max-w-full whitespace-pre-wrap break-words" in content
+    assert "max-h-72 max-w-full overflow-auto whitespace-pre-wrap break-words" in content
+
+
 def test_dataset_detail_exposes_processing_status_live_region(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
