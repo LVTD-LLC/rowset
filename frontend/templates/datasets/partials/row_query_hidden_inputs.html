@@ -1,0 +1,17 @@
+{% if row_search_query %}
+  <input type="hidden" name="row_q" value="{{ row_search_query }}">
+{% endif %}
+{% if preserve_row_sort and row_selected_sort and row_selected_sort != row_default_sort %}
+  <input type="hidden" name="row_sort" value="{{ row_selected_sort }}">
+{% endif %}
+{% if preserve_row_direction and row_sort_direction == row_sort_desc %}
+  <input type="hidden" name="row_dir" value="{{ row_sort_direction }}">
+{% endif %}
+{% for hidden_filter in row_filter_fields %}
+  {% if hidden_filter.value and hidden_filter.param_name != current_filter_param %}
+    <input type="hidden" name="{{ hidden_filter.param_name }}" value="{{ hidden_filter.value }}">
+    {% if hidden_filter.operator != hidden_filter.default_operator %}
+      <input type="hidden" name="{{ hidden_filter.operator_param_name }}" value="{{ hidden_filter.operator }}">
+    {% endif %}
+  {% endif %}
+{% endfor %}

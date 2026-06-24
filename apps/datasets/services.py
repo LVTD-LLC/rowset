@@ -43,6 +43,10 @@ COLUMN_SCHEMA_DESCRIPTION_KEY = "description"
 ROW_DEFAULT_SORT = "row_number"
 ROW_SORT_DESC = "desc"
 ROW_SEARCH_COLUMN_LIMIT = 20
+ROW_FILTER_ABOVE = "above"
+ROW_FILTER_BELOW = "below"
+ROW_FILTER_CONTAINS = "contains"
+ROW_FILTER_IS = "is"
 ROW_BOOLEAN_TRUE_VALUES = ("true", "1", "yes", "y")
 ROW_BOOLEAN_FALSE_VALUES = ("false", "0", "no", "n")
 ROW_NUMERIC_SORT_TYPES = {
@@ -51,6 +55,15 @@ ROW_NUMERIC_SORT_TYPES = {
     DatasetColumnType.NUMBER,
 }
 ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
+ROW_NUMERIC_FILTER_PATTERN = r"-?\d+(\.\d+)?"
+ROW_FILTER_OPERATOR_ALIASES = {
+    "eq": ROW_FILTER_IS,
+    "equals": ROW_FILTER_IS,
+    "gt": ROW_FILTER_ABOVE,
+    "greater_than": ROW_FILTER_ABOVE,
+    "lt": ROW_FILTER_BELOW,
+    "less_than": ROW_FILTER_BELOW,
+}
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 INTEGER_RE = re.compile(r"^[+-]?\d+$")
@@ -587,6 +600,61 @@ def normalize_dataset_row_filters(
     return normalized_filters
 
 
+def default_dataset_row_filter_operator(column_type: str) -> str:
+    if column_type in {DatasetColumnType.BOOLEAN, DatasetColumnType.CHOICE}:
+        return ROW_FILTER_IS
+    return ROW_FILTER_CONTAINS
+
+
+def dataset_row_filter_operators(column_type: str) -> tuple[str, ...]:
+    if column_type in {DatasetColumnType.BOOLEAN, DatasetColumnType.CHOICE}:
+        return (ROW_FILTER_IS,)
+    if column_type in ROW_NUMERIC_SORT_TYPES:
+        return (ROW_FILTER_CONTAINS, ROW_FILTER_ABOVE, ROW_FILTER_BELOW)
+    return (ROW_FILTER_CONTAINS,)
+
+
+def normalize_dataset_row_filter_operator(
+    column_type: str,
+    operator: str | None,
+    *,
+    strict: bool = False,
+) -> str:
+    normalized_operator = str(operator or "").strip().lower()
+    normalized_operator = ROW_FILTER_OPERATOR_ALIASES.get(normalized_operator, normalized_operator)
+    default_operator = default_dataset_row_filter_operator(column_type)
+    if not normalized_operator:
+        return default_operator
+    if normalized_operator in dataset_row_filter_operators(column_type):
+        return normalized_operator
+    if strict:
+        allowed = ", ".join(dataset_row_filter_operators(column_type))
+        raise DatasetRowQueryError(
+            f"Unsupported row filter operator '{operator}'. Use one of: {allowed}."
+        )
+    return default_operator
+
+
+def normalize_dataset_row_filter_operators(
+    headers: list[str],
+    column_schema: dict | None,
+    filters: dict[str, str],
+    filter_operators: dict | None,
+    *,
+    strict: bool = False,
+) -> dict[str, str]:
+    column_map = {column["name"]: column for column in column_definitions(headers, column_schema)}
+    normalized_operators = {}
+    for header in filters:
+        column = column_map[header]
+        normalized_operators[header] = normalize_dataset_row_filter_operator(
+            str(column["type"]),
+            (filter_operators or {}).get(header),
+            strict=strict,
+        )
+    return normalized_operators
+
+
 def normalize_dataset_row_sort(
     headers: list[str],
     sort: str | None,
@@ -632,6 +700,34 @@ def _dataset_row_sort_header(headers: list[str], selected_sort: str) -> str | No
     return None
 
 
+def _normalized_numeric_text_expression(alias: str):
+    empty_text = Value("", output_field=TextField())
+    expression = Trim(Cast(alias, TextField()))
+    for symbol in CURRENCY_SYMBOLS:
+        expression = Replace(
+            expression,
+            Value(symbol, output_field=TextField()),
+            empty_text,
+            output_field=TextField(),
+        )
+    return Replace(
+        expression,
+        Value(",", output_field=TextField()),
+        empty_text,
+        output_field=TextField(),
+    )
+
+
+def _normalize_numeric_filter_value(value: str) -> float | None:
+    normalized = str(value or "").strip()
+    for symbol in CURRENCY_SYMBOLS:
+        normalized = normalized.replace(symbol, "")
+    normalized = normalized.replace(",", "").strip()
+    if not re.fullmatch(ROW_NUMERIC_FILTER_PATTERN, normalized):
+        return None
+    return float(normalized)
+
+
 def _or_header_value_search(queryset, headers: list[str], search_query: str):
     if not headers:
         return queryset.none()
@@ -666,6 +762,7 @@ def _apply_row_field_filters(
     headers: list[str],
     column_schema: dict | None,
     filters: dict[str, str],
+    filter_operators: dict[str, str],
 ):
     column_map = {column["name"]: column for column in column_definitions(headers, column_schema)}
     for index, header in enumerate(headers):
@@ -681,6 +778,34 @@ def _apply_row_field_filters(
             if boolean_query is None:
                 return queryset.none()
             queryset = queryset.filter(boolean_query)
+        elif column["type"] == DatasetColumnType.CHOICE:
+            queryset = queryset.filter(**{f"{alias}__iexact": value})
+        elif (
+            column["type"] in ROW_NUMERIC_SORT_TYPES
+            and filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
+        ):
+            filter_value = _normalize_numeric_filter_value(value)
+            if filter_value is None:
+                return queryset.none()
+            numeric_text_alias = f"{alias}_numeric_text"
+            number_alias = f"{alias}_number"
+            queryset = queryset.annotate(
+                **{
+                    numeric_text_alias: _normalized_numeric_text_expression(alias),
+                    number_alias: Case(
+                        When(
+                            **{
+                                f"{numeric_text_alias}__regex": ROW_NUMERIC_SORT_PATTERN,
+                                "then": Cast(numeric_text_alias, FloatField()),
+                            }
+                        ),
+                        default=Value(None),
+                        output_field=FloatField(),
+                    ),
+                }
+            )
+            lookup = "gt" if filter_operators[header] == ROW_FILTER_ABOVE else "lt"
+            queryset = queryset.filter(**{f"{number_alias}__{lookup}": filter_value})
         else:
             queryset = queryset.filter(**{f"{alias}__icontains": value})
     return queryset
@@ -692,6 +817,7 @@ def apply_dataset_row_query(
     *,
     query: str | None = None,
     filters: dict | None = None,
+    filter_operators: dict | None = None,
     sort: str | None = None,
     direction: str | None = None,
     strict: bool = False,
@@ -700,6 +826,13 @@ def apply_dataset_row_query(
     normalized_filters = normalize_dataset_row_filters(
         dataset.headers,
         filters,
+        strict=strict,
+    )
+    normalized_filter_operators = normalize_dataset_row_filter_operators(
+        dataset.headers,
+        dataset.column_schema,
+        normalized_filters,
+        filter_operators,
         strict=strict,
     )
     selected_sort = normalize_dataset_row_sort(dataset.headers, sort, strict=strict)
@@ -712,12 +845,14 @@ def apply_dataset_row_query(
         dataset.headers,
         dataset.column_schema,
         normalized_filters,
+        normalized_filter_operators,
     )
     queryset = apply_dataset_row_sort(queryset, dataset, selected_sort, sort_direction)
 
     return queryset, {
         "query": search_query,
         "filters": normalized_filters,
+        "filter_operators": normalized_filter_operators,
         "sort": selected_sort,
         "direction": sort_direction,
         "has_filters": bool(
@@ -742,19 +877,8 @@ def apply_dataset_row_sort(queryset, dataset, selected_sort: str, sort_direction
     )
     queryset = queryset.annotate(rowset_sort_text=KeyTextTransform(sort_header, "data"))
     if sort_column["type"] in ROW_NUMERIC_SORT_TYPES:
-        empty_text = Value("", output_field=TextField())
         queryset = queryset.annotate(
-            rowset_sort_numeric_text=Replace(
-                Replace(
-                    Trim(Cast("rowset_sort_text", TextField())),
-                    Value("$", output_field=TextField()),
-                    empty_text,
-                    output_field=TextField(),
-                ),
-                Value(",", output_field=TextField()),
-                empty_text,
-                output_field=TextField(),
-            ),
+            rowset_sort_numeric_text=_normalized_numeric_text_expression("rowset_sort_text"),
             rowset_sort_number=Case(
                 When(
                     rowset_sort_numeric_text__regex=ROW_NUMERIC_SORT_PATTERN,

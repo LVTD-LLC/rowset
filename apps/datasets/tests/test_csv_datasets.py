@@ -595,6 +595,87 @@ def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
     )
 
 
+def test_dataset_detail_filters_numeric_columns_with_above_and_below(auth_client, profile):
+    dataset = configure_filterable_dataset(create_ready_dataset(profile))
+
+    above_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_2": "9", "filter_op_2": "above"},
+    )
+    above_content = above_response.content.decode()
+
+    assert above_response.status_code == 200
+    assert above_response.context["row_page_obj"].paginator.count == 2
+    assert above_response.context["row_filter_fields"][2]["operator"] == "above"
+    assert "Ada Lovelace" in above_content
+    assert "Katherine Johnson" in above_content
+    assert "Grace Hopper" not in above_content
+    assert 'name="filter_op_2"' in above_content
+    assert '<option value="above" selected>Above</option>' in above_content
+
+    below_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_2": "9", "filter_op_2": "below"},
+    )
+    below_content = below_response.content.decode()
+
+    assert below_response.status_code == 200
+    assert below_response.context["row_page_obj"].paginator.count == 1
+    assert "Grace Hopper" in below_content
+    assert "Ada Lovelace" not in below_content
+    assert "Katherine Johnson" not in below_content
+
+
+def test_dataset_detail_filters_choice_columns_by_exact_choice(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["task_id", "component", "priority"]
+    dataset.column_schema = {
+        "task_id": {"type": DatasetColumnType.TEXT},
+        "component": {"type": DatasetColumnType.TEXT},
+        "priority": {
+            "type": DatasetColumnType.CHOICE,
+            "choices": ["P1", "P10", "P2"],
+        },
+    }
+    dataset.row_count = 3
+    dataset.rows.all().delete()
+    dataset.save(update_fields=["headers", "column_schema", "row_count"])
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=1,
+                index_value="TASK-1",
+                data={"task_id": "TASK-1", "component": "API", "priority": "P1"},
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=2,
+                index_value="TASK-2",
+                data={"task_id": "TASK-2", "component": "UI", "priority": "P10"},
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=3,
+                index_value="TASK-3",
+                data={"task_id": "TASK-3", "component": "Docs", "priority": "P2"},
+            ),
+        ]
+    )
+
+    response = auth_client.get(dataset.get_absolute_url(), {"filter_2": "P1"})
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["row_page_obj"].paginator.count == 1
+    assert response.context["row_filter_fields"][2]["is_choice"] is True
+    assert response.context["row_filter_fields"][2]["operator"] == "is"
+    assert '<option value="P1" selected>P1</option>' in content
+    assert "TASK-1" in content
+    assert "TASK-2" not in content
+    assert "TASK-3" not in content
+
+
 def test_dataset_detail_semantic_text_filters_accept_partial_values(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.headers = ["email", "website"]
@@ -3085,7 +3166,12 @@ def test_dataset_detail_shows_column_descriptions_on_header_hover(
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert '<span title="Human-readable full name.">name</span>' in content
+    assert 'data-controller="row-column-menu"' in content
+    assert 'title="Human-readable full name."' in content
+    assert 'data-action="click->row-column-menu#open contextmenu->row-column-menu#open"' in content
+    assert '<dialog' in content
+    assert 'name="row_sort" value="col_0"' in content
+    assert "Contains text" in content
 
 
 def test_dataset_owner_cannot_update_column_types_while_processing(auth_client, profile):

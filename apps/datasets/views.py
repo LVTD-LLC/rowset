@@ -27,10 +27,17 @@ from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
     ROW_DEFAULT_SORT,
+    ROW_FILTER_ABOVE,
+    ROW_FILTER_BELOW,
+    ROW_FILTER_CONTAINS,
+    ROW_FILTER_IS,
     ROW_SORT_DESC,
     apply_dataset_row_query,
     column_definitions,
+    dataset_row_filter_operators,
+    default_dataset_row_filter_operator,
     iter_export_row_data,
+    normalize_dataset_row_filter_operator,
     normalize_dataset_row_sort,
     normalize_dataset_row_sort_direction,
     normalize_public_page_size,
@@ -75,6 +82,7 @@ ROW_SEARCH_PARAM = "row_q"
 ROW_SORT_PARAM = "row_sort"
 ROW_SORT_DIRECTION_PARAM = "row_dir"
 ROW_FILTER_PARAM_PREFIX = "filter_"
+ROW_FILTER_OPERATOR_PARAM_PREFIX = "filter_op_"
 DATASET_EXPORT_FORMATS = {
     "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
     "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
@@ -162,12 +170,44 @@ def _querystring_for_page(request, page_number: int) -> str:
 def _column_filter_input_type(column_type: str) -> str:
     return {
         DatasetColumnType.BOOLEAN: "select",
+        DatasetColumnType.CHOICE: "select",
         DatasetColumnType.CURRENCY: "number",
         DatasetColumnType.DATE: "date",
         DatasetColumnType.DATETIME: "datetime-local",
         DatasetColumnType.INTEGER: "number",
         DatasetColumnType.NUMBER: "number",
     }.get(column_type, "search")
+
+
+def _column_filter_operator_options(column_type: str, selected_operator: str):
+    labels = {
+        ROW_FILTER_ABOVE: "Above",
+        ROW_FILTER_BELOW: "Below",
+        ROW_FILTER_CONTAINS: "Contains",
+        ROW_FILTER_IS: "Is",
+    }
+    return [
+        {
+            "label": labels[operator],
+            "value": operator,
+            "selected": selected_operator == operator,
+        }
+        for operator in dataset_row_filter_operators(column_type)
+    ]
+
+
+def _column_sort_labels(column_type: str) -> tuple[str, str]:
+    if column_type in {
+        DatasetColumnType.CURRENCY,
+        DatasetColumnType.INTEGER,
+        DatasetColumnType.NUMBER,
+    }:
+        return "Ascending", "Descending"
+    if column_type == DatasetColumnType.DATE:
+        return "Oldest first", "Newest first"
+    if column_type == DatasetColumnType.DATETIME:
+        return "Earliest first", "Latest first"
+    return "A to Z", "Z to A"
 
 
 def _row_filter_fields(
@@ -183,8 +223,16 @@ def _row_filter_fields(
     for index, column in enumerate(columns):
         column_type = column["type"]
         param_name = f"{ROW_FILTER_PARAM_PREFIX}{index}"
+        operator_param_name = f"{ROW_FILTER_OPERATOR_PARAM_PREFIX}{index}"
+        selected_operator = normalize_dataset_row_filter_operator(
+            column_type,
+            request.GET.get(operator_param_name),
+        )
+        default_operator = default_dataset_row_filter_operator(column_type)
+        ascending_label, descending_label = _column_sort_labels(column_type)
         fields.append(
             {
+                "index": index,
                 "header": column["name"],
                 "type": column_type,
                 "type_label": column["type_label"],
@@ -193,11 +241,34 @@ def _row_filter_fields(
                 ),
                 "param_name": param_name,
                 "value": request.GET.get(param_name, "").strip(),
+                "operator": selected_operator,
+                "default_operator": default_operator,
+                "operator_param_name": operator_param_name,
+                "operator_options": _column_filter_operator_options(
+                    column_type,
+                    selected_operator,
+                ),
+                "sort_value": f"col_{index}",
+                "sort_ascending_label": ascending_label,
+                "sort_descending_label": descending_label,
                 "input_type": _column_filter_input_type(column_type),
                 "is_boolean": column_type == DatasetColumnType.BOOLEAN,
-                "is_number": column_type in {DatasetColumnType.INTEGER, DatasetColumnType.NUMBER},
+                "is_choice": column_type == DatasetColumnType.CHOICE,
+                "is_number": column_type
+                in {DatasetColumnType.INTEGER, DatasetColumnType.NUMBER},
                 "is_currency": column_type == DatasetColumnType.CURRENCY,
-                "operator_label": "Contains" if column_type != DatasetColumnType.BOOLEAN else "Is",
+                "is_numeric_filter": column_type
+                in {
+                    DatasetColumnType.CURRENCY,
+                    DatasetColumnType.INTEGER,
+                    DatasetColumnType.NUMBER,
+                },
+                "choices": column.get("choices", []),
+                "operator_label": (
+                    "Contains"
+                    if default_operator == ROW_FILTER_CONTAINS
+                    else "Is"
+                ),
             }
         )
     return fields
@@ -252,19 +323,31 @@ def _dataset_row_query_context(
         for field in filter_fields
         if str(field["value"]).strip()
     }
+    filter_operators = {
+        str(field["header"]): str(field["operator"])
+        for field in filter_fields
+        if str(field["value"]).strip()
+    }
 
     queryset, row_query = apply_dataset_row_query(
         queryset,
         dataset,
         query=search_query,
         filters=filters,
+        filter_operators=filter_operators,
         sort=selected_sort,
         direction=sort_direction,
     )
+    for field in filter_fields:
+        field["is_active_filter"] = field["header"] in row_query["filters"]
+        field["is_active_sort"] = row_query["sort"] == field["sort_value"]
     return queryset, {
         "row_search_query": row_query["query"],
         "row_filter_fields": filter_fields,
         "row_sort_options": _row_sort_options(dataset, row_query["sort"]),
+        "row_selected_sort": row_query["sort"],
+        "row_default_sort": ROW_DEFAULT_SORT,
+        "row_sort_desc": ROW_SORT_DESC,
         "row_sort_direction": row_query["direction"],
         "row_sort_direction_options": [
             {
@@ -550,6 +633,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context["column_definitions"] = column_definition_list
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
+        context["row_show_column_controls"] = has_imported_rows
         context["rows_colspan"] = len(dataset.headers) + int(has_imported_rows)
         context["rows_empty_message"] = (
             "No rows match these filters."
