@@ -125,11 +125,17 @@ class ProjectCreateIn(Schema):
 
 
 class ProjectUpdateIn(Schema):
-    name: str | None = Field(default=None, max_length=255)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
 
 
 class ProjectCreateOut(Schema):
+    status: str
+    message: str
+    project: ProjectSummaryOut
+
+
+class ProjectUpdateOut(Schema):
     status: str
     message: str
     project: ProjectSummaryOut

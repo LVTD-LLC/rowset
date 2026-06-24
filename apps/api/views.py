@@ -43,6 +43,7 @@ from apps.api.schemas import (
     ProjectDetailOut,
     ProjectListOut,
     ProjectUpdateIn,
+    ProjectUpdateOut,
     SubmitFeedbackIn,
     SubmitFeedbackOut,
     UserInfoOut,
@@ -516,7 +517,7 @@ def get_project(request: HttpRequest, project_key: str, limit: int = 100, offset
 
 @api.patch(
     "/projects/{project_key}",
-    response=ProjectCreateOut,
+    response=ProjectUpdateOut,
     auth=[api_key_auth],
     tags=["projects"],
 )

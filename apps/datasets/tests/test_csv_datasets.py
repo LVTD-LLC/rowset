@@ -1931,6 +1931,24 @@ def test_project_api_rejects_null_project_name(client, profile):
     assert project.name == "Launch"
 
 
+def test_project_api_rejects_blank_project_name_at_schema_boundary(client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+
+    response = client.patch(
+        f"/api/projects/{project.key}?api_key={profile.key}",
+        data={"name": ""},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    project.refresh_from_db()
+    assert project.name == "Launch"
+
+
 def test_project_api_rejects_case_insensitive_duplicate_names(client, profile):
     Project.objects.create(profile=profile, name="Launch")
 
