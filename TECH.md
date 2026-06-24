@@ -67,8 +67,8 @@ contents.
 - Index values must be non-blank and unique unless Rowset generated the index.
 - Generated index columns use `rowset_id` or the next available suffixed name.
 - Stored row data is string-keyed by dataset headers.
-- Semantic column metadata supports `text`, `integer`, `number`, `currency`,
-  `boolean`, `date`, `datetime`, `email`, and `url`.
+- Semantic column metadata supports `text`, `choice`, `integer`, `number`,
+  `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
 
 ## API And MCP Rules
 

@@ -24,17 +24,21 @@ from apps.datasets.services import (
     CSVParseError,
     DatasetRowQueryError,
     apply_dataset_row_query,
+    choice_constraints_from_schema,
     generated_index_column_name,
     generated_index_column_schema,
     infer_column_schema,
+    invalid_choice_values_by_column,
     normalize_column_schema,
     normalize_public_page_size,
+    validate_choice_row_values,
     validate_headers,
 )
 from filebridge.utils import build_absolute_public_url
 
 API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
+ColumnTypeSpec = str | dict[str, Any]
 DATASET_SUMMARY_ONLY_FIELDS = (
     "key",
     "name",
@@ -626,6 +630,75 @@ def _validate_rows_match_headers(rows: list[dict[str, str]], headers: list[str])
         raise DatasetServiceError(400, f"Rows contain fields not listed in headers: {joined}.")
 
 
+def _validate_choice_row_data(
+    headers: list[str],
+    column_schema: dict,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    choice_constraints: dict[str, list[str]] | None = None,
+) -> None:
+    constraints = choice_constraints
+    if constraints is None:
+        constraints = choice_constraints_from_schema(
+            headers,
+            column_schema,
+            normalized=True,
+        )
+    try:
+        validate_choice_row_values(
+            headers,
+            column_schema,
+            row_data,
+            columns=columns,
+            choice_constraints=constraints,
+        )
+    except CSVParseError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+
+def _validate_choice_rows(
+    headers: list[str],
+    column_schema: dict,
+    rows: list[dict[str, str]],
+) -> None:
+    choice_constraints = choice_constraints_from_schema(
+        headers,
+        column_schema,
+        normalized=True,
+    )
+    for row_data in rows:
+        _validate_choice_row_data(
+            headers,
+            column_schema,
+            row_data,
+            choice_constraints=choice_constraints,
+        )
+
+
+def _iter_dataset_row_data(dataset: Dataset):
+    yield from dataset.rows.order_by("row_number", "id").values_list("data", flat=True).iterator(
+        chunk_size=1000
+    )
+
+
+def _validate_existing_choice_values(dataset: Dataset, column_schema: dict) -> None:
+    invalid_values = invalid_choice_values_by_column(
+        dataset.headers,
+        column_schema,
+        _iter_dataset_row_data(dataset),
+    )
+    if not invalid_values:
+        return
+
+    column = sorted(invalid_values)[0]
+    values = ", ".join(sorted(invalid_values[column])[:5])
+    raise DatasetServiceError(
+        400,
+        f"Column '{column}' has existing values outside the allowed choices: {values}.",
+    )
+
+
 def _create_dataset_index_config(
     headers: list[str],
     index_column: str | None,
@@ -647,8 +720,8 @@ def _normalize_dataset_column_schema(
     index_column: str,
     index_generated: bool,
     rows: list[dict[str, str]],
-    column_types: dict[str, str] | None,
-) -> dict[str, dict[str, str]]:
+    column_types: dict[str, ColumnTypeSpec] | None,
+) -> dict[str, dict[str, Any]]:
     inferred_schema = infer_column_schema(base_headers, rows)
     try:
         base_schema = normalize_column_schema(
@@ -678,7 +751,7 @@ def create_profile_dataset(
     headers: list[str] | None = None,
     rows: list[dict[str, Any]] | None = None,
     index_column: str | None = None,
-    column_types: dict[str, str] | None = None,
+    column_types: dict[str, ColumnTypeSpec] | None = None,
     project_key: str | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
@@ -705,6 +778,7 @@ def create_profile_dataset(
         rows=normalized_rows,
         column_types=column_types,
     )
+    _validate_choice_rows(base_headers, column_schema, normalized_rows)
 
     seen_index_values = set()
     row_payloads = []
@@ -793,7 +867,7 @@ def create_profile_dataset(
 def update_profile_dataset_column_types(
     profile: Profile,
     dataset_key: str,
-    column_types: dict[str, str],
+    column_types: dict[str, ColumnTypeSpec],
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
@@ -821,6 +895,7 @@ def update_profile_dataset_column_types(
             )
         except CSVParseError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
+        _validate_existing_choice_values(dataset, next_schema)
         dataset.column_schema = next_schema
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
@@ -962,7 +1037,7 @@ def _normalize_new_column_name(dataset: Dataset, name: str, *, replacing: str | 
 def _normalized_column_schema_for_headers(
     headers: list[str],
     column_schema: dict,
-) -> dict[str, dict[str, str]]:
+) -> dict[str, dict[str, Any]]:
     try:
         return normalize_column_schema(headers, column_schema)
     except CSVParseError as exc:
@@ -1014,7 +1089,7 @@ def add_profile_dataset_column(
     *,
     name: str,
     default_value: Any = "",
-    column_type: str | None = None,
+    column_type: ColumnTypeSpec | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     """Add one column to a ready dataset and backfill existing rows."""
@@ -1032,6 +1107,12 @@ def add_profile_dataset_column(
             )
         except CSVParseError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
+        _validate_choice_row_data(
+            next_headers,
+            dataset.column_schema,
+            {column_name: default_cell},
+            columns={column_name},
+        )
 
         def add_column(data: dict) -> dict[str, str]:
             next_data = dict(data)
@@ -1619,6 +1700,8 @@ def create_profile_dataset_row(
 
         if dataset.rows.filter(index_value=index_value).exists():
             raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
+        serialized_data = {header: str(row_data.get(header, "")) for header in dataset.headers}
+        _validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
 
         row = DatasetRow.objects.create(
             dataset=dataset,
@@ -1626,7 +1709,7 @@ def create_profile_dataset_row(
             updated_by_agent_api_key=agent_api_key,
             row_number=row_number,
             index_value=index_value,
-            data={header: str(row_data.get(header, "")) for header in dataset.headers},
+            data=serialized_data,
         )
         dataset.row_count = dataset.rows.count()
         dataset.updated_by_agent_api_key = agent_api_key
@@ -1736,6 +1819,12 @@ def _patch_dataset_row(
     field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
     changed_fields = [str(change["field"]) for change in field_changes]
     row.data = {**row.data, **row_patch}
+    _validate_choice_row_data(
+        dataset.headers,
+        dataset.column_schema,
+        row.data,
+        columns=patched_fields,
+    )
     index_changed = False
     if dataset.index_column in data:
         if dataset.index_generated:

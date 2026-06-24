@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 from urllib.parse import urlparse
 from xml.sax.saxutils import escape
 
@@ -37,6 +37,7 @@ MAX_PUBLIC_PAGE_SIZE = 100
 LEGACY_GOOGLE_SHEETS_FILE_TYPE = "google_sheets"
 COLUMN_TYPE_SAMPLE_LIMIT = 200
 COLUMN_SCHEMA_TYPE_KEY = "type"
+COLUMN_SCHEMA_CHOICES_KEY = "choices"
 ROW_DEFAULT_SORT = "row_number"
 ROW_SORT_DESC = "desc"
 ROW_SEARCH_COLUMN_LIMIT = 20
@@ -56,8 +57,11 @@ CURRENCY_SYMBOLS = "$€£¥₹"
 COLUMN_TYPE_ALIASES = {
     "bool": DatasetColumnType.BOOLEAN,
     "decimal": DatasetColumnType.NUMBER,
+    "enum": DatasetColumnType.CHOICE,
     "float": DatasetColumnType.NUMBER,
     "money": DatasetColumnType.CURRENCY,
+    "select": DatasetColumnType.CHOICE,
+    "single_select": DatasetColumnType.CHOICE,
     "str": DatasetColumnType.TEXT,
     "string": DatasetColumnType.TEXT,
     "timestamp": DatasetColumnType.DATETIME,
@@ -83,7 +87,7 @@ class TabularPreview:
     row_count: int
     source_text: str
     file_type: str
-    column_schema: dict[str, dict[str, str]] = field(default_factory=dict)
+    column_schema: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @property
     def text(self) -> str:
@@ -325,7 +329,7 @@ def infer_column_type(header: str, values: list[str]) -> str:
 def _infer_column_schema_from_samples(
     headers: list[str],
     column_samples: dict[str, list[str]],
-) -> dict[str, dict[str, str]]:
+) -> dict[str, dict[str, Any]]:
     return {
         header: {COLUMN_SCHEMA_TYPE_KEY: infer_column_type(header, column_samples.get(header, []))}
         for header in headers
@@ -335,7 +339,7 @@ def _infer_column_schema_from_samples(
 def infer_column_schema(
     headers: list[str],
     rows: list[dict[str, str]],
-) -> dict[str, dict[str, str]]:
+) -> dict[str, dict[str, Any]]:
     column_samples: dict[str, list[str]] = {header: [] for header in headers}
     for row in rows:
         _collect_column_samples(column_samples, row)
@@ -357,13 +361,64 @@ def _column_type_from_schema_entry(entry) -> str | None:
     return entry
 
 
+def _normalize_choice_values(header: str, raw_choices) -> list[str]:
+    if not isinstance(raw_choices, (list, tuple)):
+        raise CSVParseError(f"Choice column '{header}' choices must be a list.")
+
+    choices = []
+    seen = set()
+    duplicates = set()
+    for raw_choice in raw_choices:
+        choice = str("" if raw_choice is None else raw_choice).strip()
+        if not choice:
+            raise CSVParseError(
+                f"Choice column '{header}' choices must be non-empty strings."
+            )
+        if choice in seen:
+            duplicates.add(choice)
+        seen.add(choice)
+        choices.append(choice)
+
+    if not choices:
+        raise CSVParseError(f"Choice column '{header}' requires at least one choice.")
+
+    if duplicates:
+        joined = ", ".join(sorted(duplicates))
+        raise CSVParseError(f"Choice column '{header}' choices must be unique: {joined}.")
+
+    return choices
+
+
+def _choice_source_entry(header: str, entry, fallback_entry):
+    if isinstance(entry, dict) and COLUMN_SCHEMA_CHOICES_KEY in entry:
+        return entry
+    if isinstance(fallback_entry, dict) and COLUMN_SCHEMA_CHOICES_KEY in fallback_entry:
+        return fallback_entry
+    raise CSVParseError(f"Choice column '{header}' requires at least one choice.")
+
+
+def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[str, Any]:
+    raw_type = _column_type_from_schema_entry(entry)
+    if raw_type is None:
+        raw_type = DatasetColumnType.TEXT
+    column_type = normalize_column_type(raw_type)
+    normalized_entry: dict[str, Any] = {COLUMN_SCHEMA_TYPE_KEY: column_type}
+    if column_type == DatasetColumnType.CHOICE:
+        source_entry = _choice_source_entry(header, entry, fallback_entry)
+        normalized_entry[COLUMN_SCHEMA_CHOICES_KEY] = _normalize_choice_values(
+            header,
+            source_entry.get(COLUMN_SCHEMA_CHOICES_KEY),
+        )
+    return normalized_entry
+
+
 def normalize_column_schema(
     headers: list[str],
     column_schema: dict | None = None,
     *,
     fallback_schema: dict | None = None,
     reject_unknown: bool = False,
-) -> dict[str, dict[str, str]]:
+) -> dict[str, dict[str, Any]]:
     raw_schema = column_schema or {}
     fallback = fallback_schema or {}
     if reject_unknown:
@@ -374,31 +429,106 @@ def normalize_column_schema(
 
     normalized_schema = {}
     for header in headers:
-        raw_type = None
+        raw_entry = None
+        fallback_entry = fallback.get(header)
         if header in raw_schema:
-            raw_type = _column_type_from_schema_entry(raw_schema[header])
+            raw_entry = raw_schema[header]
         elif header in fallback:
-            raw_type = _column_type_from_schema_entry(fallback[header])
-        if raw_type is None:
-            raw_type = DatasetColumnType.TEXT
-        normalized_schema[header] = {COLUMN_SCHEMA_TYPE_KEY: normalize_column_type(raw_type)}
+            raw_entry = fallback_entry
+        normalized_schema[header] = _normalize_column_schema_entry(
+            header,
+            raw_entry,
+            fallback_entry,
+        )
     return normalized_schema
 
 
 def column_definitions(
     headers: list[str],
     column_schema: dict | None,
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     normalized_schema = normalize_column_schema(headers, column_schema)
     labels = dict(DatasetColumnType.choices)
-    return [
-        {
+    definitions = []
+    for header in headers:
+        schema_entry = normalized_schema[header]
+        definition = {
             "name": header,
-            "type": normalized_schema[header][COLUMN_SCHEMA_TYPE_KEY],
-            "type_label": labels.get(normalized_schema[header][COLUMN_SCHEMA_TYPE_KEY], "Text"),
+            "type": schema_entry[COLUMN_SCHEMA_TYPE_KEY],
+            "type_label": labels.get(schema_entry[COLUMN_SCHEMA_TYPE_KEY], "Text"),
         }
-        for header in headers
-    ]
+        if schema_entry[COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.CHOICE:
+            definition["choices"] = schema_entry[COLUMN_SCHEMA_CHOICES_KEY]
+        definitions.append(definition)
+    return definitions
+
+
+def _choice_cell_value(value) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def choice_constraints_from_schema(
+    headers: list[str],
+    column_schema: dict | None,
+    *,
+    normalized: bool = False,
+) -> dict[str, list[str]]:
+    if normalized:
+        normalized_schema = column_schema or {}
+    else:
+        normalized_schema = normalize_column_schema(headers, column_schema)
+    constraints = {}
+    for header in headers:
+        schema_entry = normalized_schema.get(header, {})
+        if not isinstance(schema_entry, dict):
+            continue
+        if schema_entry.get(COLUMN_SCHEMA_TYPE_KEY) == DatasetColumnType.CHOICE:
+            constraints[header] = schema_entry[COLUMN_SCHEMA_CHOICES_KEY]
+    return constraints
+
+
+def validate_choice_row_values(
+    headers: list[str],
+    column_schema: dict | None,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    choice_constraints: dict[str, list[str]] | None = None,
+) -> None:
+    constraints = choice_constraints
+    if constraints is None:
+        constraints = choice_constraints_from_schema(headers, column_schema)
+    selected_columns = set(columns or constraints)
+    for header, choices in constraints.items():
+        if header not in selected_columns:
+            continue
+        value = _choice_cell_value(row_data.get(header, ""))
+        if value == "":
+            continue
+        if value not in choices:
+            allowed = ", ".join(choices)
+            raise CSVParseError(f"Column '{header}' must be blank or one of: {allowed}.")
+
+
+def invalid_choice_values_by_column(
+    headers: list[str],
+    column_schema: dict | None,
+    rows: list[dict] | Any,
+) -> dict[str, set[str]]:
+    choice_columns = choice_constraints_from_schema(headers, column_schema)
+    if not choice_columns:
+        return {}
+
+    invalid_values: dict[str, set[str]] = {header: set() for header in choice_columns}
+    for row_data in rows:
+        for header, choices in choice_columns.items():
+            value = _choice_cell_value((row_data or {}).get(header, ""))
+            if value and value not in choices:
+                invalid_values[header].add(value)
+
+    return {header: values for header, values in invalid_values.items() if values}
 
 
 def normalize_dataset_row_filters(

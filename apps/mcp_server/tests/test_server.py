@@ -786,8 +786,84 @@ def test_update_dataset_column_types_mcp_tool_calls_dataset_service(monkeypatch)
     anyio.run(run)
 
 
+def test_choice_column_metadata_mcp_tools_call_dataset_services(monkeypatch):
+    calls = []
+    choice_schema = {
+        "type": "choice",
+        "choices": ["Ready to do", "Doing", "Done"],
+    }
+
+    def create_dataset(
+        authenticated_profile,
+        *,
+        name,
+        description=None,
+        instructions=None,
+        metadata=None,
+        headers=None,
+        rows=None,
+        index_column=None,
+        column_types=None,
+        project_key=None,
+    ):
+        calls.append(("create", authenticated_profile.id, column_types))
+        return {
+            "status": "success",
+            "message": "Dataset created.",
+            "dataset": {"key": "dataset-key", "column_schema": {"status": choice_schema}},
+        }
+
+    def update_column_types(authenticated_profile, dataset_key, column_types):
+        calls.append(("update", authenticated_profile.id, dataset_key, column_types))
+        return {
+            "status": "success",
+            "message": "Column types updated.",
+            "dataset": {"key": dataset_key, "column_schema": {"status": choice_schema}},
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr("apps.mcp_server.server.create_profile_dataset", create_dataset)
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_dataset_column_types",
+            update_column_types,
+        )
+
+        async with Client(mcp) as client:
+            create_result = await client.call_tool(
+                "create_dataset",
+                {
+                    "name": "Task board",
+                    "headers": ["task_id", "status"],
+                    "rows": [{"task_id": "T-1", "status": "Ready to do"}],
+                    "index_column": "task_id",
+                    "column_types": {"status": choice_schema},
+                },
+            )
+            update_result = await client.call_tool(
+                "update_dataset_column_types",
+                {
+                    "dataset_key": "ds",
+                    "column_types": {"status": choice_schema},
+                },
+            )
+
+        assert create_result.data["dataset"]["column_schema"]["status"] == choice_schema
+        assert update_result.data["dataset"]["column_schema"]["status"] == choice_schema
+        assert calls == [
+            ("create", 11, {"status": choice_schema}),
+            ("update", 11, "ds", {"status": choice_schema}),
+        ]
+
+    anyio.run(run)
+
+
 def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
     calls = []
+    choice_schema = {"type": "choice", "choices": ["internal", "shared"]}
 
     def add_column(
         authenticated_profile,
@@ -850,7 +926,7 @@ def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
                     "dataset_key": "ds",
                     "name": "visibility_level",
                     "default_value": "internal",
-                    "column_type": "text",
+                    "column_type": choice_schema,
                 },
             )
             rename_result = await client.call_tool(
@@ -871,7 +947,7 @@ def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
         assert drop_result.data["message"] == "Column dropped."
         assert reorder_result.data["dataset"]["headers"] == ["email", "full_name"]
         assert calls == [
-            ("add", 11, "ds", "visibility_level", "internal", "text"),
+            ("add", 11, "ds", "visibility_level", "internal", choice_schema),
             ("rename", 11, "ds", "name", "full_name"),
             ("drop", 11, "ds", "notes"),
             ("reorder", 11, "ds", ["email", "full_name"]),

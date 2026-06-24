@@ -34,6 +34,15 @@ existing project or move an existing dataset into one project.
 Projects are organization metadata only. They do not change authenticated API or
 MCP access.
 
+## Choice columns
+
+Use experimental choice columns when agents should keep a text value inside a
+fixed set. For example, a task board can define `status` with choices like
+`Ready to do`, `Doing`, and `Done`.
+
+Choice cells may be blank. When a row includes a non-blank choice value, Rowset
+requires it to match one of the configured choices exactly.
+
 ## Exports
 
 Use exports when a workflow needs a full snapshot instead of row-by-row API access.

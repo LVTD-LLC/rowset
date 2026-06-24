@@ -11,6 +11,8 @@ from apps.datasets.constants import (
     MAX_DATASET_INSTRUCTIONS_LENGTH,
 )
 
+ColumnTypeIn = str | dict[str, Any]
+
 
 class SubmitFeedbackIn(Schema):
     feedback: str = Field(..., min_length=1, max_length=2000)
@@ -135,7 +137,7 @@ class DatasetSummaryOut(Schema):
     file_type: str
     status: str
     headers: list[str]
-    column_schema: dict[str, dict[str, str]]
+    column_schema: dict[str, dict[str, Any]]
     index_column: str
     index_generated: bool
     row_count: int
@@ -178,7 +180,7 @@ class DatasetCreateIn(Schema):
         max_length=MAX_API_DATASET_CREATE_ROWS,
     )
     index_column: str | None = None
-    column_types: dict[str, str] | None = None
+    column_types: dict[str, ColumnTypeIn] | None = None
     project_key: str | None = None
 
 
@@ -189,7 +191,7 @@ class DatasetCreateOut(Schema):
 
 
 class DatasetColumnTypesPatchIn(Schema):
-    column_types: dict[str, str]
+    column_types: dict[str, ColumnTypeIn]
 
 
 class DatasetColumnTypesOut(Schema):
@@ -213,7 +215,7 @@ class DatasetMetadataOut(Schema):
 class DatasetColumnAddIn(Schema):
     name: str
     default_value: Any = ""
-    column_type: str | None = None
+    column_type: ColumnTypeIn | None = None
 
 
 class DatasetColumnRenameIn(Schema):

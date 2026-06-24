@@ -46,6 +46,7 @@ from filebridge.utils import get_filebridge_logger
 logger = get_filebridge_logger(__name__)
 AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
+ColumnTypeSpec = str | dict[str, Any]
 RETRYABLE_ERROR_CODES = {
     "DATASET_NOT_READY",
     "RATE_LIMITED",
@@ -576,13 +577,14 @@ def create_dataset(
         ),
     ] = None,
     column_types: Annotated[
-        dict[str, str] | None,
+        dict[str, ColumnTypeSpec] | None,
         Field(
             default=None,
             description=(
-                "Optional mapping from header name to semantic column type. "
-                "Supported values include text, integer, number, currency, boolean, "
-                "date, datetime, email, and url."
+                "Optional mapping from header name to semantic column type or metadata. "
+                "Supported types include text, choice, integer, number, currency, boolean, "
+                "date, datetime, email, and url. For choice columns, pass metadata like "
+                '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}.'
             ),
         ),
     ] = None,
@@ -694,11 +696,13 @@ def update_dataset_metadata(
 def update_dataset_column_types(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     column_types: Annotated[
-        dict[str, str],
+        dict[str, ColumnTypeSpec],
         Field(
             description=(
-                "Mapping from dataset header to semantic type. Supported values include "
-                "text, integer, number, currency, boolean, date, datetime, email, and url."
+                "Mapping from dataset header to semantic type or metadata. Supported types "
+                "include text, choice, integer, number, currency, boolean, date, datetime, "
+                'email, and url. For choice columns, pass {"type": "choice", "choices": '
+                '["Ready to do", "Doing", "Done"]}.'
             ),
         ),
     ],
@@ -734,12 +738,14 @@ def add_column(
         ),
     ] = "",
     column_type: Annotated[
-        str | None,
+        ColumnTypeSpec | None,
         Field(
             default=None,
             description=(
-                "Optional semantic type for the new column. Supported values include text, "
-                "integer, number, currency, boolean, date, datetime, email, and url."
+                "Optional semantic type or metadata for the new column. Supported types "
+                "include text, choice, integer, number, currency, boolean, date, datetime, "
+                'email, and url. For a choice column, pass {"type": "choice", "choices": '
+                '["Ready to do", "Doing", "Done"]}.'
             ),
         ),
     ] = None,
