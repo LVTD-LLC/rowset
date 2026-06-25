@@ -187,6 +187,22 @@ def test_use_case_pages_reject_unknown_feature_references(monkeypatch):
     assert "invalid_reference" not in {page["id"] for page in pages}
 
 
+def test_use_case_pages_reject_duplicate_public_slugs(monkeypatch):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy["task_board"] = replace(
+        page_copy["task_board"],
+        slug=page_copy["personal_crm"].slug,
+    )
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    with pytest.raises(ValueError, match="duplicate public slugs: personal-crm"):
+        page_use_cases.validate_use_case_page_registry()
+
+    pages = page_use_cases.get_use_case_pages()
+    assert "personal_crm" not in {page["id"] for page in pages}
+    assert "task_board" not in {page["id"] for page in pages}
+
+
 def test_settings_shows_email_confirmation_and_passkey_setup(client):
     user = get_user_model().objects.create_user(
         username="settingsuser",

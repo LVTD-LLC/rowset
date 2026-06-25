@@ -207,10 +207,20 @@ def _capability_titles() -> dict[str, str]:
     return {capability.id: capability.title for capability in ROWSET_CAPABILITIES}
 
 
+def _duplicate_public_slugs() -> set[str]:
+    page_copy_slugs = [
+        USE_CASE_PAGE_COPY[use_case.id].slug
+        for use_case in ROWSET_USE_CASES
+        if use_case.id in USE_CASE_PAGE_COPY
+    ]
+    return {slug for slug in page_copy_slugs if page_copy_slugs.count(slug) > 1}
+
+
 def get_use_case_page_registry_errors() -> tuple[str, ...]:
     feature_titles = _capability_titles()
     use_case_ids = {use_case.id for use_case in ROWSET_USE_CASES}
     page_copy_ids = set(USE_CASE_PAGE_COPY)
+    duplicate_slugs = sorted(_duplicate_public_slugs())
     valid_feature_ids = set(feature_titles)
     missing_page_copy_ids = sorted(use_case_ids - page_copy_ids)
     stale_page_copy_ids = sorted(page_copy_ids - use_case_ids)
@@ -234,6 +244,11 @@ def get_use_case_page_registry_errors() -> tuple[str, ...]:
             "USE_CASE_PAGE_COPY contains entries without ROWSET_USE_CASES: "
             + ", ".join(stale_page_copy_ids)
         )
+    if duplicate_slugs:
+        errors.append(
+            "USE_CASE_PAGE_COPY contains duplicate public slugs: "
+            + ", ".join(duplicate_slugs)
+        )
     if unknown_feature_references:
         errors.append(
             "ROWSET_USE_CASES references unknown capability IDs: "
@@ -251,11 +266,14 @@ def validate_use_case_page_registry() -> None:
 
 def get_use_case_pages() -> tuple[dict[str, object], ...]:
     feature_titles = _capability_titles()
+    duplicate_slugs = _duplicate_public_slugs()
     pages: list[dict[str, object]] = []
 
     for use_case in ROWSET_USE_CASES:
         page_copy = USE_CASE_PAGE_COPY.get(use_case.id)
         if page_copy is None:
+            continue
+        if page_copy.slug in duplicate_slugs:
             continue
 
         features = []
