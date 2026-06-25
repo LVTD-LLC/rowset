@@ -7,8 +7,9 @@ from uuid import UUID
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
-from django.db.models import Count, Q, TextField
-from django.db.models.functions import Cast
+from django.db.models import Count, Exists, OuterRef, Q, TextField
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast, Trim
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
@@ -684,19 +685,26 @@ def _relationship_cell_value(row_data: dict, column: str) -> str:
     return str(row_data.get(column, "") or "").strip()
 
 
-def _validate_existing_relationship_values(relationship: DatasetRelationship) -> None:
-    target_values = set(
-        relationship.target_dataset.rows.values_list("index_value", flat=True).iterator(
-            chunk_size=1000
+def _relationship_source_rows_with_values(relationship: DatasetRelationship):
+    return (
+        relationship.source_dataset.rows.annotate(
+            rowset_relationship_value=Trim(KeyTextTransform(relationship.source_column, "data"))
         )
+        .filter(rowset_relationship_value__isnull=False)
+        .exclude(rowset_relationship_value="")
     )
-    missing_count = 0
-    for row_data in relationship.source_dataset.rows.values_list("data", flat=True).iterator(
-        chunk_size=1000
-    ):
-        value = _relationship_cell_value(row_data or {}, relationship.source_column)
-        if value and value not in target_values:
-            missing_count += 1
+
+
+def _validate_existing_relationship_values(relationship: DatasetRelationship) -> None:
+    matching_target_rows = relationship.target_dataset.rows.filter(
+        index_value=OuterRef("rowset_relationship_value")
+    )
+    missing_count = (
+        _relationship_source_rows_with_values(relationship)
+        .annotate(rowset_target_exists=Exists(matching_target_rows))
+        .filter(rowset_target_exists=False)
+        .count()
+    )
 
     if missing_count:
         plural = "values" if missing_count != 1 else "value"
@@ -740,22 +748,22 @@ def _validate_relationship_row_data(
 
 
 def _raise_if_target_row_is_referenced(dataset: Dataset, index_value: str) -> None:
-    if not index_value:
+    normalized_index_value = str(index_value or "").strip()
+    if not normalized_index_value:
         return
 
     incoming_relationships = dataset.incoming_relationships.filter(
         enforce_integrity=True
     ).select_related("source_dataset")
     for relationship in incoming_relationships:
-        for row_data in relationship.source_dataset.rows.values_list("data", flat=True).iterator(
-            chunk_size=1000
-        ):
-            if _relationship_cell_value(row_data or {}, relationship.source_column) == index_value:
-                raise DatasetServiceError(
-                    409,
-                    f"Row is referenced by relationship '{relationship.name}' from "
-                    f"dataset '{relationship.source_dataset.name}'.",
-                )
+        if _relationship_source_rows_with_values(relationship).filter(
+            rowset_relationship_value=normalized_index_value
+        ).exists():
+            raise DatasetServiceError(
+                409,
+                f"Row is referenced by relationship '{relationship.name}' from "
+                f"dataset '{relationship.source_dataset.name}'.",
+            )
 
 
 def create_profile_dataset_relationship(

@@ -92,18 +92,18 @@ For a specific ready dataset, agents can use:
 get_dataset
 list_dataset_rows
 get_dataset_row
-	get_dataset_row_by_index
-	create_dataset_row
-	update_dataset_row
-	update_dataset_row_by_index
-	delete_dataset_row
-	list_dataset_relationships
-	create_dataset_relationship
-	resolve_dataset_relationship
-	delete_dataset_relationship
-	add_column
-	rename_column
-	drop_column
+get_dataset_row_by_index
+create_dataset_row
+update_dataset_row
+update_dataset_row_by_index
+delete_dataset_row
+list_dataset_relationships
+create_dataset_relationship
+resolve_dataset_relationship
+delete_dataset_relationship
+add_column
+rename_column
+drop_column
 reorder_columns
 update_dataset_metadata
 update_dataset_project

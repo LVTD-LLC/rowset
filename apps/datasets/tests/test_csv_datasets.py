@@ -2080,6 +2080,13 @@ def test_dataset_relationship_api_rejects_existing_unmatched_values(client, prof
 
 def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(client, profile):
     people, messages = create_crm_datasets(profile)
+    messages.rows.filter(index_value="M-1").update(
+        data={
+            "message_id": "M-1",
+            "person_id": " P-1 ",
+            "body": "Intro call completed.",
+        }
+    )
     create_response = client.post(
         f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
         data={
@@ -2099,6 +2106,38 @@ def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(client,
     assert delete_response.status_code == 409
     assert "referenced by relationship" in delete_response.json()["detail"]
     assert people.rows.filter(index_value="P-1").exists()
+
+
+def test_dataset_relationship_api_blocks_target_index_change_when_enforced(client, profile):
+    people, messages = create_crm_datasets(profile)
+    create_response = client.post(
+        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+        data={
+            "source_column": "person_id",
+            "target_dataset_key": str(people.key),
+            "enforce_integrity": True,
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    person_row = people.rows.get(index_value="P-1")
+
+    patch_response = client.patch(
+        f"/api/datasets/{people.key}/rows/{person_row.id}?api_key={profile.key}",
+        data={
+            "data": {
+                "person_id": "P-2",
+                "name": "Ada Lovelace",
+                "email": "ada@example.com",
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert patch_response.status_code == 409
+    assert "referenced by relationship" in patch_response.json()["detail"]
+    person_row.refresh_from_db()
+    assert person_row.index_value == "P-1"
 
 
 def test_dataset_relationship_settings_form_creates_and_detail_shows_relationship(
