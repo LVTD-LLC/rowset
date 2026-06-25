@@ -1,4 +1,5 @@
 import time
+from dataclasses import replace
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -8,6 +9,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.test import override_settings
 from django.urls import reverse
+
+from apps.core.capabilities import RowsetUseCase
+from apps.pages import use_cases as page_use_cases
 
 pytestmark = pytest.mark.django_db
 
@@ -138,6 +142,44 @@ def test_unknown_use_case_returns_404(client):
     response = client.get(reverse("use_case_detail", kwargs={"slug": "missing"}))
 
     assert response.status_code == 404
+
+
+def test_use_case_pages_reject_missing_page_copy(monkeypatch):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy.pop("personal_crm")
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    with pytest.raises(ValueError, match="personal_crm"):
+        page_use_cases.get_use_case_pages()
+
+
+def test_use_case_pages_reject_unknown_feature_references(monkeypatch):
+    invalid_use_case = RowsetUseCase(
+        id="invalid_reference",
+        title="Invalid reference",
+        summary="Invalid registry fixture.",
+        starter_shape=("Fixture only.",),
+        rowset_features=("missing_capability",),
+    )
+    monkeypatch.setattr(
+        page_use_cases,
+        "ROWSET_USE_CASES",
+        page_use_cases.ROWSET_USE_CASES + (invalid_use_case,),
+    )
+    monkeypatch.setattr(
+        page_use_cases,
+        "USE_CASE_PAGE_COPY",
+        {
+            **page_use_cases.USE_CASE_PAGE_COPY,
+            "invalid_reference": replace(
+                page_use_cases.USE_CASE_PAGE_COPY["personal_crm"],
+                slug="invalid-reference",
+            ),
+        },
+    )
+
+    with pytest.raises(ValueError, match="invalid_reference: missing_capability"):
+        page_use_cases.get_use_case_pages()
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):

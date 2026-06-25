@@ -207,12 +207,59 @@ def _capability_titles() -> dict[str, str]:
     return {capability.id: capability.title for capability in ROWSET_CAPABILITIES}
 
 
+def _validate_use_case_page_registry(feature_titles: dict[str, str]) -> None:
+    use_case_ids = {use_case.id for use_case in ROWSET_USE_CASES}
+    page_copy_ids = set(USE_CASE_PAGE_COPY)
+    valid_feature_ids = set(feature_titles)
+    missing_page_copy_ids = sorted(use_case_ids - page_copy_ids)
+    stale_page_copy_ids = sorted(page_copy_ids - use_case_ids)
+    unknown_feature_references = []
+
+    for use_case in ROWSET_USE_CASES:
+        missing_feature_ids = sorted(set(use_case.rowset_features) - valid_feature_ids)
+        if missing_feature_ids:
+            unknown_feature_references.append(
+                f"{use_case.id}: {', '.join(missing_feature_ids)}"
+            )
+
+    errors = []
+    if missing_page_copy_ids:
+        errors.append(
+            "USE_CASE_PAGE_COPY is missing entries for ROWSET_USE_CASES: "
+            + ", ".join(missing_page_copy_ids)
+        )
+    if stale_page_copy_ids:
+        errors.append(
+            "USE_CASE_PAGE_COPY contains entries without ROWSET_USE_CASES: "
+            + ", ".join(stale_page_copy_ids)
+        )
+    if unknown_feature_references:
+        errors.append(
+            "ROWSET_USE_CASES references unknown capability IDs: "
+            + "; ".join(unknown_feature_references)
+        )
+
+    if errors:
+        raise ValueError("; ".join(errors))
+
+
 def get_use_case_pages() -> tuple[dict[str, object], ...]:
     feature_titles = _capability_titles()
+    _validate_use_case_page_registry(feature_titles)
     pages: list[dict[str, object]] = []
 
     for use_case in ROWSET_USE_CASES:
-        page_copy = USE_CASE_PAGE_COPY[use_case.id]
+        page_copy = USE_CASE_PAGE_COPY.get(use_case.id)
+        if page_copy is None:
+            raise ValueError(f"USE_CASE_PAGE_COPY is missing {use_case.id}")
+
+        features = []
+        for feature_id in use_case.rowset_features:
+            feature_title = feature_titles.get(feature_id)
+            if feature_title is None:
+                raise ValueError(f"{use_case.id} references unknown capability ID {feature_id}")
+            features.append(feature_title)
+
         pages.append(
             {
                 "id": use_case.id,
@@ -224,9 +271,7 @@ def get_use_case_pages() -> tuple[dict[str, object], ...]:
                 "short_summary": page_copy.short_summary,
                 "meta_description": page_copy.meta_description,
                 "starter_shape": use_case.starter_shape,
-                "features": tuple(
-                    feature_titles[feature_id] for feature_id in use_case.rowset_features
-                ),
+                "features": tuple(features),
                 "example_name": page_copy.example_name,
                 "index_column": page_copy.index_column,
                 "sample_rows": page_copy.sample_rows,
