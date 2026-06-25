@@ -1,0 +1,27 @@
+<tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+  <td class="max-w-md{% if dataset_row_is_grouped %} pl-8 sm:pl-10{% endif %}">
+    <div class="{% if dataset_row_is_grouped %}border-l-2 border-emerald-200 pl-4 dark:border-emerald-900{% endif %}">
+      <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+      <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
+      <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
+    </div>
+  </td>
+  <td>
+    {% if dataset.project %}
+      <a href="{{ dataset.project.get_absolute_url }}" class="fb-focus break-words font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ dataset.project.name }}</a>
+    {% else %}
+      <span class="text-slate-500 dark:text-slate-400">No project</span>
+    {% endif %}
+  </td>
+  <td>{{ dataset.row_count }}</td>
+  <td>{{ dataset.headers|length }}</td>
+  <td class="whitespace-nowrap">
+    {% if dataset_list_is_archived %}
+      {{ dataset.archived_at|date:"M d, Y" }}
+    {% elif selected_sort == "created" %}
+      {{ dataset.created_at|date:"M d, Y" }}
+    {% else %}
+      {{ dataset.updated_at|date:"M d, Y" }}
+    {% endif %}
+  </td>
+</tr>

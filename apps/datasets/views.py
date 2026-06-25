@@ -55,31 +55,39 @@ from apps.datasets.services import (
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
 
 DATASET_SORT_OPTIONS = (
-    ("recent", "Project, then recently updated"),
-    ("name", "Project, then name"),
-    ("rows", "Project, then rows"),
-    ("project", "Project name"),
+    ("recent", "Recently updated"),
+    ("created", "Recently created"),
+    ("name", "Name"),
+    ("rows", "Rows"),
+    ("project", "Project"),
 )
 ARCHIVED_DATASET_SORT_OPTIONS = (
-    ("archived", "Project, then recently archived"),
-    ("name", "Project, then name"),
-    ("rows", "Project, then rows"),
-    ("project", "Project name"),
+    ("archived", "Recently archived"),
+    ("name", "Name"),
+    ("rows", "Rows"),
+    ("project", "Project"),
 )
 PROJECT_GROUP_ORDERING = (F("project__name").asc(nulls_last=True), "project_id")
 DATASET_SORT_ORDERING = {
-    "recent": (*PROJECT_GROUP_ORDERING, "-updated_at", "-created_at", "-id"),
-    "name": (*PROJECT_GROUP_ORDERING, "name", "id"),
-    "rows": (*PROJECT_GROUP_ORDERING, "-row_count", "name", "id"),
+    "recent": ("-updated_at", "-created_at", "-id"),
+    "created": ("-created_at", "-id"),
+    "name": ("name", "id"),
+    "rows": ("-row_count", "name", "id"),
     "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 ARCHIVED_DATASET_SORT_ORDERING = {
-    "archived": (*PROJECT_GROUP_ORDERING, "-archived_at", "-updated_at", "-id"),
-    "name": (*PROJECT_GROUP_ORDERING, "name", "id"),
-    "rows": (*PROJECT_GROUP_ORDERING, "-row_count", "name", "id"),
+    "archived": ("-archived_at", "-updated_at", "-id"),
+    "name": ("name", "id"),
+    "rows": ("-row_count", "name", "id"),
     "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 DATASET_LIST_PAGE_SIZE = 100
+DATASET_VIEW_MODE_OPTIONS = (
+    ("raw", "Raw rows"),
+    ("grouped", "Grouped by project"),
+)
+DATASET_VIEW_MODE_GROUPED = "grouped"
+DATASET_VIEW_MODE_RAW = "raw"
 DATASET_DETAIL_ROW_PAGE_SIZE = 100
 DATASET_CHANGES_PAGE_SIZE = 25
 ROW_SEARCH_PARAM = "row_q"
@@ -528,6 +536,8 @@ class DatasetListView(LoginRequiredMixin, ListView):
     sort_options = DATASET_SORT_OPTIONS
     sort_ordering = DATASET_SORT_ORDERING
     default_sort = "recent"
+    view_mode_options = DATASET_VIEW_MODE_OPTIONS
+    default_view_mode = DATASET_VIEW_MODE_RAW
     dataset_list_url_name = "dataset_list"
     dataset_list_is_archived = False
     dataset_list_eyebrow = "Datasets"
@@ -560,6 +570,25 @@ class DatasetListView(LoginRequiredMixin, ListView):
             return self.default_sort
         return selected_sort
 
+    def get_selected_view_mode(self) -> str:
+        selected_view_mode = self.request.GET.get("view", self.default_view_mode)
+        valid_view_modes = {value for value, _label in self.view_mode_options}
+        if selected_view_mode not in valid_view_modes:
+            return self.default_view_mode
+        return selected_view_mode
+
+    def get_grouped_ordering(self) -> tuple[str, ...]:
+        selected_sort = self.get_selected_sort()
+        dataset_ordering = self.sort_ordering[selected_sort]
+        if selected_sort == "project":
+            dataset_ordering = self.sort_ordering["name"]
+        return (*PROJECT_GROUP_ORDERING, *dataset_ordering)
+
+    def get_dataset_date_heading(self) -> str:
+        if self.get_selected_sort() == "created":
+            return "Created"
+        return self.dataset_table_date_heading
+
     def get_base_queryset(self):
         if not hasattr(self, "_base_queryset"):
             self._base_queryset = (
@@ -582,6 +611,9 @@ class DatasetListView(LoginRequiredMixin, ListView):
                 | Q(original_filename__icontains=search_query)
                 | Q(project__name__icontains=search_query)
             )
+
+        if self.get_selected_view_mode() == DATASET_VIEW_MODE_GROUPED:
+            return queryset.order_by(*self.get_grouped_ordering())
 
         return queryset.order_by(*self.sort_ordering[self.get_selected_sort()])
 
@@ -653,8 +685,17 @@ class DatasetListView(LoginRequiredMixin, ListView):
         context["search_query"] = self.get_search_query()
         context["selected_sort"] = self.get_selected_sort()
         context["sort_options"] = self.sort_options
+        context["selected_view_mode"] = self.get_selected_view_mode()
+        context["view_mode_options"] = self.view_mode_options
+        context["dataset_groups"] = (
+            self.get_dataset_groups(context["datasets"])
+            if context["selected_view_mode"] == DATASET_VIEW_MODE_GROUPED
+            else []
+        )
         context["has_dataset_filters"] = bool(
-            context["search_query"] or context["selected_sort"] != self.default_sort
+            context["search_query"]
+            or context["selected_sort"] != self.default_sort
+            or context["selected_view_mode"] != self.default_view_mode
         )
         context["dataset_list_reset_url"] = reverse(self.dataset_list_url_name)
         context["dataset_list_is_archived"] = self.dataset_list_is_archived
@@ -662,7 +703,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
         context["dataset_list_title"] = self.dataset_list_title
         context["dataset_list_description"] = self.dataset_list_description
         context["dataset_table_caption"] = self.dataset_table_caption
-        context["dataset_table_date_heading"] = self.dataset_table_date_heading
+        context["dataset_table_date_heading"] = self.get_dataset_date_heading()
         context["dataset_stats_heading"] = self.dataset_stats_heading
         context["dataset_stats_dataset_label"] = self.dataset_stats_dataset_label
         context["dataset_stats_rows_label"] = self.dataset_stats_rows_label
@@ -674,7 +715,6 @@ class DatasetListView(LoginRequiredMixin, ListView):
         context["dataset_empty_body"] = self.dataset_empty_body
         context["dataset_filtered_empty_title"] = self.dataset_filtered_empty_title
         context["dataset_filtered_empty_body"] = self.dataset_filtered_empty_body
-        context["dataset_groups"] = self.get_dataset_groups(context["datasets"])
         page_obj = context.get("page_obj")
         if page_obj and page_obj.has_previous():
             context["previous_dataset_page_url"] = _querystring_for_page(
