@@ -291,7 +291,7 @@ ROWSET_USE_CASES = (
             "Customers dataset indexed by customer_id or email.",
             "Relationship from Feedback.customer_id to Customers.",
         ),
-        rowset_features=("relationships", "choice columns", "rows", "public_previews"),
+        rowset_features=("relationships", "dataset_context", "rows", "public_previews"),
     ),
     RowsetUseCase(
         id="content_pipeline",
@@ -305,7 +305,12 @@ ROWSET_USE_CASES = (
             "Choice column for stage such as idea, draft, review, published.",
             "Project metadata linking to source docs, repository, or editorial calendar.",
         ),
-        rowset_features=("projects", "dataset_context", "schema_mutations", "exports"),
+        rowset_features=(
+            "projects",
+            "dataset_context",
+            "schema_mutations",
+            "archive_restore_and_exports",
+        ),
     ),
     RowsetUseCase(
         id="catalog",
@@ -319,7 +324,12 @@ ROWSET_USE_CASES = (
             "Currency and URL semantic column types for price and product links.",
             "Optional public preview for read-only sharing.",
         ),
-        rowset_features=("dataset_context", "rows", "public_previews", "exports"),
+        rowset_features=(
+            "dataset_context",
+            "rows",
+            "public_previews",
+            "archive_restore_and_exports",
+        ),
     ),
     RowsetUseCase(
         id="bug_tracker",
@@ -333,7 +343,7 @@ ROWSET_USE_CASES = (
             "Choice columns for status and severity.",
             "Optional relationships to Customers, Releases, or Components datasets.",
         ),
-        rowset_features=("relationships", "choice columns", "rows", "projects"),
+        rowset_features=("relationships", "dataset_context", "rows", "projects"),
     ),
 )
 

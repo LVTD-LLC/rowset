@@ -80,7 +80,11 @@ def rowset_use_cases_skill_path() -> Path:
     return Path(settings.BASE_DIR) / ROWSET_USE_CASES_SKILL_REPOSITORY_PATH
 
 
-def _load_skill_markdown(path: Path, fallback_source_url: str) -> str:
+def _load_skill_markdown(
+    path: Path,
+    fallback_source_url: str,
+    fallback_skill_name: str = "rowset",
+) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -89,9 +93,14 @@ def _load_skill_markdown(path: Path, fallback_source_url: str) -> str:
             path=str(path),
             error=str(exc),
         )
-        return ROWSET_SKILL_FALLBACK_MARKDOWN.replace(
-            ROWSET_SKILL_SOURCE_URL,
-            fallback_source_url,
+        return (
+            ROWSET_SKILL_FALLBACK_MARKDOWN.replace(
+                ROWSET_SKILL_SOURCE_URL,
+                fallback_source_url,
+            ).replace(
+                "name: rowset",
+                f"name: {fallback_skill_name}",
+            )
         )
 
 
@@ -100,11 +109,16 @@ def load_rowset_skill_markdown() -> str:
 
 
 def load_rowset_features_skill_markdown() -> str:
-    return _load_skill_markdown(rowset_features_skill_path(), ROWSET_FEATURES_SKILL_SOURCE_URL)
+    return _load_skill_markdown(
+        rowset_features_skill_path(),
+        ROWSET_FEATURES_SKILL_SOURCE_URL,
+        fallback_skill_name="rowset-features",
+    )
 
 
 def load_rowset_use_cases_skill_markdown() -> str:
     return _load_skill_markdown(
         rowset_use_cases_skill_path(),
         ROWSET_USE_CASES_SKILL_SOURCE_URL,
+        fallback_skill_name="rowset-use-cases",
     )

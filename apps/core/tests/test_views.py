@@ -301,6 +301,34 @@ class TestHomeView:
         assert "npx skills add LVTD-LLC/rowset" in content
         assert "raw.githubusercontent.com/LVTD-LLC/rowset/main" in content
 
+    def test_companion_agent_instructions_fallback_uses_companion_skill_name(
+        self,
+        client,
+        monkeypatch,
+        tmp_path,
+    ):
+        monkeypatch.setattr(
+            agent_skill,
+            "rowset_features_skill_path",
+            lambda: tmp_path / "missing-features.md",
+        )
+        monkeypatch.setattr(
+            agent_skill,
+            "rowset_use_cases_skill_path",
+            lambda: tmp_path / "missing-use-cases.md",
+        )
+
+        features_response = client.get(reverse("agent_instructions_rowset_features"))
+        use_cases_response = client.get(reverse("agent_instructions_rowset_use_cases"))
+
+        assert features_response.status_code == 200
+        assert "name: rowset-features" in features_response.content.decode()
+        assert "rowset-features/SKILL.md" in features_response.content.decode()
+
+        assert use_cases_response.status_code == 200
+        assert "name: rowset-use-cases" in use_cases_response.content.decode()
+        assert "rowset-use-cases/SKILL.md" in use_cases_response.content.decode()
+
     @override_settings(SITE_URL="http://rowset.example")
     def test_build_agent_setup_prompt_uses_https_public_site_url(self, rf, user):
         request = rf.get("/home", HTTP_HOST="internal-proxy")
