@@ -85,7 +85,7 @@ def _active_dataset_queryset(queryset):
 
 
 def _archived_dataset_queryset(queryset):
-    return queryset.filter(archived_at__isnull=False).exclude(status=DatasetStatus.PREVIEWED)
+    return queryset.filter(archived_at__isnull=False)
 
 
 class DatasetServiceError(Exception):
@@ -593,7 +593,9 @@ def serialize_profile_archived_datasets(
     """Return a bounded page of archived datasets owned by the authenticated profile."""
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    queryset = _dataset_summary_queryset(_archived_dataset_queryset(profile.datasets))
+    queryset = _dataset_summary_queryset(
+        _archived_dataset_queryset(profile.datasets).exclude(status=DatasetStatus.PREVIEWED)
+    )
     total_count = queryset.count()
     page = list(queryset[offset : offset + limit])
 
