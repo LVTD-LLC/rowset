@@ -447,10 +447,11 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
     content = response.content.decode()
     groups = response.context["dataset_groups"]
     assert response.status_code == 200
-    assert [group["label"] for group in groups] == ["Research", "Launch", "No project"]
-    assert [dataset.name for dataset in groups[0]["datasets"]] == ["People", notes.name]
-    assert groups[0]["dataset_count"] == 2
-    assert groups[0]["row_count"] == 11
+    assert [group["label"] for group in groups] == ["Launch", "Research", "No project"]
+    assert [dataset.name for dataset in groups[1]["datasets"]] == ["People", notes.name]
+    assert groups[1]["dataset_count"] == 2
+    assert groups[1]["row_count"] == 11
+    assert "Project, then rows" in content
     assert "Datasets for customer interviews." in content
     assert "2 datasets · 11 rows" in content
     assert "No project" in content

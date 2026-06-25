@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -55,28 +55,29 @@ from apps.datasets.services import (
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
 
 DATASET_SORT_OPTIONS = (
-    ("recent", "Recently updated"),
-    ("name", "Name"),
-    ("rows", "Rows"),
-    ("project", "Project"),
+    ("recent", "Project, then recently updated"),
+    ("name", "Project, then name"),
+    ("rows", "Project, then rows"),
+    ("project", "Project name"),
 )
 ARCHIVED_DATASET_SORT_OPTIONS = (
-    ("archived", "Recently archived"),
-    ("name", "Name"),
-    ("rows", "Rows"),
-    ("project", "Project"),
+    ("archived", "Project, then recently archived"),
+    ("name", "Project, then name"),
+    ("rows", "Project, then rows"),
+    ("project", "Project name"),
 )
+PROJECT_GROUP_ORDERING = (F("project__name").asc(nulls_last=True), "project_id")
 DATASET_SORT_ORDERING = {
-    "recent": ("-updated_at", "-created_at", "-id"),
-    "name": ("name", "id"),
-    "rows": ("-row_count", "name", "id"),
-    "project": ("project__name", "name", "id"),
+    "recent": (*PROJECT_GROUP_ORDERING, "-updated_at", "-created_at", "-id"),
+    "name": (*PROJECT_GROUP_ORDERING, "name", "id"),
+    "rows": (*PROJECT_GROUP_ORDERING, "-row_count", "name", "id"),
+    "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 ARCHIVED_DATASET_SORT_ORDERING = {
-    "archived": ("-archived_at", "-updated_at", "-id"),
-    "name": ("name", "id"),
-    "rows": ("-row_count", "name", "id"),
-    "project": ("project__name", "name", "id"),
+    "archived": (*PROJECT_GROUP_ORDERING, "-archived_at", "-updated_at", "-id"),
+    "name": (*PROJECT_GROUP_ORDERING, "name", "id"),
+    "rows": (*PROJECT_GROUP_ORDERING, "-row_count", "name", "id"),
+    "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 DATASET_LIST_PAGE_SIZE = 100
 DATASET_DETAIL_ROW_PAGE_SIZE = 100
