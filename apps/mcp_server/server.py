@@ -13,18 +13,22 @@ from apps.api.services import (
     add_profile_dataset_column,
     archive_profile_dataset,
     create_profile_dataset,
+    create_profile_dataset_relationship,
     create_profile_dataset_row,
     create_profile_project,
+    delete_profile_dataset_relationship,
     delete_profile_dataset_row,
     drop_profile_dataset_column,
     get_profile_dataset,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
+    list_profile_dataset_relationships,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
     patch_profile_dataset_row_by_index,
     rename_profile_dataset_column,
     reorder_profile_dataset_columns,
+    resolve_profile_dataset_relationship,
     restore_profile_dataset,
     search_profile_datasets,
     search_profile_projects,
@@ -951,6 +955,119 @@ def update_dataset_project(
             profile,
             dataset_key,
             project_key,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="list_dataset_relationships",
+    description=(
+        "Return relationship definitions where the source dataset has a column that stores "
+        "another dataset row's index value."
+    ),
+)
+def list_dataset_relationships(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return list_profile_dataset_relationships(profile, dataset_key)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="create_dataset_relationship",
+    description=(
+        "Create one relationship from a source dataset column to another ready dataset's "
+        "index column. When enforcement is true, row writes fail if the source value does "
+        "not match an existing target row index."
+    ),
+)
+def create_dataset_relationship(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    source_column: Annotated[
+        str,
+        Field(description="Source dataset column that stores target row index values."),
+    ],
+    target_dataset_key: Annotated[
+        str,
+        Field(description="Ready Rowset dataset key that the source column points to."),
+    ],
+    name: Annotated[
+        str | None,
+        Field(default=None, description="Optional relationship name. Defaults from the column."),
+    ] = None,
+    enforce_integrity: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="When true, validate non-blank source values against target row indexes.",
+        ),
+    ] = True,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return create_profile_dataset_relationship(
+            profile,
+            dataset_key,
+            source_column=source_column,
+            target_dataset_key=target_dataset_key,
+            name=name,
+            enforce_integrity=enforce_integrity,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="resolve_dataset_relationship",
+    description=(
+        "Resolve one source row through a dataset relationship and return the related "
+        "target row when the source column has a target index value."
+    ),
+)
+def resolve_dataset_relationship(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    relationship_key: Annotated[str, Field(description="Relationship key returned by Rowset.")],
+    source_index_value: Annotated[
+        str,
+        Field(description="Index value of the source dataset row to resolve."),
+    ],
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return resolve_profile_dataset_relationship(
+            profile,
+            dataset_key,
+            relationship_key,
+            source_index_value=source_index_value,
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="delete_dataset_relationship",
+    description="Delete one dataset relationship definition without changing rows.",
+)
+def delete_dataset_relationship(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    relationship_key: Annotated[str, Field(description="Relationship key returned by Rowset.")],
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return delete_profile_dataset_relationship(
+            profile,
+            dataset_key,
+            relationship_key,
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:

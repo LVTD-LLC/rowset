@@ -803,6 +803,176 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
     anyio.run(run)
 
 
+def test_dataset_relationship_mcp_tools_call_dataset_services(monkeypatch):
+    calls = []
+    relationship_payload = {
+        "key": "relationship-key",
+        "name": "Message person",
+        "source_dataset": {
+            "key": "messages-key",
+            "name": "CRM Messages",
+            "index_column": "message_id",
+        },
+        "source_column": "person_id",
+        "target_dataset": {
+            "key": "people-key",
+            "name": "People",
+            "index_column": "person_id",
+        },
+        "target_index_column": "person_id",
+        "enforce_integrity": True,
+        "created_at": "2026-06-25T00:00:00Z",
+        "updated_at": "2026-06-25T00:00:00Z",
+    }
+
+    def list_relationships(authenticated_profile, dataset_key):
+        calls.append(("list", authenticated_profile.id, dataset_key))
+        return {"dataset": dataset_key, "relationships": [relationship_payload]}
+
+    def create_relationship(
+        authenticated_profile,
+        dataset_key,
+        *,
+        source_column,
+        target_dataset_key,
+        name=None,
+        enforce_integrity=True,
+    ):
+        calls.append(
+            (
+                "create",
+                authenticated_profile.id,
+                dataset_key,
+                source_column,
+                target_dataset_key,
+                name,
+                enforce_integrity,
+            )
+        )
+        return {
+            "status": "success",
+            "message": "Relationship created.",
+            "relationship": relationship_payload,
+        }
+
+    def resolve_relationship(
+        authenticated_profile,
+        dataset_key,
+        relationship_key,
+        *,
+        source_index_value,
+    ):
+        calls.append(
+            (
+                "resolve",
+                authenticated_profile.id,
+                dataset_key,
+                relationship_key,
+                source_index_value,
+            )
+        )
+        return {
+            "status": "success",
+            "message": "Related row resolved.",
+            "relationship": relationship_payload,
+            "source_row": {
+                "id": 2,
+                "row_number": 1,
+                "index_value": "M-1",
+                "data": {"message_id": "M-1", "person_id": "P-1"},
+            },
+            "target_index_value": "P-1",
+            "target_row": {
+                "id": 1,
+                "row_number": 1,
+                "index_value": "P-1",
+                "data": {"person_id": "P-1", "name": "Ada Lovelace"},
+            },
+        }
+
+    def delete_relationship(authenticated_profile, dataset_key, relationship_key):
+        calls.append(("delete", authenticated_profile.id, dataset_key, relationship_key))
+        return {
+            "status": "success",
+            "message": "Relationship deleted.",
+            "relationship": relationship_payload,
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.list_profile_dataset_relationships",
+            list_relationships,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.create_profile_dataset_relationship",
+            create_relationship,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.resolve_profile_dataset_relationship",
+            resolve_relationship,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.delete_profile_dataset_relationship",
+            delete_relationship,
+        )
+
+        async with Client(mcp) as client:
+            list_result = await client.call_tool(
+                "list_dataset_relationships",
+                {"dataset_key": "messages-key"},
+            )
+            create_result = await client.call_tool(
+                "create_dataset_relationship",
+                {
+                    "dataset_key": "messages-key",
+                    "source_column": "person_id",
+                    "target_dataset_key": "people-key",
+                    "name": "Message person",
+                    "enforce_integrity": True,
+                },
+            )
+            resolve_result = await client.call_tool(
+                "resolve_dataset_relationship",
+                {
+                    "dataset_key": "messages-key",
+                    "relationship_key": "relationship-key",
+                    "source_index_value": "M-1",
+                },
+            )
+            delete_result = await client.call_tool(
+                "delete_dataset_relationship",
+                {
+                    "dataset_key": "messages-key",
+                    "relationship_key": "relationship-key",
+                },
+            )
+
+        assert list_result.data["relationships"][0]["key"] == "relationship-key"
+        assert create_result.data["relationship"]["source_column"] == "person_id"
+        assert resolve_result.data["target_row"]["data"]["name"] == "Ada Lovelace"
+        assert delete_result.data["message"] == "Relationship deleted."
+        assert calls == [
+            ("list", 11, "messages-key"),
+            (
+                "create",
+                11,
+                "messages-key",
+                "person_id",
+                "people-key",
+                "Message person",
+                True,
+            ),
+            ("resolve", 11, "messages-key", "relationship-key", "M-1"),
+            ("delete", 11, "messages-key", "relationship-key"),
+        ]
+
+    anyio.run(run)
+
+
 @pytest.mark.django_db(transaction=True)
 @override_settings(SITE_URL="https://rowset.example")
 def test_dataset_row_mcp_tool_resolves_owned_public_row_url(monkeypatch, django_user_model):

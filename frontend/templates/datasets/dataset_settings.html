@@ -52,8 +52,8 @@
       </form>
     </section>
 
-    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-settings-heading">
-      <form method="post" action="{% url 'dataset_update_project' dataset.key %}" class="space-y-5">
+      <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-settings-heading">
+        <form method="post" action="{% url 'dataset_update_project' dataset.key %}" class="space-y-5">
         {% csrf_token %}
         <div>
           <h2 id="project-settings-heading" class="fb-section-title">Project</h2>
@@ -74,10 +74,85 @@
           <button type="submit" class="fb-button-primary">Save project</button>
           <a href="{% url 'project_list' %}" class="fb-button-secondary">Manage projects</a>
         </div>
-      </form>
-    </section>
+        </form>
+      </section>
 
-    <section id="column-types" class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="column-schema-settings-heading">
+      <section id="relationships" class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="relationship-settings-heading">
+        <div>
+          <h2 id="relationship-settings-heading" class="fb-section-title">Relationships</h2>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Link this dataset to another dataset by storing the target row index value in one source column.</p>
+        </div>
+
+        <div class="mt-5 grid gap-4">
+          {% for relationship in outgoing_relationships %}
+            <div class="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+              <div class="min-w-0">
+                <p class="break-words font-semibold text-slate-900 dark:text-slate-100">{{ relationship.name }}</p>
+                <p class="mt-1 break-words text-slate-600 dark:text-slate-300">{{ relationship.source_column }} → {{ relationship.target_dataset.name }}.{{ relationship.target_index_column }}</p>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if relationship.enforce_integrity %}Validated on row writes{% else %}Not enforced{% endif %}</p>
+              </div>
+              <form method="post" action="{% url 'dataset_delete_relationship' dataset.key relationship.key %}" onsubmit="return confirm('Delete relationship {{ relationship.name|escapejs }}? Row data will not change.');">
+                {% csrf_token %}
+                <button type="submit" class="fb-button-secondary min-h-8 border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950">Delete</button>
+              </form>
+            </div>
+          {% empty %}
+            <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">No outgoing relationships yet.</p>
+          {% endfor %}
+        </div>
+
+        <form method="post" action="{% url 'dataset_create_relationship' dataset.key %}" class="mt-6 grid gap-4 border-t border-slate-200 pt-5 dark:border-slate-800">
+          {% csrf_token %}
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="relationship-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
+              <input id="relationship-name" name="name" type="text" maxlength="120" placeholder="Message person" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label for="relationship-source-column" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Source column</label>
+              <select id="relationship-source-column" name="source_column" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+                {% for header in dataset.headers %}
+                  <option value="{{ header }}">{{ header }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="relationship-target-dataset" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Target dataset</label>
+            <select id="relationship-target-dataset" name="target_dataset_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm" {% if not relationship_target_dataset_choices %}disabled{% endif %}>
+              {% for target_dataset in relationship_target_dataset_choices %}
+                <option value="{{ target_dataset.key }}">{{ target_dataset.name }} · index {{ target_dataset.index_column }}</option>
+              {% endfor %}
+            </select>
+            {% if not relationship_target_dataset_choices %}
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Create another ready dataset before adding a relationship.</p>
+            {% endif %}
+          </div>
+          <label class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200">
+            <input name="enforce_integrity" type="checkbox" checked class="fb-focus mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 dark:border-slate-700">
+            <span>
+              <span class="font-semibold text-slate-900 dark:text-slate-100">Validate non-blank row values</span>
+              <span class="mt-1 block text-slate-600 dark:text-slate-300">Row creates and updates fail when this source column points at a missing target row.</span>
+            </span>
+          </label>
+          <div>
+            <button type="submit" class="fb-button-primary" {% if not relationship_target_dataset_choices %}disabled{% endif %}>Add relationship</button>
+          </div>
+        </form>
+
+        {% if incoming_relationships %}
+          <div class="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Incoming relationships</h3>
+            <div class="mt-3 grid gap-2">
+              {% for relationship in incoming_relationships %}
+                <p class="break-words rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">{{ relationship.source_dataset.name }}.{{ relationship.source_column }} → {{ dataset.name }}.{{ relationship.target_index_column }}</p>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </section>
+
+      <section id="column-types" class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="column-schema-settings-heading">
       <form method="post" action="{% url 'dataset_update_column_settings' dataset.key %}" class="space-y-5">
         {% csrf_token %}
         <div>

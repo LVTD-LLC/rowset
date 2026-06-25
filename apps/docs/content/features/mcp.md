@@ -97,6 +97,10 @@ create_dataset_row
 update_dataset_row
 update_dataset_row_by_index
 delete_dataset_row
+list_dataset_relationships
+create_dataset_relationship
+resolve_dataset_relationship
+delete_dataset_relationship
 add_column
 rename_column
 drop_column
@@ -121,6 +125,12 @@ and generated index columns cannot be renamed.
 Use `update_dataset_metadata` when the user wants agents to remember dataset
 purpose, workflow rules, status conventions, or other JSON context without
 changing rows.
+
+Use dataset relationship tools when a source dataset column stores another
+dataset row's index value. For example, a Personal CRM messages dataset can store
+`person_id` values that point at the People dataset's `person_id` index. With
+enforcement enabled, row writes fail when a non-blank source value does not match
+an existing target row.
 
 Use `update_project` when the user asks to rename a project or change its
 description. Passing an empty string for `description` clears it.
