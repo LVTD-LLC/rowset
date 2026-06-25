@@ -762,6 +762,62 @@ def test_dataset_detail_links_imported_rows_and_truncates_cells(auth_client, pro
     assert 'aria-hidden="true" tabindex="-1"' in content
 
 
+def test_dataset_detail_renders_owned_rowset_dataset_urls_as_internal_links(
+    auth_client,
+    profile,
+):
+    source_dataset = create_ready_dataset(profile)
+    target_dataset = Dataset.objects.create(
+        profile=profile,
+        name="Sprint task board",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["task_id", "title"],
+        index_column="task_id",
+        row_count=0,
+    )
+    source_dataset.headers = ["name", "task_dataset_url"]
+    source_dataset.save(update_fields=["headers"])
+    row = source_dataset.rows.first()
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/"
+    row.data = {
+        "name": "Review Gate Sprint History",
+        "task_dataset_url": raw_url,
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(source_dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{target_dataset.get_absolute_url()}"' in content
+    assert "Sprint task board" in content
+    assert "Ready" in content
+    assert "Open Rowset dataset Sprint task board" in content
+    assert re.search(rf">\s*{re.escape(raw_url)}\s*<", content) is None
+
+
+def test_dataset_detail_falls_back_to_plain_links_for_unresolved_rowset_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    missing_dataset_key = "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9"
+    raw_url = f"https://rowset.lvtd.dev/datasets/{missing_dataset_key}/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert "Open Rowset URL" in content
+    assert "Rowset dataset" not in content
+
+
 def test_dataset_detail_paginates_imported_rows_without_public_preview(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.rows.all().delete()
@@ -1167,6 +1223,31 @@ def test_dataset_row_detail_links_relationship_value_to_target_row(auth_client, 
     assert f'href="{target_url}"' in content
     assert f"View related People row 1 via {relationship.name}" in content
     assert re.search(r"<a[^>]+>\s*P-1\s*</a>", content) is not None
+
+
+def test_dataset_row_detail_renders_owned_rowset_row_urls_as_internal_links(
+    auth_client,
+    profile,
+):
+    source_dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    target_dataset.name = "Sprint task board"
+    target_dataset.save(update_fields=["name"])
+    target_row = target_dataset.rows.first()
+    source_row = source_dataset.rows.first()
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/rows/{target_row.id}/"
+    source_row.data["name"] = raw_url
+    source_row.save(update_fields=["data"])
+
+    response = auth_client.get(
+        reverse("dataset_row_detail", args=[source_dataset.key, source_row.id])
+    )
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{target_row.get_absolute_url()}"' in content
+    assert "Sprint task board row 1" in content
+    assert re.search(rf">\s*{re.escape(raw_url)}\s*<", content) is None
 
 
 def test_dataset_row_detail_leaves_unresolved_relationship_value_unlinked(auth_client, profile):
@@ -4392,6 +4473,40 @@ def test_public_dataset_keeps_row_detail_link_for_single_url_column(client, prof
     assert 'aria-label="View row 1 details"' in content
     assert 'aria-label="Open external link for row 1"' in content
     assert ">Open</a>" in content
+
+
+def test_public_dataset_renders_rowset_links_without_private_target_metadata(client, profile):
+    source_dataset = create_ready_dataset(profile)
+    source_dataset.public_enabled = True
+    source_dataset.headers = ["name", "task_dataset_url"]
+    source_dataset.save(update_fields=["public_enabled", "headers"])
+    target_dataset = Dataset.objects.create(
+        profile=profile,
+        name="Private Sprint Tasks",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["task_id"],
+        index_column="task_id",
+        row_count=0,
+    )
+    row = source_dataset.rows.first()
+    public_target_url = f"https://rowset.lvtd.dev/share/datasets/{target_dataset.public_key}/"
+    row.data = {
+        "name": "Review Gate Sprint History",
+        "task_dataset_url": public_target_url,
+    }
+    row.save(update_fields=["data"])
+
+    response = client.get(source_dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{public_target_url}"' in content
+    assert "Rowset dataset" in content
+    assert "Shared dataset" in content
+    assert "Private Sprint Tasks" not in content
+    assert reverse("public_dataset_row_detail", args=[source_dataset.public_key, row.id]) in content
 
 
 def test_public_dataset_row_detail_displays_full_row_data(client, profile):

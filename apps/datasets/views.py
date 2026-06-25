@@ -1,6 +1,9 @@
 import hashlib
 import json
+import uuid
+from urllib.parse import urlparse
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -106,6 +109,177 @@ DATASET_EXPORT_FORMATS = {
         rows_to_xlsx_bytes,
     ),
 }
+ROWSET_CANONICAL_HOST = "rowset.lvtd.dev"
+ROWSET_LINK_SCHEMES = {"http", "https"}
+
+
+def _host_without_port(host: str) -> str:
+    return host.split(":", 1)[0].lower()
+
+
+def _rowset_link_hosts(request=None) -> set[str]:
+    hosts = {ROWSET_CANONICAL_HOST}
+    site_host = urlparse(settings.SITE_URL).hostname
+    if site_host:
+        hosts.add(site_host.lower())
+    if request is not None:
+        request_host = _host_without_port(request.get_host())
+        if request_host:
+            hosts.add(request_host)
+    return hosts
+
+
+def _parse_rowset_dataset_link(value: str, request=None) -> dict[str, object] | None:
+    raw_value = value.strip()
+    if not raw_value:
+        return None
+
+    if raw_value.startswith("/"):
+        href = raw_value
+        parsed = urlparse(raw_value)
+    else:
+        href = raw_value if "://" in raw_value else f"https://{raw_value}"
+        parsed = urlparse(href)
+        if parsed.scheme not in ROWSET_LINK_SCHEMES or not parsed.hostname:
+            return None
+        if parsed.hostname.lower() not in _rowset_link_hosts(request):
+            return None
+
+    path_parts = [part for part in parsed.path.split("/") if part]
+    is_public = False
+    dataset_key = ""
+    remaining_parts: list[str] = []
+    if len(path_parts) >= 2 and path_parts[0] == "datasets":
+        dataset_key = path_parts[1]
+        remaining_parts = path_parts[2:]
+    elif len(path_parts) >= 3 and path_parts[0:2] == ["share", "datasets"]:
+        is_public = True
+        dataset_key = path_parts[2]
+        remaining_parts = path_parts[3:]
+    else:
+        return None
+
+    try:
+        uuid.UUID(dataset_key)
+    except ValueError:
+        return None
+
+    row_id = None
+    if len(remaining_parts) >= 2 and remaining_parts[0] == "rows":
+        try:
+            row_id = int(remaining_parts[1])
+        except ValueError:
+            row_id = None
+
+    return {
+        "href": href,
+        "dataset_key": dataset_key,
+        "is_public": is_public,
+        "row_id": row_id,
+    }
+
+
+def _generic_rowset_link(parsed_link: dict[str, object]) -> dict[str, str]:
+    is_row = parsed_link["row_id"] is not None
+    if is_row:
+        link_text = "Rowset row"
+        detail = "Shared row" if parsed_link["is_public"] else "Internal row"
+    else:
+        link_text = "Rowset dataset"
+        detail = "Shared dataset" if parsed_link["is_public"] else "Internal dataset"
+    return {
+        "rowset_link_url": str(parsed_link["href"]),
+        "rowset_link_text": link_text,
+        "rowset_link_detail": detail,
+        "rowset_link_label": f"Open {link_text.lower()}",
+    }
+
+
+def _plain_rowset_url_link(parsed_link: dict[str, object]) -> dict[str, str]:
+    return {
+        "plain_link_url": str(parsed_link["href"]),
+        "plain_link_label": "Open Rowset URL",
+    }
+
+
+def _owned_rowset_link(
+    parsed_link: dict[str, object],
+    profile,
+    link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None],
+) -> dict[str, str] | None:
+    cache_key = (
+        profile.pk,
+        bool(parsed_link["is_public"]),
+        str(parsed_link["dataset_key"]),
+        parsed_link["row_id"],
+    )
+    if cache_key in link_cache:
+        return link_cache[cache_key]
+
+    dataset_lookup = {"profile": profile}
+    if parsed_link["is_public"]:
+        dataset_lookup["public_key"] = parsed_link["dataset_key"]
+    else:
+        dataset_lookup["key"] = parsed_link["dataset_key"]
+
+    dataset = (
+        Dataset.objects.only("id", "key", "public_key", "name", "status", "archived_at")
+        .filter(**dataset_lookup)
+        .first()
+    )
+    if dataset is None:
+        link_cache[cache_key] = None
+        return None
+
+    row_id = parsed_link["row_id"]
+    target_url = dataset.get_absolute_url()
+    target_label = dataset.name
+    target_detail = "Archived" if dataset.archived_at else dataset.get_status_display()
+    aria_label = f"Open Rowset dataset {dataset.name}"
+    if row_id is not None:
+        target_row = dataset.rows.only("id", "dataset_id", "row_number").filter(id=row_id).first()
+        if target_row is not None:
+            target_url = target_row.get_absolute_url()
+            target_label = f"{dataset.name} row {target_row.row_number}"
+            target_detail = "Row"
+            aria_label = f"Open Rowset row {target_row.row_number} in {dataset.name}"
+
+    link = {
+        "rowset_link_url": target_url,
+        "rowset_link_text": target_label,
+        "rowset_link_detail": target_detail,
+        "rowset_link_label": aria_label,
+    }
+    link_cache[cache_key] = link
+    return link
+
+
+def _rowset_link_for_value(
+    value: str,
+    *,
+    request=None,
+    profile=None,
+    public_context: bool = False,
+    link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
+) -> dict[str, str]:
+    parsed_link = _parse_rowset_dataset_link(value, request)
+    if parsed_link is None:
+        return {}
+    if public_context:
+        return _generic_rowset_link(parsed_link)
+
+    if profile is not None:
+        if link_cache is None:
+            link_cache = {}
+        link = _owned_rowset_link(parsed_link, profile, link_cache)
+        if link is not None:
+            return link
+
+    return _plain_rowset_url_link(parsed_link)
+
+
+def _cell_value(value: object) -> str:
+    return "" if value is None else str(value)
 
 
 def _mutation_change_display(value, *, values_recorded: bool, legacy_placeholder: str) -> dict:
@@ -215,6 +389,11 @@ def _row_cells(
     row_data: dict[str, object],
     column_schema: dict | None = None,
     relationship_links: dict[str, dict[str, str]] | None = None,
+    *,
+    request=None,
+    profile=None,
+    public_context: bool = False,
+    link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
 ) -> list[dict[str, str]]:
     ordered_keys = [*headers, *[key for key in row_data if key not in headers]]
     descriptions = {
@@ -224,16 +403,65 @@ def _row_cells(
     relationship_links = relationship_links or {}
     cells = []
     for header in ordered_keys:
-        value = row_data.get(header, "")
+        value = _cell_value(row_data.get(header, ""))
         cell = {
             "header": header,
             "description": descriptions.get(header, ""),
-            "value": "" if value is None else str(value),
+            "value": value,
         }
         relationship_link = relationship_links.get(header)
         if relationship_link and cell["value"]:
             cell["relationship_url"] = relationship_link["url"]
             cell["relationship_label"] = relationship_link["label"]
+        elif cell["value"]:
+            cell.update(
+                _rowset_link_for_value(
+                    cell["value"],
+                    request=request,
+                    profile=profile,
+                    public_context=public_context,
+                    link_cache=link_cache,
+                )
+            )
+        cells.append(cell)
+    return cells
+
+
+def _row_table_cells(
+    headers: list[str],
+    row_data: dict[str, object],
+    *,
+    row_url: str = "",
+    row_number: int | None = None,
+    request=None,
+    profile=None,
+    public_context: bool = False,
+    link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
+) -> list[dict[str, object]]:
+    cells = []
+    row_detail_primary_assigned = False
+    for index, value in enumerate(ordered_row_values(headers, row_data)):
+        display_value = _cell_value(value)
+        cell = {
+            "value": display_value,
+            "is_first": index == 0,
+        }
+        if display_value:
+            cell.update(
+                _rowset_link_for_value(
+                    display_value,
+                    request=request,
+                    profile=profile,
+                    public_context=public_context,
+                    link_cache=link_cache,
+                )
+            )
+        if row_url and not cell.get("rowset_link_url") and not cell.get("plain_link_url"):
+            cell["row_url"] = row_url
+            cell["row_detail_label"] = f"View row {row_number} details"
+            if not row_detail_primary_assigned:
+                cell["is_row_detail_primary"] = True
+                row_detail_primary_assigned = True
         cells.append(cell)
     return cells
 
@@ -888,31 +1116,57 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         )
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
-        rows_with_values = [
-            {
-                "values": ordered_row_values(dataset.headers, row.data),
-                "actor_label": row.updated_by_actor_label,
-                "row_number": row.row_number,
-                "url": reverse(
-                    "dataset_row_detail",
-                    kwargs={"dataset_key": dataset.key, "row_id": row.id},
-                ),
-            }
-            for row in row_page_obj.object_list
-        ]
-        if not has_imported_rows:
-            rows_with_values = [
+        rowset_link_cache = {}
+        rows_with_values = []
+        for row in row_page_obj.object_list:
+            row_url = reverse(
+                "dataset_row_detail",
+                kwargs={"dataset_key": dataset.key, "row_id": row.id},
+            )
+            cells = _row_table_cells(
+                dataset.headers,
+                row.data,
+                row_url=row_url,
+                row_number=row.row_number,
+                request=self.request,
+                profile=self.request.user.profile,
+                link_cache=rowset_link_cache,
+            )
+            rows_with_values.append(
                 {
-                    "values": ordered_row_values(dataset.headers, preview_row),
-                    "actor_label": "",
-                    "row_number": row_number,
-                    "url": "",
+                    "values": ordered_row_values(dataset.headers, row.data),
+                    "cells": cells,
+                    "has_accessible_row_link": any(
+                        cell.get("is_row_detail_primary") for cell in cells
+                    ),
+                    "actor_label": row.updated_by_actor_label,
+                    "row_number": row.row_number,
+                    "url": row_url,
                 }
-                for row_number, preview_row in enumerate(
-                    dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE],
-                    start=1,
+            )
+        if not has_imported_rows:
+            rows_with_values = []
+            for row_number, preview_row in enumerate(
+                dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE],
+                start=1,
+            ):
+                cells = _row_table_cells(
+                    dataset.headers,
+                    preview_row,
+                    request=self.request,
+                    profile=self.request.user.profile,
+                    link_cache=rowset_link_cache,
                 )
-            ]
+                rows_with_values.append(
+                    {
+                        "values": ordered_row_values(dataset.headers, preview_row),
+                        "cells": cells,
+                        "has_accessible_row_link": False,
+                        "actor_label": "",
+                        "row_number": row_number,
+                        "url": "",
+                    }
+                )
         context.update(row_query_context if has_imported_rows else {})
         context["rows_with_values"] = rows_with_values
         context["column_definitions"] = column_definition_list
@@ -1006,6 +1260,9 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
             row.data,
             dataset.column_schema,
             relationship_links=_row_relationship_links(dataset, row.data),
+            request=self.request,
+            profile=self.request.user.profile,
+            link_cache={},
         )
         return context
 
@@ -1423,17 +1680,30 @@ def public_dataset(request, public_key):
         )
         paginator = Paginator(row_queryset, dataset.public_page_size)
         page_obj = paginator.get_page(request.GET.get("page"))
-        public_rows_with_values = [
-            {
-                "values": ordered_row_values(dataset.headers, row.data),
-                "row_number": row.row_number,
-                "url": reverse(
-                    "public_dataset_row_detail",
-                    kwargs={"public_key": dataset.public_key, "row_id": row.id},
-                ),
-            }
-            for row in page_obj.object_list
-        ]
+        for row in page_obj.object_list:
+            row_url = reverse(
+                "public_dataset_row_detail",
+                kwargs={"public_key": dataset.public_key, "row_id": row.id},
+            )
+            cells = _row_table_cells(
+                dataset.headers,
+                row.data,
+                row_url=row_url,
+                row_number=row.row_number,
+                request=request,
+                public_context=True,
+            )
+            public_rows_with_values.append(
+                {
+                    "values": ordered_row_values(dataset.headers, row.data),
+                    "cells": cells,
+                    "has_accessible_row_link": any(
+                        cell.get("is_row_detail_primary") for cell in cells
+                    ),
+                    "row_number": row.row_number,
+                    "url": row_url,
+                }
+            )
     else:
         row_query_context = {}
 
@@ -1498,7 +1768,12 @@ def public_dataset_row_detail(request, public_key, row_id):
             dataset=dataset,
             id=row_id,
         )
-        row_cells = _row_cells(dataset.headers, dataset_row.data)
+        row_cells = _row_cells(
+            dataset.headers,
+            dataset_row.data,
+            request=request,
+            public_context=True,
+        )
 
     response = render(
         request,
