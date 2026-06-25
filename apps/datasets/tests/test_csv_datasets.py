@@ -1,4 +1,5 @@
 import csv
+from datetime import timedelta
 import io
 import json
 import re
@@ -401,6 +402,110 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     assert "Dataset status" not in content
 
 
+def test_dataset_list_defaults_to_raw_recent_order(auth_client, profile):
+    older_dataset = Dataset.objects.create(
+        profile=profile,
+        name="Alpha",
+        original_filename="alpha.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+    newer_dataset = Dataset.objects.create(
+        profile=profile,
+        name="Beta",
+        original_filename="beta.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+    now = timezone.now()
+    Dataset.objects.filter(pk=older_dataset.pk).update(
+        created_at=now - timedelta(days=4),
+        updated_at=now - timedelta(days=2),
+    )
+    Dataset.objects.filter(pk=newer_dataset.pk).update(
+        created_at=now - timedelta(days=3),
+        updated_at=now - timedelta(days=1),
+    )
+
+    response = auth_client.get(reverse("dataset_list"))
+
+    assert response.status_code == 200
+    assert response.context["selected_view_mode"] == "raw"
+    assert response.context["selected_sort"] == "recent"
+    assert response.context["dataset_groups"] == []
+    assert [dataset.name for dataset in response.context["datasets"]] == ["Beta", "Alpha"]
+
+
+def test_dataset_list_supports_created_sort(auth_client, profile):
+    older_created_dataset = Dataset.objects.create(
+        profile=profile,
+        name="Recently updated",
+        original_filename="recently-updated.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+    newer_created_dataset = Dataset.objects.create(
+        profile=profile,
+        name="Recently created",
+        original_filename="recently-created.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+    now = timezone.now()
+    Dataset.objects.filter(pk=older_created_dataset.pk).update(
+        created_at=now - timedelta(days=6),
+        updated_at=now,
+    )
+    Dataset.objects.filter(pk=newer_created_dataset.pk).update(
+        created_at=now - timedelta(days=1),
+        updated_at=now - timedelta(days=5),
+    )
+
+    response = auth_client.get(reverse("dataset_list"), {"sort": "created"})
+
+    assert response.status_code == 200
+    assert response.context["selected_sort"] == "created"
+    assert response.context["dataset_table_date_heading"] == "Created"
+    assert [dataset.name for dataset in response.context["datasets"]] == [
+        "Recently created",
+        "Recently updated",
+    ]
+
+
+def test_dataset_list_raw_project_sort_puts_unassigned_datasets_last(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Research")
+    Dataset.objects.create(
+        profile=profile,
+        name="Alpha loose dataset",
+        original_filename="loose.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Zulu project dataset",
+        original_filename="project.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+
+    response = auth_client.get(reverse("dataset_list"), {"sort": "project", "view": "raw"})
+
+    assert response.status_code == 200
+    assert response.context["selected_view_mode"] == "raw"
+    assert [dataset.name for dataset in response.context["datasets"]] == [
+        "Zulu project dataset",
+        "Alpha loose dataset",
+    ]
+
+
 def test_dataset_list_groups_datasets_by_project(auth_client, profile):
     research = Project.objects.create(
         profile=profile,
@@ -442,16 +547,18 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
         row_count=4,
     )
 
-    response = auth_client.get(reverse("dataset_list"), {"sort": "rows"})
+    response = auth_client.get(reverse("dataset_list"), {"sort": "rows", "view": "grouped"})
 
     content = response.content.decode()
     groups = response.context["dataset_groups"]
     assert response.status_code == 200
+    assert response.context["selected_view_mode"] == "grouped"
     assert [group["label"] for group in groups] == ["Launch", "Research", "No project"]
     assert [dataset.name for dataset in groups[1]["datasets"]] == ["People", notes.name]
     assert groups[1]["dataset_count"] == 2
     assert groups[1]["row_count"] == 11
-    assert "Project, then rows" in content
+    assert "Grouped by project" in content
+    assert "border-l-2 border-emerald-200" in content
     assert "Datasets for customer interviews." in content
     assert "2 datasets · 11 rows" in content
     assert "No project" in content
@@ -472,8 +579,8 @@ def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client,
             row_count=1,
         )
 
-    page_one = auth_client.get(reverse("dataset_list"), {"sort": "name"})
-    page_two = auth_client.get(f"{reverse('dataset_list')}?sort=name&page=2")
+    page_one = auth_client.get(reverse("dataset_list"), {"sort": "name", "view": "grouped"})
+    page_two = auth_client.get(f"{reverse('dataset_list')}?sort=name&view=grouped&page=2")
 
     assert page_one.status_code == 200
     assert page_two.status_code == 200
