@@ -16,7 +16,9 @@ from django.views.generic import DetailView, ListView
 from apps.api.services import (
     DatasetServiceError,
     archive_profile_dataset,
+    create_profile_dataset_relationship,
     create_profile_project,
+    delete_profile_dataset_relationship,
     update_profile_dataset_column_types,
     update_profile_dataset_metadata,
     update_profile_dataset_project,
@@ -367,6 +369,22 @@ def _dataset_row_query_context(
     }
 
 
+def _dataset_relationship_context(dataset: Dataset) -> dict:
+    outgoing = dataset.outgoing_relationships.select_related("target_dataset").order_by(
+        "name",
+        "id",
+    )
+    incoming = dataset.incoming_relationships.select_related("source_dataset").order_by(
+        "source_dataset__name",
+        "name",
+        "id",
+    )
+    return {
+        "outgoing_relationships": outgoing,
+        "incoming_relationships": incoming,
+    }
+
+
 class DatasetListView(LoginRequiredMixin, ListView):
     template_name = "datasets/dataset_list.html"
     context_object_name = "datasets"
@@ -701,6 +719,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             indent=2,
             sort_keys=True,
         )
+        context.update(_dataset_relationship_context(dataset))
         return context
 
 
@@ -772,6 +791,12 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["public_url"] = self.request.build_absolute_uri(self.object.get_public_url())
         context["project_choices"] = self.request.user.profile.projects.all()
+        context["relationship_target_dataset_choices"] = (
+            _owned_dataset_queryset(self.request.user.profile)
+            .filter(status=DatasetStatus.READY)
+            .exclude(pk=self.object.pk)
+            .order_by("name", "-created_at")
+        )
         context["column_definitions"] = column_definitions(
             self.object.headers,
             self.object.column_schema,
@@ -783,6 +808,7 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
             indent=2,
             sort_keys=True,
         )
+        context.update(_dataset_relationship_context(self.object))
         return context
 
 
@@ -909,6 +935,47 @@ def dataset_update_project(request, dataset_key):
         messages.error(request, exc.message)
     else:
         messages.success(request, "Project assignment updated.")
+
+    return redirect("dataset_settings", dataset_key=dataset_key)
+
+
+@login_required
+@require_POST
+def dataset_create_relationship(request, dataset_key):
+    try:
+        create_profile_dataset_relationship(
+            request.user.profile,
+            str(dataset_key),
+            source_column=request.POST.get("source_column", ""),
+            target_dataset_key=request.POST.get("target_dataset_key", ""),
+            name=request.POST.get("name", ""),
+            enforce_integrity=request.POST.get("enforce_integrity") == "on",
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, "Dataset relationship created.")
+
+    return redirect("dataset_settings", dataset_key=dataset_key)
+
+
+@login_required
+@require_POST
+def dataset_delete_relationship(request, dataset_key, relationship_key):
+    try:
+        delete_profile_dataset_relationship(
+            request.user.profile,
+            str(dataset_key),
+            str(relationship_key),
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, "Dataset relationship deleted.")
 
     return redirect("dataset_settings", dataset_key=dataset_key)
 

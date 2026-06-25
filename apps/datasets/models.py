@@ -212,6 +212,61 @@ class DatasetRow(BaseModel):
         return agent_actor_label(self.updated_by_agent_api_key)
 
 
+class DatasetRelationship(BaseModel):
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name="dataset_relationships",
+    )
+    key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    source_dataset = models.ForeignKey(
+        Dataset,
+        on_delete=models.CASCADE,
+        related_name="outgoing_relationships",
+    )
+    target_dataset = models.ForeignKey(
+        Dataset,
+        on_delete=models.CASCADE,
+        related_name="incoming_relationships",
+    )
+    name = models.CharField(max_length=120)
+    source_column = models.CharField(max_length=255)
+    target_index_column = models.CharField(max_length=255)
+    enforce_integrity = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["source_dataset__name", "name", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                "source_dataset",
+                Lower("name"),
+                name="unique_dataset_relationship_name_ci",
+            ),
+            models.UniqueConstraint(
+                fields=[
+                    "source_dataset",
+                    "source_column",
+                    "target_dataset",
+                    "target_index_column",
+                ],
+                name="unique_dataset_relationship_path",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["profile", "source_dataset"],
+                name="dataset_rel_source_idx",
+            ),
+            models.Index(
+                fields=["profile", "target_dataset"],
+                name="dataset_rel_target_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.source_dataset_id}.{self.source_column} -> {self.target_dataset_id}"
+
+
 class DatasetMutation(BaseModel):
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name="mutations")
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="dataset_mutations")

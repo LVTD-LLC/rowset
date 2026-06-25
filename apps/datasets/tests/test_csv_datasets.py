@@ -18,7 +18,7 @@ from apps.api.services import list_profile_dataset_rows, patch_profile_dataset_r
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
-from apps.datasets.models import Dataset, DatasetMutation, DatasetRow, Project
+from apps.datasets.models import Dataset, DatasetMutation, DatasetRelationship, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
     choice_constraints_from_schema,
@@ -130,6 +130,54 @@ def create_ready_dataset(profile):
         data={"name": "Grace", "email": "grace@example.com"},
     )
     return dataset
+
+
+def create_crm_datasets(profile):
+    people = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["person_id", "name", "email"],
+        index_column="person_id",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=people,
+        row_number=1,
+        index_value="P-1",
+        data={
+            "person_id": "P-1",
+            "name": "Ada Lovelace",
+            "email": "ada@example.com",
+        },
+    )
+    messages = Dataset.objects.create(
+        profile=profile,
+        name="CRM Messages",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["message_id", "person_id", "body"],
+        index_column="message_id",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=messages,
+        row_number=1,
+        index_value="M-1",
+        data={
+            "message_id": "M-1",
+            "person_id": "P-1",
+            "body": "Intro call completed.",
+        },
+    )
+    return people, messages
 
 
 def configure_filterable_dataset(dataset):
@@ -1929,6 +1977,159 @@ def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
             "description": "Current retail price in USD.",
         },
     }
+
+
+def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(client, profile):
+    people, messages = create_crm_datasets(profile)
+
+    create_response = client.post(
+        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+        data={
+            "name": "Message person",
+            "source_column": "person_id",
+            "target_dataset_key": str(people.key),
+            "enforce_integrity": True,
+        },
+        content_type="application/json",
+    )
+
+    assert create_response.status_code == 201
+    relationship_payload = create_response.json()["relationship"]
+    relationship_key = relationship_payload["key"]
+    assert relationship_payload["source_column"] == "person_id"
+    assert relationship_payload["target_dataset"]["key"] == str(people.key)
+    assert relationship_payload["target_index_column"] == "person_id"
+    assert relationship_payload["enforce_integrity"] is True
+    relationship = DatasetRelationship.objects.get(key=relationship_key)
+    assert relationship.source_dataset == messages
+    assert relationship.target_dataset == people
+
+    list_response = client.get(
+        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}"
+    )
+    assert list_response.status_code == 200
+    assert [item["key"] for item in list_response.json()["relationships"]] == [
+        relationship_key
+    ]
+
+    resolve_response = client.get(
+        f"/api/datasets/{messages.key}/relationships/{relationship_key}/resolve"
+        f"?api_key={profile.key}&source_index_value=M-1"
+    )
+    assert resolve_response.status_code == 200
+    assert resolve_response.json()["target_index_value"] == "P-1"
+    assert resolve_response.json()["target_row"]["data"]["name"] == "Ada Lovelace"
+
+    invalid_row_response = client.post(
+        f"/api/datasets/{messages.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "message_id": "M-2",
+                "person_id": "P-404",
+                "body": "Missing person.",
+            }
+        },
+        content_type="application/json",
+    )
+    assert invalid_row_response.status_code == 400
+    assert "references a missing row" in invalid_row_response.json()["detail"]
+    assert messages.rows.filter(index_value="M-2").exists() is False
+
+    blank_row_response = client.post(
+        f"/api/datasets/{messages.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "message_id": "M-2",
+                "person_id": "",
+                "body": "Unmatched message.",
+            }
+        },
+        content_type="application/json",
+    )
+    assert blank_row_response.status_code == 200
+
+
+def test_dataset_relationship_api_rejects_existing_unmatched_values(client, profile):
+    people, messages = create_crm_datasets(profile)
+    messages.rows.create(
+        row_number=2,
+        index_value="M-2",
+        data={
+            "message_id": "M-2",
+            "person_id": "P-404",
+            "body": "Unmatched.",
+        },
+    )
+    messages.row_count = 2
+    messages.save(update_fields=["row_count"])
+
+    response = client.post(
+        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+        data={
+            "source_column": "person_id",
+            "target_dataset_key": str(people.key),
+            "enforce_integrity": True,
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert "without a matching row" in response.json()["detail"]
+    assert not DatasetRelationship.objects.filter(source_dataset=messages).exists()
+
+
+def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(client, profile):
+    people, messages = create_crm_datasets(profile)
+    create_response = client.post(
+        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+        data={
+            "source_column": "person_id",
+            "target_dataset_key": str(people.key),
+            "enforce_integrity": True,
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    person_row = people.rows.get(index_value="P-1")
+
+    delete_response = client.delete(
+        f"/api/datasets/{people.key}/rows/{person_row.id}?api_key={profile.key}"
+    )
+
+    assert delete_response.status_code == 409
+    assert "referenced by relationship" in delete_response.json()["detail"]
+    assert people.rows.filter(index_value="P-1").exists()
+
+
+def test_dataset_relationship_settings_form_creates_and_detail_shows_relationship(
+    auth_client,
+    profile,
+):
+    people, messages = create_crm_datasets(profile)
+
+    response = auth_client.post(
+        reverse("dataset_create_relationship", args=[messages.key]),
+        data={
+            "name": "Message person",
+            "source_column": "person_id",
+            "target_dataset_key": str(people.key),
+            "enforce_integrity": "on",
+        },
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert DatasetRelationship.objects.filter(
+        source_dataset=messages,
+        target_dataset=people,
+        source_column="person_id",
+    ).exists()
+
+    detail_response = auth_client.get(reverse("dataset_detail", args=[messages.key]))
+    assert detail_response.status_code == 200
+    content = detail_response.content.decode()
+    assert "Message person" in content
+    assert "person_id → People.person_id" in content
 
 
 def test_normalize_column_schema_accepts_choice_metadata():
