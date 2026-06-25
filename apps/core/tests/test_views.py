@@ -322,12 +322,18 @@ class TestHomeView:
         use_cases_response = client.get(reverse("agent_instructions_rowset_use_cases"))
 
         assert features_response.status_code == 200
-        assert "name: rowset-features" in features_response.content.decode()
-        assert "rowset-features/SKILL.md" in features_response.content.decode()
+        features_content = features_response.content.decode()
+        assert "name: rowset-features" in features_content
+        assert "what Rowset can do" in features_content
+        assert "# Rowset Features" in features_content
+        assert "rowset-features/SKILL.md" in features_content
 
         assert use_cases_response.status_code == 200
-        assert "name: rowset-use-cases" in use_cases_response.content.decode()
-        assert "rowset-use-cases/SKILL.md" in use_cases_response.content.decode()
+        use_cases_content = use_cases_response.content.decode()
+        assert "name: rowset-use-cases" in use_cases_content
+        assert "specific workflow" in use_cases_content
+        assert "# Rowset Use Cases" in use_cases_content
+        assert "rowset-use-cases/SKILL.md" in use_cases_content
 
     @override_settings(SITE_URL="http://rowset.example")
     def test_build_agent_setup_prompt_uses_https_public_site_url(self, rf, user):

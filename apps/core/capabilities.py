@@ -362,7 +362,34 @@ ROWSET_GUARDRAILS = (
 )
 
 
+def _validate_capability_registry() -> None:
+    capability_ids = [capability.id for capability in ROWSET_CAPABILITIES]
+    duplicate_ids = sorted(
+        capability_id
+        for capability_id in set(capability_ids)
+        if capability_ids.count(capability_id) > 1
+    )
+    if duplicate_ids:
+        raise ValueError(
+            "ROWSET_CAPABILITIES contains duplicate IDs: " + ", ".join(duplicate_ids)
+        )
+
+    valid_capability_ids = set(capability_ids)
+    unknown_references = []
+    for use_case in ROWSET_USE_CASES:
+        missing_ids = sorted(set(use_case.rowset_features) - valid_capability_ids)
+        if missing_ids:
+            unknown_references.append(f"{use_case.id}: {', '.join(missing_ids)}")
+
+    if unknown_references:
+        raise ValueError(
+            "ROWSET_USE_CASES references unknown capability IDs: "
+            + "; ".join(unknown_references)
+        )
+
+
 def rowset_capabilities_payload() -> dict[str, Any]:
+    _validate_capability_registry()
     return {
         "product": "Rowset",
         "capability_version": CAPABILITY_VERSION,
@@ -391,6 +418,7 @@ def render_rowset_llms_txt(
     features_skill_url: str,
     use_cases_skill_url: str,
 ) -> str:
+    _validate_capability_registry()
     lines = [
         "# Rowset",
         "",

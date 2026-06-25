@@ -44,28 +44,18 @@ ROWSET_AGENT_SETUP_INSTRUCTIONS = (
     "Use update_dataset_public_preview when the user asks for a shareable "
     "read-only preview."
 )
-ROWSET_SKILL_FALLBACK_MARKDOWN = f"""---
-name: rowset
-description: >
-  Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP or REST
-  access, or manage Rowset datasets.
----
-
-# Rowset
-
-The checked-in Rowset skill file could not be loaded from this deployment.
-Install the canonical Rowset skill with:
-
-```bash
-{ROWSET_SKILL_INSTALL_COMMAND}
-```
-
-Or read the source text:
-
-```text
-{ROWSET_SKILL_SOURCE_URL}
-```
-"""
+ROWSET_SKILL_FALLBACK_DESCRIPTION = (
+    "Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP "
+    "or REST access, or manage Rowset datasets."
+)
+ROWSET_FEATURES_SKILL_FALLBACK_DESCRIPTION = (
+    "Use when a user asks what Rowset can do, which features are available, "
+    "or how the current Rowset capabilities fit together."
+)
+ROWSET_USE_CASES_SKILL_FALLBACK_DESCRIPTION = (
+    "Use when a user asks how to use Rowset for a specific workflow, dataset "
+    "shape, or agent-owned structured data use case."
+)
 
 
 def rowset_skill_path() -> Path:
@@ -80,10 +70,42 @@ def rowset_use_cases_skill_path() -> Path:
     return Path(settings.BASE_DIR) / ROWSET_USE_CASES_SKILL_REPOSITORY_PATH
 
 
+def _build_skill_fallback_markdown(
+    *,
+    skill_name: str,
+    description: str,
+    title: str,
+    source_url: str,
+) -> str:
+    return f"""---
+name: {skill_name}
+description: >
+  {description}
+---
+
+# {title}
+
+The checked-in Rowset skill file could not be loaded from this deployment.
+Install the canonical Rowset skill with:
+
+```bash
+{ROWSET_SKILL_INSTALL_COMMAND}
+```
+
+Or read the source text:
+
+```text
+{source_url}
+```
+"""
+
+
 def _load_skill_markdown(
     path: Path,
     fallback_source_url: str,
     fallback_skill_name: str = "rowset",
+    fallback_description: str = ROWSET_SKILL_FALLBACK_DESCRIPTION,
+    fallback_title: str = "Rowset",
 ) -> str:
     try:
         return path.read_text(encoding="utf-8")
@@ -93,14 +115,11 @@ def _load_skill_markdown(
             path=str(path),
             error=str(exc),
         )
-        return (
-            ROWSET_SKILL_FALLBACK_MARKDOWN.replace(
-                ROWSET_SKILL_SOURCE_URL,
-                fallback_source_url,
-            ).replace(
-                "name: rowset",
-                f"name: {fallback_skill_name}",
-            )
+        return _build_skill_fallback_markdown(
+            skill_name=fallback_skill_name,
+            description=fallback_description,
+            title=fallback_title,
+            source_url=fallback_source_url,
         )
 
 
@@ -113,6 +132,8 @@ def load_rowset_features_skill_markdown() -> str:
         rowset_features_skill_path(),
         ROWSET_FEATURES_SKILL_SOURCE_URL,
         fallback_skill_name="rowset-features",
+        fallback_description=ROWSET_FEATURES_SKILL_FALLBACK_DESCRIPTION,
+        fallback_title="Rowset Features",
     )
 
 
@@ -121,4 +142,6 @@ def load_rowset_use_cases_skill_markdown() -> str:
         rowset_use_cases_skill_path(),
         ROWSET_USE_CASES_SKILL_SOURCE_URL,
         fallback_skill_name="rowset-use-cases",
+        fallback_description=ROWSET_USE_CASES_SKILL_FALLBACK_DESCRIPTION,
+        fallback_title="Rowset Use Cases",
     )
