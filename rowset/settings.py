@@ -18,6 +18,7 @@ import environ
 import logfire
 import sentry_sdk
 import structlog
+from django.core.exceptions import ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from structlog_sentry import SentryProcessor
@@ -231,9 +232,9 @@ STATICFILES_DIRS = [
     BASE_DIR.joinpath("frontend/build"),
 ]
 
-# Use the Rowset product name for environment-scoped storage buckets.
-folder_name = f"rowset-{ENVIRONMENT}"
 aws_s3_endpoint_url = env("AWS_S3_ENDPOINT_URL", default="")
+default_storage_bucket_name = f"rowset-{ENVIRONMENT}" if ENVIRONMENT == "dev" else ""
+storage_bucket_name = env("AWS_STORAGE_BUCKET_NAME", default=default_storage_bucket_name)
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 
@@ -251,12 +252,18 @@ if not aws_s3_endpoint_url:
         },
     }
 else:
-    MEDIA_URL = f"{aws_s3_endpoint_url}/{folder_name}/"
+    if not storage_bucket_name:
+        raise ImproperlyConfigured(
+            "AWS_STORAGE_BUCKET_NAME must be set when S3-compatible media storage "
+            "is enabled outside local development."
+        )
+
+    MEDIA_URL = f"{aws_s3_endpoint_url}/{storage_bucket_name}/"
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3.S3Storage",
             "OPTIONS": {
-                "bucket_name": folder_name,
+                "bucket_name": storage_bucket_name,
                 "default_acl": "public-read",
                 "region_name": "eu-east-1",
                 "endpoint_url": aws_s3_endpoint_url,
