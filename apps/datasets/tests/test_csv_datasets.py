@@ -1005,7 +1005,8 @@ def test_dataset_detail_keeps_row_detail_link_for_single_url_column(auth_client,
     assert 'href="https://example.com/ada"' in content
     assert f'href="{row_url}"' in content
     assert 'aria-label="View row 1 details"' in content
-    assert ">Details</a>" in content
+    assert 'aria-label="Open external link for row 1"' in content
+    assert ">Open</a>" in content
 
 
 def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
@@ -4357,7 +4358,8 @@ def test_public_dataset_keeps_row_detail_link_for_single_url_column(client, prof
     assert 'href="https://example.com/ada"' in content
     assert f'href="{row_url}"' in content
     assert 'aria-label="View row 1 details"' in content
-    assert ">Details</a>" in content
+    assert 'aria-label="Open external link for row 1"' in content
+    assert ">Open</a>" in content
 
 
 def test_public_dataset_row_detail_displays_full_row_data(client, profile):
