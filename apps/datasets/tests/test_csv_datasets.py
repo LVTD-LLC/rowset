@@ -988,6 +988,26 @@ def test_dataset_detail_linkifies_external_url_cells_with_safe_rel(auth_client, 
     assert 'href="javascript:alert(1)"' not in content
 
 
+def test_dataset_detail_keeps_row_detail_link_for_single_url_column(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["website"]
+    dataset.column_schema = {"website": {"type": DatasetColumnType.URL}}
+    dataset.save(update_fields=["headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {"website": "https://example.com/ada"}
+    row.save(update_fields=["data"])
+    row_url = reverse("dataset_row_detail", args=[dataset.key, row.id])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert f'href="{row_url}"' in content
+    assert 'aria-label="View row 1 details"' in content
+    assert ">Details</a>" in content
+
+
 def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
     dataset = configure_filterable_dataset(create_ready_dataset(profile))
 
@@ -4317,6 +4337,27 @@ def test_public_dataset_linkifies_external_url_cells_with_safe_rel(client, profi
     assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
     assert "javascript:alert(1)" in content
     assert 'href="javascript:alert(1)"' not in content
+
+
+def test_public_dataset_keeps_row_detail_link_for_single_url_column(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.headers = ["website"]
+    dataset.column_schema = {"website": {"type": DatasetColumnType.URL}}
+    dataset.save(update_fields=["public_enabled", "headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {"website": "https://example.com/ada"}
+    row.save(update_fields=["data"])
+    row_url = reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert f'href="{row_url}"' in content
+    assert 'aria-label="View row 1 details"' in content
+    assert ">Details</a>" in content
 
 
 def test_public_dataset_row_detail_displays_full_row_data(client, profile):
