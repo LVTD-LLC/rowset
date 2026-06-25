@@ -863,6 +863,8 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     assert "extra_field" in content
     assert "Stored outside declared headers" in content
     assert "Back to dataset" in content
+    assert 'td class="min-w-96 whitespace-pre-wrap break-words"' not in content
+    assert '<span class="whitespace-pre-wrap break-words">Ada</span>' in content
 
 
 def test_dataset_row_detail_links_relationship_value_to_target_row(auth_client, profile):

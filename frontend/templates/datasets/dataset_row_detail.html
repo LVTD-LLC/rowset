@@ -38,11 +38,11 @@
                     {{ cell.header }}
                   {% endif %}
                 </th>
-                <td class="min-w-96 whitespace-pre-wrap break-words">
+                <td class="min-w-96 break-words">
                   {% if cell.relationship_url %}
                     <a href="{{ cell.relationship_url }}" class="fb-focus font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" aria-label="{{ cell.relationship_label }}">{{ cell.value }}</a>
                   {% elif cell.value %}
-                    {{ cell.value }}
+                    <span class="whitespace-pre-wrap break-words">{{ cell.value }}</span>
                   {% else %}
                     <span class="text-slate-400 dark:text-slate-500">Blank</span>
                   {% endif %}
