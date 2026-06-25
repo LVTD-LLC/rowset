@@ -134,9 +134,13 @@ def _parse_rowset_dataset_link(value: str, request=None) -> dict[str, object] | 
     if not raw_value:
         return None
 
+    if raw_value.startswith("//"):
+        return None
     if raw_value.startswith("/"):
         href = raw_value
         parsed = urlparse(raw_value)
+        if parsed.scheme or parsed.netloc:
+            return None
     else:
         href = raw_value if "://" in raw_value else f"https://{raw_value}"
         parsed = urlparse(href)
@@ -165,11 +169,15 @@ def _parse_rowset_dataset_link(value: str, request=None) -> dict[str, object] | 
         return None
 
     row_id = None
-    if len(remaining_parts) >= 2 and remaining_parts[0] == "rows":
+    if not remaining_parts:
+        pass
+    elif len(remaining_parts) == 2 and remaining_parts[0] == "rows":
         try:
             row_id = int(remaining_parts[1])
         except ValueError:
-            row_id = None
+            return None
+    else:
+        return None
 
     return {
         "href": href,
@@ -219,11 +227,22 @@ def _owned_rowset_link(
     dataset_lookup = {"profile": profile}
     if parsed_link["is_public"]:
         dataset_lookup["public_key"] = parsed_link["dataset_key"]
+        dataset_lookup["public_enabled"] = True
+        dataset_lookup["status"] = DatasetStatus.READY
+        dataset_lookup["archived_at__isnull"] = True
     else:
         dataset_lookup["key"] = parsed_link["dataset_key"]
 
     dataset = (
-        Dataset.objects.only("id", "key", "public_key", "name", "status", "archived_at")
+        Dataset.objects.only(
+            "id",
+            "key",
+            "public_key",
+            "name",
+            "status",
+            "archived_at",
+            "public_enabled",
+        )
         .filter(**dataset_lookup)
         .first()
     )
@@ -238,11 +257,13 @@ def _owned_rowset_link(
     aria_label = f"Open Rowset dataset {dataset.name}"
     if row_id is not None:
         target_row = dataset.rows.only("id", "dataset_id", "row_number").filter(id=row_id).first()
-        if target_row is not None:
-            target_url = target_row.get_absolute_url()
-            target_label = f"{dataset.name} row {target_row.row_number}"
-            target_detail = "Row"
-            aria_label = f"Open Rowset row {target_row.row_number} in {dataset.name}"
+        if target_row is None:
+            link_cache[cache_key] = None
+            return None
+        target_url = target_row.get_absolute_url()
+        target_label = f"{dataset.name} row {target_row.row_number}"
+        target_detail = "Row"
+        aria_label = f"Open Rowset row {target_row.row_number} in {dataset.name}"
 
     link = {
         "rowset_link_url": target_url,

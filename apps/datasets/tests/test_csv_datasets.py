@@ -818,6 +818,96 @@ def test_dataset_detail_falls_back_to_plain_links_for_unresolved_rowset_urls(
     assert "Rowset dataset" not in content
 
 
+def test_dataset_detail_does_not_link_protocol_relative_rowset_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "task_dataset_url"]
+    dataset.save(update_fields=["headers"])
+    row = dataset.rows.first()
+    raw_url = f"//evil.example/datasets/{target_dataset.key}/"
+    row.data = {
+        "name": "Review Gate Sprint History",
+        "task_dataset_url": raw_url,
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert raw_url in content
+    assert f'href="{raw_url}"' not in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset dataset" not in content
+
+
+def test_dataset_detail_falls_back_for_malformed_rowset_row_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/rows/not-a-row/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset row" not in content
+
+
+def test_dataset_detail_falls_back_for_stale_rowset_row_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/rows/999999/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset row" not in content
+
+
+def test_dataset_detail_does_not_resolve_disabled_share_urls_to_private_links(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    target_dataset.name = "Private Sprint Tasks"
+    target_dataset.public_enabled = False
+    target_dataset.save(update_fields=["name", "public_enabled"])
+    raw_url = f"https://rowset.lvtd.dev/share/datasets/{target_dataset.public_key}/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert target_dataset.get_absolute_url() not in content
+    assert "Private Sprint Tasks" not in content
+    assert "Open Rowset URL" in content
+
+
 def test_dataset_detail_paginates_imported_rows_without_public_preview(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.rows.all().delete()
