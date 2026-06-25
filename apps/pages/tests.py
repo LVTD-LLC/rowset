@@ -1,6 +1,5 @@
 import time
 from dataclasses import replace
-from importlib import import_module
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -8,12 +7,11 @@ from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
-from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
 
 from apps.core.capabilities import RowsetUseCase
-from apps.pages import PagesConfig
 from apps.pages import use_cases as page_use_cases
+from apps.pages.checks import check_use_case_page_registry
 
 pytestmark = pytest.mark.django_db
 
@@ -233,15 +231,15 @@ def test_use_case_pages_reject_unrouteable_public_slugs(
     ) in errors
 
 
-def test_pages_app_rejects_invalid_use_case_registry_at_startup(monkeypatch):
+def test_use_case_page_registry_check_reports_structured_errors(monkeypatch):
     page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
     page_copy.pop("personal_crm")
     monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
-    app_module = import_module("apps.pages")
-    config = PagesConfig("apps.pages", app_module)
 
-    with pytest.raises(ImproperlyConfigured, match="personal_crm"):
-        config.ready()
+    errors = check_use_case_page_registry(None)
+
+    assert errors[0].id == "pages.E001"
+    assert "personal_crm" in errors[0].msg
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):
