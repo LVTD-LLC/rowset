@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from django.core.exceptions import ImproperlyConfigured
+
 from apps.core.capabilities import ROWSET_CAPABILITIES, ROWSET_USE_CASES
 
 PUBLIC_SLUG_PATTERN = re.compile(r"^[-a-zA-Z0-9_]+$")
@@ -298,7 +300,15 @@ def validate_use_case_page_registry() -> None:
         raise ValueError("; ".join(errors))
 
 
+def _ensure_use_case_page_registry_configured() -> None:
+    try:
+        validate_use_case_page_registry()
+    except ValueError as exc:
+        raise ImproperlyConfigured(str(exc)) from exc
+
+
 def get_use_case_pages() -> tuple[dict[str, object], ...]:
+    _ensure_use_case_page_registry_configured()
     feature_titles = _capability_titles()
     pages: list[dict[str, object]] = []
 

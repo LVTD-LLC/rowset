@@ -7,6 +7,7 @@ from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
+from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
 
 from apps.core.capabilities import RowsetUseCase
@@ -240,6 +241,15 @@ def test_use_case_page_registry_check_reports_structured_errors(monkeypatch):
 
     assert errors[0].id == "pages.E001"
     assert "personal_crm" in errors[0].msg
+
+
+def test_use_case_pages_fail_controlled_when_registry_is_invalid(monkeypatch):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy.pop("personal_crm")
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    with pytest.raises(ImproperlyConfigured, match="personal_crm"):
+        page_use_cases.get_use_case_pages()
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):
