@@ -241,10 +241,10 @@ def _invalid_public_slugs() -> tuple[str, ...]:
 
 
 def get_use_case_page_registry_errors() -> tuple[str, ...]:
-    feature_titles = _capability_titles()
     use_case_ids = {use_case.id for use_case in ROWSET_USE_CASES}
     page_copy_ids = set(USE_CASE_PAGE_COPY)
     duplicate_capability_ids = _duplicate_capability_ids()
+    feature_titles = _capability_titles()
     duplicate_slugs = sorted(_duplicate_public_slugs())
     invalid_slugs = _invalid_public_slugs()
     valid_feature_ids = set(feature_titles)
@@ -313,7 +313,21 @@ def get_use_case_pages() -> tuple[dict[str, object], ...]:
     pages: list[dict[str, object]] = []
 
     for use_case in ROWSET_USE_CASES:
-        page_copy = USE_CASE_PAGE_COPY[use_case.id]
+        page_copy = USE_CASE_PAGE_COPY.get(use_case.id)
+        if page_copy is None:
+            raise ImproperlyConfigured(
+                f"USE_CASE_PAGE_COPY is missing entries for ROWSET_USE_CASES: {use_case.id}"
+            )
+
+        features = []
+        for feature_id in use_case.rowset_features:
+            feature_title = feature_titles.get(feature_id)
+            if feature_title is None:
+                raise ImproperlyConfigured(
+                    "ROWSET_USE_CASES references unknown capability IDs: "
+                    f"{use_case.id}: {feature_id}"
+                )
+            features.append(feature_title)
 
         pages.append(
             {
@@ -326,9 +340,7 @@ def get_use_case_pages() -> tuple[dict[str, object], ...]:
                 "short_summary": page_copy.short_summary,
                 "meta_description": page_copy.meta_description,
                 "starter_shape": use_case.starter_shape,
-                "features": tuple(
-                    feature_titles[feature_id] for feature_id in use_case.rowset_features
-                ),
+                "features": tuple(features),
                 "example_name": page_copy.example_name,
                 "index_column": page_copy.index_column,
                 "sample_rows": page_copy.sample_rows,
