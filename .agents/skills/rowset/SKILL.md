@@ -1,6 +1,6 @@
 ---
 name: rowset
-description: Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP or REST access, or manage Rowset datasets. Covers bearer API key setup, hosted MCP discovery, dataset/project creation and lookup, row CRUD, semantic column types, REST file export fallback, public preview sharing, and privacy/destructive-action guardrails.
+description: Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP or REST access, or manage Rowset datasets. Covers bearer API key setup, hosted MCP discovery, capability discovery, dataset/project creation and lookup, row CRUD, relationships, semantic schema, REST file export fallback, public preview sharing, and privacy/destructive-action guardrails.
 ---
 
 # Rowset
@@ -10,6 +10,15 @@ description: Use when a user asks to connect an AI agent to Rowset, configure Ro
 Use Rowset as a stable backend for user-owned structured datasets. Prefer the
 hosted MCP server for agent workflows, use the REST API only when MCP cannot be
 configured, and keep browser automation as a last resort.
+
+Companion skills in this repo:
+
+- `rowset-features` explains the current Rowset feature surface.
+- `rowset-use-cases` gives concrete dataset patterns for common workflows.
+
+Use live MCP discovery, `get_rowset_capabilities`, and `llms.txt` as the current
+source of truth. Static skill text is a startup guide, not a replacement for the
+connected server's current tool schemas.
 
 ## Required Prompt Inputs
 
@@ -50,10 +59,11 @@ save it in a tracked file.
 7. Discover available MCP tools and their schemas from the connected server
    before invoking named tools. Treat the live MCP server and REST API docs as
    the source of truth for exact inputs.
-8. After connecting, call `get_user_info` to verify authentication. If auth
-   fails, confirm `ROWSET_API_KEY` contains the full key, not only the visible
-   prefix.
-9. Call `get_all_datasets` to verify dataset discovery works.
+8. After connecting, call `get_user_info` to verify authentication.
+9. Call `get_rowset_capabilities` to load the current feature and workflow
+   guide into context.
+10. Call `get_all_datasets` or `search_datasets` to verify dataset discovery
+    works. If auth fails, confirm `ROWSET_API_KEY` contains the full key, not only the visible prefix.
 
 ## Dataset Workflow
 
@@ -62,21 +72,28 @@ Use this default order when the user asks Rowset to work with data:
 1. Call `get_all_datasets` to discover datasets available to the authenticated
    profile. It returns paginated metadata, not row contents.
 2. Call `get_dataset` before row operations on a specific dataset so you know the
-   headers, key, index column, semantic column types, readiness, and public
-   preview state.
+   headers, key, index column, semantic column types, persistent instructions,
+   JSON metadata, relationships, readiness, and public preview state.
 3. Create datasets with `create_dataset` when the user asks for a new structured
    backend. Provide `headers`, `rows`, or both. If there is no reliable business
    key, omit `index_column` and let Rowset generate `rowset_id`.
 4. Manage semantic column metadata with `update_dataset_column_types` when the
    user asks to improve schema types. Supported types include `text`, `integer`,
    `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
+   Choice columns accept fixed string values and can carry column descriptions.
 5. Use `get_all_projects`, `create_project`, `get_project`, and
    `update_dataset_project` when the user wants to organize datasets into
    project groups.
 6. Use row tools for dataset contents:
    `list_dataset_rows`, `get_dataset_row`, `get_dataset_row_by_index`,
-   `create_dataset_row`, `update_dataset_row`, and `delete_dataset_row`.
-7. Use REST only after the user approves REST fallback or when MCP cannot perform
+   `create_dataset_row`, `update_dataset_row`, `update_dataset_row_by_index`,
+   and `delete_dataset_row`.
+7. Use relationship tools when one dataset stores another dataset row's index
+   value: `list_dataset_relationships`, `create_dataset_relationship`,
+   `resolve_dataset_relationship`, and `delete_dataset_relationship`.
+8. Use schema mutation tools for existing ready datasets:
+   `add_column`, `rename_column`, `drop_column`, and `reorder_columns`.
+9. Use REST only after the user approves REST fallback or when MCP cannot perform
    the requested action. For file exports, use the current API docs and the REST
    paths under the provided REST API base:
    `GET /datasets/{dataset_key}/export.csv`,
@@ -111,6 +128,15 @@ When changing preview settings:
 - Do not describe public previews as secure private access.
 - Do not claim Rowset-owned Google Sheets sync, dashboard upload wizards, or
   spreadsheet write-back flows are active product capabilities.
+
+## Discovery Fallbacks
+
+If the MCP client can browse public URLs, read the Rowset `llms.txt` page from
+the same site as the setup prompt. It summarizes current capabilities, skills,
+REST fallback paths, use-case guides, and privacy guardrails.
+
+If MCP is connected, prefer `get_rowset_capabilities` over static docs because
+it comes from the live Rowset server.
 
 ## If MCP Is Unavailable
 

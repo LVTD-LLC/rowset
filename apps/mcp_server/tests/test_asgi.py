@@ -116,6 +116,7 @@ def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     assert tools
     tool_names = {tool["name"] for tool in tools}
     assert "get_user_info" in tool_names
+    assert "get_rowset_capabilities" in tool_names
     assert "list_dataset_rows" in tool_names
 
 

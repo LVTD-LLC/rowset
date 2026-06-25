@@ -478,6 +478,38 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
     }
 
 
+def _serialize_relationships_from_manager(manager) -> list[dict]:
+    if manager is None:
+        return []
+    try:
+        relationships = manager.select_related("source_dataset", "target_dataset").order_by(
+            "name",
+            "id",
+        )
+    except AttributeError:
+        return []
+    return [serialize_dataset_relationship(relationship) for relationship in relationships]
+
+
+def serialize_dataset_relationship_context(dataset: Dataset) -> dict:
+    """Return outgoing and incoming relationship metadata for one dataset."""
+    return {
+        "outgoing": _serialize_relationships_from_manager(
+            getattr(dataset, "outgoing_relationships", None)
+        ),
+        "incoming": _serialize_relationships_from_manager(
+            getattr(dataset, "incoming_relationships", None)
+        ),
+    }
+
+
+def serialize_dataset_detail(dataset: Dataset) -> dict:
+    """Return one dataset with relationship context, without row payloads."""
+    payload = serialize_dataset_summary(dataset)
+    payload["relationships"] = serialize_dataset_relationship_context(dataset)
+    return payload
+
+
 def _dataset_summary_queryset(queryset):
     return queryset.select_related("project").only(*DATASET_SUMMARY_ONLY_FIELDS)
 

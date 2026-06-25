@@ -8,9 +8,19 @@ logger = get_rowset_logger(__name__)
 
 ROWSET_SKILL_INSTALL_COMMAND = "npx skills add LVTD-LLC/rowset"
 ROWSET_SKILL_REPOSITORY_PATH = ".agents/skills/rowset/SKILL.md"
+ROWSET_FEATURES_SKILL_REPOSITORY_PATH = ".agents/skills/rowset-features/SKILL.md"
+ROWSET_USE_CASES_SKILL_REPOSITORY_PATH = ".agents/skills/rowset-use-cases/SKILL.md"
 ROWSET_SKILL_SOURCE_URL = (
     "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
     f"{ROWSET_SKILL_REPOSITORY_PATH}"
+)
+ROWSET_FEATURES_SKILL_SOURCE_URL = (
+    "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
+    f"{ROWSET_FEATURES_SKILL_REPOSITORY_PATH}"
+)
+ROWSET_USE_CASES_SKILL_SOURCE_URL = (
+    "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
+    f"{ROWSET_USE_CASES_SKILL_REPOSITORY_PATH}"
 )
 ROWSET_AGENT_SETUP_INSTRUCTIONS = (
     "Read the skill URL or install the repo skill before acting. Store the full "
@@ -25,12 +35,14 @@ ROWSET_AGENT_SETUP_INSTRUCTIONS = (
     "the client only supports custom headers, set Authorization to Bearer "
     "<key>; use X-API-Key only for REST clients that cannot send bearer tokens. "
     "After setup, discover the current MCP tools and API docs at runtime before "
-    "invoking named tools. Then call get_user_info to verify authentication and "
+    "invoking named tools. Then call get_user_info to verify authentication, "
+    "get_rowset_capabilities to load the current Rowset feature guide, and "
     "get_all_datasets to discover available datasets. If auth fails, confirm "
-    "the env var contains the full key, not only its prefix. Use create_dataset "
-    "when you need to create a dataset on the fly. Use "
-    "update_dataset_public_preview when the user asks for a shareable read-only "
-    "preview."
+    "the env var contains the full key, not only its prefix. Use get_dataset "
+    "before row work so dataset context, schema, and relationships are in "
+    "context. Use create_dataset when you need to create a dataset on the fly. "
+    "Use update_dataset_public_preview when the user asks for a shareable "
+    "read-only preview."
 )
 ROWSET_SKILL_FALLBACK_MARKDOWN = f"""---
 name: rowset
@@ -60,8 +72,15 @@ def rowset_skill_path() -> Path:
     return Path(settings.BASE_DIR) / ROWSET_SKILL_REPOSITORY_PATH
 
 
-def load_rowset_skill_markdown() -> str:
-    path = rowset_skill_path()
+def rowset_features_skill_path() -> Path:
+    return Path(settings.BASE_DIR) / ROWSET_FEATURES_SKILL_REPOSITORY_PATH
+
+
+def rowset_use_cases_skill_path() -> Path:
+    return Path(settings.BASE_DIR) / ROWSET_USE_CASES_SKILL_REPOSITORY_PATH
+
+
+def _load_skill_markdown(path: Path, fallback_source_url: str) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -70,4 +89,22 @@ def load_rowset_skill_markdown() -> str:
             path=str(path),
             error=str(exc),
         )
-        return ROWSET_SKILL_FALLBACK_MARKDOWN
+        return ROWSET_SKILL_FALLBACK_MARKDOWN.replace(
+            ROWSET_SKILL_SOURCE_URL,
+            fallback_source_url,
+        )
+
+
+def load_rowset_skill_markdown() -> str:
+    return _load_skill_markdown(rowset_skill_path(), ROWSET_SKILL_SOURCE_URL)
+
+
+def load_rowset_features_skill_markdown() -> str:
+    return _load_skill_markdown(rowset_features_skill_path(), ROWSET_FEATURES_SKILL_SOURCE_URL)
+
+
+def load_rowset_use_cases_skill_markdown() -> str:
+    return _load_skill_markdown(
+        rowset_use_cases_skill_path(),
+        ROWSET_USE_CASES_SKILL_SOURCE_URL,
+    )

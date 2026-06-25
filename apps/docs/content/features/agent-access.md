@@ -20,10 +20,10 @@ The docs show a masked example:
 
 Sign in and use the dashboard copy button when you want the full prompt with the API key included.
 
-## Installable SKILL.md
+## Installable skills
 
-The canonical skill lives in the Rowset repo. The app also serves that same
-checked-in file as markdown at:
+The canonical setup skill lives in the Rowset repo. The app also serves that
+same checked-in file as markdown at:
 
 ```text
 {{ site_url }}/SKILL.md
@@ -42,6 +42,25 @@ The source text is available at:
 ```
 
 The skill gives agents durable setup instructions for Rowset MCP and REST fallback. It tells agents how to discover the current tools and API docs instead of hardcoding an endpoint list.
+
+The repo also includes two companion skills:
+
+- `rowset-features` for explaining the current Rowset feature surface
+- `rowset-use-cases` for concrete dataset patterns such as CRMs, task boards,
+  feedback trackers, content pipelines, catalogs, and QA trackers
+
+The app serves those skill files at:
+
+```text
+{{ features_skill_url }}
+{{ use_cases_skill_url }}
+```
+
+Agents and search tools can also read the generated Rowset overview:
+
+```text
+{{ llms_txt_url }}
+```
 
 For MCP, store the key in a private environment variable such as
 `ROWSET_API_KEY`, then configure the MCP client's bearer-token env var to
@@ -64,12 +83,14 @@ Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 
 - Prefer MCP tools over browser automation.
 - Discover current MCP tools and schemas from the connected server before acting.
+- Load the current Rowset capability guide with `get_rowset_capabilities`.
 - For REST fallback, inspect the current API docs from the REST API base.
 - Verify setup with `get_user_info`.
 - Discover available datasets with `get_all_datasets`.
 - Search for a specific dataset or project with `search_datasets` and `search_projects`.
 - Create new ready datasets with `create_dataset` when the user asks for an on-the-fly dataset.
-- Inspect one dataset with `get_dataset` before row operations.
+- Inspect one dataset with `get_dataset` before row operations. The response
+  includes dataset context, semantic schema, and relationship summaries.
 - Read rows with `list_dataset_rows`, `get_dataset_row`, or `get_dataset_row_by_index`.
 - Modify rows with `create_dataset_row`, `update_dataset_row`,
   `update_dataset_row_by_index`, and `delete_dataset_row` only when requested.
@@ -82,5 +103,7 @@ Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 ## Related docs
 
 - MCP access explains the hosted MCP endpoint and bearer token setup.
+- Agent discovery explains `get_rowset_capabilities`, `llms.txt`, and the
+  companion skills.
 - API Reference explains REST authentication and endpoints.
 - Public previews are for browser sharing, not agent authentication.

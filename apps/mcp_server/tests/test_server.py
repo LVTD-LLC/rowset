@@ -146,6 +146,28 @@ def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
     anyio.run(run)
 
 
+def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool("get_rowset_capabilities", {})
+
+        payload = result.data
+        assert payload["product"] == "Rowset"
+        assert payload["capability_version"]
+        capability_ids = {capability["id"] for capability in payload["capabilities"]}
+        assert "relationships" in capability_ids
+        assert "dataset_context" in capability_ids
+        assert "get_dataset before row operations" in " ".join(payload["recommended_startup"])
+        assert "guardrails" in payload
+
+    anyio.run(run)
+
+
 def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
     async def run():
         monkeypatch.setattr(
@@ -208,6 +230,7 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
         assert payload["column_schema"]["email"]["description"] == (
             "Primary contact address for the customer."
         )
+        assert payload["relationships"] == {"outgoing": [], "incoming": []}
         assert "rows" not in payload
 
     anyio.run(run)

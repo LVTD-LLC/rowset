@@ -26,8 +26,11 @@ from django.views.generic import TemplateView, UpdateView
 from apps.core.agent_skill import (
     ROWSET_AGENT_SETUP_INSTRUCTIONS,
     ROWSET_SKILL_INSTALL_COMMAND,
+    load_rowset_features_skill_markdown,
     load_rowset_skill_markdown,
+    load_rowset_use_cases_skill_markdown,
 )
+from apps.core.capabilities import render_rowset_llms_txt
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import create_agent_api_key, get_agent_api_key_token
@@ -174,6 +177,41 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
 def agent_instructions_rowset_mcp(request):
     return HttpResponse(load_rowset_skill_markdown(), content_type="text/markdown; charset=utf-8")
+
+
+def agent_instructions_rowset_features(request):
+    return HttpResponse(
+        load_rowset_features_skill_markdown(),
+        content_type="text/markdown; charset=utf-8",
+    )
+
+
+def agent_instructions_rowset_use_cases(request):
+    return HttpResponse(
+        load_rowset_use_cases_skill_markdown(),
+        content_type="text/markdown; charset=utf-8",
+    )
+
+
+def llms_txt(request):
+    response = HttpResponse(
+        render_rowset_llms_txt(
+            site_url=build_absolute_public_url("/").rstrip("/"),
+            mcp_url=build_absolute_public_url("/mcp/"),
+            rest_api_base_url=build_absolute_public_url("/api/").rstrip("/"),
+            api_docs_url=build_absolute_public_url("/api/docs"),
+            setup_skill_url=build_absolute_public_url(reverse("agent_instructions_rowset_mcp")),
+            features_skill_url=build_absolute_public_url(
+                reverse("agent_instructions_rowset_features")
+            ),
+            use_cases_skill_url=build_absolute_public_url(
+                reverse("agent_instructions_rowset_use_cases")
+            ),
+        ),
+        content_type="text/plain; charset=utf-8",
+    )
+    response["Cache-Control"] = "public, max-age=300"
+    return response
 
 
 @login_required

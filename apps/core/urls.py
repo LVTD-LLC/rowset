@@ -13,6 +13,17 @@ urlpatterns = [
         name="agent_instructions_rowset_mcp",
     ),
     path(
+        "skills/rowset-features/SKILL.md",
+        views.agent_instructions_rowset_features,
+        name="agent_instructions_rowset_features",
+    ),
+    path(
+        "skills/rowset-use-cases/SKILL.md",
+        views.agent_instructions_rowset_use_cases,
+        name="agent_instructions_rowset_use_cases",
+    ),
+    path("llms.txt", views.llms_txt, name="llms_txt"),
+    path(
         "home/agent-setup-prompt/",
         views.agent_setup_prompt,
         name="agent_setup_prompt",
