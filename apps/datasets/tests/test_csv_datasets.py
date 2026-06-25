@@ -1820,21 +1820,18 @@ def test_row_update_mutation_records_field_diffs_and_renders_history(client, pro
         "field_changes": [
             {
                 "field": "email",
-                "before": "Previous value",
-                "after": "New value",
+                "before": "ada@example.com",
+                "after": "ada+updated@example.com",
             },
             {
                 "field": "name",
-                "before": "Previous value",
-                "after": "New value",
+                "before": "Ada",
+                "after": "Ada Lovelace",
             },
         ],
+        "value_changes_recorded": True,
         "index_changed": True,
     }
-    serialized_metadata = str(mutation.metadata)
-    assert "ada@example.com" not in serialized_metadata
-    assert "ada+updated@example.com" not in serialized_metadata
-    assert "Ada Lovelace" not in serialized_metadata
 
     client.force_login(profile.user)
     detail_content = client.get(dataset.get_absolute_url()).content.decode()
@@ -1843,9 +1840,45 @@ def test_row_update_mutation_records_field_diffs_and_renders_history(client, pro
     assert "Row 1 updated." not in detail_content
     assert "Row 1 updated." in changes_content
     assert "email" in changes_content
-    assert "Previous value" in changes_content
-    assert "New value" in changes_content
+    assert "ada@example.com" in changes_content
+    assert "ada+updated@example.com" in changes_content
+    assert "Previous value" not in changes_content
+    assert "New value" not in changes_content
     assert "name" in changes_content
+    assert "Ada" in changes_content
+    assert "Ada Lovelace" in changes_content
+
+
+def test_dataset_changes_hides_legacy_placeholder_diff_labels(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+    record_dataset_mutation(
+        dataset,
+        DatasetMutationType.ROW_UPDATED,
+        "Row 1 updated.",
+        target_type="row",
+        target_identifier=row.id,
+        metadata={
+            "row_id": row.id,
+            "row_number": row.row_number,
+            "changed_fields": ["name"],
+            "field_changes": [
+                {
+                    "field": "name",
+                    "before": "Previous value",
+                    "after": "New value",
+                }
+            ],
+            "index_changed": False,
+        },
+    )
+
+    changes_content = auth_client.get(dataset.get_changes_url()).content.decode()
+
+    assert "Row 1 updated." in changes_content
+    assert "Not recorded" in changes_content
+    assert "Previous value" not in changes_content
+    assert "New value" not in changes_content
 
 
 def test_row_update_mutation_omits_noop_fields(client, profile):
@@ -1865,6 +1898,7 @@ def test_row_update_mutation_omits_noop_fields(client, profile):
         "row_number": 1,
         "changed_fields": [],
         "field_changes": [],
+        "value_changes_recorded": True,
         "index_changed": False,
     }
 
@@ -1887,10 +1921,11 @@ def test_row_update_service_null_patch_keeps_existing_stringification(profile):
         "field_changes": [
             {
                 "field": "name",
-                "before": "Previous value",
-                "after": "New value",
+                "before": "Ada",
+                "after": "None",
             }
         ],
+        "value_changes_recorded": True,
         "index_changed": False,
     }
 
@@ -2949,16 +2984,17 @@ def test_dataset_mutation_history_records_row_update_diffs_without_schema_backfi
         "field_changes": [
             {
                 "field": "name",
-                "before": "Previous value",
-                "after": "New value",
+                "before": "Ada Private",
+                "after": "New Private",
             }
         ],
+        "value_changes_recorded": True,
         "index_changed": False,
     }
 
     serialized_metadata = "\n".join(str(mutation.metadata) for mutation in mutations)
-    assert "Ada Private" not in serialized_metadata
-    assert "New Private" not in serialized_metadata
+    assert "Ada Private" in serialized_metadata
+    assert "New Private" in serialized_metadata
     assert "secret-default" not in serialized_metadata
     assert "ada@example.com" not in serialized_metadata
 
