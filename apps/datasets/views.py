@@ -73,13 +73,13 @@ DATASET_SORT_ORDERING = {
     "created": ("-created_at", "-id"),
     "name": ("name", "id"),
     "rows": ("-row_count", "name", "id"),
-    "project": ("project__name", "name", "id"),
+    "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 ARCHIVED_DATASET_SORT_ORDERING = {
     "archived": ("-archived_at", "-updated_at", "-id"),
     "name": ("name", "id"),
     "rows": ("-row_count", "name", "id"),
-    "project": ("project__name", "name", "id"),
+    "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 DATASET_LIST_PAGE_SIZE = 100
 DATASET_VIEW_MODE_OPTIONS = (

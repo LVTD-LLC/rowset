@@ -476,6 +476,36 @@ def test_dataset_list_supports_created_sort(auth_client, profile):
     ]
 
 
+def test_dataset_list_raw_project_sort_puts_unassigned_datasets_last(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Research")
+    Dataset.objects.create(
+        profile=profile,
+        name="Alpha loose dataset",
+        original_filename="loose.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Zulu project dataset",
+        original_filename="project.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+
+    response = auth_client.get(reverse("dataset_list"), {"sort": "project", "view": "raw"})
+
+    assert response.status_code == 200
+    assert response.context["selected_view_mode"] == "raw"
+    assert [dataset.name for dataset in response.context["datasets"]] == [
+        "Zulu project dataset",
+        "Alpha loose dataset",
+    ]
+
+
 def test_dataset_list_groups_datasets_by_project(auth_client, profile):
     research = Project.objects.create(
         profile=profile,
