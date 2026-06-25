@@ -236,14 +236,17 @@ def _row_relationship_links(
     if not row_data:
         return links
 
-    relationships = dataset.outgoing_relationships.select_related("target_dataset").order_by(
-        "source_column",
-        "name",
-        "id",
+    relationship_candidates = []
+    target_index_values_by_dataset = {}
+    target_datasets = {}
+    relationships = list(
+        dataset.outgoing_relationships.select_related("target_dataset").order_by(
+            "source_column",
+            "name",
+            "id",
+        )
     )
     for relationship in relationships:
-        if relationship.source_column in links:
-            continue
         if (
             relationship.target_dataset.status != DatasetStatus.READY
             or relationship.target_dataset.archived_at is not None
@@ -252,10 +255,27 @@ def _row_relationship_links(
         target_index_value = str(row_data.get(relationship.source_column, "") or "").strip()
         if not target_index_value:
             continue
-        target_row = (
-            relationship.target_dataset.rows.only("id", "row_number", "index_value")
-            .filter(index_value=target_index_value)
-            .first()
+        relationship_candidates.append((relationship, target_index_value))
+        target_datasets[relationship.target_dataset_id] = relationship.target_dataset
+        target_index_values_by_dataset.setdefault(relationship.target_dataset_id, set()).add(
+            target_index_value
+        )
+
+    rows_by_dataset = {}
+    for target_dataset_id, target_index_values in target_index_values_by_dataset.items():
+        target_dataset = target_datasets[target_dataset_id]
+        rows_by_dataset[target_dataset_id] = {
+            row.index_value: row
+            for row in target_dataset.rows.only("id", "row_number", "index_value").filter(
+                index_value__in=target_index_values
+            )
+        }
+
+    for relationship, target_index_value in relationship_candidates:
+        if relationship.source_column in links:
+            continue
+        target_row = rows_by_dataset.get(relationship.target_dataset_id, {}).get(
+            target_index_value
         )
         if target_row is None:
             continue
