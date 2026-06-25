@@ -12,8 +12,10 @@ from django.urls import reverse
 
 from apps.core.agent_skill import (
     ROWSET_AGENT_SETUP_INSTRUCTIONS,
+    ROWSET_FEATURES_SKILL_SOURCE_URL,
     ROWSET_SKILL_INSTALL_COMMAND,
     ROWSET_SKILL_SOURCE_URL,
+    ROWSET_USE_CASES_SKILL_SOURCE_URL,
 )
 from apps.core.views import AGENT_API_KEY_MASK
 from rowset.utils import build_absolute_public_url, get_rowset_logger
@@ -207,12 +209,21 @@ def get_docs_template_context():
         "api_key_placeholder": API_KEY_PLACEHOLDER,
         "agent_setup_prompt_masked": build_docs_agent_setup_prompt(),
         "dashboard_url": build_absolute_public_url(reverse("home")),
+        "features_skill_source_url": ROWSET_FEATURES_SKILL_SOURCE_URL,
+        "features_skill_url": build_absolute_public_url(
+            reverse("agent_instructions_rowset_features")
+        ),
+        "llms_txt_url": build_absolute_public_url(reverse("llms_txt")),
         "mcp_url": build_absolute_public_url("/mcp/"),
         "settings_url": build_absolute_public_url(reverse("settings")),
         "skill_install_command": ROWSET_SKILL_INSTALL_COMMAND,
         "skill_source_url": ROWSET_SKILL_SOURCE_URL,
         "signup_url": build_absolute_public_url(reverse("account_signup")),
         "site_url": build_absolute_public_url("/").rstrip("/"),
+        "use_cases_skill_source_url": ROWSET_USE_CASES_SKILL_SOURCE_URL,
+        "use_cases_skill_url": build_absolute_public_url(
+            reverse("agent_instructions_rowset_use_cases")
+        ),
         "user_email_placeholder": USER_EMAIL_PLACEHOLDER,
     }
 

@@ -106,11 +106,17 @@ class TestDocsView:
         assert "treat the copied prompt like a password" in content
         assert "ROWSET_API_KEY" in content
         assert "https://rowset.example/SKILL.md" in content
+        assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
+        assert "https://rowset.example/skills/rowset-use-cases/SKILL.md" in content
+        assert "https://rowset.example/llms.txt" in content
         assert "npx skills add LVTD-LLC/rowset" in content
         assert (
             "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
             ".agents/skills/rowset/SKILL.md"
         ) in content
+        assert "rowset-features" in content
+        assert "rowset-use-cases" in content
+        assert "get_rowset_capabilities" in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_mcp_docs_use_bearer_api_key_instead_of_oauth(self, client):
@@ -120,4 +126,19 @@ class TestDocsView:
         content = response.content.decode()
         assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content
         assert "ROWSET_API_KEY" in content
+        assert "get_rowset_capabilities" in content
+        assert "https://rowset.example/llms.txt" in content
         assert "OAuth" not in content
+
+    @override_settings(SITE_URL="https://rowset.example")
+    def test_agent_discovery_docs_include_runtime_discovery_surfaces(self, client):
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "features", "page": "agent-discovery"})
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "get_rowset_capabilities" in content
+        assert "https://rowset.example/llms.txt" in content
+        assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
+        assert "rowset-use-cases" in content

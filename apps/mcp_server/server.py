@@ -32,7 +32,7 @@ from apps.api.services import (
     restore_profile_dataset,
     search_profile_datasets,
     search_profile_projects,
-    serialize_dataset_summary,
+    serialize_dataset_detail,
     serialize_profile_datasets,
     serialize_profile_project_detail,
     serialize_profile_projects,
@@ -44,6 +44,7 @@ from apps.api.services import (
     update_profile_project,
     update_profile_project_metadata,
 )
+from apps.core.capabilities import rowset_capabilities_payload
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import resolve_api_key_profile
 from apps.mcp_server.auth import mcp_auth
@@ -319,6 +320,20 @@ def get_user_info() -> dict:
 
 
 @mcp.tool(
+    name="get_rowset_capabilities",
+    description=(
+        "Return the current Rowset feature guide, recommended startup sequence, "
+        "MCP tool groups, REST fallback paths, use-case patterns, and safety guardrails."
+    ),
+)
+def get_rowset_capabilities() -> dict:
+    """Return the current Rowset feature guide for the authenticated agent."""
+    close_old_connections()
+    _mcp_authenticated_profile()
+    return rowset_capabilities_payload()
+
+
+@mcp.tool(
     name="get_all_datasets",
     description=("Return metadata for all datasets available to the authenticated Rowset profile."),
 )
@@ -423,7 +438,7 @@ def get_dataset(
     close_old_connections()
     profile = _mcp_authenticated_profile()
     try:
-        return serialize_dataset_summary(get_profile_dataset(profile, dataset_key))
+        return serialize_dataset_detail(get_profile_dataset(profile, dataset_key))
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 

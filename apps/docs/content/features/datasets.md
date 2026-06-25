@@ -8,6 +8,10 @@ keywords: Rowset datasets, MCP datasets, index columns
 
 Datasets are the core object in Rowset. Agents create them through MCP or REST, then use row tools and endpoints to keep them current.
 
+Agents should inspect a dataset with `get_dataset` before row operations. That
+response includes headers, index column, semantic column schema, persistent
+dataset context, and relationship summaries.
+
 ## Dataset lifecycle
 
 1. **Ready** — API-created datasets are available immediately.
@@ -52,7 +56,9 @@ Relationships are intentionally simple:
   at an existing target row
 
 Agents can create, list, delete, and resolve relationships through MCP or REST.
-The dashboard shows outgoing and incoming relationships on dataset pages.
+`get_dataset` includes outgoing and incoming relationship summaries so agents
+can see table links during normal dataset inspection. The dashboard also shows
+outgoing and incoming relationships on dataset pages.
 
 ## Choice columns
 

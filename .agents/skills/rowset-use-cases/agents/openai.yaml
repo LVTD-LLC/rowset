@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rowset Use Cases"
+  short_description: "Design practical Rowset dataset shapes for common agent-managed workflows."
+  default_prompt: "Use $rowset-use-cases to choose Rowset datasets, indexes, context, schema, and relationships for a workflow."

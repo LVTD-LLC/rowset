@@ -163,6 +163,7 @@ class TestHomeView:
         assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
         assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in prompt
         assert "get_user_info" in prompt
+        assert "get_rowset_capabilities" in prompt
         assert "create_dataset" in prompt
         assert "update_dataset_public_preview" in prompt
         assert (
@@ -243,10 +244,45 @@ class TestHomeView:
         assert "screenshots, public chats, generated files, or final responses" in content
         assert "not only the visible" in content
         assert "get_user_info" in content
+        assert "get_rowset_capabilities" in content
         assert content.index("Discover available MCP tools") < content.index("get_user_info")
         assert "create_dataset" in content
+        assert "list_dataset_relationships" in content
         assert "update_dataset_public_preview" in content
         assert "Keep user data private" in content
+
+    def test_companion_agent_instruction_markdown_is_public(self, client):
+        features_response = client.get(reverse("agent_instructions_rowset_features"))
+        use_cases_response = client.get(reverse("agent_instructions_rowset_use_cases"))
+
+        assert features_response.status_code == 200
+        assert features_response["Content-Type"] == "text/markdown; charset=utf-8"
+        features_content = features_response.content.decode()
+        assert "name: rowset-features" in features_content
+        assert "get_rowset_capabilities" in features_content
+        assert "create_dataset_relationship" in features_content
+
+        assert use_cases_response.status_code == 200
+        assert use_cases_response["Content-Type"] == "text/markdown; charset=utf-8"
+        use_cases_content = use_cases_response.content.decode()
+        assert "name: rowset-use-cases" in use_cases_content
+        assert "Personal CRM" in use_cases_content
+        assert "Agent Task Board" in use_cases_content
+
+    @override_settings(SITE_URL="https://rowset.example")
+    def test_llms_txt_is_public_and_contains_discovery_surface(self, client, profile):
+        response = client.get(reverse("llms_txt"))
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "text/plain; charset=utf-8"
+        assert response["Cache-Control"] == "public, max-age=300"
+        content = response.content.decode()
+        assert "# Rowset" in content
+        assert "get_rowset_capabilities" in content
+        assert "Dataset relationships" in content
+        assert "https://rowset.example/mcp/" in content
+        assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
+        assert profile.key not in content
 
     def test_agent_instructions_markdown_falls_back_when_skill_file_is_missing(
         self,
@@ -265,6 +301,40 @@ class TestHomeView:
         assert "npx skills add LVTD-LLC/rowset" in content
         assert "raw.githubusercontent.com/LVTD-LLC/rowset/main" in content
 
+    def test_companion_agent_instructions_fallback_uses_companion_skill_name(
+        self,
+        client,
+        monkeypatch,
+        tmp_path,
+    ):
+        monkeypatch.setattr(
+            agent_skill,
+            "rowset_features_skill_path",
+            lambda: tmp_path / "missing-features.md",
+        )
+        monkeypatch.setattr(
+            agent_skill,
+            "rowset_use_cases_skill_path",
+            lambda: tmp_path / "missing-use-cases.md",
+        )
+
+        features_response = client.get(reverse("agent_instructions_rowset_features"))
+        use_cases_response = client.get(reverse("agent_instructions_rowset_use_cases"))
+
+        assert features_response.status_code == 200
+        features_content = features_response.content.decode()
+        assert "name: rowset-features" in features_content
+        assert "what Rowset can do" in features_content
+        assert "# Rowset Features" in features_content
+        assert "rowset-features/SKILL.md" in features_content
+
+        assert use_cases_response.status_code == 200
+        use_cases_content = use_cases_response.content.decode()
+        assert "name: rowset-use-cases" in use_cases_content
+        assert "specific workflow" in use_cases_content
+        assert "# Rowset Use Cases" in use_cases_content
+        assert "rowset-use-cases/SKILL.md" in use_cases_content
+
     @override_settings(SITE_URL="http://rowset.example")
     def test_build_agent_setup_prompt_uses_https_public_site_url(self, rf, user):
         request = rf.get("/home", HTTP_HOST="internal-proxy")
@@ -278,6 +348,7 @@ class TestHomeView:
         assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in prompt
         assert f"Rowset API key: {user.profile.key}" in prompt
         assert "bearer-token env var ROWSET_API_KEY" in prompt
+        assert "get_rowset_capabilities" in prompt
         assert (
             "codex mcp add rowset --url <Rowset MCP URL> "
             "--bearer-token-env-var ROWSET_API_KEY"

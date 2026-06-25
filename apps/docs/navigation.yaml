@@ -5,6 +5,7 @@ navigation:
   features:
     - datasets
     - public-previews
+    - agent-discovery
     - mcp
     - agent-access
 

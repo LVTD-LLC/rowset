@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rowset Features"
+  short_description: "Explain Rowset MCP, REST, schema, relationship, project, row, preview, and export capabilities."
+  default_prompt: "Use $rowset-features to explain what Rowset supports and which MCP or REST path fits a request."

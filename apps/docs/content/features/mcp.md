@@ -52,6 +52,16 @@ After connecting, discover the available tools and schemas from your MCP client,
 then verify the authenticated user/profile with the user-info tool exposed by the
 current MCP server.
 
+Then load the current Rowset feature guide:
+
+```text
+get_rowset_capabilities
+```
+
+The guide summarizes feature groups, recommended startup order, REST fallback
+paths, use-case patterns, and privacy guardrails. Use MCP tool discovery for the
+exact current input schemas.
+
 Then discover datasets with:
 
 ```text
@@ -126,6 +136,11 @@ Use `update_dataset_metadata` when the user wants agents to remember dataset
 purpose, workflow rules, status conventions, or other JSON context without
 changing rows.
 
+`get_dataset` returns dataset context, semantic column schema, and relationship
+summaries for the dataset being inspected. Agents should call it before row
+operations so they do not miss instructions, choice values, or links to related
+datasets.
+
 Use dataset relationship tools when a source dataset column stores another
 dataset row's index value. For example, a Personal CRM messages dataset can store
 `person_id` values that point at the People dataset's `person_id` index. With
@@ -147,6 +162,18 @@ browser preview. The tool returns the public preview URL.
 
 Use MCP tools for agent workflows when available. If the runtime cannot configure
 MCP, use the REST API only after the user approves REST API authentication.
+
+## Public agent-readable overview
+
+Agents that can read public URLs can use:
+
+```text
+{{ llms_txt_url }}
+```
+
+This generated page summarizes current Rowset capabilities, skill URLs, REST
+fallback paths, use-case patterns, and guardrails. It never includes private API
+keys or dataset contents.
 
 ## Agent setup prompt
 
