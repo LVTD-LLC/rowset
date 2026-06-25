@@ -236,7 +236,8 @@ def _invalid_public_slugs() -> tuple[str, ...]:
     return tuple(
         f"{use_case_id}: {page_copy.slug or '<empty>'}"
         for use_case_id, page_copy in sorted(USE_CASE_PAGE_COPY.items())
-        if not PUBLIC_SLUG_PATTERN.fullmatch(page_copy.slug)
+        if not isinstance(page_copy.slug, str)
+        or not PUBLIC_SLUG_PATTERN.fullmatch(page_copy.slug)
     )
 
 

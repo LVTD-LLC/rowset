@@ -209,6 +209,7 @@ def test_use_case_pages_reject_duplicate_public_slugs(monkeypatch):
 @pytest.mark.parametrize(
     ("bad_slug", "expected_slug"),
     (
+        (None, "<empty>"),
         ("", "<empty>"),
         ("personal crm", "personal crm"),
         ("personal/crm", "personal/crm"),
