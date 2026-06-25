@@ -37,6 +37,23 @@ or Notion doc. That metadata is available through the dashboard, REST, and MCP.
 Projects are organization metadata only. They do not change authenticated API or
 MCP access.
 
+## Linking datasets
+
+Use relationships when one dataset stores the index value for rows in another
+dataset. For example, a Personal CRM can use `People.person_id` as the People
+index and store that value in `CRM Messages.person_id`.
+
+Relationships are intentionally simple:
+
+- the source column stores the target row's index value
+- the target must be another ready dataset in the same account
+- blank source values are allowed
+- when validation is enabled, row writes fail if a non-blank value does not point
+  at an existing target row
+
+Agents can create, list, delete, and resolve relationships through MCP or REST.
+The dashboard shows outgoing and incoming relationships on dataset pages.
+
 ## Choice columns
 
 Use experimental choice columns when agents should keep a text value inside a

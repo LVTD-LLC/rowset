@@ -161,6 +161,47 @@ Content-Type: application/json
 
 Use this when your workflow has the dataset's stable index value but not the internal Rowset row id.
 
+## Link datasets
+
+Create a relationship when one dataset column stores another dataset row's index
+value. This is useful for simple foreign-key-style workflows such as CRM
+messages pointing at people.
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/relationships
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Message person",
+  "source_column": "person_id",
+  "target_dataset_key": "{people_dataset_key}",
+  "enforce_integrity": true
+}
+```
+
+With `enforce_integrity` enabled, non-blank source values must match an existing
+target row index when rows are created or updated. Blank values are allowed.
+
+List relationships where a dataset is the source:
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}/relationships
+```
+
+Resolve one source row through a relationship:
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}/relationships/{relationship_key}/resolve?source_index_value={source_index_value}
+```
+
+Delete the relationship definition without changing row data:
+
+```http
+DELETE {{ api_base_url }}/datasets/{dataset_key}/relationships/{relationship_key}
+```
+
 ## Update column types
 
 ```http

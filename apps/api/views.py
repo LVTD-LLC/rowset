@@ -35,6 +35,11 @@ from apps.api.schemas import (
     DatasetProjectPatchIn,
     DatasetPublicPreviewOut,
     DatasetPublicPreviewPatchIn,
+    DatasetRelationshipCreateIn,
+    DatasetRelationshipCreateOut,
+    DatasetRelationshipDeleteOut,
+    DatasetRelationshipListOut,
+    DatasetRelationshipResolveOut,
     DatasetRowIn,
     DatasetRowPatchIn,
     DatasetRowsOut,
@@ -56,18 +61,22 @@ from apps.api.services import (
     add_profile_dataset_column,
     archive_profile_dataset,
     create_profile_dataset,
+    create_profile_dataset_relationship,
     create_profile_dataset_row,
     create_profile_project,
+    delete_profile_dataset_relationship,
     delete_profile_dataset_row,
     drop_profile_dataset_column,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
     get_ready_profile_dataset,
+    list_profile_dataset_relationships,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
     patch_profile_dataset_row_by_index,
     rename_profile_dataset_column,
     reorder_profile_dataset_columns,
+    resolve_profile_dataset_relationship,
     restore_profile_dataset,
     search_profile_datasets,
     search_profile_projects,
@@ -823,6 +832,96 @@ def patch_dataset_project(
             request.auth,
             dataset_key,
             payload.project_key,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
+    "/datasets/{dataset_key}/relationships",
+    response=DatasetRelationshipListOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def list_dataset_relationships(request: HttpRequest, dataset_key: str):
+    """Return relationship definitions where this dataset is the source."""
+    try:
+        return list_profile_dataset_relationships(request.auth, dataset_key)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/relationships",
+    response={201: DatasetRelationshipCreateOut},
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def create_dataset_relationship(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetRelationshipCreateIn,
+):
+    """Create one source-column to target-dataset-index relationship."""
+    try:
+        return Status(
+            201,
+            create_profile_dataset_relationship(
+                request.auth,
+                dataset_key,
+                source_column=payload.source_column,
+                target_dataset_key=payload.target_dataset_key,
+                name=payload.name,
+                enforce_integrity=payload.enforce_integrity,
+                **_agent_actor_kwargs(request),
+            ),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
+    "/datasets/{dataset_key}/relationships/{relationship_key}/resolve",
+    response=DatasetRelationshipResolveOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def resolve_dataset_relationship(
+    request: HttpRequest,
+    dataset_key: str,
+    relationship_key: str,
+    source_index_value: str,
+):
+    """Resolve one source row through a dataset relationship."""
+    try:
+        return resolve_profile_dataset_relationship(
+            request.auth,
+            dataset_key,
+            relationship_key,
+            source_index_value=source_index_value,
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.delete(
+    "/datasets/{dataset_key}/relationships/{relationship_key}",
+    response=DatasetRelationshipDeleteOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def delete_dataset_relationship(
+    request: HttpRequest,
+    dataset_key: str,
+    relationship_key: str,
+):
+    """Delete one dataset relationship definition."""
+    try:
+        return delete_profile_dataset_relationship(
+            request.auth,
+            dataset_key,
+            relationship_key,
             **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:

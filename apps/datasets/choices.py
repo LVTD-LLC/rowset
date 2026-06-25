@@ -28,6 +28,8 @@ class DatasetMutationType(models.TextChoices):
     DATASET_METADATA_UPDATED = "dataset.metadata_updated", "Metadata updated"
     DATASET_PROJECT_UPDATED = "dataset.project_updated", "Project updated"
     PUBLIC_PREVIEW_UPDATED = "dataset.public_preview_updated", "Public preview updated"
+    RELATIONSHIP_CREATED = "relationship.created", "Relationship created"
+    RELATIONSHIP_DELETED = "relationship.deleted", "Relationship deleted"
     COLUMN_TYPES_UPDATED = "schema.column_types_updated", "Column types updated"
     COLUMN_ADDED = "schema.column_added", "Column added"
     COLUMN_RENAMED = "schema.column_renamed", "Column renamed"

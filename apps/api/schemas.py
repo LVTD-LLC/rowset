@@ -296,6 +296,48 @@ class DatasetProjectOut(Schema):
     dataset: DatasetSummaryOut
 
 
+class DatasetRelationshipDatasetOut(Schema):
+    key: str
+    name: str
+    index_column: str
+
+
+class DatasetRelationshipOut(Schema):
+    key: str
+    name: str
+    source_dataset: DatasetRelationshipDatasetOut
+    source_column: str
+    target_dataset: DatasetRelationshipDatasetOut
+    target_index_column: str
+    enforce_integrity: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class DatasetRelationshipCreateIn(Schema):
+    source_column: str
+    target_dataset_key: str
+    name: str | None = None
+    enforce_integrity: bool = True
+
+
+class DatasetRelationshipCreateOut(Schema):
+    status: str
+    message: str
+    relationship: DatasetRelationshipOut
+
+
+class DatasetRelationshipListOut(Schema):
+    dataset: str
+    relationships: list[DatasetRelationshipOut]
+
+
+class DatasetRelationshipDeleteOut(Schema):
+    status: str
+    message: str
+    relationship: DatasetRelationshipOut
+
+
 class DatasetArchiveOut(Schema):
     status: str
     message: str
@@ -336,3 +378,12 @@ class DatasetApiOut(Schema):
     message: str
     dataset: str | None = None
     row: DatasetRowOut | None = None
+
+
+class DatasetRelationshipResolveOut(Schema):
+    status: str
+    message: str
+    relationship: DatasetRelationshipOut
+    source_row: DatasetRowOut
+    target_index_value: str
+    target_row: DatasetRowOut | None = None

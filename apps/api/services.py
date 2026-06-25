@@ -7,8 +7,9 @@ from uuid import UUID
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
-from django.db.models import Count, Q, TextField
-from django.db.models.functions import Cast
+from django.db.models import Count, Exists, OuterRef, Q, TextField
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast, Trim
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
@@ -21,7 +22,7 @@ from apps.datasets.constants import (
     MAX_PROJECT_METADATA_BYTES,
 )
 from apps.datasets.history import record_dataset_mutation
-from apps.datasets.models import Dataset, DatasetRow, Project
+from apps.datasets.models import Dataset, DatasetRelationship, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
     DatasetRowQueryError,
@@ -623,6 +624,348 @@ def get_ready_profile_dataset_for_update(profile: Profile, dataset_key: str) -> 
     return dataset
 
 
+def serialize_dataset_relationship(relationship: DatasetRelationship) -> dict:
+    source_dataset = relationship.source_dataset
+    target_dataset = relationship.target_dataset
+    return {
+        "key": str(relationship.key),
+        "name": relationship.name,
+        "source_dataset": {
+            "key": str(source_dataset.key),
+            "name": source_dataset.name,
+            "index_column": source_dataset.index_column,
+        },
+        "source_column": relationship.source_column,
+        "target_dataset": {
+            "key": str(target_dataset.key),
+            "name": target_dataset.name,
+            "index_column": target_dataset.index_column,
+        },
+        "target_index_column": relationship.target_index_column,
+        "enforce_integrity": relationship.enforce_integrity,
+        "created_at": relationship.created_at,
+        "updated_at": relationship.updated_at,
+    }
+
+
+def _relationship_identifier_uuid(relationship_key: str) -> UUID:
+    try:
+        return UUID(str(relationship_key or "").strip())
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise DatasetServiceError(400, "Invalid relationship key.") from exc
+
+
+def _normalize_relationship_name(
+    name: str | None,
+    *,
+    source_column: str,
+    target_dataset: Dataset,
+) -> str:
+    normalized_name = str(name or "").strip()
+    if not normalized_name:
+        normalized_name = f"{source_column} to {target_dataset.name}"
+    if len(normalized_name) > 120:
+        raise DatasetServiceError(400, "Relationship name must be 120 characters or fewer.")
+    return normalized_name
+
+
+def _normalize_relationship_source_column(dataset: Dataset, source_column: str) -> str:
+    normalized_column = str(source_column or "").strip()
+    if not normalized_column:
+        raise DatasetServiceError(400, "Relationship source_column is required.")
+    if normalized_column not in dataset.headers:
+        raise DatasetServiceError(
+            400,
+            f"Relationship source_column '{normalized_column}' must match a dataset header.",
+        )
+    return normalized_column
+
+
+def _relationship_cell_value(row_data: dict, column: str) -> str:
+    return str(row_data.get(column, "") or "").strip()
+
+
+def _relationship_source_rows_with_values(relationship: DatasetRelationship):
+    return (
+        relationship.source_dataset.rows.annotate(
+            rowset_relationship_value=Trim(KeyTextTransform(relationship.source_column, "data"))
+        )
+        .filter(rowset_relationship_value__isnull=False)
+        .exclude(rowset_relationship_value="")
+    )
+
+
+def _validate_existing_relationship_values(relationship: DatasetRelationship) -> None:
+    matching_target_rows = relationship.target_dataset.rows.filter(
+        index_value=OuterRef("rowset_relationship_value")
+    )
+    missing_count = (
+        _relationship_source_rows_with_values(relationship)
+        .annotate(rowset_target_exists=Exists(matching_target_rows))
+        .filter(rowset_target_exists=False)
+        .count()
+    )
+
+    if missing_count:
+        plural = "values" if missing_count != 1 else "value"
+        raise DatasetServiceError(
+            400,
+            f"Column '{relationship.source_column}' contains {missing_count} {plural} "
+            f"without a matching row in target dataset '{relationship.target_dataset.name}'.",
+        )
+
+
+def _enforced_outgoing_relationships(dataset: Dataset):
+    return dataset.outgoing_relationships.filter(enforce_integrity=True).select_related(
+        "target_dataset"
+    )
+
+
+def _validate_relationship_row_data(
+    dataset: Dataset,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+) -> None:
+    selected_columns = set(columns) if columns is not None else None
+    for relationship in _enforced_outgoing_relationships(dataset):
+        if selected_columns is not None and relationship.source_column not in selected_columns:
+            continue
+        value = _relationship_cell_value(row_data, relationship.source_column)
+        if not value:
+            continue
+        if relationship.target_dataset.archived_at is not None:
+            raise DatasetServiceError(
+                409,
+                f"Relationship '{relationship.name}' targets an archived dataset.",
+            )
+        if not relationship.target_dataset.rows.filter(index_value=value).exists():
+            raise DatasetServiceError(
+                400,
+                f"Column '{relationship.source_column}' references a missing row in "
+                f"target dataset '{relationship.target_dataset.name}'.",
+            )
+
+
+def _raise_if_target_row_is_referenced(dataset: Dataset, index_value: str) -> None:
+    normalized_index_value = str(index_value or "").strip()
+    if not normalized_index_value:
+        return
+
+    incoming_relationships = dataset.incoming_relationships.filter(
+        enforce_integrity=True
+    ).select_related("source_dataset")
+    for relationship in incoming_relationships:
+        if _relationship_source_rows_with_values(relationship).filter(
+            rowset_relationship_value=normalized_index_value
+        ).exists():
+            raise DatasetServiceError(
+                409,
+                f"Row is referenced by relationship '{relationship.name}' from "
+                f"dataset '{relationship.source_dataset.name}'.",
+            )
+
+
+def create_profile_dataset_relationship(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    source_column: str,
+    target_dataset_key: str,
+    name: str | None = None,
+    enforce_integrity: bool = True,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    """Create one lightweight foreign-key-style relationship for a source dataset."""
+    with transaction.atomic():
+        source_dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        target_dataset = get_ready_profile_dataset(profile, target_dataset_key)
+        if source_dataset.pk == target_dataset.pk:
+            raise DatasetServiceError(
+                400,
+                "Relationship target dataset must be different from the source dataset.",
+            )
+
+        normalized_source_column = _normalize_relationship_source_column(
+            source_dataset,
+            source_column,
+        )
+        normalized_name = _normalize_relationship_name(
+            name,
+            source_column=normalized_source_column,
+            target_dataset=target_dataset,
+        )
+        relationship = DatasetRelationship(
+            profile=profile,
+            source_dataset=source_dataset,
+            target_dataset=target_dataset,
+            name=normalized_name,
+            source_column=normalized_source_column,
+            target_index_column=target_dataset.index_column,
+            enforce_integrity=bool(enforce_integrity),
+        )
+        if relationship.enforce_integrity:
+            _validate_existing_relationship_values(relationship)
+
+        try:
+            relationship.save()
+        except IntegrityError as exc:
+            raise DatasetServiceError(
+                409,
+                "Relationship already exists for this dataset.",
+            ) from exc
+
+        source_dataset.updated_by_agent_api_key = agent_api_key
+        source_dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+        record_dataset_mutation(
+            source_dataset,
+            DatasetMutationType.RELATIONSHIP_CREATED,
+            "Dataset relationship created.",
+            agent_api_key=agent_api_key,
+            target_type="relationship",
+            target_identifier=str(relationship.key),
+            metadata={
+                "relationship_key": str(relationship.key),
+                "relationship_name": relationship.name,
+                "source_column": relationship.source_column,
+                "target_dataset_key": str(target_dataset.key),
+                "target_index_column": relationship.target_index_column,
+                "enforce_integrity": relationship.enforce_integrity,
+            },
+        )
+
+    return {
+        "status": "success",
+        "message": "Relationship created.",
+        "relationship": serialize_dataset_relationship(relationship),
+    }
+
+
+def list_profile_dataset_relationships(profile: Profile, dataset_key: str) -> dict:
+    source_dataset = get_ready_profile_dataset(profile, dataset_key)
+    relationships = (
+        source_dataset.outgoing_relationships.select_related("source_dataset", "target_dataset")
+        .order_by("name", "id")
+    )
+    return {
+        "dataset": str(source_dataset.key),
+        "relationships": [
+            serialize_dataset_relationship(relationship) for relationship in relationships
+        ],
+    }
+
+
+def _get_profile_dataset_relationship(
+    profile: Profile,
+    dataset: Dataset,
+    relationship_key: str,
+):
+    relationship_uuid = _relationship_identifier_uuid(relationship_key)
+    try:
+        return (
+            dataset.outgoing_relationships.select_related("source_dataset", "target_dataset")
+            .filter(profile=profile)
+            .get(key=relationship_uuid)
+        )
+    except DatasetRelationship.DoesNotExist as exc:
+        raise DatasetServiceError(404, "Relationship not found.") from exc
+
+
+def delete_profile_dataset_relationship(
+    profile: Profile,
+    dataset_key: str,
+    relationship_key: str,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    with transaction.atomic():
+        source_dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        relationship = _get_profile_dataset_relationship(
+            profile,
+            source_dataset,
+            relationship_key,
+        )
+        relationship_payload = serialize_dataset_relationship(relationship)
+        relationship.delete()
+        source_dataset.updated_by_agent_api_key = agent_api_key
+        source_dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+        record_dataset_mutation(
+            source_dataset,
+            DatasetMutationType.RELATIONSHIP_DELETED,
+            "Dataset relationship deleted.",
+            agent_api_key=agent_api_key,
+            target_type="relationship",
+            target_identifier=relationship_payload["key"],
+            metadata={
+                "relationship_key": relationship_payload["key"],
+                "relationship_name": relationship_payload["name"],
+                "source_column": relationship_payload["source_column"],
+                "target_dataset_key": relationship_payload["target_dataset"]["key"],
+                "target_index_column": relationship_payload["target_index_column"],
+                "enforce_integrity": relationship_payload["enforce_integrity"],
+            },
+        )
+    return {
+        "status": "success",
+        "message": "Relationship deleted.",
+        "relationship": relationship_payload,
+    }
+
+
+def resolve_profile_dataset_relationship(
+    profile: Profile,
+    dataset_key: str,
+    relationship_key: str,
+    *,
+    source_index_value: str,
+) -> dict:
+    source_dataset = get_ready_profile_dataset(profile, dataset_key)
+    relationship = _get_profile_dataset_relationship(profile, source_dataset, relationship_key)
+    if relationship.target_dataset.archived_at is not None:
+        raise DatasetServiceError(409, "Relationship target dataset is archived.")
+    if relationship.target_dataset.status != DatasetStatus.READY:
+        raise DatasetServiceError(409, "Relationship target dataset is not ready.")
+
+    normalized_source_index = str(source_index_value or "").strip()
+    if not normalized_source_index:
+        raise DatasetServiceError(400, "source_index_value is required.")
+    try:
+        source_row = source_dataset.rows.get(index_value=normalized_source_index)
+    except DatasetRow.DoesNotExist as exc:
+        raise DatasetServiceError(404, "Source row not found.") from exc
+
+    target_index_value = _relationship_cell_value(source_row.data or {}, relationship.source_column)
+    if not target_index_value:
+        return {
+            "status": "success",
+            "message": "Relationship value is blank.",
+            "relationship": serialize_dataset_relationship(relationship),
+            "source_row": serialize_dataset_row(source_row),
+            "target_index_value": "",
+            "target_row": None,
+        }
+    try:
+        target_row = relationship.target_dataset.rows.get(index_value=target_index_value)
+    except DatasetRow.DoesNotExist as exc:
+        if not relationship.enforce_integrity:
+            return {
+                "status": "success",
+                "message": "Related row not found.",
+                "relationship": serialize_dataset_relationship(relationship),
+                "source_row": serialize_dataset_row(source_row),
+                "target_index_value": target_index_value,
+                "target_row": None,
+            }
+        raise DatasetServiceError(404, "Related row not found.") from exc
+    return {
+        "status": "success",
+        "message": "Related row resolved.",
+        "relationship": serialize_dataset_relationship(relationship),
+        "source_row": serialize_dataset_row(source_row),
+        "target_index_value": target_index_value,
+        "target_row": serialize_dataset_row(target_row),
+    }
+
+
 def _stringify_cell(value: Any) -> str:
     if value is None:
         return ""
@@ -1151,6 +1494,24 @@ def _normalize_new_column_name(dataset: Dataset, name: str, *, replacing: str | 
     return normalized_name
 
 
+def _raise_if_column_participates_in_relationship(dataset: Dataset, column_name: str) -> None:
+    outgoing = dataset.outgoing_relationships.filter(source_column=column_name).first()
+    if outgoing is not None:
+        raise DatasetServiceError(
+            409,
+            f"Column '{column_name}' is used by relationship '{outgoing.name}'. "
+            "Delete the relationship before changing this column.",
+        )
+    if column_name == dataset.index_column:
+        incoming = dataset.incoming_relationships.first()
+        if incoming is not None:
+            raise DatasetServiceError(
+                409,
+                f"Index column '{column_name}' is targeted by relationship '{incoming.name}'. "
+                "Delete the relationship before changing this column.",
+            )
+
+
 def _normalized_column_schema_for_headers(
     headers: list[str],
     column_schema: dict,
@@ -1285,6 +1646,7 @@ def rename_profile_dataset_column(
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
         old_column_name = _normalize_existing_column_name(dataset, old_name)
+        _raise_if_column_participates_in_relationship(dataset, old_column_name)
         if dataset.index_generated and old_column_name == dataset.index_column:
             raise DatasetServiceError(
                 400,
@@ -1364,6 +1726,7 @@ def drop_profile_dataset_column(
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
         column_name = _normalize_existing_column_name(dataset, name)
+        _raise_if_column_participates_in_relationship(dataset, column_name)
         if column_name == dataset.index_column:
             raise DatasetServiceError(
                 400,
@@ -1819,6 +2182,7 @@ def create_profile_dataset_row(
             raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
         serialized_data = {header: str(row_data.get(header, "")) for header in dataset.headers}
         _validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
+        _validate_relationship_row_data(dataset, serialized_data)
 
         row = DatasetRow.objects.create(
             dataset=dataset,
@@ -1959,7 +2323,10 @@ def _patch_dataset_row(
         if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
             raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
         index_changed = row.index_value != index_value
+        if index_changed:
+            _raise_if_target_row_is_referenced(dataset, row.index_value)
         row.index_value = index_value
+    _validate_relationship_row_data(dataset, row.data, columns=patched_fields)
     row.updated_by_agent_api_key = agent_api_key
     row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
     dataset.updated_by_agent_api_key = agent_api_key
@@ -2003,6 +2370,7 @@ def delete_profile_dataset_row(
         except DatasetRow.DoesNotExist as exc:
             raise DatasetServiceError(404, "Row not found.") from exc
         row_number = row.row_number
+        _raise_if_target_row_is_referenced(dataset, row.index_value)
         row.delete()
         dataset.row_count = dataset.rows.count()
         dataset.updated_by_agent_api_key = agent_api_key
