@@ -204,23 +204,75 @@ def _row_cells(
     headers: list[str],
     row_data: dict[str, object],
     column_schema: dict | None = None,
+    relationship_links: dict[str, dict[str, str]] | None = None,
 ) -> list[dict[str, str]]:
     ordered_keys = [*headers, *[key for key in row_data if key not in headers]]
     descriptions = {
         column["name"]: column["description"]
         for column in column_definitions(headers, column_schema or {})
     }
+    relationship_links = relationship_links or {}
     cells = []
     for header in ordered_keys:
         value = row_data.get(header, "")
-        cells.append(
-            {
-                "header": header,
-                "description": descriptions.get(header, ""),
-                "value": "" if value is None else str(value),
-            }
-        )
+        cell = {
+            "header": header,
+            "description": descriptions.get(header, ""),
+            "value": "" if value is None else str(value),
+        }
+        relationship_link = relationship_links.get(header)
+        if relationship_link and cell["value"]:
+            cell["relationship_url"] = relationship_link["url"]
+            cell["relationship_label"] = relationship_link["label"]
+        cells.append(cell)
     return cells
+
+
+def _row_relationship_links(
+    dataset: Dataset,
+    row_data: dict[str, object],
+) -> dict[str, dict[str, str]]:
+    links = {}
+    if not row_data:
+        return links
+
+    relationships = dataset.outgoing_relationships.select_related("target_dataset").order_by(
+        "source_column",
+        "name",
+        "id",
+    )
+    for relationship in relationships:
+        if relationship.source_column in links:
+            continue
+        if (
+            relationship.target_dataset.status != DatasetStatus.READY
+            or relationship.target_dataset.archived_at is not None
+        ):
+            continue
+        target_index_value = str(row_data.get(relationship.source_column, "") or "").strip()
+        if not target_index_value:
+            continue
+        target_row = (
+            relationship.target_dataset.rows.only("id", "row_number", "index_value")
+            .filter(index_value=target_index_value)
+            .first()
+        )
+        if target_row is None:
+            continue
+        links[relationship.source_column] = {
+            "url": reverse(
+                "dataset_row_detail",
+                kwargs={
+                    "dataset_key": relationship.target_dataset.key,
+                    "row_id": target_row.id,
+                },
+            ),
+            "label": (
+                f"View related {relationship.target_dataset.name} row "
+                f"{target_row.row_number} via {relationship.name}"
+            ),
+        }
+    return links
 
 
 def _querystring_for_page(request, page_number: int) -> str:
@@ -835,7 +887,12 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
         row = self.object
         dataset = row.dataset
         context["dataset"] = dataset
-        context["row_cells"] = _row_cells(dataset.headers, row.data, dataset.column_schema)
+        context["row_cells"] = _row_cells(
+            dataset.headers,
+            row.data,
+            dataset.column_schema,
+            relationship_links=_row_relationship_links(dataset, row.data),
+        )
         return context
 
 
