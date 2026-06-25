@@ -30,6 +30,7 @@ from apps.datasets.services import (
     rows_to_sqlite_bytes,
 )
 from apps.datasets.tasks import import_dataset_rows
+from apps.datasets.templatetags.dataset_links import safe_external_href
 from apps.datasets.views import DATASET_CHANGES_PAGE_SIZE, DATASET_DETAIL_ROW_PAGE_SIZE
 
 pytestmark = pytest.mark.django_db
@@ -260,6 +261,20 @@ def test_infer_column_type_detects_common_semantic_types():
     assert infer_column_type("website", ["https://example.com"]) == "url"
     assert infer_column_type("date", ["31/01/2026"]) == "text"
     assert infer_column_type("mixed", ["Ada", "10"]) == "text"
+
+
+def test_safe_external_href_only_accepts_clean_http_urls():
+    assert safe_external_href("https://example.com/path?ref=rowset&ok=1") == (
+        "https://example.com/path?ref=rowset&ok=1"
+    )
+    assert safe_external_href(" http://example.com ") == "http://example.com"
+    assert safe_external_href("javascript:alert(1)") == ""
+    assert safe_external_href("mailto:ada@example.com") == ""
+    assert safe_external_href("//example.com/path") == ""
+    assert safe_external_href("https://:443/path") == ""
+    assert safe_external_href("https://example.com/a path") == ""
+    assert safe_external_href("https://example.com/<script>") == ""
+    assert safe_external_href("https://example.com@evil.test/path") == ""
 
 
 def test_preview_csv_file_rejects_duplicate_headers():
@@ -946,6 +961,54 @@ def test_dataset_detail_semantic_text_filters_accept_partial_values(auth_client,
     assert 'name="filter_1"' in content
 
 
+def test_dataset_detail_linkifies_external_url_cells_with_safe_rel(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "website", "unsafe"]
+    dataset.column_schema = {
+        "name": {"type": DatasetColumnType.TEXT},
+        "website": {"type": DatasetColumnType.URL},
+        "unsafe": {"type": DatasetColumnType.TEXT},
+    }
+    dataset.save(update_fields=["headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {
+        "name": "Ada",
+        "website": "https://example.com/ada?ref=rowset&ok=1",
+        "unsafe": "javascript:alert(1)",
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada?ref=rowset&amp;ok=1"' in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "javascript:alert(1)" in content
+    assert 'href="javascript:alert(1)"' not in content
+
+
+def test_dataset_detail_keeps_row_detail_link_for_single_url_column(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["website"]
+    dataset.column_schema = {"website": {"type": DatasetColumnType.URL}}
+    dataset.save(update_fields=["headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {"website": "https://example.com/ada"}
+    row.save(update_fields=["data"])
+    row_url = reverse("dataset_row_detail", args=[dataset.key, row.id])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert f'href="{row_url}"' in content
+    assert 'aria-label="View row 1 details"' in content
+    assert 'aria-label="Open external link for row 1"' in content
+    assert ">Open</a>" in content
+
+
 def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
     dataset = configure_filterable_dataset(create_ready_dataset(profile))
 
@@ -1058,6 +1121,28 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     assert "Back to dataset" in content
     assert 'td class="min-w-96 whitespace-pre-wrap break-words"' not in content
     assert '<span class="whitespace-pre-wrap break-words">Ada</span>' in content
+
+
+def test_dataset_row_detail_linkifies_external_url_cells(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "website", "unsafe"]
+    dataset.save(update_fields=["headers"])
+    row = dataset.rows.first()
+    row.data = {
+        "name": "Ada",
+        "website": "https://example.com/ada",
+        "unsafe": "https://example.com/<script>",
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(reverse("dataset_row_detail", args=[dataset.key, row.id]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "https://example.com/&lt;script&gt;" in content
+    assert 'href="https://example.com/&lt;script&gt;"' not in content
 
 
 def test_dataset_row_detail_links_relationship_value_to_target_row(auth_client, profile):
@@ -4149,6 +4234,8 @@ def test_public_dataset_view_paginates_rows(client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+    assert '<meta name="robots" content="noindex, nofollow, noarchive" />' in content
     assert "Ada" in content
     assert "Grace" not in content
     assert "Page 1 of 2" in content
@@ -4257,6 +4344,56 @@ def test_public_dataset_links_rows_and_truncates_cells(client, profile):
     assert 'title=""' in content
 
 
+def test_public_dataset_linkifies_external_url_cells_with_safe_rel(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.headers = ["name", "website", "unsafe"]
+    dataset.column_schema = {
+        "name": {"type": DatasetColumnType.TEXT},
+        "website": {"type": DatasetColumnType.URL},
+        "unsafe": {"type": DatasetColumnType.TEXT},
+    }
+    dataset.save(update_fields=["public_enabled", "headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {
+        "name": "Ada",
+        "website": "https://example.com/ada",
+        "unsafe": "javascript:alert(1)",
+    }
+    row.save(update_fields=["data"])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "javascript:alert(1)" in content
+    assert 'href="javascript:alert(1)"' not in content
+
+
+def test_public_dataset_keeps_row_detail_link_for_single_url_column(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.headers = ["website"]
+    dataset.column_schema = {"website": {"type": DatasetColumnType.URL}}
+    dataset.save(update_fields=["public_enabled", "headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {"website": "https://example.com/ada"}
+    row.save(update_fields=["data"])
+    row_url = reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert f'href="{row_url}"' in content
+    assert 'aria-label="View row 1 details"' in content
+    assert 'aria-label="Open external link for row 1"' in content
+    assert ">Open</a>" in content
+
+
 def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
@@ -4276,6 +4413,8 @@ def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+    assert '<meta name="robots" content="noindex, nofollow, noarchive" />' in content
     assert "Shared Rowset row" in content
     assert "Row 1" in content
     assert "notes" in content
@@ -4284,6 +4423,29 @@ def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     assert "Stored outside declared headers" in content
     assert "Back to preview" in content
     assert "Created by" not in content
+
+
+def test_public_dataset_row_detail_linkifies_external_url_cells(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.headers = ["name", "website", "unsafe"]
+    dataset.save(update_fields=["public_enabled", "headers"])
+    row = dataset.rows.first()
+    row.data = {
+        "name": "Ada",
+        "website": "https://example.com/ada?ref=rowset&ok=1",
+        "unsafe": "https://example.com/<script>",
+    }
+    row.save(update_fields=["data"])
+
+    response = client.get(reverse("public_dataset_row_detail", args=[dataset.public_key, row.id]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada?ref=rowset&amp;ok=1"' in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "https://example.com/&lt;script&gt;" in content
+    assert 'href="https://example.com/&lt;script&gt;"' not in content
 
 
 def test_public_dataset_row_detail_requires_public_preview(client, profile):

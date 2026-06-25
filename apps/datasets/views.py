@@ -53,6 +53,7 @@ from apps.datasets.services import (
 )
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
+PUBLIC_PREVIEW_ROBOTS_POLICY = "noindex, nofollow, noarchive"
 
 DATASET_SORT_OPTIONS = (
     ("recent", "Recently updated"),
@@ -1436,13 +1437,14 @@ def public_dataset(request, public_key):
     else:
         row_query_context = {}
 
-    return render(
+    response = render(
         request,
         "datasets/public_dataset.html",
         {
             "dataset": dataset,
             "has_access": has_access,
             "password_error": password_error,
+            "public_preview_robots_policy": PUBLIC_PREVIEW_ROBOTS_POLICY,
             "page_obj": page_obj,
             "public_rows_with_values": public_rows_with_values,
             "public_empty_message": (
@@ -1463,6 +1465,8 @@ def public_dataset(request, public_key):
             **row_query_context,
         },
     )
+    response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+    return response
 
 
 @require_http_methods(["GET", "POST"])
@@ -1496,7 +1500,7 @@ def public_dataset_row_detail(request, public_key, row_id):
         )
         row_cells = _row_cells(dataset.headers, dataset_row.data)
 
-    return render(
+    response = render(
         request,
         "datasets/public_dataset_row_detail.html",
         {
@@ -1504,6 +1508,9 @@ def public_dataset_row_detail(request, public_key, row_id):
             "dataset_row": dataset_row,
             "has_access": has_access,
             "password_error": password_error,
+            "public_preview_robots_policy": PUBLIC_PREVIEW_ROBOTS_POLICY,
             "row_cells": row_cells,
         },
     )
+    response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+    return response
