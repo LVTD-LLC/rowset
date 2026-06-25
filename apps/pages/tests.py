@@ -1,4 +1,5 @@
 import time
+from dataclasses import replace
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -6,8 +7,12 @@ from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
-from django.test import override_settings
+from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
+
+from apps.core.capabilities import RowsetUseCase
+from apps.pages import use_cases as page_use_cases
+from apps.pages.checks import check_use_case_page_registry
 
 pytestmark = pytest.mark.django_db
 
@@ -103,10 +108,170 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Agent setup prompt" not in content
     assert "Rowset MCP URL:" not in content
     assert "Rowset skill install:" not in content
-    assert "One place for the tools your agents invent." in content
-    assert "Feedback and Canny-style boards" in content
-    assert "Content and pSEO pipelines" in content
-    assert "Agent loops and delegation" in content
+    assert "Give AI agents a place to put structured work." in content
+    assert "One backend. Many agent workflows." in content
+    assert "Agent CRM" in content
+    assert "Content pipeline" in content
+    assert "Bug and QA tracker" in content
+    assert reverse("use_cases") in content
+
+
+def test_use_cases_index_lists_public_use_case_pages(client):
+    response = client.get(reverse("use_cases"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Agent workflows that start as structured rows." in content
+    assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("use_case_detail", kwargs={"slug": "agent-task-board"}) in content
+    assert "product-inventory-catalog" in content
+
+
+def test_use_case_detail_page_shows_structured_example(client):
+    response = client.get(reverse("use_case_detail", kwargs={"slug": "personal-crm"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "A CRM your agent can actually maintain." in content
+    assert "people" in content
+    assert "People dataset indexed by email or person_id." in content
+    assert "Dataset context and semantic schema" in content
+    assert "alex@example.com" in content
+
+
+def test_unknown_use_case_returns_404(client):
+    response = client.get(reverse("use_case_detail", kwargs={"slug": "missing"}))
+
+    assert response.status_code == 404
+
+
+def test_use_case_pages_reject_missing_page_copy(monkeypatch):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy.pop("personal_crm")
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    with pytest.raises(ValueError, match="personal_crm"):
+        page_use_cases.validate_use_case_page_registry()
+
+
+def test_use_case_pages_reject_unknown_feature_references(monkeypatch):
+    invalid_use_case = RowsetUseCase(
+        id="invalid_reference",
+        title="Invalid reference",
+        summary="Invalid registry fixture.",
+        starter_shape=("Fixture only.",),
+        rowset_features=("missing_capability",),
+    )
+    monkeypatch.setattr(
+        page_use_cases,
+        "ROWSET_USE_CASES",
+        page_use_cases.ROWSET_USE_CASES + (invalid_use_case,),
+    )
+    monkeypatch.setattr(
+        page_use_cases,
+        "USE_CASE_PAGE_COPY",
+        {
+            **page_use_cases.USE_CASE_PAGE_COPY,
+            "invalid_reference": replace(
+                page_use_cases.USE_CASE_PAGE_COPY["personal_crm"],
+                slug="invalid-reference",
+            ),
+        },
+    )
+
+    with pytest.raises(ValueError, match="invalid_reference: missing_capability"):
+        page_use_cases.validate_use_case_page_registry()
+
+
+def test_use_case_pages_reject_duplicate_capability_ids(monkeypatch):
+    monkeypatch.setattr(
+        page_use_cases,
+        "ROWSET_CAPABILITIES",
+        page_use_cases.ROWSET_CAPABILITIES + (page_use_cases.ROWSET_CAPABILITIES[0],),
+    )
+
+    with pytest.raises(ValueError, match="duplicate IDs"):
+        page_use_cases.validate_use_case_page_registry()
+
+
+def test_use_case_pages_reject_duplicate_public_slugs(monkeypatch):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy["task_board"] = replace(
+        page_copy["task_board"],
+        slug=page_copy["personal_crm"].slug,
+    )
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    with pytest.raises(ValueError, match="duplicate public slugs: personal-crm"):
+        page_use_cases.validate_use_case_page_registry()
+
+
+@pytest.mark.parametrize(
+    ("bad_slug", "expected_slug"),
+    (
+        (None, "<empty>"),
+        ("", "<empty>"),
+        ("personal crm", "personal crm"),
+        ("personal/crm", "personal/crm"),
+    ),
+)
+def test_use_case_pages_reject_unrouteable_public_slugs(
+    bad_slug, expected_slug, monkeypatch
+):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy["personal_crm"] = replace(
+        page_copy["personal_crm"],
+        slug=bad_slug,
+    )
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    errors = page_use_cases.get_use_case_page_registry_errors()
+
+    assert (
+        "USE_CASE_PAGE_COPY contains invalid public slugs: "
+        f"personal_crm: {expected_slug}"
+    ) in errors
+
+
+@pytest.mark.parametrize("bad_page_copy", (None, {"slug": "personal-crm"}))
+def test_use_case_pages_reject_malformed_page_copy_values(
+    bad_page_copy, monkeypatch
+):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy["personal_crm"] = bad_page_copy
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    errors = page_use_cases.get_use_case_page_registry_errors()
+    check_errors = check_use_case_page_registry(None)
+
+    assert (
+        "USE_CASE_PAGE_COPY contains invalid public slugs: "
+        "personal_crm: <invalid page copy>"
+    ) in errors
+    assert check_errors[0].id == "pages.E001"
+    assert "<invalid page copy>" in check_errors[0].msg
+    with pytest.raises(ImproperlyConfigured, match="<invalid page copy>"):
+        page_use_cases.get_use_case_pages()
+
+
+def test_use_case_page_registry_check_reports_structured_errors(monkeypatch):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy.pop("personal_crm")
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    errors = check_use_case_page_registry(None)
+
+    assert errors[0].id == "pages.E001"
+    assert "personal_crm" in errors[0].msg
+
+
+def test_use_case_pages_fail_controlled_when_registry_is_invalid(monkeypatch):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy.pop("personal_crm")
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    with pytest.raises(ImproperlyConfigured, match="personal_crm"):
+        page_use_cases.get_use_case_pages()
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):

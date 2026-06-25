@@ -1,10 +1,12 @@
 from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
+from django.http import Http404
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
 from apps.core.models import Profile
+from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -30,9 +32,14 @@ class LandingPageView(TemplateView):
 
         payment_status = self.request.GET.get("payment")
         if payment_status == "success":
-            messages.success(self.request, "Thanks for subscribing, I hope you enjoy the app!")
+            messages.success(
+                self.request,
+                "Thanks for subscribing, I hope you enjoy the app!",
+            )
         elif payment_status == "failed":
             messages.error(self.request, "Something went wrong with the payment.")
+
+        context["use_case_pages"] = get_use_case_pages()
 
         return context
 
@@ -99,6 +106,30 @@ class PricingView(TemplateView):
 
         return context
 
+
+class UseCasesIndexView(TemplateView):
+    template_name = "pages/use-cases-index.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["use_case_pages"] = get_use_case_pages()
+        return context
+
+
+class UseCaseDetailView(TemplateView):
+    template_name = "pages/use-case-detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        use_case = get_use_case_page(self.kwargs["slug"])
+        if use_case is None:
+            raise Http404("Use case not found")
+
+        context["use_case"] = use_case
+        context["related_use_cases"] = tuple(
+            page for page in get_use_case_pages() if page["slug"] != use_case["slug"]
+        )[:3]
+        return context
 
 
 class PrivacyPolicyView(TemplateView):
