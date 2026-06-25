@@ -266,26 +266,10 @@ def validate_use_case_page_registry() -> None:
 
 def get_use_case_pages() -> tuple[dict[str, object], ...]:
     feature_titles = _capability_titles()
-    duplicate_slugs = _duplicate_public_slugs()
     pages: list[dict[str, object]] = []
 
     for use_case in ROWSET_USE_CASES:
-        page_copy = USE_CASE_PAGE_COPY.get(use_case.id)
-        if page_copy is None:
-            continue
-        if page_copy.slug in duplicate_slugs:
-            continue
-
-        features = []
-        has_missing_feature = False
-        for feature_id in use_case.rowset_features:
-            feature_title = feature_titles.get(feature_id)
-            if feature_title is None:
-                has_missing_feature = True
-                break
-            features.append(feature_title)
-        if has_missing_feature:
-            continue
+        page_copy = USE_CASE_PAGE_COPY[use_case.id]
 
         pages.append(
             {
@@ -298,7 +282,9 @@ def get_use_case_pages() -> tuple[dict[str, object], ...]:
                 "short_summary": page_copy.short_summary,
                 "meta_description": page_copy.meta_description,
                 "starter_shape": use_case.starter_shape,
-                "features": tuple(features),
+                "features": tuple(
+                    feature_titles[feature_id] for feature_id in use_case.rowset_features
+                ),
                 "example_name": page_copy.example_name,
                 "index_column": page_copy.index_column,
                 "sample_rows": page_copy.sample_rows,

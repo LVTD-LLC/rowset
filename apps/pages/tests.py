@@ -1,5 +1,6 @@
 import time
 from dataclasses import replace
+from importlib import import_module
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -7,9 +8,11 @@ from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
+from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
 
 from apps.core.capabilities import RowsetUseCase
+from apps.pages import PagesConfig
 from apps.pages import use_cases as page_use_cases
 
 pytestmark = pytest.mark.django_db
@@ -151,9 +154,6 @@ def test_use_case_pages_reject_missing_page_copy(monkeypatch):
     with pytest.raises(ValueError, match="personal_crm"):
         page_use_cases.validate_use_case_page_registry()
 
-    pages = page_use_cases.get_use_case_pages()
-    assert "personal_crm" not in {page["id"] for page in pages}
-
 
 def test_use_case_pages_reject_unknown_feature_references(monkeypatch):
     invalid_use_case = RowsetUseCase(
@@ -183,9 +183,6 @@ def test_use_case_pages_reject_unknown_feature_references(monkeypatch):
     with pytest.raises(ValueError, match="invalid_reference: missing_capability"):
         page_use_cases.validate_use_case_page_registry()
 
-    pages = page_use_cases.get_use_case_pages()
-    assert "invalid_reference" not in {page["id"] for page in pages}
-
 
 def test_use_case_pages_reject_duplicate_public_slugs(monkeypatch):
     page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
@@ -198,9 +195,16 @@ def test_use_case_pages_reject_duplicate_public_slugs(monkeypatch):
     with pytest.raises(ValueError, match="duplicate public slugs: personal-crm"):
         page_use_cases.validate_use_case_page_registry()
 
-    pages = page_use_cases.get_use_case_pages()
-    assert "personal_crm" not in {page["id"] for page in pages}
-    assert "task_board" not in {page["id"] for page in pages}
+
+def test_pages_app_rejects_invalid_use_case_registry_at_startup(monkeypatch):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy.pop("personal_crm")
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+    app_module = import_module("apps.pages")
+    config = PagesConfig("apps.pages", app_module)
+
+    with pytest.raises(ImproperlyConfigured, match="personal_crm"):
+        config.ready()
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):
