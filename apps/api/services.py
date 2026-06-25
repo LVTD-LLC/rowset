@@ -946,6 +946,15 @@ def resolve_profile_dataset_relationship(
     try:
         target_row = relationship.target_dataset.rows.get(index_value=target_index_value)
     except DatasetRow.DoesNotExist as exc:
+        if not relationship.enforce_integrity:
+            return {
+                "status": "success",
+                "message": "Related row not found.",
+                "relationship": serialize_dataset_relationship(relationship),
+                "source_row": serialize_dataset_row(source_row),
+                "target_index_value": target_index_value,
+                "target_row": None,
+            }
         raise DatasetServiceError(404, "Related row not found.") from exc
     return {
         "status": "success",

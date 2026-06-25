@@ -2095,6 +2095,41 @@ def test_dataset_relationship_api_rejects_existing_unmatched_values(client, prof
     assert not DatasetRelationship.objects.filter(source_dataset=messages).exists()
 
 
+def test_dataset_relationship_api_resolves_unenforced_orphan_as_null(client, profile):
+    people, messages = create_crm_datasets(profile)
+    messages.rows.create(
+        row_number=2,
+        index_value="M-2",
+        data={
+            "message_id": "M-2",
+            "person_id": "P-404",
+            "body": "Unmatched.",
+        },
+    )
+    messages.row_count = 2
+    messages.save(update_fields=["row_count"])
+    create_response = client.post(
+        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+        data={
+            "source_column": "person_id",
+            "target_dataset_key": str(people.key),
+            "enforce_integrity": False,
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    relationship_key = create_response.json()["relationship"]["key"]
+
+    resolve_response = client.get(
+        f"/api/datasets/{messages.key}/relationships/{relationship_key}/resolve"
+        f"?api_key={profile.key}&source_index_value=M-2"
+    )
+
+    assert resolve_response.status_code == 200
+    assert resolve_response.json()["target_index_value"] == "P-404"
+    assert resolve_response.json()["target_row"] is None
+
+
 def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(client, profile):
     people, messages = create_crm_datasets(profile)
     messages.rows.filter(index_value="M-1").update(
