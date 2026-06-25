@@ -233,6 +233,27 @@ def test_use_case_pages_reject_unrouteable_public_slugs(
     ) in errors
 
 
+@pytest.mark.parametrize("bad_page_copy", (None, {"slug": "personal-crm"}))
+def test_use_case_pages_reject_malformed_page_copy_values(
+    bad_page_copy, monkeypatch
+):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy["personal_crm"] = bad_page_copy
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    errors = page_use_cases.get_use_case_page_registry_errors()
+    check_errors = check_use_case_page_registry(None)
+
+    assert (
+        "USE_CASE_PAGE_COPY contains invalid public slugs: "
+        "personal_crm: <invalid page copy>"
+    ) in errors
+    assert check_errors[0].id == "pages.E001"
+    assert "<invalid page copy>" in check_errors[0].msg
+    with pytest.raises(ImproperlyConfigured, match="<invalid page copy>"):
+        page_use_cases.get_use_case_pages()
+
+
 def test_use_case_page_registry_check_reports_structured_errors(monkeypatch):
     page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
     page_copy.pop("personal_crm")

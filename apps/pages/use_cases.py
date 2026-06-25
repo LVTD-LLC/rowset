@@ -224,21 +224,28 @@ def _duplicate_capability_ids() -> tuple[str, ...]:
 
 
 def _duplicate_public_slugs() -> set[str]:
-    page_copy_slugs = [
-        USE_CASE_PAGE_COPY[use_case.id].slug
-        for use_case in ROWSET_USE_CASES
-        if use_case.id in USE_CASE_PAGE_COPY
-    ]
+    page_copy_slugs = []
+    for use_case in ROWSET_USE_CASES:
+        page_copy = USE_CASE_PAGE_COPY.get(use_case.id)
+        if isinstance(page_copy, UseCasePageCopy) and isinstance(page_copy.slug, str):
+            page_copy_slugs.append(page_copy.slug)
+
     return {slug for slug in page_copy_slugs if page_copy_slugs.count(slug) > 1}
 
 
 def _invalid_public_slugs() -> tuple[str, ...]:
-    return tuple(
-        f"{use_case_id}: {page_copy.slug or '<empty>'}"
-        for use_case_id, page_copy in sorted(USE_CASE_PAGE_COPY.items())
-        if not isinstance(page_copy.slug, str)
-        or not PUBLIC_SLUG_PATTERN.fullmatch(page_copy.slug)
-    )
+    invalid_slugs = []
+    for use_case_id, page_copy in sorted(USE_CASE_PAGE_COPY.items()):
+        if not isinstance(page_copy, UseCasePageCopy):
+            invalid_slugs.append(f"{use_case_id}: <invalid page copy>")
+            continue
+
+        if not isinstance(page_copy.slug, str) or not PUBLIC_SLUG_PATTERN.fullmatch(
+            page_copy.slug
+        ):
+            invalid_slugs.append(f"{use_case_id}: {page_copy.slug or '<empty>'}")
+
+    return tuple(invalid_slugs)
 
 
 def get_use_case_page_registry_errors() -> tuple[str, ...]:
