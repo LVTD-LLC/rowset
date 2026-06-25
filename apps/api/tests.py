@@ -373,7 +373,8 @@ class DatasetListApiUnitTests(SimpleTestCase):
         queryset.__getitem__ = Mock(return_value=[dataset])
         datasets = Mock()
         archived_datasets = datasets.filter.return_value
-        archived_datasets.select_related.return_value.only.return_value = queryset
+        visible_archived_datasets = archived_datasets.exclude.return_value
+        visible_archived_datasets.select_related.return_value.only.return_value = queryset
         request = HttpRequest()
         request.auth = SimpleNamespace(datasets=datasets)
 
@@ -384,8 +385,9 @@ class DatasetListApiUnitTests(SimpleTestCase):
         assert response["datasets"][0]["name"] == "Archived customers"
         assert response["datasets"][0]["archived_at"] == "2026-05-15T00:00:00Z"
         datasets.filter.assert_called_once_with(archived_at__isnull=False)
-        archived_datasets.select_related.assert_called_once_with("project")
-        archived_datasets.select_related.return_value.only.assert_called_once()
+        archived_datasets.exclude.assert_called_once_with(status=DatasetStatus.PREVIEWED)
+        visible_archived_datasets.select_related.assert_called_once_with("project")
+        visible_archived_datasets.select_related.return_value.only.assert_called_once()
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
 

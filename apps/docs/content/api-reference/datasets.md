@@ -126,7 +126,7 @@ GET {{ api_base_url }}/datasets/archived
 
 Returns archived datasets for the authenticated profile with the same metadata
 shape as the normal dataset list. Use this when you need to find a dataset key
-before restoring it.
+before restoring it. Preview-only archived drafts are omitted.
 
 ## List rows
 

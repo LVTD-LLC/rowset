@@ -1882,6 +1882,11 @@ def test_dataset_api_lists_archived_datasets_separately(client, profile):
     archived_dataset.name = "Archived people"
     archived_dataset.archived_at = timezone.now()
     archived_dataset.save(update_fields=["name", "archived_at"])
+    preview_archived_dataset = create_ready_dataset(profile)
+    preview_archived_dataset.name = "Archived draft"
+    preview_archived_dataset.status = DatasetStatus.PREVIEWED
+    preview_archived_dataset.archived_at = timezone.now()
+    preview_archived_dataset.save(update_fields=["name", "status", "archived_at"])
 
     archived_response = client.get(f"/api/datasets/archived?api_key={profile.key}")
 
@@ -1892,6 +1897,9 @@ def test_dataset_api_lists_archived_datasets_separately(client, profile):
     ]
     assert archived_response.json()["datasets"][0]["name"] == "Archived people"
     assert archived_response.json()["datasets"][0]["archived_at"] is not None
+    assert "Archived draft" not in {
+        item["name"] for item in archived_response.json()["datasets"]
+    }
 
     active_response = client.get(f"/api/datasets?api_key={profile.key}")
     assert active_response.status_code == 200

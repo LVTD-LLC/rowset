@@ -85,7 +85,7 @@ def _active_dataset_queryset(queryset):
 
 
 def _archived_dataset_queryset(queryset):
-    return queryset.filter(archived_at__isnull=False)
+    return queryset.filter(archived_at__isnull=False).exclude(status=DatasetStatus.PREVIEWED)
 
 
 class DatasetServiceError(Exception):
