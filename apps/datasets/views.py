@@ -587,6 +587,26 @@ class DatasetListView(LoginRequiredMixin, ListView):
     def get_total_projects(self, base_queryset):
         return self.request.user.profile.projects.count()
 
+    def get_dataset_groups(self, datasets):
+        groups_by_key = {}
+        for dataset in datasets:
+            project = dataset.project
+            group_key = project.pk if project else None
+            if group_key not in groups_by_key:
+                groups_by_key[group_key] = {
+                    "project": project,
+                    "label": project.name if project else "No project",
+                    "description": project.description if project else "",
+                    "datasets": [],
+                    "dataset_count": 0,
+                    "row_count": 0,
+                }
+            group = groups_by_key[group_key]
+            group["datasets"].append(dataset)
+            group["dataset_count"] += 1
+            group["row_count"] += dataset.row_count
+        return list(groups_by_key.values())
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         base_queryset = self.get_base_queryset()
@@ -625,6 +645,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
         context["dataset_empty_body"] = self.dataset_empty_body
         context["dataset_filtered_empty_title"] = self.dataset_filtered_empty_title
         context["dataset_filtered_empty_body"] = self.dataset_filtered_empty_body
+        context["dataset_groups"] = self.get_dataset_groups(context["datasets"])
         page_obj = context.get("page_obj")
         if page_obj and page_obj.has_previous():
             context["previous_dataset_page_url"] = _querystring_for_page(
