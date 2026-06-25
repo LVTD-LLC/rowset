@@ -933,6 +933,26 @@ def test_dataset_detail_falls_back_for_stale_rowset_row_urls(
     assert "Rowset row" not in content
 
 
+def test_dataset_detail_falls_back_for_root_relative_stale_rowset_row_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    raw_url = f"/datasets/{target_dataset.key}/rows/999999/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset row" not in content
+
+
 def test_dataset_detail_does_not_resolve_disabled_share_urls_to_private_links(
     auth_client,
     profile,
