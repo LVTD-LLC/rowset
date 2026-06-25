@@ -96,6 +96,65 @@ DATASET_EXPORT_FORMATS = {
 }
 
 
+def _mutation_change_display(value, *, values_recorded: bool, legacy_placeholder: str) -> dict:
+    value = "" if value is None else str(value)
+    if values_recorded:
+        return {
+            "text": "Blank" if value == "" else value,
+            "is_blank": value == "",
+            "is_unrecorded": False,
+        }
+    if value == legacy_placeholder:
+        return {
+            "text": "Not recorded",
+            "is_blank": False,
+            "is_unrecorded": True,
+        }
+    if value in ("", "Blank"):
+        return {
+            "text": "Blank",
+            "is_blank": True,
+            "is_unrecorded": False,
+        }
+    return {
+        "text": "Not recorded",
+        "is_blank": False,
+        "is_unrecorded": True,
+    }
+
+
+def _mutation_history_item(mutation) -> dict:
+    metadata = mutation.metadata or {}
+    values_recorded = metadata.get("value_changes_recorded") is True
+    field_changes = []
+    for change in metadata.get("field_changes") or []:
+        if not isinstance(change, dict):
+            continue
+        field_changes.append(
+            {
+                "field": str(change.get("field", "")),
+                "before": _mutation_change_display(
+                    change.get("before", ""),
+                    values_recorded=values_recorded,
+                    legacy_placeholder="Previous value",
+                ),
+                "after": _mutation_change_display(
+                    change.get("after", ""),
+                    values_recorded=values_recorded,
+                    legacy_placeholder="New value",
+                ),
+            }
+        )
+    return {
+        "summary": mutation.summary,
+        "actor_label": mutation.actor_label,
+        "created_at": mutation.created_at,
+        "mutation_type_display": mutation.get_mutation_type_display(),
+        "field_changes": field_changes,
+        "changed_fields": metadata.get("changed_fields") or [],
+    }
+
+
 def _visible_project_dataset_count():
     return Count(
         "datasets",
@@ -718,7 +777,9 @@ class DatasetChangesView(LoginRequiredMixin, DetailView):
         mutation_paginator = Paginator(self.object.mutations.all(), DATASET_CHANGES_PAGE_SIZE)
         mutation_page_obj = mutation_paginator.get_page(self.request.GET.get("page"))
         context["mutation_page_obj"] = mutation_page_obj
-        context["mutation_history"] = mutation_page_obj.object_list
+        context["mutation_history"] = [
+            _mutation_history_item(mutation) for mutation in mutation_page_obj.object_list
+        ]
         if mutation_page_obj.has_previous():
             context["previous_mutation_page_url"] = _querystring_for_page(
                 self.request,
