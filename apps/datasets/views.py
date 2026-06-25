@@ -191,10 +191,10 @@ def _generic_rowset_link(parsed_link: dict[str, object]) -> dict[str, str]:
     is_row = parsed_link["row_id"] is not None
     if is_row:
         link_text = "Rowset row"
-        detail = "Shared row" if parsed_link["is_public"] else "Internal row"
+        detail = "Shared row" if parsed_link["is_public"] else ""
     else:
         link_text = "Rowset dataset"
-        detail = "Shared dataset" if parsed_link["is_public"] else "Internal dataset"
+        detail = "Shared dataset" if parsed_link["is_public"] else ""
     return {
         "rowset_link_url": str(parsed_link["href"]),
         "rowset_link_text": link_text,
@@ -477,7 +477,8 @@ def _row_table_cells(
                     link_cache=link_cache,
                 )
             )
-        if row_url and not cell.get("rowset_link_url") and not cell.get("plain_link_url"):
+        is_rowset_link_cell = bool(cell.get("rowset_link_url") or cell.get("plain_link_url"))
+        if row_url and (not is_rowset_link_cell or not row_detail_primary_assigned):
             cell["row_url"] = row_url
             cell["row_detail_label"] = f"View row {row_number} details"
             if not row_detail_primary_assigned:

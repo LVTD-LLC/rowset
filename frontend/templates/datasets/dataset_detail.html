@@ -205,11 +205,29 @@
                       <a href="{{ row.url }}" class="sr-only">View row {{ row.row_number }} details</a>
                     {% endif %}
                     {% if cell.rowset_link_url %}
-                      {% include "datasets/partials/rowset_link_cell.html" with rowset_link_width="max-w-64" %}
+                      {% if cell.is_row_detail_primary and row.url %}
+                        <div class="flex max-w-64 items-center gap-2">
+                          <a href="{{ row.url }}" class="fb-focus min-w-0 flex-1 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.row_detail_label }}">
+                            {{ cell.value }}
+                          </a>
+                          {% include "datasets/partials/rowset_link_cell.html" with rowset_link_width="max-w-40 shrink-0" %}
+                        </div>
+                      {% else %}
+                        {% include "datasets/partials/rowset_link_cell.html" with rowset_link_width="max-w-64" %}
+                      {% endif %}
                     {% elif cell.plain_link_url %}
-                      <a href="{{ cell.plain_link_url }}" class="fb-focus block max-w-64 truncate text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:decoration-slate-700 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.plain_link_label }}">
-                        {{ cell.value }}
-                      </a>
+                      {% if cell.is_row_detail_primary and row.url %}
+                        <div class="flex max-w-64 items-center gap-2">
+                          <a href="{{ row.url }}" class="fb-focus min-w-0 flex-1 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.row_detail_label }}">
+                            {{ cell.value }}
+                          </a>
+                          <a href="{{ cell.plain_link_url }}" class="fb-focus shrink-0 rounded-md text-xs font-semibold text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-300" aria-label="{{ cell.plain_link_label }}">Open</a>
+                        </div>
+                      {% else %}
+                        <a href="{{ cell.plain_link_url }}" class="fb-focus block max-w-64 truncate text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:decoration-slate-700 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.plain_link_label }}">
+                          {{ cell.value }}
+                        </a>
+                      {% endif %}
                     {% else %}
                       {% dataset_external_href cell.value as external_href %}
                       {% if external_href %}
