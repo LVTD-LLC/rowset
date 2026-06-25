@@ -1,8 +1,8 @@
 from django.http import HttpRequest
 
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 def _get_api_key_from_headers(request: HttpRequest) -> str | None:

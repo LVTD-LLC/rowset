@@ -8,9 +8,9 @@ from django.contrib.auth import get_user_model
 
 from apps.core.choices import EmailType
 from apps.core.utils import send_transactional_email
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 User = get_user_model()
 

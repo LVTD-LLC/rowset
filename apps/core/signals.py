@@ -6,9 +6,9 @@ from django_q.tasks import async_task
 
 from apps.core.models import Profile, ProfileStates
 from apps.core.tasks import add_email_to_buttondown
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 @receiver(post_save, sender=User)

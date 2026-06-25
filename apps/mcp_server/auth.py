@@ -5,7 +5,7 @@ from django.db import close_old_connections
 from fastmcp.server.auth import AccessToken, AuthProvider
 
 from apps.core.services import resolve_api_key_profile
-from filebridge.utils import build_absolute_public_url
+from rowset.utils import build_absolute_public_url
 
 MCP_MOUNT_PATH = "/mcp"
 MCP_INTERNAL_PATH = "/"

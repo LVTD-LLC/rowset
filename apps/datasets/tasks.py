@@ -10,9 +10,9 @@ from apps.datasets.services import (
     normalize_column_schema,
     source_text_from_file,
 )
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 def _ensure_index_config(dataset: Dataset) -> None:

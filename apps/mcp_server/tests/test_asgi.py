@@ -6,7 +6,7 @@ from mcp.server.streamable_http import MCP_SESSION_ID_HEADER
 from starlette.testclient import TestClient
 
 from apps.api.services import DatasetServiceError
-from filebridge.asgi import application
+from rowset.asgi import application
 
 MCP_HEADERS = {
     "accept": "application/json, text/event-stream",

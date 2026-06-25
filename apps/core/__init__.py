@@ -4,9 +4,9 @@ import posthog
 from django.conf import settings
 from django.apps import AppConfig
 
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 class CoreConfig(AppConfig):

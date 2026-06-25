@@ -5,9 +5,9 @@ from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
 from apps.core.models import Profile
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 class LandingPageView(TemplateView):

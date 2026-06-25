@@ -23,10 +23,10 @@ def build_absolute_public_url(path: str) -> str:
     return f"{site_url}{path}"
 
 
-def get_filebridge_logger(name):
-    """This will add a `filebridge` prefix to logger for easy configuration."""
+def get_rowset_logger(name):
+    """This will add a `rowset` prefix to logger for easy configuration."""
 
     return structlog.get_logger(
-        f"filebridge.{name}",
-        project="filebridge"
+        f"rowset.{name}",
+        project="rowset"
     )

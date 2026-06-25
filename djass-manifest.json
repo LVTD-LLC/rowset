@@ -73,7 +73,7 @@
     "deployment",
     "docker-compose-local.yml",
     "docker-compose-prod.yml",
-    "filebridge",
+    "rowset",
     "frontend",
     "manage.py",
     "package.json",

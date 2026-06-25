@@ -3,9 +3,9 @@ from ninja.security import APIKeyQuery
 
 from apps.core.models import Profile
 from apps.core.services import resolve_api_key_profile
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 def _api_key_from_request(request: HttpRequest, query_param_name: str) -> str | None:

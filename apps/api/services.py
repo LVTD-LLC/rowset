@@ -36,7 +36,7 @@ from apps.datasets.services import (
     validate_choice_row_values,
     validate_headers,
 )
-from filebridge.utils import build_absolute_public_url
+from rowset.utils import build_absolute_public_url
 
 API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000

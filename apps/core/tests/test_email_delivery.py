@@ -10,7 +10,7 @@ from apps.core.utils import (
     get_email_delivery_provider,
     send_transactional_email,
 )
-from filebridge.adapters import CustomAccountAdapter
+from rowset.adapters import CustomAccountAdapter
 
 
 @pytest.mark.django_db

@@ -1,6 +1,6 @@
 from django.db import migrations
 
-GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY = "filebridge_google_sheets_connected"
+GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY = "rowset_google_sheets_connected"
 
 
 def mark_existing_google_sheets_connections(apps, schema_editor):

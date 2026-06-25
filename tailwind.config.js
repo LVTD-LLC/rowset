@@ -5,7 +5,7 @@ module.exports = {
     './frontend/src/**/*.js',
     './core/**/*.py',
     './apps/**/*.py',
-    './filebridge/**/*.py',
+    './rowset/**/*.py',
   ],
   theme: {
     extend: {},

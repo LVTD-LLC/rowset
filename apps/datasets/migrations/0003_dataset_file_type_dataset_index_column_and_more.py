@@ -9,12 +9,12 @@ def populate_existing_indexes(apps, schema_editor):
 
     for dataset in Dataset.objects.all().iterator():
         headers = list(dataset.headers or [])
-        index_column = "filebridge_id"
+        index_column = "rowset_id"
         if index_column in headers:
             suffix = 2
-            while f"filebridge_id_{suffix}" in headers:
+            while f"rowset_id_{suffix}" in headers:
                 suffix += 1
-            index_column = f"filebridge_id_{suffix}"
+            index_column = f"rowset_id_{suffix}"
 
         if index_column not in headers:
             headers = [index_column, *headers]

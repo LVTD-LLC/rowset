@@ -9,8 +9,8 @@ else
     server=false
 fi
 
-export PROJECT_NAME=filebridge
-export DJANGO_SETTINGS_MODULE="filebridge.settings"
+export PROJECT_NAME=rowset
+export DJANGO_SETTINGS_MODULE="rowset.settings"
 
 while getopts ":sw" option; do
     case "${option}" in
@@ -31,7 +31,7 @@ import time
 import django
 from django.db import connections
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "filebridge.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rowset.settings")
 django.setup()
 
 last_error = None

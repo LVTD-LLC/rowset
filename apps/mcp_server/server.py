@@ -43,9 +43,9 @@ from apps.api.services import (
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import resolve_api_key_profile
 from apps.mcp_server.auth import mcp_auth
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
 ColumnTypeSpec = str | dict[str, Any]
