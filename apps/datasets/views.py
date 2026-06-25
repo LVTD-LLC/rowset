@@ -238,7 +238,6 @@ def _row_relationship_links(
 
     relationship_candidates = []
     target_index_values_by_dataset = {}
-    target_datasets = {}
     relationships = list(
         dataset.outgoing_relationships.select_related("target_dataset").order_by(
             "source_column",
@@ -256,27 +255,31 @@ def _row_relationship_links(
         if not target_index_value:
             continue
         relationship_candidates.append((relationship, target_index_value))
-        target_datasets[relationship.target_dataset_id] = relationship.target_dataset
         target_index_values_by_dataset.setdefault(relationship.target_dataset_id, set()).add(
             target_index_value
         )
 
-    rows_by_dataset = {}
+    target_row_query = Q()
     for target_dataset_id, target_index_values in target_index_values_by_dataset.items():
-        target_dataset = target_datasets[target_dataset_id]
-        rows_by_dataset[target_dataset_id] = {
-            row.index_value: row
-            for row in target_dataset.rows.only("id", "row_number", "index_value").filter(
-                index_value__in=target_index_values
-            )
-        }
+        target_row_query |= Q(
+            dataset_id=target_dataset_id,
+            index_value__in=target_index_values,
+        )
+    target_rows = (
+        DatasetRow.objects.only("id", "dataset_id", "row_number", "index_value").filter(
+            target_row_query
+        )
+        if target_row_query
+        else []
+    )
+    target_rows_by_key = {
+        (target_row.dataset_id, target_row.index_value): target_row for target_row in target_rows
+    }
 
     for relationship, target_index_value in relationship_candidates:
         if relationship.source_column in links:
             continue
-        target_row = rows_by_dataset.get(relationship.target_dataset_id, {}).get(
-            target_index_value
-        )
+        target_row = target_rows_by_key.get((relationship.target_dataset_id, target_index_value))
         if target_row is None:
             continue
         links[relationship.source_column] = {

@@ -886,7 +886,7 @@ def test_dataset_row_detail_links_relationship_value_to_target_row(auth_client, 
     target_url = reverse("dataset_row_detail", args=[people.key, person_row.id])
     assert f'href="{target_url}"' in content
     assert f"View related People row 1 via {relationship.name}" in content
-    assert re.search(r"<a[^>]+>\s*P-1\s*</a>", content)
+    assert re.search(r"<a[^>]+>\s*P-1\s*</a>", content) is not None
 
 
 def test_dataset_row_detail_leaves_unresolved_relationship_value_unlinked(auth_client, profile):
