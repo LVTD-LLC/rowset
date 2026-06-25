@@ -865,6 +865,54 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     assert "Back to dataset" in content
 
 
+def test_dataset_row_detail_links_relationship_value_to_target_row(auth_client, profile):
+    people, messages = create_crm_datasets(profile)
+    relationship = DatasetRelationship.objects.create(
+        profile=profile,
+        source_dataset=messages,
+        target_dataset=people,
+        name="Message person",
+        source_column="person_id",
+        target_index_column="person_id",
+        enforce_integrity=True,
+    )
+    message_row = messages.rows.get(index_value="M-1")
+    person_row = people.rows.get(index_value="P-1")
+
+    response = auth_client.get(reverse("dataset_row_detail", args=[messages.key, message_row.id]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    target_url = reverse("dataset_row_detail", args=[people.key, person_row.id])
+    assert f'href="{target_url}"' in content
+    assert f"View related People row 1 via {relationship.name}" in content
+    assert re.search(r"<a[^>]+>\s*P-1\s*</a>", content) is not None
+
+
+def test_dataset_row_detail_leaves_unresolved_relationship_value_unlinked(auth_client, profile):
+    people, messages = create_crm_datasets(profile)
+    DatasetRelationship.objects.create(
+        profile=profile,
+        source_dataset=messages,
+        target_dataset=people,
+        name="Optional message person",
+        source_column="person_id",
+        target_index_column="person_id",
+        enforce_integrity=False,
+    )
+    message_row = messages.rows.get(index_value="M-1")
+    message_row.data["person_id"] = "P-missing"
+    message_row.save(update_fields=["data"])
+
+    response = auth_client.get(reverse("dataset_row_detail", args=[messages.key, message_row.id]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "P-missing" in content
+    assert "View related People" not in content
+    assert not re.search(r"<a[^>]+>\s*P-missing\s*</a>", content)
+
+
 def test_dataset_row_detail_rejects_other_users_row(client, django_user_model, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.first()
@@ -2278,8 +2326,23 @@ def test_dataset_relationship_settings_form_creates_and_detail_shows_relationshi
     detail_response = auth_client.get(reverse("dataset_detail", args=[messages.key]))
     assert detail_response.status_code == 200
     content = detail_response.content.decode()
+    details_match = re.search(
+        r'<details\b[^>]*aria-labelledby="dataset-relationships-heading"[^>]*>',
+        content,
+    )
+    assert details_match is not None
+    assert not re.search(r"\sopen(?:[\s=>]|$)", details_match.group(0))
+    assert "Show relationships" in content
+    assert "Hide relationships" in content
     assert "Message person" in content
-    assert "person_id → People.person_id" in content
+    assert f'href="{people.get_absolute_url()}"' in content
+    assert "People</a>.person_id" in content
+
+    incoming_response = auth_client.get(reverse("dataset_detail", args=[people.key]))
+    incoming_content = incoming_response.content.decode()
+    assert incoming_response.status_code == 200
+    assert f'href="{messages.get_absolute_url()}"' in incoming_content
+    assert "CRM Messages</a>.person_id" in incoming_content
 
 
 def test_normalize_column_schema_accepts_choice_metadata():
