@@ -87,6 +87,7 @@ Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 - For REST fallback, inspect the current API docs from the REST API base.
 - Verify setup with `get_user_info`.
 - Discover available datasets with `get_all_datasets`.
+- Find archived datasets with `get_archived_datasets` before restoring them.
 - Search for a specific dataset or project with `search_datasets` and `search_projects`.
 - Create new ready datasets with `create_dataset` when the user asks for an on-the-fly dataset.
 - Inspect one dataset with `get_dataset` before row operations. The response

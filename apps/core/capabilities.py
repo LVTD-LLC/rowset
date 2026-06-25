@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
 
-
 CAPABILITY_VERSION = "2026-06-25"
 
 
@@ -49,7 +48,7 @@ ROWSET_RECOMMENDED_STARTUP = (
     "Discover live MCP tools and schemas from the connected server.",
     "Call get_user_info to verify authentication.",
     "Call get_rowset_capabilities for the current Rowset workflow guide.",
-    "Call get_all_datasets or search_datasets before creating duplicate datasets.",
+    "Call get_all_datasets, get_archived_datasets, or search_datasets before creating duplicates.",
     (
         "Call get_dataset before row operations so dataset context, schema, and "
         "relationships are in context."
@@ -78,8 +77,14 @@ ROWSET_CAPABILITIES = (
             "Create, search, and inspect API-backed datasets with stable headers, an "
             "index column, row counts, public preview state, and machine-readable metadata."
         ),
-        mcp_tools=("get_all_datasets", "search_datasets", "get_dataset", "create_dataset"),
-        rest_paths=("/api/datasets",),
+        mcp_tools=(
+            "get_all_datasets",
+            "get_archived_datasets",
+            "search_datasets",
+            "get_dataset",
+            "create_dataset",
+        ),
+        rest_paths=("/api/datasets", "/api/datasets/archived"),
         notes=(
             (
                 "If no reliable business key exists, omit index_column and Rowset "
@@ -234,8 +239,9 @@ ROWSET_CAPABILITIES = (
             "Archive mistaken datasets without deleting rows, restore archived datasets, "
             "and use REST export endpoints when a file snapshot is required."
         ),
-        mcp_tools=("archive_dataset", "restore_dataset"),
+        mcp_tools=("get_archived_datasets", "archive_dataset", "restore_dataset"),
         rest_paths=(
+            "/api/datasets/archived",
             "/api/datasets/{dataset_key}",
             "/api/datasets/{dataset_key}/restore",
             "/api/datasets/{dataset_key}/export.csv",

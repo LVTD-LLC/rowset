@@ -84,6 +84,10 @@ def _active_dataset_queryset(queryset):
     return queryset.filter(archived_at__isnull=True)
 
 
+def _archived_dataset_queryset(queryset):
+    return queryset.filter(archived_at__isnull=False)
+
+
 class DatasetServiceError(Exception):
     def __init__(self, status_code: int, message: str):
         self.status_code = status_code
@@ -579,6 +583,30 @@ def search_profile_datasets(
 def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
     """Return a bounded page of datasets owned by the authenticated profile."""
     return search_profile_datasets(profile, limit=limit, offset=offset)
+
+
+def serialize_profile_archived_datasets(
+    profile: Profile,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict:
+    """Return a bounded page of archived datasets owned by the authenticated profile."""
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+    queryset = _dataset_summary_queryset(
+        _archived_dataset_queryset(profile.datasets).exclude(status=DatasetStatus.PREVIEWED)
+    )
+    total_count = queryset.count()
+    page = list(queryset[offset : offset + limit])
+
+    return {
+        "count": len(page),
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + len(page) < total_count,
+        "datasets": [serialize_dataset_summary(dataset) for dataset in page],
+    }
 
 
 def _extract_dataset_identifier(dataset_identifier: str) -> str:

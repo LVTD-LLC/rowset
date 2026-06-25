@@ -80,6 +80,7 @@ from apps.api.services import (
     restore_profile_dataset,
     search_profile_datasets,
     search_profile_projects,
+    serialize_profile_archived_datasets,
     serialize_profile_project_detail,
     serialize_user_info,
     update_profile_dataset_column_types,
@@ -602,6 +603,17 @@ def list_datasets(
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
+
+
+@api.get(
+    "/datasets/archived",
+    response=DatasetListOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def list_archived_datasets(request: HttpRequest, limit: int = 100, offset: int = 0):
+    """Return a page of archived datasets owned by the authenticated profile."""
+    return serialize_profile_archived_datasets(request.auth, limit=limit, offset=offset)
 
 
 @api.post(

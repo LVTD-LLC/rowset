@@ -1,6 +1,6 @@
 ---
 title: Dataset API
-description: Use Rowset dataset endpoints for row CRUD, indexed lookup, exports, and public previews.
+description: Use Rowset dataset endpoints for row CRUD, indexed lookup, archived datasets, exports, and public previews.
 keywords: Rowset API, dataset API, CSV API, JSONL API, XLSX API, SQLite API, REST endpoints
 ---
 
@@ -117,6 +117,16 @@ values without a timezone offset, including bare dates, are interpreted as UTC.
 For example, `2026-06-01` is treated as `2026-06-01T00:00:00Z`. Use these filters
 when an agent needs to find the right dataset before reading rows or making
 updates.
+
+## List archived datasets
+
+```http
+GET {{ api_base_url }}/datasets/archived
+```
+
+Returns archived datasets for the authenticated profile with the same metadata
+shape as the normal dataset list. Use this when you need to find a dataset key
+before restoring it. Preview-only archived drafts are omitted.
 
 ## List rows
 

@@ -1,11 +1,11 @@
 import csv
-from datetime import timedelta
 import io
 import json
 import re
 import sqlite3
 import xml.etree.ElementTree as ET
 import zipfile
+from datetime import timedelta
 
 import polars as pl
 import pytest
@@ -1874,6 +1874,38 @@ def test_archiving_already_archived_dataset_records_public_preview_disable(clien
         "previous_public_enabled": True,
         "public_enabled": False,
     }
+
+
+def test_dataset_api_lists_archived_datasets_separately(client, profile):
+    active_dataset = create_ready_dataset(profile)
+    archived_dataset = create_ready_dataset(profile)
+    archived_dataset.name = "Archived people"
+    archived_dataset.archived_at = timezone.now()
+    archived_dataset.save(update_fields=["name", "archived_at"])
+    preview_archived_dataset = create_ready_dataset(profile)
+    preview_archived_dataset.name = "Archived draft"
+    preview_archived_dataset.status = DatasetStatus.PREVIEWED
+    preview_archived_dataset.archived_at = timezone.now()
+    preview_archived_dataset.save(update_fields=["name", "status", "archived_at"])
+
+    archived_response = client.get(f"/api/datasets/archived?api_key={profile.key}")
+
+    assert archived_response.status_code == 200
+    assert archived_response.json()["total_count"] == 1
+    assert [item["key"] for item in archived_response.json()["datasets"]] == [
+        str(archived_dataset.key)
+    ]
+    assert archived_response.json()["datasets"][0]["name"] == "Archived people"
+    assert archived_response.json()["datasets"][0]["archived_at"] is not None
+    assert "Archived draft" not in {
+        item["name"] for item in archived_response.json()["datasets"]
+    }
+
+    active_response = client.get(f"/api/datasets?api_key={profile.key}")
+    assert active_response.status_code == 200
+    assert [item["key"] for item in active_response.json()["datasets"]] == [
+        str(active_dataset.key)
+    ]
 
 
 def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
