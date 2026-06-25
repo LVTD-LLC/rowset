@@ -199,30 +199,59 @@
           <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
             {% for row in rows_with_values %}
               <tr class="{% if row.url %}transition hover:bg-slate-50 dark:hover:bg-slate-900/70{% endif %}">
-                {% for value in row.values %}
+                {% for cell in row.cells %}
                   <td>
-                    {% dataset_external_href value as external_href %}
-                    {% if external_href %}
-                      {% if forloop.first and row.url %}
+                    {% if cell.is_first and row.url and not row.has_accessible_row_link %}
+                      <a href="{{ row.url }}" class="sr-only">View row {{ row.row_number }} details</a>
+                    {% endif %}
+                    {% if cell.rowset_link_url %}
+                      {% if cell.is_row_detail_primary and row.url %}
                         <div class="flex max-w-64 items-center gap-2">
-                          <a href="{{ row.url }}" class="fb-focus min-w-0 flex-1 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value|default_if_none:'' }}" aria-label="View row {{ row.row_number }} details">
-                            {{ value }}
+                          <a href="{{ row.url }}" class="fb-focus min-w-0 flex-1 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.row_detail_label }}">
+                            {{ cell.value }}
+                          </a>
+                          {% include "datasets/partials/rowset_link_cell.html" with rowset_link_width="max-w-40 shrink-0" %}
+                        </div>
+                      {% else %}
+                        {% include "datasets/partials/rowset_link_cell.html" with rowset_link_width="max-w-64" %}
+                      {% endif %}
+                    {% elif cell.plain_link_url %}
+                      {% if cell.is_row_detail_primary and row.url %}
+                        <div class="flex max-w-64 items-center gap-2">
+                          <a href="{{ row.url }}" class="fb-focus min-w-0 flex-1 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.row_detail_label }}">
+                            {{ cell.value }}
+                          </a>
+                          <a href="{{ cell.plain_link_url }}" class="fb-focus shrink-0 rounded-md text-xs font-semibold text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-300" aria-label="{{ cell.plain_link_label }}">Open</a>
+                        </div>
+                      {% else %}
+                        <a href="{{ cell.plain_link_url }}" class="fb-focus block max-w-64 truncate text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:decoration-slate-700 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.plain_link_label }}">
+                          {{ cell.value }}
+                        </a>
+                      {% endif %}
+                    {% else %}
+                      {% dataset_external_href cell.value as external_href %}
+                      {% if external_href %}
+                        {% if cell.is_row_detail_primary and row.url %}
+                        <div class="flex max-w-64 items-center gap-2">
+                          <a href="{{ row.url }}" class="fb-focus min-w-0 flex-1 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.row_detail_label }}">
+                            {{ cell.value }}
                           </a>
                           <a href="{{ external_href }}" target="_blank" rel="nofollow ugc noopener noreferrer" class="fb-focus shrink-0 rounded-md text-xs font-semibold text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-300" aria-label="Open external link for row {{ row.row_number }}">Open</a>
                         </div>
                       {% else %}
-                        <a href="{{ external_href }}" target="_blank" rel="nofollow ugc noopener noreferrer" class="fb-focus block max-w-64 truncate text-slate-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value|default_if_none:'' }}">
-                          {{ value }}
+                        <a href="{{ external_href }}" target="_blank" rel="nofollow ugc noopener noreferrer" class="fb-focus block max-w-64 truncate text-slate-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}">
+                          {{ cell.value }}
                         </a>
                       {% endif %}
-                    {% elif row.url %}
-                      <a href="{{ row.url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ value|default_if_none:'' }}"{% if forloop.first %} aria-label="View row {{ row.row_number }} details"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>
-                        {% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
+                    {% elif cell.row_url %}
+                      <a href="{{ cell.row_url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}"{% if cell.is_row_detail_primary %} aria-label="{{ cell.row_detail_label }}"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>
+                        {% if cell.value %}{{ cell.value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
                       </a>
                     {% else %}
-                      <span class="block max-w-64 truncate" title="{{ value|default_if_none:'' }}">
-                        {% if value %}{{ value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
+                      <span class="block max-w-64 truncate" title="{{ cell.value }}">
+                        {% if cell.value %}{{ cell.value }}{% else %}<span class="text-slate-400 dark:text-slate-500">Blank</span>{% endif %}
                       </span>
+                    {% endif %}
                     {% endif %}
                   </td>
                 {% endfor %}
