@@ -458,6 +458,35 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
     assert "Datasets that are not assigned to a project." in content
 
 
+def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Research")
+    for index in range(101):
+        Dataset.objects.create(
+            profile=profile,
+            project=project,
+            name=f"Research dataset {index:03}",
+            original_filename=f"research-{index:03}.csv",
+            status=DatasetStatus.READY,
+            headers=["record_id"],
+            index_column="record_id",
+            row_count=1,
+        )
+
+    page_one = auth_client.get(reverse("dataset_list"), {"sort": "name"})
+    page_two = auth_client.get(f"{reverse('dataset_list')}?sort=name&page=2")
+
+    assert page_one.status_code == 200
+    assert page_two.status_code == 200
+    assert len(page_one.context["dataset_groups"][0]["datasets"]) == 100
+    assert len(page_two.context["dataset_groups"][0]["datasets"]) == 1
+    for response in (page_one, page_two):
+        group = response.context["dataset_groups"][0]
+        assert group["label"] == "Research"
+        assert group["dataset_count"] == 101
+        assert group["row_count"] == 101
+        assert "101 datasets · 101 rows" in response.content.decode()
+
+
 def test_archived_dataset_list_shows_archived_datasets_only(
     auth_client,
     django_user_model,

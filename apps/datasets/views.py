@@ -588,6 +588,27 @@ class DatasetListView(LoginRequiredMixin, ListView):
     def get_total_projects(self, base_queryset):
         return self.request.user.profile.projects.count()
 
+    def get_dataset_group_totals(self, groups_by_key):
+        if not groups_by_key:
+            return {}
+
+        project_ids = [group_key for group_key in groups_by_key if group_key is not None]
+        if project_ids and None in groups_by_key:
+            totals_queryset = self.object_list.filter(
+                Q(project_id__in=project_ids) | Q(project__isnull=True)
+            )
+        elif project_ids:
+            totals_queryset = self.object_list.filter(project_id__in=project_ids)
+        else:
+            totals_queryset = self.object_list.filter(project__isnull=True)
+
+        return {
+            item["project_id"]: item
+            for item in totals_queryset.order_by()
+            .values("project_id")
+            .annotate(dataset_count=Count("id"), row_count=Sum("row_count"))
+        }
+
     def get_dataset_groups(self, datasets):
         groups_by_key = {}
         for dataset in datasets:
@@ -606,6 +627,13 @@ class DatasetListView(LoginRequiredMixin, ListView):
             group["datasets"].append(dataset)
             group["dataset_count"] += 1
             group["row_count"] += dataset.row_count
+
+        totals_by_key = self.get_dataset_group_totals(groups_by_key)
+        for group_key, group in groups_by_key.items():
+            totals = totals_by_key.get(group_key)
+            if totals:
+                group["dataset_count"] = totals["dataset_count"] or 0
+                group["row_count"] = totals["row_count"] or 0
         return list(groups_by_key.values())
 
     def get_context_data(self, **kwargs):
