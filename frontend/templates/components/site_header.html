@@ -19,6 +19,7 @@
           <a href="{% url 'admin_panel' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40">Admin</a>
         {% endif %}
       {% else %}
+        <a href="{% url 'use_cases' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Use cases</a>
         <a href="{% url 'landing' %}#workflow" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">How it works</a>
         <a href="{% url 'docs_home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Docs</a>
       {% endif %}
@@ -69,6 +70,7 @@
               <a href="{% url 'admin_panel' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40">Admin</a>
             {% endif %}
           {% else %}
+            <a href="{% url 'use_cases' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Use cases</a>
             <a href="{% url 'landing' %}#workflow" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">How it works</a>
             <a href="{% url 'docs_home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Docs</a>
           {% endif %}

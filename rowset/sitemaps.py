@@ -1,11 +1,10 @@
 from django.contrib import sitemaps
-from django.urls import reverse
 from django.contrib.sitemaps import GenericSitemap
-
+from django.urls import reverse
 
 from apps.blog.models import BlogPost
-
 from apps.docs.views import get_docs_navigation
+from apps.pages.use_cases import get_use_case_pages
 
 
 class StaticViewSitemap(sitemaps.Sitemap):
@@ -24,7 +23,7 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "landing",
             "uses",
             "pricing",
-            
+            "use_cases",
             "blog_posts",
         ]
 
@@ -38,6 +37,21 @@ class StaticViewSitemap(sitemaps.Sitemap):
             str: Url for the sitemap item
         """
         return reverse(item)
+
+
+class UseCaseSitemap(sitemaps.Sitemap):
+    """Generate sitemap entries for marketing use-case pages."""
+
+    priority = 0.85
+    protocol = "https"
+    changefreq = "monthly"
+
+    def items(self):
+        return get_use_case_pages()
+
+    def location(self, item):
+        return reverse("use_case_detail", kwargs={"slug": item["slug"]})
+
 
 class DocsSitemap(sitemaps.Sitemap):
     """Generate Sitemap for documentation pages"""
@@ -82,7 +96,7 @@ class DocsSitemap(sitemaps.Sitemap):
 
 sitemaps = {
     "static": StaticViewSitemap,
-    
+    "use_cases": UseCaseSitemap,
     "blog": GenericSitemap(
         {"queryset": BlogPost.objects.all(), "date_field": "created_at"},
         priority=0.85,

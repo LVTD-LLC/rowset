@@ -103,10 +103,41 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Agent setup prompt" not in content
     assert "Rowset MCP URL:" not in content
     assert "Rowset skill install:" not in content
-    assert "One place for the tools your agents invent." in content
-    assert "Feedback and Canny-style boards" in content
-    assert "Content and pSEO pipelines" in content
-    assert "Agent loops and delegation" in content
+    assert "Give AI agents a place to put structured work." in content
+    assert "One backend. Many agent workflows." in content
+    assert "Agent CRM" in content
+    assert "Content pipeline" in content
+    assert "Bug and QA tracker" in content
+    assert reverse("use_cases") in content
+
+
+def test_use_cases_index_lists_public_use_case_pages(client):
+    response = client.get(reverse("use_cases"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Agent workflows that start as structured rows." in content
+    assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("use_case_detail", kwargs={"slug": "agent-task-board"}) in content
+    assert "product-inventory-catalog" in content
+
+
+def test_use_case_detail_page_shows_structured_example(client):
+    response = client.get(reverse("use_case_detail", kwargs={"slug": "personal-crm"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "A CRM your agent can actually maintain." in content
+    assert "people" in content
+    assert "People dataset indexed by email or person_id." in content
+    assert "Dataset context and semantic schema" in content
+    assert "alex@example.com" in content
+
+
+def test_unknown_use_case_returns_404(client):
+    response = client.get(reverse("use_case_detail", kwargs={"slug": "missing"}))
+
+    assert response.status_code == 404
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):

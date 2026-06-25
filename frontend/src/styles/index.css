@@ -123,6 +123,110 @@
 }
 
 @layer utilities {
+  .rs-grid-field {
+    background-image:
+      linear-gradient(to right, rgb(15 23 42 / 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(15 23 42 / 0.07) 1px, transparent 1px),
+      linear-gradient(135deg, rgb(16 185 129 / 0.1), transparent 42%, rgb(245 158 11 / 0.08));
+    background-position:
+      0 0,
+      0 0,
+      center;
+    background-size:
+      44px 44px,
+      44px 44px,
+      100% 100%;
+    mask-image: linear-gradient(to bottom, black, rgb(0 0 0 / 0.86), transparent);
+    opacity: 0.75;
+    animation: rs-grid-drift 24s linear infinite;
+  }
+
+  .dark .rs-grid-field {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.08) 1px, transparent 1px),
+      linear-gradient(135deg, rgb(16 185 129 / 0.18), transparent 44%, rgb(6 182 212 / 0.12));
+    opacity: 0.62;
+  }
+
+  .rs-console {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgb(203 213 225);
+    border-radius: 8px;
+    background: rgb(255 255 255 / 0.88);
+    box-shadow: 0 24px 80px rgb(15 23 42 / 0.12);
+    animation: rs-rise-in 680ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+  }
+
+  .dark .rs-console {
+    border-color: rgb(255 255 255 / 0.12);
+    background: rgb(15 23 42 / 0.62);
+    box-shadow: 0 24px 80px rgb(0 0 0 / 0.34);
+  }
+
+  .rs-console::after {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    background: linear-gradient(
+      115deg,
+      transparent,
+      transparent 38%,
+      rgb(255 255 255 / 0.28) 48%,
+      transparent 58%,
+      transparent
+    );
+    transform: translateX(-120%);
+    animation: rs-console-sheen 5.6s ease-in-out infinite;
+  }
+
+  .dark .rs-console::after {
+    background: linear-gradient(
+      115deg,
+      transparent,
+      transparent 40%,
+      rgb(255 255 255 / 0.1) 50%,
+      transparent 60%,
+      transparent
+    );
+  }
+
+  .rs-command-strip {
+    overflow: hidden;
+    background:
+      linear-gradient(to right, rgb(255 255 255), transparent 12%, transparent 88%, rgb(255 255 255)),
+      rgb(248 250 252);
+  }
+
+  .dark .rs-command-strip {
+    background:
+      linear-gradient(to right, rgb(15 23 42), transparent 12%, transparent 88%, rgb(15 23 42)),
+      rgb(15 23 42);
+  }
+
+  .rs-command-track {
+    width: max-content;
+    animation: rs-command-marquee 22s linear infinite;
+  }
+
+  .rs-command-track span {
+    border: 1px solid rgb(203 213 225);
+    border-radius: 6px;
+    padding: 0.375rem 0.625rem;
+    background: rgb(255 255 255 / 0.72);
+  }
+
+  .dark .rs-command-track span {
+    border-color: rgb(255 255 255 / 0.12);
+    background: rgb(255 255 255 / 0.04);
+  }
+
+  .rs-use-case-card {
+    min-height: 15rem;
+  }
+
   .rs-hero-copy {
     animation: rs-rise-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
@@ -145,6 +249,44 @@
     background-color: oklch(24% 0.025 250);
   }
 
+  @keyframes rs-grid-drift {
+    from {
+      background-position:
+        0 0,
+        0 0,
+        center;
+    }
+
+    to {
+      background-position:
+        44px 0,
+        0 44px,
+        center;
+    }
+  }
+
+  @keyframes rs-console-sheen {
+    0%,
+    42% {
+      transform: translateX(-120%);
+    }
+
+    72%,
+    100% {
+      transform: translateX(120%);
+    }
+  }
+
+  @keyframes rs-command-marquee {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
   @keyframes rs-rise-in {
     from {
       opacity: 0;
@@ -161,7 +303,11 @@
 
   @media (prefers-reduced-motion: reduce) {
     .rs-hero-copy,
-    .rs-data-plane {
+    .rs-data-plane,
+    .rs-grid-field,
+    .rs-console,
+    .rs-console::after,
+    .rs-command-track {
       animation: none;
     }
   }

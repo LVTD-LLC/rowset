@@ -1,0 +1,81 @@
+{% extends "base_landing.html" %}
+{% load static %}
+
+{% block meta %}
+<title>Rowset Use Cases - agent-managed datasets</title>
+<meta name="description" content="Explore practical Rowset use cases for agent-managed CRMs, task boards, feedback triage, content pipelines, catalogs, and bug trackers." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://{{ request.get_host }}{% url 'use_cases' %}" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Rowset Use Cases" />
+<meta property="og:url" content="https://{{ request.get_host }}{% url 'use_cases' %}" />
+<meta property="og:description" content="Practical ways to use Rowset as a private dataset backend for trusted AI agents." />
+<meta property="og:image" content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=Rowset%20Use%20Cases&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta property="og:locale" content="en_US" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Rowset Use Cases" />
+<meta name="twitter:description" content="Practical Rowset workflows for trusted AI agents." />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset%20Use%20Cases&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+{% endblock meta %}
+
+{% block content %}
+<section class="relative overflow-hidden border-b border-slate-200 bg-[#f7faf8] dark:border-slate-800 dark:bg-[#050807]">
+  <div class="rs-grid-field absolute inset-0" aria-hidden="true"></div>
+  <div class="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Use cases</p>
+    <h1 class="mt-4 max-w-4xl text-4xl font-semibold leading-none text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
+      Agent workflows that start as structured rows.
+    </h1>
+    <p class="mt-5 max-w-3xl text-lg leading-8 text-slate-700 dark:text-slate-300">
+      Rowset is useful when a trusted agent needs to keep state across files, chats, tools, and people. Pick the workflow; Rowset supplies the private dataset backend.
+    </p>
+  </div>
+</section>
+
+<section class="bg-white dark:bg-slate-950">
+  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {% for page in use_case_pages %}
+        <a href="{% url 'use_case_detail' slug=page.slug %}" class="rs-use-case-card fb-focus group rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+          <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{{ page.eyebrow }}</p>
+          <h2 class="mt-3 text-xl font-semibold text-slate-950 dark:text-white">{{ page.title }}</h2>
+          <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ page.short_summary }}</p>
+          <dl class="mt-5 grid gap-2 border-t border-slate-200 pt-4 text-xs dark:border-slate-800">
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-slate-500 dark:text-slate-400">Example</dt>
+              <dd class="font-mono text-slate-800 dark:text-slate-200">{{ page.example_name }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-slate-500 dark:text-slate-400">Index</dt>
+              <dd class="font-mono text-slate-800 dark:text-slate-200">{{ page.index_column }}</dd>
+            </div>
+          </dl>
+          <span class="mt-5 inline-flex text-sm font-semibold text-slate-950 dark:text-white">Open use case &rarr;</span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock content %}
+
+{% block schema %}
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": "Rowset use cases",
+    "description": "Agent-managed dataset use cases for Rowset.",
+    "url": "https://{{ request.get_host }}{% url 'use_cases' %}",
+    "itemListElement": [
+      {% for page in use_case_pages %}
+        {
+          "@type": "ListItem",
+          "position": {{ forloop.counter }},
+          "name": "{{ page.title|escapejs }}",
+          "url": "https://{{ request.get_host }}{% url 'use_case_detail' slug=page.slug %}"
+        }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }
+</script>
+{% endblock schema %}
