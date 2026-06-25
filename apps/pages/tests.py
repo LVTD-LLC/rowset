@@ -184,6 +184,17 @@ def test_use_case_pages_reject_unknown_feature_references(monkeypatch):
         page_use_cases.validate_use_case_page_registry()
 
 
+def test_use_case_pages_reject_duplicate_capability_ids(monkeypatch):
+    monkeypatch.setattr(
+        page_use_cases,
+        "ROWSET_CAPABILITIES",
+        page_use_cases.ROWSET_CAPABILITIES + (page_use_cases.ROWSET_CAPABILITIES[0],),
+    )
+
+    with pytest.raises(ValueError, match="duplicate IDs"):
+        page_use_cases.validate_use_case_page_registry()
+
+
 def test_use_case_pages_reject_duplicate_public_slugs(monkeypatch):
     page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
     page_copy["task_board"] = replace(

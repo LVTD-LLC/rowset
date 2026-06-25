@@ -210,6 +210,17 @@ def _capability_titles() -> dict[str, str]:
     return {capability.id: capability.title for capability in ROWSET_CAPABILITIES}
 
 
+def _duplicate_capability_ids() -> tuple[str, ...]:
+    capability_ids = [capability.id for capability in ROWSET_CAPABILITIES]
+    return tuple(
+        sorted(
+            capability_id
+            for capability_id in set(capability_ids)
+            if capability_ids.count(capability_id) > 1
+        )
+    )
+
+
 def _duplicate_public_slugs() -> set[str]:
     page_copy_slugs = [
         USE_CASE_PAGE_COPY[use_case.id].slug
@@ -231,6 +242,7 @@ def get_use_case_page_registry_errors() -> tuple[str, ...]:
     feature_titles = _capability_titles()
     use_case_ids = {use_case.id for use_case in ROWSET_USE_CASES}
     page_copy_ids = set(USE_CASE_PAGE_COPY)
+    duplicate_capability_ids = _duplicate_capability_ids()
     duplicate_slugs = sorted(_duplicate_public_slugs())
     invalid_slugs = _invalid_public_slugs()
     valid_feature_ids = set(feature_titles)
@@ -255,6 +267,11 @@ def get_use_case_page_registry_errors() -> tuple[str, ...]:
         errors.append(
             "USE_CASE_PAGE_COPY contains entries without ROWSET_USE_CASES: "
             + ", ".join(stale_page_copy_ids)
+        )
+    if duplicate_capability_ids:
+        errors.append(
+            "ROWSET_CAPABILITIES contains duplicate IDs: "
+            + ", ".join(duplicate_capability_ids)
         )
     if duplicate_slugs:
         errors.append(
