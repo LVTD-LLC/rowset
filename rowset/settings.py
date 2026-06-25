@@ -233,8 +233,11 @@ STATICFILES_DIRS = [
 ]
 
 aws_s3_endpoint_url = env("AWS_S3_ENDPOINT_URL", default="")
-default_storage_bucket_name = f"rowset-{ENVIRONMENT}" if ENVIRONMENT == "dev" else ""
-storage_bucket_name = env("AWS_STORAGE_BUCKET_NAME", default=default_storage_bucket_name)
+configured_storage_bucket_name = env("AWS_STORAGE_BUCKET_NAME", default="").strip()
+storage_bucket_name = (
+    configured_storage_bucket_name
+    or ("rowset-dev" if ENVIRONMENT == "dev" else "")
+)
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 
