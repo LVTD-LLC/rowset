@@ -7,7 +7,6 @@ from allauth.mfa.models import Authenticator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
-from django.test import override_settings
 from django.urls import reverse
 
 from apps.core.capabilities import RowsetUseCase
@@ -150,7 +149,10 @@ def test_use_case_pages_reject_missing_page_copy(monkeypatch):
     monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
 
     with pytest.raises(ValueError, match="personal_crm"):
-        page_use_cases.get_use_case_pages()
+        page_use_cases.validate_use_case_page_registry()
+
+    pages = page_use_cases.get_use_case_pages()
+    assert "personal_crm" not in {page["id"] for page in pages}
 
 
 def test_use_case_pages_reject_unknown_feature_references(monkeypatch):
@@ -179,7 +181,10 @@ def test_use_case_pages_reject_unknown_feature_references(monkeypatch):
     )
 
     with pytest.raises(ValueError, match="invalid_reference: missing_capability"):
-        page_use_cases.get_use_case_pages()
+        page_use_cases.validate_use_case_page_registry()
+
+    pages = page_use_cases.get_use_case_pages()
+    assert "invalid_reference" not in {page["id"] for page in pages}
 
 
 def test_settings_shows_email_confirmation_and_passkey_setup(client):

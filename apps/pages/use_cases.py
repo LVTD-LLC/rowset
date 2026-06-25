@@ -207,7 +207,8 @@ def _capability_titles() -> dict[str, str]:
     return {capability.id: capability.title for capability in ROWSET_CAPABILITIES}
 
 
-def _validate_use_case_page_registry(feature_titles: dict[str, str]) -> None:
+def get_use_case_page_registry_errors() -> tuple[str, ...]:
+    feature_titles = _capability_titles()
     use_case_ids = {use_case.id for use_case in ROWSET_USE_CASES}
     page_copy_ids = set(USE_CASE_PAGE_COPY)
     valid_feature_ids = set(feature_titles)
@@ -239,26 +240,34 @@ def _validate_use_case_page_registry(feature_titles: dict[str, str]) -> None:
             + "; ".join(unknown_feature_references)
         )
 
+    return tuple(errors)
+
+
+def validate_use_case_page_registry() -> None:
+    errors = get_use_case_page_registry_errors()
     if errors:
         raise ValueError("; ".join(errors))
 
 
 def get_use_case_pages() -> tuple[dict[str, object], ...]:
     feature_titles = _capability_titles()
-    _validate_use_case_page_registry(feature_titles)
     pages: list[dict[str, object]] = []
 
     for use_case in ROWSET_USE_CASES:
         page_copy = USE_CASE_PAGE_COPY.get(use_case.id)
         if page_copy is None:
-            raise ValueError(f"USE_CASE_PAGE_COPY is missing {use_case.id}")
+            continue
 
         features = []
+        has_missing_feature = False
         for feature_id in use_case.rowset_features:
             feature_title = feature_titles.get(feature_id)
             if feature_title is None:
-                raise ValueError(f"{use_case.id} references unknown capability ID {feature_id}")
+                has_missing_feature = True
+                break
             features.append(feature_title)
+        if has_missing_feature:
+            continue
 
         pages.append(
             {
