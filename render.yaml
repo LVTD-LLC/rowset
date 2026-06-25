@@ -1,10 +1,8 @@
 services:
   - type: web
-    # These names assume the Render resources have already been renamed or
-    # migrated. For an existing deployment, update every service/database name
-    # in this file to match the current Render resource identifiers before
-    # applying the blueprint.
-    name: rowset-web
+    # Render resource names are stable infrastructure identifiers. Rename these
+    # resources in Render first, then update this blueprint in the same deploy.
+    name: filebridge-web
     runtime: python
     buildCommand: |
       pip install -r requirements.txt &&
@@ -19,43 +17,43 @@ services:
       - fromGroup: app-env
       - key: POSTGRES_DB
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: database
       - key: POSTGRES_USER
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: user
       - key: POSTGRES_PASSWORD
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: password
       - key: POSTGRES_HOST
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: host
       - key: POSTGRES_PORT
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: port
       - key: REDIS_HOST
         fromService:
           type: keyvalue
-          name: rowset-redis
+          name: filebridge-redis
           property: host
       - key: REDIS_PORT
         fromService:
           type: keyvalue
-          name: rowset-redis
+          name: filebridge-redis
           property: port
       - key: REDIS_PASSWORD
         fromService:
           type: keyvalue
-          name: rowset-redis
+          name: filebridge-redis
           property: password
 
   - type: web
     # Keep this aligned with the existing worker service identifier in Render.
-    name: rowset-workers
+    name: filebridge-workers
     runtime: python
     buildCommand: |
       pip install -r requirements.txt
@@ -67,52 +65,52 @@ services:
       - fromGroup: app-env
       - key: POSTGRES_DB
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: database
       - key: POSTGRES_USER
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: user
       - key: POSTGRES_PASSWORD
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: password
       - key: POSTGRES_HOST
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: host
       - key: POSTGRES_PORT
         fromDatabase:
-          name: rowset-db
+          name: filebridge-db
           property: port
       - key: REDIS_HOST
         fromService:
           type: keyvalue
-          name: rowset-redis
+          name: filebridge-redis
           property: host
       - key: REDIS_PORT
         fromService:
           type: keyvalue
-          name: rowset-redis
+          name: filebridge-redis
           property: port
       - key: REDIS_PASSWORD
         fromService:
           type: keyvalue
-          name: rowset-redis
+          name: filebridge-redis
           property: password
 
   - type: keyvalue
     # Keep this aligned with the existing Redis resource identifier in Render.
-    name: rowset-redis
+    name: filebridge-redis
     plan: free
     ipAllowList: []
     maxmemoryPolicy: allkeys-lfu
 
 databases:
   # Keep this aligned with the existing Postgres resource identifier in Render.
-  - name: rowset-db
-    databaseName: rowset
-    user: rowset_user
+  - name: filebridge-db
+    databaseName: filebridge
+    user: filebridge_user
     plan: free
 
 

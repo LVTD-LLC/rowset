@@ -1,6 +1,8 @@
 from django.db import migrations
 
-GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY = "rowset_google_sheets_connected"
+# Historical key written by this already-applied migration. Keep it stable for
+# migration fidelity; use a new forward migration for any production data rename.
+GOOGLE_SHEETS_CONNECTED_EXTRA_DATA_KEY = "filebridge_google_sheets_connected"
 
 
 def mark_existing_google_sheets_connections(apps, schema_editor):
