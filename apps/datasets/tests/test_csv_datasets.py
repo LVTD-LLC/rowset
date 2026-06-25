@@ -1900,7 +1900,7 @@ def test_dataset_changes_hides_legacy_placeholder_diff_labels(auth_client, profi
     assert "Row 2 updated." in changes_content
     assert "Not recorded" in changes_content
     assert "Blank" in changes_content
-    assert "Filled" in changes_content
+    assert "Filled" not in changes_content
     assert "Previous value" not in changes_content
     assert "New value" not in changes_content
 

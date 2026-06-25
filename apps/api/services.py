@@ -1975,6 +1975,8 @@ def _patch_dataset_row(
             "row_id": row.id,
             "row_number": row.row_number,
             "changed_fields": changed_fields,
+            # Authenticated change history intentionally retains row diff values.
+            # Any future erasure flow must account for this audit metadata too.
             "field_changes": field_changes,
             "value_changes_recorded": True,
             "index_changed": index_changed,
