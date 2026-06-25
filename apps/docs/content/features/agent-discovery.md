@@ -16,7 +16,7 @@ guide before creating or changing data.
 2. Discover available MCP tools and schemas from the connected server.
 3. Call `get_user_info` to verify authentication.
 4. Call `get_rowset_capabilities` to load the current Rowset feature guide.
-5. Call `get_all_datasets` or `search_datasets` before creating a new dataset.
+5. Call `get_all_datasets`, `get_archived_datasets`, or `search_datasets` before creating a new dataset.
 6. Call `get_dataset` before row operations so headers, index column, schema
    metadata, dataset context, and relationship summaries are in context.
 

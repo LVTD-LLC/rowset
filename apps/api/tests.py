@@ -11,6 +11,7 @@ from apps.api.views import (
     delete_internal_blog_post,
     get_internal_blog_post,
     get_user_info,
+    list_archived_datasets,
     list_datasets,
     list_internal_blog_posts,
     list_projects,
@@ -333,6 +334,58 @@ class DatasetListApiUnitTests(SimpleTestCase):
         datasets.filter.assert_called_once_with(archived_at__isnull=True)
         active_datasets.select_related.assert_called_once_with("project")
         active_datasets.select_related.return_value.only.assert_called_once()
+        queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
+
+    @override_settings(SITE_URL="https://rowset.example")
+    def test_list_archived_datasets_returns_only_archived_profile_dataset_metadata(self):
+        dataset = SimpleNamespace(
+            key="6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
+            name="Archived customers",
+            description="Archived customer list.",
+            instructions="Restore before mutating rows.",
+            metadata={"archive_reason": "cleanup"},
+            project=None,
+            original_filename="customers.csv",
+            file_type="csv",
+            status="ready",
+            headers=["email", "name"],
+            column_schema={
+                "email": {"type": "email"},
+                "name": {"type": "text"},
+            },
+            index_column="email",
+            index_generated=False,
+            row_count=42,
+            public_enabled=False,
+            public_key="4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
+            public_page_size=25,
+            public_password_hash="",
+            created_at="2026-05-14T00:00:00Z",
+            updated_at="2026-05-14T00:01:00Z",
+            confirmed_at="2026-05-14T00:02:00Z",
+            processed_at="2026-05-14T00:03:00Z",
+            archived_at="2026-05-15T00:00:00Z",
+            is_public_password_protected=False,
+            get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
+        )
+        queryset = Mock()
+        queryset.count.return_value = 1
+        queryset.__getitem__ = Mock(return_value=[dataset])
+        datasets = Mock()
+        archived_datasets = datasets.filter.return_value
+        archived_datasets.select_related.return_value.only.return_value = queryset
+        request = HttpRequest()
+        request.auth = SimpleNamespace(datasets=datasets)
+
+        response = list_archived_datasets(request)
+
+        assert response["count"] == 1
+        assert response["total_count"] == 1
+        assert response["datasets"][0]["name"] == "Archived customers"
+        assert response["datasets"][0]["archived_at"] == "2026-05-15T00:00:00Z"
+        datasets.filter.assert_called_once_with(archived_at__isnull=False)
+        archived_datasets.select_related.assert_called_once_with("project")
+        archived_datasets.select_related.return_value.only.assert_called_once()
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
 

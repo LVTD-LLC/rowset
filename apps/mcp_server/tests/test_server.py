@@ -198,6 +198,47 @@ def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
     anyio.run(run)
 
 
+def test_get_archived_datasets_mcp_tool_returns_archived_dataset_metadata(monkeypatch):
+    calls = []
+
+    def list_archived(authenticated_profile, limit=100, offset=0):
+        calls.append((authenticated_profile.id, limit, offset))
+        return {
+            "count": 1,
+            "total_count": 1,
+            "limit": limit,
+            "offset": offset,
+            "has_more": False,
+            "datasets": [
+                {
+                    "key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
+                    "name": "Archived customers",
+                    "archived_at": "2026-05-15T00:00:00Z",
+                }
+            ],
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.serialize_profile_archived_datasets",
+            list_archived,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool("get_archived_datasets", {"limit": 5})
+
+        assert result.data["count"] == 1
+        assert result.data["datasets"][0]["name"] == "Archived customers"
+        assert result.data["datasets"][0]["archived_at"] == "2026-05-15T00:00:00Z"
+        assert calls == [(11, 5, 0)]
+
+    anyio.run(run)
+
+
 def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
     async def run():
         profile = _profile()

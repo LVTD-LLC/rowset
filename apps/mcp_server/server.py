@@ -33,6 +33,7 @@ from apps.api.services import (
     search_profile_datasets,
     search_profile_projects,
     serialize_dataset_detail,
+    serialize_profile_archived_datasets,
     serialize_profile_datasets,
     serialize_profile_project_detail,
     serialize_profile_projects,
@@ -352,6 +353,31 @@ def get_all_datasets(
     profile = _mcp_authenticated_profile()
     try:
         return serialize_profile_datasets(profile, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="get_archived_datasets",
+    description=(
+        "Return metadata for archived datasets owned by the authenticated Rowset profile."
+    ),
+)
+def get_archived_datasets(
+    limit: Annotated[
+        int,
+        Field(default=100, ge=1, le=500, description="Maximum archived datasets to return."),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Field(default=0, ge=0, description="Number of archived datasets to skip."),
+    ] = 0,
+) -> dict:
+    """Return a bounded page of archived datasets for the authenticated Rowset user."""
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return serialize_profile_archived_datasets(profile, limit=limit, offset=offset)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 

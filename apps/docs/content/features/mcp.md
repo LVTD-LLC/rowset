@@ -66,6 +66,7 @@ Then discover datasets with:
 
 ```text
 get_all_datasets
+get_archived_datasets
 search_datasets
 ```
 
@@ -152,7 +153,8 @@ description. Passing an empty string for `description` clears it.
 
 Use `archive_dataset` when the user asks to remove a mistaken dataset. Archive keeps
 rows and schema metadata recoverable, hides the dataset from normal lists, and disables
-public preview sharing. Use `restore_dataset` to bring an archived dataset back.
+public preview sharing. Use `get_archived_datasets` to find archived dataset keys, then
+use `restore_dataset` to bring an archived dataset back.
 
 Use `update_dataset_project` when the user asks to organize or move a dataset
 between projects. Passing `null` for `project_key` leaves the dataset ungrouped.
