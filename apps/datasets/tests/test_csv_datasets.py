@@ -401,6 +401,92 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     assert "Dataset status" not in content
 
 
+def test_dataset_list_groups_datasets_by_project(auth_client, profile):
+    research = Project.objects.create(
+        profile=profile,
+        name="Research",
+        description="Datasets for customer interviews.",
+    )
+    launch = Project.objects.create(profile=profile, name="Launch")
+    people = create_ready_dataset(profile)
+    people.project = research
+    people.row_count = 10
+    people.save(update_fields=["project", "row_count"])
+    notes = Dataset.objects.create(
+        profile=profile,
+        project=research,
+        name="Research notes",
+        original_filename="notes.csv",
+        status=DatasetStatus.READY,
+        headers=["note_id", "body"],
+        index_column="note_id",
+        row_count=1,
+    )
+    Dataset.objects.create(
+        profile=profile,
+        project=launch,
+        name="Launch tasks",
+        original_filename="tasks.csv",
+        status=DatasetStatus.READY,
+        headers=["task_id", "owner"],
+        index_column="task_id",
+        row_count=8,
+    )
+    Dataset.objects.create(
+        profile=profile,
+        name="Loose contacts",
+        original_filename="contacts.csv",
+        status=DatasetStatus.READY,
+        headers=["email"],
+        index_column="email",
+        row_count=4,
+    )
+
+    response = auth_client.get(reverse("dataset_list"), {"sort": "rows"})
+
+    content = response.content.decode()
+    groups = response.context["dataset_groups"]
+    assert response.status_code == 200
+    assert [group["label"] for group in groups] == ["Launch", "Research", "No project"]
+    assert [dataset.name for dataset in groups[1]["datasets"]] == ["People", notes.name]
+    assert groups[1]["dataset_count"] == 2
+    assert groups[1]["row_count"] == 11
+    assert "Project, then rows" in content
+    assert "Datasets for customer interviews." in content
+    assert "2 datasets · 11 rows" in content
+    assert "No project" in content
+    assert "Datasets that are not assigned to a project." in content
+
+
+def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Research")
+    for index in range(101):
+        Dataset.objects.create(
+            profile=profile,
+            project=project,
+            name=f"Research dataset {index:03}",
+            original_filename=f"research-{index:03}.csv",
+            status=DatasetStatus.READY,
+            headers=["record_id"],
+            index_column="record_id",
+            row_count=1,
+        )
+
+    page_one = auth_client.get(reverse("dataset_list"), {"sort": "name"})
+    page_two = auth_client.get(f"{reverse('dataset_list')}?sort=name&page=2")
+
+    assert page_one.status_code == 200
+    assert page_two.status_code == 200
+    assert len(page_one.context["dataset_groups"][0]["datasets"]) == 100
+    assert len(page_two.context["dataset_groups"][0]["datasets"]) == 1
+    for response in (page_one, page_two):
+        group = response.context["dataset_groups"][0]
+        assert group["label"] == "Research"
+        assert group["dataset_count"] == 101
+        assert group["row_count"] == 101
+        assert "101 datasets · 101 rows" in response.content.decode()
+
+
 def test_archived_dataset_list_shows_archived_datasets_only(
     auth_client,
     django_user_model,

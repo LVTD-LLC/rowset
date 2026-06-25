@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -55,28 +55,29 @@ from apps.datasets.services import (
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
 
 DATASET_SORT_OPTIONS = (
-    ("recent", "Recently updated"),
-    ("name", "Name"),
-    ("rows", "Rows"),
-    ("project", "Project"),
+    ("recent", "Project, then recently updated"),
+    ("name", "Project, then name"),
+    ("rows", "Project, then rows"),
+    ("project", "Project name"),
 )
 ARCHIVED_DATASET_SORT_OPTIONS = (
-    ("archived", "Recently archived"),
-    ("name", "Name"),
-    ("rows", "Rows"),
-    ("project", "Project"),
+    ("archived", "Project, then recently archived"),
+    ("name", "Project, then name"),
+    ("rows", "Project, then rows"),
+    ("project", "Project name"),
 )
+PROJECT_GROUP_ORDERING = (F("project__name").asc(nulls_last=True), "project_id")
 DATASET_SORT_ORDERING = {
-    "recent": ("-updated_at", "-created_at", "-id"),
-    "name": ("name", "id"),
-    "rows": ("-row_count", "name", "id"),
-    "project": ("project__name", "name", "id"),
+    "recent": (*PROJECT_GROUP_ORDERING, "-updated_at", "-created_at", "-id"),
+    "name": (*PROJECT_GROUP_ORDERING, "name", "id"),
+    "rows": (*PROJECT_GROUP_ORDERING, "-row_count", "name", "id"),
+    "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 ARCHIVED_DATASET_SORT_ORDERING = {
-    "archived": ("-archived_at", "-updated_at", "-id"),
-    "name": ("name", "id"),
-    "rows": ("-row_count", "name", "id"),
-    "project": ("project__name", "name", "id"),
+    "archived": (*PROJECT_GROUP_ORDERING, "-archived_at", "-updated_at", "-id"),
+    "name": (*PROJECT_GROUP_ORDERING, "name", "id"),
+    "rows": (*PROJECT_GROUP_ORDERING, "-row_count", "name", "id"),
+    "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 DATASET_LIST_PAGE_SIZE = 100
 DATASET_DETAIL_ROW_PAGE_SIZE = 100
@@ -587,6 +588,54 @@ class DatasetListView(LoginRequiredMixin, ListView):
     def get_total_projects(self, base_queryset):
         return self.request.user.profile.projects.count()
 
+    def get_dataset_group_totals(self, groups_by_key):
+        if not groups_by_key:
+            return {}
+
+        project_ids = [group_key for group_key in groups_by_key if group_key is not None]
+        if project_ids and None in groups_by_key:
+            totals_queryset = self.object_list.filter(
+                Q(project_id__in=project_ids) | Q(project__isnull=True)
+            )
+        elif project_ids:
+            totals_queryset = self.object_list.filter(project_id__in=project_ids)
+        else:
+            totals_queryset = self.object_list.filter(project__isnull=True)
+
+        return {
+            item["project_id"]: item
+            for item in totals_queryset.order_by()
+            .values("project_id")
+            .annotate(dataset_count=Count("id"), row_count=Sum("row_count"))
+        }
+
+    def get_dataset_groups(self, datasets):
+        groups_by_key = {}
+        for dataset in datasets:
+            project = dataset.project
+            group_key = project.pk if project else None
+            if group_key not in groups_by_key:
+                groups_by_key[group_key] = {
+                    "project": project,
+                    "label": project.name if project else "No project",
+                    "description": project.description if project else "",
+                    "datasets": [],
+                    "dataset_count": 0,
+                    "row_count": 0,
+                }
+            group = groups_by_key[group_key]
+            group["datasets"].append(dataset)
+            group["dataset_count"] += 1
+            group["row_count"] += dataset.row_count
+
+        totals_by_key = self.get_dataset_group_totals(groups_by_key)
+        for group_key, group in groups_by_key.items():
+            totals = totals_by_key.get(group_key)
+            if totals:
+                group["dataset_count"] = totals["dataset_count"] or 0
+                group["row_count"] = totals["row_count"] or 0
+        return list(groups_by_key.values())
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         base_queryset = self.get_base_queryset()
@@ -625,6 +674,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
         context["dataset_empty_body"] = self.dataset_empty_body
         context["dataset_filtered_empty_title"] = self.dataset_filtered_empty_title
         context["dataset_filtered_empty_body"] = self.dataset_filtered_empty_body
+        context["dataset_groups"] = self.get_dataset_groups(context["datasets"])
         page_obj = context.get("page_obj")
         if page_obj and page_obj.has_previous():
             context["previous_dataset_page_url"] = _querystring_for_page(
