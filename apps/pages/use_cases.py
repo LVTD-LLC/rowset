@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from apps.core.capabilities import ROWSET_CAPABILITIES, ROWSET_USE_CASES
+
+PUBLIC_SLUG_PATTERN = re.compile(r"^[-a-zA-Z0-9_]+$")
 
 
 @dataclass(frozen=True)
@@ -216,11 +219,20 @@ def _duplicate_public_slugs() -> set[str]:
     return {slug for slug in page_copy_slugs if page_copy_slugs.count(slug) > 1}
 
 
+def _invalid_public_slugs() -> tuple[str, ...]:
+    return tuple(
+        f"{use_case_id}: {page_copy.slug or '<empty>'}"
+        for use_case_id, page_copy in sorted(USE_CASE_PAGE_COPY.items())
+        if not PUBLIC_SLUG_PATTERN.fullmatch(page_copy.slug)
+    )
+
+
 def get_use_case_page_registry_errors() -> tuple[str, ...]:
     feature_titles = _capability_titles()
     use_case_ids = {use_case.id for use_case in ROWSET_USE_CASES}
     page_copy_ids = set(USE_CASE_PAGE_COPY)
     duplicate_slugs = sorted(_duplicate_public_slugs())
+    invalid_slugs = _invalid_public_slugs()
     valid_feature_ids = set(feature_titles)
     missing_page_copy_ids = sorted(use_case_ids - page_copy_ids)
     stale_page_copy_ids = sorted(page_copy_ids - use_case_ids)
@@ -248,6 +260,11 @@ def get_use_case_page_registry_errors() -> tuple[str, ...]:
         errors.append(
             "USE_CASE_PAGE_COPY contains duplicate public slugs: "
             + ", ".join(duplicate_slugs)
+        )
+    if invalid_slugs:
+        errors.append(
+            "USE_CASE_PAGE_COPY contains invalid public slugs: "
+            + ", ".join(invalid_slugs)
         )
     if unknown_feature_references:
         errors.append(

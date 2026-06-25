@@ -196,6 +196,32 @@ def test_use_case_pages_reject_duplicate_public_slugs(monkeypatch):
         page_use_cases.validate_use_case_page_registry()
 
 
+@pytest.mark.parametrize(
+    ("bad_slug", "expected_slug"),
+    (
+        ("", "<empty>"),
+        ("personal crm", "personal crm"),
+        ("personal/crm", "personal/crm"),
+    ),
+)
+def test_use_case_pages_reject_unrouteable_public_slugs(
+    bad_slug, expected_slug, monkeypatch
+):
+    page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
+    page_copy["personal_crm"] = replace(
+        page_copy["personal_crm"],
+        slug=bad_slug,
+    )
+    monkeypatch.setattr(page_use_cases, "USE_CASE_PAGE_COPY", page_copy)
+
+    errors = page_use_cases.get_use_case_page_registry_errors()
+
+    assert (
+        "USE_CASE_PAGE_COPY contains invalid public slugs: "
+        f"personal_crm: {expected_slug}"
+    ) in errors
+
+
 def test_pages_app_rejects_invalid_use_case_registry_at_startup(monkeypatch):
     page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
     page_copy.pop("personal_crm")
