@@ -1,7 +1,7 @@
 services:
   - type: web
-    # Keep the historical Render resource names stable so a product rename does
-    # not provision fresh production infrastructure.
+    # Render resource names are stable infrastructure identifiers. Rename these
+    # resources in Render first, then update this blueprint in the same deploy.
     name: filebridge-web
     runtime: python
     buildCommand: |
@@ -9,7 +9,7 @@ services:
       npm ci &&
       npm run build &&
       python manage.py collectstatic --noinput
-    startCommand: python manage.py migrate && gunicorn filebridge.asgi:application --bind 0.0.0.0:$PORT --workers 2 --worker-class uvicorn_worker.UvicornWorker --timeout 120
+    startCommand: python manage.py migrate && gunicorn rowset.asgi:application --bind 0.0.0.0:$PORT --workers 2 --worker-class uvicorn_worker.UvicornWorker --timeout 120
     plan: free
     healthCheckPath: /
 
@@ -52,6 +52,7 @@ services:
           property: password
 
   - type: web
+    # Keep this aligned with the existing worker service identifier in Render.
     name: filebridge-workers
     runtime: python
     buildCommand: |
@@ -99,12 +100,14 @@ services:
           property: password
 
   - type: keyvalue
+    # Keep this aligned with the existing Redis resource identifier in Render.
     name: filebridge-redis
     plan: free
     ipAllowList: []
     maxmemoryPolicy: allkeys-lfu
 
 databases:
+  # Keep this aligned with the existing Postgres resource identifier in Render.
   - name: filebridge-db
     databaseName: filebridge
     user: filebridge_user
@@ -134,6 +137,10 @@ envVarGroups:
       
       # Optional. If not specified, local FileSystemStorage is used for media files.
       - key: AWS_S3_ENDPOINT_URL
+        value: ""
+      # Required when AWS_S3_ENDPOINT_URL is set outside local development.
+      # Set this to the existing bucket name until object storage is renamed or migrated.
+      - key: AWS_STORAGE_BUCKET_NAME
         value: ""
       - key: AWS_ACCESS_KEY_ID
         value: ""

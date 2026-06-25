@@ -16,9 +16,9 @@ from apps.core.agent_skill import (
     ROWSET_SKILL_SOURCE_URL,
 )
 from apps.core.views import AGENT_API_KEY_MASK
-from filebridge.utils import build_absolute_public_url, get_filebridge_logger
+from rowset.utils import build_absolute_public_url, get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 API_KEY_PLACEHOLDER = "YOUR_ROWSET_API_KEY"
 USER_EMAIL_PLACEHOLDER = "you@example.com"

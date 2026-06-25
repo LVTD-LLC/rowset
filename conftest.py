@@ -5,7 +5,7 @@ import pytest
 
 
 def pytest_configure(config):
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "filebridge.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rowset.settings")
 
     from django.conf import settings
 

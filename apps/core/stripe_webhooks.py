@@ -1,13 +1,13 @@
 import stripe
 from django.conf import settings
 
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 from apps.core.choices import ProfileStates
 from apps.core.models import Profile
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 def get_profile_for_customer(customer_id, metadata=None):

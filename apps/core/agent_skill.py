@@ -2,9 +2,9 @@ from pathlib import Path
 
 from django.conf import settings
 
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 ROWSET_SKILL_INSTALL_COMMAND = "npx skills add LVTD-LLC/rowset"
 ROWSET_SKILL_REPOSITORY_PATH = ".agents/skills/rowset/SKILL.md"

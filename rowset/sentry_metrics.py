@@ -6,7 +6,7 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from sentry_sdk import metrics
 
-MIDDLEWARE_PATH = "filebridge.sentry_metrics.SentryMetricsMiddleware"
+MIDDLEWARE_PATH = "rowset.sentry_metrics.SentryMetricsMiddleware"
 
 
 def install_sentry_metrics_middleware(middleware: list[str]) -> None:

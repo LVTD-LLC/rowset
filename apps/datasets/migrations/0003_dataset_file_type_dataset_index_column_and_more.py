@@ -9,6 +9,8 @@ def populate_existing_indexes(apps, schema_editor):
 
     for dataset in Dataset.objects.all().iterator():
         headers = list(dataset.headers or [])
+        # Historical generated index name written by this already-applied
+        # migration. New runtime-generated datasets use rowset_id.
         index_column = "filebridge_id"
         if index_column in headers:
             suffix = 2

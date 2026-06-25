@@ -5,9 +5,9 @@ from allauth.socialaccount.models import SocialApp
 from django.conf import settings
 
 from apps.core.choices import ProfileStates
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 def current_state(request):

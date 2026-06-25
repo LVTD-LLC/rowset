@@ -33,12 +33,12 @@ from apps.core.models import AgentApiKey, Profile
 from apps.core.services import create_agent_api_key, get_agent_api_key_token
 from apps.core.stripe_webhooks import EVENT_HANDLERS
 from apps.datasets.choices import DatasetStatus
-from filebridge.utils import build_absolute_public_url, get_filebridge_logger
+from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 AGENT_API_KEY_MASK = "***"
 

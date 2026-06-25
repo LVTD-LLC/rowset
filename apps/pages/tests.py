@@ -54,7 +54,7 @@ def test_signup_redirects_to_dashboard_without_blocking_email_code_page(
         sent_confirmations.append((emailconfirmation.email_address.email, signup))
 
     monkeypatch.setattr(
-        "filebridge.adapters.CustomAccountAdapter.send_confirmation_mail",
+        "rowset.adapters.CustomAccountAdapter.send_confirmation_mail",
         fake_send_confirmation_mail,
     )
     settings.POSTHOG_API_KEY = ""
@@ -263,7 +263,7 @@ def test_settings_resend_confirmation_uses_hmac_link(client, monkeypatch):
         sent_confirmations.append((emailconfirmation, signup))
 
     monkeypatch.setattr(
-        "filebridge.adapters.CustomAccountAdapter.send_confirmation_mail",
+        "rowset.adapters.CustomAccountAdapter.send_confirmation_mail",
         fake_send_confirmation_mail,
     )
     user = get_user_model().objects.create_user(
@@ -297,7 +297,7 @@ def test_settings_resend_confirmation_link_confirms_email(client, monkeypatch):
         sent_confirmations.append(emailconfirmation)
 
     monkeypatch.setattr(
-        "filebridge.adapters.CustomAccountAdapter.send_confirmation_mail",
+        "rowset.adapters.CustomAccountAdapter.send_confirmation_mail",
         fake_send_confirmation_mail,
     )
     user = get_user_model().objects.create_user(

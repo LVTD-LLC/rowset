@@ -1,5 +1,5 @@
 """
-ASGI config for filebridge project.
+ASGI config for rowset project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 """
@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.routing import Mount, Route
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "filebridge.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rowset.settings")
 
 django_application = get_asgi_application()
 

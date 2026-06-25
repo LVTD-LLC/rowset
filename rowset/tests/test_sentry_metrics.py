@@ -4,7 +4,7 @@ import pytest
 from django.http import HttpResponse
 from django.test import RequestFactory, override_settings
 
-from filebridge.sentry_metrics import (
+from rowset.sentry_metrics import (
     MIDDLEWARE_PATH,
     SentryMetricsMiddleware,
     install_sentry_metrics_middleware,
@@ -54,9 +54,9 @@ def test_sentry_metrics_middleware_records_request_metrics(monkeypatch):
     def record_distribution(*args, **kwargs):
         distributions.append((args, kwargs))
 
-    monkeypatch.setattr("filebridge.sentry_metrics.metrics.count", record_count)
+    monkeypatch.setattr("rowset.sentry_metrics.metrics.count", record_count)
     monkeypatch.setattr(
-        "filebridge.sentry_metrics.metrics.distribution",
+        "rowset.sentry_metrics.metrics.distribution",
         record_distribution,
     )
 
@@ -92,9 +92,9 @@ def test_sentry_metrics_middleware_records_raised_exceptions(monkeypatch):
     def record_count(*args, **kwargs):
         counts.append((args, kwargs))
 
-    monkeypatch.setattr("filebridge.sentry_metrics.metrics.count", record_count)
+    monkeypatch.setattr("rowset.sentry_metrics.metrics.count", record_count)
     monkeypatch.setattr(
-        "filebridge.sentry_metrics.metrics.distribution",
+        "rowset.sentry_metrics.metrics.distribution",
         lambda *args, **kwargs: None,
     )
 
@@ -120,7 +120,7 @@ def test_sentry_metrics_middleware_records_raised_exceptions(monkeypatch):
 @override_settings(SENTRY_ENABLE_METRICS=False)
 def test_sentry_metrics_middleware_can_be_disabled(monkeypatch):
     monkeypatch.setattr(
-        "filebridge.sentry_metrics.metrics.count",
+        "rowset.sentry_metrics.metrics.count",
         lambda *args, **kwargs: pytest.fail("metrics should be disabled"),
     )
 

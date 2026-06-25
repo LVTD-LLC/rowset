@@ -8,7 +8,7 @@ from apps.core.services import create_agent_api_key
 from apps.core.views import build_agent_setup_prompt
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project
-from filebridge.utils import build_absolute_public_url
+from rowset.utils import build_absolute_public_url
 
 
 @pytest.mark.django_db

@@ -2,7 +2,7 @@
 
 ## Top-Level Map
 
-- `filebridge/` - Django project settings, URLs, ASGI/WSGI, storage, logging,
+- `rowset/` - Django project settings, URLs, ASGI/WSGI, storage, logging,
   sitemap, and adapters.
 - `apps/core/` - profiles, account state, signup/login helpers, feedback, email,
   Stripe webhooks, shared tasks, and shared tests.

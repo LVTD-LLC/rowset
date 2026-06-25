@@ -99,9 +99,9 @@ from apps.datasets.services import (
     rows_to_sqlite_bytes,
     rows_to_xlsx_bytes,
 )
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 api = NinjaAPI()
 DATASET_EXPORT_FORMATS = {

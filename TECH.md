@@ -43,7 +43,7 @@ contents.
 
 ## Architecture
 
-- `filebridge/settings.py` wires Django apps, allauth, storage, logging, Redis,
+- `rowset/settings.py` wires Django apps, allauth, storage, logging, Redis,
   Django Q, observability, payments, and AI model labels.
 - `apps/datasets` owns dataset parsing, legacy import support, row storage,
   exports, public previews, and dataset-specific tests.

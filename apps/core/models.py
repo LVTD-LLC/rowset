@@ -8,9 +8,9 @@ from apps.core.base_models import BaseModel
 from apps.core.choices import EmailType, ProfileStates
 from apps.core.model_utils import generate_random_key
 from apps.core.utils import send_transactional_email
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 
 class Profile(BaseModel):

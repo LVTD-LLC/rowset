@@ -8,9 +8,9 @@ import requests
 from django.conf import settings
 
 from apps.core.models import Profile
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 def add_email_to_buttondown(email, tag):
     if not settings.BUTTONDOWN_API_KEY:

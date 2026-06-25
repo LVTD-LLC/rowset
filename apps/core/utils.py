@@ -8,9 +8,9 @@ from django.forms.utils import ErrorList
 
 from apps.core.choices import EmailType
 
-from filebridge.utils import get_filebridge_logger
+from rowset.utils import get_rowset_logger
 
-logger = get_filebridge_logger(__name__)
+logger = get_rowset_logger(__name__)
 
 if TYPE_CHECKING:
     from apps.core.models import Profile
