@@ -1852,6 +1852,7 @@ def test_row_update_mutation_records_field_diffs_and_renders_history(client, pro
 def test_dataset_changes_hides_legacy_placeholder_diff_labels(auth_client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.get(row_number=1)
+    second_row = dataset.rows.get(row_number=2)
     record_dataset_mutation(
         dataset,
         DatasetMutationType.ROW_UPDATED,
@@ -1872,11 +1873,34 @@ def test_dataset_changes_hides_legacy_placeholder_diff_labels(auth_client, profi
             "index_changed": False,
         },
     )
+    record_dataset_mutation(
+        dataset,
+        DatasetMutationType.ROW_UPDATED,
+        "Row 2 updated.",
+        target_type="row",
+        target_identifier=second_row.id,
+        metadata={
+            "row_id": second_row.id,
+            "row_number": second_row.row_number,
+            "changed_fields": ["name"],
+            "field_changes": [
+                {
+                    "field": "name",
+                    "before": "",
+                    "after": "Filled",
+                }
+            ],
+            "index_changed": False,
+        },
+    )
 
     changes_content = auth_client.get(dataset.get_changes_url()).content.decode()
 
     assert "Row 1 updated." in changes_content
+    assert "Row 2 updated." in changes_content
     assert "Not recorded" in changes_content
+    assert "Blank" in changes_content
+    assert "Filled" in changes_content
     assert "Previous value" not in changes_content
     assert "New value" not in changes_content
 

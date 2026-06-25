@@ -111,8 +111,8 @@ def _mutation_change_display(value, *, values_recorded: bool, legacy_placeholder
             "is_unrecorded": True,
         }
     return {
-        "text": "Blank" if value == "Blank" else value,
-        "is_blank": value == "Blank",
+        "text": "Blank" if value in ("", "Blank") else value,
+        "is_blank": value in ("", "Blank"),
         "is_unrecorded": False,
     }
 
