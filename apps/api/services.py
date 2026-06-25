@@ -652,7 +652,7 @@ def _relationship_identifier_uuid(relationship_key: str) -> UUID:
     try:
         return UUID(str(relationship_key or "").strip())
     except (AttributeError, TypeError, ValueError) as exc:
-        raise DatasetServiceError(404, "Relationship not found.") from exc
+        raise DatasetServiceError(400, "Invalid relationship key.") from exc
 
 
 def _normalize_relationship_name(
@@ -844,8 +844,7 @@ def create_profile_dataset_relationship(
 def list_profile_dataset_relationships(profile: Profile, dataset_key: str) -> dict:
     source_dataset = get_ready_profile_dataset(profile, dataset_key)
     relationships = (
-        source_dataset.outgoing_relationships.filter(profile=profile)
-        .select_related("source_dataset", "target_dataset")
+        source_dataset.outgoing_relationships.select_related("source_dataset", "target_dataset")
         .order_by("name", "id")
     )
     return {
@@ -902,6 +901,7 @@ def delete_profile_dataset_relationship(
                 "source_column": relationship_payload["source_column"],
                 "target_dataset_key": relationship_payload["target_dataset"]["key"],
                 "target_index_column": relationship_payload["target_index_column"],
+                "enforce_integrity": relationship_payload["enforce_integrity"],
             },
         )
     return {

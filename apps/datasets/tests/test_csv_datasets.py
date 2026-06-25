@@ -2020,6 +2020,13 @@ def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(clien
     assert resolve_response.json()["target_index_value"] == "P-1"
     assert resolve_response.json()["target_row"]["data"]["name"] == "Ada Lovelace"
 
+    invalid_key_response = client.get(
+        f"/api/datasets/{messages.key}/relationships/not-a-key/resolve"
+        f"?api_key={profile.key}&source_index_value=M-1"
+    )
+    assert invalid_key_response.status_code == 400
+    assert invalid_key_response.json()["detail"] == "Invalid relationship key."
+
     invalid_row_response = client.post(
         f"/api/datasets/{messages.key}/rows?api_key={profile.key}",
         data={
@@ -2047,6 +2054,16 @@ def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(clien
         content_type="application/json",
     )
     assert blank_row_response.status_code == 200
+
+    delete_response = client.delete(
+        f"/api/datasets/{messages.key}/relationships/{relationship_key}?api_key={profile.key}"
+    )
+    assert delete_response.status_code == 200
+    assert not DatasetRelationship.objects.filter(key=relationship_key).exists()
+    delete_mutation = messages.mutations.get(
+        mutation_type=DatasetMutationType.RELATIONSHIP_DELETED
+    )
+    assert delete_mutation.metadata["enforce_integrity"] is True
 
 
 def test_dataset_relationship_api_rejects_existing_unmatched_values(client, profile):
