@@ -543,6 +543,30 @@ def test_read_only_agent_api_key_can_read_but_cannot_write(client, django_user_m
 
 
 @pytest.mark.django_db
+def test_legacy_profile_api_key_can_read_but_cannot_write(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        username="legacyreadonlyapiuser",
+        email="legacyreadonlyapiuser@example.com",
+        password="password123",
+    )
+
+    read_response = client.get(
+        "/api/user",
+        HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
+    )
+    write_response = client.post(
+        "/api/projects",
+        data=json.dumps({"name": "Launch"}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
+    )
+
+    assert read_response.status_code == 200
+    assert read_response.json()["email"] == "legacyreadonlyapiuser@example.com"
+    assert write_response.status_code == 401
+
+
+@pytest.mark.django_db
 def test_admin_agent_api_key_can_create_new_agent_api_key(client, django_user_model):
     from apps.core.models import AgentApiKey
     from apps.core.services import create_agent_api_key, hash_agent_api_key

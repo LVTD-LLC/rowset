@@ -19,7 +19,7 @@ AGENT_API_KEY_ACCESS_LEVEL_ORDER = {
     AgentApiKeyAccessLevel.READ_WRITE: 1,
     AgentApiKeyAccessLevel.ADMIN: 2,
 }
-LEGACY_PROFILE_KEY_ACCESS_LEVEL = AgentApiKeyAccessLevel.READ_WRITE
+LEGACY_PROFILE_KEY_ACCESS_LEVEL = AgentApiKeyAccessLevel.READ
 
 
 @dataclass(frozen=True)
