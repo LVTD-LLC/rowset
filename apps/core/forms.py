@@ -50,8 +50,11 @@ class ProfileUpdateForm(forms.ModelForm):
 class AgentApiKeyCreateForm(forms.Form):
     name = forms.CharField(
         max_length=80,
-        label="Agent name",
-        help_text="Use a clear name such as Codex, OpenClaw, or Reporting Agent.",
+        label="App or agent name",
+        help_text=(
+            "Use an app name or AI agent name. Rowset shows this name in dataset "
+            "change history."
+        ),
     )
     access_level = forms.ChoiceField(
         choices=AgentApiKeyAccessLevel.choices,
@@ -66,8 +69,11 @@ class AgentApiKeyCreateForm(forms.Form):
 
     def clean_name(self):
         name = normalize_agent_api_key_name(self.cleaned_data["name"])
-        if self.profile and AgentApiKey.objects.filter(profile=self.profile, name=name).exists():
-            raise forms.ValidationError("An agent API key with this name already exists.")
+        if (
+            self.profile
+            and AgentApiKey.objects.filter(profile=self.profile, name=name).exists()
+        ):
+            raise forms.ValidationError("An API key with this name already exists.")
         return name
 
     def clean_access_level(self):

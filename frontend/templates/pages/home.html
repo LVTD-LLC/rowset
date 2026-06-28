@@ -11,7 +11,7 @@
           Connect your AI agent to Rowset
         </h1>
         <p class="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300">
-          Create a named API key, copy the generated setup prompt, and paste it into a trusted agent. Most users can get to a verified Rowset connection in a few minutes.
+          Create a named API key, copy the generated setup prompt, and paste it into a trusted agent. Use one key per app or agent so Rowset can track dataset changes cleanly.
         </p>
       </div>
 
@@ -28,8 +28,8 @@
               <div class="min-w-0">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h3 class="text-base font-semibold text-slate-950 dark:text-slate-100">Create an agent API key</h3>
-                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Use one named key per trusted agent so access can be reviewed and revoked later.</p>
+                    <h3 class="text-base font-semibold text-slate-950 dark:text-slate-100">Create an API key</h3>
+                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Name the trusted app or AI agent so dataset changes can be reviewed and revoked later.</p>
                   </div>
                   <span class="w-fit rounded-full border px-2.5 py-1 text-xs font-semibold {% if active_agent_api_key %}border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200{% else %}border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300{% endif %}">
                     {% if active_agent_api_key %}Done{% else %}Next{% endif %}
@@ -46,14 +46,14 @@
                     {% csrf_token %}
                     <input type="hidden" name="next" value="home" />
                     <div>
-                      <label for="home-agent-api-key-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Agent name</label>
-                      {% render_field agent_api_key_form.name id="home-agent-api-key-name" autocomplete="off" placeholder="Codex" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+                      <label for="home-agent-api-key-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">App or agent name</label>
+                      {% render_field agent_api_key_form.name id="home-agent-api-key-name" autocomplete="off" placeholder="App or AI agent name for dataset change history" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
                     </div>
                     <div>
                       <label for="home-agent-api-key-access-level" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Permission</label>
                       {% render_field agent_api_key_form.access_level id="home-agent-api-key-access-level" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
                     </div>
-                    <button type="submit" class="fb-button-primary">Create agent key</button>
+                    <button type="submit" class="fb-button-primary">Create key</button>
                   </form>
                 {% endif %}
               </div>
@@ -65,7 +65,7 @@
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h3 class="text-base font-semibold text-slate-950 dark:text-slate-100">Copy the setup prompt</h3>
-                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">The prompt includes the MCP URL, REST API base, Rowset skill, and the selected agent key.</p>
+                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">The prompt includes the MCP URL, REST API base, Rowset skill, and the selected API key.</p>
                   </div>
                   <span class="w-fit rounded-full border px-2.5 py-1 text-xs font-semibold {% if active_agent_api_key %}border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300{% else %}border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500{% endif %}">
                     {% if active_agent_api_key %}Ready{% else %}Locked{% endif %}
@@ -109,7 +109,7 @@
           {% else %}
             <div class="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/70">
               <h2 class="fb-section-title">Your prompt will appear here</h2>
-              <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Create the agent key first. Rowset will generate a copyable setup prompt for that key without printing the secret into this page.</p>
+              <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Create an API key first. Rowset will generate a copyable setup prompt for that key without printing the secret into this page.</p>
               <div class="mt-5 rounded-md border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 The prompt includes the hosted MCP URL, REST API base, Rowset skill, and the private bearer token your agent needs.
               </div>

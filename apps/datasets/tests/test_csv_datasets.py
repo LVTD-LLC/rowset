@@ -15,7 +15,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.api.services import list_profile_dataset_rows, patch_profile_dataset_row
+from apps.api.services import (
+    list_profile_dataset_rows,
+    patch_profile_dataset_row,
+    serialize_dataset_detail,
+)
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
@@ -760,6 +764,49 @@ def test_dataset_detail_links_imported_rows_and_truncates_cells(auth_client, pro
     assert 'aria-label="View row 1 details"' in content
     assert content.count('aria-label="View row 1 details"') == 1
     assert 'aria-hidden="true" tabindex="-1"' in content
+
+
+def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
+    target = create_ready_dataset(profile)
+    target.name = "Archived sprint tasks"
+    target.archived_at = timezone.now()
+    target.save(update_fields=["name", "archived_at"])
+    source = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sprint_id", "task_dataset"],
+        column_schema={
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+            "task_dataset": {
+                "type": DatasetColumnType.REFERENCE,
+                "target": "dataset",
+            },
+        },
+        index_column="sprint_id",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=source,
+        row_number=1,
+        index_value="SPRINT-1",
+        data={
+            "sprint_id": "SPRINT-1",
+            "task_dataset": str(target.key),
+        },
+    )
+
+    response = auth_client.get(source.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{target.get_absolute_url()}"' in content
+    assert "Archived sprint tasks" in content
+    assert "Archived dataset" in content
 
 
 def test_dataset_detail_renders_owned_rowset_dataset_urls_as_internal_links(
@@ -2889,12 +2936,14 @@ def test_dataset_relationship_settings_form_creates_and_detail_shows_relationshi
     assert "Message person" in content
     assert f'href="{people.get_absolute_url()}"' in content
     assert "People</a>.person_id" in content
+    assert "No incoming relationships." not in content
 
     incoming_response = auth_client.get(reverse("dataset_detail", args=[people.key]))
     incoming_content = incoming_response.content.decode()
     assert incoming_response.status_code == 200
     assert f'href="{messages.get_absolute_url()}"' in incoming_content
     assert "CRM Messages</a>.person_id" in incoming_content
+    assert "No outgoing relationships." not in incoming_content
 
 
 def test_normalize_column_schema_accepts_choice_metadata():
@@ -2946,8 +2995,154 @@ def test_normalize_column_schema_accepts_description_metadata():
     }
 
 
+def test_normalize_column_schema_accepts_dataset_reference_metadata():
+    schema = normalize_column_schema(
+        ["task_dataset"],
+        {
+            "task_dataset": {
+                "type": "reference",
+                "target": "dataset",
+                "description": "Detailed task dataset for this sprint.",
+            }
+        },
+        reject_unknown=True,
+    )
+
+    assert schema == {
+        "task_dataset": {
+            "type": "reference",
+            "target": "dataset",
+            "description": "Detailed task dataset for this sprint.",
+        }
+    }
+
+
 def test_choice_constraints_from_normalized_schema_allows_none():
     assert choice_constraints_from_schema(["status"], None, normalized=True) == {}
+
+
+def test_dataset_api_dataset_reference_columns_accept_archived_datasets(client, profile):
+    target = create_ready_dataset(profile)
+    target.name = "Review Gate First Implementation Tasks"
+    target.archived_at = timezone.now()
+    target.save(update_fields=["name", "archived_at"])
+
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Review Gate Sprint History",
+            "headers": ["sprint_id", "task_dataset"],
+            "index_column": "sprint_id",
+            "column_types": {
+                "task_dataset": {
+                    "type": "reference",
+                    "target": "dataset",
+                }
+            },
+            "rows": [
+                {
+                    "sprint_id": "RG-SPRINT-001",
+                    "task_dataset": str(target.key),
+                }
+            ],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    dataset = Dataset.objects.get(key=response.json()["dataset"]["key"], profile=profile)
+    row = dataset.rows.get(index_value="RG-SPRINT-001")
+    assert row.data["task_dataset"] == str(target.key)
+
+    payload = serialize_dataset_detail(dataset)
+    reference = payload["dataset_references"]["task_dataset"][str(target.key)]
+    assert reference["name"] == "Review Gate First Implementation Tasks"
+    assert reference["archived_at"] == target.archived_at
+    assert reference["row_count"] == 2
+
+
+def test_dataset_api_dataset_reference_columns_reject_missing_datasets(client, profile):
+    missing_key = "38698383-f515-4b60-b426-4f4ae3bc94ce"
+
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Review Gate Sprint History",
+            "headers": ["sprint_id", "task_dataset"],
+            "index_column": "sprint_id",
+            "column_types": {
+                "task_dataset": {
+                    "type": "reference",
+                    "target": "dataset",
+                }
+            },
+            "rows": [
+                {
+                    "sprint_id": "RG-SPRINT-001",
+                    "task_dataset": missing_key,
+                }
+            ],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Column 'task_dataset' references a dataset that does not exist or is not owned "
+        "by this profile."
+    )
+
+
+def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, profile):
+    target = create_ready_dataset(profile)
+    source = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sprint_id", "task_dataset"],
+        column_schema={
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+            "task_dataset": {
+                "type": DatasetColumnType.REFERENCE,
+                "target": "dataset",
+            },
+        },
+        index_column="sprint_id",
+        row_count=0,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+
+    create_response = client.post(
+        f"/api/datasets/{source.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "sprint_id": "RG-SPRINT-001",
+                "task_dataset": target.get_public_url(),
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert create_response.status_code == 200
+    row = source.rows.get(index_value="RG-SPRINT-001")
+    assert row.data["task_dataset"] == str(target.key)
+
+    invalid_patch = client.patch(
+        f"/api/datasets/{source.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"task_dataset": "38698383-f515-4b60-b426-4f4ae3bc94ce"}},
+        content_type="application/json",
+    )
+
+    assert invalid_patch.status_code == 400
+    assert invalid_patch.json()["detail"] == (
+        "Column 'task_dataset' references a dataset that does not exist or is not owned "
+        "by this profile."
+    )
+    row.refresh_from_db()
+    assert row.data["task_dataset"] == str(target.key)
 
 
 def test_dataset_api_enforces_choice_values(client, profile):

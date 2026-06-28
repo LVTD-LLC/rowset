@@ -133,7 +133,11 @@ ROWSET_CAPABILITIES = (
         notes=(
             (
                 "column_schema supports text, choice, integer, number, currency, "
-                "boolean, date, datetime, email, and url."
+                "boolean, date, datetime, email, url, and reference."
+            ),
+            (
+                'Use {"type": "reference", "target": "dataset"} when a column stores '
+                "another Rowset dataset key. Archived dataset targets remain valid."
             ),
             (
                 "Add column descriptions when an agent should not infer column "

@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
 from apps.core.models import AgentApiKey, Profile
-from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
@@ -25,6 +25,9 @@ from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetRelationship, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
+    COLUMN_SCHEMA_REFERENCE_TARGET_KEY,
+    COLUMN_SCHEMA_TYPE_KEY,
+    DATASET_REFERENCE_TARGET,
     DatasetRowQueryError,
     apply_dataset_row_query,
     choice_constraints_from_schema,
@@ -507,10 +510,66 @@ def serialize_dataset_relationship_context(dataset: Dataset) -> dict:
     }
 
 
+def serialize_dataset_reference(dataset: Dataset) -> dict:
+    """Return compact metadata for a dataset referenced by a cell value."""
+    return {
+        "key": str(dataset.key),
+        "name": dataset.name,
+        "project": serialize_project_reference(getattr(dataset, "project", None)),
+        "status": dataset.status,
+        "headers": dataset.headers,
+        "index_column": dataset.index_column,
+        "row_count": dataset.row_count,
+        "public_enabled": dataset.public_enabled,
+        "created_at": dataset.created_at,
+        "updated_at": dataset.updated_at,
+        "archived_at": dataset.archived_at,
+    }
+
+
+def _dataset_reference_columns(headers: list[str], column_schema: dict | None) -> list[str]:
+    normalized_schema = normalize_column_schema(headers, column_schema)
+    return [
+        header
+        for header in headers
+        if normalized_schema[header].get(COLUMN_SCHEMA_TYPE_KEY) == DatasetColumnType.REFERENCE
+        and normalized_schema[header].get(COLUMN_SCHEMA_REFERENCE_TARGET_KEY)
+        == DATASET_REFERENCE_TARGET
+    ]
+
+
+def serialize_dataset_reference_context(dataset: Dataset) -> dict[str, dict[str, dict]]:
+    """Return referenced dataset metadata grouped by source column and target key."""
+    reference_columns = _dataset_reference_columns(dataset.headers, dataset.column_schema)
+    if not reference_columns:
+        return {}
+
+    referenced: dict[str, dict[str, dict]] = {column: {} for column in reference_columns}
+    row_data_queryset = dataset.rows.order_by("row_number", "id").values_list("data", flat=True)
+    row_data_items = row_data_queryset if dataset.row_count else dataset.preview_rows
+    for row_data in row_data_items:
+        if not isinstance(row_data, dict):
+            continue
+        for column in reference_columns:
+            raw_value = str(row_data.get(column, "") or "").strip()
+            if not raw_value:
+                continue
+            try:
+                target_dataset = get_profile_dataset(dataset.profile, raw_value)
+            except DatasetServiceError:
+                continue
+            referenced[column][str(target_dataset.key)] = serialize_dataset_reference(
+                target_dataset
+            )
+
+    return {column: targets for column, targets in referenced.items() if targets}
+
+
 def serialize_dataset_detail(dataset: Dataset) -> dict:
     """Return one dataset with relationship context, without row payloads."""
     payload = serialize_dataset_summary(dataset)
     payload["relationships"] = serialize_dataset_relationship_context(dataset)
+    payload["dataset_references"] = serialize_dataset_reference_context(dataset)
     return payload
 
 
@@ -1219,6 +1278,83 @@ def _validate_existing_choice_values(dataset: Dataset, column_schema: dict) -> N
     )
 
 
+def _dataset_reference_validation_error(column: str) -> DatasetServiceError:
+    return DatasetServiceError(
+        400,
+        f"Column '{column}' references a dataset that does not exist or is not owned "
+        "by this profile.",
+    )
+
+
+def _canonical_dataset_reference_value(profile: Profile, column: str, raw_value) -> str:
+    normalized_value = str(raw_value or "").strip()
+    if not normalized_value:
+        return ""
+    try:
+        return str(get_profile_dataset(profile, normalized_value).key)
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise _dataset_reference_validation_error(column) from exc
+        raise
+
+
+def _normalize_dataset_reference_row_data(
+    profile: Profile,
+    headers: list[str],
+    column_schema: dict | None,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+) -> dict[str, str]:
+    selected_columns = set(columns) if columns is not None else None
+    reference_columns = _dataset_reference_columns(headers, column_schema)
+    if selected_columns is not None:
+        reference_columns = [
+            column for column in reference_columns if column in selected_columns
+        ]
+    if not reference_columns:
+        return row_data
+
+    normalized_data = dict(row_data)
+    for column in reference_columns:
+        normalized_data[column] = _canonical_dataset_reference_value(
+            profile,
+            column,
+            normalized_data.get(column, ""),
+        )
+    return normalized_data
+
+
+def _normalize_dataset_reference_rows(
+    profile: Profile,
+    headers: list[str],
+    column_schema: dict | None,
+    rows: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    return [
+        _normalize_dataset_reference_row_data(profile, headers, column_schema, row_data)
+        for row_data in rows
+    ]
+
+
+def _validate_existing_dataset_reference_values(
+    profile: Profile,
+    dataset: Dataset,
+    column_schema: dict,
+) -> None:
+    reference_columns = _dataset_reference_columns(dataset.headers, column_schema)
+    if not reference_columns:
+        return
+    for row_data in _iter_dataset_row_data(dataset):
+        _normalize_dataset_reference_row_data(
+            profile,
+            dataset.headers,
+            column_schema,
+            row_data,
+            columns=reference_columns,
+        )
+
+
 def _create_dataset_index_config(
     headers: list[str],
     index_column: str | None,
@@ -1299,6 +1435,12 @@ def create_profile_dataset(
         column_types=column_types,
     )
     _validate_choice_rows(base_headers, column_schema, normalized_rows)
+    normalized_rows = _normalize_dataset_reference_rows(
+        profile,
+        base_headers,
+        column_schema,
+        normalized_rows,
+    )
 
     seen_index_values = set()
     row_payloads = []
@@ -1416,6 +1558,7 @@ def update_profile_dataset_column_types(
         except CSVParseError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
         _validate_existing_choice_values(dataset, next_schema)
+        _validate_existing_dataset_reference_values(profile, dataset, next_schema)
         dataset.column_schema = next_schema
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
@@ -1651,6 +1794,13 @@ def add_profile_dataset_column(
             {column_name: default_cell},
             columns={column_name},
         )
+        default_cell = _normalize_dataset_reference_row_data(
+            profile,
+            next_headers,
+            dataset.column_schema,
+            {column_name: default_cell},
+            columns={column_name},
+        )[column_name]
 
         def add_column(data: dict) -> dict[str, str]:
             next_data = dict(data)
@@ -2242,6 +2392,12 @@ def create_profile_dataset_row(
             raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
         serialized_data = {header: str(row_data.get(header, "")) for header in dataset.headers}
         _validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
+        serialized_data = _normalize_dataset_reference_row_data(
+            profile,
+            dataset.headers,
+            dataset.column_schema,
+            serialized_data,
+        )
         _validate_relationship_row_data(dataset, serialized_data)
 
         row = DatasetRow.objects.create(
@@ -2318,6 +2474,7 @@ def patch_profile_dataset_row(
         except DatasetRow.DoesNotExist as exc:
             raise DatasetServiceError(404, "Row not found.") from exc
         return _patch_dataset_row(
+            profile,
             dataset,
             row,
             data,
@@ -2339,6 +2496,7 @@ def patch_profile_dataset_row_by_index(
         except DatasetRow.DoesNotExist as exc:
             raise DatasetServiceError(404, "Row not found.") from exc
         return _patch_dataset_row(
+            profile,
             dataset,
             row,
             data,
@@ -2347,6 +2505,7 @@ def patch_profile_dataset_row_by_index(
 
 
 def _patch_dataset_row(
+    profile: Profile,
     dataset: Dataset,
     row: DatasetRow,
     data: dict,
@@ -2357,6 +2516,13 @@ def _patch_dataset_row(
 
     row_patch = {key: str(value) for key, value in data.items() if key in dataset.headers}
     patched_fields = sorted(row_patch)
+    row_patch = _normalize_dataset_reference_row_data(
+        profile,
+        dataset.headers,
+        dataset.column_schema,
+        row_patch,
+        columns=patched_fields,
+    )
     field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
     changed_fields = [str(change["field"]) for change in field_changes]
     row.data = {**row.data, **row_patch}
@@ -2374,7 +2540,7 @@ def _patch_dataset_row(
                 f"Index column '{dataset.index_column}' is managed by Rowset "
                 "and cannot be updated.",
             )
-        index_value = str(data.get(dataset.index_column, "")).strip()
+        index_value = str(row_patch.get(dataset.index_column, "")).strip()
         if not index_value:
             raise DatasetServiceError(
                 400,

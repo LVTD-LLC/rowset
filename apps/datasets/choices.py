@@ -11,6 +11,7 @@ class DatasetStatus(models.TextChoices):
 class DatasetColumnType(models.TextChoices):
     TEXT = "text", "Text"
     CHOICE = "choice", "Choice"
+    REFERENCE = "reference", "Reference"
     INTEGER = "integer", "Integer"
     NUMBER = "number", "Number"
     CURRENCY = "currency", "Currency"

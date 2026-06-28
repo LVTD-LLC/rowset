@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: LVTD-LLC/reviewgate@v0.1.5
+      - uses: LVTD-LLC/reviewgate@v0
         with:
           openrouter_api_key: ${{ env.OPENROUTER_API_KEY }}
           preset: balanced

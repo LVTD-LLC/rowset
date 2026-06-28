@@ -785,8 +785,11 @@ def create_dataset(
             description=(
                 "Optional mapping from header name to semantic column type or metadata. "
                 "Supported types include text, choice, integer, number, currency, boolean, "
-                "date, datetime, email, and url. For choice columns, pass metadata like "
+                "date, datetime, email, url, and reference. For choice columns, pass metadata "
+                "like "
                 '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}. '
+                'For a dataset reference column, pass {"type": "reference", '
+                '"target": "dataset"}. '
                 'Add "description" to any metadata object to give agents column context.'
             ),
         ),
@@ -904,9 +907,10 @@ def update_dataset_column_types(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
                 "include text, choice, integer, number, currency, boolean, date, datetime, "
-                'email, and url. For choice columns, pass {"type": "choice", "choices": '
-                '["Ready to do", "Doing", "Done"]}. Add "description" to any metadata '
-                "object to give agents column context."
+                'email, url, and reference. For choice columns, pass {"type": "choice", '
+                '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset reference '
+                'column, pass {"type": "reference", "target": "dataset"}. Add '
+                '"description" to any metadata object to give agents column context.'
             ),
         ),
     ],
@@ -948,9 +952,10 @@ def add_column(
             description=(
                 "Optional semantic type or metadata for the new column. Supported types "
                 "include text, choice, integer, number, currency, boolean, date, datetime, "
-                'email, and url. For a choice column, pass {"type": "choice", "choices": '
-                '["Ready to do", "Doing", "Done"]}. Add "description" to the metadata '
-                "object to give agents column context."
+                'email, url, and reference. For a choice column, pass {"type": "choice", '
+                '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset reference '
+                'column, pass {"type": "reference", "target": "dataset"}. Add '
+                '"description" to the metadata object to give agents column context.'
             ),
         ),
     ] = None,
