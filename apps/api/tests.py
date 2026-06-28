@@ -607,20 +607,47 @@ def test_non_admin_agent_api_key_cannot_create_new_agent_api_key(client, django_
     assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
 
 
+@pytest.mark.django_db
+def test_legacy_profile_api_key_cannot_create_new_agent_api_key(client, django_user_model):
+    from apps.core.models import AgentApiKey
+
+    user = django_user_model.objects.create_user(
+        username="legacyapiuser",
+        email="legacyapiuser@example.com",
+        password="password123",
+    )
+
+    response = client.post(
+        "/api/agent-api-keys",
+        data=json.dumps({"name": "Denied Agent", "access_level": "read"}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
+    )
+
+    assert response.status_code == 401
+    assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
+
+
 def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
     from apps.api.auth import SuperuserAPIKeyAuth
 
     superuser_profile = SimpleNamespace(id=11, user=SimpleNamespace(id=21, is_superuser=True))
     regular_profile = SimpleNamespace(id=12, user=SimpleNamespace(id=22, is_superuser=False))
+    admin_agent_api_key = SimpleNamespace(id=1, access_level=AgentApiKeyAccessLevel.ADMIN)
 
     with patch(
         "apps.api.auth.resolve_api_key_profile",
-        return_value=(superuser_profile, None),
+        return_value=(superuser_profile, admin_agent_api_key),
     ) as resolver:
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "secret-key")
 
     assert response is superuser_profile
     resolver.assert_called_once_with("secret-key")
+
+    with patch("apps.api.auth.resolve_api_key_profile", return_value=(superuser_profile, None)):
+        response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "legacy-key")
+
+    assert response is None
 
     with patch("apps.api.auth.resolve_api_key_profile", return_value=(regular_profile, None)):
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "regular-key")

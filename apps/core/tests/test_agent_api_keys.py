@@ -52,7 +52,8 @@ def test_agent_api_key_access_level_helpers(profile):
     assert agent_api_key_allows(read_key, AgentApiKeyAccessLevel.READ) is True
     assert agent_api_key_allows(read_key, AgentApiKeyAccessLevel.READ_WRITE) is False
     assert agent_api_key_allows(write_key, AgentApiKeyAccessLevel.READ_WRITE) is True
-    assert agent_api_key_allows(None, AgentApiKeyAccessLevel.ADMIN) is True
+    assert agent_api_key_allows(None, AgentApiKeyAccessLevel.READ_WRITE) is True
+    assert agent_api_key_allows(None, AgentApiKeyAccessLevel.ADMIN) is False
     with pytest.raises(PermissionError, match="requires Read \\+ write access"):
         require_agent_api_key_access(read_key, AgentApiKeyAccessLevel.READ_WRITE)
     with pytest.raises(ValueError, match="Permission must be one of"):

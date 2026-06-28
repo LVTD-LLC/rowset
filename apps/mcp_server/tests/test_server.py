@@ -232,6 +232,34 @@ def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkey
     anyio.run(run)
 
 
+def test_create_agent_api_key_mcp_tool_rejects_legacy_profile_key(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool(
+                    "create_agent_api_key",
+                    {"name": "Denied Agent", "access_level": "read"},
+                )
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload == _expected_mcp_error(
+            code="API_KEY_FORBIDDEN",
+            message=(
+                "This Rowset API key has Read + write access, but this action requires "
+                "Admin access."
+            ),
+            suggested_action="Use a Rowset API key with enough permissions for this action.",
+            http_status=403,
+        )
+
+    anyio.run(run)
+
+
 def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
     async def run():
         monkeypatch.setattr(
