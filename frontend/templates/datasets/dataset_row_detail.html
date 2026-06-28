@@ -1,4 +1,5 @@
 {% extends "base_app.html" %}
+{% load dataset_links %}
 
 {% block content %}
 <div class="fb-page">
@@ -39,8 +40,15 @@
                   {% endif %}
                 </th>
                 <td class="min-w-96 break-words">
+                  {% dataset_external_href cell.value as external_href %}
                   {% if cell.relationship_url %}
                     <a href="{{ cell.relationship_url }}" class="fb-focus font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" aria-label="{{ cell.relationship_label }}">{{ cell.value }}</a>
+                  {% elif cell.rowset_link_url %}
+                    {% include "datasets/partials/rowset_link_cell.html" %}
+                  {% elif cell.plain_link_url %}
+                    <a href="{{ cell.plain_link_url }}" class="fb-focus whitespace-pre-wrap break-words text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:decoration-slate-700 dark:hover:text-emerald-300" aria-label="{{ cell.plain_link_label }}">{{ cell.value }}</a>
+                  {% elif external_href %}
+                    <a href="{{ external_href }}" target="_blank" rel="nofollow ugc noopener noreferrer" class="fb-focus whitespace-pre-wrap break-words font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ cell.value }}</a>
                   {% elif cell.value %}
                     <span class="whitespace-pre-wrap break-words">{{ cell.value }}</span>
                   {% else %}

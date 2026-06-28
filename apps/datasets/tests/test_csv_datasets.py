@@ -34,6 +34,7 @@ from apps.datasets.services import (
     rows_to_sqlite_bytes,
 )
 from apps.datasets.tasks import import_dataset_rows
+from apps.datasets.templatetags.dataset_links import safe_external_href
 from apps.datasets.views import DATASET_CHANGES_PAGE_SIZE, DATASET_DETAIL_ROW_PAGE_SIZE
 
 pytestmark = pytest.mark.django_db
@@ -264,6 +265,20 @@ def test_infer_column_type_detects_common_semantic_types():
     assert infer_column_type("website", ["https://example.com"]) == "url"
     assert infer_column_type("date", ["31/01/2026"]) == "text"
     assert infer_column_type("mixed", ["Ada", "10"]) == "text"
+
+
+def test_safe_external_href_only_accepts_clean_http_urls():
+    assert safe_external_href("https://example.com/path?ref=rowset&ok=1") == (
+        "https://example.com/path?ref=rowset&ok=1"
+    )
+    assert safe_external_href(" http://example.com ") == "http://example.com"
+    assert safe_external_href("javascript:alert(1)") == ""
+    assert safe_external_href("mailto:ada@example.com") == ""
+    assert safe_external_href("//example.com/path") == ""
+    assert safe_external_href("https://:443/path") == ""
+    assert safe_external_href("https://example.com/a path") == ""
+    assert safe_external_href("https://example.com/<script>") == ""
+    assert safe_external_href("https://example.com@evil.test/path") == ""
 
 
 def test_preview_csv_file_rejects_duplicate_headers():
@@ -794,6 +809,221 @@ def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
     assert "Archived dataset" in content
 
 
+def test_dataset_detail_renders_owned_rowset_dataset_urls_as_internal_links(
+    auth_client,
+    profile,
+):
+    source_dataset = create_ready_dataset(profile)
+    target_dataset = Dataset.objects.create(
+        profile=profile,
+        name="Sprint task board",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["task_id", "title"],
+        index_column="task_id",
+        row_count=0,
+    )
+    source_dataset.headers = ["name", "task_dataset_url"]
+    source_dataset.save(update_fields=["headers"])
+    row = source_dataset.rows.first()
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/"
+    row.data = {
+        "name": "Review Gate Sprint History",
+        "task_dataset_url": raw_url,
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(source_dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{target_dataset.get_absolute_url()}"' in content
+    assert "Sprint task board" in content
+    assert "Ready" in content
+    assert "Open Rowset dataset Sprint task board" in content
+    assert re.search(rf">\s*{re.escape(raw_url)}\s*<", content) is None
+
+
+def test_dataset_detail_keeps_row_detail_link_for_single_rowset_url_column(
+    auth_client,
+    profile,
+):
+    source_dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    target_dataset.name = "Sprint task board"
+    target_dataset.save(update_fields=["name"])
+    source_dataset.headers = ["task_dataset_url"]
+    source_dataset.save(update_fields=["headers"])
+    row = source_dataset.rows.first()
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/"
+    row.data = {"task_dataset_url": raw_url}
+    row.save(update_fields=["data"])
+    row_url = reverse("dataset_row_detail", args=[source_dataset.key, row.id])
+
+    response = auth_client.get(source_dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{row_url}"' in content
+    assert f'href="{target_dataset.get_absolute_url()}"' in content
+    assert 'aria-label="View row 1 details"' in content
+    assert content.count('aria-label="View row 1 details"') == 1
+    assert 'class="sr-only">View row 1 details' not in content
+
+
+def test_dataset_detail_falls_back_to_plain_links_for_unresolved_rowset_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    missing_dataset_key = "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9"
+    raw_url = f"https://rowset.lvtd.dev/datasets/{missing_dataset_key}/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert "Open Rowset URL" in content
+    assert "Rowset dataset" not in content
+
+
+def test_dataset_detail_does_not_link_protocol_relative_rowset_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "task_dataset_url"]
+    dataset.save(update_fields=["headers"])
+    row = dataset.rows.first()
+    raw_url = f"//evil.example/datasets/{target_dataset.key}/"
+    row.data = {
+        "name": "Review Gate Sprint History",
+        "task_dataset_url": raw_url,
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert raw_url in content
+    assert f'href="{raw_url}"' not in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset dataset" not in content
+
+
+def test_dataset_detail_falls_back_for_malformed_rowset_row_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/rows/not-a-row/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset row" not in content
+
+
+def test_dataset_detail_falls_back_for_unsupported_rowset_row_subpaths(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    target_row = target_dataset.rows.first()
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/rows/{target_row.id}/edit/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert f'href="{target_row.get_absolute_url()}"' not in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset row" not in content
+
+
+def test_dataset_detail_falls_back_for_stale_rowset_row_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/rows/999999/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset row" not in content
+
+
+def test_dataset_detail_falls_back_for_root_relative_stale_rowset_row_urls(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    raw_url = f"/datasets/{target_dataset.key}/rows/999999/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Rowset row" not in content
+
+
+def test_dataset_detail_does_not_resolve_disabled_share_urls_to_private_links(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    target_dataset.name = "Private Sprint Tasks"
+    target_dataset.public_enabled = False
+    target_dataset.save(update_fields=["name", "public_enabled"])
+    raw_url = f"https://rowset.lvtd.dev/share/datasets/{target_dataset.public_key}/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{raw_url}"' in content
+    assert target_dataset.get_absolute_url() not in content
+    assert "Private Sprint Tasks" not in content
+    assert "Open Rowset URL" in content
+
+
 def test_dataset_detail_paginates_imported_rows_without_public_preview(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.rows.all().delete()
@@ -993,6 +1223,54 @@ def test_dataset_detail_semantic_text_filters_accept_partial_values(auth_client,
     assert 'name="filter_1"' in content
 
 
+def test_dataset_detail_linkifies_external_url_cells_with_safe_rel(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "website", "unsafe"]
+    dataset.column_schema = {
+        "name": {"type": DatasetColumnType.TEXT},
+        "website": {"type": DatasetColumnType.URL},
+        "unsafe": {"type": DatasetColumnType.TEXT},
+    }
+    dataset.save(update_fields=["headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {
+        "name": "Ada",
+        "website": "https://example.com/ada?ref=rowset&ok=1",
+        "unsafe": "javascript:alert(1)",
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada?ref=rowset&amp;ok=1"' in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "javascript:alert(1)" in content
+    assert 'href="javascript:alert(1)"' not in content
+
+
+def test_dataset_detail_keeps_row_detail_link_for_single_url_column(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["website"]
+    dataset.column_schema = {"website": {"type": DatasetColumnType.URL}}
+    dataset.save(update_fields=["headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {"website": "https://example.com/ada"}
+    row.save(update_fields=["data"])
+    row_url = reverse("dataset_row_detail", args=[dataset.key, row.id])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert f'href="{row_url}"' in content
+    assert 'aria-label="View row 1 details"' in content
+    assert 'aria-label="Open external link for row 1"' in content
+    assert ">Open</a>" in content
+
+
 def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
     dataset = configure_filterable_dataset(create_ready_dataset(profile))
 
@@ -1107,6 +1385,28 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     assert '<span class="whitespace-pre-wrap break-words">Ada</span>' in content
 
 
+def test_dataset_row_detail_linkifies_external_url_cells(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "website", "unsafe"]
+    dataset.save(update_fields=["headers"])
+    row = dataset.rows.first()
+    row.data = {
+        "name": "Ada",
+        "website": "https://example.com/ada",
+        "unsafe": "https://example.com/<script>",
+    }
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(reverse("dataset_row_detail", args=[dataset.key, row.id]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "https://example.com/&lt;script&gt;" in content
+    assert 'href="https://example.com/&lt;script&gt;"' not in content
+
+
 def test_dataset_row_detail_links_relationship_value_to_target_row(auth_client, profile):
     people, messages = create_crm_datasets(profile)
     relationship = DatasetRelationship.objects.create(
@@ -1129,6 +1429,31 @@ def test_dataset_row_detail_links_relationship_value_to_target_row(auth_client, 
     assert f'href="{target_url}"' in content
     assert f"View related People row 1 via {relationship.name}" in content
     assert re.search(r"<a[^>]+>\s*P-1\s*</a>", content) is not None
+
+
+def test_dataset_row_detail_renders_owned_rowset_row_urls_as_internal_links(
+    auth_client,
+    profile,
+):
+    source_dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    target_dataset.name = "Sprint task board"
+    target_dataset.save(update_fields=["name"])
+    target_row = target_dataset.rows.first()
+    source_row = source_dataset.rows.first()
+    raw_url = f"https://rowset.lvtd.dev/datasets/{target_dataset.key}/rows/{target_row.id}/"
+    source_row.data["name"] = raw_url
+    source_row.save(update_fields=["data"])
+
+    response = auth_client.get(
+        reverse("dataset_row_detail", args=[source_dataset.key, source_row.id])
+    )
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{target_row.get_absolute_url()}"' in content
+    assert "Sprint task board row 1" in content
+    assert re.search(rf">\s*{re.escape(raw_url)}\s*<", content) is None
 
 
 def test_dataset_row_detail_leaves_unresolved_relationship_value_unlinked(auth_client, profile):
@@ -4344,6 +4669,8 @@ def test_public_dataset_view_paginates_rows(client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+    assert '<meta name="robots" content="noindex, nofollow, noarchive" />' in content
     assert "Ada" in content
     assert "Grace" not in content
     assert "Page 1 of 2" in content
@@ -4452,6 +4779,117 @@ def test_public_dataset_links_rows_and_truncates_cells(client, profile):
     assert 'title=""' in content
 
 
+def test_public_dataset_linkifies_external_url_cells_with_safe_rel(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.headers = ["name", "website", "unsafe"]
+    dataset.column_schema = {
+        "name": {"type": DatasetColumnType.TEXT},
+        "website": {"type": DatasetColumnType.URL},
+        "unsafe": {"type": DatasetColumnType.TEXT},
+    }
+    dataset.save(update_fields=["public_enabled", "headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {
+        "name": "Ada",
+        "website": "https://example.com/ada",
+        "unsafe": "javascript:alert(1)",
+    }
+    row.save(update_fields=["data"])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "javascript:alert(1)" in content
+    assert 'href="javascript:alert(1)"' not in content
+
+
+def test_public_dataset_keeps_row_detail_link_for_single_url_column(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.headers = ["website"]
+    dataset.column_schema = {"website": {"type": DatasetColumnType.URL}}
+    dataset.save(update_fields=["public_enabled", "headers", "column_schema"])
+    row = dataset.rows.first()
+    row.data = {"website": "https://example.com/ada"}
+    row.save(update_fields=["data"])
+    row_url = reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada"' in content
+    assert f'href="{row_url}"' in content
+    assert 'aria-label="View row 1 details"' in content
+    assert 'aria-label="Open external link for row 1"' in content
+    assert ">Open</a>" in content
+
+
+def test_public_dataset_keeps_row_detail_link_for_single_rowset_url_column(client, profile):
+    dataset = create_ready_dataset(profile)
+    target_dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.headers = ["task_dataset_url"]
+    dataset.save(update_fields=["public_enabled", "headers"])
+    row = dataset.rows.first()
+    public_target_url = f"https://rowset.lvtd.dev/share/datasets/{target_dataset.public_key}/"
+    row.data = {"task_dataset_url": public_target_url}
+    row.save(update_fields=["data"])
+    row_url = reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{row_url}"' in content
+    assert f'href="{public_target_url}"' in content
+    assert 'aria-label="View row 1 details"' in content
+    assert content.count('aria-label="View row 1 details"') == 1
+    assert 'class="sr-only">View row 1 details' not in content
+
+
+def test_public_dataset_renders_rowset_links_without_private_target_metadata(client, profile):
+    source_dataset = create_ready_dataset(profile)
+    source_dataset.public_enabled = True
+    source_dataset.headers = ["name", "task_dataset_url", "private_path"]
+    source_dataset.save(update_fields=["public_enabled", "headers"])
+    target_dataset = Dataset.objects.create(
+        profile=profile,
+        name="Private Sprint Tasks",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["task_id"],
+        index_column="task_id",
+        row_count=0,
+    )
+    row = source_dataset.rows.first()
+    public_target_url = f"https://rowset.lvtd.dev/share/datasets/{target_dataset.public_key}/"
+    private_target_path = f"/datasets/{target_dataset.key}/"
+    row.data = {
+        "name": "Review Gate Sprint History",
+        "task_dataset_url": public_target_url,
+        "private_path": private_target_path,
+    }
+    row.save(update_fields=["data"])
+
+    response = client.get(source_dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{public_target_url}"' in content
+    assert f'href="{private_target_path}"' in content
+    assert "Rowset dataset" in content
+    assert "Shared dataset" in content
+    assert "Internal dataset" not in content
+    assert "Private Sprint Tasks" not in content
+    assert reverse("public_dataset_row_detail", args=[source_dataset.public_key, row.id]) in content
+
+
 def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
@@ -4471,6 +4909,8 @@ def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+    assert '<meta name="robots" content="noindex, nofollow, noarchive" />' in content
     assert "Shared Rowset row" in content
     assert "Row 1" in content
     assert "notes" in content
@@ -4479,6 +4919,29 @@ def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     assert "Stored outside declared headers" in content
     assert "Back to preview" in content
     assert "Created by" not in content
+
+
+def test_public_dataset_row_detail_linkifies_external_url_cells(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.headers = ["name", "website", "unsafe"]
+    dataset.save(update_fields=["public_enabled", "headers"])
+    row = dataset.rows.first()
+    row.data = {
+        "name": "Ada",
+        "website": "https://example.com/ada?ref=rowset&ok=1",
+        "unsafe": "https://example.com/<script>",
+    }
+    row.save(update_fields=["data"])
+
+    response = client.get(reverse("public_dataset_row_detail", args=[dataset.public_key, row.id]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/ada?ref=rowset&amp;ok=1"' in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "https://example.com/&lt;script&gt;" in content
+    assert 'href="https://example.com/&lt;script&gt;"' not in content
 
 
 def test_public_dataset_row_detail_requires_public_preview(client, profile):

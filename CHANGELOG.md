@@ -42,6 +42,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- ReviewGate now runs on pull requests in report mode when `OPENROUTER_API_KEY` is configured.
 - API and MCP clients can now patch a row directly by the dataset's configured index value.
 - API and MCP clients can now enable, disable, password-protect, and resize public dataset previews.
 - API and MCP clients can now create ready API-backed datasets on the fly, with optional initial rows and either a supplied unique index column or a generated Rowset ID.
