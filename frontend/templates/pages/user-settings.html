@@ -59,35 +59,44 @@
 
       {% if created_agent_api_key %}
       <div class="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
-        <p class="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Created {{ created_agent_api_key.name }}.</p>
+        <p class="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Created {{ created_agent_api_key.name }} with {{ created_agent_api_key.access_level_label }} access.</p>
         <p class="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">Use the row action below to copy the setup prompt when configuring a trusted agent.</p>
       </div>
       {% endif %}
 
-      <form method="post" action="{% url 'create_agent_api_key' %}" class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+      <form method="post" action="{% url 'create_agent_api_key' %}" class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(12rem,auto)_auto] md:items-end">
         {% csrf_token %}
         <div>
           <label for="agent-api-key-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Agent name</label>
           {% render_field agent_api_key_form.name id="agent-api-key-name" autocomplete="off" placeholder="Codex" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
         </div>
+        <div>
+          <label for="agent-api-key-access-level" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Permission</label>
+          {% render_field agent_api_key_form.access_level id="agent-api-key-access-level" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+        </div>
         <button type="submit" class="fb-button-primary">Create key</button>
       </form>
 
       <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-        <div class="grid grid-cols-[1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
+        <div class="grid grid-cols-[1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto_auto]">
           <span>Name</span>
           <span>Prefix</span>
-          <span class="hidden sm:block">Created</span>
-          <span class="hidden sm:block">Last used</span>
-          <span class="hidden sm:block">Status</span>
-          <span class="hidden sm:block">Actions</span>
+          <span class="hidden lg:block">Permission</span>
+          <span class="hidden lg:block">Created</span>
+          <span class="hidden lg:block">Last used</span>
+          <span class="hidden lg:block">Status</span>
+          <span class="hidden lg:block">Actions</span>
         </div>
         {% for agent_api_key in agent_api_keys %}
-        <div class="grid grid-cols-[1fr_auto] gap-3 border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
-          <span class="min-w-0 font-semibold text-slate-900 dark:text-slate-100">{{ agent_api_key.name }}</span>
+        <div class="grid grid-cols-[1fr_auto] gap-3 border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto_auto]">
+          <span class="min-w-0">
+            <span class="block font-semibold text-slate-900 dark:text-slate-100">{{ agent_api_key.name }}</span>
+            <span class="mt-1 block text-xs text-slate-500 dark:text-slate-400 lg:hidden">{{ agent_api_key.get_access_level_display }}</span>
+          </span>
           <span class="font-mono text-slate-600 dark:text-slate-300">{{ agent_api_key.key_prefix }}...</span>
-          <span class="hidden text-slate-600 dark:text-slate-300 sm:block">{{ agent_api_key.created_at|date:"M j, Y" }}</span>
-          <span class="hidden text-slate-600 dark:text-slate-300 sm:block">{% if agent_api_key.last_used_at %}{{ agent_api_key.last_used_at|date:"M j, Y" }}{% else %}Never{% endif %}</span>
+          <span class="hidden text-slate-600 dark:text-slate-300 lg:block">{{ agent_api_key.get_access_level_display }}</span>
+          <span class="hidden text-slate-600 dark:text-slate-300 lg:block">{{ agent_api_key.created_at|date:"M j, Y" }}</span>
+          <span class="hidden text-slate-600 dark:text-slate-300 lg:block">{% if agent_api_key.last_used_at %}{{ agent_api_key.last_used_at|date:"M j, Y" }}{% else %}Never{% endif %}</span>
           <span class="text-slate-600 dark:text-slate-300">{% if agent_api_key.revoked_at %}Revoked{% else %}Active{% endif %}</span>
           <span class="flex flex-wrap justify-end gap-2">
             {% if not agent_api_key.revoked_at %}

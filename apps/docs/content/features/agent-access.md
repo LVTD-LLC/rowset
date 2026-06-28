@@ -20,6 +20,17 @@ The docs show a masked example:
 
 Sign in and use the dashboard copy button when you want the full prompt with the API key included.
 
+## Choose permissions
+
+When creating an agent API key, choose the smallest permission level that fits
+the agent's job:
+
+- **Read** for inspection, exports, and reporting.
+- **Read + write** for agents that create or update datasets, rows, projects,
+  relationships, or public preview settings.
+- **Admin** for trusted automation that needs to create other agent API keys
+  through REST or MCP.
+
 ## Installable skills
 
 The canonical setup skill lives in the Rowset repo. The app also serves that

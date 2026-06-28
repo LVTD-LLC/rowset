@@ -7,10 +7,16 @@ from django.test import override_settings
 from fastmcp import Client
 
 from apps.api.services import DatasetServiceError
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
-from apps.mcp_server.server import get_dataset_row as mcp_get_dataset_row
-from apps.mcp_server.server import mcp
+from apps.mcp_server.server import (
+    AGENT_API_KEY_PROFILE_ATTR,
+    mcp,
+)
+from apps.mcp_server.server import (
+    get_dataset_row as mcp_get_dataset_row,
+)
 
 
 def _extract_mcp_error_payload(error: Exception) -> dict:
@@ -142,6 +148,86 @@ def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
         assert "key" not in payload
         assert "is_staff" not in payload
         assert "is_superuser" not in payload
+
+    anyio.run(run)
+
+
+def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
+    async def run():
+        profile = _profile()
+        setattr(
+            profile,
+            AGENT_API_KEY_PROFILE_ATTR,
+            SimpleNamespace(id=3, access_level=AgentApiKeyAccessLevel.READ),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile,
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool("create_project", {"name": "Launch"})
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload == _expected_mcp_error(
+            code="API_KEY_FORBIDDEN",
+            message=(
+                "This Rowset API key has Read access, but this action requires Read + write access."
+            ),
+            suggested_action="Use a Rowset API key with enough permissions for this action.",
+            http_status=403,
+        )
+
+    anyio.run(run)
+
+
+def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkeypatch):
+    calls = []
+
+    def create_agent_api_key(profile, name, access_level):
+        calls.append((profile.id, name, access_level))
+        agent_api_key = SimpleNamespace(
+            name=name,
+            key_prefix="rsk_created",
+        )
+        return SimpleNamespace(agent_api_key=agent_api_key, raw_key="rsk_created-secret")
+
+    async def run():
+        profile = _profile()
+        setattr(
+            profile,
+            AGENT_API_KEY_PROFILE_ATTR,
+            SimpleNamespace(id=3, access_level=AgentApiKeyAccessLevel.ADMIN),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.create_agent_api_key_credential",
+            create_agent_api_key,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.serialize_agent_api_key",
+            lambda agent_api_key: {
+                "name": agent_api_key.name,
+                "key_prefix": agent_api_key.key_prefix,
+                "access_level": AgentApiKeyAccessLevel.READ,
+            },
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "create_agent_api_key",
+                {"name": "Reporting Agent", "access_level": "read"},
+            )
+
+        payload = result.data
+        assert payload["status"] == "success"
+        assert payload["agent_api_key"]["access_level"] == AgentApiKeyAccessLevel.READ
+        assert payload["api_key"] == "rsk_created-secret"
+        assert calls == [(11, "Reporting Agent", "read")]
 
     anyio.run(run)
 

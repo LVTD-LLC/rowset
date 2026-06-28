@@ -2,15 +2,23 @@ import json
 from typing import NoReturn
 
 from django.core.cache import cache
-from django.db import connection
+from django.db import IntegrityError, connection
 from django.http import HttpRequest, HttpResponse
 from django.utils.http import content_disposition_header
 from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.responses import Status
 
-from apps.api.auth import api_key_auth, session_auth, superuser_api_auth
+from apps.api.auth import (
+    api_key_admin_auth,
+    api_key_auth,
+    api_key_write_auth,
+    session_auth,
+    superuser_api_auth,
+)
 from apps.api.schemas import (
+    AgentApiKeyCreateIn,
+    AgentApiKeyCreateOut,
     BlogPostDetailOut,
     BlogPostIn,
     BlogPostItemOut,
@@ -93,6 +101,12 @@ from apps.api.services import (
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
 from apps.core.models import Feedback
+from apps.core.services import (
+    create_agent_api_key as create_agent_api_key_credential,
+)
+from apps.core.services import (
+    serialize_agent_api_key,
+)
 from apps.datasets.services import (
     iter_export_row_data,
     rows_to_csv_text,
@@ -443,6 +457,36 @@ def get_user_info(request: HttpRequest):
     return serialize_user_info(request.auth)
 
 
+@api.post(
+    "/agent-api-keys",
+    response={201: AgentApiKeyCreateOut},
+    auth=[api_key_admin_auth],
+    tags=["api-keys"],
+)
+def create_agent_api_key(request: HttpRequest, payload: AgentApiKeyCreateIn):
+    """Create a named agent API key for the authenticated profile."""
+    try:
+        credential = create_agent_api_key_credential(
+            request.auth,
+            payload.name,
+            payload.access_level,
+        )
+    except ValueError as exc:
+        raise HttpError(400, str(exc)) from exc
+    except IntegrityError as exc:
+        raise HttpError(409, "An agent API key with this name already exists.") from exc
+
+    return Status(
+        201,
+        {
+            "status": "success",
+            "message": f"Created an agent API key for {credential.agent_api_key.name}.",
+            "agent_api_key": serialize_agent_api_key(credential.agent_api_key),
+            "api_key": credential.raw_key,
+        },
+    )
+
+
 @api.get(
     "/user/settings",
     response=UserSettingsOut,
@@ -491,7 +535,7 @@ def list_projects(
 @api.post(
     "/projects",
     response={201: ProjectCreateOut},
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["projects"],
 )
 def create_project(request: HttpRequest, payload: ProjectCreateIn):
@@ -532,7 +576,7 @@ def get_project(request: HttpRequest, project_key: str, limit: int = 100, offset
 @api.patch(
     "/projects/{project_key}",
     response=ProjectUpdateOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["projects"],
 )
 def patch_project(request: HttpRequest, project_key: str, payload: ProjectUpdateIn):
@@ -542,8 +586,7 @@ def patch_project(request: HttpRequest, project_key: str, payload: ProjectUpdate
         if value is None:
             raise HttpError(
                 400,
-                f"Project {key} cannot be null. "
-                "Omit it to leave the current value unchanged.",
+                f"Project {key} cannot be null. Omit it to leave the current value unchanged.",
             )
     try:
         return update_profile_project(request.auth, project_key, **updates)
@@ -554,7 +597,7 @@ def patch_project(request: HttpRequest, project_key: str, payload: ProjectUpdate
 @api.patch(
     "/projects/{project_key}/metadata",
     response=ProjectMetadataOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["projects"],
 )
 def patch_project_metadata(
@@ -619,7 +662,7 @@ def list_archived_datasets(request: HttpRequest, limit: int = 100, offset: int =
 @api.post(
     "/datasets",
     response={201: DatasetCreateOut},
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
@@ -648,7 +691,7 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
 @api.patch(
     "/datasets/{dataset_key}/metadata",
     response=DatasetMetadataOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def patch_dataset_metadata(
@@ -676,7 +719,7 @@ def patch_dataset_metadata(
 @api.delete(
     "/datasets/{dataset_key}",
     response=DatasetArchiveOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def archive_dataset(request: HttpRequest, dataset_key: str):
@@ -694,7 +737,7 @@ def archive_dataset(request: HttpRequest, dataset_key: str):
 @api.post(
     "/datasets/{dataset_key}/restore",
     response=DatasetArchiveOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def restore_dataset(request: HttpRequest, dataset_key: str):
@@ -712,7 +755,7 @@ def restore_dataset(request: HttpRequest, dataset_key: str):
 @api.patch(
     "/datasets/{dataset_key}/column-types",
     response=DatasetColumnTypesOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def patch_dataset_column_types(
@@ -735,7 +778,7 @@ def patch_dataset_column_types(
 @api.post(
     "/datasets/{dataset_key}/columns",
     response=DatasetColumnMutationOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def add_dataset_column(
@@ -760,7 +803,7 @@ def add_dataset_column(
 @api.post(
     "/datasets/{dataset_key}/columns/rename",
     response=DatasetColumnMutationOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def rename_dataset_column(
@@ -784,7 +827,7 @@ def rename_dataset_column(
 @api.post(
     "/datasets/{dataset_key}/columns/drop",
     response=DatasetColumnMutationOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def drop_dataset_column(
@@ -807,7 +850,7 @@ def drop_dataset_column(
 @api.post(
     "/datasets/{dataset_key}/columns/reorder",
     response=DatasetColumnMutationOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def reorder_dataset_columns(
@@ -830,7 +873,7 @@ def reorder_dataset_columns(
 @api.patch(
     "/datasets/{dataset_key}/project",
     response=DatasetProjectOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def patch_dataset_project(
@@ -867,7 +910,7 @@ def list_dataset_relationships(request: HttpRequest, dataset_key: str):
 @api.post(
     "/datasets/{dataset_key}/relationships",
     response={201: DatasetRelationshipCreateOut},
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def create_dataset_relationship(
@@ -920,7 +963,7 @@ def resolve_dataset_relationship(
 @api.delete(
     "/datasets/{dataset_key}/relationships/{relationship_key}",
     response=DatasetRelationshipDeleteOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def delete_dataset_relationship(
@@ -943,7 +986,7 @@ def delete_dataset_relationship(
 @api.patch(
     "/datasets/{dataset_key}/public-preview",
     response=DatasetPublicPreviewOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def patch_dataset_public_preview(
@@ -1001,7 +1044,7 @@ def list_dataset_rows(
 @api.post(
     "/datasets/{dataset_key}/rows",
     response=DatasetApiOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def create_dataset_row(request: HttpRequest, dataset_key: str, payload: DatasetRowIn):
@@ -1032,7 +1075,7 @@ def get_dataset_row_by_index(request: HttpRequest, dataset_key: str, index_value
 @api.patch(
     "/datasets/{dataset_key}/rows/by-index",
     response=DatasetApiOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def patch_dataset_row_by_index(
@@ -1069,7 +1112,7 @@ def get_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
 @api.patch(
     "/datasets/{dataset_key}/rows/{row_id}",
     response=DatasetApiOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def patch_dataset_row(
@@ -1093,7 +1136,7 @@ def patch_dataset_row(
 @api.delete(
     "/datasets/{dataset_key}/rows/{row_id}",
     response=DatasetApiOut,
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["datasets"],
 )
 def delete_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):

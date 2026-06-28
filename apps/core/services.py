@@ -8,11 +8,17 @@ from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
 from django.utils import timezone
 
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey, Profile
 
 AGENT_API_KEY_PREFIX = "rsk_"
 AGENT_API_KEY_VISIBLE_PREFIX_LENGTH = 12
 AGENT_API_KEY_LAST_USED_UPDATE_INTERVAL = timedelta(minutes=5)
+AGENT_API_KEY_ACCESS_LEVEL_ORDER = {
+    AgentApiKeyAccessLevel.READ: 0,
+    AgentApiKeyAccessLevel.READ_WRITE: 1,
+    AgentApiKeyAccessLevel.ADMIN: 2,
+}
 
 
 @dataclass(frozen=True)
@@ -28,6 +34,69 @@ def normalize_agent_api_key_name(name: str) -> str:
     if len(normalized) > AgentApiKey._meta.get_field("name").max_length:
         raise ValueError("Agent name must be 80 characters or fewer.")
     return normalized
+
+
+def normalize_agent_api_key_access_level(access_level: str | None) -> str:
+    if access_level is None or str(access_level).strip() == "":
+        return AgentApiKeyAccessLevel.READ_WRITE
+
+    normalized = str(access_level).strip().lower()
+    compact = normalized.replace(" ", "").replace("-", "").replace("_", "")
+    aliases = {
+        "read": AgentApiKeyAccessLevel.READ,
+        "readonly": AgentApiKeyAccessLevel.READ,
+        "readwrite": AgentApiKeyAccessLevel.READ_WRITE,
+        "read+write": AgentApiKeyAccessLevel.READ_WRITE,
+        "read/write": AgentApiKeyAccessLevel.READ_WRITE,
+        "write": AgentApiKeyAccessLevel.READ_WRITE,
+        "admin": AgentApiKeyAccessLevel.ADMIN,
+    }
+    try:
+        return aliases[compact]
+    except KeyError as exc:
+        valid_labels = ", ".join(label for _value, label in AgentApiKeyAccessLevel.choices)
+        raise ValueError(f"Permission must be one of: {valid_labels}.") from exc
+
+
+def agent_api_key_allows(
+    agent_api_key: AgentApiKey | None,
+    required_access_level: str,
+) -> bool:
+    if agent_api_key is None:
+        return True
+
+    required = normalize_agent_api_key_access_level(required_access_level)
+    actual = normalize_agent_api_key_access_level(agent_api_key.access_level)
+    return AGENT_API_KEY_ACCESS_LEVEL_ORDER[actual] >= AGENT_API_KEY_ACCESS_LEVEL_ORDER[required]
+
+
+def require_agent_api_key_access(
+    agent_api_key: AgentApiKey | None,
+    required_access_level: str,
+) -> None:
+    if agent_api_key_allows(agent_api_key, required_access_level):
+        return
+
+    required = normalize_agent_api_key_access_level(required_access_level)
+    required_label = AgentApiKeyAccessLevel(required).label
+    actual_label = AgentApiKeyAccessLevel(agent_api_key.access_level).label
+    raise PermissionError(
+        f"This Rowset API key has {actual_label} access, but this action requires "
+        f"{required_label} access."
+    )
+
+
+def serialize_agent_api_key(agent_api_key: AgentApiKey) -> dict:
+    return {
+        "uuid": str(agent_api_key.uuid),
+        "name": agent_api_key.name,
+        "key_prefix": agent_api_key.key_prefix,
+        "access_level": agent_api_key.access_level,
+        "access_level_label": agent_api_key.get_access_level_display(),
+        "created_at": agent_api_key.created_at,
+        "last_used_at": agent_api_key.last_used_at,
+        "revoked_at": agent_api_key.revoked_at,
+    }
 
 
 def hash_agent_api_key(token: str) -> str:
@@ -68,11 +137,17 @@ def generate_agent_api_key_token() -> str:
     return f"{AGENT_API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
 
 
-def create_agent_api_key(profile: Profile, name: str) -> AgentApiKeyCredential:
+def create_agent_api_key(
+    profile: Profile,
+    name: str,
+    access_level: str | None = AgentApiKeyAccessLevel.READ_WRITE,
+) -> AgentApiKeyCredential:
     normalized_name = normalize_agent_api_key_name(name)
+    normalized_access_level = normalize_agent_api_key_access_level(access_level)
     agent_api_key = AgentApiKey(
         profile=profile,
         name=normalized_name,
+        access_level=normalized_access_level,
     )
     raw_key = generate_agent_api_key_token()
     agent_api_key.key_prefix = raw_key[:AGENT_API_KEY_VISIBLE_PREFIX_LENGTH]

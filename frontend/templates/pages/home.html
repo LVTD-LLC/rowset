@@ -42,12 +42,16 @@
                     <span class="font-mono text-xs text-slate-500 dark:text-slate-400">({{ active_agent_api_key.key_prefix }}...)</span>
                   </p>
                 {% else %}
-                  <form method="post" action="{% url 'create_agent_api_key' %}" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <form method="post" action="{% url 'create_agent_api_key' %}" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,auto)_auto] sm:items-end">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="home" />
                     <div>
                       <label for="home-agent-api-key-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Agent name</label>
                       {% render_field agent_api_key_form.name id="home-agent-api-key-name" autocomplete="off" placeholder="Codex" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+                    </div>
+                    <div>
+                      <label for="home-agent-api-key-access-level" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Permission</label>
+                      {% render_field agent_api_key_form.access_level id="home-agent-api-key-access-level" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
                     </div>
                     <button type="submit" class="fb-button-primary">Create agent key</button>
                   </form>

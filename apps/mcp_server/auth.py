@@ -54,6 +54,7 @@ class RowsetApiKeyAuthProvider(AuthProvider):
         if agent_api_key is not None:
             claims["agent_api_key_id"] = agent_api_key.id
             claims["agent_api_key_name"] = agent_api_key.name
+            claims["agent_api_key_access_level"] = agent_api_key.access_level
 
         return AccessToken(
             token=token,

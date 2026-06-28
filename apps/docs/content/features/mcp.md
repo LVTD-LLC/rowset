@@ -62,6 +62,10 @@ The guide summarizes feature groups, recommended startup order, REST fallback
 paths, use-case patterns, and privacy guardrails. Use MCP tool discovery for the
 exact current input schemas.
 
+Agent API key permissions apply to MCP tools. Read keys can inspect data, Read +
+write keys can mutate datasets and projects, and Admin keys can also call
+`create_agent_api_key` to provision another key.
+
 Then discover datasets with:
 
 ```text

@@ -6,6 +6,7 @@ from pydantic import Field
 
 from apps.api.services import MAX_API_DATASET_CREATE_ROWS
 from apps.blog.choices import BlogPostStatus
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
@@ -96,6 +97,29 @@ class UserInfoOut(Schema):
     full_name: str
     date_joined: datetime
     profile: UserProfileOut
+
+
+class AgentApiKeyCreateIn(Schema):
+    name: str = Field(..., min_length=1, max_length=80)
+    access_level: str = AgentApiKeyAccessLevel.READ_WRITE
+
+
+class AgentApiKeyOut(Schema):
+    uuid: str
+    name: str
+    key_prefix: str
+    access_level: str
+    access_level_label: str
+    created_at: datetime
+    last_used_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+
+class AgentApiKeyCreateOut(Schema):
+    status: str
+    message: str
+    agent_api_key: AgentApiKeyOut
+    api_key: str
 
 
 class ProjectReferenceOut(Schema):
