@@ -14,7 +14,7 @@
     <div>
       <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Account</p>
       <h1 class="fb-page-title mt-2">Settings</h1>
-      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Manage sign-in, agent API keys, billing, and account safety.</p>
+      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Manage sign-in, API keys, billing, and account safety.</p>
     </div>
 
     {% if not has_subscription %}
@@ -49,58 +49,72 @@
       </div>
     </section>
 
-    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="agent-api-keys-heading">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 id="agent-api-keys-heading" class="fb-section-title">Agent API keys</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Create a named bearer token for each trusted AI agent that needs REST or MCP access.</p>
+    <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950" aria-labelledby="api-keys-heading">
+      <div class="border-b border-slate-200 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-900/60">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div class="max-w-2xl">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 id="api-keys-heading" class="fb-section-title">API keys</h2>
+              <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">REST + MCP</span>
+            </div>
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Create named bearer tokens for trusted apps, deployments, and AI agents. Rowset uses the key name to attribute dataset changes.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">Private by default</span>
+            <span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">Revocable</span>
+          </div>
         </div>
       </div>
 
       {% if created_agent_api_key %}
-      <div class="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+      <div class="mx-5 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
         <p class="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Created {{ created_agent_api_key.name }}.</p>
-        <p class="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">Use the row action below to copy the setup prompt when configuring a trusted agent.</p>
+        <p class="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">Use the row action below to copy the setup prompt for a trusted agent or server-side deployment.</p>
       </div>
       {% endif %}
 
-      <form method="post" action="{% url 'create_agent_api_key' %}" class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+      <form method="post" action="{% url 'create_agent_api_key' %}" class="grid grid-cols-1 gap-3 border-b border-slate-200 p-5 dark:border-slate-800 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         {% csrf_token %}
         <div>
-          <label for="agent-api-key-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Agent name</label>
-          {% render_field agent_api_key_form.name id="agent-api-key-name" autocomplete="off" placeholder="Codex" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+          <label for="agent-api-key-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">App or agent name</label>
+          {% render_field agent_api_key_form.name id="agent-api-key-name" autocomplete="off" placeholder="App or AI agent name for dataset change history" aria-describedby="agent-api-key-name-help" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
+          <p id="agent-api-key-name-help" class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ agent_api_key_form.name.help_text }}</p>
         </div>
         <button type="submit" class="fb-button-primary">Create key</button>
       </form>
 
-      <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-        <div class="grid grid-cols-[1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
-          <span>Name</span>
-          <span>Prefix</span>
-          <span class="hidden sm:block">Created</span>
-          <span class="hidden sm:block">Last used</span>
-          <span class="hidden sm:block">Status</span>
-          <span class="hidden sm:block">Actions</span>
+      <div>
+        <div class="hidden grid-cols-[minmax(0,1.3fr)_auto_auto_minmax(10rem,auto)] gap-4 bg-white px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400 sm:grid">
+          <span>Key</span>
+          <span>Last used</span>
+          <span>Status</span>
+          <span class="text-right">Actions</span>
         </div>
         {% for agent_api_key in agent_api_keys %}
-        <div class="grid grid-cols-[1fr_auto] gap-3 border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
-          <span class="min-w-0 font-semibold text-slate-900 dark:text-slate-100">{{ agent_api_key.name }}</span>
-          <span class="font-mono text-slate-600 dark:text-slate-300">{{ agent_api_key.key_prefix }}...</span>
-          <span class="hidden text-slate-600 dark:text-slate-300 sm:block">{{ agent_api_key.created_at|date:"M j, Y" }}</span>
-          <span class="hidden text-slate-600 dark:text-slate-300 sm:block">{% if agent_api_key.last_used_at %}{{ agent_api_key.last_used_at|date:"M j, Y" }}{% else %}Never{% endif %}</span>
-          <span class="text-slate-600 dark:text-slate-300">{% if agent_api_key.revoked_at %}Revoked{% else %}Active{% endif %}</span>
-          <span class="flex flex-wrap justify-end gap-2">
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-slate-200 px-5 py-4 text-sm dark:border-slate-800 sm:grid-cols-[minmax(0,1.3fr)_auto_auto_minmax(10rem,auto)] sm:items-center">
+          <div class="min-w-0">
+            <p class="break-words font-semibold text-slate-900 dark:text-slate-100">{{ agent_api_key.name }}</p>
+            <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+              <span class="font-mono">{{ agent_api_key.key_prefix }}...</span>
+              <span>Created {{ agent_api_key.created_at|date:"M j, Y" }}</span>
+            </div>
+          </div>
+          <span class="hidden whitespace-nowrap text-slate-600 dark:text-slate-300 sm:block">{% if agent_api_key.last_used_at %}{{ agent_api_key.last_used_at|date:"M j, Y" }}{% else %}Never{% endif %}</span>
+          <span class="w-fit whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold {% if agent_api_key.revoked_at %}border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400{% else %}border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200{% endif %}">{% if agent_api_key.revoked_at %}Revoked{% else %}Active{% endif %}</span>
+          <span class="col-span-2 flex flex-wrap justify-start gap-2 sm:col-span-1 sm:justify-end">
             {% if not agent_api_key.revoked_at %}
             <span data-controller="copy" data-copy-url-value="{% url 'agent_api_key_setup_prompt' agent_api_key.uuid %}">
-              <button type="button" data-action="copy#copy" class="fb-button-primary px-3 py-1.5 text-xs">
-                <span data-copy-target="label">Copy Setup Prompt</span>
+              <button type="button" data-action="copy#copy" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs">
+                <span data-copy-target="label">Copy setup prompt</span>
               </button>
             </span>
             {% endif %}
             {% if not agent_api_key.revoked_at %}
             <form method="post" action="{% url 'revoke_agent_api_key' agent_api_key.uuid %}">
               {% csrf_token %}
-              <button type="submit" class="fb-button-secondary px-3 py-1.5 text-xs">Revoke</button>
+              <button type="submit" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs text-red-700 hover:border-red-200 hover:bg-red-50 dark:text-red-300 dark:hover:border-red-900/60 dark:hover:bg-red-950/30">Revoke</button>
             </form>
             {% else %}
             <span class="text-slate-400 dark:text-slate-500">-</span>
@@ -108,7 +122,10 @@
           </span>
         </div>
         {% empty %}
-        <div class="border-t border-slate-200 px-4 py-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">No agent API keys yet.</div>
+        <div class="border-t border-slate-200 px-5 py-8 dark:border-slate-800">
+          <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">No API keys yet.</p>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Create one for a trusted app, deployment, or AI agent that needs private Rowset access.</p>
+        </div>
         {% endfor %}
       </div>
     </section>

@@ -96,7 +96,7 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     content = response.content.decode()
     assert raw_key not in content
     assert "Created Codex." in content
-    assert "Copy Setup Prompt" in content
+    assert "Copy setup prompt" in content
     assert reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid]) in content
 
     followup = auth_client.get(reverse("settings"))
@@ -112,7 +112,7 @@ def test_settings_lists_agent_api_keys_without_raw_secret(auth_client, profile):
 
     assert "Reporting Agent" in content
     assert f"{credential.agent_api_key.key_prefix}..." in content
-    assert "Copy Setup Prompt" in content
+    assert "Copy setup prompt" in content
     assert reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid]) in content
     assert credential.raw_key not in content
 

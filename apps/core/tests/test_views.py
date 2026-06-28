@@ -29,7 +29,7 @@ class TestHomeView:
 
         assert "Connect your AI agent to Rowset" in content
         assert "Setup tasks" in content
-        assert "Create an agent API key" in content
+        assert "Create an API key" in content
         assert "Copy the setup prompt" in content
         assert "Your prompt will appear here" in content
         assert "Connect Google Sheets" not in content
@@ -49,8 +49,8 @@ class TestHomeView:
         assert "agent_setup_prompt" not in response.context
         assert response.context["show_agent_setup_prompt"] is True
         assert response.context["active_agent_api_key"] is None
-        assert "Create an agent API key" in content
-        assert "Create agent key" in content
+        assert "Create an API key" in content
+        assert "Create key" in content
         assert "Your prompt will appear here" in content
         assert "Copy agent prompt" not in content
         assert "Copy request" not in content
@@ -201,7 +201,7 @@ class TestHomeView:
         content = followup.content.decode()
         assert followup.context["active_agent_api_key"].name == "Codex"
         assert "Copy agent prompt" in content
-        assert "Created an agent API key for Codex." in content
+        assert "Created an API key for Codex." in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_settings_view_omits_prompt_panel_and_legacy_key(self, auth_client, profile):

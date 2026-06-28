@@ -49,8 +49,11 @@ class ProfileUpdateForm(forms.ModelForm):
 class AgentApiKeyCreateForm(forms.Form):
     name = forms.CharField(
         max_length=80,
-        label="Agent name",
-        help_text="Use a clear name such as Codex, OpenClaw, or Reporting Agent.",
+        label="App or agent name",
+        help_text=(
+            "Use an app name or AI agent name. Rowset shows this name in dataset "
+            "change history."
+        ),
     )
 
     def __init__(self, *args, profile=None, **kwargs):
@@ -63,5 +66,5 @@ class AgentApiKeyCreateForm(forms.Form):
             self.profile
             and AgentApiKey.objects.filter(profile=self.profile, name=name).exists()
         ):
-            raise forms.ValidationError("An agent API key with this name already exists.")
+            raise forms.ValidationError("An API key with this name already exists.")
         return name
