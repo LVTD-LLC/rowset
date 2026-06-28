@@ -266,14 +266,14 @@ def create_agent_api_key_view(request):
     try:
         credential = create_agent_api_key(profile, form.cleaned_data["name"])
     except IntegrityError:
-        messages.error(request, "An agent API key with this name already exists.")
+        messages.error(request, "An API key with this name already exists.")
         if return_home:
             return redirect("home")
         return redirect("settings")
 
     messages.success(
         request,
-        f"Created an agent API key for {credential.agent_api_key.name}.",
+        f"Created an API key for {credential.agent_api_key.name}.",
     )
     if return_home:
         return redirect("home")

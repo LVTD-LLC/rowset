@@ -24,9 +24,9 @@ class AgentApiKeyCredential:
 def normalize_agent_api_key_name(name: str) -> str:
     normalized = (name or "").strip()
     if not normalized:
-        raise ValueError("Agent name is required.")
+        raise ValueError("Key name is required.")
     if len(normalized) > AgentApiKey._meta.get_field("name").max_length:
-        raise ValueError("Agent name must be 80 characters or fewer.")
+        raise ValueError("Key name must be 80 characters or fewer.")
     return normalized
 
 
