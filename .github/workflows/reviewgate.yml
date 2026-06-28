@@ -1,0 +1,34 @@
+name: ReviewGate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip ReviewGate when OpenRouter is not configured
+        if: env.OPENROUTER_API_KEY == ''
+        run: echo "OPENROUTER_API_KEY is not configured; skipping ReviewGate."
+
+      - uses: LVTD-LLC/reviewgate@v0
+        if: env.OPENROUTER_API_KEY != ''
+        with:
+          openrouter_api_key: ${{ env.OPENROUTER_API_KEY }}
+          preset: balanced
+          gate_mode: report
