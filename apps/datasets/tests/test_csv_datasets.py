@@ -20,6 +20,7 @@ from apps.api.services import (
     patch_profile_dataset_row,
     serialize_dataset_detail,
 )
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
@@ -57,7 +58,15 @@ def auth_client(client, user):
 
 @pytest.fixture
 def profile(user):
-    return user.profile
+    profile = user.profile
+    # Dataset API tests use profile.key as their bearer credential; make that
+    # credential scoped now that legacy profile keys are read-only.
+    profile.key = create_agent_api_key(
+        profile,
+        "Dataset API Test Agent",
+        AgentApiKeyAccessLevel.READ_WRITE,
+    ).raw_key
+    return profile
 
 
 def csv_upload(content="name,email\nAda,ada@example.com\nGrace,grace@example.com\n"):
