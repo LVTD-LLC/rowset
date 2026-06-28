@@ -2564,12 +2564,14 @@ def test_dataset_relationship_settings_form_creates_and_detail_shows_relationshi
     assert "Message person" in content
     assert f'href="{people.get_absolute_url()}"' in content
     assert "People</a>.person_id" in content
+    assert "No incoming relationships." not in content
 
     incoming_response = auth_client.get(reverse("dataset_detail", args=[people.key]))
     incoming_content = incoming_response.content.decode()
     assert incoming_response.status_code == 200
     assert f'href="{messages.get_absolute_url()}"' in incoming_content
     assert "CRM Messages</a>.person_id" in incoming_content
+    assert "No outgoing relationships." not in incoming_content
 
 
 def test_normalize_column_schema_accepts_choice_metadata():

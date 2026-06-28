@@ -115,41 +115,41 @@
             <span class="hidden min-h-8 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-900 transition group-open:inline-flex dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">Hide relationships</span>
           </summary>
           <div class="min-w-0 border-t border-slate-200 p-5 pt-4 dark:border-slate-800">
-            <div class="grid gap-4 lg:grid-cols-2">
-              <div>
-                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Outgoing</h3>
-                <div class="mt-2 grid gap-2">
-                  {% for relationship in outgoing_relationships %}
-                    <div class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
-                      <p class="font-semibold text-slate-900 dark:text-slate-100">{{ relationship.name }}</p>
-                      <p class="mt-1 break-words text-slate-600 dark:text-slate-300">
-                        {{ relationship.source_column }} →
-                        <a href="{{ relationship.target_dataset.get_absolute_url }}" class="font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ relationship.target_dataset.name }}</a>.{{ relationship.target_index_column }}
-                      </p>
-                      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if relationship.enforce_integrity %}Validated on row writes{% else %}Not enforced{% endif %}</p>
-                    </div>
-                  {% empty %}
-                    <p class="text-sm text-slate-500 dark:text-slate-400">No outgoing relationships.</p>
-                  {% endfor %}
-                </div>
-              </div>
-              <div>
-                <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Incoming</h3>
-                <div class="mt-2 grid gap-2">
-                  {% for relationship in incoming_relationships %}
-                    <div class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
-                      <p class="font-semibold text-slate-900 dark:text-slate-100">{{ relationship.name }}</p>
-                      <p class="mt-1 break-words text-slate-600 dark:text-slate-300">
-                        <a href="{{ relationship.source_dataset.get_absolute_url }}" class="font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ relationship.source_dataset.name }}</a>.{{ relationship.source_column }}
-                        → {{ relationship.target_index_column }}
-                      </p>
-                      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if relationship.enforce_integrity %}Validated on row writes{% else %}Not enforced{% endif %}</p>
-                    </div>
-                  {% empty %}
-                    <p class="text-sm text-slate-500 dark:text-slate-400">No incoming relationships.</p>
-                  {% endfor %}
-                </div>
-              </div>
+            <div class="grid gap-4">
+              {% if outgoing_relationships %}
+                <section class="min-w-0">
+                  <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Outgoing</h3>
+                  <div class="mt-2 grid gap-2">
+                    {% for relationship in outgoing_relationships %}
+                      <div class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                        <p class="font-semibold text-slate-900 dark:text-slate-100">{{ relationship.name }}</p>
+                        <p class="mt-1 break-words text-slate-600 dark:text-slate-300">
+                          {{ relationship.source_column }} →
+                          <a href="{{ relationship.target_dataset.get_absolute_url }}" class="font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ relationship.target_dataset.name }}</a>.{{ relationship.target_index_column }}
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if relationship.enforce_integrity %}Validated on row writes{% else %}Not enforced{% endif %}</p>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </section>
+              {% endif %}
+              {% if incoming_relationships %}
+                <section class="min-w-0{% if outgoing_relationships %} border-t border-slate-200 pt-4 dark:border-slate-800{% endif %}">
+                  <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Incoming</h3>
+                  <div class="mt-2 grid gap-2">
+                    {% for relationship in incoming_relationships %}
+                      <div class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                        <p class="font-semibold text-slate-900 dark:text-slate-100">{{ relationship.name }}</p>
+                        <p class="mt-1 break-words text-slate-600 dark:text-slate-300">
+                          <a href="{{ relationship.source_dataset.get_absolute_url }}" class="font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ relationship.source_dataset.name }}</a>.{{ relationship.source_column }}
+                          → {{ relationship.target_index_column }}
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if relationship.enforce_integrity %}Validated on row writes{% else %}Not enforced{% endif %}</p>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </section>
+              {% endif %}
             </div>
             <div class="mt-5 flex justify-end">
               <a href="{{ dataset.get_settings_url }}#relationships" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Manage</a>
