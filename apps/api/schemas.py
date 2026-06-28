@@ -14,7 +14,8 @@ from apps.datasets.constants import (
 ColumnTypeIn = str | dict[str, Any]
 COLUMN_TYPE_DESCRIPTION = (
     "Semantic column type string or metadata object. Metadata supports type, "
-    "description, and choice columns with choices."
+    "description, choice columns with choices, and reference columns with "
+    'target "dataset".'
 )
 
 

@@ -22,6 +22,7 @@ from apps.api.services import (
     create_profile_dataset_relationship,
     create_profile_project,
     delete_profile_dataset_relationship,
+    get_profile_dataset,
     update_profile_dataset_column_types,
     update_profile_dataset_metadata,
     update_profile_dataset_project,
@@ -32,6 +33,7 @@ from apps.api.services import (
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
+    DATASET_REFERENCE_TARGET,
     ROW_DEFAULT_SORT,
     ROW_FILTER_ABOVE,
     ROW_FILTER_BELOW,
@@ -410,6 +412,7 @@ def _row_cells(
     row_data: dict[str, object],
     column_schema: dict | None = None,
     relationship_links: dict[str, dict[str, str]] | None = None,
+    reference_lookup: dict[tuple[str, str], dict[str, str]] | None = None,
     *,
     request=None,
     profile=None,
@@ -422,6 +425,7 @@ def _row_cells(
         for column in column_definitions(headers, column_schema or {})
     }
     relationship_links = relationship_links or {}
+    reference_lookup = reference_lookup or {}
     cells = []
     for header in ordered_keys:
         value = _cell_value(row_data.get(header, ""))
@@ -434,6 +438,10 @@ def _row_cells(
         if relationship_link and cell["value"]:
             cell["relationship_url"] = relationship_link["url"]
             cell["relationship_label"] = relationship_link["label"]
+        elif cell["value"] and (
+            reference_link := reference_lookup.get((header, cell["value"].strip()))
+        ):
+            cell.update(reference_link)
         elif cell["value"]:
             cell.update(
                 _rowset_link_for_value(
@@ -452,6 +460,7 @@ def _row_table_cells(
     headers: list[str],
     row_data: dict[str, object],
     *,
+    reference_lookup: dict[tuple[str, str], dict[str, str]] | None = None,
     row_url: str = "",
     row_number: int | None = None,
     request=None,
@@ -459,15 +468,20 @@ def _row_table_cells(
     public_context: bool = False,
     link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
 ) -> list[dict[str, object]]:
+    reference_lookup = reference_lookup or {}
     cells = []
     row_detail_primary_assigned = False
-    for index, value in enumerate(ordered_row_values(headers, row_data)):
-        display_value = _cell_value(value)
+    for index, header in enumerate(headers):
+        display_value = _cell_value(row_data.get(header, ""))
         cell = {
             "value": display_value,
             "is_first": index == 0,
         }
-        if display_value:
+        if display_value and (
+            reference_link := reference_lookup.get((header, display_value.strip()))
+        ):
+            cell.update(reference_link)
+        elif display_value:
             cell.update(
                 _rowset_link_for_value(
                     display_value,
@@ -477,8 +491,12 @@ def _row_table_cells(
                     link_cache=link_cache,
                 )
             )
-        is_rowset_link_cell = bool(cell.get("rowset_link_url") or cell.get("plain_link_url"))
-        if row_url and (not is_rowset_link_cell or not row_detail_primary_assigned):
+        is_cell_link = bool(
+            cell.get("rowset_link_url")
+            or cell.get("plain_link_url")
+            or cell.get("reference_url")
+        )
+        if row_url and (not is_cell_link or not row_detail_primary_assigned):
             cell["row_url"] = row_url
             cell["row_detail_label"] = f"View row {row_number} details"
             if not row_detail_primary_assigned:
@@ -556,6 +574,52 @@ def _row_relationship_links(
             ),
         }
     return links
+
+
+def _dataset_reference_columns(column_definition_list: list[dict]) -> set[str]:
+    return {
+        column["name"]
+        for column in column_definition_list
+        if column.get("type") == DatasetColumnType.REFERENCE
+        and column.get("target") == DATASET_REFERENCE_TARGET
+    }
+
+
+def _dataset_reference_lookup(
+    profile,
+    reference_columns: set[str],
+    row_data_items: list[dict[str, object]],
+) -> dict[tuple[str, str], dict[str, str]]:
+    if not reference_columns:
+        return {}
+
+    raw_values_by_column: dict[str, set[str]] = {column: set() for column in reference_columns}
+    for row_data in row_data_items:
+        if not row_data:
+            continue
+        for column in reference_columns:
+            raw_value = str(row_data.get(column, "") or "").strip()
+            if raw_value:
+                raw_values_by_column[column].add(raw_value)
+
+    lookup = {}
+    for column, raw_values in raw_values_by_column.items():
+        for raw_value in raw_values:
+            try:
+                target_dataset = get_profile_dataset(profile, raw_value)
+            except DatasetServiceError:
+                continue
+            lookup[(column, raw_value)] = {
+                "rowset_link_url": target_dataset.get_absolute_url(),
+                "rowset_link_text": target_dataset.name,
+                "rowset_link_detail": (
+                    "Archived dataset"
+                    if target_dataset.archived_at
+                    else target_dataset.get_status_display()
+                ),
+                "rowset_link_label": f"Open Rowset dataset {target_dataset.name}",
+            }
+    return lookup
 
 
 def _querystring_for_page(request, page_number: int) -> str:
@@ -1139,8 +1203,15 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
         rowset_link_cache = {}
+        reference_columns = _dataset_reference_columns(column_definition_list)
+        row_objects = list(row_page_obj.object_list)
+        reference_lookup = _dataset_reference_lookup(
+            self.request.user.profile,
+            reference_columns,
+            [row.data for row in row_objects],
+        )
         rows_with_values = []
-        for row in row_page_obj.object_list:
+        for row in row_objects:
             row_url = reverse(
                 "dataset_row_detail",
                 kwargs={"dataset_key": dataset.key, "row_id": row.id},
@@ -1148,6 +1219,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             cells = _row_table_cells(
                 dataset.headers,
                 row.data,
+                reference_lookup=reference_lookup,
                 row_url=row_url,
                 row_number=row.row_number,
                 request=self.request,
@@ -1168,13 +1240,20 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             )
         if not has_imported_rows:
             rows_with_values = []
+            preview_rows = dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE]
+            reference_lookup = _dataset_reference_lookup(
+                self.request.user.profile,
+                reference_columns,
+                preview_rows,
+            )
             for row_number, preview_row in enumerate(
-                dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE],
+                preview_rows,
                 start=1,
             ):
                 cells = _row_table_cells(
                     dataset.headers,
                     preview_row,
+                    reference_lookup=reference_lookup,
                     request=self.request,
                     profile=self.request.user.profile,
                     link_cache=rowset_link_cache,
@@ -1276,12 +1355,19 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         row = self.object
         dataset = row.dataset
+        column_definition_list = column_definitions(dataset.headers, dataset.column_schema)
+        reference_lookup = _dataset_reference_lookup(
+            self.request.user.profile,
+            _dataset_reference_columns(column_definition_list),
+            [row.data],
+        )
         context["dataset"] = dataset
         context["row_cells"] = _row_cells(
             dataset.headers,
             row.data,
             dataset.column_schema,
             relationship_links=_row_relationship_links(dataset, row.data),
+            reference_lookup=reference_lookup,
             request=self.request,
             profile=self.request.user.profile,
             link_cache={},

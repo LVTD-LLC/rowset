@@ -40,6 +40,8 @@ COLUMN_TYPE_SAMPLE_LIMIT = 200
 COLUMN_SCHEMA_TYPE_KEY = "type"
 COLUMN_SCHEMA_CHOICES_KEY = "choices"
 COLUMN_SCHEMA_DESCRIPTION_KEY = "description"
+COLUMN_SCHEMA_REFERENCE_TARGET_KEY = "target"
+DATASET_REFERENCE_TARGET = "dataset"
 ROW_DEFAULT_SORT = "row_number"
 ROW_SORT_DESC = "desc"
 ROW_SEARCH_COLUMN_LIMIT = 20
@@ -77,9 +79,16 @@ COLUMN_TYPE_ALIASES = {
     "money": DatasetColumnType.CURRENCY,
     "select": DatasetColumnType.CHOICE,
     "single_select": DatasetColumnType.CHOICE,
+    "dataset_reference": DatasetColumnType.REFERENCE,
+    "rowset_reference": DatasetColumnType.REFERENCE,
     "str": DatasetColumnType.TEXT,
     "string": DatasetColumnType.TEXT,
     "timestamp": DatasetColumnType.DATETIME,
+}
+REFERENCE_TARGET_ALIASES = {
+    "dataset": DATASET_REFERENCE_TARGET,
+    "datasets": DATASET_REFERENCE_TARGET,
+    "rowset_dataset": DATASET_REFERENCE_TARGET,
 }
 BOOLEAN_VALUES = {"true", "false", "yes", "no", "y", "n", "1", "0"}
 TEXTUAL_BOOLEAN_VALUES = BOOLEAN_VALUES - {"1", "0"}
@@ -438,6 +447,24 @@ def _choice_source_entry(header: str, entry, fallback_entry):
     raise CSVParseError(f"Choice column '{header}' requires at least one choice.")
 
 
+def _reference_target_from_schema_entry(entry, fallback_entry):
+    if isinstance(entry, dict) and COLUMN_SCHEMA_REFERENCE_TARGET_KEY in entry:
+        return entry.get(COLUMN_SCHEMA_REFERENCE_TARGET_KEY)
+    if isinstance(fallback_entry, dict) and COLUMN_SCHEMA_REFERENCE_TARGET_KEY in fallback_entry:
+        return fallback_entry.get(COLUMN_SCHEMA_REFERENCE_TARGET_KEY)
+    return DATASET_REFERENCE_TARGET
+
+
+def _normalize_reference_target(header: str, raw_target) -> str:
+    normalized_target = str(raw_target or "").strip().lower()
+    normalized_target = REFERENCE_TARGET_ALIASES.get(normalized_target, normalized_target)
+    if normalized_target != DATASET_REFERENCE_TARGET:
+        raise CSVParseError(
+            f"Reference column '{header}' target must be '{DATASET_REFERENCE_TARGET}'."
+        )
+    return normalized_target
+
+
 def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[str, Any]:
     raw_type = _column_type_from_schema_entry(entry, fallback_entry)
     if raw_type is None:
@@ -452,6 +479,11 @@ def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[s
         normalized_entry[COLUMN_SCHEMA_CHOICES_KEY] = _normalize_choice_values(
             header,
             source_entry.get(COLUMN_SCHEMA_CHOICES_KEY),
+        )
+    if column_type == DatasetColumnType.REFERENCE:
+        normalized_entry[COLUMN_SCHEMA_REFERENCE_TARGET_KEY] = _normalize_reference_target(
+            header,
+            _reference_target_from_schema_entry(entry, fallback_entry),
         )
     return normalized_entry
 
@@ -504,6 +536,8 @@ def column_definitions(
         }
         if schema_entry[COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.CHOICE:
             definition["choices"] = schema_entry[COLUMN_SCHEMA_CHOICES_KEY]
+        if schema_entry[COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.REFERENCE:
+            definition["target"] = schema_entry[COLUMN_SCHEMA_REFERENCE_TARGET_KEY]
         definitions.append(definition)
     return definitions
 
