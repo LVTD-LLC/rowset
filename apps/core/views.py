@@ -250,6 +250,23 @@ def agent_api_key_setup_prompt(request, agent_api_key_uuid):
 
 
 @login_required
+@require_GET
+def agent_api_key_token(request, agent_api_key_uuid):
+    agent_api_key = get_object_or_404(
+        AgentApiKey,
+        uuid=agent_api_key_uuid,
+        profile=request.user.profile,
+        revoked_at__isnull=True,
+    )
+    api_key = get_agent_api_key_token(agent_api_key)
+    if api_key is None:
+        return JsonResponse({"error": "API key token is unavailable."}, status=404)
+    response = JsonResponse({"api_key": api_key})
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@login_required
 @require_POST
 def create_agent_api_key_view(request):
     profile = request.user.profile

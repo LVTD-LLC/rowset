@@ -42,7 +42,7 @@ export default class extends Controller {
       }
 
       const payload = await response.json();
-      return payload.prompt || "";
+      return payload.prompt || payload.api_key || payload.text || "";
     } catch (error) {
       return "";
     }
