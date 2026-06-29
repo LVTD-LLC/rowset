@@ -4,6 +4,7 @@ from typing import NoReturn
 from django.core.cache import cache
 from django.db import IntegrityError, connection
 from django.http import HttpRequest, HttpResponse
+from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
 from ninja import NinjaAPI
 from ninja.errors import HttpError
@@ -117,6 +118,7 @@ from apps.core.services import (
     serialize_agent_api_key,
 )
 from apps.datasets.services import (
+    DATASET_ASSET_CACHE_CONTROL,
     iter_export_row_data,
     rows_to_csv_text,
     rows_to_jsonl_text,
@@ -188,7 +190,8 @@ def _dataset_asset_file_response(asset, variant: str) -> HttpResponse:
         asset.original_filename or f"{asset.key}",
     )
     response["X-Content-Type-Options"] = "nosniff"
-    response["Cache-Control"] = "private, no-store"
+    response["Cache-Control"] = DATASET_ASSET_CACHE_CONTROL
+    patch_vary_headers(response, ["Authorization", "Cookie"])
     return response
 
 

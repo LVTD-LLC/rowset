@@ -1131,7 +1131,7 @@ def resolve_profile_dataset_relationship(
             "status": "success",
             "message": "Relationship value is blank.",
             "relationship": serialize_dataset_relationship(relationship),
-            "source_row": serialize_dataset_row(source_row),
+            "source_row": serialize_dataset_row(source_row, dataset=source_dataset),
             "target_index_value": "",
             "target_row": None,
         }
@@ -1143,7 +1143,7 @@ def resolve_profile_dataset_relationship(
                 "status": "success",
                 "message": "Related row not found.",
                 "relationship": serialize_dataset_relationship(relationship),
-                "source_row": serialize_dataset_row(source_row),
+                "source_row": serialize_dataset_row(source_row, dataset=source_dataset),
                 "target_index_value": target_index_value,
                 "target_row": None,
             }
@@ -1152,9 +1152,9 @@ def resolve_profile_dataset_relationship(
         "status": "success",
         "message": "Related row resolved.",
         "relationship": serialize_dataset_relationship(relationship),
-        "source_row": serialize_dataset_row(source_row),
+        "source_row": serialize_dataset_row(source_row, dataset=source_dataset),
         "target_index_value": target_index_value,
-        "target_row": serialize_dataset_row(target_row),
+        "target_row": serialize_dataset_row(target_row, dataset=relationship.target_dataset),
     }
 
 
@@ -2460,12 +2460,24 @@ def restore_profile_dataset(
     }
 
 
-def serialize_dataset_row(row: DatasetRow) -> dict:
+def _serialized_row_assets(row: DatasetRow, dataset: Dataset | None = None) -> list[dict]:
+    row_data = row.data or {}
+    prefetched_assets = getattr(row, "_prefetched_objects_cache", {}).get("assets")
+    assets = prefetched_assets if prefetched_assets is not None else row.assets.all()
+    return [
+        serialize_dataset_asset(asset, dataset=dataset, row=row)
+        for asset in assets
+        if str(row_data.get(asset.column_name, "") or "") == asset.asset_ref
+    ]
+
+
+def serialize_dataset_row(row: DatasetRow, *, dataset: Dataset | None = None) -> dict:
     return {
         "id": row.id,
         "row_number": row.row_number,
         "index_value": row.index_value,
         "data": row.data,
+        "assets": _serialized_row_assets(row, dataset),
     }
 
 
@@ -2478,18 +2490,30 @@ def dataset_asset_content_field(asset: DatasetAsset, variant: str = "original"):
     raise DatasetServiceError(400, "Asset variant must be 'original' or 'thumbnail'.")
 
 
-def _dataset_asset_content_url(asset: DatasetAsset, variant: str) -> str:
+def _dataset_asset_content_url(
+    asset: DatasetAsset,
+    variant: str,
+    *,
+    dataset: Dataset | None = None,
+) -> str:
+    dataset = dataset or asset.dataset
     return build_absolute_public_url(
-        f"/api/datasets/{asset.dataset.key}/assets/{asset.key}/content?variant={variant}"
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant={variant}"
     )
 
 
-def serialize_dataset_asset(asset: DatasetAsset) -> dict:
-    row = asset.row
+def serialize_dataset_asset(
+    asset: DatasetAsset,
+    *,
+    dataset: Dataset | None = None,
+    row: DatasetRow | None = None,
+) -> dict:
+    dataset = dataset or asset.dataset
+    row = row or asset.row
     return {
         "key": str(asset.key),
         "ref": dataset_asset_ref(asset.key),
-        "dataset": str(asset.dataset.key),
+        "dataset": str(dataset.key),
         "row_id": row.id,
         "row_number": row.row_number,
         "index_value": row.index_value,
@@ -2501,8 +2525,10 @@ def serialize_dataset_asset(asset: DatasetAsset) -> dict:
         "height": asset.height,
         "checksum": asset.checksum,
         "status": asset.status,
-        "content_url": _dataset_asset_content_url(asset, "original"),
-        "thumbnail_url": _dataset_asset_content_url(asset, "thumbnail"),
+        "has_thumbnail": bool(asset.thumbnail),
+        "content_url": _dataset_asset_content_url(asset, "original", dataset=dataset),
+        "thumbnail_url": _dataset_asset_content_url(asset, "thumbnail", dataset=dataset),
+        "content_url_auth_required": True,
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,
     }
@@ -2608,7 +2634,11 @@ def attach_profile_dataset_image_asset(
                 checksum=prepared_image.checksum,
             )
             asset.file.name = asset.file.field.generate_filename(asset, prepared_image.filename)
-            asset.thumbnail.name = asset.thumbnail.field.generate_filename(asset, "thumbnail.jpg")
+            if prepared_image.thumbnail_bytes is not None:
+                asset.thumbnail.name = asset.thumbnail.field.generate_filename(
+                    asset,
+                    "thumbnail.jpg",
+                )
             asset.save()
 
             next_value = asset.asset_ref
@@ -2652,13 +2682,14 @@ def attach_profile_dataset_image_asset(
             saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_file_name))
             if saved_file_name != asset.file.name:
                 raise DatasetServiceError(500, "Image upload path could not be reserved.")
-            saved_thumbnail_name = asset.thumbnail.storage.save(
-                asset.thumbnail.name,
-                ContentFile(prepared_image.thumbnail_bytes),
-            )
-            saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_thumbnail_name))
-            if saved_thumbnail_name != asset.thumbnail.name:
-                raise DatasetServiceError(500, "Image thumbnail path could not be reserved.")
+            if prepared_image.thumbnail_bytes is not None:
+                saved_thumbnail_name = asset.thumbnail.storage.save(
+                    asset.thumbnail.name,
+                    ContentFile(prepared_image.thumbnail_bytes),
+                )
+                saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_thumbnail_name))
+                if saved_thumbnail_name != asset.thumbnail.name:
+                    raise DatasetServiceError(500, "Image thumbnail path could not be reserved.")
     except Exception:
         cleanup_error = None
         for storage_alias, name in saved_files:
@@ -2678,8 +2709,8 @@ def attach_profile_dataset_image_asset(
         "status": "success",
         "message": "Image attached.",
         "dataset": str(dataset.key),
-        "row": serialize_dataset_row(row),
-        "asset": serialize_dataset_asset(asset),
+        "row": serialize_dataset_row(row, dataset=dataset),
+        "asset": serialize_dataset_asset(asset, dataset=dataset, row=row),
     }
 
 
@@ -2712,7 +2743,7 @@ def list_profile_dataset_rows(
 
     has_restrictive_query = bool(row_query["query"] or row_query["filters"])
     filtered_count = row_queryset.count() if has_restrictive_query else total_count
-    rows = list(row_queryset[offset : offset + limit])
+    rows = list(row_queryset.prefetch_related("assets")[offset : offset + limit])
     return {
         "dataset": str(dataset.key),
         "count": filtered_count,
@@ -2724,7 +2755,7 @@ def list_profile_dataset_rows(
         "filters": row_query["filters"],
         "sort": row_query["sort"],
         "direction": row_query["direction"],
-        "rows": [serialize_dataset_row(row) for row in rows],
+        "rows": [serialize_dataset_row(row, dataset=dataset) for row in rows],
     }
 
 
@@ -2794,35 +2825,35 @@ def create_profile_dataset_row(
         "status": "success",
         "message": "Row created.",
         "dataset": str(dataset.key),
-        "row": serialize_dataset_row(row),
+        "row": serialize_dataset_row(row, dataset=dataset),
     }
 
 
 def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
     dataset = get_ready_profile_dataset(profile, dataset_key)
     try:
-        row = dataset.rows.get(id=row_id)
+        row = dataset.rows.prefetch_related("assets").get(id=row_id)
     except DatasetRow.DoesNotExist as exc:
         raise DatasetServiceError(404, "Row not found.") from exc
     return {
         "status": "success",
         "message": "Row retrieved.",
         "dataset": str(dataset.key),
-        "row": serialize_dataset_row(row),
+        "row": serialize_dataset_row(row, dataset=dataset),
     }
 
 
 def get_profile_dataset_row_by_index(profile: Profile, dataset_key: str, index_value: str) -> dict:
     dataset = get_ready_profile_dataset(profile, dataset_key)
     try:
-        row = dataset.rows.get(index_value=index_value)
+        row = dataset.rows.prefetch_related("assets").get(index_value=index_value)
     except DatasetRow.DoesNotExist as exc:
         raise DatasetServiceError(404, "Row not found.") from exc
     return {
         "status": "success",
         "message": "Row retrieved.",
         "dataset": str(dataset.key),
-        "row": serialize_dataset_row(row),
+        "row": serialize_dataset_row(row, dataset=dataset),
     }
 
 
@@ -2980,7 +3011,7 @@ def _patch_dataset_row(
         "status": "success",
         "message": "Row updated.",
         "dataset": str(dataset.key),
-        "row": serialize_dataset_row(row),
+        "row": serialize_dataset_row(row, dataset=dataset),
     }
 
 

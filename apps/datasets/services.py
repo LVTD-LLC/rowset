@@ -59,6 +59,7 @@ GENERATED_INDEX_BASENAME = "rowset_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
 MAX_PUBLIC_PAGE_SIZE = 100
 DATASET_ASSET_REF_PREFIX = "asset:"
+DATASET_ASSET_CACHE_CONTROL = "private, max-age=86400, immutable"
 DATASET_IMAGE_THUMBNAIL_SIZE = (512, 512)
 DATASET_IMAGE_ALLOWED_FORMATS = {
     "JPEG": "image/jpeg",
@@ -210,7 +211,7 @@ class PreparedDatasetImage:
     filename: str
     content_type: str
     image_bytes: bytes
-    thumbnail_bytes: bytes
+    thumbnail_bytes: bytes | None
     byte_size: int
     width: int
     height: int
@@ -742,12 +743,15 @@ def _encoded_image_bytes(image: Image.Image, image_format: str) -> bytes:
     return output.getvalue()
 
 
-def _thumbnail_bytes(image: Image.Image) -> bytes:
+def _thumbnail_bytes(image: Image.Image, original_bytes: bytes) -> bytes | None:
     thumbnail = image.copy()
     thumbnail.thumbnail(DATASET_IMAGE_THUMBNAIL_SIZE)
     output = io.BytesIO()
     _rgb_image(thumbnail).save(output, format="JPEG", quality=85, optimize=True)
-    return output.getvalue()
+    thumbnail_bytes = output.getvalue()
+    if len(thumbnail_bytes) >= len(original_bytes):
+        return None
+    return thumbnail_bytes
 
 
 def prepare_dataset_image(
@@ -784,7 +788,7 @@ def prepare_dataset_image(
                 raise DatasetImageError(
                     f"Images must be {MAX_DATASET_IMAGE_BYTES // (1024 * 1024)} MB or smaller."
                 )
-            thumbnail_bytes = _thumbnail_bytes(image)
+            thumbnail_bytes = _thumbnail_bytes(image, sanitized_bytes)
     except DatasetImageError:
         raise
     except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as exc:
