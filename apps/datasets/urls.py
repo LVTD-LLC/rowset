@@ -12,6 +12,7 @@ urlpatterns = [
         views.project_update_metadata,
         name="project_update_metadata",
     ),
+    path("projects/<uuid:project_key>/delete/", views.project_delete, name="project_delete"),
     path("datasets/", views.DatasetListView.as_view(), name="dataset_list"),
     path(
         "datasets/archived/",

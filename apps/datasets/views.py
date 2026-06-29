@@ -31,7 +31,7 @@ from apps.api.services import (
     update_profile_project_metadata,
 )
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
-from apps.datasets.models import Dataset, DatasetRow
+from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.services import (
     DATASET_REFERENCE_TARGET,
     ROW_DEFAULT_SORT,
@@ -1492,6 +1492,20 @@ def project_update_metadata(request, project_key):
             messages.success(request, result["message"])
 
     return redirect("project_detail", project_key=project_key)
+
+
+@login_required
+@require_POST
+def project_delete(request, project_key):
+    project = get_object_or_404(
+        Project,
+        key=project_key,
+        profile=request.user.profile,
+    )
+    project_name = project.name
+    project.delete()
+    messages.success(request, f"Deleted {project_name}. Assigned datasets are now ungrouped.")
+    return redirect("project_list")
 
 
 @login_required
