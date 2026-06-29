@@ -4496,6 +4496,26 @@ def test_project_detail_paginates_assigned_datasets(auth_client, profile):
     assert "Page 2 of 2" in page_two.content.decode()
 
 
+def test_dataset_settings_page_has_section_navigation(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(dataset.get_settings_url())
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert 'aria-labelledby="dataset-settings-nav-heading"' in content
+    for section_id in [
+        "dataset-context",
+        "project",
+        "relationships",
+        "column-types",
+        "public-preview",
+        "danger-zone",
+    ]:
+        assert f'href="#{section_id}"' in content
+        assert f'id="{section_id}"' in content
+
+
 def test_dataset_owner_can_assign_project_from_settings(auth_client, profile):
     dataset = create_ready_dataset(profile)
     project = Project.objects.create(profile=profile, name="Customer work")
