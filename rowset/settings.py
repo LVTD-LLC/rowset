@@ -240,7 +240,7 @@ storage_bucket_name = (
 )
 asset_s3_endpoint_url = env(
     "ROWSET_ASSET_S3_ENDPOINT_URL",
-    default=aws_s3_endpoint_url,
+    default="",
 ).strip()
 asset_storage_bucket_name = env(
     "ROWSET_ASSET_STORAGE_BUCKET_NAME",
