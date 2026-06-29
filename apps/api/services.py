@@ -2873,12 +2873,6 @@ def _patch_dataset_row(
     field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
     changed_fields = [str(change["field"]) for change in field_changes]
     row.data = {**row.data, **row_patch}
-    if cleared_image_columns:
-        DatasetAsset.objects.filter(
-            dataset=dataset,
-            row=row,
-            column_name__in=cleared_image_columns,
-        ).delete()
     _validate_choice_row_data(
         dataset.headers,
         dataset.column_schema,
@@ -2906,6 +2900,12 @@ def _patch_dataset_row(
             _raise_if_target_row_is_referenced(dataset, row.index_value)
         row.index_value = index_value
     _validate_relationship_row_data(dataset, row.data, columns=patched_fields)
+    if cleared_image_columns:
+        DatasetAsset.objects.filter(
+            dataset=dataset,
+            row=row,
+            column_name__in=cleared_image_columns,
+        ).delete()
     row.updated_by_agent_api_key = agent_api_key
     row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
     dataset.updated_by_agent_api_key = agent_api_key

@@ -2405,6 +2405,14 @@ def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profil
     assert invalid_patch.status_code == 400
     assert DatasetAsset.objects.filter(pk=asset.pk).exists()
 
+    invalid_clear = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"receipt_id": "", "image": ""}},
+        content_type="application/json",
+    )
+    assert invalid_clear.status_code == 400
+    assert DatasetAsset.objects.filter(pk=asset.pk).exists()
+
     clear_response = client.patch(
         f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
         data={"data": {"image": ""}},
