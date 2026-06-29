@@ -407,6 +407,36 @@ def add_supported_datetime_format_rows(dataset):
                     "event_at": "02/29/2000",
                 },
             ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=8,
+                index_value="E-8",
+                data={
+                    "event_id": "E-8",
+                    "event_name": "YMD slash datetime",
+                    "event_at": "2026/5/13 8:45",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=9,
+                index_value="E-9",
+                data={
+                    "event_id": "E-9",
+                    "event_name": "MDY slash date",
+                    "event_at": "5/14/2026",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=10,
+                index_value="E-10",
+                data={
+                    "event_id": "E-10",
+                    "event_name": "MDY slash compact time",
+                    "event_at": "5/14/2026 8:5",
+                },
+            ),
         ]
     )
     dataset.row_count = dataset.rows.count()
@@ -3034,7 +3064,10 @@ def test_dataset_row_service_handles_supported_non_iso_datetime_formats(profile)
         "Century leap",
         "Century slash leap",
         "YMD slash",
+        "YMD slash datetime",
+        "MDY slash date",
         "Offset early",
+        "MDY slash compact time",
         "MDY slash",
         "UTC later",
         "Next day",
@@ -3051,6 +3084,25 @@ def test_dataset_row_service_handles_supported_non_iso_datetime_formats(profile)
 
     assert row_query["filter_operators"] == {"event_at": "above"}
     assert [row.data["event_name"] for row in recent_filtered_queryset] == [
+        "MDY slash",
+        "UTC later",
+        "Next day",
+    ]
+
+    ymd_slash_filtered_queryset, row_query = apply_dataset_row_query(
+        dataset.rows.all(),
+        dataset,
+        filters={"event_at": "2026/5/13 8:45"},
+        filter_operators={"event_at": "above"},
+        sort="event_at",
+        strict=True,
+    )
+
+    assert row_query["filter_operators"] == {"event_at": "above"}
+    assert [row.data["event_name"] for row in ymd_slash_filtered_queryset] == [
+        "MDY slash date",
+        "Offset early",
+        "MDY slash compact time",
         "MDY slash",
         "UTC later",
         "Next day",

@@ -23,6 +23,7 @@ from django.db.models import (
     DateTimeField,
     F,
     FloatField,
+    Func,
     Q,
     TextField,
     Value,
@@ -106,9 +107,9 @@ ROW_MONTH_DAY_PATTERN = (
     r"|02-(0[1-9]|1[0-9]|2[0-8]))"
 )
 ROW_SLASH_MONTH_DAY_PATTERN = (
-    r"((01|03|05|07|08|10|12)/(0[1-9]|[12][0-9]|3[01])"
-    r"|(04|06|09|11)/(0[1-9]|[12][0-9]|30)"
-    r"|02/(0[1-9]|1[0-9]|2[0-8]))"
+    r"((0?[13578]|1[02])/(0?[1-9]|[12][0-9]|3[01])"
+    r"|(0?[469]|11)/(0?[1-9]|[12][0-9]|30)"
+    r"|0?2/(0?[1-9]|1[0-9]|2[0-8]))"
 )
 ROW_ISO_DATE_PATTERN = (
     rf"({ROW_YEAR_PATTERN}-{ROW_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}-02-29)"
@@ -119,15 +120,15 @@ ROW_TIME_PATTERN = (
     r"(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])?)?"
 )
 ROW_SPACE_TIME_PATTERN = (
-    r"( ([01][0-9]|2[0-3]):[0-5][0-9]"
-    r"(:[0-5][0-9](\.[0-9]{1,6})?)?)?"
+    r"( ([01]?[0-9]|2[0-3]):[0-5]?[0-9]"
+    r"(:[0-5]?[0-9](\.[0-9]{1,6})?)?)?"
 )
 ROW_DATETIME_SORT_PATTERN = rf"^{ROW_ISO_DATE_PATTERN}{ROW_TIME_PATTERN}$"
 ROW_SLASH_YMD_DATE_PATTERN = (
-    rf"({ROW_YEAR_PATTERN}/{ROW_SLASH_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}/02/29)"
+    rf"({ROW_YEAR_PATTERN}/{ROW_SLASH_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}/0?2/0?29)"
 )
 ROW_SLASH_MDY_DATE_PATTERN = (
-    rf"({ROW_SLASH_MONTH_DAY_PATTERN}/{ROW_YEAR_PATTERN}|02/29/{ROW_LEAP_YEAR_PATTERN})"
+    rf"({ROW_SLASH_MONTH_DAY_PATTERN}/{ROW_YEAR_PATTERN}|0?2/0?29/{ROW_LEAP_YEAR_PATTERN})"
 )
 ROW_SLASH_YMD_DATETIME_SORT_PATTERN = (
     rf"^{ROW_SLASH_YMD_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
@@ -382,6 +383,10 @@ def _parse_datetime(value: str) -> datetime | None:
     formats = (
         "%Y/%m/%d",
         "%m/%d/%Y",
+        "%Y/%m/%d %H:%M:%S.%f",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d %H:%M",
+        "%m/%d/%Y %H:%M:%S.%f",
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%d %H:%M",
         "%m/%d/%Y %H:%M:%S",
@@ -1035,16 +1040,27 @@ def _slash_ymd_datetime_text_expression(alias: str):
     )
 
 
+def _split_part_expression(expression, delimiter: str, field: int):
+    return Func(
+        expression,
+        Value(delimiter, output_field=TextField()),
+        Value(field),
+        function="split_part",
+        output_field=TextField(),
+    )
+
+
 def _slash_mdy_datetime_text_expression(alias: str):
     text_expression = Cast(alias, TextField())
+    year_and_time = _split_part_expression(text_expression, "/", 3)
     separator = Value("-", output_field=TextField())
     return Concat(
-        Substr(text_expression, 7, 4),
+        _split_part_expression(year_and_time, " ", 1),
         separator,
-        Substr(text_expression, 1, 2),
+        _split_part_expression(text_expression, "/", 1),
         separator,
-        Substr(text_expression, 4, 2),
-        Substr(text_expression, 11),
+        _split_part_expression(text_expression, "/", 2),
+        Substr(year_and_time, 5),
         output_field=TextField(),
     )
 
