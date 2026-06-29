@@ -1,5 +1,4 @@
 import json
-from contextlib import suppress
 from datetime import UTC, date, datetime, time
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -2538,6 +2537,20 @@ def _normalize_image_asset_column(dataset: Dataset, column_name: str) -> str:
     return column
 
 
+def _delete_saved_dataset_asset_files(saved_files: list[tuple[Any, str]]) -> None:
+    cleanup_error = None
+    for storage, name in saved_files:
+        try:
+            storage.delete(name)
+        except Exception as exc:
+            cleanup_error = cleanup_error or exc
+    if cleanup_error is not None:
+        raise DatasetServiceError(
+            500,
+            "Image upload failed and stored files could not be cleaned up.",
+        ) from cleanup_error
+
+
 def attach_profile_dataset_image_asset(
     profile: Profile,
     dataset_key: str,
@@ -2583,18 +2596,8 @@ def attach_profile_dataset_image_asset(
                 height=prepared_image.height,
                 checksum=prepared_image.checksum,
             )
-            asset.file.save(
-                prepared_image.filename,
-                ContentFile(prepared_image.image_bytes),
-                save=False,
-            )
-            saved_files.append((asset.file.storage, asset.file.name))
-            asset.thumbnail.save(
-                "thumbnail.jpg",
-                ContentFile(prepared_image.thumbnail_bytes),
-                save=False,
-            )
-            saved_files.append((asset.thumbnail.storage, asset.thumbnail.name))
+            asset.file.name = asset.file.field.generate_filename(asset, prepared_image.filename)
+            asset.thumbnail.name = asset.thumbnail.field.generate_filename(asset, "thumbnail.jpg")
             asset.save()
 
             next_value = asset.asset_ref
@@ -2631,10 +2634,22 @@ def attach_profile_dataset_image_asset(
                     "height": prepared_image.height,
                 },
             )
+            saved_file_name = asset.file.storage.save(
+                asset.file.name,
+                ContentFile(prepared_image.image_bytes),
+            )
+            saved_files.append((asset.file.storage, saved_file_name))
+            if saved_file_name != asset.file.name:
+                raise DatasetServiceError(500, "Image upload path could not be reserved.")
+            saved_thumbnail_name = asset.thumbnail.storage.save(
+                asset.thumbnail.name,
+                ContentFile(prepared_image.thumbnail_bytes),
+            )
+            saved_files.append((asset.thumbnail.storage, saved_thumbnail_name))
+            if saved_thumbnail_name != asset.thumbnail.name:
+                raise DatasetServiceError(500, "Image thumbnail path could not be reserved.")
     except Exception:
-        for storage, name in saved_files:
-            with suppress(Exception):
-                storage.delete(name)
+        _delete_saved_dataset_asset_files(saved_files)
         raise
 
     return {

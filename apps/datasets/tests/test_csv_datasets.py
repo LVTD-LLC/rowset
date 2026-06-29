@@ -18,6 +18,8 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.api.services import (
+    DatasetServiceError,
+    _delete_saved_dataset_asset_files,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
     serialize_dataset_detail,
@@ -2237,6 +2239,33 @@ def test_prepare_dataset_image_rejects_encoded_payload_above_limit(monkeypatch):
             filename="photo.png",
             content_type="image/png",
         )
+
+
+def test_saved_dataset_asset_cleanup_surfaces_delete_failures():
+    class Storage:
+        def __init__(self, *, fail: bool = False):
+            self.fail = fail
+            self.deleted = []
+
+        def delete(self, name: str) -> None:
+            self.deleted.append(name)
+            if self.fail:
+                raise OSError("delete failed")
+
+    failing_storage = Storage(fail=True)
+    later_storage = Storage()
+
+    with pytest.raises(DatasetServiceError) as exc_info:
+        _delete_saved_dataset_asset_files(
+            [
+                (failing_storage, "original.png"),
+                (later_storage, "thumbnail.jpg"),
+            ]
+        )
+
+    assert exc_info.value.status_code == 500
+    assert failing_storage.deleted == ["original.png"]
+    assert later_storage.deleted == ["thumbnail.jpg"]
 
 
 def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
