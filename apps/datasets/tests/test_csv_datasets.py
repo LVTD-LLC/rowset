@@ -295,17 +295,31 @@ def configure_datetime_dataset(dataset):
 
 
 def add_invalid_datetime_row(dataset):
-    DatasetRow.objects.create(
-        dataset=dataset,
-        row_number=4,
-        index_value="E-4",
-        data={
-            "event_id": "E-4",
-            "event_name": "Invalid timestamp",
-            "event_at": "2026-13-01",
-        },
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=4,
+                index_value="E-4",
+                data={
+                    "event_id": "E-4",
+                    "event_name": "Invalid date",
+                    "event_at": "2026-13-01",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=5,
+                index_value="E-5",
+                data={
+                    "event_id": "E-5",
+                    "event_name": "Invalid time",
+                    "event_at": "2026-05-14T29:00:00Z",
+                },
+            ),
+        ]
     )
-    dataset.row_count = 4
+    dataset.row_count = 5
     dataset.save(update_fields=["row_count"])
     return dataset
 
@@ -1234,7 +1248,8 @@ def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_clien
     assert "UTC later" in above_content
     assert "Next day" in above_content
     assert "Offset early" not in above_content
-    assert "Invalid timestamp" not in above_content
+    assert "Invalid date" not in above_content
+    assert "Invalid time" not in above_content
     assert 'name="filter_op_2"' in above_content
     assert '<option value="above" selected>Above</option>' in above_content
 
@@ -1249,7 +1264,8 @@ def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_clien
     assert "Offset early" in below_content
     assert "UTC later" not in below_content
     assert "Next day" not in below_content
-    assert "Invalid timestamp" not in below_content
+    assert "Invalid date" not in below_content
+    assert "Invalid time" not in below_content
 
 
 def test_dataset_detail_filters_choice_columns_by_exact_choice(auth_client, profile):
@@ -2315,7 +2331,8 @@ def test_dataset_row_service_sorts_invalid_datetime_cells_last(profile):
         "Offset early",
         "UTC later",
         "Next day",
-        "Invalid timestamp",
+        "Invalid date",
+        "Invalid time",
     ]
 
 

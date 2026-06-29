@@ -15,12 +15,10 @@ from xml.sax.saxutils import escape
 import polars as pl
 from django.conf import settings
 from django.db.models import (
-    BooleanField,
     Case,
     DateTimeField,
     F,
     FloatField,
-    Func,
     Q,
     TextField,
     Value,
@@ -76,15 +74,21 @@ ROW_DATETIME_SORT_TYPES = {
 ROW_ORDERED_FILTER_TYPES = ROW_NUMERIC_SORT_TYPES | ROW_DATETIME_SORT_TYPES
 ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
 ROW_NUMERIC_FILTER_PATTERN = r"-?\d+(\.\d+)?"
-ROW_DATETIME_SORT_PATTERN = (
-    r"^("
-    r"\d{4}-\d{2}-\d{2}"
-    r"([T ][0-2]\d:[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-][0-2]\d:[0-5]\d)?)?"
-    r"|\d{4}/\d{1,2}/\d{1,2}"
-    r"|\d{1,2}/\d{1,2}/\d{4}( [0-2]?\d:[0-5]\d(:[0-5]\d)?)?"
-    r")$"
+ROW_LEAP_YEAR_PATTERN = (
+    r"(\d{2}(0[48]|[2468][048]|[13579][26])|([02468][048]|[13579][26])00)"
 )
-ROW_DATETIME_POSTGRES_TYPE = "timestamp with time zone"
+ROW_MONTH_DAY_PATTERN = (
+    r"((01|03|05|07|08|10|12)-(0[1-9]|[12]\d|3[01])"
+    r"|(04|06|09|11)-(0[1-9]|[12]\d|30)"
+    r"|02-(0[1-9]|1\d|2[0-8]))"
+)
+ROW_ISO_DATE_PATTERN = rf"(\d{{4}}-{ROW_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}-02-29)"
+ROW_TIME_PATTERN = (
+    r"([T ]([01]\d|2[0-3]):[0-5]\d"
+    r"(:[0-5]\d(\.\d{1,6})?)?"
+    r"(Z|[+-]([01]\d|2[0-3]):[0-5]\d)?)?"
+)
+ROW_DATETIME_SORT_PATTERN = rf"^{ROW_ISO_DATE_PATTERN}{ROW_TIME_PATTERN}$"
 ROW_FILTER_OPERATOR_ALIASES = {
     "eq": ROW_FILTER_IS,
     "equals": ROW_FILTER_IS,
@@ -798,21 +802,11 @@ def _normalize_datetime_filter_value(value: str) -> datetime | None:
     return parsed
 
 
-def _datetime_input_is_valid_expression(alias: str):
-    return Func(
-        F(alias),
-        Value(ROW_DATETIME_POSTGRES_TYPE),
-        function="pg_input_is_valid",
-        output_field=BooleanField(),
-    )
-
-
-def _datetime_expression(alias: str, valid_alias: str):
+def _datetime_expression(alias: str):
     return Case(
         When(
             **{
                 f"{alias}__regex": ROW_DATETIME_SORT_PATTERN,
-                valid_alias: True,
                 "then": Cast(alias, DateTimeField()),
             }
         ),
@@ -906,14 +900,8 @@ def _apply_row_field_filters(
             filter_value = _normalize_datetime_filter_value(value)
             if filter_value is None:
                 return queryset.none()
-            valid_alias = f"{alias}_datetime_valid"
             datetime_alias = f"{alias}_datetime"
-            queryset = queryset.annotate(
-                **{valid_alias: _datetime_input_is_valid_expression(alias)}
-            )
-            queryset = queryset.annotate(
-                **{datetime_alias: _datetime_expression(alias, valid_alias)}
-            )
+            queryset = queryset.annotate(**{datetime_alias: _datetime_expression(alias)})
             lookup = "gt" if filter_operators[header] == ROW_FILTER_ABOVE else "lt"
             queryset = queryset.filter(**{f"{datetime_alias}__{lookup}": filter_value})
         else:
@@ -1000,15 +988,7 @@ def apply_dataset_row_sort(queryset, dataset, selected_sort: str, sort_direction
         )
         sort_expression = F("rowset_sort_number")
     elif sort_column["type"] in ROW_DATETIME_SORT_TYPES:
-        queryset = queryset.annotate(
-            rowset_sort_datetime_valid=_datetime_input_is_valid_expression("rowset_sort_text")
-        )
-        queryset = queryset.annotate(
-            rowset_sort_datetime=_datetime_expression(
-                "rowset_sort_text",
-                "rowset_sort_datetime_valid",
-            )
-        )
+        queryset = queryset.annotate(rowset_sort_datetime=_datetime_expression("rowset_sort_text"))
         sort_expression = F("rowset_sort_datetime")
     else:
         sort_expression = Lower("rowset_sort_text")
