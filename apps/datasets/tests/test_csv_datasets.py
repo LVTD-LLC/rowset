@@ -317,9 +317,19 @@ def add_invalid_datetime_row(dataset):
                     "event_at": "2026-05-14T29:00:00Z",
                 },
             ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=6,
+                index_value="E-6",
+                data={
+                    "event_id": "E-6",
+                    "event_name": "Invalid year",
+                    "event_at": "0000-01-01",
+                },
+            ),
         ]
     )
-    dataset.row_count = 5
+    dataset.row_count = 6
     dataset.save(update_fields=["row_count"])
     return dataset
 
@@ -1250,6 +1260,7 @@ def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_clien
     assert "Offset early" not in above_content
     assert "Invalid date" not in above_content
     assert "Invalid time" not in above_content
+    assert "Invalid year" not in above_content
     assert 'name="filter_op_2"' in above_content
     assert '<option value="above" selected>Above</option>' in above_content
 
@@ -1266,6 +1277,7 @@ def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_clien
     assert "Next day" not in below_content
     assert "Invalid date" not in below_content
     assert "Invalid time" not in below_content
+    assert "Invalid year" not in below_content
 
 
 def test_dataset_detail_filters_choice_columns_by_exact_choice(auth_client, profile):
@@ -2333,6 +2345,7 @@ def test_dataset_row_service_sorts_invalid_datetime_cells_last(profile):
         "Next day",
         "Invalid date",
         "Invalid time",
+        "Invalid year",
     ]
 
 

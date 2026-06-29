@@ -74,19 +74,23 @@ ROW_DATETIME_SORT_TYPES = {
 ROW_ORDERED_FILTER_TYPES = ROW_NUMERIC_SORT_TYPES | ROW_DATETIME_SORT_TYPES
 ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
 ROW_NUMERIC_FILTER_PATTERN = r"-?\d+(\.\d+)?"
+ROW_YEAR_PATTERN = r"(000[1-9]|00[1-9][0-9]|0[1-9][0-9]{2}|[1-9][0-9]{3})"
 ROW_LEAP_YEAR_PATTERN = (
-    r"(\d{2}(0[48]|[2468][048]|[13579][26])|([02468][048]|[13579][26])00)"
+    r"([0-9]{2}(0[48]|[2468][048]|[13579][26])"
+    r"|(0[48]|[2468][048]|[13579][26])00)"
 )
 ROW_MONTH_DAY_PATTERN = (
-    r"((01|03|05|07|08|10|12)-(0[1-9]|[12]\d|3[01])"
-    r"|(04|06|09|11)-(0[1-9]|[12]\d|30)"
-    r"|02-(0[1-9]|1\d|2[0-8]))"
+    r"((01|03|05|07|08|10|12)-(0[1-9]|[12][0-9]|3[01])"
+    r"|(04|06|09|11)-(0[1-9]|[12][0-9]|30)"
+    r"|02-(0[1-9]|1[0-9]|2[0-8]))"
 )
-ROW_ISO_DATE_PATTERN = rf"(\d{{4}}-{ROW_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}-02-29)"
+ROW_ISO_DATE_PATTERN = (
+    rf"({ROW_YEAR_PATTERN}-{ROW_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}-02-29)"
+)
 ROW_TIME_PATTERN = (
-    r"([T ]([01]\d|2[0-3]):[0-5]\d"
-    r"(:[0-5]\d(\.\d{1,6})?)?"
-    r"(Z|[+-]([01]\d|2[0-3]):[0-5]\d)?)?"
+    r"([T ]([01][0-9]|2[0-3]):[0-5][0-9]"
+    r"(:[0-5][0-9](\.[0-9]{1,6})?)?"
+    r"(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])?)?"
 )
 ROW_DATETIME_SORT_PATTERN = rf"^{ROW_ISO_DATE_PATTERN}{ROW_TIME_PATTERN}$"
 ROW_FILTER_OPERATOR_ALIASES = {
