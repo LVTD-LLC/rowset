@@ -67,7 +67,7 @@ def user_settings_context(
             type=Authenticator.Type.WEBAUTHN,
         ).count(),
         "agent_api_key_form": AgentApiKeyCreateForm(profile=profile),
-        "agent_api_keys": profile.agent_api_keys.all(),
+        "agent_api_keys": profile.agent_api_keys.filter(revoked_at__isnull=True),
         "created_agent_api_key": created_agent_api_key,
     }
 

@@ -75,30 +75,29 @@
       </div>
       {% endif %}
 
-      <form method="post" action="{% url 'create_agent_api_key' %}" class="grid grid-cols-1 gap-3 border-b border-slate-200 p-5 dark:border-slate-800 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,auto)_auto] sm:items-end">
+      <form method="post" action="{% url 'create_agent_api_key' %}" class="grid grid-cols-1 gap-x-3 gap-y-3 border-b border-slate-200 p-5 dark:border-slate-800 md:grid-cols-[minmax(0,1fr)_minmax(12rem,14rem)_auto] md:items-end">
         {% csrf_token %}
-        <div>
+        <div class="order-1 md:col-start-1 md:row-start-1">
           <label for="agent-api-key-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">App or agent name</label>
           {% render_field agent_api_key_form.name id="agent-api-key-name" autocomplete="off" placeholder="App or AI agent name for dataset change history" aria-describedby="agent-api-key-name-help" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
-          <p id="agent-api-key-name-help" class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ agent_api_key_form.name.help_text }}</p>
         </div>
-        <div>
+        <p id="agent-api-key-name-help" class="order-2 text-sm leading-6 text-slate-600 dark:text-slate-300 md:col-start-1 md:row-start-2">{{ agent_api_key_form.name.help_text }}</p>
+        <div class="order-3 md:col-start-2 md:row-start-1">
           <label for="agent-api-key-access-level" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Permission</label>
           {% render_field agent_api_key_form.access_level id="agent-api-key-access-level" class="fb-input mt-2 block w-full px-3 py-2 text-sm" %}
         </div>
-        <button type="submit" class="fb-button-primary">Create key</button>
+        <button type="submit" class="fb-button-primary order-4 w-full md:col-start-3 md:row-start-1 md:w-auto">Create key</button>
       </form>
 
       <div>
-        <div class="hidden grid-cols-[minmax(0,1.3fr)_auto_auto_auto_minmax(10rem,auto)] gap-4 bg-white px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400 sm:grid">
+        <div class="hidden grid-cols-[minmax(0,1.35fr)_auto_auto_minmax(10rem,auto)] gap-4 bg-white px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400 sm:grid">
           <span>Key</span>
           <span>Permission</span>
           <span>Last used</span>
-          <span>Status</span>
           <span class="text-right">Actions</span>
         </div>
         {% for agent_api_key in agent_api_keys %}
-        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-slate-200 px-5 py-4 text-sm dark:border-slate-800 sm:grid-cols-[minmax(0,1.3fr)_auto_auto_auto_minmax(10rem,auto)] sm:items-center">
+        <div class="grid grid-cols-1 gap-3 border-t border-slate-200 px-5 py-4 text-sm dark:border-slate-800 sm:grid-cols-[minmax(0,1.35fr)_auto_auto_minmax(10rem,auto)] sm:items-center">
           <div class="min-w-0">
             <p class="break-words font-semibold text-slate-900 dark:text-slate-100">{{ agent_api_key.name }}</p>
             <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
@@ -109,28 +108,21 @@
           </div>
           <span class="hidden whitespace-nowrap text-slate-600 dark:text-slate-300 sm:block">{{ agent_api_key.get_access_level_display }}</span>
           <span class="hidden whitespace-nowrap text-slate-600 dark:text-slate-300 sm:block">{% if agent_api_key.last_used_at %}{{ agent_api_key.last_used_at|date:"M j, Y" }}{% else %}Never{% endif %}</span>
-          <span class="w-fit whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold {% if agent_api_key.revoked_at %}border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400{% else %}border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200{% endif %}">{% if agent_api_key.revoked_at %}Revoked{% else %}Active{% endif %}</span>
-          <span class="col-span-2 flex flex-wrap justify-start gap-2 sm:col-span-1 sm:justify-end">
-            {% if not agent_api_key.revoked_at %}
+          <span class="flex flex-wrap justify-start gap-2 sm:justify-end">
             <span data-controller="copy" data-copy-url-value="{% url 'agent_api_key_setup_prompt' agent_api_key.uuid %}">
               <button type="button" data-action="copy#copy" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs">
                 <span data-copy-target="label">Copy setup prompt</span>
               </button>
             </span>
-            {% endif %}
-            {% if not agent_api_key.revoked_at %}
             <form method="post" action="{% url 'revoke_agent_api_key' agent_api_key.uuid %}">
               {% csrf_token %}
               <button type="submit" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs text-red-700 hover:border-red-200 hover:bg-red-50 dark:text-red-300 dark:hover:border-red-900/60 dark:hover:bg-red-950/30">Revoke</button>
             </form>
-            {% else %}
-            <span class="text-slate-400 dark:text-slate-500">-</span>
-            {% endif %}
           </span>
         </div>
         {% empty %}
         <div class="border-t border-slate-200 px-5 py-8 dark:border-slate-800">
-          <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">No API keys yet.</p>
+          <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">No active API keys.</p>
           <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Create one for a trusted app, deployment, or AI agent that needs private Rowset access.</p>
         </div>
         {% endfor %}
