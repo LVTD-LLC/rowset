@@ -41,6 +41,7 @@ from apps.datasets.services import (
     ROW_FILTER_BELOW,
     ROW_FILTER_CONTAINS,
     ROW_FILTER_IS,
+    ROW_ORDERED_FILTER_TYPES,
     ROW_SORT_DESC,
     apply_dataset_row_query,
     column_definitions,
@@ -787,6 +788,18 @@ def _column_sort_labels(column_type: str) -> tuple[str, str]:
     return "A to Z", "Z to A"
 
 
+def _column_has_ordered_filter(column_type: str) -> bool:
+    return column_type in ROW_ORDERED_FILTER_TYPES
+
+
+def _column_filter_placeholder(column_type: str) -> str:
+    if column_type == DatasetColumnType.DATE:
+        return "Date"
+    if column_type == DatasetColumnType.DATETIME:
+        return "Date/time"
+    return "Number"
+
+
 def _row_filter_fields(
     dataset: Dataset,
     request,
@@ -840,6 +853,8 @@ def _row_filter_fields(
                     DatasetColumnType.INTEGER,
                     DatasetColumnType.NUMBER,
                 },
+                "is_ordered_filter": _column_has_ordered_filter(column_type),
+                "filter_placeholder": _column_filter_placeholder(column_type),
                 "choices": column.get("choices", []),
                 "operator_label": (
                     "Contains"

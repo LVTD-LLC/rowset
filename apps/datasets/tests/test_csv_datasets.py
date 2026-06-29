@@ -44,11 +44,12 @@ from apps.datasets.models import (
 from apps.datasets.services import (
     CSVParseError,
     DatasetImageError,
-    prepare_dataset_image,
+    apply_dataset_row_query,
     choice_constraints_from_schema,
     decode_image_base64,
     infer_column_type,
     normalize_column_schema,
+    prepare_dataset_image,
     preview_csv_file,
     preview_uploaded_table,
     rows_to_sqlite_bytes,
@@ -272,6 +273,174 @@ def configure_filterable_dataset(dataset):
             ),
         ]
     )
+    return dataset
+
+
+def configure_datetime_dataset(dataset):
+    dataset.headers = ["event_id", "event_name", "event_at"]
+    dataset.column_schema = {
+        "event_id": {"type": DatasetColumnType.TEXT},
+        "event_name": {"type": DatasetColumnType.TEXT},
+        "event_at": {"type": DatasetColumnType.DATETIME},
+    }
+    dataset.index_column = "event_id"
+    dataset.row_count = 3
+    dataset.rows.all().delete()
+    dataset.save(update_fields=["headers", "column_schema", "index_column", "row_count"])
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=1,
+                index_value="E-1",
+                data={
+                    "event_id": "E-1",
+                    "event_name": "UTC later",
+                    "event_at": "2026-05-14T09:00:00Z",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=2,
+                index_value="E-2",
+                data={
+                    "event_id": "E-2",
+                    "event_name": "Offset early",
+                    "event_at": "2026-05-14T10:00:00+02:00",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=3,
+                index_value="E-3",
+                data={
+                    "event_id": "E-3",
+                    "event_name": "Next day",
+                    "event_at": "2026-05-15T08:00:00Z",
+                },
+            ),
+        ]
+    )
+    return dataset
+
+
+def add_invalid_datetime_row(dataset):
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=4,
+                index_value="E-4",
+                data={
+                    "event_id": "E-4",
+                    "event_name": "Invalid date",
+                    "event_at": "2026-13-01",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=5,
+                index_value="E-5",
+                data={
+                    "event_id": "E-5",
+                    "event_name": "Invalid time",
+                    "event_at": "2026-05-14T29:00:00Z",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=6,
+                index_value="E-6",
+                data={
+                    "event_id": "E-6",
+                    "event_name": "Invalid year",
+                    "event_at": "0000-01-01",
+                },
+            ),
+        ]
+    )
+    dataset.row_count = 6
+    dataset.save(update_fields=["row_count"])
+    return dataset
+
+
+def add_supported_datetime_format_rows(dataset):
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=4,
+                index_value="E-4",
+                data={
+                    "event_id": "E-4",
+                    "event_name": "YMD slash",
+                    "event_at": "2026/05/13",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=5,
+                index_value="E-5",
+                data={
+                    "event_id": "E-5",
+                    "event_name": "MDY slash",
+                    "event_at": "05/14/2026 08:45",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=6,
+                index_value="E-6",
+                data={
+                    "event_id": "E-6",
+                    "event_name": "Century leap",
+                    "event_at": "2000-02-29",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=7,
+                index_value="E-7",
+                data={
+                    "event_id": "E-7",
+                    "event_name": "Century slash leap",
+                    "event_at": "02/29/2000",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=8,
+                index_value="E-8",
+                data={
+                    "event_id": "E-8",
+                    "event_name": "YMD slash datetime",
+                    "event_at": "2026/5/13 8:45",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=9,
+                index_value="E-9",
+                data={
+                    "event_id": "E-9",
+                    "event_name": "MDY slash date",
+                    "event_at": "5/14/2026",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=10,
+                index_value="E-10",
+                data={
+                    "event_id": "E-10",
+                    "event_name": "MDY slash compact time",
+                    "event_at": "5/14/2026 8:5",
+                },
+            ),
+        ]
+    )
+    dataset.row_count = dataset.rows.count()
+    dataset.save(update_fields=["row_count"])
     return dataset
 
 
@@ -1181,6 +1350,44 @@ def test_dataset_detail_filters_numeric_columns_with_above_and_below(auth_client
     assert "Grace Hopper" in below_content
     assert "Ada Lovelace" not in below_content
     assert "Katherine Johnson" not in below_content
+
+
+def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_client, profile):
+    dataset = configure_datetime_dataset(create_ready_dataset(profile))
+    add_invalid_datetime_row(dataset)
+
+    above_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_2": "2026-05-14T08:30", "filter_op_2": "above"},
+    )
+    above_content = above_response.content.decode()
+
+    assert above_response.status_code == 200
+    assert above_response.context["row_page_obj"].paginator.count == 2
+    assert above_response.context["row_filter_fields"][2]["operator"] == "above"
+    assert "UTC later" in above_content
+    assert "Next day" in above_content
+    assert "Offset early" not in above_content
+    assert "Invalid date" not in above_content
+    assert "Invalid time" not in above_content
+    assert "Invalid year" not in above_content
+    assert 'name="filter_op_2"' in above_content
+    assert '<option value="above" selected>Above</option>' in above_content
+
+    below_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_2": "2026-05-14T08:30", "filter_op_2": "below"},
+    )
+    below_content = below_response.content.decode()
+
+    assert below_response.status_code == 200
+    assert below_response.context["row_page_obj"].paginator.count == 1
+    assert "Offset early" in below_content
+    assert "UTC later" not in below_content
+    assert "Next day" not in below_content
+    assert "Invalid date" not in below_content
+    assert "Invalid time" not in below_content
+    assert "Invalid year" not in below_content
 
 
 def test_dataset_detail_filters_choice_columns_by_exact_choice(auth_client, profile):
@@ -2805,6 +3012,116 @@ def test_dataset_row_service_preserves_native_falsy_filter_values(profile):
     assert payload["count"] == 1
     assert payload["filters"] == {"active": "False"}
     assert [row["data"]["name"] for row in payload["rows"]] == ["Grace Hopper"]
+
+
+def test_dataset_row_service_sorts_datetime_columns_chronologically(profile):
+    dataset = configure_datetime_dataset(create_ready_dataset(profile))
+
+    payload = list_profile_dataset_rows(
+        profile,
+        str(dataset.key),
+        sort="event_at",
+    )
+
+    assert [row["data"]["event_name"] for row in payload["rows"]] == [
+        "Offset early",
+        "UTC later",
+        "Next day",
+    ]
+
+
+def test_dataset_row_service_sorts_invalid_datetime_cells_last(profile):
+    dataset = configure_datetime_dataset(create_ready_dataset(profile))
+    add_invalid_datetime_row(dataset)
+
+    payload = list_profile_dataset_rows(
+        profile,
+        str(dataset.key),
+        sort="event_at",
+    )
+
+    assert [row["data"]["event_name"] for row in payload["rows"]] == [
+        "Offset early",
+        "UTC later",
+        "Next day",
+        "Invalid date",
+        "Invalid time",
+        "Invalid year",
+    ]
+
+
+def test_dataset_row_service_handles_supported_non_iso_datetime_formats(profile):
+    dataset = configure_datetime_dataset(create_ready_dataset(profile))
+    add_supported_datetime_format_rows(dataset)
+
+    sorted_payload = list_profile_dataset_rows(
+        profile,
+        str(dataset.key),
+        sort="event_at",
+    )
+
+    assert [row["data"]["event_name"] for row in sorted_payload["rows"]] == [
+        "Century leap",
+        "Century slash leap",
+        "YMD slash",
+        "YMD slash datetime",
+        "MDY slash date",
+        "Offset early",
+        "MDY slash compact time",
+        "MDY slash",
+        "UTC later",
+        "Next day",
+    ]
+
+    recent_filtered_queryset, row_query = apply_dataset_row_query(
+        dataset.rows.all(),
+        dataset,
+        filters={"event_at": "2026-05-14T08:30"},
+        filter_operators={"event_at": "above"},
+        sort="event_at",
+        strict=True,
+    )
+
+    assert row_query["filter_operators"] == {"event_at": "above"}
+    assert [row.data["event_name"] for row in recent_filtered_queryset] == [
+        "MDY slash",
+        "UTC later",
+        "Next day",
+    ]
+
+    ymd_slash_filtered_queryset, row_query = apply_dataset_row_query(
+        dataset.rows.all(),
+        dataset,
+        filters={"event_at": "2026/5/13 8:45"},
+        filter_operators={"event_at": "above"},
+        sort="event_at",
+        strict=True,
+    )
+
+    assert row_query["filter_operators"] == {"event_at": "above"}
+    assert [row.data["event_name"] for row in ymd_slash_filtered_queryset] == [
+        "MDY slash date",
+        "Offset early",
+        "MDY slash compact time",
+        "MDY slash",
+        "UTC later",
+        "Next day",
+    ]
+
+    century_filtered_queryset, row_query = apply_dataset_row_query(
+        dataset.rows.all(),
+        dataset,
+        filters={"event_at": "2001-01-01"},
+        filter_operators={"event_at": "below"},
+        sort="event_at",
+        strict=True,
+    )
+
+    assert row_query["filter_operators"] == {"event_at": "below"}
+    assert [row.data["event_name"] for row in century_filtered_queryset] == [
+        "Century leap",
+        "Century slash leap",
+    ]
 
 
 def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):

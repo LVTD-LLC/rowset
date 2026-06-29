@@ -17,9 +17,21 @@ from uuid import UUID
 from xml.sax.saxutils import escape
 
 import polars as pl
-from django.db.models import Case, F, FloatField, Q, TextField, Value, When
+from django.conf import settings
+from django.db.models import (
+    Case,
+    DateTimeField,
+    F,
+    FloatField,
+    Func,
+    Q,
+    TextField,
+    Value,
+    When,
+)
 from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast, Lower, Replace, Trim
+from django.db.models.functions import Cast, Concat, Lower, Replace, Substr, Trim
+from django.utils import timezone
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from apps.datasets.choices import DatasetColumnType
@@ -76,8 +88,54 @@ ROW_NUMERIC_SORT_TYPES = {
     DatasetColumnType.INTEGER,
     DatasetColumnType.NUMBER,
 }
+ROW_DATETIME_SORT_TYPES = {
+    DatasetColumnType.DATE,
+    DatasetColumnType.DATETIME,
+}
+ROW_ORDERED_FILTER_TYPES = ROW_NUMERIC_SORT_TYPES | ROW_DATETIME_SORT_TYPES
 ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
 ROW_NUMERIC_FILTER_PATTERN = r"-?\d+(\.\d+)?"
+ROW_YEAR_PATTERN = r"(000[1-9]|00[1-9][0-9]|0[1-9][0-9]{2}|[1-9][0-9]{3})"
+ROW_NON_CENTURY_LEAP_YEAR_PATTERN = r"[0-9]{2}(0[48]|[2468][048]|[13579][26])"
+ROW_CENTURY_LEAP_YEAR_PATTERN = r"(0[48]|[2468][048]|[13579][26])00"
+ROW_LEAP_YEAR_PATTERN = (
+    rf"({ROW_NON_CENTURY_LEAP_YEAR_PATTERN}|{ROW_CENTURY_LEAP_YEAR_PATTERN})"
+)
+ROW_MONTH_DAY_PATTERN = (
+    r"((01|03|05|07|08|10|12)-(0[1-9]|[12][0-9]|3[01])"
+    r"|(04|06|09|11)-(0[1-9]|[12][0-9]|30)"
+    r"|02-(0[1-9]|1[0-9]|2[0-8]))"
+)
+ROW_SLASH_MONTH_DAY_PATTERN = (
+    r"((0?[13578]|1[02])/(0?[1-9]|[12][0-9]|3[01])"
+    r"|(0?[469]|11)/(0?[1-9]|[12][0-9]|30)"
+    r"|0?2/(0?[1-9]|1[0-9]|2[0-8]))"
+)
+ROW_ISO_DATE_PATTERN = (
+    rf"({ROW_YEAR_PATTERN}-{ROW_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}-02-29)"
+)
+ROW_TIME_PATTERN = (
+    r"([T ]([01][0-9]|2[0-3]):[0-5][0-9]"
+    r"(:[0-5][0-9](\.[0-9]{1,6})?)?"
+    r"(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])?)?"
+)
+ROW_SPACE_TIME_PATTERN = (
+    r"( ([01]?[0-9]|2[0-3]):[0-5]?[0-9]"
+    r"(:[0-5]?[0-9](\.[0-9]{1,6})?)?)?"
+)
+ROW_DATETIME_SORT_PATTERN = rf"^{ROW_ISO_DATE_PATTERN}{ROW_TIME_PATTERN}$"
+ROW_SLASH_YMD_DATE_PATTERN = (
+    rf"({ROW_YEAR_PATTERN}/{ROW_SLASH_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}/0?2/0?29)"
+)
+ROW_SLASH_MDY_DATE_PATTERN = (
+    rf"({ROW_SLASH_MONTH_DAY_PATTERN}/{ROW_YEAR_PATTERN}|0?2/0?29/{ROW_LEAP_YEAR_PATTERN})"
+)
+ROW_SLASH_YMD_DATETIME_SORT_PATTERN = (
+    rf"^{ROW_SLASH_YMD_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
+)
+ROW_SLASH_MDY_DATETIME_SORT_PATTERN = (
+    rf"^{ROW_SLASH_MDY_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
+)
 ROW_FILTER_OPERATOR_ALIASES = {
     "eq": ROW_FILTER_IS,
     "equals": ROW_FILTER_IS,
@@ -325,6 +383,10 @@ def _parse_datetime(value: str) -> datetime | None:
     formats = (
         "%Y/%m/%d",
         "%m/%d/%Y",
+        "%Y/%m/%d %H:%M:%S.%f",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d %H:%M",
+        "%m/%d/%Y %H:%M:%S.%f",
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%d %H:%M",
         "%m/%d/%Y %H:%M:%S",
@@ -841,7 +903,7 @@ def default_dataset_row_filter_operator(column_type: str) -> str:
 def dataset_row_filter_operators(column_type: str) -> tuple[str, ...]:
     if column_type in {DatasetColumnType.BOOLEAN, DatasetColumnType.CHOICE}:
         return (ROW_FILTER_IS,)
-    if column_type in ROW_NUMERIC_SORT_TYPES:
+    if column_type in ROW_ORDERED_FILTER_TYPES:
         return (ROW_FILTER_CONTAINS, ROW_FILTER_ABOVE, ROW_FILTER_BELOW)
     return (ROW_FILTER_CONTAINS,)
 
@@ -960,6 +1022,74 @@ def _normalize_numeric_filter_value(value: str) -> float | None:
     return float(normalized)
 
 
+def _normalize_datetime_filter_value(value: str) -> datetime | None:
+    parsed = _parse_datetime(str(value or "").strip())
+    if parsed is None:
+        return None
+    if settings.USE_TZ and timezone.is_naive(parsed):
+        return timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+def _slash_ymd_datetime_text_expression(alias: str):
+    return Replace(
+        Cast(alias, TextField()),
+        Value("/", output_field=TextField()),
+        Value("-", output_field=TextField()),
+        output_field=TextField(),
+    )
+
+
+def _split_part_expression(expression, delimiter: str, field: int):
+    return Func(
+        expression,
+        Value(delimiter, output_field=TextField()),
+        Value(field),
+        function="split_part",
+        output_field=TextField(),
+    )
+
+
+def _slash_mdy_datetime_text_expression(alias: str):
+    text_expression = Cast(alias, TextField())
+    year_and_time = _split_part_expression(text_expression, "/", 3)
+    separator = Value("-", output_field=TextField())
+    return Concat(
+        _split_part_expression(year_and_time, " ", 1),
+        separator,
+        _split_part_expression(text_expression, "/", 1),
+        separator,
+        _split_part_expression(text_expression, "/", 2),
+        Substr(year_and_time, 5),
+        output_field=TextField(),
+    )
+
+
+def _datetime_expression(alias: str):
+    return Case(
+        When(
+            **{
+                f"{alias}__regex": ROW_DATETIME_SORT_PATTERN,
+                "then": Cast(alias, DateTimeField()),
+            }
+        ),
+        When(
+            **{
+                f"{alias}__regex": ROW_SLASH_YMD_DATETIME_SORT_PATTERN,
+                "then": Cast(_slash_ymd_datetime_text_expression(alias), DateTimeField()),
+            }
+        ),
+        When(
+            **{
+                f"{alias}__regex": ROW_SLASH_MDY_DATETIME_SORT_PATTERN,
+                "then": Cast(_slash_mdy_datetime_text_expression(alias), DateTimeField()),
+            }
+        ),
+        default=Value(None),
+        output_field=DateTimeField(),
+    )
+
+
 def _or_header_value_search(queryset, headers: list[str], search_query: str):
     if not headers:
         return queryset.none()
@@ -1038,6 +1168,17 @@ def _apply_row_field_filters(
             )
             lookup = "gt" if filter_operators[header] == ROW_FILTER_ABOVE else "lt"
             queryset = queryset.filter(**{f"{number_alias}__{lookup}": filter_value})
+        elif (
+            column["type"] in ROW_DATETIME_SORT_TYPES
+            and filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
+        ):
+            filter_value = _normalize_datetime_filter_value(value)
+            if filter_value is None:
+                return queryset.none()
+            datetime_alias = f"{alias}_datetime"
+            queryset = queryset.annotate(**{datetime_alias: _datetime_expression(alias)})
+            lookup = "gt" if filter_operators[header] == ROW_FILTER_ABOVE else "lt"
+            queryset = queryset.filter(**{f"{datetime_alias}__{lookup}": filter_value})
         else:
             queryset = queryset.filter(**{f"{alias}__icontains": value})
     return queryset
@@ -1121,6 +1262,9 @@ def apply_dataset_row_sort(queryset, dataset, selected_sort: str, sort_direction
             ),
         )
         sort_expression = F("rowset_sort_number")
+    elif sort_column["type"] in ROW_DATETIME_SORT_TYPES:
+        queryset = queryset.annotate(rowset_sort_datetime=_datetime_expression("rowset_sort_text"))
+        sort_expression = F("rowset_sort_datetime")
     else:
         sort_expression = Lower("rowset_sort_text")
     if sort_direction == ROW_SORT_DESC:
