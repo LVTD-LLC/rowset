@@ -358,6 +358,26 @@ def add_supported_datetime_format_rows(dataset):
                     "event_at": "05/14/2026 08:45",
                 },
             ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=6,
+                index_value="E-6",
+                data={
+                    "event_id": "E-6",
+                    "event_name": "Century leap",
+                    "event_at": "2000-02-29",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=7,
+                index_value="E-7",
+                data={
+                    "event_id": "E-7",
+                    "event_name": "Century slash leap",
+                    "event_at": "02/29/2000",
+                },
+            ),
         ]
     )
     dataset.row_count = dataset.rows.count()
@@ -2391,6 +2411,8 @@ def test_dataset_row_service_handles_supported_non_iso_datetime_formats(profile)
     )
 
     assert [row["data"]["event_name"] for row in sorted_payload["rows"]] == [
+        "Century leap",
+        "Century slash leap",
         "YMD slash",
         "Offset early",
         "MDY slash",
@@ -2398,7 +2420,7 @@ def test_dataset_row_service_handles_supported_non_iso_datetime_formats(profile)
         "Next day",
     ]
 
-    filtered_queryset, row_query = apply_dataset_row_query(
+    recent_filtered_queryset, row_query = apply_dataset_row_query(
         dataset.rows.all(),
         dataset,
         filters={"event_at": "2026-05-14T08:30"},
@@ -2408,10 +2430,25 @@ def test_dataset_row_service_handles_supported_non_iso_datetime_formats(profile)
     )
 
     assert row_query["filter_operators"] == {"event_at": "above"}
-    assert [row.data["event_name"] for row in filtered_queryset] == [
+    assert [row.data["event_name"] for row in recent_filtered_queryset] == [
         "MDY slash",
         "UTC later",
         "Next day",
+    ]
+
+    century_filtered_queryset, row_query = apply_dataset_row_query(
+        dataset.rows.all(),
+        dataset,
+        filters={"event_at": "2001-01-01"},
+        filter_operators={"event_at": "below"},
+        sort="event_at",
+        strict=True,
+    )
+
+    assert row_query["filter_operators"] == {"event_at": "below"}
+    assert [row.data["event_name"] for row in century_filtered_queryset] == [
+        "Century leap",
+        "Century slash leap",
     ]
 
 
