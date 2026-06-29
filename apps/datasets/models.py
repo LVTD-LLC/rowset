@@ -1,20 +1,52 @@
 import uuid
+from pathlib import Path
 
 from django.contrib.auth.hashers import check_password
 from django.contrib.postgres.indexes import GinIndex
+from django.core.files.storage import storages
 from django.core.validators import MaxLengthValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models.functions import Lower
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.core.base_models import BaseModel
 from apps.core.models import AgentApiKey, Profile
-from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.choices import DatasetAssetStatus, DatasetMutationType, DatasetStatus
 from apps.datasets.constants import (
     MAX_CSV_UPLOAD_BYTES,
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
 )
+
+DATASET_ASSET_STORAGE_ALIAS = "dataset_assets"
+
+
+def dataset_asset_storage():
+    return storages[DATASET_ASSET_STORAGE_ALIAS]
+
+
+def _asset_upload_extension(filename: str, fallback: str = ".bin") -> str:
+    extension = Path(filename or "").suffix.lower()
+    if not extension:
+        return fallback
+    return extension[:16]
+
+
+def dataset_asset_upload_path(instance, filename: str) -> str:
+    return (
+        f"dataset-assets/{instance.profile_id}/{instance.dataset_id}/"
+        f"{instance.key}/original{_asset_upload_extension(filename)}"
+    )
+
+
+def dataset_asset_thumbnail_upload_path(instance, filename: str) -> str:
+    return (
+        f"dataset-assets/{instance.profile_id}/{instance.dataset_id}/"
+        f"{instance.key}/thumbnail{_asset_upload_extension(filename, '.jpg')}"
+    )
 
 
 class Project(BaseModel):
@@ -23,6 +55,7 @@ class Project(BaseModel):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
     metadata = models.JSONField(default=dict, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ["name", "-created_at"]
@@ -30,7 +63,8 @@ class Project(BaseModel):
             models.UniqueConstraint(
                 "profile",
                 Lower("name"),
-                name="unique_profile_project_name_ci",
+                condition=models.Q(archived_at__isnull=True),
+                name="unique_active_profile_project_name_ci",
             )
         ]
 
@@ -210,6 +244,179 @@ class DatasetRow(BaseModel):
     @property
     def updated_by_actor_label(self) -> str:
         return agent_actor_label(self.updated_by_agent_api_key)
+
+
+class DatasetAsset(BaseModel):
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="dataset_assets")
+    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name="assets")
+    row = models.ForeignKey(DatasetRow, on_delete=models.CASCADE, related_name="assets")
+    created_by_agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_dataset_assets",
+    )
+    key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    column_name = models.CharField(max_length=255)
+    file = models.FileField(
+        storage=dataset_asset_storage,
+        upload_to=dataset_asset_upload_path,
+        max_length=500,
+    )
+    thumbnail = models.FileField(
+        storage=dataset_asset_storage,
+        upload_to=dataset_asset_thumbnail_upload_path,
+        max_length=500,
+        blank=True,
+    )
+    original_filename = models.CharField(max_length=255, blank=True, default="")
+    content_type = models.CharField(max_length=100)
+    byte_size = models.PositiveIntegerField(default=0)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    checksum = models.CharField(max_length=64, db_index=True)
+    status = models.CharField(
+        max_length=32,
+        choices=DatasetAssetStatus.choices,
+        default=DatasetAssetStatus.READY,
+    )
+
+    class Meta:
+        ordering = ["dataset_id", "row_id", "column_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["row", "column_name"],
+                name="unique_dataset_row_asset_column",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["profile", "dataset"], name="dataset_asset_owner_idx"),
+            models.Index(fields=["dataset", "row"], name="dataset_asset_row_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.dataset_id} row {self.row_id} {self.column_name}"
+
+    @property
+    def asset_ref(self) -> str:
+        return f"asset:{self.key}"
+
+
+class DatasetAssetFileDeletion(BaseModel):
+    storage_alias = models.CharField(max_length=100, default=DATASET_ASSET_STORAGE_ALIAS)
+    file_name = models.CharField(max_length=500)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    last_attempted_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        ordering = ["deleted_at", "created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["storage_alias", "file_name"],
+                name="unique_dataset_asset_file_del",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["deleted_at", "created_at"],
+                name="dataset_asset_del_pending_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return self.file_name
+
+
+def record_dataset_asset_file_deletion_failure(
+    storage_alias: str,
+    file_name: str,
+    exc: Exception,
+) -> None:
+    now = timezone.now()
+    message = str(exc)[:1000]
+    deletion, created = DatasetAssetFileDeletion.objects.get_or_create(
+        storage_alias=storage_alias,
+        file_name=file_name,
+        defaults={
+            "attempts": 1,
+            "last_error": message,
+            "last_attempted_at": now,
+        },
+    )
+    if created:
+        return
+    DatasetAssetFileDeletion.objects.filter(pk=deletion.pk).update(
+        attempts=models.F("attempts") + 1,
+        last_error=message,
+        last_attempted_at=now,
+        deleted_at=None,
+        updated_at=now,
+    )
+
+
+def retry_dataset_asset_file_deletions(limit: int = 100) -> dict[str, int]:
+    pending = list(
+        DatasetAssetFileDeletion.objects.filter(deleted_at__isnull=True).order_by(
+            "created_at", "id"
+        )[:limit]
+    )
+    result = {"attempted": len(pending), "deleted": 0, "failed": 0}
+    for deletion in pending:
+        now = timezone.now()
+        try:
+            storages[deletion.storage_alias].delete(deletion.file_name)
+        except Exception as exc:
+            deletion.attempts += 1
+            deletion.last_error = str(exc)[:1000]
+            deletion.last_attempted_at = now
+            deletion.save(
+                update_fields=[
+                    "attempts",
+                    "last_error",
+                    "last_attempted_at",
+                    "updated_at",
+                ]
+            )
+            result["failed"] += 1
+        else:
+            deletion.deleted_at = now
+            deletion.last_error = ""
+            deletion.last_attempted_at = now
+            deletion.save(
+                update_fields=[
+                    "deleted_at",
+                    "last_error",
+                    "last_attempted_at",
+                    "updated_at",
+                ]
+            )
+            result["deleted"] += 1
+    return result
+
+
+@receiver(post_delete, sender=DatasetAsset)
+def delete_dataset_asset_files(sender, instance: DatasetAsset, **kwargs) -> None:
+    file_names = [
+        (DATASET_ASSET_STORAGE_ALIAS, field.name)
+        for field in (instance.file, instance.thumbnail)
+        if field and field.name
+    ]
+    if not file_names:
+        return
+
+    def delete_files() -> None:
+        # Asset paths include the immutable asset key, so a replacement asset
+        # for the same row and column cannot reuse these captured file names.
+        for storage_alias, name in file_names:
+            try:
+                storages[storage_alias].delete(name)
+            except Exception as exc:
+                record_dataset_asset_file_deletion_failure(storage_alias, name, exc)
+
+    transaction.on_commit(delete_files)
 
 
 class DatasetRelationship(BaseModel):

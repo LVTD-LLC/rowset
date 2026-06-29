@@ -102,6 +102,28 @@ inside a fixed set:
 Choice cells can be blank. Non-blank row values must match one of the configured
 choices exactly.
 
+Image columns store private image assets. Create the column with type `image`,
+leave image cells blank during row writes, then attach the image with the image
+asset endpoint:
+
+```json
+{
+  "headers": ["sku", "name", "photo"],
+  "index_column": "sku",
+  "column_types": {
+    "sku": "text",
+    "name": "text",
+    "photo": {
+      "type": "image",
+      "description": "Primary product photo"
+    }
+  },
+  "rows": [
+    {"sku": "A-1", "name": "Adapter", "photo": ""}
+  ]
+}
+```
+
 ## Find datasets
 
 ```http
@@ -237,10 +259,55 @@ Updates semantic column metadata without changing stored row values.
 ```
 
 Supported types are `text`, `choice`, `integer`, `number`, `currency`, `boolean`,
-`date`, `datetime`, `email`, and `url`. Pass a metadata object when a column
-needs `description`, or when a `choice` column needs `type` and `choices`.
-Updating an existing column to `choice` fails if stored values are outside the
-allowed choices.
+`date`, `datetime`, `email`, `url`, `reference`, and `image`. Pass a metadata
+object when a column needs `description`, when a `choice` column needs `type`
+and `choices`, when a `reference` column needs `target`, or when an `image`
+column needs a description. Updating an existing column to `choice` fails if
+stored values are outside the allowed choices. Updating an existing column to
+`image` fails unless stored values are blank or existing Rowset asset
+references.
+
+## Attach an image
+
+Use the image attach endpoints after the target row exists. The request body
+uses base64-encoded JPEG, PNG, or WebP image bytes. You can include a data URI
+prefix, but plain base64 is preferred.
+
+Attach by Rowset row id:
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/rows/{row_id}/image
+Content-Type: application/json
+```
+
+Attach by the dataset index value:
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/rows/by-index/image?index_value={index_value}
+Content-Type: application/json
+```
+
+```json
+{
+  "column_name": "photo",
+  "filename": "adapter.png",
+  "content_type": "image/png",
+  "image_base64": "iVBORw0KGgo..."
+}
+```
+
+The response includes the updated row and an asset record. The row cell stores
+`asset:{key}`. Use the returned `content_url` or `thumbnail_url` with the same
+private API authentication when a client needs to fetch the image bytes.
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}/assets/{asset_key}
+GET {{ api_base_url }}/datasets/{dataset_key}/assets/{asset_key}/content?variant=thumbnail
+GET {{ api_base_url }}/datasets/{dataset_key}/assets/{asset_key}/content?variant=original
+```
+
+To remove an image from a row, patch the image column to an empty string. Rowset
+clears the cell and deletes the stored asset for that row and column.
 
 ## Update dataset context
 

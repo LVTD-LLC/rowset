@@ -1,3 +1,4 @@
+import base64
 import csv
 import io
 import json
@@ -11,11 +12,15 @@ import polars as pl
 import pytest
 from django.contrib import messages as message_constants
 from django.contrib.messages import get_messages
+from django.core.files.storage import storages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
+from PIL import Image
 
 from apps.api.services import (
+    DatasetServiceError,
+    attach_profile_dataset_image_asset,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
     serialize_dataset_detail,
@@ -23,14 +28,28 @@ from apps.api.services import (
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
+from apps.datasets.constants import MAX_DATASET_IMAGE_BYTES
 from apps.datasets.history import record_dataset_mutation
-from apps.datasets.models import Dataset, DatasetMutation, DatasetRelationship, DatasetRow, Project
+from apps.datasets.models import (
+    DATASET_ASSET_STORAGE_ALIAS,
+    Dataset,
+    DatasetAsset,
+    DatasetAssetFileDeletion,
+    DatasetMutation,
+    DatasetRelationship,
+    DatasetRow,
+    Project,
+    retry_dataset_asset_file_deletions,
+)
 from apps.datasets.services import (
     CSVParseError,
+    DatasetImageError,
     apply_dataset_row_query,
     choice_constraints_from_schema,
+    decode_image_base64,
     infer_column_type,
     normalize_column_schema,
+    prepare_dataset_image,
     preview_csv_file,
     preview_uploaded_table,
     rows_to_sqlite_bytes,
@@ -89,6 +108,16 @@ def parquet_upload(data=None):
         buffer.getvalue(),
         content_type="application/vnd.apache.parquet",
     )
+
+
+def image_base64() -> str:
+    return base64.b64encode(image_bytes()).decode()
+
+
+def image_bytes() -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (3, 2), (12, 34, 56)).save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 def xlsx_cell_texts(content: bytes) -> list[str]:
@@ -1972,6 +2001,94 @@ def test_project_detail_edit_query_shows_inline_project_form(auth_client, profil
     ) in content
 
 
+def test_project_detail_shows_delete_project_action(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Frontier")
+
+    response = auth_client.get(project.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert reverse("project_delete", args=[project.key]) in content
+    assert "Delete project" in content
+    assert (
+        "return confirm('Delete project Frontier? Assigned datasets will stay in Rowset "
+        "and become ungrouped. This cannot be undone.');"
+    ) in content
+
+
+def test_project_list_shows_delete_project_action(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Frontier")
+
+    response = auth_client.get(reverse("project_list"))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert reverse("project_delete", args=[project.key]) in content
+    assert (
+        "return confirm('Delete project Frontier? Assigned datasets will stay in Rowset "
+        "and become ungrouped. This cannot be undone.');"
+    ) in content
+
+
+def test_project_delete_removes_owned_project_and_detaches_datasets(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+    dataset = create_ready_dataset(profile)
+    dataset.project = project
+    dataset.save(update_fields=["project"])
+
+    response = auth_client.post(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 302
+    assert response.url == reverse("project_list")
+    assert not Project.objects.filter(id=project.id).exists()
+    dataset.refresh_from_db()
+    assert dataset.project is None
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.SUCCESS
+    assert str(flash_messages[0]) == "Deleted Launch. Assigned datasets are now ungrouped."
+
+
+def test_project_delete_requires_post(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+
+    response = auth_client.get(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 405
+    assert Project.objects.filter(id=project.id).exists()
+
+
+def test_project_delete_rejects_other_users_project(client, django_user_model, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+    other_user = django_user_model.objects.create_user(
+        username="other-project-delete",
+        email="other-project-delete@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.post(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 404
+    assert Project.objects.filter(id=project.id).exists()
+
+
+def test_project_delete_rejects_user_without_profile(client, django_user_model, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+    user_without_profile = django_user_model.objects.create_user(
+        username="missing-profile-project-delete",
+        email="missing-profile-project-delete@example.com",
+        password="password123",
+    )
+    user_without_profile.profile.delete()
+    client.force_login(user_without_profile)
+
+    response = client.post(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 404
+    assert Project.objects.filter(id=project.id).exists()
+
+
 def test_dataset_archive_archives_owned_dataset(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
@@ -2225,7 +2342,8 @@ def test_dataset_api_crud_and_export(client, profile):
     assert create_response.json()["row"]["index_value"] == "kat@example.com"
 
     missing_index_patch_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=missing@example.com",
+        f"/api/datasets/{dataset.key}/rows/by-index"
+        f"?api_key={api_key}&index_value=missing@example.com",
         data={"data": {"name": "Missing"}},
         content_type="application/json",
     )
@@ -2284,6 +2402,508 @@ def test_dataset_api_crud_and_export(client, profile):
     assert delete_response.status_code == 200
     assert delete_response.json()["dataset"] == str(dataset.key)
     assert not DatasetRow.objects.filter(id=row_id).exists()
+
+
+def test_prepare_dataset_image_rejects_encoded_payload_above_limit(monkeypatch):
+    source_bytes = image_bytes()
+
+    monkeypatch.setattr(
+        "apps.datasets.services.MAX_DATASET_IMAGE_BYTES",
+        len(source_bytes) + 1,
+    )
+    monkeypatch.setattr(
+        "apps.datasets.services._encoded_image_bytes",
+        lambda image, image_format: b"x" * (len(source_bytes) + 2),
+    )
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=source_bytes,
+            filename="photo.png",
+            content_type="image/png",
+        )
+
+
+def test_prepare_dataset_image_rejects_decoded_payload_above_limit():
+    image_base64 = base64.b64encode(b"x" * (MAX_DATASET_IMAGE_BYTES + 1)).decode()
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=decode_image_base64(image_base64),
+            filename="large.png",
+            content_type="image/png",
+        )
+
+
+def test_prepare_dataset_image_rejects_malformed_image_data():
+    image_base64 = base64.b64encode(b"not really an image").decode()
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=decode_image_base64(image_base64),
+            filename="broken.png",
+            content_type="image/png",
+        )
+
+
+def test_prepare_dataset_image_rejects_content_type_mismatch():
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=image_bytes(),
+            filename="photo.jpg",
+            content_type="image/jpeg",
+        )
+
+
+def test_prepare_dataset_image_rejects_images_over_pixel_limit(monkeypatch):
+    monkeypatch.setattr("apps.datasets.services.MAX_DATASET_IMAGE_PIXELS", 5)
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=image_bytes(),
+            filename="photo.png",
+            content_type="image/png",
+        )
+
+
+def test_prepare_dataset_image_rejects_zero_dimension_image(monkeypatch):
+    class FakeImage:
+        format = "PNG"
+        size = (0, 1)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def load(self):
+            return None
+
+    fake_image = FakeImage()
+    monkeypatch.setattr("apps.datasets.services.Image.open", lambda data: fake_image)
+    monkeypatch.setattr(
+        "apps.datasets.services.ImageOps.exif_transpose",
+        lambda image: image,
+    )
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=b"fake",
+            filename="zero.png",
+            content_type="image/png",
+        )
+
+
+def test_prepare_dataset_image_rejects_exif_transposed_image_over_pixel_limit(monkeypatch):
+    class FakeImage:
+        format = "PNG"
+
+        def __init__(self, size):
+            self.size = size
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def load(self):
+            return None
+
+    opened_image = FakeImage((1, 1))
+    transposed_image = FakeImage((3, 3))
+    monkeypatch.setattr("apps.datasets.services.MAX_DATASET_IMAGE_PIXELS", 5)
+    monkeypatch.setattr("apps.datasets.services.Image.open", lambda data: opened_image)
+    monkeypatch.setattr(
+        "apps.datasets.services.ImageOps.exif_transpose",
+        lambda image: transposed_image,
+    )
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=b"fake",
+            filename="rotated.png",
+            content_type="image/png",
+        )
+
+
+def test_image_attach_records_failed_rollback_file_cleanup(profile, monkeypatch):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Image cleanup",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sku", "photo"],
+        column_schema={"photo": {"type": DatasetColumnType.IMAGE}},
+        index_column="sku",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="A-1",
+        data={"sku": "A-1", "photo": ""},
+    )
+    storage = storages[DATASET_ASSET_STORAGE_ALIAS]
+    saved_names = []
+    deleted_names = []
+
+    def fail_thumbnail_save(name: str, content, *args, **kwargs) -> str:
+        saved_names.append(name)
+        if name.endswith("thumbnail.jpg"):
+            raise OSError("thumbnail upload failed")
+        return name
+
+    def fail_delete(name: str) -> None:
+        deleted_names.append(name)
+        raise OSError("delete failed")
+
+    monkeypatch.setattr(storage, "save", fail_thumbnail_save)
+    monkeypatch.setattr(storage, "delete", fail_delete)
+
+    with pytest.raises(DatasetServiceError) as exc_info:
+        attach_profile_dataset_image_asset(
+            profile,
+            str(dataset.key),
+            column_name="photo",
+            image_base64=image_base64(),
+            index_value="A-1",
+        )
+
+    assert exc_info.value.status_code == 500
+    assert len(saved_names) == 2
+    assert deleted_names == [saved_names[0]]
+    deletion = DatasetAssetFileDeletion.objects.get(file_name=saved_names[0])
+    assert deletion.storage_alias == DATASET_ASSET_STORAGE_ALIAS
+    assert deletion.attempts == 1
+    assert "delete failed" in deletion.last_error
+    assert DatasetAsset.objects.filter(dataset=dataset).count() == 0
+
+
+def test_dataset_asset_delete_records_failed_file_cleanup(
+    profile,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.first()
+    asset = DatasetAsset.objects.create(
+        profile=profile,
+        dataset=dataset,
+        row=row,
+        column_name="photo",
+        file="dataset-assets/test/original.png",
+        thumbnail="dataset-assets/test/thumbnail.jpg",
+        original_filename="photo.png",
+        content_type="image/png",
+        byte_size=10,
+        width=3,
+        height=2,
+        checksum="a" * 64,
+    )
+    storage = storages[DATASET_ASSET_STORAGE_ALIAS]
+    deleted_names = []
+
+    def fail_original_delete(name: str) -> None:
+        deleted_names.append(name)
+        if name == asset.file.name:
+            raise OSError("r2 timeout")
+
+    monkeypatch.setattr(storage, "delete", fail_original_delete)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        asset.delete()
+
+    assert deleted_names == [asset.file.name, asset.thumbnail.name]
+    deletion = DatasetAssetFileDeletion.objects.get(file_name=asset.file.name)
+    assert deletion.storage_alias == DATASET_ASSET_STORAGE_ALIAS
+    assert deletion.attempts == 1
+    assert deletion.deleted_at is None
+    assert "r2 timeout" in deletion.last_error
+    assert not DatasetAssetFileDeletion.objects.filter(
+        file_name=asset.thumbnail.name
+    ).exists()
+
+    retry_deleted_names = []
+    monkeypatch.setattr(storage, "delete", retry_deleted_names.append)
+
+    result = retry_dataset_asset_file_deletions()
+
+    assert result == {"attempted": 1, "deleted": 1, "failed": 0}
+    assert retry_deleted_names == [asset.file.name]
+    deletion.refresh_from_db()
+    assert deletion.deleted_at is not None
+    assert deletion.last_error == ""
+
+
+def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Product photos",
+            "headers": ["sku", "name", "photo"],
+            "index_column": "sku",
+            "column_types": {
+                "photo": {
+                    "type": "image",
+                    "description": "Primary product photo",
+                }
+            },
+            "rows": [{"sku": "A-1", "name": "Adapter", "photo": ""}],
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+
+    attach_response = client.post(
+        f"/api/datasets/{dataset.key}/rows/by-index/image"
+        f"?api_key={profile.key}&index_value=A-1",
+        data={
+            "column_name": "photo",
+            "filename": "adapter.png",
+            "content_type": "image/png",
+            "image_base64": image_base64(),
+        },
+        content_type="application/json",
+    )
+
+    assert attach_response.status_code == 200
+    payload = attach_response.json()
+    asset_payload = payload["asset"]
+    asset = DatasetAsset.objects.get(key=asset_payload["key"], dataset=dataset)
+    row = dataset.rows.get(index_value="A-1")
+    row.refresh_from_db()
+    assert payload["row"]["data"]["photo"] == asset.asset_ref
+    assert row.data["photo"] == asset.asset_ref
+    assert asset_payload["ref"] == asset.asset_ref
+    assert asset_payload["content_type"] == "image/png"
+    assert asset_payload["width"] == 3
+    assert asset_payload["height"] == 2
+    assert asset_payload["content_url"].endswith(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
+    )
+    assert asset.file.name.endswith("/original.png")
+    assert asset.thumbnail.name.endswith("/thumbnail.jpg")
+
+    metadata_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
+    )
+    assert metadata_response.status_code == 200
+    assert metadata_response.json()["asset"]["ref"] == asset.asset_ref
+
+    original_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
+        f"?api_key={profile.key}&variant=original"
+    )
+    assert original_response.status_code == 200
+    assert original_response["Content-Type"] == "image/png"
+    assert original_response["X-Content-Type-Options"] == "nosniff"
+    assert original_response.content.startswith(b"\x89PNG")
+
+    thumbnail_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
+        f"?api_key={profile.key}&variant=thumbnail"
+    )
+    assert thumbnail_response.status_code == 200
+    assert thumbnail_response["Content-Type"] == "image/jpeg"
+    assert thumbnail_response.content.startswith(b"\xff\xd8")
+
+    client.force_login(profile.user)
+    dataset_detail = client.get(dataset.get_absolute_url())
+    detail_content = dataset_detail.content.decode()
+    assert dataset_detail.status_code == 200
+    assert "adapter.png" in detail_content
+    assert reverse("dataset_asset_content", args=[dataset.key, asset.key]) in detail_content
+
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+    public_response = client.get(dataset.get_public_url())
+    public_content = public_response.content.decode()
+    assert public_response.status_code == 200
+    assert "adapter.png" in public_content
+    assert (
+        reverse("public_dataset_asset_content", args=[dataset.public_key, asset.key])
+        in public_content
+    )
+    public_asset_response = client.get(
+        f"{reverse('public_dataset_asset_content', args=[dataset.public_key, asset.key])}"
+        "?variant=thumbnail"
+    )
+    assert public_asset_response.status_code == 200
+    assert public_asset_response["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+
+    public_row_response = client.get(
+        reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+    )
+    assert public_row_response.status_code == 200
+    assert "adapter.png" in public_row_response.content.decode()
+
+
+def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Receipts",
+            "headers": ["receipt_id", "image"],
+            "index_column": "receipt_id",
+            "column_types": {"image": "image"},
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+
+    invalid_create = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={"data": {"receipt_id": "R-1", "image": "https://example.com/receipt.png"}},
+        content_type="application/json",
+    )
+    assert invalid_create.status_code == 400
+    assert invalid_create.json()["detail"] == (
+        "Column 'image' is an image column. Leave it blank and attach an image asset."
+    )
+
+    create_row = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={"data": {"receipt_id": "R-1", "image": ""}},
+        content_type="application/json",
+    )
+    assert create_row.status_code == 200
+    row_id = create_row.json()["row"]["id"]
+
+    attach_response = client.post(
+        f"/api/datasets/{dataset.key}/rows/{row_id}/image?api_key={profile.key}",
+        data={
+            "column_name": "image",
+            "filename": "receipt.png",
+            "content_type": "image/png",
+            "image_base64": image_base64(),
+        },
+        content_type="application/json",
+    )
+    assert attach_response.status_code == 200
+    asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
+
+    idempotent_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"image": asset.asset_ref}},
+        content_type="application/json",
+    )
+    assert idempotent_patch.status_code == 200
+    assert idempotent_patch.json()["row"]["data"]["image"] == asset.asset_ref
+    assert DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+    invalid_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"image": "asset:00000000-0000-0000-0000-000000000000"}},
+        content_type="application/json",
+    )
+    assert invalid_patch.status_code == 400
+    assert DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+    invalid_clear = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"receipt_id": "", "image": ""}},
+        content_type="application/json",
+    )
+    assert invalid_clear.status_code == 400
+    assert DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+    clear_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"image": ""}},
+        content_type="application/json",
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json()["row"]["data"]["image"] == ""
+    assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+
+def test_dataset_api_renames_and_drops_image_column_assets(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Catalog images",
+            "headers": ["sku", "photo"],
+            "index_column": "sku",
+            "column_types": {"photo": "image"},
+            "rows": [{"sku": "A-1", "photo": ""}],
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+    row = dataset.rows.get(index_value="A-1")
+
+    attach_response = client.post(
+        f"/api/datasets/{dataset.key}/rows/{row.id}/image?api_key={profile.key}",
+        data={
+            "column_name": "photo",
+            "filename": "adapter.png",
+            "content_type": "image/png",
+            "image_base64": image_base64(),
+        },
+        content_type="application/json",
+    )
+    assert attach_response.status_code == 200
+    asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
+
+    rename_response = client.post(
+        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+        data={"old_name": "photo", "new_name": "hero_image"},
+        content_type="application/json",
+    )
+    assert rename_response.status_code == 200
+    asset.refresh_from_db()
+    row.refresh_from_db()
+    assert asset.column_name == "hero_image"
+    assert row.data["hero_image"] == asset.asset_ref
+    assert "photo" not in row.data
+
+    drop_response = client.post(
+        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+        data={"name": "hero_image"},
+        content_type="application/json",
+    )
+    assert drop_response.status_code == 200
+    assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+
+def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(client, profile):
+    image_index_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Invalid image index",
+            "headers": ["photo", "name"],
+            "index_column": "photo",
+            "column_types": {"photo": "image"},
+        },
+        content_type="application/json",
+    )
+    assert image_index_response.status_code == 400
+    assert image_index_response.json()["detail"] == (
+        "Image columns cannot be used as the dataset index."
+    )
+
+    dataset = create_ready_dataset(profile)
+    invalid_default_response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={
+            "name": "photo",
+            "default_value": "https://example.com/photo.png",
+            "column_type": "image",
+        },
+        content_type="application/json",
+    )
+    assert invalid_default_response.status_code == 400
+    assert invalid_default_response.json()["detail"] == (
+        "Column 'photo' is an image column. Leave it blank and attach an image asset."
+    )
 
 
 def test_dataset_api_filters_and_sorts_rows(client, profile):
@@ -3770,6 +4390,60 @@ def test_project_api_updates_project_details(client, profile):
     assert project.description == ""
 
 
+def test_project_api_archives_project_and_hides_it_from_project_endpoints(client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+    dataset = Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Launch contacts",
+        original_filename="launch.csv",
+        status=DatasetStatus.READY,
+        headers=["email", "name"],
+        index_column="email",
+    )
+
+    response = client.delete(f"/api/projects/{project.key}?api_key={profile.key}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"] == "Project archived."
+    assert payload["project"]["key"] == str(project.key)
+    assert payload["project"]["archived_at"] is not None
+    project.refresh_from_db()
+    assert project.archived_at is not None
+    dataset.refresh_from_db()
+    assert dataset.archived_at is None
+    assert dataset.project == project
+
+    list_response = client.get(f"/api/projects?api_key={profile.key}")
+    assert list_response.status_code == 200
+    assert list_response.json()["projects"] == []
+
+    search_response = client.get(f"/api/projects?query=Launch&api_key={profile.key}")
+    assert search_response.status_code == 200
+    assert search_response.json()["projects"] == []
+
+    detail_response = client.get(f"/api/projects/{project.key}?api_key={profile.key}")
+    assert detail_response.status_code == 404
+    assert detail_response.json()["detail"] == "Project not found."
+
+    dataset_list_response = client.get(f"/api/datasets?api_key={profile.key}")
+    assert dataset_list_response.status_code == 200
+    assert dataset_list_response.json()["datasets"][0]["key"] == str(dataset.key)
+    assert dataset_list_response.json()["datasets"][0]["project"] is None
+
+    duplicate_name_response = client.post(
+        f"/api/projects?api_key={profile.key}",
+        data={"name": "Launch"},
+        content_type="application/json",
+    )
+    assert duplicate_name_response.status_code == 201
+
+
 def test_project_api_rejects_null_project_name(client, profile):
     project = Project.objects.create(
         profile=profile,
@@ -4123,6 +4797,29 @@ def test_dataset_api_updates_column_types(client, profile):
             "description": "Primary contact email for row lookup.",
         },
     }
+
+
+def test_dataset_api_rejects_image_type_for_unowned_existing_asset_ref(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "email", "photo"]
+    dataset.save(update_fields=["headers", "updated_at"])
+    row = dataset.rows.get(index_value="ada@example.com")
+    row.data = {
+        **row.data,
+        "photo": "asset:00000000-0000-0000-0000-000000000000",
+    }
+    row.save(update_fields=["data", "updated_at"])
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+        data={"column_types": {"photo": "image"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Column 'photo' references an image asset that does not exist."
+    )
 
 
 def test_dataset_api_adds_column_and_backfills_existing_rows(client, profile):
@@ -4801,6 +5498,26 @@ def test_project_detail_paginates_assigned_datasets(auth_client, profile):
     assert page_two.status_code == 200
     assert len(page_two.context["datasets"]) == 1
     assert "Page 2 of 2" in page_two.content.decode()
+
+
+def test_dataset_settings_page_has_section_navigation(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(dataset.get_settings_url())
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert 'aria-labelledby="dataset-settings-nav-heading"' in content
+    for section_id in [
+        "dataset-context",
+        "project",
+        "relationships",
+        "column-types",
+        "public-preview",
+        "danger-zone",
+    ]:
+        assert f'href="#{section_id}"' in content
+        assert f'id="{section_id}"' in content
 
 
 def test_dataset_owner_can_assign_project_from_settings(auth_client, profile):

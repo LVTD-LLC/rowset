@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-CAPABILITY_VERSION = "2026-06-28"
+CAPABILITY_VERSION = "2026-06-29"
 
 
 @dataclass(frozen=True)
@@ -194,8 +194,9 @@ ROWSET_CAPABILITIES = (
         id="projects",
         title="Projects",
         summary=(
-            "Group related datasets into semantic projects and store project-level JSON "
-            "metadata such as source links, kickoff threads, or planning docs."
+            "Group related datasets into semantic projects, store project-level JSON "
+            "metadata, and archive projects that should disappear from normal project "
+            "discovery."
         ),
         mcp_tools=(
             "get_all_projects",
@@ -204,6 +205,7 @@ ROWSET_CAPABILITIES = (
             "get_project",
             "update_project",
             "update_project_metadata",
+            "archive_project",
             "update_dataset_project",
         ),
         rest_paths=(
@@ -212,7 +214,10 @@ ROWSET_CAPABILITIES = (
             "/api/projects/{project_key}/metadata",
             "/api/datasets/{dataset_key}/project",
         ),
-        notes=("Projects organize data; they do not change authentication boundaries.",),
+        notes=(
+            "Projects organize data; they do not change authentication boundaries.",
+            "Archiving a project does not delete or archive its datasets.",
+        ),
     ),
     RowsetCapability(
         id="rows",

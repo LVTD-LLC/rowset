@@ -172,7 +172,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
         context["recent_datasets"] = recent_datasets
         context["dashboard_stats"] = {
             "total_datasets": dashboard_summary["total_datasets"] or 0,
-            "total_projects": profile.projects.count(),
+            "total_projects": profile.projects.filter(archived_at__isnull=True).count(),
             "total_rows": dashboard_summary["total_rows"] or 0,
             "public_preview_count": dashboard_summary["public_preview_count"] or 0,
         }

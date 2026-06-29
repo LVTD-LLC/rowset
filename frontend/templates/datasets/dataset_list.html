@@ -40,7 +40,7 @@
     </dl>
   </section>
 
-  <form method="get" class="mb-6 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 md:grid-cols-[minmax(0,1fr)_14rem_18rem_auto_auto]" role="search">
+  <form method="get" class="mb-6 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 md:grid-cols-[minmax(0,1fr)_14rem] lg:grid-cols-[minmax(0,1fr)_14rem_minmax(20rem,22rem)_auto_auto]" role="search">
     <div>
       <label for="dataset-search" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">{{ dataset_search_label }}</label>
       <input id="dataset-search" name="q" type="search" value="{{ search_query }}" placeholder="{{ dataset_search_placeholder }}" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
@@ -53,13 +53,13 @@
         {% endfor %}
       </select>
     </div>
-    <fieldset>
+    <fieldset aria-label="Dataset view mode" class="min-w-0">
       <legend class="block text-sm font-semibold text-slate-900 dark:text-slate-100">View</legend>
-      <div class="mt-2 grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+      <div class="fb-segmented-control mt-2">
         {% for value, label in view_mode_options %}
-          <label class="cursor-pointer">
-            <input type="radio" name="view" value="{{ value }}" class="peer sr-only" {% if selected_view_mode == value %}checked{% endif %}>
-            <span class="flex min-h-9 items-center justify-center rounded-md px-3 py-2 text-center text-sm font-semibold text-slate-600 transition peer-checked:bg-white peer-checked:text-slate-950 peer-checked:shadow-sm peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-500 dark:text-slate-300 dark:peer-checked:bg-slate-950 dark:peer-checked:text-slate-100">{{ label }}</span>
+          <label class="fb-segmented-option">
+            <input type="radio" name="view" value="{{ value }}" class="fb-segmented-option-input sr-only" {% if selected_view_mode == value %}checked{% endif %}>
+            <span class="fb-segmented-option-label">{{ label }}</span>
           </label>
         {% endfor %}
       </div>

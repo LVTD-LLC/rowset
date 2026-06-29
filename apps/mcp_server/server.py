@@ -11,7 +11,9 @@ from apps.api.services import (
     MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
     add_profile_dataset_column,
+    attach_profile_dataset_image_asset,
     archive_profile_dataset,
+    archive_profile_project,
     create_profile_dataset,
     create_profile_dataset_relationship,
     create_profile_dataset_row,
@@ -33,6 +35,7 @@ from apps.api.services import (
     search_profile_datasets,
     search_profile_projects,
     serialize_dataset_detail,
+    serialize_profile_dataset_asset,
     serialize_profile_archived_datasets,
     serialize_profile_datasets,
     serialize_profile_project_detail,
@@ -721,6 +724,25 @@ def update_project_metadata(
 
 
 @mcp.tool(
+    name="archive_project",
+    description=(
+        "Archive a Rowset project without deleting or archiving its datasets. "
+        "Archived projects are omitted from normal project lists and cannot receive "
+        "new dataset assignments."
+    ),
+)
+def archive_project(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+    try:
+        return archive_profile_project(profile, project_key)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
     name="create_dataset",
     description=(
         "Create a ready API-backed dataset for the authenticated Rowset profile. "
@@ -784,8 +806,9 @@ def create_dataset(
             default=None,
             description=(
                 "Optional mapping from header name to semantic column type or metadata. "
-                "Supported types include text, choice, integer, number, currency, boolean, "
-                "date, datetime, email, url, and reference. For choice columns, pass metadata "
+                "Supported types include text, image, choice, integer, number, currency, "
+                "boolean, date, datetime, email, url, and reference. For choice "
+                "columns, pass metadata "
                 "like "
                 '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}. '
                 'For a dataset reference column, pass {"type": "reference", '
@@ -906,8 +929,9 @@ def update_dataset_column_types(
         Field(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
-                "include text, choice, integer, number, currency, boolean, date, datetime, "
-                'email, url, and reference. For choice columns, pass {"type": "choice", '
+                "include text, image, choice, integer, number, currency, boolean, "
+                'date, datetime, email, url, and reference. For choice columns, pass '
+                '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset reference '
                 'column, pass {"type": "reference", "target": "dataset"}. Add '
                 '"description" to any metadata object to give agents column context.'
@@ -951,8 +975,9 @@ def add_column(
             default=None,
             description=(
                 "Optional semantic type or metadata for the new column. Supported types "
-                "include text, choice, integer, number, currency, boolean, date, datetime, "
-                'email, url, and reference. For a choice column, pass {"type": "choice", '
+                "include text, image, choice, integer, number, currency, boolean, "
+                'date, datetime, email, url, and reference. For a choice column, pass '
+                '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset reference '
                 'column, pass {"type": "reference", "target": "dataset"}. Add '
                 '"description" to the metadata object to give agents column context.'
@@ -1392,6 +1417,75 @@ def create_dataset_row(
             data,
             **_agent_actor_kwargs(profile),
         )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="attach_image_to_dataset_row",
+    description=(
+        "Attach or replace one image asset in an image column for a ready dataset row. "
+        "Provide exactly one of row_id or index_value. The row cell will store an "
+        "opaque asset reference, not raw image bytes."
+    ),
+)
+def attach_image_to_dataset_row(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    column_name: Annotated[
+        str,
+        Field(description="Image column header to attach the asset to."),
+    ],
+    image_base64: Annotated[
+        str,
+        Field(description="JPEG, PNG, or WebP image bytes encoded as base64."),
+    ],
+    row_id: Annotated[
+        int | None,
+        Field(default=None, ge=1, description="Internal Rowset row id."),
+    ] = None,
+    index_value: Annotated[
+        str | None,
+        Field(default=None, description="Value from the dataset index column."),
+    ] = None,
+    filename: Annotated[
+        str | None,
+        Field(default=None, description="Optional original filename for display metadata."),
+    ] = None,
+    content_type: Annotated[
+        str | None,
+        Field(default=None, description="Optional supplied content type, such as image/png."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+    try:
+        return attach_profile_dataset_image_asset(
+            profile,
+            dataset_key,
+            row_id=row_id,
+            index_value=index_value,
+            column_name=column_name,
+            image_base64=image_base64,
+            filename=filename,
+            content_type=content_type,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="get_dataset_image_asset",
+    description="Return metadata and Rowset content URLs for one image asset.",
+)
+def get_dataset_image_asset(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    asset_key: Annotated[str, Field(description="Image asset key returned by Rowset.")],
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return serialize_profile_dataset_asset(profile, dataset_key, asset_key)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 

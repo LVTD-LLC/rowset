@@ -6,6 +6,8 @@ from uuid import UUID
 
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+from django.core.files.storage import storages
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Exists, OuterRef, Q, TextField
 from django.db.models.fields.json import KeyTextTransform
@@ -22,23 +24,38 @@ from apps.datasets.constants import (
     MAX_PROJECT_METADATA_BYTES,
 )
 from apps.datasets.history import record_dataset_mutation
-from apps.datasets.models import Dataset, DatasetRelationship, DatasetRow, Project
+from apps.datasets.models import (
+    DATASET_ASSET_STORAGE_ALIAS,
+    Dataset,
+    DatasetAsset,
+    DatasetRelationship,
+    DatasetRow,
+    Project,
+    record_dataset_asset_file_deletion_failure,
+)
 from apps.datasets.services import (
     CSVParseError,
     COLUMN_SCHEMA_REFERENCE_TARGET_KEY,
     COLUMN_SCHEMA_TYPE_KEY,
     DATASET_REFERENCE_TARGET,
+    DatasetImageError,
     DatasetRowQueryError,
     apply_dataset_row_query,
+    dataset_asset_key_from_ref,
     choice_constraints_from_schema,
+    dataset_asset_ref,
+    decode_image_base64,
     generated_index_column_name,
     generated_index_column_schema,
+    image_columns_from_schema,
     infer_column_schema,
     invalid_choice_values_by_column,
     normalize_column_schema,
     normalize_public_page_size,
+    prepare_dataset_image,
     validate_choice_row_values,
     validate_headers,
+    validate_image_row_values,
 )
 from rowset.utils import build_absolute_public_url
 
@@ -67,6 +84,7 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "project__key",
     "project__name",
     "project__description",
+    "project__archived_at",
     "created_at",
     "updated_at",
     "confirmed_at",
@@ -89,6 +107,10 @@ def _active_dataset_queryset(queryset):
 
 def _archived_dataset_queryset(queryset):
     return queryset.filter(archived_at__isnull=False)
+
+
+def _active_project_queryset(queryset):
+    return queryset.filter(archived_at__isnull=True)
 
 
 class DatasetServiceError(Exception):
@@ -220,7 +242,7 @@ def _normalize_project_metadata(metadata: dict[str, Any] | None) -> dict[str, An
 
 def serialize_project_reference(project: Project | None) -> dict | None:
     """Return the project fields embedded in dataset metadata."""
-    if project is None:
+    if project is None or getattr(project, "archived_at", None) is not None:
         return None
     return {
         "key": str(project.key),
@@ -246,6 +268,7 @@ def serialize_project_summary(project: Project) -> dict:
         "dataset_count": dataset_count,
         "created_at": project.created_at,
         "updated_at": project.updated_at,
+        "archived_at": getattr(project, "archived_at", None),
     }
 
 
@@ -260,13 +283,16 @@ def search_profile_projects(
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     normalized_query = _normalize_search_query(query)
-    queryset = profile.projects.annotate(dataset_count=_visible_project_dataset_count()).only(
+    queryset = _active_project_queryset(
+        profile.projects.annotate(dataset_count=_visible_project_dataset_count())
+    ).only(
         "key",
         "name",
         "description",
         "metadata",
         "created_at",
         "updated_at",
+        "archived_at",
     )
     if normalized_query:
         queryset = queryset.annotate(metadata_text=Cast("metadata", TextField())).filter(
@@ -302,7 +328,9 @@ def create_profile_project(
     normalized_name = _normalize_project_name(name)
     normalized_description = _normalize_project_description(description)
     normalized_metadata = _normalize_project_metadata(metadata)
-    if Project.objects.filter(profile=profile, name__iexact=normalized_name).exists():
+    if _active_project_queryset(
+        Project.objects.filter(profile=profile, name__iexact=normalized_name)
+    ).exists():
         raise DatasetServiceError(409, "Project name already exists.")
 
     try:
@@ -342,7 +370,7 @@ def update_profile_project(
     with transaction.atomic():
         try:
             project = (
-                Project.objects.select_for_update()
+                _active_project_queryset(Project.objects.select_for_update())
                 .get(key=project_key, profile=profile)
             )
         except (Project.DoesNotExist, ValidationError, ValueError) as exc:
@@ -351,7 +379,9 @@ def update_profile_project(
         update_fields = []
         if normalized_name is not UNSET and project.name != normalized_name:
             if (
-                Project.objects.filter(profile=profile, name__iexact=normalized_name)
+                _active_project_queryset(
+                    Project.objects.filter(profile=profile, name__iexact=normalized_name)
+                )
                 .exclude(pk=project.pk)
                 .exists()
             ):
@@ -382,8 +412,18 @@ def update_profile_project(
 def get_profile_project(profile: Profile, project_key: str) -> Project:
     try:
         return (
-            Project.objects.annotate(dataset_count=_visible_project_dataset_count())
-            .only("key", "name", "description", "metadata", "created_at", "updated_at")
+            _active_project_queryset(
+                Project.objects.annotate(dataset_count=_visible_project_dataset_count())
+            )
+            .only(
+                "key",
+                "name",
+                "description",
+                "metadata",
+                "created_at",
+                "updated_at",
+                "archived_at",
+            )
             .get(key=project_key, profile=profile)
         )
     except (Project.DoesNotExist, ValidationError, ValueError) as exc:
@@ -399,7 +439,10 @@ def update_profile_project_metadata(
     """Replace arbitrary JSON metadata on a project owned by the authenticated profile."""
     with transaction.atomic():
         try:
-            project = Project.objects.select_for_update().get(key=project_key, profile=profile)
+            project = _active_project_queryset(Project.objects.select_for_update()).get(
+                key=project_key,
+                profile=profile,
+            )
         except (Project.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Project not found.") from exc
 
@@ -414,6 +457,27 @@ def update_profile_project_metadata(
         if changed:
             project.save(update_fields=["metadata", "updated_at"])
             message = "Project metadata updated."
+
+    return {
+        "status": "success",
+        "message": message,
+        "project": serialize_project_summary(project),
+    }
+
+
+def archive_profile_project(profile: Profile, project_key: str) -> dict:
+    """Archive an owned project without deleting or archiving its datasets."""
+    with transaction.atomic():
+        try:
+            project = Project.objects.select_for_update().get(key=project_key, profile=profile)
+        except (Project.DoesNotExist, ValidationError, ValueError) as exc:
+            raise DatasetServiceError(404, "Project not found.") from exc
+
+        message = "Project was already archived."
+        if project.archived_at is None:
+            project.archived_at = timezone.now()
+            project.save(update_fields=["archived_at", "updated_at"])
+            message = "Project archived."
 
     return {
         "status": "success",
@@ -609,8 +673,14 @@ def search_profile_datasets(
             | Q(description__icontains=normalized_query)
             | Q(instructions__icontains=normalized_query)
             | Q(original_filename__icontains=normalized_query)
-            | Q(project__name__icontains=normalized_query)
-            | Q(project__description__icontains=normalized_query)
+            | Q(
+                project__archived_at__isnull=True,
+                project__name__icontains=normalized_query,
+            )
+            | Q(
+                project__archived_at__isnull=True,
+                project__description__icontains=normalized_query,
+            )
         )
     if normalized_project_key:
         try:
@@ -618,7 +688,10 @@ def search_profile_datasets(
         except ValueError as exc:
             raise DatasetServiceError(400, "project_key must be a valid UUID.") from exc
         else:
-            queryset = queryset.filter(project__key=project_key_uuid)
+            queryset = queryset.filter(
+                project__key=project_key_uuid,
+                project__archived_at__isnull=True,
+            )
     if normalized_status:
         queryset = queryset.filter(status=normalized_status)
     if normalized_updated_after is not None:
@@ -1236,6 +1309,26 @@ def _validate_choice_row_data(
         raise DatasetServiceError(400, str(exc)) from exc
 
 
+def _validate_image_row_data(
+    headers: list[str],
+    column_schema: dict,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    allow_asset_refs: bool = False,
+) -> None:
+    try:
+        validate_image_row_values(
+            headers,
+            column_schema,
+            row_data,
+            columns=columns,
+            allow_asset_refs=allow_asset_refs,
+        )
+    except CSVParseError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+
 def _validate_choice_rows(
     headers: list[str],
     column_schema: dict,
@@ -1253,6 +1346,15 @@ def _validate_choice_rows(
             row_data,
             choice_constraints=choice_constraints,
         )
+
+
+def _validate_image_rows(
+    headers: list[str],
+    column_schema: dict,
+    rows: list[dict[str, str]],
+) -> None:
+    for row_data in rows:
+        _validate_image_row_data(headers, column_schema, row_data)
 
 
 def _iter_dataset_row_data(dataset: Dataset):
@@ -1355,6 +1457,35 @@ def _validate_existing_dataset_reference_values(
         )
 
 
+def _validate_existing_image_values(dataset: Dataset, column_schema: dict) -> None:
+    image_columns = image_columns_from_schema(dataset.headers, column_schema)
+    if not image_columns:
+        return
+    for row in dataset.rows.order_by("row_number", "id").only("id", "data").iterator(
+        chunk_size=1000
+    ):
+        row_data = row.data or {}
+        _validate_image_row_data(
+            dataset.headers,
+            column_schema,
+            row_data,
+            columns=image_columns,
+            allow_asset_refs=True,
+        )
+        for column in image_columns:
+            asset_key = dataset_asset_key_from_ref(row_data.get(column, ""))
+            if asset_key and not DatasetAsset.objects.filter(
+                dataset=dataset,
+                row=row,
+                column_name=column,
+                key=asset_key,
+            ).exists():
+                raise DatasetServiceError(
+                    400,
+                    f"Column '{column}' references an image asset that does not exist.",
+                )
+
+
 def _create_dataset_index_config(
     headers: list[str],
     index_column: str | None,
@@ -1388,6 +1519,12 @@ def _normalize_dataset_column_schema(
         )
     except CSVParseError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
+
+    if (
+        not index_generated
+        and base_schema[index_column][COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.IMAGE
+    ):
+        raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
 
     if index_generated:
         return {
@@ -1435,6 +1572,7 @@ def create_profile_dataset(
         column_types=column_types,
     )
     _validate_choice_rows(base_headers, column_schema, normalized_rows)
+    _validate_image_rows(base_headers, column_schema, normalized_rows)
     normalized_rows = _normalize_dataset_reference_rows(
         profile,
         base_headers,
@@ -1557,8 +1695,11 @@ def update_profile_dataset_column_types(
             )
         except CSVParseError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
+        if next_schema[dataset.index_column][COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.IMAGE:
+            raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
         _validate_existing_choice_values(dataset, next_schema)
         _validate_existing_dataset_reference_values(profile, dataset, next_schema)
+        _validate_existing_image_values(dataset, next_schema)
         dataset.column_schema = next_schema
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
@@ -1794,6 +1935,12 @@ def add_profile_dataset_column(
             {column_name: default_cell},
             columns={column_name},
         )
+        _validate_image_row_data(
+            next_headers,
+            dataset.column_schema,
+            {column_name: default_cell},
+            columns={column_name},
+        )
         default_cell = _normalize_dataset_reference_row_data(
             profile,
             next_headers,
@@ -1893,6 +2040,9 @@ def rename_profile_dataset_column(
             rename_column,
             agent_api_key=agent_api_key,
         )
+        DatasetAsset.objects.filter(dataset=dataset, column_name=old_column_name).update(
+            column_name=new_column_name
+        )
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
             update_fields=[
@@ -1961,6 +2111,7 @@ def drop_profile_dataset_column(
             drop_column,
             agent_api_key=agent_api_key,
         )
+        DatasetAsset.objects.filter(dataset=dataset, column_name=column_name).delete()
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
             update_fields=[
@@ -2318,6 +2469,220 @@ def serialize_dataset_row(row: DatasetRow) -> dict:
     }
 
 
+def dataset_asset_content_field(asset: DatasetAsset, variant: str = "original"):
+    normalized_variant = str(variant or "original").strip().lower()
+    if normalized_variant == "thumbnail":
+        return asset.thumbnail or asset.file
+    if normalized_variant in {"", "original"}:
+        return asset.file
+    raise DatasetServiceError(400, "Asset variant must be 'original' or 'thumbnail'.")
+
+
+def _dataset_asset_content_url(asset: DatasetAsset, variant: str) -> str:
+    return build_absolute_public_url(
+        f"/api/datasets/{asset.dataset.key}/assets/{asset.key}/content?variant={variant}"
+    )
+
+
+def serialize_dataset_asset(asset: DatasetAsset) -> dict:
+    row = asset.row
+    return {
+        "key": str(asset.key),
+        "ref": dataset_asset_ref(asset.key),
+        "dataset": str(asset.dataset.key),
+        "row_id": row.id,
+        "row_number": row.row_number,
+        "index_value": row.index_value,
+        "column": asset.column_name,
+        "original_filename": asset.original_filename,
+        "content_type": asset.content_type,
+        "byte_size": asset.byte_size,
+        "width": asset.width,
+        "height": asset.height,
+        "checksum": asset.checksum,
+        "status": asset.status,
+        "content_url": _dataset_asset_content_url(asset, "original"),
+        "thumbnail_url": _dataset_asset_content_url(asset, "thumbnail"),
+        "created_at": asset.created_at,
+        "updated_at": asset.updated_at,
+    }
+
+
+def _get_dataset_asset_by_key(dataset: Dataset, profile: Profile, asset_key: str) -> DatasetAsset:
+    try:
+        asset_uuid = UUID(str(asset_key or "").strip())
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise DatasetServiceError(404, "Dataset asset not found.") from exc
+    try:
+        return dataset.assets.select_related("row").get(key=asset_uuid, profile=profile)
+    except DatasetAsset.DoesNotExist as exc:
+        raise DatasetServiceError(404, "Dataset asset not found.") from exc
+
+
+def get_profile_dataset_asset(profile: Profile, dataset_key: str, asset_key: str) -> DatasetAsset:
+    dataset = get_ready_profile_dataset(profile, dataset_key)
+    return _get_dataset_asset_by_key(dataset, profile, asset_key)
+
+
+def serialize_profile_dataset_asset(profile: Profile, dataset_key: str, asset_key: str) -> dict:
+    asset = get_profile_dataset_asset(profile, dataset_key, asset_key)
+    return {
+        "status": "success",
+        "message": "Dataset asset retrieved.",
+        "asset": serialize_dataset_asset(asset),
+    }
+
+
+def _row_for_image_attachment(
+    dataset: Dataset,
+    *,
+    row_id: int | None = None,
+    index_value: str | None = None,
+) -> DatasetRow:
+    has_row_id = row_id is not None
+    normalized_index_value = str(index_value or "").strip()
+    has_index_value = bool(normalized_index_value)
+    if has_row_id == has_index_value:
+        raise DatasetServiceError(400, "Provide exactly one of row_id or index_value.")
+    try:
+        if has_row_id:
+            return dataset.rows.select_for_update().get(id=row_id)
+        return dataset.rows.select_for_update().get(index_value=normalized_index_value)
+    except DatasetRow.DoesNotExist as exc:
+        raise DatasetServiceError(404, "Row not found.") from exc
+
+
+def _normalize_image_asset_column(dataset: Dataset, column_name: str) -> str:
+    column = _normalize_existing_column_name(dataset, column_name)
+    normalized_schema = normalize_column_schema(dataset.headers, dataset.column_schema)
+    if normalized_schema[column][COLUMN_SCHEMA_TYPE_KEY] != DatasetColumnType.IMAGE:
+        raise DatasetServiceError(400, f"Column '{column}' is not an image column.")
+    if column == dataset.index_column:
+        raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
+    return column
+
+
+def attach_profile_dataset_image_asset(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    column_name: str,
+    image_base64: str,
+    filename: str | None = None,
+    content_type: str | None = None,
+    row_id: int | None = None,
+    index_value: str | None = None,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    dataset = get_ready_profile_dataset(profile, dataset_key)
+    _normalize_image_asset_column(dataset, column_name)
+    try:
+        prepared_image = prepare_dataset_image(
+            image_bytes=decode_image_base64(image_base64),
+            filename=filename,
+            content_type=content_type,
+        )
+    except DatasetImageError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+    saved_files = []
+    try:
+        with transaction.atomic():
+            dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+            column = _normalize_image_asset_column(dataset, column_name)
+            row = _row_for_image_attachment(dataset, row_id=row_id, index_value=index_value)
+
+            previous_value = str((row.data or {}).get(column, "") or "")
+            DatasetAsset.objects.filter(dataset=dataset, row=row, column_name=column).delete()
+            asset = DatasetAsset(
+                profile=profile,
+                dataset=dataset,
+                row=row,
+                created_by_agent_api_key=agent_api_key,
+                column_name=column,
+                original_filename=prepared_image.filename,
+                content_type=prepared_image.content_type,
+                byte_size=prepared_image.byte_size,
+                width=prepared_image.width,
+                height=prepared_image.height,
+                checksum=prepared_image.checksum,
+            )
+            asset.file.name = asset.file.field.generate_filename(asset, prepared_image.filename)
+            asset.thumbnail.name = asset.thumbnail.field.generate_filename(asset, "thumbnail.jpg")
+            asset.save()
+
+            next_value = asset.asset_ref
+            row.data = {**(row.data or {}), column: next_value}
+            row.updated_by_agent_api_key = agent_api_key
+            row.save(update_fields=["data", "updated_by_agent_api_key", "updated_at"])
+            dataset.updated_by_agent_api_key = agent_api_key
+            dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.ROW_UPDATED,
+                f"Image attached to row {row.row_number}.",
+                agent_api_key=agent_api_key,
+                target_type="row",
+                target_identifier=row.id,
+                metadata={
+                    "row_id": row.id,
+                    "row_number": row.row_number,
+                    "changed_fields": [column],
+                    "field_changes": [
+                        {
+                            "field": column,
+                            "before": previous_value,
+                            "after": next_value,
+                        }
+                    ],
+                    "value_changes_recorded": True,
+                    "asset_key": str(asset.key),
+                    "asset_ref_recorded": True,
+                    "filename": prepared_image.filename,
+                    "content_type": prepared_image.content_type,
+                    "byte_size": prepared_image.byte_size,
+                    "width": prepared_image.width,
+                    "height": prepared_image.height,
+                },
+            )
+            saved_file_name = asset.file.storage.save(
+                asset.file.name,
+                ContentFile(prepared_image.image_bytes),
+            )
+            saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_file_name))
+            if saved_file_name != asset.file.name:
+                raise DatasetServiceError(500, "Image upload path could not be reserved.")
+            saved_thumbnail_name = asset.thumbnail.storage.save(
+                asset.thumbnail.name,
+                ContentFile(prepared_image.thumbnail_bytes),
+            )
+            saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_thumbnail_name))
+            if saved_thumbnail_name != asset.thumbnail.name:
+                raise DatasetServiceError(500, "Image thumbnail path could not be reserved.")
+    except Exception:
+        cleanup_error = None
+        for storage_alias, name in saved_files:
+            try:
+                storages[storage_alias].delete(name)
+            except Exception as exc:
+                cleanup_error = cleanup_error or exc
+                record_dataset_asset_file_deletion_failure(storage_alias, name, exc)
+        if cleanup_error is not None:
+            raise DatasetServiceError(
+                500,
+                "Image upload failed and saved files were queued for cleanup.",
+            ) from cleanup_error
+        raise
+
+    return {
+        "status": "success",
+        "message": "Image attached.",
+        "dataset": str(dataset.key),
+        "row": serialize_dataset_row(row),
+        "asset": serialize_dataset_asset(asset),
+    }
+
+
 def list_profile_dataset_rows(
     profile: Profile,
     dataset_key: str,
@@ -2392,6 +2757,7 @@ def create_profile_dataset_row(
             raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
         serialized_data = {header: str(row_data.get(header, "")) for header in dataset.headers}
         _validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
+        _validate_image_row_data(dataset.headers, dataset.column_schema, serialized_data)
         serialized_data = _normalize_dataset_reference_row_data(
             profile,
             dataset.headers,
@@ -2516,6 +2882,35 @@ def _patch_dataset_row(
 
     row_patch = {key: str(value) for key, value in data.items() if key in dataset.headers}
     patched_fields = sorted(row_patch)
+    image_columns = set(image_columns_from_schema(dataset.headers, dataset.column_schema))
+    changed_image_columns = [
+        field
+        for field in patched_fields
+        if field in image_columns
+        and row_patch.get(field, "") != str((row.data or {}).get(field, "") or "")
+    ]
+    invalid_image_asset_ref_columns = [
+        field
+        for field in changed_image_columns
+        if dataset_asset_key_from_ref(row_patch.get(field, ""))
+    ]
+    if invalid_image_asset_ref_columns:
+        column = invalid_image_asset_ref_columns[0]
+        raise DatasetServiceError(
+            400,
+            f"Column '{column}' is an image column. Attach a new image asset instead.",
+        )
+    _validate_image_row_data(
+        dataset.headers,
+        dataset.column_schema,
+        row_patch,
+        columns=changed_image_columns,
+    )
+    cleared_image_columns = [
+        field
+        for field in changed_image_columns
+        if field in image_columns and row_patch.get(field, "") == ""
+    ]
     row_patch = _normalize_dataset_reference_row_data(
         profile,
         dataset.headers,
@@ -2553,6 +2948,12 @@ def _patch_dataset_row(
             _raise_if_target_row_is_referenced(dataset, row.index_value)
         row.index_value = index_value
     _validate_relationship_row_data(dataset, row.data, columns=patched_fields)
+    if cleared_image_columns:
+        DatasetAsset.objects.filter(
+            dataset=dataset,
+            row=row,
+            column_name__in=cleared_image_columns,
+        ).delete()
     row.updated_by_agent_api_key = agent_api_key
     row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
     dataset.updated_by_agent_api_key = agent_api_key

@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
@@ -21,6 +22,7 @@ from apps.api.services import (
     archive_profile_dataset,
     create_profile_dataset_relationship,
     create_profile_project,
+    dataset_asset_content_field,
     delete_profile_dataset_relationship,
     get_profile_dataset,
     update_profile_dataset_column_types,
@@ -31,7 +33,7 @@ from apps.api.services import (
     update_profile_project_metadata,
 )
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
-from apps.datasets.models import Dataset, DatasetRow
+from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project
 from apps.datasets.services import (
     DATASET_REFERENCE_TARGET,
     ROW_DEFAULT_SORT,
@@ -43,8 +45,10 @@ from apps.datasets.services import (
     ROW_SORT_DESC,
     apply_dataset_row_query,
     column_definitions,
+    dataset_asset_key_from_ref,
     dataset_row_filter_operators,
     default_dataset_row_filter_operator,
+    image_columns_from_schema,
     iter_export_row_data,
     normalize_dataset_row_filter_operator,
     normalize_dataset_row_sort,
@@ -411,6 +415,89 @@ def _dataset_export_response(dataset: Dataset, export_format: str) -> HttpRespon
     return response
 
 
+def _dataset_asset_file_response(asset: DatasetAsset, variant: str) -> HttpResponse:
+    try:
+        field = dataset_asset_content_field(asset, variant)
+    except DatasetServiceError as exc:
+        raise Http404(exc.message) from exc
+    if not field or not field.name:
+        raise Http404("Dataset asset file not found.")
+    normalized_variant = str(variant or "original").strip().lower()
+    content_type = (
+        "image/jpeg"
+        if normalized_variant == "thumbnail" and asset.thumbnail
+        else asset.content_type
+    )
+    with field.open("rb") as asset_file:
+        response = HttpResponse(asset_file.read(), content_type=content_type)
+    response["Content-Disposition"] = content_disposition_header(
+        False,
+        asset.original_filename or f"{asset.key}",
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+def _dataset_asset_content_url(
+    asset: DatasetAsset,
+    *,
+    public_context: bool = False,
+    variant: str = "thumbnail",
+) -> str:
+    if public_context:
+        url = reverse(
+            "public_dataset_asset_content",
+            kwargs={"public_key": asset.dataset.public_key, "asset_key": asset.key},
+        )
+    else:
+        url = reverse(
+            "dataset_asset_content",
+            kwargs={"dataset_key": asset.dataset.key, "asset_key": asset.key},
+        )
+    return f"{url}?variant={variant}"
+
+
+def _image_asset_cell_payload(
+    asset: DatasetAsset,
+    *,
+    public_context: bool = False,
+) -> dict[str, str | bool]:
+    dimensions = ""
+    if asset.width and asset.height:
+        dimensions = f"{asset.width} x {asset.height}"
+    label = asset.original_filename or "Image"
+    return {
+        "is_image": True,
+        "value": label,
+        "image_url": _dataset_asset_content_url(
+            asset,
+            public_context=public_context,
+            variant="thumbnail",
+        ),
+        "image_full_url": _dataset_asset_content_url(
+            asset,
+            public_context=public_context,
+            variant="original",
+        ),
+        "image_alt": label,
+        "image_detail": dimensions,
+    }
+
+
+def _image_asset_lookup(
+    dataset: Dataset,
+    rows: list[DatasetRow],
+) -> dict[tuple[int, str], DatasetAsset]:
+    row_ids = [row.id for row in rows if row.id]
+    if not row_ids:
+        return {}
+    return {
+        (asset.row_id, asset.column_name): asset
+        for asset in DatasetAsset.objects.filter(dataset=dataset, row_id__in=row_ids)
+    }
+
+
 def _row_cells(
     headers: list[str],
     row_data: dict[str, object],
@@ -418,11 +505,13 @@ def _row_cells(
     relationship_links: dict[str, dict[str, str]] | None = None,
     reference_lookup: dict[tuple[str, str], dict[str, str]] | None = None,
     *,
+    row_id: int | None = None,
+    image_assets: dict[tuple[int, str], DatasetAsset] | None = None,
     request=None,
     profile=None,
     public_context: bool = False,
     link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
-) -> list[dict[str, str]]:
+) -> list[dict[str, object]]:
     ordered_keys = [*headers, *[key for key in row_data if key not in headers]]
     descriptions = {
         column["name"]: column["description"]
@@ -430,6 +519,8 @@ def _row_cells(
     }
     relationship_links = relationship_links or {}
     reference_lookup = reference_lookup or {}
+    image_assets = image_assets or {}
+    image_columns = set(image_columns_from_schema(headers, column_schema))
     cells = []
     for header in ordered_keys:
         value = _cell_value(row_data.get(header, ""))
@@ -438,8 +529,17 @@ def _row_cells(
             "description": descriptions.get(header, ""),
             "value": value,
         }
+        asset_key = dataset_asset_key_from_ref(value) if header in image_columns else ""
+        asset = image_assets.get((row_id, header)) if row_id is not None and asset_key else None
+        if asset and str(asset.key) == asset_key:
+            cell.update(_image_asset_cell_payload(asset, public_context=public_context))
+        elif asset_key:
+            cell["is_missing_image"] = True
+            cell["value"] = "Image unavailable"
         relationship_link = relationship_links.get(header)
-        if relationship_link and cell["value"]:
+        if cell.get("is_image") or cell.get("is_missing_image"):
+            pass
+        elif relationship_link and cell["value"]:
             cell["relationship_url"] = relationship_link["url"]
             cell["relationship_label"] = relationship_link["label"]
         elif cell["value"] and (
@@ -464,8 +564,11 @@ def _row_table_cells(
     headers: list[str],
     row_data: dict[str, object],
     *,
+    column_schema: dict | None = None,
     reference_lookup: dict[tuple[str, str], dict[str, str]] | None = None,
+    image_assets: dict[tuple[int, str], DatasetAsset] | None = None,
     row_url: str = "",
+    row_id: int | None = None,
     row_number: int | None = None,
     request=None,
     profile=None,
@@ -473,6 +576,8 @@ def _row_table_cells(
     link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
 ) -> list[dict[str, object]]:
     reference_lookup = reference_lookup or {}
+    image_assets = image_assets or {}
+    image_columns = set(image_columns_from_schema(headers, column_schema))
     cells = []
     row_detail_primary_assigned = False
     for index, header in enumerate(headers):
@@ -481,7 +586,14 @@ def _row_table_cells(
             "value": display_value,
             "is_first": index == 0,
         }
-        if display_value and (
+        asset_key = dataset_asset_key_from_ref(display_value) if header in image_columns else ""
+        asset = image_assets.get((row_id, header)) if row_id is not None and asset_key else None
+        if asset and str(asset.key) == asset_key:
+            cell.update(_image_asset_cell_payload(asset, public_context=public_context))
+        elif asset_key:
+            cell["is_missing_image"] = True
+            cell["value"] = "Image unavailable"
+        elif display_value and (
             reference_link := reference_lookup.get((header, display_value.strip()))
         ):
             cell.update(reference_link)
@@ -499,6 +611,7 @@ def _row_table_cells(
             cell.get("rowset_link_url")
             or cell.get("plain_link_url")
             or cell.get("reference_url")
+            or cell.get("image_full_url")
         )
         if row_url and (not is_cell_link or not row_detail_primary_assigned):
             cell["row_url"] = row_url
@@ -951,7 +1064,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
         return queryset.order_by(*self.sort_ordering[self.get_selected_sort()])
 
     def get_total_projects(self, base_queryset):
-        return self.request.user.profile.projects.count()
+        return self.request.user.profile.projects.filter(archived_at__isnull=True).count()
 
     def get_dataset_group_totals(self, groups_by_key):
         if not groups_by_key:
@@ -1107,8 +1220,8 @@ class ProjectListView(LoginRequiredMixin, ListView):
     context_object_name = "projects"
 
     def get_queryset(self):
-        return self.request.user.profile.projects.annotate(
-            dataset_count=_visible_project_dataset_count()
+        return self.request.user.profile.projects.filter(archived_at__isnull=True).annotate(
+            dataset_count=_visible_project_dataset_count(),
         )
 
     def get_context_data(self, **kwargs):
@@ -1131,8 +1244,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.projects.annotate(
-            dataset_count=_visible_project_dataset_count()
+        return self.request.user.profile.projects.filter(archived_at__isnull=True).annotate(
+            dataset_count=_visible_project_dataset_count(),
         )
 
     def get_context_data(self, **kwargs):
@@ -1228,6 +1341,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             reference_columns,
             [row.data for row in row_objects],
         )
+        image_asset_lookup = _image_asset_lookup(dataset, row_objects)
         rows_with_values = []
         for row in row_objects:
             row_url = reverse(
@@ -1237,8 +1351,11 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             cells = _row_table_cells(
                 dataset.headers,
                 row.data,
+                column_schema=dataset.column_schema,
                 reference_lookup=reference_lookup,
+                image_assets=image_asset_lookup,
                 row_url=row_url,
+                row_id=row.id,
                 row_number=row.row_number,
                 request=self.request,
                 profile=self.request.user.profile,
@@ -1271,6 +1388,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 cells = _row_table_cells(
                     dataset.headers,
                     preview_row,
+                    column_schema=dataset.column_schema,
                     reference_lookup=reference_lookup,
                     request=self.request,
                     profile=self.request.user.profile,
@@ -1386,6 +1504,8 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
             dataset.column_schema,
             relationship_links=_row_relationship_links(dataset, row.data),
             reference_lookup=reference_lookup,
+            row_id=row.id,
+            image_assets=_image_asset_lookup(dataset, [row]),
             request=self.request,
             profile=self.request.user.profile,
             link_cache={},
@@ -1405,7 +1525,9 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["public_url"] = self.request.build_absolute_uri(self.object.get_public_url())
-        context["project_choices"] = self.request.user.profile.projects.all()
+        context["project_choices"] = self.request.user.profile.projects.filter(
+            archived_at__isnull=True
+        )
         context["relationship_target_dataset_choices"] = (
             _owned_dataset_queryset(self.request.user.profile)
             .filter(status=DatasetStatus.READY)
@@ -1510,6 +1632,25 @@ def project_update_metadata(request, project_key):
             messages.success(request, result["message"])
 
     return redirect("project_detail", project_key=project_key)
+
+
+@login_required
+@require_POST
+def project_delete(request, project_key):
+    try:
+        profile = request.user.profile
+    except ObjectDoesNotExist:
+        return HttpResponse("Project not found.", status=404)
+
+    project = get_object_or_404(
+        Project,
+        key=project_key,
+        profile=profile,
+    )
+    project_name = project.name
+    project.delete()
+    messages.success(request, f"Deleted {project_name}. Assigned datasets are now ungrouped.")
+    return redirect("project_list")
 
 
 @login_required
@@ -1731,6 +1872,18 @@ def dataset_export(request, dataset_key, export_format):
 
 
 @login_required
+@require_http_methods(["GET"])
+def dataset_asset_content(request, dataset_key, asset_key):
+    asset = get_object_or_404(
+        DatasetAsset.objects.select_related("dataset"),
+        key=asset_key,
+        dataset__key=dataset_key,
+        dataset__profile=request.user.profile,
+    )
+    return _dataset_asset_file_response(asset, request.GET.get("variant", "original"))
+
+
+@login_required
 def dataset_status(request, dataset_key):
     dataset = get_object_or_404(
         Dataset,
@@ -1806,7 +1959,9 @@ def public_dataset(request, public_key):
         )
         paginator = Paginator(row_queryset, dataset.public_page_size)
         page_obj = paginator.get_page(request.GET.get("page"))
-        for row in page_obj.object_list:
+        public_row_objects = list(page_obj.object_list)
+        image_asset_lookup = _image_asset_lookup(dataset, public_row_objects)
+        for row in public_row_objects:
             row_url = reverse(
                 "public_dataset_row_detail",
                 kwargs={"public_key": dataset.public_key, "row_id": row.id},
@@ -1814,7 +1969,10 @@ def public_dataset(request, public_key):
             cells = _row_table_cells(
                 dataset.headers,
                 row.data,
+                column_schema=dataset.column_schema,
+                image_assets=image_asset_lookup,
                 row_url=row_url,
+                row_id=row.id,
                 row_number=row.row_number,
                 request=request,
                 public_context=True,
@@ -1897,6 +2055,9 @@ def public_dataset_row_detail(request, public_key, row_id):
         row_cells = _row_cells(
             dataset.headers,
             dataset_row.data,
+            dataset.column_schema,
+            row_id=dataset_row.id,
+            image_assets=_image_asset_lookup(dataset, [dataset_row]),
             request=request,
             public_context=True,
         )
@@ -1913,5 +2074,26 @@ def public_dataset_row_detail(request, public_key, row_id):
             "row_cells": row_cells,
         },
     )
+    response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+    return response
+
+
+@require_http_methods(["GET"])
+def public_dataset_asset_content(request, public_key, asset_key):
+    dataset = get_object_or_404(
+        Dataset,
+        public_key=public_key,
+        public_enabled=True,
+        status=DatasetStatus.READY,
+        archived_at__isnull=True,
+    )
+    if not _has_public_dataset_access(request, dataset):
+        raise Http404("Dataset asset not found.")
+    asset = get_object_or_404(
+        DatasetAsset.objects.select_related("dataset"),
+        key=asset_key,
+        dataset=dataset,
+    )
+    response = _dataset_asset_file_response(asset, request.GET.get("variant", "original"))
     response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
     return response

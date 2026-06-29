@@ -69,6 +69,22 @@ fixed set. For example, a task board can define `status` with choices like
 Choice cells may be blank. When a row includes a non-blank choice value, Rowset
 requires it to match one of the configured choices exactly.
 
+## Image columns
+
+Use image columns when a row needs a private visual asset, such as a product
+photo, receipt, screenshot, or generated image. Create the column with type
+`image`, then attach the image through MCP or REST.
+
+Row writes should leave image cells blank. When an image is attached, Rowset
+stores the file privately and writes an opaque `asset:{key}` reference into the
+cell. Agents should treat that reference as Rowset-managed metadata, not as a
+URL or raw image data.
+
+Image assets appear in the authenticated dataset view and in public previews
+when sharing is enabled. Dataset exports include the `asset:{key}` reference so
+automated workflows can still use stable row data without embedding binary files
+inside CSV, JSONL, XLSX, SQLite, or Parquet exports.
+
 ## Column descriptions
 
 Add column descriptions when a header needs extra context that should travel

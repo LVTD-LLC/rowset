@@ -584,6 +584,14 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "project": {"key": project_key, "metadata": kwargs.get("metadata", {})},
         }
 
+    def archive_project(authenticated_profile, project_key):
+        calls.append(("archive_project", authenticated_profile.id, project_key))
+        return {
+            "status": "success",
+            "message": "Project archived.",
+            "project": {"key": project_key, "archived_at": "2026-05-14T00:00:00Z"},
+        }
+
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -601,6 +609,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "apps.mcp_server.server.update_profile_project_metadata",
             update_project_metadata,
         )
+        monkeypatch.setattr("apps.mcp_server.server.archive_profile_project", archive_project)
 
         async with Client(mcp) as client:
             list_result = await client.call_tool(
@@ -634,6 +643,10 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                     "metadata": {"notion_doc": "https://notion.so/acme/launch"},
                 },
             )
+            archive_result = await client.call_tool(
+                "archive_project",
+                {"project_key": "project-key"},
+            )
             update_result = await client.call_tool(
                 "update_dataset_project",
                 {"dataset_key": "dataset-key", "project_key": "project-key"},
@@ -650,6 +663,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
         assert metadata_result.data["project"]["metadata"]["notion_doc"] == (
             "https://notion.so/acme/launch"
         )
+        assert archive_result.data["project"]["archived_at"] == "2026-05-14T00:00:00Z"
         assert update_result.data["dataset"]["project"]["key"] == "project-key"
         assert calls == [
             ("list_projects", 11, 5, 0),
@@ -674,6 +688,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                 "project-key",
                 {"metadata": {"notion_doc": "https://notion.so/acme/launch"}},
             ),
+            ("archive_project", 11, "project-key"),
             ("update_dataset_project", 11, "dataset-key", "project-key"),
         ]
 
@@ -1013,6 +1028,103 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             ("update", "ds", 7, {"email": "c@example.com"}),
             ("update_by_index", "ds", "c@example.com", {"name": "Ada"}),
             ("delete", "ds", 7),
+        ]
+
+    anyio.run(run)
+
+
+def test_dataset_image_mcp_tools_call_dataset_services(monkeypatch):
+    calls = []
+
+    def attach_image(
+        authenticated_profile,
+        dataset_key,
+        *,
+        column_name,
+        image_base64,
+        filename=None,
+        content_type=None,
+        row_id=None,
+        index_value=None,
+        agent_api_key=None,
+    ):
+        calls.append(
+            (
+                "attach",
+                authenticated_profile.id,
+                dataset_key,
+                row_id,
+                index_value,
+                column_name,
+                image_base64,
+                filename,
+                content_type,
+                getattr(agent_api_key, "id", None),
+            )
+        )
+        return {
+            "status": "success",
+            "message": "Image attached.",
+            "dataset": dataset_key,
+            "row": {"id": row_id, "data": {column_name: "asset:asset-key"}},
+            "asset": {"key": "asset-key", "ref": "asset:asset-key"},
+        }
+
+    def get_asset(authenticated_profile, dataset_key, asset_key):
+        calls.append(("get_asset", authenticated_profile.id, dataset_key, asset_key))
+        return {
+            "status": "success",
+            "message": "Dataset asset retrieved.",
+            "asset": {"key": asset_key, "ref": f"asset:{asset_key}"},
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.attach_profile_dataset_image_asset",
+            attach_image,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.serialize_profile_dataset_asset",
+            get_asset,
+        )
+
+        async with Client(mcp) as client:
+            attach_result = await client.call_tool(
+                "attach_image_to_dataset_row",
+                {
+                    "dataset_key": "ds",
+                    "row_id": 7,
+                    "column_name": "photo",
+                    "image_base64": "aW1hZ2U=",
+                    "filename": "photo.png",
+                    "content_type": "image/png",
+                },
+            )
+            asset_result = await client.call_tool(
+                "get_dataset_image_asset",
+                {"dataset_key": "ds", "asset_key": "asset-key"},
+            )
+
+        assert attach_result.data["message"] == "Image attached."
+        assert asset_result.data["asset"]["ref"] == "asset:asset-key"
+        assert calls == [
+            (
+                "attach",
+                11,
+                "ds",
+                7,
+                None,
+                "photo",
+                "aW1hZ2U=",
+                "photo.png",
+                "image/png",
+                3,
+            ),
+            ("get_asset", 11, "ds", "asset-key"),
         ]
 
     anyio.run(run)

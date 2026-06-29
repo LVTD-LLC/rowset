@@ -133,7 +133,8 @@ services:
       /bin/sh -c "
       sleep 5 &&
       /usr/bin/mc config host add myminio http://minio:9000 rowset-user rowset-password &&
-      /usr/bin/mc mb myminio/rowset-dev &&
+      /usr/bin/mc mb --ignore-existing myminio/rowset-dev &&
+      /usr/bin/mc mb --ignore-existing myminio/rowset-assets-dev &&
       /usr/bin/mc anonymous set download myminio/rowset-dev &&
       exit 0;
       "

@@ -83,11 +83,14 @@ create_project
 get_project
 update_project
 update_project_metadata
+archive_project
 ```
 
 Use project metadata for source links, kickoff threads, planning docs, or other
 JSON context that should stay with the project. Pass an empty object to
 `update_project_metadata` to clear it.
+Use `archive_project` when a project should disappear from normal project
+discovery. Archiving a project does not delete or archive its datasets.
 
 To create a new ready dataset from an agent workflow, call:
 
@@ -109,6 +112,8 @@ list_dataset_rows
 get_dataset_row
 get_dataset_row_by_index
 create_dataset_row
+attach_image_to_dataset_row
+get_dataset_image_asset
 update_dataset_row
 update_dataset_row_by_index
 delete_dataset_row
@@ -140,6 +145,12 @@ and generated index columns cannot be renamed.
 Use `update_dataset_metadata` when the user wants agents to remember dataset
 purpose, workflow rules, status conventions, or other JSON context without
 changing rows.
+
+Use `attach_image_to_dataset_row` for image columns after the target row exists.
+The tool accepts JPEG, PNG, or WebP bytes encoded as base64 and writes an
+opaque `asset:{key}` reference into the row cell. Use
+`get_dataset_image_asset` to retrieve asset metadata and authenticated Rowset
+content URLs.
 
 `get_dataset` returns dataset context, semantic column schema, and relationship
 summaries for the dataset being inspected. Agents should call it before row

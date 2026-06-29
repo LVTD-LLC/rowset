@@ -42,7 +42,25 @@
                       {% if cell.is_first and public_row.url and not public_row.has_accessible_row_link %}
                         <a href="{{ public_row.url }}" class="sr-only">View row {{ public_row.row_number }} details</a>
                       {% endif %}
-                      {% if cell.rowset_link_url %}
+                      {% if cell.is_image %}
+                        <div class="flex max-w-64 items-center gap-3">
+                          <a href="{{ cell.image_full_url }}" class="fb-focus block h-14 w-14 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900" aria-label="Open image {{ cell.value }}">
+                            <img src="{{ cell.image_url }}" alt="{{ cell.image_alt }}" class="h-full w-full object-cover">
+                          </a>
+                          <div class="min-w-0">
+                            {% if cell.is_row_detail_primary and cell.row_url %}
+                              <a href="{{ cell.row_url }}" class="fb-focus block truncate text-sm font-semibold text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.row_detail_label }}">{{ cell.value }}</a>
+                            {% else %}
+                              <span class="block truncate text-sm font-semibold text-slate-700 dark:text-slate-200" title="{{ cell.value }}">{{ cell.value }}</span>
+                            {% endif %}
+                            {% if cell.image_detail %}
+                              <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ cell.image_detail }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                      {% elif cell.is_missing_image %}
+                        <span class="block max-w-64 truncate text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
+                      {% elif cell.rowset_link_url %}
                         {% if cell.is_row_detail_primary and public_row.url %}
                           <div class="flex max-w-64 items-center gap-2">
                             <a href="{{ public_row.url }}" class="fb-focus min-w-0 flex-1 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.row_detail_label }}">

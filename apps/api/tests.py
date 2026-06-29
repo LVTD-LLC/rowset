@@ -405,6 +405,7 @@ class ProjectListApiUnitTests(SimpleTestCase):
             updated_at="2026-05-14T00:01:00Z",
         )
         queryset = Mock()
+        queryset.filter.return_value = queryset
         queryset.only.return_value = queryset
         queryset.count.return_value = 1
         queryset.__getitem__ = Mock(return_value=[project])
@@ -425,9 +426,11 @@ class ProjectListApiUnitTests(SimpleTestCase):
                 "dataset_count": 2,
                 "created_at": "2026-05-14T00:00:00Z",
                 "updated_at": "2026-05-14T00:01:00Z",
+                "archived_at": None,
             }
         ]
         projects.annotate.assert_called_once()
+        queryset.filter.assert_called_once_with(archived_at__isnull=True)
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
 
