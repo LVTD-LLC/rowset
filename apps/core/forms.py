@@ -71,7 +71,11 @@ class AgentApiKeyCreateForm(forms.Form):
         name = normalize_agent_api_key_name(self.cleaned_data["name"])
         if (
             self.profile
-            and AgentApiKey.objects.filter(profile=self.profile, name=name).exists()
+            and AgentApiKey.objects.filter(
+                profile=self.profile,
+                name=name,
+                revoked_at__isnull=True,
+            ).exists()
         ):
             raise forms.ValidationError("An API key with this name already exists.")
         return name

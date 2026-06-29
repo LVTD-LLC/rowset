@@ -3,7 +3,7 @@ import { copyTextToClipboard } from "../utils/clipboard";
 
 export default class extends Controller {
   static targets = ["source", "label"];
-  static values = { url: String };
+  static values = { url: String, responseKey: String };
 
   async copy(event) {
     event.preventDefault();
@@ -42,7 +42,11 @@ export default class extends Controller {
       }
 
       const payload = await response.json();
-      return payload.prompt || "";
+      if (this.hasResponseKeyValue && this.responseKeyValue) {
+        const value = payload[this.responseKeyValue];
+        return typeof value === "string" ? value : "";
+      }
+      return payload.prompt || payload.api_key || payload.text || "";
     } catch (error) {
       return "";
     }

@@ -1,4 +1,5 @@
 from urllib.parse import urlencode
+from uuid import UUID
 
 import stripe
 from allauth.account.internal.flows.email_verification import (
@@ -44,6 +45,41 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 logger = get_rowset_logger(__name__)
 
 AGENT_API_KEY_MASK = "***"
+CREATED_AGENT_API_KEY_QUERY_PARAM = "created_agent_api_key"
+
+
+def _serialize_created_agent_api_key(agent_api_key: AgentApiKey) -> dict:
+    return {
+        "uuid": str(agent_api_key.uuid),
+        "name": agent_api_key.name,
+        "access_level_label": agent_api_key.get_access_level_display(),
+    }
+
+
+def _created_agent_api_key_context_from_request(
+    request: HttpRequest,
+    profile: Profile,
+) -> dict | None:
+    created_agent_api_key_uuid = request.GET.get(CREATED_AGENT_API_KEY_QUERY_PARAM)
+    if not created_agent_api_key_uuid:
+        return None
+    try:
+        created_agent_api_key_uuid = UUID(created_agent_api_key_uuid)
+    except ValueError:
+        return None
+
+    agent_api_key = (
+        AgentApiKey.objects.filter(
+            uuid=created_agent_api_key_uuid,
+            profile=profile,
+            revoked_at__isnull=True,
+        )
+        .only("uuid", "name", "access_level")
+        .first()
+    )
+    if agent_api_key is None:
+        return None
+    return _serialize_created_agent_api_key(agent_api_key)
 
 
 def user_settings_context(
@@ -53,6 +89,8 @@ def user_settings_context(
     created_agent_api_key: dict | None = None,
 ) -> dict:
     user = request.user
+    if created_agent_api_key is None:
+        created_agent_api_key = _created_agent_api_key_context_from_request(request, profile)
     try:
         email_address = EmailAddress.objects.get_for_user(user, user.email)
     except EmailAddress.DoesNotExist:
@@ -67,7 +105,7 @@ def user_settings_context(
             type=Authenticator.Type.WEBAUTHN,
         ).count(),
         "agent_api_key_form": AgentApiKeyCreateForm(profile=profile),
-        "agent_api_keys": profile.agent_api_keys.all(),
+        "agent_api_keys": profile.agent_api_keys.filter(revoked_at__isnull=True),
         "created_agent_api_key": created_agent_api_key,
     }
 
@@ -250,6 +288,23 @@ def agent_api_key_setup_prompt(request, agent_api_key_uuid):
 
 
 @login_required
+@require_GET
+def agent_api_key_token(request, agent_api_key_uuid):
+    agent_api_key = get_object_or_404(
+        AgentApiKey,
+        uuid=agent_api_key_uuid,
+        profile=request.user.profile,
+        revoked_at__isnull=True,
+    )
+    api_key = get_agent_api_key_token(agent_api_key)
+    if api_key is None:
+        return JsonResponse({"error": "API key token is unavailable."}, status=404)
+    response = JsonResponse({"api_key": api_key})
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@login_required
 @require_POST
 def create_agent_api_key_view(request):
     profile = request.user.profile
@@ -288,10 +343,7 @@ def create_agent_api_key_view(request):
         **user_settings_context(
             request,
             profile,
-            created_agent_api_key={
-                "name": credential.agent_api_key.name,
-                "access_level_label": credential.agent_api_key.get_access_level_display(),
-            },
+            created_agent_api_key=_serialize_created_agent_api_key(credential.agent_api_key),
         ),
     }
     response = render(request, UserSettingsView.template_name, context)
@@ -313,7 +365,15 @@ def revoke_agent_api_key_view(request, agent_api_key_uuid):
         messages.success(request, f"Revoked {agent_api_key.name}.")
     else:
         messages.info(request, f"{agent_api_key.name} is already revoked.")
-    return redirect("settings")
+
+    settings_url = reverse("settings")
+    created_agent_api_key_uuid = request.POST.get("created_agent_api_key_uuid")
+    if created_agent_api_key_uuid:
+        created_query = urlencode(
+            {CREATED_AGENT_API_KEY_QUERY_PARAM: created_agent_api_key_uuid}
+        )
+        settings_url = f"{settings_url}?{created_query}"
+    return redirect(settings_url)
 
 
 @login_required

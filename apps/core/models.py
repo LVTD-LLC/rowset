@@ -87,6 +87,7 @@ class AgentApiKey(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["profile", "name"],
+                condition=models.Q(revoked_at__isnull=True),
                 name="unique_agent_api_key_name_per_profile",
             ),
         ]

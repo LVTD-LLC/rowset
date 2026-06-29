@@ -39,6 +39,11 @@ urlpatterns = [
         name="agent_api_key_setup_prompt",
     ),
     path(
+        "settings/agent-api-keys/<uuid:agent_api_key_uuid>/token/",
+        views.agent_api_key_token,
+        name="agent_api_key_token",
+    ),
+    path(
         "settings/agent-api-keys/<uuid:agent_api_key_uuid>/revoke/",
         views.revoke_agent_api_key_view,
         name="revoke_agent_api_key",

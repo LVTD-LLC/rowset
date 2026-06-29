@@ -122,6 +122,7 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     assert response.status_code == 200
     created_key = response.context["created_agent_api_key"]
     assert created_key["name"] == "Codex"
+    assert created_key["uuid"]
     assert created_key["access_level_label"] == "Read + write"
 
     agent_api_key = AgentApiKey.objects.get(name="Codex")
@@ -130,6 +131,8 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     content = response.content.decode()
     assert raw_key not in content
     assert "Created Codex with Read + write access." in content
+    assert "Copy key" in content
+    assert reverse("agent_api_key_token", args=[agent_api_key.uuid]) in content
     assert "Copy setup prompt" in content
     assert reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid]) in content
 
@@ -138,18 +141,26 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     assert raw_key not in followup.content.decode()
 
 
-def test_settings_lists_agent_api_keys_without_raw_secret(auth_client, profile):
+def test_settings_lists_active_agent_api_keys_without_raw_secret(auth_client, profile):
     credential = create_agent_api_key(profile, "Reporting Agent", AgentApiKeyAccessLevel.READ)
+    revoked_credential = create_agent_api_key(profile, "Old Agent", AgentApiKeyAccessLevel.ADMIN)
+    revoked_credential.agent_api_key.revoked_at = timezone.now()
+    revoked_credential.agent_api_key.save(update_fields=["revoked_at", "updated_at"])
 
     response = auth_client.get(reverse("settings"))
     content = response.content.decode()
 
+    assert list(response.context["agent_api_keys"]) == [credential.agent_api_key]
     assert "Reporting Agent" in content
     assert "Read" in content
     assert f"{credential.agent_api_key.key_prefix}..." in content
+    assert "Copy key" in content
+    assert reverse("agent_api_key_token", args=[credential.agent_api_key.uuid]) in content
     assert "Copy setup prompt" in content
     assert reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid]) in content
     assert credential.raw_key not in content
+    assert "Old Agent" not in content
+    assert f"{revoked_credential.agent_api_key.key_prefix}..." not in content
 
 
 @override_settings(SITE_URL="https://rowset.example")
@@ -169,6 +180,60 @@ def test_agent_api_key_setup_prompt_endpoint_returns_selected_key_prompt(auth_cl
     assert f"Rowset API key: {credential.raw_key}" in prompt
     assert f"Rowset API key: {profile.key}" not in prompt
     assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
+
+
+def test_agent_api_key_token_endpoint_returns_selected_key(auth_client, profile):
+    credential = create_agent_api_key(profile, "Reporting Agent")
+
+    response = auth_client.get(reverse("agent_api_key_token", args=[credential.agent_api_key.uuid]))
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/json"
+    assert response["Cache-Control"] == "no-store"
+    assert response.json() == {"api_key": credential.raw_key}
+
+
+def test_agent_api_key_token_endpoint_rejects_revoked_key(auth_client, profile):
+    credential = create_agent_api_key(profile, "Reporting Agent")
+    credential.agent_api_key.revoked_at = timezone.now()
+    credential.agent_api_key.save(update_fields=["revoked_at", "updated_at"])
+
+    response = auth_client.get(reverse("agent_api_key_token", args=[credential.agent_api_key.uuid]))
+
+    assert response.status_code == 404
+
+
+def test_agent_api_key_token_endpoint_rejects_other_profile_key(
+    auth_client,
+    django_user_model,
+):
+    other_user = django_user_model.objects.create_user(
+        username="othertokenkeyuser",
+        email="othertokenkeyuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(other_user.profile, "Reporting Agent")
+
+    response = auth_client.get(reverse("agent_api_key_token", args=[credential.agent_api_key.uuid]))
+
+    assert response.status_code == 404
+
+
+def test_agent_api_key_token_endpoint_rejects_key_without_recoverable_token(
+    auth_client,
+    profile,
+):
+    agent_api_key = AgentApiKey.objects.create(
+        profile=profile,
+        name="Old Agent",
+        key_prefix="rsk_oldtoken",
+        token_hash=hash_agent_api_key("rsk_oldtoken"),
+    )
+
+    response = auth_client.get(reverse("agent_api_key_token", args=[agent_api_key.uuid]))
+
+    assert response.status_code == 404
+    assert response.json() == {"error": "API key token is unavailable."}
 
 
 def test_agent_api_key_setup_prompt_endpoint_rejects_revoked_key(auth_client, profile):
@@ -253,6 +318,29 @@ def test_settings_rejects_duplicate_agent_api_key_names(auth_client, profile):
     assert "already exists" in response.content.decode()
 
 
+def test_settings_allows_reusing_revoked_agent_api_key_name(auth_client, profile):
+    old_credential = create_agent_api_key(profile, "Codex")
+    old_credential.agent_api_key.revoked_at = timezone.now()
+    old_credential.agent_api_key.save(update_fields=["revoked_at", "updated_at"])
+
+    response = auth_client.post(
+        reverse("create_agent_api_key"),
+        {"name": "Codex"},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    active_key = AgentApiKey.objects.get(
+        profile=profile,
+        name="Codex",
+        revoked_at__isnull=True,
+    )
+    assert active_key.pk != old_credential.agent_api_key.pk
+    assert AgentApiKey.objects.filter(profile=profile, name="Codex").count() == 2
+    assert list(response.context["agent_api_keys"]) == [active_key]
+    assert "Created Codex with Read + write access." in response.content.decode()
+
+
 def test_settings_creates_agent_api_key_with_selected_permission(auth_client, profile):
     response = auth_client.post(
         reverse("create_agent_api_key"),
@@ -271,12 +359,53 @@ def test_settings_owner_can_revoke_agent_api_key(auth_client, profile):
 
     response = auth_client.post(
         reverse("revoke_agent_api_key", args=[credential.agent_api_key.uuid]),
+        follow=True,
     )
 
-    assert response.status_code == 302
+    assert response.status_code == 200
     credential.agent_api_key.refresh_from_db()
     assert credential.agent_api_key.revoked_at is not None
     assert resolve_api_key_profile(credential.raw_key) is None
+    assert list(response.context["agent_api_keys"]) == []
+    assert "No active API keys." in response.content.decode()
+
+
+def test_settings_revoke_agent_api_key_redirects_without_follow(auth_client, profile):
+    credential = create_agent_api_key(profile, "Codex")
+
+    response = auth_client.post(
+        reverse("revoke_agent_api_key", args=[credential.agent_api_key.uuid]),
+    )
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("settings")
+
+
+def test_settings_revoke_preserves_active_created_agent_api_key_context(auth_client, profile):
+    created_credential = create_agent_api_key(profile, "Codex")
+    revoked_credential = create_agent_api_key(profile, "Old Agent")
+
+    response = auth_client.post(
+        reverse("revoke_agent_api_key", args=[revoked_credential.agent_api_key.uuid]),
+        {"created_agent_api_key_uuid": str(created_credential.agent_api_key.uuid)},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert response.redirect_chain == [
+        (
+            f"{reverse('settings')}?created_agent_api_key={created_credential.agent_api_key.uuid}",
+            302,
+        )
+    ]
+    assert response.context["created_agent_api_key"] == {
+        "uuid": str(created_credential.agent_api_key.uuid),
+        "name": "Codex",
+        "access_level_label": "Read + write",
+    }
+    assert list(response.context["agent_api_keys"]) == [created_credential.agent_api_key]
+    assert "Created Codex with Read + write access." in response.content.decode()
+    assert f"{revoked_credential.agent_api_key.key_prefix}..." not in response.content.decode()
 
 
 def test_settings_owner_cannot_revoke_another_profile_agent_api_key(
