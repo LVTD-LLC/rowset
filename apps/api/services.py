@@ -41,6 +41,7 @@ from apps.datasets.services import (
     DatasetImageError,
     DatasetRowQueryError,
     apply_dataset_row_query,
+    dataset_asset_key_from_ref,
     choice_constraints_from_schema,
     dataset_asset_ref,
     decode_image_base64,
@@ -1460,7 +1461,10 @@ def _validate_existing_image_values(dataset: Dataset, column_schema: dict) -> No
     image_columns = image_columns_from_schema(dataset.headers, column_schema)
     if not image_columns:
         return
-    for row_data in _iter_dataset_row_data(dataset):
+    for row in dataset.rows.order_by("row_number", "id").only("id", "data").iterator(
+        chunk_size=1000
+    ):
+        row_data = row.data or {}
         _validate_image_row_data(
             dataset.headers,
             column_schema,
@@ -1468,6 +1472,18 @@ def _validate_existing_image_values(dataset: Dataset, column_schema: dict) -> No
             columns=image_columns,
             allow_asset_refs=True,
         )
+        for column in image_columns:
+            asset_key = dataset_asset_key_from_ref(row_data.get(column, ""))
+            if asset_key and not DatasetAsset.objects.filter(
+                dataset=dataset,
+                row=row,
+                column_name=column,
+                key=asset_key,
+            ).exists():
+                raise DatasetServiceError(
+                    400,
+                    f"Column '{column}' references an image asset that does not exist.",
+                )
 
 
 def _create_dataset_index_config(
@@ -2873,6 +2889,17 @@ def _patch_dataset_row(
         if field in image_columns
         and row_patch.get(field, "") != str((row.data or {}).get(field, "") or "")
     ]
+    invalid_image_asset_ref_columns = [
+        field
+        for field in changed_image_columns
+        if dataset_asset_key_from_ref(row_patch.get(field, ""))
+    ]
+    if invalid_image_asset_ref_columns:
+        column = invalid_image_asset_ref_columns[0]
+        raise DatasetServiceError(
+            400,
+            f"Column '{column}' is an image column. Attach a new image asset instead.",
+        )
     _validate_image_row_data(
         dataset.headers,
         dataset.column_schema,

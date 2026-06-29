@@ -4534,6 +4534,29 @@ def test_dataset_api_updates_column_types(client, profile):
     }
 
 
+def test_dataset_api_rejects_image_type_for_unowned_existing_asset_ref(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["name", "email", "photo"]
+    dataset.save(update_fields=["headers", "updated_at"])
+    row = dataset.rows.get(index_value="ada@example.com")
+    row.data = {
+        **row.data,
+        "photo": "asset:00000000-0000-0000-0000-000000000000",
+    }
+    row.save(update_fields=["data", "updated_at"])
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+        data={"column_types": {"photo": "image"}},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Column 'photo' references an image asset that does not exist."
+    )
+
+
 def test_dataset_api_adds_column_and_backfills_existing_rows(client, profile):
     dataset = create_ready_dataset(profile)
 
