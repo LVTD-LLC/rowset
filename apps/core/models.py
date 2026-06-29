@@ -5,7 +5,7 @@ from django.db import models
 from django_q.tasks import async_task
 
 from apps.core.base_models import BaseModel
-from apps.core.choices import EmailType, ProfileStates
+from apps.core.choices import AgentApiKeyAccessLevel, EmailType, ProfileStates
 from apps.core.model_utils import generate_random_key
 from apps.core.utils import send_transactional_email
 from rowset.utils import get_rowset_logger
@@ -18,7 +18,6 @@ class Profile(BaseModel):
     key = models.CharField(max_length=30, unique=True, default=generate_random_key)
     agent_setup_prompt_dismissed = models.BooleanField(default=False)
 
-    
     stripe_subscription_id = models.CharField(
         max_length=255,
         blank=True,
@@ -31,7 +30,6 @@ class Profile(BaseModel):
         default="",
         help_text="The user's Stripe customer id, if it exists",
     )
-    
 
     state = models.CharField(
         max_length=255,
@@ -58,7 +56,6 @@ class Profile(BaseModel):
         latest_transition = self.state_transitions.latest("created_at")
         return latest_transition.to_state
 
-    
     @property
     def has_active_subscription(self):
         return self.state in [
@@ -77,6 +74,11 @@ class AgentApiKey(BaseModel):
     key_prefix = models.CharField(max_length=16)
     token_hash = models.CharField(max_length=64, unique=True)
     token_ciphertext = models.TextField(blank=True, default="")
+    access_level = models.CharField(
+        max_length=20,
+        choices=AgentApiKeyAccessLevel.choices,
+        default=AgentApiKeyAccessLevel.READ_WRITE,
+    )
     last_used_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
 
@@ -93,9 +95,29 @@ class AgentApiKey(BaseModel):
     def is_active(self):
         return self.revoked_at is None
 
+    @property
+    def can_read(self):
+        return self.access_level in {
+            AgentApiKeyAccessLevel.READ,
+            AgentApiKeyAccessLevel.READ_WRITE,
+            AgentApiKeyAccessLevel.ADMIN,
+        }
+
+    @property
+    def can_write(self):
+        return self.access_level in {
+            AgentApiKeyAccessLevel.READ_WRITE,
+            AgentApiKeyAccessLevel.ADMIN,
+        }
+
+    @property
+    def can_admin(self):
+        return self.access_level == AgentApiKeyAccessLevel.ADMIN
+
     def __str__(self):
         return f"{self.name} ({self.profile.user.email})"
-    
+
+
 class ProfileStateTransition(BaseModel):
     profile = models.ForeignKey(
         Profile,
@@ -108,6 +130,7 @@ class ProfileStateTransition(BaseModel):
     to_state = models.CharField(max_length=255, choices=ProfileStates.choices)
     backup_profile_id = models.IntegerField()
     metadata = models.JSONField(null=True, blank=True)
+
 
 class Feedback(BaseModel):
     profile = models.ForeignKey(
@@ -161,6 +184,7 @@ class Feedback(BaseModel):
                         "feedback_id": self.id,
                     },
                 )
+
 
 class EmailSent(BaseModel):
     email_address = models.EmailField(help_text="The recipient email address")

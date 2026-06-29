@@ -64,10 +64,28 @@ ROWSET_CAPABILITIES = (
             "source of truth for exact tool names, schemas, and descriptions."
         ),
         mcp_tools=("get_user_info", "get_rowset_capabilities"),
-        rest_paths=("/api/user",),
+        rest_paths=("/api/user", "/api/agent-api-keys"),
         notes=(
             "Hosted MCP uses Authorization: Bearer <ROWSET_API_KEY>.",
             "The API key must stay in a private environment variable or secret store.",
+            (
+                "Read keys inspect data, Read + write keys can mutate datasets and "
+                "projects, and Admin keys can create other agent API keys."
+            ),
+        ),
+    ),
+    RowsetCapability(
+        id="api_key_management",
+        title="API key management",
+        summary=(
+            "Create scoped agent API keys for trusted automation. Admin keys can "
+            "provision read, read_write, or admin keys through MCP or REST."
+        ),
+        mcp_tools=("create_agent_api_key",),
+        rest_paths=("/api/agent-api-keys",),
+        notes=(
+            "The raw key is returned only in the creation response.",
+            "Use the smallest permission level that fits the agent's job.",
         ),
     ),
     RowsetCapability(
@@ -380,9 +398,7 @@ def _validate_capability_registry() -> None:
         if capability_ids.count(capability_id) > 1
     )
     if duplicate_ids:
-        raise ValueError(
-            "ROWSET_CAPABILITIES contains duplicate IDs: " + ", ".join(duplicate_ids)
-        )
+        raise ValueError("ROWSET_CAPABILITIES contains duplicate IDs: " + ", ".join(duplicate_ids))
 
     valid_capability_ids = set(capability_ids)
     unknown_references = []
@@ -393,8 +409,7 @@ def _validate_capability_registry() -> None:
 
     if unknown_references:
         raise ValueError(
-            "ROWSET_USE_CASES references unknown capability IDs: "
-            + "; ".join(unknown_references)
+            "ROWSET_USE_CASES references unknown capability IDs: " + "; ".join(unknown_references)
         )
 
 
@@ -452,9 +467,7 @@ def render_rowset_llms_txt(
         "## Recommended agent startup",
         "",
     ]
-    lines.extend(
-        f"{index}. {step}" for index, step in enumerate(ROWSET_RECOMMENDED_STARTUP, 1)
-    )
+    lines.extend(f"{index}. {step}" for index, step in enumerate(ROWSET_RECOMMENDED_STARTUP, 1))
     lines.extend(
         [
             "",

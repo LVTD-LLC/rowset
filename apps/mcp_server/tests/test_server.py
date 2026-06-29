@@ -7,10 +7,16 @@ from django.test import override_settings
 from fastmcp import Client
 
 from apps.api.services import DatasetServiceError
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
-from apps.mcp_server.server import get_dataset_row as mcp_get_dataset_row
-from apps.mcp_server.server import mcp
+from apps.mcp_server.server import (
+    AGENT_API_KEY_PROFILE_ATTR,
+    mcp,
+)
+from apps.mcp_server.server import (
+    get_dataset_row as mcp_get_dataset_row,
+)
 
 
 def _extract_mcp_error_payload(error: Exception) -> dict:
@@ -45,7 +51,7 @@ def _expected_mcp_error(
     }
 
 
-def _profile():
+def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
     user = SimpleNamespace(
         id=7,
         email="ada@example.com",
@@ -117,13 +123,20 @@ def _profile():
             return DatasetQuerySet()
 
     datasets = DatasetManager()
-    return SimpleNamespace(
+    profile = SimpleNamespace(
         id=11,
         user=user,
         state="signed_up",
         has_active_subscription=False,
         datasets=datasets,
     )
+    if agent_api_key_access_level is not None:
+        setattr(
+            profile,
+            AGENT_API_KEY_PROFILE_ATTR,
+            SimpleNamespace(id=3, access_level=agent_api_key_access_level),
+        )
+    return profile
 
 
 def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
@@ -142,6 +155,137 @@ def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
         assert "key" not in payload
         assert "is_staff" not in payload
         assert "is_superuser" not in payload
+
+    anyio.run(run)
+
+
+def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
+    async def run():
+        profile = _profile()
+        setattr(
+            profile,
+            AGENT_API_KEY_PROFILE_ATTR,
+            SimpleNamespace(id=3, access_level=AgentApiKeyAccessLevel.READ),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile,
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool("create_project", {"name": "Launch"})
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload == _expected_mcp_error(
+            code="API_KEY_FORBIDDEN",
+            message=(
+                "This Rowset API key has Read access, but this action requires Read + write access."
+            ),
+            suggested_action="Use a Rowset API key with enough permissions for this action.",
+            http_status=403,
+        )
+
+    anyio.run(run)
+
+
+def test_write_mcp_tool_rejects_legacy_profile_key(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(agent_api_key_access_level=None),
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool("create_project", {"name": "Launch"})
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload == _expected_mcp_error(
+            code="API_KEY_FORBIDDEN",
+            message=(
+                "This Rowset API key has Read access, but this action requires Read + write access."
+            ),
+            suggested_action="Use a Rowset API key with enough permissions for this action.",
+            http_status=403,
+        )
+
+    anyio.run(run)
+
+
+def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkeypatch):
+    calls = []
+
+    def create_agent_api_key(profile, name, access_level):
+        calls.append((profile.id, name, access_level))
+        agent_api_key = SimpleNamespace(
+            name=name,
+            key_prefix="rsk_created",
+        )
+        return SimpleNamespace(agent_api_key=agent_api_key, raw_key="rsk_created-secret")
+
+    async def run():
+        profile = _profile()
+        setattr(
+            profile,
+            AGENT_API_KEY_PROFILE_ATTR,
+            SimpleNamespace(id=3, access_level=AgentApiKeyAccessLevel.ADMIN),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.create_agent_api_key_credential",
+            create_agent_api_key,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.serialize_agent_api_key",
+            lambda agent_api_key: {
+                "name": agent_api_key.name,
+                "key_prefix": agent_api_key.key_prefix,
+                "access_level": AgentApiKeyAccessLevel.READ,
+            },
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "create_agent_api_key",
+                {"name": "Reporting Agent", "access_level": "read"},
+            )
+
+        payload = result.data
+        assert payload["status"] == "success"
+        assert payload["agent_api_key"]["access_level"] == AgentApiKeyAccessLevel.READ
+        assert payload["api_key"] == "rsk_created-secret"
+        assert calls == [(11, "Reporting Agent", "read")]
+
+    anyio.run(run)
+
+
+def test_create_agent_api_key_mcp_tool_rejects_legacy_profile_key(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(agent_api_key_access_level=None),
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool(
+                    "create_agent_api_key",
+                    {"name": "Denied Agent", "access_level": "read"},
+                )
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload == _expected_mcp_error(
+            code="API_KEY_FORBIDDEN",
+            message=(
+                "This Rowset API key has Read access, but this action requires Admin access."
+            ),
+            suggested_action="Use a Rowset API key with enough permissions for this action.",
+            http_status=403,
+        )
 
     anyio.run(run)
 
@@ -422,7 +566,9 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "project": {"key": project_key, "name": name, "description": description},
         }
 
-    def update_dataset_project(authenticated_profile, dataset_key, project_key):
+    def update_dataset_project(
+        authenticated_profile, dataset_key, project_key, agent_api_key=None
+    ):
         calls.append(("update_dataset_project", authenticated_profile.id, dataset_key, project_key))
         return {
             "status": "success",
@@ -549,6 +695,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
         index_column=None,
         column_types=None,
         project_key=None,
+        agent_api_key=None,
     ):
         calls.append(
             (
@@ -627,6 +774,7 @@ def test_update_dataset_metadata_mcp_tool_calls_dataset_service(monkeypatch):
         description=None,
         instructions=None,
         metadata=None,
+        agent_api_key=None,
     ):
         calls.append((authenticated_profile.id, dataset_key, description, instructions, metadata))
         return {
@@ -679,6 +827,7 @@ def test_update_dataset_metadata_mcp_tool_treats_null_metadata_as_omitted(monkey
     calls = []
 
     def update_metadata(authenticated_profile, dataset_key, **kwargs):
+        kwargs.pop("agent_api_key", None)
         calls.append((authenticated_profile.id, dataset_key, kwargs))
         return {
             "status": "success",
@@ -766,15 +915,17 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             "row": {"index_value": index_value},
         }
 
-    def create_row(authenticated_profile, dataset_key, data):
+    def create_row(authenticated_profile, dataset_key, data, agent_api_key=None):
         calls.append(("create", dataset_key, data))
         return {"status": "success", "message": "Row created.", "row": {"data": data}}
 
-    def update_row(authenticated_profile, dataset_key, row_id, data):
+    def update_row(authenticated_profile, dataset_key, row_id, data, agent_api_key=None):
         calls.append(("update", dataset_key, row_id, data))
         return {"status": "success", "message": "Row updated.", "row": {"id": row_id, "data": data}}
 
-    def update_row_by_index(authenticated_profile, dataset_key, index_value, data):
+    def update_row_by_index(
+        authenticated_profile, dataset_key, index_value, data, agent_api_key=None
+    ):
         calls.append(("update_by_index", dataset_key, index_value, data))
         return {
             "status": "success",
@@ -782,7 +933,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             "row": {"index_value": index_value, "data": data},
         }
 
-    def delete_row(authenticated_profile, dataset_key, row_id):
+    def delete_row(authenticated_profile, dataset_key, row_id, agent_api_key=None):
         calls.append(("delete", dataset_key, row_id))
         return {"status": "success", "message": "Row deleted."}
 
@@ -901,6 +1052,7 @@ def test_dataset_relationship_mcp_tools_call_dataset_services(monkeypatch):
         target_dataset_key,
         name=None,
         enforce_integrity=True,
+        agent_api_key=None,
     ):
         calls.append(
             (
@@ -954,7 +1106,9 @@ def test_dataset_relationship_mcp_tools_call_dataset_services(monkeypatch):
             },
         }
 
-    def delete_relationship(authenticated_profile, dataset_key, relationship_key):
+    def delete_relationship(
+        authenticated_profile, dataset_key, relationship_key, agent_api_key=None
+    ):
         calls.append(("delete", authenticated_profile.id, dataset_key, relationship_key))
         return {
             "status": "success",
@@ -1079,7 +1233,7 @@ def test_dataset_row_mcp_tool_resolves_owned_public_row_url(monkeypatch, django_
 def test_update_dataset_column_types_mcp_tool_calls_dataset_service(monkeypatch):
     calls = []
 
-    def update_column_types(authenticated_profile, dataset_key, column_types):
+    def update_column_types(authenticated_profile, dataset_key, column_types, agent_api_key=None):
         calls.append((authenticated_profile.id, dataset_key, column_types))
         return {
             "status": "success",
@@ -1131,6 +1285,7 @@ def test_choice_column_metadata_mcp_tools_call_dataset_services(monkeypatch):
         index_column=None,
         column_types=None,
         project_key=None,
+        agent_api_key=None,
     ):
         calls.append(("create", authenticated_profile.id, column_types))
         return {
@@ -1139,7 +1294,7 @@ def test_choice_column_metadata_mcp_tools_call_dataset_services(monkeypatch):
             "dataset": {"key": "dataset-key", "column_schema": {"status": choice_schema}},
         }
 
-    def update_column_types(authenticated_profile, dataset_key, column_types):
+    def update_column_types(authenticated_profile, dataset_key, column_types, agent_api_key=None):
         calls.append(("update", authenticated_profile.id, dataset_key, column_types))
         return {
             "status": "success",
@@ -1198,6 +1353,7 @@ def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
         name,
         default_value="",
         column_type=None,
+        agent_api_key=None,
     ):
         calls.append(
             ("add", authenticated_profile.id, dataset_key, name, default_value, column_type)
@@ -1208,7 +1364,9 @@ def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
             "dataset": {"key": dataset_key, "headers": ["email", name]},
         }
 
-    def rename_column(authenticated_profile, dataset_key, *, old_name, new_name):
+    def rename_column(
+        authenticated_profile, dataset_key, *, old_name, new_name, agent_api_key=None
+    ):
         calls.append(("rename", authenticated_profile.id, dataset_key, old_name, new_name))
         return {
             "status": "success",
@@ -1216,7 +1374,7 @@ def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
             "dataset": {"key": dataset_key, "headers": [new_name]},
         }
 
-    def drop_column(authenticated_profile, dataset_key, *, name):
+    def drop_column(authenticated_profile, dataset_key, *, name, agent_api_key=None):
         calls.append(("drop", authenticated_profile.id, dataset_key, name))
         return {
             "status": "success",
@@ -1224,7 +1382,7 @@ def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
             "dataset": {"key": dataset_key, "headers": ["email"]},
         }
 
-    def reorder_columns(authenticated_profile, dataset_key, *, headers):
+    def reorder_columns(authenticated_profile, dataset_key, *, headers, agent_api_key=None):
         calls.append(("reorder", authenticated_profile.id, dataset_key, headers))
         return {
             "status": "success",
@@ -1293,6 +1451,7 @@ def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatc
         public_page_size=None,
         public_password=None,
         clear_public_password=False,
+        agent_api_key=None,
     ):
         calls.append(
             (

@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -22,6 +23,7 @@ from apps.api.views import (
     update_internal_blog_post,
 )
 from apps.blog.choices import BlogPostStatus
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow, Project
 
@@ -448,6 +450,28 @@ def test_api_key_auth_returns_profile_for_valid_key():
     assert response is None
 
 
+def test_api_key_auth_enforces_required_access_level():
+    from apps.api.auth import APIKeyAuth
+
+    read_key = SimpleNamespace(
+        id=1,
+        access_level=AgentApiKeyAccessLevel.READ,
+    )
+    profile = SimpleNamespace(id=11)
+    request = HttpRequest()
+
+    with patch(
+        "apps.api.auth.resolve_api_key_profile",
+        return_value=(profile, read_key),
+    ):
+        response = APIKeyAuth(AgentApiKeyAccessLevel.READ_WRITE).authenticate(
+            request,
+            "read-key",
+        )
+
+    assert response is None
+
+
 def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
     from apps.api.auth import APIKeyAuth
 
@@ -491,20 +515,163 @@ def test_api_key_auth_accepts_named_agent_api_key(django_user_model):
     assert request.agent_api_key.last_used_at is not None
 
 
+@pytest.mark.django_db
+def test_read_only_agent_api_key_can_read_but_cannot_write(client, django_user_model):
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="readonlyapiuser",
+        email="readonlyapiuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(user.profile, "Read Agent", AgentApiKeyAccessLevel.READ)
+
+    read_response = client.get(
+        "/api/user",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+    write_response = client.post(
+        "/api/projects",
+        data=json.dumps({"name": "Launch"}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert read_response.status_code == 200
+    assert read_response.json()["email"] == "readonlyapiuser@example.com"
+    assert write_response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_legacy_profile_api_key_can_read_but_cannot_write(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        username="legacyreadonlyapiuser",
+        email="legacyreadonlyapiuser@example.com",
+        password="password123",
+    )
+
+    read_response = client.get(
+        "/api/user",
+        HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
+    )
+    write_response = client.post(
+        "/api/projects",
+        data=json.dumps({"name": "Launch"}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
+    )
+
+    assert read_response.status_code == 200
+    assert read_response.json()["email"] == "legacyreadonlyapiuser@example.com"
+    assert write_response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_admin_agent_api_key_can_create_new_agent_api_key(client, django_user_model):
+    from apps.core.models import AgentApiKey
+    from apps.core.services import create_agent_api_key, hash_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="adminapiuser",
+        email="adminapiuser@example.com",
+        password="password123",
+    )
+    admin_credential = create_agent_api_key(
+        user.profile,
+        "Admin Agent",
+        AgentApiKeyAccessLevel.ADMIN,
+    )
+
+    response = client.post(
+        "/api/agent-api-keys",
+        data=json.dumps(
+            {
+                "name": "Reporting Agent",
+                "access_level": AgentApiKeyAccessLevel.READ,
+            }
+        ),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {admin_credential.raw_key}",
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    created_key = AgentApiKey.objects.get(profile=user.profile, name="Reporting Agent")
+    assert payload["agent_api_key"]["access_level"] == AgentApiKeyAccessLevel.READ
+    assert payload["agent_api_key"]["key_prefix"] == created_key.key_prefix
+    assert payload["api_key"].startswith("rsk_")
+    assert created_key.access_level == AgentApiKeyAccessLevel.READ
+    assert created_key.token_hash == hash_agent_api_key(payload["api_key"])
+
+
+@pytest.mark.django_db
+def test_non_admin_agent_api_key_cannot_create_new_agent_api_key(client, django_user_model):
+    from apps.core.models import AgentApiKey
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="writerapiuser",
+        email="writerapiuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(
+        user.profile,
+        "Writer Agent",
+        AgentApiKeyAccessLevel.READ_WRITE,
+    )
+
+    response = client.post(
+        "/api/agent-api-keys",
+        data=json.dumps({"name": "Denied Agent", "access_level": "read"}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 401
+    assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
+
+
+@pytest.mark.django_db
+def test_legacy_profile_api_key_cannot_create_new_agent_api_key(client, django_user_model):
+    from apps.core.models import AgentApiKey
+
+    user = django_user_model.objects.create_user(
+        username="legacyapiuser",
+        email="legacyapiuser@example.com",
+        password="password123",
+    )
+
+    response = client.post(
+        "/api/agent-api-keys",
+        data=json.dumps({"name": "Denied Agent", "access_level": "read"}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
+    )
+
+    assert response.status_code == 401
+    assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
+
+
 def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
     from apps.api.auth import SuperuserAPIKeyAuth
 
     superuser_profile = SimpleNamespace(id=11, user=SimpleNamespace(id=21, is_superuser=True))
     regular_profile = SimpleNamespace(id=12, user=SimpleNamespace(id=22, is_superuser=False))
+    admin_agent_api_key = SimpleNamespace(id=1, access_level=AgentApiKeyAccessLevel.ADMIN)
 
     with patch(
         "apps.api.auth.resolve_api_key_profile",
-        return_value=(superuser_profile, None),
+        return_value=(superuser_profile, admin_agent_api_key),
     ) as resolver:
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "secret-key")
 
     assert response is superuser_profile
     resolver.assert_called_once_with("secret-key")
+
+    with patch("apps.api.auth.resolve_api_key_profile", return_value=(superuser_profile, None)):
+        response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "legacy-key")
+
+    assert response is None
 
     with patch("apps.api.auth.resolve_api_key_profile", return_value=(regular_profile, None)):
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "regular-key")
@@ -856,9 +1023,7 @@ def test_search_profile_datasets_treats_naive_updated_after_as_utc(django_user_m
         headers=["id"],
         index_column="id",
     )
-    Dataset.objects.filter(id=dataset.id).update(
-        updated_at=datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
-    )
+    Dataset.objects.filter(id=dataset.id).update(updated_at=datetime(2026, 6, 1, 12, 0, tzinfo=UTC))
 
     response = search_profile_datasets(
         user.profile,

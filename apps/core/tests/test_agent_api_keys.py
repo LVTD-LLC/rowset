@@ -5,11 +5,15 @@ from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey
 from apps.core.services import (
+    agent_api_key_allows,
     create_agent_api_key,
     get_agent_api_key_token,
     hash_agent_api_key,
+    normalize_agent_api_key_access_level,
+    require_agent_api_key_access,
     resolve_api_key_profile,
 )
 
@@ -22,12 +26,41 @@ def test_create_agent_api_key_stores_hash_and_returns_raw_key(profile):
     agent_api_key = credential.agent_api_key
     assert credential.raw_key.startswith("rsk_")
     assert agent_api_key.name == "Codex"
+    assert agent_api_key.access_level == AgentApiKeyAccessLevel.READ_WRITE
     assert agent_api_key.key_prefix == credential.raw_key[:12]
     assert agent_api_key.token_hash == hash_agent_api_key(credential.raw_key)
     assert agent_api_key.token_ciphertext
     assert credential.raw_key not in agent_api_key.token_hash
     assert credential.raw_key not in agent_api_key.token_ciphertext
     assert get_agent_api_key_token(agent_api_key) == credential.raw_key
+
+
+def test_create_agent_api_key_stores_selected_access_level(profile):
+    credential = create_agent_api_key(profile, "Admin Agent", AgentApiKeyAccessLevel.ADMIN)
+
+    assert credential.agent_api_key.access_level == AgentApiKeyAccessLevel.ADMIN
+    assert credential.agent_api_key.can_read is True
+    assert credential.agent_api_key.can_write is True
+    assert credential.agent_api_key.can_admin is True
+
+
+def test_agent_api_key_access_level_helpers(profile):
+    read_key = create_agent_api_key(profile, "Read Agent", "read").agent_api_key
+    write_key = create_agent_api_key(profile, "Write Agent", "read + write").agent_api_key
+
+    assert normalize_agent_api_key_access_level("") == AgentApiKeyAccessLevel.READ_WRITE
+    assert agent_api_key_allows(read_key, AgentApiKeyAccessLevel.READ) is True
+    assert agent_api_key_allows(read_key, AgentApiKeyAccessLevel.READ_WRITE) is False
+    assert agent_api_key_allows(write_key, AgentApiKeyAccessLevel.READ_WRITE) is True
+    assert agent_api_key_allows(None, AgentApiKeyAccessLevel.READ) is True
+    assert agent_api_key_allows(None, AgentApiKeyAccessLevel.READ_WRITE) is False
+    assert agent_api_key_allows(None, AgentApiKeyAccessLevel.ADMIN) is False
+    with pytest.raises(PermissionError, match="requires Read \\+ write access"):
+        require_agent_api_key_access(read_key, AgentApiKeyAccessLevel.READ_WRITE)
+    with pytest.raises(PermissionError, match="This Rowset API key has Read access"):
+        require_agent_api_key_access(None, AgentApiKeyAccessLevel.READ_WRITE)
+    with pytest.raises(ValueError, match="Permission must be one of"):
+        normalize_agent_api_key_access_level("root")
 
 
 def test_resolve_api_key_profile_accepts_named_key_and_records_last_used(profile):
@@ -89,13 +122,14 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     assert response.status_code == 200
     created_key = response.context["created_agent_api_key"]
     assert created_key["name"] == "Codex"
+    assert created_key["access_level_label"] == "Read + write"
 
     agent_api_key = AgentApiKey.objects.get(name="Codex")
     raw_key = get_agent_api_key_token(agent_api_key)
     assert agent_api_key.token_hash == hash_agent_api_key(raw_key)
     content = response.content.decode()
     assert raw_key not in content
-    assert "Created Codex." in content
+    assert "Created Codex with Read + write access." in content
     assert "Copy setup prompt" in content
     assert reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid]) in content
 
@@ -105,12 +139,13 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
 
 
 def test_settings_lists_agent_api_keys_without_raw_secret(auth_client, profile):
-    credential = create_agent_api_key(profile, "Reporting Agent")
+    credential = create_agent_api_key(profile, "Reporting Agent", AgentApiKeyAccessLevel.READ)
 
     response = auth_client.get(reverse("settings"))
     content = response.content.decode()
 
     assert "Reporting Agent" in content
+    assert "Read" in content
     assert f"{credential.agent_api_key.key_prefix}..." in content
     assert "Copy setup prompt" in content
     assert reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid]) in content
@@ -177,9 +212,7 @@ def test_agent_api_key_setup_prompt_endpoint_uses_placeholder_without_recoverabl
         token_hash=hash_agent_api_key("rsk_oldtoken"),
     )
 
-    response = auth_client.get(
-        reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid])
-    )
+    response = auth_client.get(reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid]))
 
     assert response.status_code == 200
     assert (
@@ -218,6 +251,19 @@ def test_settings_rejects_duplicate_agent_api_key_names(auth_client, profile):
     assert response.status_code == 200
     assert AgentApiKey.objects.filter(profile=profile, name="Codex").count() == 1
     assert "already exists" in response.content.decode()
+
+
+def test_settings_creates_agent_api_key_with_selected_permission(auth_client, profile):
+    response = auth_client.post(
+        reverse("create_agent_api_key"),
+        {"name": "Provisioner", "access_level": AgentApiKeyAccessLevel.ADMIN},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    agent_api_key = AgentApiKey.objects.get(profile=profile, name="Provisioner")
+    assert agent_api_key.access_level == AgentApiKeyAccessLevel.ADMIN
+    assert "Created Provisioner with Admin access." in response.content.decode()
 
 
 def test_settings_owner_can_revoke_agent_api_key(auth_client, profile):

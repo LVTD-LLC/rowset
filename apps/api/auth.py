@@ -1,8 +1,9 @@
 from django.http import HttpRequest
 from ninja.security import APIKeyQuery
 
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import Profile
-from apps.core.services import resolve_api_key_profile
+from apps.core.services import require_agent_api_key_access, resolve_api_key_profile
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -24,6 +25,10 @@ def _api_key_from_request(request: HttpRequest, query_param_name: str) -> str | 
 class APIKeyAuth(APIKeyQuery):
     param_name = "api_key"
 
+    def __init__(self, required_access_level: str = AgentApiKeyAccessLevel.READ):
+        super().__init__()
+        self.required_access_level = required_access_level
+
     def _get_key(self, request: HttpRequest) -> str | None:
         return _api_key_from_request(request, self.param_name)
 
@@ -36,6 +41,16 @@ class APIKeyAuth(APIKeyQuery):
             logger.warning("[Django Ninja Auth] Invalid API key")
             return None
         profile, agent_api_key = resolved
+        try:
+            require_agent_api_key_access(agent_api_key, self.required_access_level)
+        except PermissionError as exc:
+            logger.warning(
+                "[Django Ninja Auth] API key permission denied",
+                reason=str(exc),
+                profile_id=profile.id,
+                agent_api_key_id=getattr(agent_api_key, "id", None),
+            )
+            return None
         request.agent_api_key = agent_api_key
         return profile
 
@@ -75,6 +90,16 @@ class SuperuserAPIKeyAuth(APIKeyQuery):
             return None
         profile, agent_api_key = resolved
         if profile.user.is_superuser:
+            try:
+                require_agent_api_key_access(agent_api_key, AgentApiKeyAccessLevel.ADMIN)
+            except PermissionError as exc:
+                logger.warning(
+                    "[Django Ninja Auth] Superuser API key lacks admin access",
+                    reason=str(exc),
+                    profile_id=profile.user.id,
+                    agent_api_key_id=getattr(agent_api_key, "id", None),
+                )
+                return None
             request.agent_api_key = agent_api_key
             return profile
         logger.warning(
@@ -85,5 +110,7 @@ class SuperuserAPIKeyAuth(APIKeyQuery):
 
 
 api_key_auth = APIKeyAuth()
+api_key_write_auth = APIKeyAuth(AgentApiKeyAccessLevel.READ_WRITE)
+api_key_admin_auth = APIKeyAuth(AgentApiKeyAccessLevel.ADMIN)
 session_auth = SessionAuth()
 superuser_api_auth = SuperuserAPIKeyAuth()

@@ -5,8 +5,16 @@ from apps.core.models import AgentApiKey, EmailSent
 
 @admin.register(AgentApiKey)
 class AgentApiKeyAdmin(admin.ModelAdmin):
-    list_display = ("name", "profile", "key_prefix", "is_active", "last_used_at", "created_at")
-    list_filter = ("revoked_at", "created_at", "last_used_at")
+    list_display = (
+        "name",
+        "profile",
+        "key_prefix",
+        "access_level",
+        "is_active",
+        "last_used_at",
+        "created_at",
+    )
+    list_filter = ("access_level", "revoked_at", "created_at", "last_used_at")
     search_fields = ("name", "profile__user__email", "key_prefix")
     raw_id_fields = ("profile",)
     exclude = ("token_hash", "token_ciphertext")

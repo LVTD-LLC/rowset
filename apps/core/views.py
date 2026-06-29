@@ -264,7 +264,11 @@ def create_agent_api_key_view(request):
         return redirect("settings")
 
     try:
-        credential = create_agent_api_key(profile, form.cleaned_data["name"])
+        credential = create_agent_api_key(
+            profile,
+            form.cleaned_data["name"],
+            form.cleaned_data["access_level"],
+        )
     except IntegrityError:
         messages.error(request, "An API key with this name already exists.")
         if return_home:
@@ -286,6 +290,7 @@ def create_agent_api_key_view(request):
             profile,
             created_agent_api_key={
                 "name": credential.agent_api_key.name,
+                "access_level_label": credential.agent_api_key.get_access_level_display(),
             },
         ),
     }

@@ -1,7 +1,7 @@
 import json
 from typing import Annotated, Any
 
-from django.db import close_old_connections
+from django.db import IntegrityError, close_old_connections
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token, get_http_request
@@ -46,8 +46,16 @@ from apps.api.services import (
     update_profile_project_metadata,
 )
 from apps.core.capabilities import rowset_capabilities_payload
+from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey, Profile
-from apps.core.services import resolve_api_key_profile
+from apps.core.services import (
+    create_agent_api_key as create_agent_api_key_credential,
+)
+from apps.core.services import (
+    require_agent_api_key_access,
+    resolve_api_key_profile,
+    serialize_agent_api_key,
+)
 from apps.mcp_server.auth import mcp_auth
 from rowset.utils import get_rowset_logger
 
@@ -278,15 +286,22 @@ def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
     if "missing" in normalized_message and "authorization" in normalized_message:
         code = "AUTHORIZATION_MISSING"
         suggested_action = "Configure the MCP request with Authorization: Bearer <ROWSET_API_KEY>."
+        http_status = 401
     elif "no longer active" in normalized_message:
         code = "API_KEY_INACTIVE"
         suggested_action = "Create or select an active Rowset agent API key and retry."
+        http_status = 401
+    elif "requires" in normalized_message and "access" in normalized_message:
+        code = "API_KEY_FORBIDDEN"
+        suggested_action = "Use a Rowset API key with enough permissions for this action."
+        http_status = 403
     else:
         code = "AUTHENTICATION_FAILED"
         suggested_action = (
             "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
             "with an active Rowset API key."
         )
+        http_status = 401
 
     return _mcp_tool_error(
         _mcp_error_payload(
@@ -294,14 +309,21 @@ def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
             message=raw_message,
             retryable=False,
             suggested_action=suggested_action,
-            details={"http_status": 401},
+            details={"http_status": http_status},
         )
     )
 
 
-def _mcp_authenticated_profile() -> Profile:
+def _mcp_authenticated_profile(
+    required_access_level: str = AgentApiKeyAccessLevel.READ,
+) -> Profile:
     try:
-        return _authenticate_profile()
+        profile = _authenticate_profile()
+        require_agent_api_key_access(
+            getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None),
+            required_access_level,
+        )
+        return profile
     except PermissionError as exc:
         raise _permission_error_to_tool_error(exc) from exc
 
@@ -318,6 +340,57 @@ def get_user_info() -> dict:
         return serialize_user_info(profile)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="create_agent_api_key",
+    description=(
+        "Create a named Rowset API key for this account. Requires an admin Rowset API key. "
+        "Use read for inspection-only agents, read_write for dataset updates, or admin "
+        "when the new key must create other keys."
+    ),
+)
+def create_agent_api_key_tool(
+    name: Annotated[str, Field(description="Human-readable agent key name.")],
+    access_level: Annotated[
+        str,
+        Field(
+            default=AgentApiKeyAccessLevel.READ_WRITE,
+            description="Permission level for the new key: read, read_write, or admin.",
+        ),
+    ] = AgentApiKeyAccessLevel.READ_WRITE,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.ADMIN)
+    try:
+        credential = create_agent_api_key_credential(profile, name, access_level)
+    except ValueError as exc:
+        raise _mcp_tool_error(
+            _mcp_error_payload(
+                code="VALIDATION_ERROR",
+                message=str(exc),
+                retryable=False,
+                suggested_action="Use a unique key name and a supported permission level.",
+                details={"http_status": 400},
+            )
+        ) from exc
+    except IntegrityError as exc:
+        raise _mcp_tool_error(
+            _mcp_error_payload(
+                code="AGENT_API_KEY_NAME_EXISTS",
+                message="An agent API key with this name already exists.",
+                retryable=False,
+                suggested_action="Choose a different key name or revoke the existing key.",
+                details={"http_status": 409},
+            )
+        ) from exc
+
+    return {
+        "status": "success",
+        "message": f"Created an agent API key for {credential.agent_api_key.name}.",
+        "agent_api_key": serialize_agent_api_key(credential.agent_api_key),
+        "api_key": credential.raw_key,
+    }
 
 
 @mcp.tool(
@@ -543,7 +616,7 @@ def create_project(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return create_profile_project(
             profile,
@@ -595,9 +668,7 @@ def update_project(
         str | None,
         Field(
             default=None,
-            description=(
-                "Optional new project name. Omit or pass null to keep the current name."
-            ),
+            description=("Optional new project name. Omit or pass null to keep the current name."),
         ),
     ] = None,
     description: Annotated[
@@ -612,7 +683,7 @@ def update_project(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     updates = {}
     if name is not None:
         updates["name"] = name
@@ -642,7 +713,7 @@ def update_project_metadata(
     ],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return update_profile_project_metadata(profile, project_key, metadata=metadata)
     except DatasetServiceError as exc:
@@ -745,7 +816,7 @@ def create_dataset(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return create_profile_dataset(
             profile,
@@ -805,7 +876,7 @@ def update_dataset_metadata(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     updates = {}
     if description is not None:
         updates["description"] = description
@@ -845,7 +916,7 @@ def update_dataset_column_types(
     ],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return update_profile_dataset_column_types(
             profile,
@@ -890,7 +961,7 @@ def add_column(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return add_profile_dataset_column(
             profile,
@@ -916,7 +987,7 @@ def rename_column(
     new_name: Annotated[str, Field(description="New dataset column name.")],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return rename_profile_dataset_column(
             profile,
@@ -938,7 +1009,7 @@ def drop_column(
     name: Annotated[str, Field(description="Existing non-index dataset column name.")],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return drop_profile_dataset_column(
             profile,
@@ -965,7 +1036,7 @@ def reorder_columns(
     ],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return reorder_profile_dataset_columns(
             profile,
@@ -995,7 +1066,7 @@ def update_dataset_project(
     ] = None,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return update_profile_dataset_project(
             profile,
@@ -1056,7 +1127,7 @@ def create_dataset_relationship(
     ] = True,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return create_profile_dataset_relationship(
             profile,
@@ -1108,7 +1179,7 @@ def delete_dataset_relationship(
     relationship_key: Annotated[str, Field(description="Relationship key returned by Rowset.")],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return delete_profile_dataset_relationship(
             profile,
@@ -1161,7 +1232,7 @@ def update_dataset_public_preview(
     ] = False,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return update_profile_dataset_public_preview(
             profile,
@@ -1187,7 +1258,7 @@ def archive_dataset(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return archive_profile_dataset(
             profile,
@@ -1206,7 +1277,7 @@ def restore_dataset(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return restore_profile_dataset(
             profile,
@@ -1313,7 +1384,7 @@ def create_dataset_row(
     data: Annotated[dict[str, str], Field(description="Row values keyed by dataset header.")],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return create_profile_dataset_row(
             profile,
@@ -1335,7 +1406,7 @@ def update_dataset_row(
     data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return patch_profile_dataset_row(
             profile,
@@ -1358,7 +1429,7 @@ def update_dataset_row_by_index(
     data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return patch_profile_dataset_row_by_index(
             profile,
@@ -1380,7 +1451,7 @@ def delete_dataset_row(
     row_id: Annotated[int, Field(ge=1, description="Internal Rowset row id.")],
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return delete_profile_dataset_row(
             profile,
