@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
@@ -1497,10 +1498,15 @@ def project_update_metadata(request, project_key):
 @login_required
 @require_POST
 def project_delete(request, project_key):
+    try:
+        profile = request.user.profile
+    except ObjectDoesNotExist:
+        return HttpResponse("Project not found.", status=404)
+
     project = get_object_or_404(
         Project,
         key=project_key,
-        profile=request.user.profile,
+        profile=profile,
     )
     project_name = project.name
     project.delete()

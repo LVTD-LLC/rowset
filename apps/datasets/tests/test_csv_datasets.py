@@ -1825,6 +1825,22 @@ def test_project_delete_rejects_other_users_project(client, django_user_model, p
     assert Project.objects.filter(id=project.id).exists()
 
 
+def test_project_delete_rejects_user_without_profile(client, django_user_model, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+    user_without_profile = django_user_model.objects.create_user(
+        username="missing-profile-project-delete",
+        email="missing-profile-project-delete@example.com",
+        password="password123",
+    )
+    user_without_profile.profile.delete()
+    client.force_login(user_without_profile)
+
+    response = client.post(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 404
+    assert Project.objects.filter(id=project.id).exists()
+
+
 def test_dataset_archive_archives_owned_dataset(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
