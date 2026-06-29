@@ -10,6 +10,7 @@ from django.db.models.functions import Lower
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.core.base_models import BaseModel
 from apps.core.models import AgentApiKey, Profile
@@ -20,9 +21,11 @@ from apps.datasets.constants import (
     MAX_DATASET_INSTRUCTIONS_LENGTH,
 )
 
+DATASET_ASSET_STORAGE_ALIAS = "dataset_assets"
+
 
 def dataset_asset_storage():
-    return storages["dataset_assets"]
+    return storages[DATASET_ASSET_STORAGE_ALIAS]
 
 
 def _asset_upload_extension(filename: str, fallback: str = ".bin") -> str:
@@ -300,10 +303,104 @@ class DatasetAsset(BaseModel):
         return f"asset:{self.key}"
 
 
+class DatasetAssetFileDeletion(BaseModel):
+    storage_alias = models.CharField(max_length=100, default=DATASET_ASSET_STORAGE_ALIAS)
+    file_name = models.CharField(max_length=500)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    last_attempted_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        ordering = ["deleted_at", "created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["storage_alias", "file_name"],
+                name="unique_dataset_asset_file_del",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["deleted_at", "created_at"],
+                name="dataset_asset_del_pending_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return self.file_name
+
+
+def record_dataset_asset_file_deletion_failure(
+    storage_alias: str,
+    file_name: str,
+    exc: Exception,
+) -> None:
+    now = timezone.now()
+    message = str(exc)[:1000]
+    deletion, created = DatasetAssetFileDeletion.objects.get_or_create(
+        storage_alias=storage_alias,
+        file_name=file_name,
+        defaults={
+            "attempts": 1,
+            "last_error": message,
+            "last_attempted_at": now,
+        },
+    )
+    if created:
+        return
+    DatasetAssetFileDeletion.objects.filter(pk=deletion.pk).update(
+        attempts=models.F("attempts") + 1,
+        last_error=message,
+        last_attempted_at=now,
+        deleted_at=None,
+        updated_at=now,
+    )
+
+
+def retry_dataset_asset_file_deletions(limit: int = 100) -> dict[str, int]:
+    pending = list(
+        DatasetAssetFileDeletion.objects.filter(deleted_at__isnull=True).order_by(
+            "created_at", "id"
+        )[:limit]
+    )
+    result = {"attempted": len(pending), "deleted": 0, "failed": 0}
+    for deletion in pending:
+        now = timezone.now()
+        try:
+            storages[deletion.storage_alias].delete(deletion.file_name)
+        except Exception as exc:
+            deletion.attempts += 1
+            deletion.last_error = str(exc)[:1000]
+            deletion.last_attempted_at = now
+            deletion.save(
+                update_fields=[
+                    "attempts",
+                    "last_error",
+                    "last_attempted_at",
+                    "updated_at",
+                ]
+            )
+            result["failed"] += 1
+        else:
+            deletion.deleted_at = now
+            deletion.last_error = ""
+            deletion.last_attempted_at = now
+            deletion.save(
+                update_fields=[
+                    "deleted_at",
+                    "last_error",
+                    "last_attempted_at",
+                    "updated_at",
+                ]
+            )
+            result["deleted"] += 1
+    return result
+
+
 @receiver(post_delete, sender=DatasetAsset)
 def delete_dataset_asset_files(sender, instance: DatasetAsset, **kwargs) -> None:
     file_names = [
-        (field.storage, field.name)
+        (DATASET_ASSET_STORAGE_ALIAS, field.name)
         for field in (instance.file, instance.thumbnail)
         if field and field.name
     ]
@@ -311,8 +408,11 @@ def delete_dataset_asset_files(sender, instance: DatasetAsset, **kwargs) -> None
         return
 
     def delete_files() -> None:
-        for storage, name in file_names:
-            storage.delete(name)
+        for storage_alias, name in file_names:
+            try:
+                storages[storage_alias].delete(name)
+            except Exception as exc:
+                record_dataset_asset_file_deletion_failure(storage_alias, name, exc)
 
     transaction.on_commit(delete_files)
 

@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from apps.datasets.models import Dataset, DatasetAsset, DatasetMutation, DatasetRow, Project
+from apps.datasets.models import (
+    Dataset,
+    DatasetAsset,
+    DatasetAssetFileDeletion,
+    DatasetMutation,
+    DatasetRow,
+    Project,
+)
 
 
 @admin.register(Project)
@@ -118,6 +125,30 @@ class DatasetAssetAdmin(admin.ModelAdmin):
         "row",
         "created_by_agent_api_key",
         "checksum",
+        "created_at",
+        "updated_at",
+    )
+
+
+@admin.register(DatasetAssetFileDeletion)
+class DatasetAssetFileDeletionAdmin(admin.ModelAdmin):
+    list_display = (
+        "file_name",
+        "storage_alias",
+        "attempts",
+        "deleted_at",
+        "last_attempted_at",
+        "created_at",
+    )
+    search_fields = ("file_name", "storage_alias", "last_error")
+    list_filter = ("storage_alias", "deleted_at", "created_at")
+    readonly_fields = (
+        "storage_alias",
+        "file_name",
+        "attempts",
+        "last_error",
+        "last_attempted_at",
+        "deleted_at",
         "created_at",
         "updated_at",
     )

@@ -12,6 +12,7 @@ import polars as pl
 import pytest
 from django.contrib import messages as message_constants
 from django.contrib.messages import get_messages
+from django.core.files.storage import storages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
@@ -28,12 +29,15 @@ from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import (
+    DATASET_ASSET_STORAGE_ALIAS,
     Dataset,
     DatasetAsset,
+    DatasetAssetFileDeletion,
     DatasetMutation,
     DatasetRelationship,
     DatasetRow,
     Project,
+    retry_dataset_asset_file_deletions,
 )
 from apps.datasets.services import (
     CSVParseError,
@@ -2260,6 +2264,62 @@ def test_saved_dataset_asset_cleanup_surfaces_delete_failures():
         )
 
     assert failing_storage.deleted == ["original.png"]
+
+
+def test_dataset_asset_delete_records_failed_file_cleanup(
+    profile,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.first()
+    asset = DatasetAsset.objects.create(
+        profile=profile,
+        dataset=dataset,
+        row=row,
+        column_name="photo",
+        file="dataset-assets/test/original.png",
+        thumbnail="dataset-assets/test/thumbnail.jpg",
+        original_filename="photo.png",
+        content_type="image/png",
+        byte_size=10,
+        width=3,
+        height=2,
+        checksum="a" * 64,
+    )
+    storage = storages[DATASET_ASSET_STORAGE_ALIAS]
+    deleted_names = []
+
+    def fail_original_delete(name: str) -> None:
+        deleted_names.append(name)
+        if name == asset.file.name:
+            raise OSError("r2 timeout")
+
+    monkeypatch.setattr(storage, "delete", fail_original_delete)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        asset.delete()
+
+    assert deleted_names == [asset.file.name, asset.thumbnail.name]
+    deletion = DatasetAssetFileDeletion.objects.get(file_name=asset.file.name)
+    assert deletion.storage_alias == DATASET_ASSET_STORAGE_ALIAS
+    assert deletion.attempts == 1
+    assert deletion.deleted_at is None
+    assert "r2 timeout" in deletion.last_error
+    assert not DatasetAssetFileDeletion.objects.filter(
+        file_name=asset.thumbnail.name
+    ).exists()
+
+    retry_deleted_names = []
+    monkeypatch.setattr(storage, "delete", retry_deleted_names.append)
+
+    result = retry_dataset_asset_file_deletions()
+
+    assert result == {"attempted": 1, "deleted": 1, "failed": 0}
+    assert retry_deleted_names == [asset.file.name]
+    deletion.refresh_from_db()
+    assert deletion.deleted_at is not None
+    assert deletion.last_error == ""
 
 
 def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
