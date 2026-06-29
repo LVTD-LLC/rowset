@@ -42,6 +42,11 @@ urlpatterns = [
         name="dataset_export",
     ),
     path(
+        "datasets/<uuid:dataset_key>/assets/<uuid:asset_key>/content/",
+        views.dataset_asset_content,
+        name="dataset_asset_content",
+    ),
+    path(
         "datasets/<uuid:dataset_key>/settings/",
         views.DatasetSettingsView.as_view(),
         name="dataset_settings",
@@ -82,5 +87,10 @@ urlpatterns = [
         "share/datasets/<uuid:public_key>/rows/<int:row_id>/",
         views.public_dataset_row_detail,
         name="public_dataset_row_detail",
+    ),
+    path(
+        "share/datasets/<uuid:public_key>/assets/<uuid:asset_key>/content/",
+        views.public_dataset_asset_content,
+        name="public_dataset_asset_content",
     ),
 ]

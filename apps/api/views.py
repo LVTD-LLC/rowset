@@ -27,6 +27,7 @@ from apps.api.schemas import (
     BlogPostUpdateIn,
     DatasetApiOut,
     DatasetArchiveOut,
+    DatasetAssetApiOut,
     DatasetColumnAddIn,
     DatasetColumnDropIn,
     DatasetColumnMutationOut,
@@ -36,6 +37,8 @@ from apps.api.schemas import (
     DatasetColumnTypesPatchIn,
     DatasetCreateIn,
     DatasetCreateOut,
+    DatasetImageAttachIn,
+    DatasetImageAttachOut,
     DatasetListOut,
     DatasetMetadataOut,
     DatasetMetadataPatchIn,
@@ -68,6 +71,7 @@ from apps.api.schemas import (
 from apps.api.services import (
     DatasetServiceError,
     add_profile_dataset_column,
+    attach_profile_dataset_image_asset,
     archive_profile_dataset,
     archive_profile_project,
     create_profile_dataset,
@@ -77,6 +81,8 @@ from apps.api.services import (
     delete_profile_dataset_relationship,
     delete_profile_dataset_row,
     drop_profile_dataset_column,
+    dataset_asset_content_field,
+    get_profile_dataset_asset,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
     get_ready_profile_dataset,
@@ -91,6 +97,7 @@ from apps.api.services import (
     search_profile_datasets,
     search_profile_projects,
     serialize_profile_archived_datasets,
+    serialize_profile_dataset_asset,
     serialize_profile_project_detail,
     serialize_user_info,
     update_profile_dataset_column_types,
@@ -161,6 +168,27 @@ def _export_dataset_response(dataset, export_format: str) -> HttpResponse:
         True,
         f"{dataset.name or 'dataset'}.{export_format}",
     )
+    return response
+
+
+def _dataset_asset_file_response(asset, variant: str) -> HttpResponse:
+    field = dataset_asset_content_field(asset, variant)
+    if not field or not field.name:
+        raise DatasetServiceError(404, "Dataset asset file not found.")
+    normalized_variant = str(variant or "original").strip().lower()
+    content_type = (
+        "image/jpeg"
+        if normalized_variant == "thumbnail" and asset.thumbnail
+        else asset.content_type
+    )
+    with field.open("rb") as asset_file:
+        response = HttpResponse(asset_file.read(), content_type=content_type)
+    response["Content-Disposition"] = content_disposition_header(
+        False,
+        asset.original_filename or f"{asset.key}",
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
     return response
 
 
@@ -1071,6 +1099,95 @@ def create_dataset_row(request: HttpRequest, dataset_key: str, payload: DatasetR
             payload.data,
             **_agent_actor_kwargs(request),
         )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/rows/by-index/image",
+    response=DatasetImageAttachOut,
+    auth=[api_key_write_auth],
+    tags=["datasets"],
+)
+def attach_dataset_row_image_by_index(
+    request: HttpRequest,
+    dataset_key: str,
+    index_value: str,
+    payload: DatasetImageAttachIn,
+):
+    """Attach or replace one image asset in an image column by row index value."""
+    try:
+        return attach_profile_dataset_image_asset(
+            request.auth,
+            dataset_key,
+            index_value=index_value,
+            column_name=payload.column_name,
+            image_base64=payload.image_base64,
+            filename=payload.filename,
+            content_type=payload.content_type,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/rows/{row_id}/image",
+    response=DatasetImageAttachOut,
+    auth=[api_key_write_auth],
+    tags=["datasets"],
+)
+def attach_dataset_row_image(
+    request: HttpRequest,
+    dataset_key: str,
+    row_id: int,
+    payload: DatasetImageAttachIn,
+):
+    """Attach or replace one image asset in an image column for a dataset row."""
+    try:
+        return attach_profile_dataset_image_asset(
+            request.auth,
+            dataset_key,
+            row_id=row_id,
+            column_name=payload.column_name,
+            image_base64=payload.image_base64,
+            filename=payload.filename,
+            content_type=payload.content_type,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
+    "/datasets/{dataset_key}/assets/{asset_key}",
+    response=DatasetAssetApiOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def get_dataset_asset_metadata(request: HttpRequest, dataset_key: str, asset_key: str):
+    """Return metadata for one image asset owned by the authenticated profile."""
+    try:
+        return serialize_profile_dataset_asset(request.auth, dataset_key, asset_key)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
+    "/datasets/{dataset_key}/assets/{asset_key}/content",
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def get_dataset_asset_content(
+    request: HttpRequest,
+    dataset_key: str,
+    asset_key: str,
+    variant: str = "original",
+):
+    """Return original or thumbnail image bytes after Rowset API-key authorization."""
+    try:
+        asset = get_profile_dataset_asset(request.auth, dataset_key, asset_key)
+        return _dataset_asset_file_response(asset, variant)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 
