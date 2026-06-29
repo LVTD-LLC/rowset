@@ -1,4 +1,7 @@
+import base64
+import binascii
 import csv
+import hashlib
 import io
 import json
 import re
@@ -10,15 +13,21 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlparse
+from uuid import UUID
 from xml.sax.saxutils import escape
 
 import polars as pl
 from django.db.models import Case, F, FloatField, Q, TextField, Value, When
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast, Lower, Replace, Trim
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from apps.datasets.choices import DatasetColumnType
-from apps.datasets.constants import MAX_COLUMN_DESCRIPTION_LENGTH
+from apps.datasets.constants import (
+    MAX_COLUMN_DESCRIPTION_LENGTH,
+    MAX_DATASET_IMAGE_BYTES,
+    MAX_DATASET_IMAGE_PIXELS,
+)
 
 
 class CSVParseError(ValueError):
@@ -29,10 +38,21 @@ class DatasetRowQueryError(ValueError):
     pass
 
 
+class DatasetImageError(ValueError):
+    pass
+
+
 GENERATED_INDEX_CHOICE = "__rowset_generated__"
 GENERATED_INDEX_BASENAME = "rowset_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
 MAX_PUBLIC_PAGE_SIZE = 100
+DATASET_ASSET_REF_PREFIX = "asset:"
+DATASET_IMAGE_THUMBNAIL_SIZE = (512, 512)
+DATASET_IMAGE_ALLOWED_FORMATS = {
+    "JPEG": "image/jpeg",
+    "PNG": "image/png",
+    "WEBP": "image/webp",
+}
 # Backward compatibility for datasets that already stored normalized sheet text
 # before Rowset removed Google Sheets import/sync as an active product path.
 LEGACY_GOOGLE_SHEETS_FILE_TYPE = "google_sheets"
@@ -81,6 +101,8 @@ COLUMN_TYPE_ALIASES = {
     "single_select": DatasetColumnType.CHOICE,
     "dataset_reference": DatasetColumnType.REFERENCE,
     "rowset_reference": DatasetColumnType.REFERENCE,
+    "image_url": DatasetColumnType.IMAGE,
+    "img": DatasetColumnType.IMAGE,
     "str": DatasetColumnType.TEXT,
     "string": DatasetColumnType.TEXT,
     "timestamp": DatasetColumnType.DATETIME,
@@ -123,6 +145,18 @@ class IndexedRow:
     row_number: int
     index_value: str
     data: dict[str, str]
+
+
+@dataclass(frozen=True)
+class PreparedDatasetImage:
+    filename: str
+    content_type: str
+    image_bytes: bytes
+    thumbnail_bytes: bytes
+    byte_size: int
+    width: int
+    height: int
+    checksum: str
 
 
 def ordered_row_values(headers: list[str], row_data: dict[str, object]) -> list[object]:
@@ -488,6 +522,56 @@ def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[s
     return normalized_entry
 
 
+def dataset_asset_ref(asset_key) -> str:
+    return f"{DATASET_ASSET_REF_PREFIX}{asset_key}"
+
+
+def dataset_asset_key_from_ref(value: object) -> str:
+    text = str(value or "").strip()
+    if not text.startswith(DATASET_ASSET_REF_PREFIX):
+        return ""
+    raw_key = text.removeprefix(DATASET_ASSET_REF_PREFIX).strip()
+    try:
+        return str(UUID(raw_key))
+    except (AttributeError, TypeError, ValueError):
+        return ""
+
+
+def is_dataset_asset_ref(value: object) -> bool:
+    return bool(dataset_asset_key_from_ref(value))
+
+
+def image_columns_from_schema(headers: list[str], column_schema: dict | None) -> list[str]:
+    normalized_schema = normalize_column_schema(headers, column_schema)
+    return [
+        header
+        for header in headers
+        if normalized_schema[header].get(COLUMN_SCHEMA_TYPE_KEY) == DatasetColumnType.IMAGE
+    ]
+
+
+def validate_image_row_values(
+    headers: list[str],
+    column_schema: dict | None,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    allow_asset_refs: bool = False,
+) -> None:
+    selected_columns = set(columns) if columns is not None else None
+    for header in image_columns_from_schema(headers, column_schema):
+        if selected_columns is not None and header not in selected_columns:
+            continue
+        value = str(row_data.get(header, "") or "").strip()
+        if not value:
+            continue
+        if allow_asset_refs and is_dataset_asset_ref(value):
+            continue
+        raise CSVParseError(
+            f"Column '{header}' is an image column. Leave it blank and attach an image asset."
+        )
+
+
 def normalize_column_schema(
     headers: list[str],
     column_schema: dict | None = None,
@@ -540,6 +624,116 @@ def column_definitions(
             definition["target"] = schema_entry[COLUMN_SCHEMA_REFERENCE_TARGET_KEY]
         definitions.append(definition)
     return definitions
+
+
+def decode_image_base64(image_base64: str) -> bytes:
+    payload = str(image_base64 or "").strip()
+    if not payload:
+        raise DatasetImageError("Image data is required.")
+    if "," in payload and payload.split(",", 1)[0].lower().startswith("data:image/"):
+        payload = payload.split(",", 1)[1]
+    try:
+        return base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise DatasetImageError("Image data must be valid base64.") from exc
+
+
+def _safe_image_filename(filename: str | None, content_type: str) -> str:
+    original = str(filename or "").strip().replace("\\", "/").rsplit("/", 1)[-1]
+    original = re.sub(r"[^A-Za-z0-9._ -]+", "-", original).strip(" .")
+    extension = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+    }[content_type]
+    if not original:
+        return f"image{extension}"
+    if not Path(original).suffix:
+        return f"{original}{extension}"
+    return original[:255]
+
+
+def _image_save_kwargs(image_format: str) -> dict[str, Any]:
+    if image_format == "JPEG":
+        return {"format": image_format, "quality": 90, "optimize": True}
+    if image_format == "WEBP":
+        return {"format": image_format, "quality": 90, "method": 4}
+    return {"format": image_format, "optimize": True}
+
+
+def _rgb_image(image: Image.Image) -> Image.Image:
+    if image.mode in {"RGBA", "LA"}:
+        background = Image.new("RGB", image.size, (255, 255, 255))
+        alpha = image.getchannel("A") if "A" in image.getbands() else None
+        background.paste(image, mask=alpha)
+        return background
+    if image.mode != "RGB":
+        return image.convert("RGB")
+    return image
+
+
+def _encoded_image_bytes(image: Image.Image, image_format: str) -> bytes:
+    output = io.BytesIO()
+    if image_format == "JPEG":
+        image = _rgb_image(image)
+    image.save(output, **_image_save_kwargs(image_format))
+    return output.getvalue()
+
+
+def _thumbnail_bytes(image: Image.Image) -> bytes:
+    thumbnail = image.copy()
+    thumbnail.thumbnail(DATASET_IMAGE_THUMBNAIL_SIZE)
+    output = io.BytesIO()
+    _rgb_image(thumbnail).save(output, format="JPEG", quality=85, optimize=True)
+    return output.getvalue()
+
+
+def prepare_dataset_image(
+    *,
+    image_bytes: bytes,
+    filename: str | None = None,
+    content_type: str | None = None,
+) -> PreparedDatasetImage:
+    if not image_bytes:
+        raise DatasetImageError("Image data is required.")
+    if len(image_bytes) > MAX_DATASET_IMAGE_BYTES:
+        raise DatasetImageError(
+            f"Images must be {MAX_DATASET_IMAGE_BYTES // (1024 * 1024)} MB or smaller."
+        )
+
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as opened:
+            image_format = str(opened.format or "").upper()
+            if image_format not in DATASET_IMAGE_ALLOWED_FORMATS:
+                raise DatasetImageError("Image must be a JPEG, PNG, or WebP file.")
+            detected_content_type = DATASET_IMAGE_ALLOWED_FORMATS[image_format]
+            supplied_content_type = str(content_type or "").split(";", 1)[0].strip().lower()
+            if supplied_content_type and supplied_content_type != detected_content_type:
+                raise DatasetImageError("Image content type does not match the uploaded file.")
+            image = ImageOps.exif_transpose(opened)
+            image.load()
+            width, height = image.size
+            if width <= 0 or height <= 0 or width * height > MAX_DATASET_IMAGE_PIXELS:
+                raise DatasetImageError(
+                    f"Images must be {MAX_DATASET_IMAGE_PIXELS:,} pixels or fewer."
+                )
+            sanitized_bytes = _encoded_image_bytes(image, image_format)
+            thumbnail_bytes = _thumbnail_bytes(image)
+    except DatasetImageError:
+        raise
+    except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as exc:
+        raise DatasetImageError("Image data could not be read safely.") from exc
+
+    return PreparedDatasetImage(
+        filename=_safe_image_filename(filename, detected_content_type),
+        content_type=detected_content_type,
+        image_bytes=sanitized_bytes,
+        thumbnail_bytes=thumbnail_bytes,
+        byte_size=len(sanitized_bytes),
+        width=width,
+        height=height,
+        checksum=hashlib.sha256(sanitized_bytes).hexdigest(),
+    )
 
 
 def _choice_cell_value(value) -> str:

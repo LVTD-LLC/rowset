@@ -238,8 +238,26 @@ storage_bucket_name = (
     configured_storage_bucket_name
     or ("rowset-dev" if ENVIRONMENT == "dev" else "")
 )
+asset_s3_endpoint_url = env(
+    "ROWSET_ASSET_S3_ENDPOINT_URL",
+    default=aws_s3_endpoint_url,
+).strip()
+asset_storage_bucket_name = env(
+    "ROWSET_ASSET_STORAGE_BUCKET_NAME",
+    default=("rowset-assets-dev" if ENVIRONMENT == "dev" else ""),
+).strip()
+asset_access_key = env(
+    "ROWSET_ASSET_ACCESS_KEY_ID",
+    default=env("AWS_ACCESS_KEY_ID", default=""),
+)
+asset_secret_key = env(
+    "ROWSET_ASSET_SECRET_ACCESS_KEY",
+    default=env("AWS_SECRET_ACCESS_KEY", default=""),
+)
+asset_region_name = env("ROWSET_ASSET_REGION_NAME", default="auto")
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
+PRIVATE_MEDIA_ROOT = BASE_DIR.joinpath("private_media")
 
 if not aws_s3_endpoint_url:
     MEDIA_URL = "/media/"
@@ -278,6 +296,34 @@ else:
         },
         "staticfiles": {
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+if not asset_s3_endpoint_url:
+    STORAGES["dataset_assets"] = {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": str(PRIVATE_MEDIA_ROOT),
+        },
+    }
+else:
+    if not asset_storage_bucket_name:
+        raise ImproperlyConfigured(
+            "ROWSET_ASSET_STORAGE_BUCKET_NAME must be set when private dataset "
+            "asset storage uses an S3-compatible endpoint."
+        )
+
+    STORAGES["dataset_assets"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": asset_storage_bucket_name,
+            "default_acl": "private",
+            "region_name": asset_region_name,
+            "endpoint_url": asset_s3_endpoint_url,
+            "access_key": asset_access_key,
+            "secret_key": asset_secret_key,
+            "querystring_auth": True,
+            "file_overwrite": False,
         },
     }
 

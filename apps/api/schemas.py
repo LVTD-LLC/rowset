@@ -15,7 +15,7 @@ from apps.datasets.constants import (
 ColumnTypeIn = str | dict[str, Any]
 COLUMN_TYPE_DESCRIPTION = (
     "Semantic column type string or metadata object. Metadata supports type, "
-    "description, choice columns with choices, and reference columns with "
+    "description, image columns, choice columns with choices, and reference columns with "
     'target "dataset".'
 )
 
@@ -389,6 +389,48 @@ class DatasetRowOut(Schema):
     row_number: int
     index_value: str
     data: dict[str, str]
+
+
+class DatasetAssetOut(Schema):
+    key: str
+    ref: str
+    dataset: str
+    row_id: int
+    row_number: int
+    index_value: str
+    column: str
+    original_filename: str
+    content_type: str
+    byte_size: int
+    width: int | None = None
+    height: int | None = None
+    checksum: str
+    status: str
+    content_url: str
+    thumbnail_url: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class DatasetImageAttachIn(Schema):
+    column_name: str = Field(..., min_length=1)
+    image_base64: str = Field(..., min_length=1)
+    filename: str | None = None
+    content_type: str | None = None
+
+
+class DatasetImageAttachOut(Schema):
+    status: str
+    message: str
+    dataset: str
+    row: DatasetRowOut
+    asset: DatasetAssetOut
+
+
+class DatasetAssetApiOut(Schema):
+    status: str
+    message: str
+    asset: DatasetAssetOut
 
 
 class DatasetRowsOut(Schema):

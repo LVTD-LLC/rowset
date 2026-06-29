@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.datasets.models import Dataset, DatasetMutation, DatasetRow, Project
+from apps.datasets.models import Dataset, DatasetAsset, DatasetMutation, DatasetRow, Project
 
 
 @admin.register(Project)
@@ -89,6 +89,38 @@ class DatasetRowAdmin(admin.ModelAdmin):
         "updated_by_agent_api_key__name",
     )
     list_filter = ("created_by_agent_api_key", "updated_by_agent_api_key", "created_at")
+
+
+@admin.register(DatasetAsset)
+class DatasetAssetAdmin(admin.ModelAdmin):
+    list_display = (
+        "dataset",
+        "row",
+        "column_name",
+        "content_type",
+        "byte_size",
+        "status",
+        "created_at",
+    )
+    list_select_related = ("dataset", "row", "profile__user", "created_by_agent_api_key")
+    search_fields = (
+        "dataset__name",
+        "profile__user__email",
+        "column_name",
+        "original_filename",
+        "checksum",
+    )
+    list_filter = ("content_type", "status", "created_at")
+    readonly_fields = (
+        "key",
+        "profile",
+        "dataset",
+        "row",
+        "created_by_agent_api_key",
+        "checksum",
+        "created_at",
+        "updated_at",
+    )
 
 
 @admin.register(DatasetMutation)

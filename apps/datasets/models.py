@@ -1,20 +1,49 @@
 import uuid
+from pathlib import Path
 
 from django.contrib.auth.hashers import check_password
 from django.contrib.postgres.indexes import GinIndex
+from django.core.files.storage import storages
 from django.core.validators import MaxLengthValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models.functions import Lower
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.urls import reverse
 
 from apps.core.base_models import BaseModel
 from apps.core.models import AgentApiKey, Profile
-from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.choices import DatasetAssetStatus, DatasetMutationType, DatasetStatus
 from apps.datasets.constants import (
     MAX_CSV_UPLOAD_BYTES,
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
 )
+
+
+def dataset_asset_storage():
+    return storages["dataset_assets"]
+
+
+def _asset_upload_extension(filename: str, fallback: str = ".bin") -> str:
+    extension = Path(filename or "").suffix.lower()
+    if not extension:
+        return fallback
+    return extension[:16]
+
+
+def dataset_asset_upload_path(instance, filename: str) -> str:
+    return (
+        f"dataset-assets/{instance.profile_id}/{instance.dataset_id}/"
+        f"{instance.key}/original{_asset_upload_extension(filename)}"
+    )
+
+
+def dataset_asset_thumbnail_upload_path(instance, filename: str) -> str:
+    return (
+        f"dataset-assets/{instance.profile_id}/{instance.dataset_id}/"
+        f"{instance.key}/thumbnail{_asset_upload_extension(filename, '.jpg')}"
+    )
 
 
 class Project(BaseModel):
@@ -212,6 +241,80 @@ class DatasetRow(BaseModel):
     @property
     def updated_by_actor_label(self) -> str:
         return agent_actor_label(self.updated_by_agent_api_key)
+
+
+class DatasetAsset(BaseModel):
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="dataset_assets")
+    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name="assets")
+    row = models.ForeignKey(DatasetRow, on_delete=models.CASCADE, related_name="assets")
+    created_by_agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_dataset_assets",
+    )
+    key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    column_name = models.CharField(max_length=255)
+    file = models.FileField(
+        storage=dataset_asset_storage,
+        upload_to=dataset_asset_upload_path,
+        max_length=500,
+    )
+    thumbnail = models.FileField(
+        storage=dataset_asset_storage,
+        upload_to=dataset_asset_thumbnail_upload_path,
+        max_length=500,
+        blank=True,
+    )
+    original_filename = models.CharField(max_length=255, blank=True, default="")
+    content_type = models.CharField(max_length=100)
+    byte_size = models.PositiveIntegerField(default=0)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    checksum = models.CharField(max_length=64, db_index=True)
+    status = models.CharField(
+        max_length=32,
+        choices=DatasetAssetStatus.choices,
+        default=DatasetAssetStatus.READY,
+    )
+
+    class Meta:
+        ordering = ["dataset_id", "row_id", "column_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["row", "column_name"],
+                name="unique_dataset_row_asset_column",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["profile", "dataset"], name="dataset_asset_owner_idx"),
+            models.Index(fields=["dataset", "row"], name="dataset_asset_row_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.dataset_id} row {self.row_id} {self.column_name}"
+
+    @property
+    def asset_ref(self) -> str:
+        return f"asset:{self.key}"
+
+
+@receiver(post_delete, sender=DatasetAsset)
+def delete_dataset_asset_files(sender, instance: DatasetAsset, **kwargs) -> None:
+    file_names = [
+        (field.storage, field.name)
+        for field in (instance.file, instance.thumbnail)
+        if field and field.name
+    ]
+    if not file_names:
+        return
+
+    def delete_files() -> None:
+        for storage, name in file_names:
+            storage.delete(name)
+
+    transaction.on_commit(delete_files)
 
 
 class DatasetRelationship(BaseModel):

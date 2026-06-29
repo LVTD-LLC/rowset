@@ -12,6 +12,7 @@ class DatasetColumnType(models.TextChoices):
     TEXT = "text", "Text"
     CHOICE = "choice", "Choice"
     REFERENCE = "reference", "Reference"
+    IMAGE = "image", "Image"
     INTEGER = "integer", "Integer"
     NUMBER = "number", "Number"
     CURRENCY = "currency", "Currency"
@@ -20,6 +21,10 @@ class DatasetColumnType(models.TextChoices):
     DATETIME = "datetime", "Date/time"
     EMAIL = "email", "Email"
     URL = "url", "URL"
+
+
+class DatasetAssetStatus(models.TextChoices):
+    READY = "ready", "Ready"
 
 
 class DatasetMutationType(models.TextChoices):

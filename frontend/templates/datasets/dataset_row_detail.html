@@ -41,7 +41,19 @@
                 </th>
                 <td class="min-w-96 break-words">
                   {% dataset_external_href cell.value as external_href %}
-                  {% if cell.relationship_url %}
+                  {% if cell.is_image %}
+                    <div class="max-w-xl">
+                      <a href="{{ cell.image_full_url }}" class="fb-focus inline-block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900" aria-label="Open image {{ cell.value }}">
+                        <img src="{{ cell.image_url }}" alt="{{ cell.image_alt }}" class="max-h-96 w-auto object-contain">
+                      </a>
+                      <p class="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{{ cell.value }}</p>
+                      {% if cell.image_detail %}
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ cell.image_detail }}</p>
+                      {% endif %}
+                    </div>
+                  {% elif cell.is_missing_image %}
+                    <span class="text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
+                  {% elif cell.relationship_url %}
                     <a href="{{ cell.relationship_url }}" class="fb-focus font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" aria-label="{{ cell.relationship_label }}">{{ cell.value }}</a>
                   {% elif cell.rowset_link_url %}
                     {% include "datasets/partials/rowset_link_cell.html" %}

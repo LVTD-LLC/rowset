@@ -6,6 +6,7 @@ from uuid import UUID
 
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Exists, OuterRef, Q, TextField
 from django.db.models.fields.json import KeyTextTransform
@@ -22,23 +23,29 @@ from apps.datasets.constants import (
     MAX_PROJECT_METADATA_BYTES,
 )
 from apps.datasets.history import record_dataset_mutation
-from apps.datasets.models import Dataset, DatasetRelationship, DatasetRow, Project
+from apps.datasets.models import Dataset, DatasetAsset, DatasetRelationship, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
     COLUMN_SCHEMA_REFERENCE_TARGET_KEY,
     COLUMN_SCHEMA_TYPE_KEY,
     DATASET_REFERENCE_TARGET,
+    DatasetImageError,
     DatasetRowQueryError,
     apply_dataset_row_query,
     choice_constraints_from_schema,
+    dataset_asset_ref,
+    decode_image_base64,
     generated_index_column_name,
     generated_index_column_schema,
+    image_columns_from_schema,
     infer_column_schema,
     invalid_choice_values_by_column,
     normalize_column_schema,
     normalize_public_page_size,
+    prepare_dataset_image,
     validate_choice_row_values,
     validate_headers,
+    validate_image_row_values,
 )
 from rowset.utils import build_absolute_public_url
 
@@ -1292,6 +1299,26 @@ def _validate_choice_row_data(
         raise DatasetServiceError(400, str(exc)) from exc
 
 
+def _validate_image_row_data(
+    headers: list[str],
+    column_schema: dict,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    allow_asset_refs: bool = False,
+) -> None:
+    try:
+        validate_image_row_values(
+            headers,
+            column_schema,
+            row_data,
+            columns=columns,
+            allow_asset_refs=allow_asset_refs,
+        )
+    except CSVParseError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+
 def _validate_choice_rows(
     headers: list[str],
     column_schema: dict,
@@ -1309,6 +1336,15 @@ def _validate_choice_rows(
             row_data,
             choice_constraints=choice_constraints,
         )
+
+
+def _validate_image_rows(
+    headers: list[str],
+    column_schema: dict,
+    rows: list[dict[str, str]],
+) -> None:
+    for row_data in rows:
+        _validate_image_row_data(headers, column_schema, row_data)
 
 
 def _iter_dataset_row_data(dataset: Dataset):
@@ -1411,6 +1447,20 @@ def _validate_existing_dataset_reference_values(
         )
 
 
+def _validate_existing_image_values(dataset: Dataset, column_schema: dict) -> None:
+    image_columns = image_columns_from_schema(dataset.headers, column_schema)
+    if not image_columns:
+        return
+    for row_data in _iter_dataset_row_data(dataset):
+        _validate_image_row_data(
+            dataset.headers,
+            column_schema,
+            row_data,
+            columns=image_columns,
+            allow_asset_refs=True,
+        )
+
+
 def _create_dataset_index_config(
     headers: list[str],
     index_column: str | None,
@@ -1444,6 +1494,12 @@ def _normalize_dataset_column_schema(
         )
     except CSVParseError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
+
+    if (
+        not index_generated
+        and base_schema[index_column][COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.IMAGE
+    ):
+        raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
 
     if index_generated:
         return {
@@ -1491,6 +1547,7 @@ def create_profile_dataset(
         column_types=column_types,
     )
     _validate_choice_rows(base_headers, column_schema, normalized_rows)
+    _validate_image_rows(base_headers, column_schema, normalized_rows)
     normalized_rows = _normalize_dataset_reference_rows(
         profile,
         base_headers,
@@ -1613,8 +1670,11 @@ def update_profile_dataset_column_types(
             )
         except CSVParseError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
+        if next_schema[dataset.index_column][COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.IMAGE:
+            raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
         _validate_existing_choice_values(dataset, next_schema)
         _validate_existing_dataset_reference_values(profile, dataset, next_schema)
+        _validate_existing_image_values(dataset, next_schema)
         dataset.column_schema = next_schema
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
@@ -1850,6 +1910,12 @@ def add_profile_dataset_column(
             {column_name: default_cell},
             columns={column_name},
         )
+        _validate_image_row_data(
+            next_headers,
+            dataset.column_schema,
+            {column_name: default_cell},
+            columns={column_name},
+        )
         default_cell = _normalize_dataset_reference_row_data(
             profile,
             next_headers,
@@ -1949,6 +2015,9 @@ def rename_profile_dataset_column(
             rename_column,
             agent_api_key=agent_api_key,
         )
+        DatasetAsset.objects.filter(dataset=dataset, column_name=old_column_name).update(
+            column_name=new_column_name
+        )
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
             update_fields=[
@@ -2017,6 +2086,7 @@ def drop_profile_dataset_column(
             drop_column,
             agent_api_key=agent_api_key,
         )
+        DatasetAsset.objects.filter(dataset=dataset, column_name=column_name).delete()
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
             update_fields=[
@@ -2374,6 +2444,198 @@ def serialize_dataset_row(row: DatasetRow) -> dict:
     }
 
 
+def dataset_asset_content_field(asset: DatasetAsset, variant: str = "original"):
+    normalized_variant = str(variant or "original").strip().lower()
+    if normalized_variant == "thumbnail":
+        return asset.thumbnail or asset.file
+    if normalized_variant in {"", "original"}:
+        return asset.file
+    raise DatasetServiceError(400, "Asset variant must be 'original' or 'thumbnail'.")
+
+
+def _dataset_asset_content_url(asset: DatasetAsset, variant: str) -> str:
+    return build_absolute_public_url(
+        f"/api/datasets/{asset.dataset.key}/assets/{asset.key}/content?variant={variant}"
+    )
+
+
+def serialize_dataset_asset(asset: DatasetAsset) -> dict:
+    row = asset.row
+    return {
+        "key": str(asset.key),
+        "ref": dataset_asset_ref(asset.key),
+        "dataset": str(asset.dataset.key),
+        "row_id": row.id,
+        "row_number": row.row_number,
+        "index_value": row.index_value,
+        "column": asset.column_name,
+        "original_filename": asset.original_filename,
+        "content_type": asset.content_type,
+        "byte_size": asset.byte_size,
+        "width": asset.width,
+        "height": asset.height,
+        "checksum": asset.checksum,
+        "status": asset.status,
+        "content_url": _dataset_asset_content_url(asset, "original"),
+        "thumbnail_url": _dataset_asset_content_url(asset, "thumbnail"),
+        "created_at": asset.created_at,
+        "updated_at": asset.updated_at,
+    }
+
+
+def _get_dataset_asset_by_key(dataset: Dataset, profile: Profile, asset_key: str) -> DatasetAsset:
+    try:
+        asset_uuid = UUID(str(asset_key or "").strip())
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise DatasetServiceError(404, "Dataset asset not found.") from exc
+    try:
+        return dataset.assets.select_related("row").get(key=asset_uuid, profile=profile)
+    except DatasetAsset.DoesNotExist as exc:
+        raise DatasetServiceError(404, "Dataset asset not found.") from exc
+
+
+def get_profile_dataset_asset(profile: Profile, dataset_key: str, asset_key: str) -> DatasetAsset:
+    dataset = get_ready_profile_dataset(profile, dataset_key)
+    return _get_dataset_asset_by_key(dataset, profile, asset_key)
+
+
+def serialize_profile_dataset_asset(profile: Profile, dataset_key: str, asset_key: str) -> dict:
+    asset = get_profile_dataset_asset(profile, dataset_key, asset_key)
+    return {
+        "status": "success",
+        "message": "Dataset asset retrieved.",
+        "asset": serialize_dataset_asset(asset),
+    }
+
+
+def _row_for_image_attachment(
+    dataset: Dataset,
+    *,
+    row_id: int | None = None,
+    index_value: str | None = None,
+) -> DatasetRow:
+    has_row_id = row_id is not None
+    normalized_index_value = str(index_value or "").strip()
+    has_index_value = bool(normalized_index_value)
+    if has_row_id == has_index_value:
+        raise DatasetServiceError(400, "Provide exactly one of row_id or index_value.")
+    try:
+        if has_row_id:
+            return dataset.rows.select_for_update().get(id=row_id)
+        return dataset.rows.select_for_update().get(index_value=normalized_index_value)
+    except DatasetRow.DoesNotExist as exc:
+        raise DatasetServiceError(404, "Row not found.") from exc
+
+
+def _normalize_image_asset_column(dataset: Dataset, column_name: str) -> str:
+    column = _normalize_existing_column_name(dataset, column_name)
+    normalized_schema = normalize_column_schema(dataset.headers, dataset.column_schema)
+    if normalized_schema[column][COLUMN_SCHEMA_TYPE_KEY] != DatasetColumnType.IMAGE:
+        raise DatasetServiceError(400, f"Column '{column}' is not an image column.")
+    if column == dataset.index_column:
+        raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
+    return column
+
+
+def attach_profile_dataset_image_asset(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    column_name: str,
+    image_base64: str,
+    filename: str | None = None,
+    content_type: str | None = None,
+    row_id: int | None = None,
+    index_value: str | None = None,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    dataset = get_ready_profile_dataset(profile, dataset_key)
+    _normalize_image_asset_column(dataset, column_name)
+    try:
+        prepared_image = prepare_dataset_image(
+            image_bytes=decode_image_base64(image_base64),
+            filename=filename,
+            content_type=content_type,
+        )
+    except DatasetImageError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        column = _normalize_image_asset_column(dataset, column_name)
+        row = _row_for_image_attachment(dataset, row_id=row_id, index_value=index_value)
+
+        previous_value = str((row.data or {}).get(column, "") or "")
+        DatasetAsset.objects.filter(dataset=dataset, row=row, column_name=column).delete()
+        asset = DatasetAsset(
+            profile=profile,
+            dataset=dataset,
+            row=row,
+            created_by_agent_api_key=agent_api_key,
+            column_name=column,
+            original_filename=prepared_image.filename,
+            content_type=prepared_image.content_type,
+            byte_size=prepared_image.byte_size,
+            width=prepared_image.width,
+            height=prepared_image.height,
+            checksum=prepared_image.checksum,
+        )
+        asset.file.save(
+            prepared_image.filename,
+            ContentFile(prepared_image.image_bytes),
+            save=False,
+        )
+        asset.thumbnail.save(
+            "thumbnail.jpg",
+            ContentFile(prepared_image.thumbnail_bytes),
+            save=False,
+        )
+        asset.save()
+
+        next_value = asset.asset_ref
+        row.data = {**(row.data or {}), column: next_value}
+        row.updated_by_agent_api_key = agent_api_key
+        row.save(update_fields=["data", "updated_by_agent_api_key", "updated_at"])
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+        record_dataset_mutation(
+            dataset,
+            DatasetMutationType.ROW_UPDATED,
+            f"Image attached to row {row.row_number}.",
+            agent_api_key=agent_api_key,
+            target_type="row",
+            target_identifier=row.id,
+            metadata={
+                "row_id": row.id,
+                "row_number": row.row_number,
+                "changed_fields": [column],
+                "field_changes": [
+                    {
+                        "field": column,
+                        "before": previous_value,
+                        "after": next_value,
+                    }
+                ],
+                "value_changes_recorded": True,
+                "asset_key": str(asset.key),
+                "asset_ref_recorded": True,
+                "filename": prepared_image.filename,
+                "content_type": prepared_image.content_type,
+                "byte_size": prepared_image.byte_size,
+                "width": prepared_image.width,
+                "height": prepared_image.height,
+            },
+        )
+
+    return {
+        "status": "success",
+        "message": "Image attached.",
+        "dataset": str(dataset.key),
+        "row": serialize_dataset_row(row),
+        "asset": serialize_dataset_asset(asset),
+    }
+
+
 def list_profile_dataset_rows(
     profile: Profile,
     dataset_key: str,
@@ -2448,6 +2710,7 @@ def create_profile_dataset_row(
             raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
         serialized_data = {header: str(row_data.get(header, "")) for header in dataset.headers}
         _validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
+        _validate_image_row_data(dataset.headers, dataset.column_schema, serialized_data)
         serialized_data = _normalize_dataset_reference_row_data(
             profile,
             dataset.headers,
@@ -2572,6 +2835,18 @@ def _patch_dataset_row(
 
     row_patch = {key: str(value) for key, value in data.items() if key in dataset.headers}
     patched_fields = sorted(row_patch)
+    _validate_image_row_data(
+        dataset.headers,
+        dataset.column_schema,
+        row_patch,
+        columns=patched_fields,
+    )
+    image_columns = set(image_columns_from_schema(dataset.headers, dataset.column_schema))
+    cleared_image_columns = [
+        field
+        for field in patched_fields
+        if field in image_columns and row_patch.get(field, "") == ""
+    ]
     row_patch = _normalize_dataset_reference_row_data(
         profile,
         dataset.headers,
@@ -2582,6 +2857,12 @@ def _patch_dataset_row(
     field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
     changed_fields = [str(change["field"]) for change in field_changes]
     row.data = {**row.data, **row_patch}
+    if cleared_image_columns:
+        DatasetAsset.objects.filter(
+            dataset=dataset,
+            row=row,
+            column_name__in=cleared_image_columns,
+        ).delete()
     _validate_choice_row_data(
         dataset.headers,
         dataset.column_schema,

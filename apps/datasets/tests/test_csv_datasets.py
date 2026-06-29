@@ -1,3 +1,4 @@
+import base64
 import csv
 import io
 import json
@@ -14,6 +15,7 @@ from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
+from PIL import Image
 
 from apps.api.services import (
     list_profile_dataset_rows,
@@ -24,7 +26,14 @@ from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
-from apps.datasets.models import Dataset, DatasetMutation, DatasetRelationship, DatasetRow, Project
+from apps.datasets.models import (
+    Dataset,
+    DatasetAsset,
+    DatasetMutation,
+    DatasetRelationship,
+    DatasetRow,
+    Project,
+)
 from apps.datasets.services import (
     CSVParseError,
     choice_constraints_from_schema,
@@ -88,6 +97,12 @@ def parquet_upload(data=None):
         buffer.getvalue(),
         content_type="application/vnd.apache.parquet",
     )
+
+
+def image_base64() -> str:
+    buffer = io.BytesIO()
+    Image.new("RGB", (3, 2), (12, 34, 56)).save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
 
 
 def xlsx_cell_texts(content: bytes) -> list[str]:
@@ -2136,7 +2151,8 @@ def test_dataset_api_crud_and_export(client, profile):
     assert create_response.json()["row"]["index_value"] == "kat@example.com"
 
     missing_index_patch_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=missing@example.com",
+        f"/api/datasets/{dataset.key}/rows/by-index"
+        f"?api_key={api_key}&index_value=missing@example.com",
         data={"data": {"name": "Missing"}},
         content_type="application/json",
     )
@@ -2195,6 +2211,255 @@ def test_dataset_api_crud_and_export(client, profile):
     assert delete_response.status_code == 200
     assert delete_response.json()["dataset"] == str(dataset.key)
     assert not DatasetRow.objects.filter(id=row_id).exists()
+
+
+def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Product photos",
+            "headers": ["sku", "name", "photo"],
+            "index_column": "sku",
+            "column_types": {
+                "photo": {
+                    "type": "image",
+                    "description": "Primary product photo",
+                }
+            },
+            "rows": [{"sku": "A-1", "name": "Adapter", "photo": ""}],
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+
+    attach_response = client.post(
+        f"/api/datasets/{dataset.key}/rows/by-index/image"
+        f"?api_key={profile.key}&index_value=A-1",
+        data={
+            "column_name": "photo",
+            "filename": "adapter.png",
+            "content_type": "image/png",
+            "image_base64": image_base64(),
+        },
+        content_type="application/json",
+    )
+
+    assert attach_response.status_code == 200
+    payload = attach_response.json()
+    asset_payload = payload["asset"]
+    asset = DatasetAsset.objects.get(key=asset_payload["key"], dataset=dataset)
+    row = dataset.rows.get(index_value="A-1")
+    row.refresh_from_db()
+    assert payload["row"]["data"]["photo"] == asset.asset_ref
+    assert row.data["photo"] == asset.asset_ref
+    assert asset_payload["ref"] == asset.asset_ref
+    assert asset_payload["content_type"] == "image/png"
+    assert asset_payload["width"] == 3
+    assert asset_payload["height"] == 2
+    assert asset_payload["content_url"].endswith(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
+    )
+    assert asset.file.name.endswith("/original.png")
+    assert asset.thumbnail.name.endswith("/thumbnail.jpg")
+
+    metadata_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
+    )
+    assert metadata_response.status_code == 200
+    assert metadata_response.json()["asset"]["ref"] == asset.asset_ref
+
+    original_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
+        f"?api_key={profile.key}&variant=original"
+    )
+    assert original_response.status_code == 200
+    assert original_response["Content-Type"] == "image/png"
+    assert original_response["X-Content-Type-Options"] == "nosniff"
+    assert original_response.content.startswith(b"\x89PNG")
+
+    thumbnail_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
+        f"?api_key={profile.key}&variant=thumbnail"
+    )
+    assert thumbnail_response.status_code == 200
+    assert thumbnail_response["Content-Type"] == "image/jpeg"
+    assert thumbnail_response.content.startswith(b"\xff\xd8")
+
+    client.force_login(profile.user)
+    dataset_detail = client.get(dataset.get_absolute_url())
+    detail_content = dataset_detail.content.decode()
+    assert dataset_detail.status_code == 200
+    assert "adapter.png" in detail_content
+    assert reverse("dataset_asset_content", args=[dataset.key, asset.key]) in detail_content
+
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+    public_response = client.get(dataset.get_public_url())
+    public_content = public_response.content.decode()
+    assert public_response.status_code == 200
+    assert "adapter.png" in public_content
+    assert (
+        reverse("public_dataset_asset_content", args=[dataset.public_key, asset.key])
+        in public_content
+    )
+    public_asset_response = client.get(
+        f"{reverse('public_dataset_asset_content', args=[dataset.public_key, asset.key])}"
+        "?variant=thumbnail"
+    )
+    assert public_asset_response.status_code == 200
+    assert public_asset_response["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+
+    public_row_response = client.get(
+        reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+    )
+    assert public_row_response.status_code == 200
+    assert "adapter.png" in public_row_response.content.decode()
+
+
+def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Receipts",
+            "headers": ["receipt_id", "image"],
+            "index_column": "receipt_id",
+            "column_types": {"image": "image"},
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+
+    invalid_create = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={"data": {"receipt_id": "R-1", "image": "https://example.com/receipt.png"}},
+        content_type="application/json",
+    )
+    assert invalid_create.status_code == 400
+    assert invalid_create.json()["detail"] == (
+        "Column 'image' is an image column. Leave it blank and attach an image asset."
+    )
+
+    create_row = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={"data": {"receipt_id": "R-1", "image": ""}},
+        content_type="application/json",
+    )
+    assert create_row.status_code == 200
+    row_id = create_row.json()["row"]["id"]
+
+    attach_response = client.post(
+        f"/api/datasets/{dataset.key}/rows/{row_id}/image?api_key={profile.key}",
+        data={
+            "column_name": "image",
+            "filename": "receipt.png",
+            "content_type": "image/png",
+            "image_base64": image_base64(),
+        },
+        content_type="application/json",
+    )
+    assert attach_response.status_code == 200
+    asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
+
+    invalid_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"image": asset.asset_ref}},
+        content_type="application/json",
+    )
+    assert invalid_patch.status_code == 400
+    assert DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+    clear_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"image": ""}},
+        content_type="application/json",
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json()["row"]["data"]["image"] == ""
+    assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+
+def test_dataset_api_renames_and_drops_image_column_assets(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Catalog images",
+            "headers": ["sku", "photo"],
+            "index_column": "sku",
+            "column_types": {"photo": "image"},
+            "rows": [{"sku": "A-1", "photo": ""}],
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+    row = dataset.rows.get(index_value="A-1")
+
+    attach_response = client.post(
+        f"/api/datasets/{dataset.key}/rows/{row.id}/image?api_key={profile.key}",
+        data={
+            "column_name": "photo",
+            "filename": "adapter.png",
+            "content_type": "image/png",
+            "image_base64": image_base64(),
+        },
+        content_type="application/json",
+    )
+    assert attach_response.status_code == 200
+    asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
+
+    rename_response = client.post(
+        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+        data={"old_name": "photo", "new_name": "hero_image"},
+        content_type="application/json",
+    )
+    assert rename_response.status_code == 200
+    asset.refresh_from_db()
+    row.refresh_from_db()
+    assert asset.column_name == "hero_image"
+    assert row.data["hero_image"] == asset.asset_ref
+    assert "photo" not in row.data
+
+    drop_response = client.post(
+        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+        data={"name": "hero_image"},
+        content_type="application/json",
+    )
+    assert drop_response.status_code == 200
+    assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+
+def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(client, profile):
+    image_index_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Invalid image index",
+            "headers": ["photo", "name"],
+            "index_column": "photo",
+            "column_types": {"photo": "image"},
+        },
+        content_type="application/json",
+    )
+    assert image_index_response.status_code == 400
+    assert image_index_response.json()["detail"] == (
+        "Image columns cannot be used as the dataset index."
+    )
+
+    dataset = create_ready_dataset(profile)
+    invalid_default_response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={
+            "name": "photo",
+            "default_value": "https://example.com/photo.png",
+            "column_type": "image",
+        },
+        content_type="application/json",
+    )
+    assert invalid_default_response.status_code == 400
+    assert invalid_default_response.json()["detail"] == (
+        "Column 'photo' is an image column. Leave it blank and attach an image asset."
+    )
 
 
 def test_dataset_api_filters_and_sorts_rows(client, profile):
