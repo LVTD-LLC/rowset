@@ -19,6 +19,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.api.services import (
+    DatasetServiceError,
     _delete_saved_dataset_asset_files,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
@@ -27,6 +28,7 @@ from apps.api.services import (
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
+from apps.datasets.constants import MAX_DATASET_IMAGE_BYTES
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import (
     DATASET_ASSET_STORAGE_ALIAS,
@@ -44,6 +46,7 @@ from apps.datasets.services import (
     DatasetImageError,
     prepare_dataset_image,
     choice_constraints_from_schema,
+    decode_image_base64,
     infer_column_type,
     normalize_column_schema,
     preview_csv_file,
@@ -2244,26 +2247,137 @@ def test_prepare_dataset_image_rejects_encoded_payload_above_limit(monkeypatch):
         )
 
 
-def test_saved_dataset_asset_cleanup_surfaces_delete_failures():
-    class Storage:
-        def __init__(self, *, fail: bool = False):
-            self.fail = fail
-            self.deleted = []
+def test_prepare_dataset_image_rejects_decoded_payload_above_limit():
+    image_base64 = base64.b64encode(b"x" * (MAX_DATASET_IMAGE_BYTES + 1)).decode()
 
-        def delete(self, name: str) -> None:
-            self.deleted.append(name)
-            if self.fail:
-                raise OSError("delete failed")
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=decode_image_base64(image_base64),
+            filename="large.png",
+            content_type="image/png",
+        )
 
-    failing_storage = Storage(fail=True)
-    with pytest.raises(OSError):
+
+def test_prepare_dataset_image_rejects_malformed_image_data():
+    image_base64 = base64.b64encode(b"not really an image").decode()
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=decode_image_base64(image_base64),
+            filename="broken.png",
+            content_type="image/png",
+        )
+
+
+def test_prepare_dataset_image_rejects_content_type_mismatch():
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=image_bytes(),
+            filename="photo.jpg",
+            content_type="image/jpeg",
+        )
+
+
+def test_prepare_dataset_image_rejects_images_over_pixel_limit(monkeypatch):
+    monkeypatch.setattr("apps.datasets.services.MAX_DATASET_IMAGE_PIXELS", 5)
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=image_bytes(),
+            filename="photo.png",
+            content_type="image/png",
+        )
+
+
+def test_prepare_dataset_image_rejects_zero_dimension_image(monkeypatch):
+    class FakeImage:
+        format = "PNG"
+        size = (0, 1)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def load(self):
+            return None
+
+    fake_image = FakeImage()
+    monkeypatch.setattr("apps.datasets.services.Image.open", lambda data: fake_image)
+    monkeypatch.setattr(
+        "apps.datasets.services.ImageOps.exif_transpose",
+        lambda image: image,
+    )
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=b"fake",
+            filename="zero.png",
+            content_type="image/png",
+        )
+
+
+def test_prepare_dataset_image_rejects_exif_transposed_image_over_pixel_limit(monkeypatch):
+    class FakeImage:
+        format = "PNG"
+
+        def __init__(self, size):
+            self.size = size
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def load(self):
+            return None
+
+    opened_image = FakeImage((1, 1))
+    transposed_image = FakeImage((3, 3))
+    monkeypatch.setattr("apps.datasets.services.MAX_DATASET_IMAGE_PIXELS", 5)
+    monkeypatch.setattr("apps.datasets.services.Image.open", lambda data: opened_image)
+    monkeypatch.setattr(
+        "apps.datasets.services.ImageOps.exif_transpose",
+        lambda image: transposed_image,
+    )
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=b"fake",
+            filename="rotated.png",
+            content_type="image/png",
+        )
+
+
+def test_saved_dataset_asset_cleanup_surfaces_delete_failures(monkeypatch):
+    storage = storages[DATASET_ASSET_STORAGE_ALIAS]
+    deleted_names = []
+
+    def fail_original_delete(name: str) -> None:
+        deleted_names.append(name)
+        if name == "original.png":
+            raise OSError("delete failed")
+
+    monkeypatch.setattr(storage, "delete", fail_original_delete)
+
+    with pytest.raises(DatasetServiceError):
         _delete_saved_dataset_asset_files(
             [
-                (failing_storage, "original.png"),
+                (DATASET_ASSET_STORAGE_ALIAS, "original.png"),
+                (DATASET_ASSET_STORAGE_ALIAS, "thumbnail.jpg"),
             ]
         )
 
-    assert failing_storage.deleted == ["original.png"]
+    assert deleted_names == ["original.png", "thumbnail.jpg"]
+    deletion = DatasetAssetFileDeletion.objects.get(file_name="original.png")
+    assert deletion.storage_alias == DATASET_ASSET_STORAGE_ALIAS
+    assert deletion.attempts == 1
+    assert "delete failed" in deletion.last_error
+    assert not DatasetAssetFileDeletion.objects.filter(
+        file_name="thumbnail.jpg"
+    ).exists()
 
 
 def test_dataset_asset_delete_records_failed_file_cleanup(

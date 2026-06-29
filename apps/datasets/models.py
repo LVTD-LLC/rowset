@@ -408,6 +408,8 @@ def delete_dataset_asset_files(sender, instance: DatasetAsset, **kwargs) -> None
         return
 
     def delete_files() -> None:
+        # Asset paths include the immutable asset key, so a replacement asset
+        # for the same row and column cannot reuse these captured file names.
         for storage_alias, name in file_names:
             try:
                 storages[storage_alias].delete(name)

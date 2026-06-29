@@ -7,6 +7,7 @@ from uuid import UUID
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from django.core.files.storage import storages
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Exists, OuterRef, Q, TextField
 from django.db.models.fields.json import KeyTextTransform
@@ -23,7 +24,15 @@ from apps.datasets.constants import (
     MAX_PROJECT_METADATA_BYTES,
 )
 from apps.datasets.history import record_dataset_mutation
-from apps.datasets.models import Dataset, DatasetAsset, DatasetRelationship, DatasetRow, Project
+from apps.datasets.models import (
+    DATASET_ASSET_STORAGE_ALIAS,
+    Dataset,
+    DatasetAsset,
+    DatasetRelationship,
+    DatasetRow,
+    Project,
+    record_dataset_asset_file_deletion_failure,
+)
 from apps.datasets.services import (
     CSVParseError,
     COLUMN_SCHEMA_REFERENCE_TARGET_KEY,
@@ -2537,9 +2546,19 @@ def _normalize_image_asset_column(dataset: Dataset, column_name: str) -> str:
     return column
 
 
-def _delete_saved_dataset_asset_files(saved_files: list[tuple[Any, str]]) -> None:
-    for storage, name in saved_files:
-        storage.delete(name)
+def _delete_saved_dataset_asset_files(saved_files: list[tuple[str, str]]) -> None:
+    cleanup_error = None
+    for storage_alias, name in saved_files:
+        try:
+            storages[storage_alias].delete(name)
+        except Exception as exc:
+            cleanup_error = cleanup_error or exc
+            record_dataset_asset_file_deletion_failure(storage_alias, name, exc)
+    if cleanup_error is not None:
+        raise DatasetServiceError(
+            500,
+            "Image upload failed and saved files were queued for cleanup.",
+        ) from cleanup_error
 
 
 def attach_profile_dataset_image_asset(
@@ -2629,14 +2648,14 @@ def attach_profile_dataset_image_asset(
                 asset.file.name,
                 ContentFile(prepared_image.image_bytes),
             )
-            saved_files.append((asset.file.storage, saved_file_name))
+            saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_file_name))
             if saved_file_name != asset.file.name:
                 raise DatasetServiceError(500, "Image upload path could not be reserved.")
             saved_thumbnail_name = asset.thumbnail.storage.save(
                 asset.thumbnail.name,
                 ContentFile(prepared_image.thumbnail_bytes),
             )
-            saved_files.append((asset.thumbnail.storage, saved_thumbnail_name))
+            saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_thumbnail_name))
             if saved_thumbnail_name != asset.thumbnail.name:
                 raise DatasetServiceError(500, "Image thumbnail path could not be reserved.")
     except Exception:
