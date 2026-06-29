@@ -1795,6 +1795,94 @@ def test_project_detail_edit_query_shows_inline_project_form(auth_client, profil
     ) in content
 
 
+def test_project_detail_shows_delete_project_action(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Frontier")
+
+    response = auth_client.get(project.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert reverse("project_delete", args=[project.key]) in content
+    assert "Delete project" in content
+    assert (
+        "return confirm('Delete project Frontier? Assigned datasets will stay in Rowset "
+        "and become ungrouped. This cannot be undone.');"
+    ) in content
+
+
+def test_project_list_shows_delete_project_action(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Frontier")
+
+    response = auth_client.get(reverse("project_list"))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert reverse("project_delete", args=[project.key]) in content
+    assert (
+        "return confirm('Delete project Frontier? Assigned datasets will stay in Rowset "
+        "and become ungrouped. This cannot be undone.');"
+    ) in content
+
+
+def test_project_delete_removes_owned_project_and_detaches_datasets(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+    dataset = create_ready_dataset(profile)
+    dataset.project = project
+    dataset.save(update_fields=["project"])
+
+    response = auth_client.post(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 302
+    assert response.url == reverse("project_list")
+    assert not Project.objects.filter(id=project.id).exists()
+    dataset.refresh_from_db()
+    assert dataset.project is None
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.SUCCESS
+    assert str(flash_messages[0]) == "Deleted Launch. Assigned datasets are now ungrouped."
+
+
+def test_project_delete_requires_post(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+
+    response = auth_client.get(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 405
+    assert Project.objects.filter(id=project.id).exists()
+
+
+def test_project_delete_rejects_other_users_project(client, django_user_model, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+    other_user = django_user_model.objects.create_user(
+        username="other-project-delete",
+        email="other-project-delete@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.post(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 404
+    assert Project.objects.filter(id=project.id).exists()
+
+
+def test_project_delete_rejects_user_without_profile(client, django_user_model, profile):
+    project = Project.objects.create(profile=profile, name="Launch")
+    user_without_profile = django_user_model.objects.create_user(
+        username="missing-profile-project-delete",
+        email="missing-profile-project-delete@example.com",
+        password="password123",
+    )
+    user_without_profile.profile.delete()
+    client.force_login(user_without_profile)
+
+    response = client.post(reverse("project_delete", args=[project.key]))
+
+    assert response.status_code == 404
+    assert Project.objects.filter(id=project.id).exists()
+
+
 def test_dataset_archive_archives_owned_dataset(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
