@@ -1,4 +1,5 @@
 import json
+from contextlib import suppress
 from datetime import UTC, date, datetime, time
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -2560,72 +2561,81 @@ def attach_profile_dataset_image_asset(
     except DatasetImageError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
-    with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
-        column = _normalize_image_asset_column(dataset, column_name)
-        row = _row_for_image_attachment(dataset, row_id=row_id, index_value=index_value)
+    saved_files = []
+    try:
+        with transaction.atomic():
+            dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+            column = _normalize_image_asset_column(dataset, column_name)
+            row = _row_for_image_attachment(dataset, row_id=row_id, index_value=index_value)
 
-        previous_value = str((row.data or {}).get(column, "") or "")
-        DatasetAsset.objects.filter(dataset=dataset, row=row, column_name=column).delete()
-        asset = DatasetAsset(
-            profile=profile,
-            dataset=dataset,
-            row=row,
-            created_by_agent_api_key=agent_api_key,
-            column_name=column,
-            original_filename=prepared_image.filename,
-            content_type=prepared_image.content_type,
-            byte_size=prepared_image.byte_size,
-            width=prepared_image.width,
-            height=prepared_image.height,
-            checksum=prepared_image.checksum,
-        )
-        asset.file.save(
-            prepared_image.filename,
-            ContentFile(prepared_image.image_bytes),
-            save=False,
-        )
-        asset.thumbnail.save(
-            "thumbnail.jpg",
-            ContentFile(prepared_image.thumbnail_bytes),
-            save=False,
-        )
-        asset.save()
+            previous_value = str((row.data or {}).get(column, "") or "")
+            DatasetAsset.objects.filter(dataset=dataset, row=row, column_name=column).delete()
+            asset = DatasetAsset(
+                profile=profile,
+                dataset=dataset,
+                row=row,
+                created_by_agent_api_key=agent_api_key,
+                column_name=column,
+                original_filename=prepared_image.filename,
+                content_type=prepared_image.content_type,
+                byte_size=prepared_image.byte_size,
+                width=prepared_image.width,
+                height=prepared_image.height,
+                checksum=prepared_image.checksum,
+            )
+            asset.file.save(
+                prepared_image.filename,
+                ContentFile(prepared_image.image_bytes),
+                save=False,
+            )
+            saved_files.append((asset.file.storage, asset.file.name))
+            asset.thumbnail.save(
+                "thumbnail.jpg",
+                ContentFile(prepared_image.thumbnail_bytes),
+                save=False,
+            )
+            saved_files.append((asset.thumbnail.storage, asset.thumbnail.name))
+            asset.save()
 
-        next_value = asset.asset_ref
-        row.data = {**(row.data or {}), column: next_value}
-        row.updated_by_agent_api_key = agent_api_key
-        row.save(update_fields=["data", "updated_by_agent_api_key", "updated_at"])
-        dataset.updated_by_agent_api_key = agent_api_key
-        dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
-        record_dataset_mutation(
-            dataset,
-            DatasetMutationType.ROW_UPDATED,
-            f"Image attached to row {row.row_number}.",
-            agent_api_key=agent_api_key,
-            target_type="row",
-            target_identifier=row.id,
-            metadata={
-                "row_id": row.id,
-                "row_number": row.row_number,
-                "changed_fields": [column],
-                "field_changes": [
-                    {
-                        "field": column,
-                        "before": previous_value,
-                        "after": next_value,
-                    }
-                ],
-                "value_changes_recorded": True,
-                "asset_key": str(asset.key),
-                "asset_ref_recorded": True,
-                "filename": prepared_image.filename,
-                "content_type": prepared_image.content_type,
-                "byte_size": prepared_image.byte_size,
-                "width": prepared_image.width,
-                "height": prepared_image.height,
-            },
-        )
+            next_value = asset.asset_ref
+            row.data = {**(row.data or {}), column: next_value}
+            row.updated_by_agent_api_key = agent_api_key
+            row.save(update_fields=["data", "updated_by_agent_api_key", "updated_at"])
+            dataset.updated_by_agent_api_key = agent_api_key
+            dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.ROW_UPDATED,
+                f"Image attached to row {row.row_number}.",
+                agent_api_key=agent_api_key,
+                target_type="row",
+                target_identifier=row.id,
+                metadata={
+                    "row_id": row.id,
+                    "row_number": row.row_number,
+                    "changed_fields": [column],
+                    "field_changes": [
+                        {
+                            "field": column,
+                            "before": previous_value,
+                            "after": next_value,
+                        }
+                    ],
+                    "value_changes_recorded": True,
+                    "asset_key": str(asset.key),
+                    "asset_ref_recorded": True,
+                    "filename": prepared_image.filename,
+                    "content_type": prepared_image.content_type,
+                    "byte_size": prepared_image.byte_size,
+                    "width": prepared_image.width,
+                    "height": prepared_image.height,
+                },
+            )
+    except Exception:
+        for storage, name in saved_files:
+            with suppress(Exception):
+                storage.delete(name)
+        raise
 
     return {
         "status": "success",
@@ -2835,16 +2845,22 @@ def _patch_dataset_row(
 
     row_patch = {key: str(value) for key, value in data.items() if key in dataset.headers}
     patched_fields = sorted(row_patch)
+    image_columns = set(image_columns_from_schema(dataset.headers, dataset.column_schema))
+    changed_image_columns = [
+        field
+        for field in patched_fields
+        if field in image_columns
+        and row_patch.get(field, "") != str((row.data or {}).get(field, "") or "")
+    ]
     _validate_image_row_data(
         dataset.headers,
         dataset.column_schema,
         row_patch,
-        columns=patched_fields,
+        columns=changed_image_columns,
     )
-    image_columns = set(image_columns_from_schema(dataset.headers, dataset.column_schema))
     cleared_image_columns = [
         field
-        for field in patched_fields
+        for field in changed_image_columns
         if field in image_columns and row_patch.get(field, "") == ""
     ]
     row_patch = _normalize_dataset_reference_row_data(

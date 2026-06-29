@@ -2362,9 +2362,18 @@ def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profil
     assert attach_response.status_code == 200
     asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
 
-    invalid_patch = client.patch(
+    idempotent_patch = client.patch(
         f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
         data={"data": {"image": asset.asset_ref}},
+        content_type="application/json",
+    )
+    assert idempotent_patch.status_code == 200
+    assert idempotent_patch.json()["row"]["data"]["image"] == asset.asset_ref
+    assert DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+    invalid_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"image": "asset:00000000-0000-0000-0000-000000000000"}},
         content_type="application/json",
     )
     assert invalid_patch.status_code == 400
