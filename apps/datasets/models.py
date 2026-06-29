@@ -23,6 +23,7 @@ class Project(BaseModel):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
     metadata = models.JSONField(default=dict, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ["name", "-created_at"]
@@ -30,7 +31,8 @@ class Project(BaseModel):
             models.UniqueConstraint(
                 "profile",
                 Lower("name"),
-                name="unique_profile_project_name_ci",
+                condition=models.Q(archived_at__isnull=True),
+                name="unique_active_profile_project_name_ci",
             )
         ]
 

@@ -12,6 +12,7 @@ from apps.api.services import (
     DatasetServiceError,
     add_profile_dataset_column,
     archive_profile_dataset,
+    archive_profile_project,
     create_profile_dataset,
     create_profile_dataset_relationship,
     create_profile_dataset_row,
@@ -716,6 +717,25 @@ def update_project_metadata(
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return update_profile_project_metadata(profile, project_key, metadata=metadata)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="archive_project",
+    description=(
+        "Archive a Rowset project without deleting or archiving its datasets. "
+        "Archived projects are omitted from normal project lists and cannot receive "
+        "new dataset assignments."
+    ),
+)
+def archive_project(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+    try:
+        return archive_profile_project(profile, project_key)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 

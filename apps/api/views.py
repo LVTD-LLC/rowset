@@ -51,6 +51,7 @@ from apps.api.schemas import (
     DatasetRowIn,
     DatasetRowPatchIn,
     DatasetRowsOut,
+    ProjectArchiveOut,
     ProjectCreateIn,
     ProjectCreateOut,
     ProjectDetailOut,
@@ -68,6 +69,7 @@ from apps.api.services import (
     DatasetServiceError,
     add_profile_dataset_column,
     archive_profile_dataset,
+    archive_profile_project,
     create_profile_dataset,
     create_profile_dataset_relationship,
     create_profile_dataset_row,
@@ -612,6 +614,20 @@ def patch_project_metadata(
             project_key,
             metadata=payload.metadata,
         )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.delete(
+    "/projects/{project_key}",
+    response=ProjectArchiveOut,
+    auth=[api_key_write_auth],
+    tags=["projects"],
+)
+def archive_project(request: HttpRequest, project_key: str):
+    """Archive a project without deleting or archiving its datasets."""
+    try:
+        return archive_profile_project(request.auth, project_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 

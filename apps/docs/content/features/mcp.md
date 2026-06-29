@@ -83,11 +83,14 @@ create_project
 get_project
 update_project
 update_project_metadata
+archive_project
 ```
 
 Use project metadata for source links, kickoff threads, planning docs, or other
 JSON context that should stay with the project. Pass an empty object to
 `update_project_metadata` to clear it.
+Use `archive_project` when a project should disappear from normal project
+discovery. Archiving a project does not delete or archive its datasets.
 
 To create a new ready dataset from an agent workflow, call:
 

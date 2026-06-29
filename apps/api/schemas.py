@@ -134,6 +134,7 @@ class ProjectSummaryOut(ProjectReferenceOut):
     dataset_count: int
     created_at: datetime
     updated_at: datetime
+    archived_at: datetime | None = None
 
 
 class ProjectListOut(Schema):
@@ -163,6 +164,12 @@ class ProjectCreateOut(Schema):
 
 
 class ProjectUpdateOut(Schema):
+    status: str
+    message: str
+    project: ProjectSummaryOut
+
+
+class ProjectArchiveOut(Schema):
     status: str
     message: str
     project: ProjectSummaryOut

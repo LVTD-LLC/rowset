@@ -584,6 +584,14 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "project": {"key": project_key, "metadata": kwargs.get("metadata", {})},
         }
 
+    def archive_project(authenticated_profile, project_key):
+        calls.append(("archive_project", authenticated_profile.id, project_key))
+        return {
+            "status": "success",
+            "message": "Project archived.",
+            "project": {"key": project_key, "archived_at": "2026-05-14T00:00:00Z"},
+        }
+
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -601,6 +609,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "apps.mcp_server.server.update_profile_project_metadata",
             update_project_metadata,
         )
+        monkeypatch.setattr("apps.mcp_server.server.archive_profile_project", archive_project)
 
         async with Client(mcp) as client:
             list_result = await client.call_tool(
@@ -634,6 +643,10 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                     "metadata": {"notion_doc": "https://notion.so/acme/launch"},
                 },
             )
+            archive_result = await client.call_tool(
+                "archive_project",
+                {"project_key": "project-key"},
+            )
             update_result = await client.call_tool(
                 "update_dataset_project",
                 {"dataset_key": "dataset-key", "project_key": "project-key"},
@@ -650,6 +663,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
         assert metadata_result.data["project"]["metadata"]["notion_doc"] == (
             "https://notion.so/acme/launch"
         )
+        assert archive_result.data["project"]["archived_at"] == "2026-05-14T00:00:00Z"
         assert update_result.data["dataset"]["project"]["key"] == "project-key"
         assert calls == [
             ("list_projects", 11, 5, 0),
@@ -674,6 +688,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                 "project-key",
                 {"metadata": {"notion_doc": "https://notion.so/acme/launch"}},
             ),
+            ("archive_project", 11, "project-key"),
             ("update_dataset_project", 11, "dataset-key", "project-key"),
         ]
 
