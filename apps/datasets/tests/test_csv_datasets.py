@@ -294,6 +294,22 @@ def configure_datetime_dataset(dataset):
     return dataset
 
 
+def add_invalid_datetime_row(dataset):
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=4,
+        index_value="E-4",
+        data={
+            "event_id": "E-4",
+            "event_name": "Invalid timestamp",
+            "event_at": "2026-13-01",
+        },
+    )
+    dataset.row_count = 4
+    dataset.save(update_fields=["row_count"])
+    return dataset
+
+
 def test_preview_csv_file_returns_headers_sample_and_count():
     preview = preview_csv_file(csv_upload())
 
@@ -1204,6 +1220,7 @@ def test_dataset_detail_filters_numeric_columns_with_above_and_below(auth_client
 
 def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_client, profile):
     dataset = configure_datetime_dataset(create_ready_dataset(profile))
+    add_invalid_datetime_row(dataset)
 
     above_response = auth_client.get(
         dataset.get_absolute_url(),
@@ -1217,6 +1234,7 @@ def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_clien
     assert "UTC later" in above_content
     assert "Next day" in above_content
     assert "Offset early" not in above_content
+    assert "Invalid timestamp" not in above_content
     assert 'name="filter_op_2"' in above_content
     assert '<option value="above" selected>Above</option>' in above_content
 
@@ -1231,6 +1249,7 @@ def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_clien
     assert "Offset early" in below_content
     assert "UTC later" not in below_content
     assert "Next day" not in below_content
+    assert "Invalid timestamp" not in below_content
 
 
 def test_dataset_detail_filters_choice_columns_by_exact_choice(auth_client, profile):
@@ -2279,6 +2298,24 @@ def test_dataset_row_service_sorts_datetime_columns_chronologically(profile):
         "Offset early",
         "UTC later",
         "Next day",
+    ]
+
+
+def test_dataset_row_service_sorts_invalid_datetime_cells_last(profile):
+    dataset = configure_datetime_dataset(create_ready_dataset(profile))
+    add_invalid_datetime_row(dataset)
+
+    payload = list_profile_dataset_rows(
+        profile,
+        str(dataset.key),
+        sort="event_at",
+    )
+
+    assert [row["data"]["event_name"] for row in payload["rows"]] == [
+        "Offset early",
+        "UTC later",
+        "Next day",
+        "Invalid timestamp",
     ]
 
 
