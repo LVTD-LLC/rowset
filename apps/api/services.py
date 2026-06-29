@@ -2546,21 +2546,6 @@ def _normalize_image_asset_column(dataset: Dataset, column_name: str) -> str:
     return column
 
 
-def _delete_saved_dataset_asset_files(saved_files: list[tuple[str, str]]) -> None:
-    cleanup_error = None
-    for storage_alias, name in saved_files:
-        try:
-            storages[storage_alias].delete(name)
-        except Exception as exc:
-            cleanup_error = cleanup_error or exc
-            record_dataset_asset_file_deletion_failure(storage_alias, name, exc)
-    if cleanup_error is not None:
-        raise DatasetServiceError(
-            500,
-            "Image upload failed and saved files were queued for cleanup.",
-        ) from cleanup_error
-
-
 def attach_profile_dataset_image_asset(
     profile: Profile,
     dataset_key: str,
@@ -2659,7 +2644,18 @@ def attach_profile_dataset_image_asset(
             if saved_thumbnail_name != asset.thumbnail.name:
                 raise DatasetServiceError(500, "Image thumbnail path could not be reserved.")
     except Exception:
-        _delete_saved_dataset_asset_files(saved_files)
+        cleanup_error = None
+        for storage_alias, name in saved_files:
+            try:
+                storages[storage_alias].delete(name)
+            except Exception as exc:
+                cleanup_error = cleanup_error or exc
+                record_dataset_asset_file_deletion_failure(storage_alias, name, exc)
+        if cleanup_error is not None:
+            raise DatasetServiceError(
+                500,
+                "Image upload failed and saved files were queued for cleanup.",
+            ) from cleanup_error
         raise
 
     return {

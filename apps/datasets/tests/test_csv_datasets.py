@@ -20,7 +20,7 @@ from PIL import Image
 
 from apps.api.services import (
     DatasetServiceError,
-    _delete_saved_dataset_asset_files,
+    attach_profile_dataset_image_asset,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
     serialize_dataset_detail,
@@ -2351,33 +2351,60 @@ def test_prepare_dataset_image_rejects_exif_transposed_image_over_pixel_limit(mo
         )
 
 
-def test_saved_dataset_asset_cleanup_surfaces_delete_failures(monkeypatch):
+def test_image_attach_records_failed_rollback_file_cleanup(profile, monkeypatch):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Image cleanup",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sku", "photo"],
+        column_schema={"photo": {"type": DatasetColumnType.IMAGE}},
+        index_column="sku",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="A-1",
+        data={"sku": "A-1", "photo": ""},
+    )
     storage = storages[DATASET_ASSET_STORAGE_ALIAS]
+    saved_names = []
     deleted_names = []
 
-    def fail_original_delete(name: str) -> None:
+    def fail_thumbnail_save(name: str, content, *args, **kwargs) -> str:
+        saved_names.append(name)
+        if name.endswith("thumbnail.jpg"):
+            raise OSError("thumbnail upload failed")
+        return name
+
+    def fail_delete(name: str) -> None:
         deleted_names.append(name)
-        if name == "original.png":
-            raise OSError("delete failed")
+        raise OSError("delete failed")
 
-    monkeypatch.setattr(storage, "delete", fail_original_delete)
+    monkeypatch.setattr(storage, "save", fail_thumbnail_save)
+    monkeypatch.setattr(storage, "delete", fail_delete)
 
-    with pytest.raises(DatasetServiceError):
-        _delete_saved_dataset_asset_files(
-            [
-                (DATASET_ASSET_STORAGE_ALIAS, "original.png"),
-                (DATASET_ASSET_STORAGE_ALIAS, "thumbnail.jpg"),
-            ]
+    with pytest.raises(DatasetServiceError) as exc_info:
+        attach_profile_dataset_image_asset(
+            profile,
+            str(dataset.key),
+            column_name="photo",
+            image_base64=image_base64(),
+            index_value="A-1",
         )
 
-    assert deleted_names == ["original.png", "thumbnail.jpg"]
-    deletion = DatasetAssetFileDeletion.objects.get(file_name="original.png")
+    assert exc_info.value.status_code == 500
+    assert len(saved_names) == 2
+    assert deleted_names == [saved_names[0]]
+    deletion = DatasetAssetFileDeletion.objects.get(file_name=saved_names[0])
     assert deletion.storage_alias == DATASET_ASSET_STORAGE_ALIAS
     assert deletion.attempts == 1
     assert "delete failed" in deletion.last_error
-    assert not DatasetAssetFileDeletion.objects.filter(
-        file_name="thumbnail.jpg"
-    ).exists()
+    assert DatasetAsset.objects.filter(dataset=dataset).count() == 0
 
 
 def test_dataset_asset_delete_records_failed_file_cleanup(
