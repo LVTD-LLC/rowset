@@ -122,6 +122,7 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     assert response.status_code == 200
     created_key = response.context["created_agent_api_key"]
     assert created_key["name"] == "Codex"
+    assert created_key["uuid"]
     assert created_key["access_level_label"] == "Read + write"
 
     agent_api_key = AgentApiKey.objects.get(name="Codex")
@@ -367,6 +368,44 @@ def test_settings_owner_can_revoke_agent_api_key(auth_client, profile):
     assert resolve_api_key_profile(credential.raw_key) is None
     assert list(response.context["agent_api_keys"]) == []
     assert "No active API keys." in response.content.decode()
+
+
+def test_settings_revoke_agent_api_key_redirects_without_follow(auth_client, profile):
+    credential = create_agent_api_key(profile, "Codex")
+
+    response = auth_client.post(
+        reverse("revoke_agent_api_key", args=[credential.agent_api_key.uuid]),
+    )
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("settings")
+
+
+def test_settings_revoke_preserves_active_created_agent_api_key_context(auth_client, profile):
+    created_credential = create_agent_api_key(profile, "Codex")
+    revoked_credential = create_agent_api_key(profile, "Old Agent")
+
+    response = auth_client.post(
+        reverse("revoke_agent_api_key", args=[revoked_credential.agent_api_key.uuid]),
+        {"created_agent_api_key_uuid": str(created_credential.agent_api_key.uuid)},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert response.redirect_chain == [
+        (
+            f"{reverse('settings')}?created_agent_api_key={created_credential.agent_api_key.uuid}",
+            302,
+        )
+    ]
+    assert response.context["created_agent_api_key"] == {
+        "uuid": str(created_credential.agent_api_key.uuid),
+        "name": "Codex",
+        "access_level_label": "Read + write",
+    }
+    assert list(response.context["agent_api_keys"]) == [created_credential.agent_api_key]
+    assert "Created Codex with Read + write access." in response.content.decode()
+    assert f"{revoked_credential.agent_api_key.key_prefix}..." not in response.content.decode()
 
 
 def test_settings_owner_cannot_revoke_another_profile_agent_api_key(
