@@ -67,6 +67,7 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "project__key",
     "project__name",
     "project__description",
+    "project__archived_at",
     "created_at",
     "updated_at",
     "confirmed_at",
@@ -89,6 +90,10 @@ def _active_dataset_queryset(queryset):
 
 def _archived_dataset_queryset(queryset):
     return queryset.filter(archived_at__isnull=False)
+
+
+def _active_project_queryset(queryset):
+    return queryset.filter(archived_at__isnull=True)
 
 
 class DatasetServiceError(Exception):
@@ -220,7 +225,7 @@ def _normalize_project_metadata(metadata: dict[str, Any] | None) -> dict[str, An
 
 def serialize_project_reference(project: Project | None) -> dict | None:
     """Return the project fields embedded in dataset metadata."""
-    if project is None:
+    if project is None or getattr(project, "archived_at", None) is not None:
         return None
     return {
         "key": str(project.key),
@@ -246,6 +251,7 @@ def serialize_project_summary(project: Project) -> dict:
         "dataset_count": dataset_count,
         "created_at": project.created_at,
         "updated_at": project.updated_at,
+        "archived_at": getattr(project, "archived_at", None),
     }
 
 
@@ -260,13 +266,16 @@ def search_profile_projects(
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     normalized_query = _normalize_search_query(query)
-    queryset = profile.projects.annotate(dataset_count=_visible_project_dataset_count()).only(
+    queryset = _active_project_queryset(
+        profile.projects.annotate(dataset_count=_visible_project_dataset_count())
+    ).only(
         "key",
         "name",
         "description",
         "metadata",
         "created_at",
         "updated_at",
+        "archived_at",
     )
     if normalized_query:
         queryset = queryset.annotate(metadata_text=Cast("metadata", TextField())).filter(
@@ -302,7 +311,9 @@ def create_profile_project(
     normalized_name = _normalize_project_name(name)
     normalized_description = _normalize_project_description(description)
     normalized_metadata = _normalize_project_metadata(metadata)
-    if Project.objects.filter(profile=profile, name__iexact=normalized_name).exists():
+    if _active_project_queryset(
+        Project.objects.filter(profile=profile, name__iexact=normalized_name)
+    ).exists():
         raise DatasetServiceError(409, "Project name already exists.")
 
     try:
@@ -342,7 +353,7 @@ def update_profile_project(
     with transaction.atomic():
         try:
             project = (
-                Project.objects.select_for_update()
+                _active_project_queryset(Project.objects.select_for_update())
                 .get(key=project_key, profile=profile)
             )
         except (Project.DoesNotExist, ValidationError, ValueError) as exc:
@@ -351,7 +362,9 @@ def update_profile_project(
         update_fields = []
         if normalized_name is not UNSET and project.name != normalized_name:
             if (
-                Project.objects.filter(profile=profile, name__iexact=normalized_name)
+                _active_project_queryset(
+                    Project.objects.filter(profile=profile, name__iexact=normalized_name)
+                )
                 .exclude(pk=project.pk)
                 .exists()
             ):
@@ -382,8 +395,18 @@ def update_profile_project(
 def get_profile_project(profile: Profile, project_key: str) -> Project:
     try:
         return (
-            Project.objects.annotate(dataset_count=_visible_project_dataset_count())
-            .only("key", "name", "description", "metadata", "created_at", "updated_at")
+            _active_project_queryset(
+                Project.objects.annotate(dataset_count=_visible_project_dataset_count())
+            )
+            .only(
+                "key",
+                "name",
+                "description",
+                "metadata",
+                "created_at",
+                "updated_at",
+                "archived_at",
+            )
             .get(key=project_key, profile=profile)
         )
     except (Project.DoesNotExist, ValidationError, ValueError) as exc:
@@ -399,7 +422,10 @@ def update_profile_project_metadata(
     """Replace arbitrary JSON metadata on a project owned by the authenticated profile."""
     with transaction.atomic():
         try:
-            project = Project.objects.select_for_update().get(key=project_key, profile=profile)
+            project = _active_project_queryset(Project.objects.select_for_update()).get(
+                key=project_key,
+                profile=profile,
+            )
         except (Project.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Project not found.") from exc
 
@@ -414,6 +440,27 @@ def update_profile_project_metadata(
         if changed:
             project.save(update_fields=["metadata", "updated_at"])
             message = "Project metadata updated."
+
+    return {
+        "status": "success",
+        "message": message,
+        "project": serialize_project_summary(project),
+    }
+
+
+def archive_profile_project(profile: Profile, project_key: str) -> dict:
+    """Archive an owned project without deleting or archiving its datasets."""
+    with transaction.atomic():
+        try:
+            project = Project.objects.select_for_update().get(key=project_key, profile=profile)
+        except (Project.DoesNotExist, ValidationError, ValueError) as exc:
+            raise DatasetServiceError(404, "Project not found.") from exc
+
+        message = "Project was already archived."
+        if project.archived_at is None:
+            project.archived_at = timezone.now()
+            project.save(update_fields=["archived_at", "updated_at"])
+            message = "Project archived."
 
     return {
         "status": "success",
@@ -609,8 +656,14 @@ def search_profile_datasets(
             | Q(description__icontains=normalized_query)
             | Q(instructions__icontains=normalized_query)
             | Q(original_filename__icontains=normalized_query)
-            | Q(project__name__icontains=normalized_query)
-            | Q(project__description__icontains=normalized_query)
+            | Q(
+                project__archived_at__isnull=True,
+                project__name__icontains=normalized_query,
+            )
+            | Q(
+                project__archived_at__isnull=True,
+                project__description__icontains=normalized_query,
+            )
         )
     if normalized_project_key:
         try:
@@ -618,7 +671,10 @@ def search_profile_datasets(
         except ValueError as exc:
             raise DatasetServiceError(400, "project_key must be a valid UUID.") from exc
         else:
-            queryset = queryset.filter(project__key=project_key_uuid)
+            queryset = queryset.filter(
+                project__key=project_key_uuid,
+                project__archived_at__isnull=True,
+            )
     if normalized_status:
         queryset = queryset.filter(status=normalized_status)
     if normalized_updated_after is not None:

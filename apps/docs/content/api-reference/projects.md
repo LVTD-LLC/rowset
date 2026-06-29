@@ -1,6 +1,6 @@
 ---
 title: Project API
-description: Create and update Rowset projects, then assign datasets to semantic groups.
+description: Create, update, and archive Rowset projects, then assign datasets to semantic groups.
 keywords: Rowset projects, dataset projects, project API
 ---
 
@@ -90,6 +90,16 @@ Content-Type: application/json
 ```
 
 Send an empty object to clear project metadata.
+
+## Archive a project
+
+```http
+DELETE {{ api_base_url }}/projects/{project_key}
+```
+
+Archives a project so it no longer appears in normal project lists, search
+results, or project detail lookups. Archiving a project does not delete or
+archive its datasets; dataset responses treat the archived project as ungrouped.
 
 ## Assign a dataset
 

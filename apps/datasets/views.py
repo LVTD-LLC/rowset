@@ -936,7 +936,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
         return queryset.order_by(*self.sort_ordering[self.get_selected_sort()])
 
     def get_total_projects(self, base_queryset):
-        return self.request.user.profile.projects.count()
+        return self.request.user.profile.projects.filter(archived_at__isnull=True).count()
 
     def get_dataset_group_totals(self, groups_by_key):
         if not groups_by_key:
@@ -1092,8 +1092,8 @@ class ProjectListView(LoginRequiredMixin, ListView):
     context_object_name = "projects"
 
     def get_queryset(self):
-        return self.request.user.profile.projects.annotate(
-            dataset_count=_visible_project_dataset_count()
+        return self.request.user.profile.projects.filter(archived_at__isnull=True).annotate(
+            dataset_count=_visible_project_dataset_count(),
         )
 
     def get_context_data(self, **kwargs):
@@ -1116,8 +1116,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return self.request.user.profile.projects.annotate(
-            dataset_count=_visible_project_dataset_count()
+        return self.request.user.profile.projects.filter(archived_at__isnull=True).annotate(
+            dataset_count=_visible_project_dataset_count(),
         )
 
     def get_context_data(self, **kwargs):
@@ -1390,7 +1390,9 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["public_url"] = self.request.build_absolute_uri(self.object.get_public_url())
-        context["project_choices"] = self.request.user.profile.projects.all()
+        context["project_choices"] = self.request.user.profile.projects.filter(
+            archived_at__isnull=True
+        )
         context["relationship_target_dataset_choices"] = (
             _owned_dataset_queryset(self.request.user.profile)
             .filter(status=DatasetStatus.READY)

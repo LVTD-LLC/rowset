@@ -3505,6 +3505,60 @@ def test_project_api_updates_project_details(client, profile):
     assert project.description == ""
 
 
+def test_project_api_archives_project_and_hides_it_from_project_endpoints(client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Launch",
+        description="Launch datasets",
+    )
+    dataset = Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Launch contacts",
+        original_filename="launch.csv",
+        status=DatasetStatus.READY,
+        headers=["email", "name"],
+        index_column="email",
+    )
+
+    response = client.delete(f"/api/projects/{project.key}?api_key={profile.key}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"] == "Project archived."
+    assert payload["project"]["key"] == str(project.key)
+    assert payload["project"]["archived_at"] is not None
+    project.refresh_from_db()
+    assert project.archived_at is not None
+    dataset.refresh_from_db()
+    assert dataset.archived_at is None
+    assert dataset.project == project
+
+    list_response = client.get(f"/api/projects?api_key={profile.key}")
+    assert list_response.status_code == 200
+    assert list_response.json()["projects"] == []
+
+    search_response = client.get(f"/api/projects?query=Launch&api_key={profile.key}")
+    assert search_response.status_code == 200
+    assert search_response.json()["projects"] == []
+
+    detail_response = client.get(f"/api/projects/{project.key}?api_key={profile.key}")
+    assert detail_response.status_code == 404
+    assert detail_response.json()["detail"] == "Project not found."
+
+    dataset_list_response = client.get(f"/api/datasets?api_key={profile.key}")
+    assert dataset_list_response.status_code == 200
+    assert dataset_list_response.json()["datasets"][0]["key"] == str(dataset.key)
+    assert dataset_list_response.json()["datasets"][0]["project"] is None
+
+    duplicate_name_response = client.post(
+        f"/api/projects?api_key={profile.key}",
+        data={"name": "Launch"},
+        content_type="application/json",
+    )
+    assert duplicate_name_response.status_code == 201
+
+
 def test_project_api_rejects_null_project_name(client, profile):
     project = Project.objects.create(
         profile=profile,
