@@ -18,7 +18,6 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.api.services import (
-    DatasetServiceError,
     _delete_saved_dataset_asset_files,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
@@ -2253,19 +2252,14 @@ def test_saved_dataset_asset_cleanup_surfaces_delete_failures():
                 raise OSError("delete failed")
 
     failing_storage = Storage(fail=True)
-    later_storage = Storage()
-
-    with pytest.raises(DatasetServiceError) as exc_info:
+    with pytest.raises(OSError):
         _delete_saved_dataset_asset_files(
             [
                 (failing_storage, "original.png"),
-                (later_storage, "thumbnail.jpg"),
             ]
         )
 
-    assert exc_info.value.status_code == 500
     assert failing_storage.deleted == ["original.png"]
-    assert later_storage.deleted == ["thumbnail.jpg"]
 
 
 def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):

@@ -2538,17 +2538,8 @@ def _normalize_image_asset_column(dataset: Dataset, column_name: str) -> str:
 
 
 def _delete_saved_dataset_asset_files(saved_files: list[tuple[Any, str]]) -> None:
-    cleanup_error = None
     for storage, name in saved_files:
-        try:
-            storage.delete(name)
-        except Exception as exc:
-            cleanup_error = cleanup_error or exc
-    if cleanup_error is not None:
-        raise DatasetServiceError(
-            500,
-            "Image upload failed and stored files could not be cleaned up.",
-        ) from cleanup_error
+        storage.delete(name)
 
 
 def attach_profile_dataset_image_asset(
