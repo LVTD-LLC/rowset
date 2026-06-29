@@ -718,6 +718,10 @@ def prepare_dataset_image(
                     f"Images must be {MAX_DATASET_IMAGE_PIXELS:,} pixels or fewer."
                 )
             sanitized_bytes = _encoded_image_bytes(image, image_format)
+            if len(sanitized_bytes) > MAX_DATASET_IMAGE_BYTES:
+                raise DatasetImageError(
+                    f"Images must be {MAX_DATASET_IMAGE_BYTES // (1024 * 1024)} MB or smaller."
+                )
             thumbnail_bytes = _thumbnail_bytes(image)
     except DatasetImageError:
         raise

@@ -36,6 +36,8 @@ from apps.datasets.models import (
 )
 from apps.datasets.services import (
     CSVParseError,
+    DatasetImageError,
+    prepare_dataset_image,
     choice_constraints_from_schema,
     infer_column_type,
     normalize_column_schema,
@@ -100,9 +102,13 @@ def parquet_upload(data=None):
 
 
 def image_base64() -> str:
+    return base64.b64encode(image_bytes()).decode()
+
+
+def image_bytes() -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (3, 2), (12, 34, 56)).save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode()
+    return buffer.getvalue()
 
 
 def xlsx_cell_texts(content: bytes) -> list[str]:
@@ -2211,6 +2217,26 @@ def test_dataset_api_crud_and_export(client, profile):
     assert delete_response.status_code == 200
     assert delete_response.json()["dataset"] == str(dataset.key)
     assert not DatasetRow.objects.filter(id=row_id).exists()
+
+
+def test_prepare_dataset_image_rejects_encoded_payload_above_limit(monkeypatch):
+    source_bytes = image_bytes()
+
+    monkeypatch.setattr(
+        "apps.datasets.services.MAX_DATASET_IMAGE_BYTES",
+        len(source_bytes) + 1,
+    )
+    monkeypatch.setattr(
+        "apps.datasets.services._encoded_image_bytes",
+        lambda image, image_format: b"x" * (len(source_bytes) + 2),
+    )
+
+    with pytest.raises(DatasetImageError):
+        prepare_dataset_image(
+            image_bytes=source_bytes,
+            filename="photo.png",
+            content_type="image/png",
+        )
 
 
 def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
