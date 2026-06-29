@@ -13,9 +13,11 @@ from urllib.parse import urlparse
 from xml.sax.saxutils import escape
 
 import polars as pl
-from django.db.models import Case, F, FloatField, Q, TextField, Value, When
+from django.conf import settings
+from django.db.models import Case, DateTimeField, F, FloatField, Q, TextField, Value, When
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast, Lower, Replace, Trim
+from django.utils import timezone
 
 from apps.datasets.choices import DatasetColumnType
 from apps.datasets.constants import MAX_COLUMN_DESCRIPTION_LENGTH
@@ -56,8 +58,21 @@ ROW_NUMERIC_SORT_TYPES = {
     DatasetColumnType.INTEGER,
     DatasetColumnType.NUMBER,
 }
+ROW_DATETIME_SORT_TYPES = {
+    DatasetColumnType.DATE,
+    DatasetColumnType.DATETIME,
+}
+ROW_ORDERED_FILTER_TYPES = ROW_NUMERIC_SORT_TYPES | ROW_DATETIME_SORT_TYPES
 ROW_NUMERIC_SORT_PATTERN = r"^-?\d+(\.\d+)?$"
 ROW_NUMERIC_FILTER_PATTERN = r"-?\d+(\.\d+)?"
+ROW_DATETIME_SORT_PATTERN = (
+    r"^("
+    r"\d{4}-\d{2}-\d{2}"
+    r"([T ][0-2]\d:[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-][0-2]\d:[0-5]\d)?)?"
+    r"|\d{4}/\d{1,2}/\d{1,2}"
+    r"|\d{1,2}/\d{1,2}/\d{4}( [0-2]?\d:[0-5]\d(:[0-5]\d)?)?"
+    r")$"
+)
 ROW_FILTER_OPERATOR_ALIASES = {
     "eq": ROW_FILTER_IS,
     "equals": ROW_FILTER_IS,
@@ -643,7 +658,7 @@ def default_dataset_row_filter_operator(column_type: str) -> str:
 def dataset_row_filter_operators(column_type: str) -> tuple[str, ...]:
     if column_type in {DatasetColumnType.BOOLEAN, DatasetColumnType.CHOICE}:
         return (ROW_FILTER_IS,)
-    if column_type in ROW_NUMERIC_SORT_TYPES:
+    if column_type in ROW_ORDERED_FILTER_TYPES:
         return (ROW_FILTER_CONTAINS, ROW_FILTER_ABOVE, ROW_FILTER_BELOW)
     return (ROW_FILTER_CONTAINS,)
 
@@ -762,6 +777,28 @@ def _normalize_numeric_filter_value(value: str) -> float | None:
     return float(normalized)
 
 
+def _normalize_datetime_filter_value(value: str) -> datetime | None:
+    parsed = _parse_datetime(str(value or "").strip())
+    if parsed is None:
+        return None
+    if settings.USE_TZ and timezone.is_naive(parsed):
+        return timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+def _datetime_expression(alias: str):
+    return Case(
+        When(
+            **{
+                f"{alias}__regex": ROW_DATETIME_SORT_PATTERN,
+                "then": Cast(alias, DateTimeField()),
+            }
+        ),
+        default=Value(None),
+        output_field=DateTimeField(),
+    )
+
+
 def _or_header_value_search(queryset, headers: list[str], search_query: str):
     if not headers:
         return queryset.none()
@@ -840,6 +877,17 @@ def _apply_row_field_filters(
             )
             lookup = "gt" if filter_operators[header] == ROW_FILTER_ABOVE else "lt"
             queryset = queryset.filter(**{f"{number_alias}__{lookup}": filter_value})
+        elif (
+            column["type"] in ROW_DATETIME_SORT_TYPES
+            and filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
+        ):
+            filter_value = _normalize_datetime_filter_value(value)
+            if filter_value is None:
+                return queryset.none()
+            datetime_alias = f"{alias}_datetime"
+            queryset = queryset.annotate(**{datetime_alias: _datetime_expression(alias)})
+            lookup = "gt" if filter_operators[header] == ROW_FILTER_ABOVE else "lt"
+            queryset = queryset.filter(**{f"{datetime_alias}__{lookup}": filter_value})
         else:
             queryset = queryset.filter(**{f"{alias}__icontains": value})
     return queryset
@@ -923,6 +971,9 @@ def apply_dataset_row_sort(queryset, dataset, selected_sort: str, sort_direction
             ),
         )
         sort_expression = F("rowset_sort_number")
+    elif sort_column["type"] in ROW_DATETIME_SORT_TYPES:
+        queryset = queryset.annotate(rowset_sort_datetime=_datetime_expression("rowset_sort_text"))
+        sort_expression = F("rowset_sort_datetime")
     else:
         sort_expression = Lower("rowset_sort_text")
     if sort_direction == ROW_SORT_DESC:

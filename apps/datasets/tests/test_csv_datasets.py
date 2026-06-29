@@ -246,6 +246,54 @@ def configure_filterable_dataset(dataset):
     return dataset
 
 
+def configure_datetime_dataset(dataset):
+    dataset.headers = ["event_id", "event_name", "event_at"]
+    dataset.column_schema = {
+        "event_id": {"type": DatasetColumnType.TEXT},
+        "event_name": {"type": DatasetColumnType.TEXT},
+        "event_at": {"type": DatasetColumnType.DATETIME},
+    }
+    dataset.index_column = "event_id"
+    dataset.row_count = 3
+    dataset.rows.all().delete()
+    dataset.save(update_fields=["headers", "column_schema", "index_column", "row_count"])
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=1,
+                index_value="E-1",
+                data={
+                    "event_id": "E-1",
+                    "event_name": "UTC later",
+                    "event_at": "2026-05-14T09:00:00Z",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=2,
+                index_value="E-2",
+                data={
+                    "event_id": "E-2",
+                    "event_name": "Offset early",
+                    "event_at": "2026-05-14T10:00:00+02:00",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=3,
+                index_value="E-3",
+                data={
+                    "event_id": "E-3",
+                    "event_name": "Next day",
+                    "event_at": "2026-05-15T08:00:00Z",
+                },
+            ),
+        ]
+    )
+    return dataset
+
+
 def test_preview_csv_file_returns_headers_sample_and_count():
     preview = preview_csv_file(csv_upload())
 
@@ -1152,6 +1200,37 @@ def test_dataset_detail_filters_numeric_columns_with_above_and_below(auth_client
     assert "Grace Hopper" in below_content
     assert "Ada Lovelace" not in below_content
     assert "Katherine Johnson" not in below_content
+
+
+def test_dataset_detail_filters_datetime_columns_with_above_and_below(auth_client, profile):
+    dataset = configure_datetime_dataset(create_ready_dataset(profile))
+
+    above_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_2": "2026-05-14T08:30", "filter_op_2": "above"},
+    )
+    above_content = above_response.content.decode()
+
+    assert above_response.status_code == 200
+    assert above_response.context["row_page_obj"].paginator.count == 2
+    assert above_response.context["row_filter_fields"][2]["operator"] == "above"
+    assert "UTC later" in above_content
+    assert "Next day" in above_content
+    assert "Offset early" not in above_content
+    assert 'name="filter_op_2"' in above_content
+    assert '<option value="above" selected>Above</option>' in above_content
+
+    below_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_2": "2026-05-14T08:30", "filter_op_2": "below"},
+    )
+    below_content = below_response.content.decode()
+
+    assert below_response.status_code == 200
+    assert below_response.context["row_page_obj"].paginator.count == 1
+    assert "Offset early" in below_content
+    assert "UTC later" not in below_content
+    assert "Next day" not in below_content
 
 
 def test_dataset_detail_filters_choice_columns_by_exact_choice(auth_client, profile):
@@ -2185,6 +2264,22 @@ def test_dataset_row_service_preserves_native_falsy_filter_values(profile):
     assert payload["count"] == 1
     assert payload["filters"] == {"active": "False"}
     assert [row["data"]["name"] for row in payload["rows"]] == ["Grace Hopper"]
+
+
+def test_dataset_row_service_sorts_datetime_columns_chronologically(profile):
+    dataset = configure_datetime_dataset(create_ready_dataset(profile))
+
+    payload = list_profile_dataset_rows(
+        profile,
+        str(dataset.key),
+        sort="event_at",
+    )
+
+    assert [row["data"]["event_name"] for row in payload["rows"]] == [
+        "Offset early",
+        "UTC later",
+        "Next day",
+    ]
 
 
 def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):
