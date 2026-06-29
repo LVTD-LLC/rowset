@@ -25,7 +25,7 @@ from django.db.models import (
     When,
 )
 from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast, Lower, Replace, Trim
+from django.db.models.functions import Cast, Concat, Lower, Replace, Substr, Trim
 from django.utils import timezone
 
 from apps.datasets.choices import DatasetColumnType
@@ -84,6 +84,11 @@ ROW_MONTH_DAY_PATTERN = (
     r"|(04|06|09|11)-(0[1-9]|[12][0-9]|30)"
     r"|02-(0[1-9]|1[0-9]|2[0-8]))"
 )
+ROW_SLASH_MONTH_DAY_PATTERN = (
+    r"((01|03|05|07|08|10|12)/(0[1-9]|[12][0-9]|3[01])"
+    r"|(04|06|09|11)/(0[1-9]|[12][0-9]|30)"
+    r"|02/(0[1-9]|1[0-9]|2[0-8]))"
+)
 ROW_ISO_DATE_PATTERN = (
     rf"({ROW_YEAR_PATTERN}-{ROW_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}-02-29)"
 )
@@ -92,7 +97,23 @@ ROW_TIME_PATTERN = (
     r"(:[0-5][0-9](\.[0-9]{1,6})?)?"
     r"(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])?)?"
 )
+ROW_SPACE_TIME_PATTERN = (
+    r"( ([01][0-9]|2[0-3]):[0-5][0-9]"
+    r"(:[0-5][0-9](\.[0-9]{1,6})?)?)?"
+)
 ROW_DATETIME_SORT_PATTERN = rf"^{ROW_ISO_DATE_PATTERN}{ROW_TIME_PATTERN}$"
+ROW_SLASH_YMD_DATE_PATTERN = (
+    rf"({ROW_YEAR_PATTERN}/{ROW_SLASH_MONTH_DAY_PATTERN}|{ROW_LEAP_YEAR_PATTERN}/02/29)"
+)
+ROW_SLASH_MDY_DATE_PATTERN = (
+    rf"({ROW_SLASH_MONTH_DAY_PATTERN}/{ROW_YEAR_PATTERN}|02/29/{ROW_LEAP_YEAR_PATTERN})"
+)
+ROW_SLASH_YMD_DATETIME_SORT_PATTERN = (
+    rf"^{ROW_SLASH_YMD_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
+)
+ROW_SLASH_MDY_DATETIME_SORT_PATTERN = (
+    rf"^{ROW_SLASH_MDY_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
+)
 ROW_FILTER_OPERATOR_ALIASES = {
     "eq": ROW_FILTER_IS,
     "equals": ROW_FILTER_IS,
@@ -806,12 +827,47 @@ def _normalize_datetime_filter_value(value: str) -> datetime | None:
     return parsed
 
 
+def _slash_ymd_datetime_text_expression(alias: str):
+    return Replace(
+        Cast(alias, TextField()),
+        Value("/", output_field=TextField()),
+        Value("-", output_field=TextField()),
+        output_field=TextField(),
+    )
+
+
+def _slash_mdy_datetime_text_expression(alias: str):
+    text_expression = Cast(alias, TextField())
+    separator = Value("-", output_field=TextField())
+    return Concat(
+        Substr(text_expression, 7, 4),
+        separator,
+        Substr(text_expression, 1, 2),
+        separator,
+        Substr(text_expression, 4, 2),
+        Substr(text_expression, 11),
+        output_field=TextField(),
+    )
+
+
 def _datetime_expression(alias: str):
     return Case(
         When(
             **{
                 f"{alias}__regex": ROW_DATETIME_SORT_PATTERN,
                 "then": Cast(alias, DateTimeField()),
+            }
+        ),
+        When(
+            **{
+                f"{alias}__regex": ROW_SLASH_YMD_DATETIME_SORT_PATTERN,
+                "then": Cast(_slash_ymd_datetime_text_expression(alias), DateTimeField()),
+            }
+        ),
+        When(
+            **{
+                f"{alias}__regex": ROW_SLASH_MDY_DATETIME_SORT_PATTERN,
+                "then": Cast(_slash_mdy_datetime_text_expression(alias), DateTimeField()),
             }
         ),
         default=Value(None),

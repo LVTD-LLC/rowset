@@ -27,6 +27,7 @@ from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetMutation, DatasetRelationship, DatasetRow, Project
 from apps.datasets.services import (
     CSVParseError,
+    apply_dataset_row_query,
     choice_constraints_from_schema,
     infer_column_type,
     normalize_column_schema,
@@ -330,6 +331,36 @@ def add_invalid_datetime_row(dataset):
         ]
     )
     dataset.row_count = 6
+    dataset.save(update_fields=["row_count"])
+    return dataset
+
+
+def add_supported_datetime_format_rows(dataset):
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=4,
+                index_value="E-4",
+                data={
+                    "event_id": "E-4",
+                    "event_name": "YMD slash",
+                    "event_at": "2026/05/13",
+                },
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=5,
+                index_value="E-5",
+                data={
+                    "event_id": "E-5",
+                    "event_name": "MDY slash",
+                    "event_at": "05/14/2026 08:45",
+                },
+            ),
+        ]
+    )
+    dataset.row_count = dataset.rows.count()
     dataset.save(update_fields=["row_count"])
     return dataset
 
@@ -2346,6 +2377,41 @@ def test_dataset_row_service_sorts_invalid_datetime_cells_last(profile):
         "Invalid date",
         "Invalid time",
         "Invalid year",
+    ]
+
+
+def test_dataset_row_service_handles_supported_non_iso_datetime_formats(profile):
+    dataset = configure_datetime_dataset(create_ready_dataset(profile))
+    add_supported_datetime_format_rows(dataset)
+
+    sorted_payload = list_profile_dataset_rows(
+        profile,
+        str(dataset.key),
+        sort="event_at",
+    )
+
+    assert [row["data"]["event_name"] for row in sorted_payload["rows"]] == [
+        "YMD slash",
+        "Offset early",
+        "MDY slash",
+        "UTC later",
+        "Next day",
+    ]
+
+    filtered_queryset, row_query = apply_dataset_row_query(
+        dataset.rows.all(),
+        dataset,
+        filters={"event_at": "2026-05-14T08:30"},
+        filter_operators={"event_at": "above"},
+        sort="event_at",
+        strict=True,
+    )
+
+    assert row_query["filter_operators"] == {"event_at": "above"}
+    assert [row.data["event_name"] for row in filtered_queryset] == [
+        "MDY slash",
+        "UTC later",
+        "Next day",
     ]
 
 
