@@ -354,13 +354,16 @@ def _mutation_history_item(mutation) -> dict:
                 ),
             }
         )
+    changed_fields = metadata.get("changed_fields") or []
     return {
+        "summary_id": f"dataset-change-{mutation.id}-summary",
         "summary": mutation.summary,
         "actor_label": mutation.actor_label,
         "created_at": mutation.created_at,
         "mutation_type_display": mutation.get_mutation_type_display(),
         "field_changes": field_changes,
-        "changed_fields": metadata.get("changed_fields") or [],
+        "changed_fields": changed_fields,
+        "has_change_details": bool(field_changes or changed_fields),
     }
 
 

@@ -1550,6 +1550,48 @@ def test_dataset_changes_paginates_mutation_history(auth_client, profile):
     assert f"Change {total_changes:03}" not in page_two_content
 
 
+def test_dataset_changes_field_details_are_collapsed_by_default(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+    mutation = record_dataset_mutation(
+        dataset,
+        DatasetMutationType.ROW_UPDATED,
+        "Row 1 updated.",
+        target_type="row",
+        target_identifier=row.id,
+        metadata={
+            "row_id": row.id,
+            "row_number": row.row_number,
+            "changed_fields": ["email"],
+            "field_changes": [
+                {
+                    "field": "email",
+                    "before": "ada@example.com",
+                    "after": "ada+updated@example.com",
+                }
+            ],
+            "value_changes_recorded": True,
+            "index_changed": True,
+        },
+    )
+
+    response = auth_client.get(dataset.get_changes_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    details_match = re.search(
+        rf'<details\b[^>]*aria-labelledby="dataset-change-{mutation.id}-summary"[^>]*>',
+        content,
+    )
+    assert details_match is not None
+    assert not re.search(r"\sopen(?:[\s=>]|$)", details_match.group(0))
+    assert f'id="dataset-change-{mutation.id}-summary"' in content
+    assert "Full view" in content
+    assert "Collapse" in content
+    assert "ada@example.com" in content
+    assert "ada+updated@example.com" in content
+
+
 def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client, profile):
     dataset = create_ready_dataset(profile)
 
