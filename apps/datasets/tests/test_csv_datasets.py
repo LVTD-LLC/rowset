@@ -1076,6 +1076,19 @@ def test_dataset_detail_deletes_row_from_ui(auth_client, profile):
     ).exists()
 
 
+def test_dataset_detail_delete_confirmation_escapes_dataset_name(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.name = 'Research "Alpha"'
+    dataset.save(update_fields=["name"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'onsubmit="return confirm(this.dataset.confirmMessage);"' in content
+    assert 'data-confirm-message="Delete row 1 from Research &quot;Alpha&quot;?"' in content
+
+
 def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
     target = create_ready_dataset(profile)
     target.name = "Archived sprint tasks"

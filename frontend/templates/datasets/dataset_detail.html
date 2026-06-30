@@ -327,7 +327,7 @@
                 {% if rows_allow_mutation %}
                   <td class="whitespace-nowrap">
                     {% if row.delete_url %}
-                      <form method="post" action="{{ row.delete_url }}" onsubmit="return confirm('Delete row {{ row.row_number }} from {{ dataset.name|escapejs }}?');">
+                      <form method="post" action="{{ row.delete_url }}" data-confirm-message="Delete row {{ row.row_number }} from {{ dataset.name }}?" onsubmit="return confirm(this.dataset.confirmMessage);">
                         {% csrf_token %}
                         <button type="submit" class="fb-button-danger min-h-8 px-2 py-1 text-xs" aria-label="Delete row {{ row.row_number }}">Delete</button>
                       </form>
