@@ -43,6 +43,7 @@ dependencies = [
     
     "pydantic-ai>=1.93.0",
     "pgvector>=0.4.2",
+    "qdrant-client>=1.18.0",
     
     "logfire>=4.32.1",
     
