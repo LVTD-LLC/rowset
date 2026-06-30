@@ -134,19 +134,19 @@ envVarGroups:
       - key: ALLOW_SIGNUPS
         value: "True"
 
-      
-      # Optional. If not specified, local FileSystemStorage is used for media files.
-      - key: AWS_S3_ENDPOINT_URL
+      # Optional private dataset image asset storage. Leave endpoint blank to use local disk.
+      # Cloudflare R2 uses an S3-compatible endpoint and `auto` region.
+      - key: ROWSET_ASSET_S3_ENDPOINT_URL
         value: ""
-      # Required when AWS_S3_ENDPOINT_URL is set outside local development.
-      # Set this to the existing bucket name until object storage is renamed or migrated.
-      - key: AWS_STORAGE_BUCKET_NAME
+      - key: ROWSET_ASSET_STORAGE_BUCKET_NAME
         value: ""
-      - key: AWS_ACCESS_KEY_ID
+      - key: ROWSET_ASSET_ACCESS_KEY_ID
         value: ""
-      - key: AWS_SECRET_ACCESS_KEY
+      - key: ROWSET_ASSET_SECRET_ACCESS_KEY
         value: ""
-      
+      - key: ROWSET_ASSET_REGION_NAME
+        value: auto
+
 
       # Basic email setup - can be configured later
       - key: MAILGUN_API_KEY

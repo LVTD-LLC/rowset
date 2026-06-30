@@ -474,32 +474,30 @@ Configure these to send emails from Rowset (for notifications, password resets, 
 - Get from [GitHub Developer Settings](https://github.com/settings/developers)
 - Required if GITHUB_CLIENT_ID is set
 
-### Storage configuration
+### Dataset Asset Storage
 
-Configure these to use cloud storage for media files:
+Configure these to store private dataset image assets in Cloudflare R2 or another
+S3-compatible object store. Leave `ROWSET_ASSET_S3_ENDPOINT_URL` empty to use
+local disk storage.
 
-**AWS_ACCESS_KEY_ID**
-- Your AWS access key ID
-- Get from AWS IAM console
-- Required for S3 storage
+**ROWSET_ASSET_S3_ENDPOINT_URL**
+- Cloudflare R2 S3-compatible endpoint URL
+- Example: `https://<account-id>.r2.cloudflarestorage.com`
 
-**AWS_SECRET_ACCESS_KEY**
-- Your AWS secret access key
-- Get from AWS IAM console
-- Required for S3 storage
+**ROWSET_ASSET_STORAGE_BUCKET_NAME**
+- R2 bucket name for private dataset image assets
 
-**AWS_STORAGE_BUCKET_NAME**
-- Name of your S3 bucket
-- Create bucket in AWS S3 console
+**ROWSET_ASSET_ACCESS_KEY_ID**
+- R2 access key ID
+- Required when `ROWSET_ASSET_S3_ENDPOINT_URL` is set
 
-**AWS_S3_REGION_NAME**
-- AWS region for your S3 bucket
-- Example: `us-east-1`
+**ROWSET_ASSET_SECRET_ACCESS_KEY**
+- R2 secret access key
+- Required when `ROWSET_ASSET_S3_ENDPOINT_URL` is set
 
-**AWS_S3_ENDPOINT_URL**
-- Custom S3 endpoint URL (optional)
-- Used for S3-compatible services (DigitalOcean Spaces, Wasabi, etc.)
-- Leave empty for standard AWS S3
+**ROWSET_ASSET_REGION_NAME**
+- S3-compatible region name
+- Use `auto` for Cloudflare R2
 
 ### MJML (Email Templates)
 
