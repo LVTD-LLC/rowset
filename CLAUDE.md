@@ -9,6 +9,9 @@ vendor-neutral steering set:
 - `STRUCTURE.md` - where changes belong.
 - `VISION.md` - durable product direction and non-goals.
 - `DESIGN.md` - visual system and UI constraints.
+- `BRAND.md` - brand, voice, positioning, and content guardrails.
+- `seo-config.json` - SEO workflow config and Rowset dataset keys for the
+  content ledger, link inventory, and blog page CMS.
 
 ## Claude Workflow
 

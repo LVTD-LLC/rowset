@@ -2,6 +2,7 @@ from django.contrib import sitemaps
 from django.contrib.sitemaps import GenericSitemap
 from django.urls import reverse
 
+from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
 from apps.docs.views import get_docs_navigation
 from apps.pages.use_cases import get_use_case_pages
@@ -98,7 +99,12 @@ sitemaps = {
     "static": StaticViewSitemap,
     "use_cases": UseCaseSitemap,
     "blog": GenericSitemap(
-        {"queryset": BlogPost.objects.all(), "date_field": "created_at"},
+        {
+            "queryset": BlogPost.objects.filter(status=BlogPostStatus.PUBLISHED).order_by(
+                "-created_at"
+            ),
+            "date_field": "created_at",
+        },
         priority=0.85,
         protocol="https",
     ),
