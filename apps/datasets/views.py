@@ -1361,6 +1361,8 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         return _owned_dataset_queryset(self.request.user.profile)
 
     def get_context_data(self, **kwargs):
+        row_create_error = kwargs.pop("row_create_error", "")
+        row_create_values = kwargs.pop("row_create_values", None)
         context = super().get_context_data(**kwargs)
         dataset = self.object
         base_row_queryset = dataset.rows.select_related("updated_by_agent_api_key")
@@ -1462,8 +1464,10 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context["row_create_fields"] = _row_form_fields(
             dataset,
             column_definition_list,
+            row_create_values,
             id_prefix="row-create-field",
         )
+        context["row_create_error"] = row_create_error
         context["rows_allow_mutation"] = rows_allow_mutation
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
@@ -1497,6 +1501,14 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         )
         context.update(_dataset_relationship_context(dataset))
         return context
+
+
+def _dataset_detail_response(request, dataset: Dataset, **context_kwargs):
+    view = DatasetDetailView()
+    view.setup(request, dataset_key=dataset.key)
+    view.object = dataset
+    context = view.get_context_data(object=dataset, **context_kwargs)
+    return view.render_to_response(context)
 
 
 class DatasetChangesView(LoginRequiredMixin, DetailView):
@@ -1970,17 +1982,22 @@ def dataset_row_create(request, dataset_key):
         key=dataset_key,
         profile=request.user.profile,
     )
+    row_data = _row_form_data_from_post(dataset, request.POST)
     try:
         result = create_profile_dataset_row(
             request.user.profile,
             str(dataset.key),
-            _row_form_data_from_post(dataset, request.POST),
+            row_data,
         )
     except DatasetServiceError as exc:
         if exc.status_code == 404:
             raise Http404(exc.message) from exc
-        messages.error(request, exc.message)
-        return redirect("dataset_detail", dataset_key=dataset_key)
+        return _dataset_detail_response(
+            request,
+            dataset,
+            row_create_error=exc.message,
+            row_create_values=row_data,
+        )
 
     row_id = result["row"]["id"]
     messages.success(request, "Row created.")

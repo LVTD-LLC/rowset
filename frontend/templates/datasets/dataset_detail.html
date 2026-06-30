@@ -172,6 +172,9 @@
         <form method="post" action="{% url 'dataset_row_create' dataset.key %}" class="mt-5 border-t border-slate-200 pt-5 dark:border-slate-800">
           {% csrf_token %}
           <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">New row</h3>
+          {% if row_create_error %}
+            <div id="row-create-error" role="alert" class="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-100">{{ row_create_error }}</div>
+          {% endif %}
           <div class="mt-3 grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {% for field in row_create_fields %}
               <div class="min-w-0">
@@ -184,17 +187,17 @@
                   <select id="{{ field.input_id }}" name="{{ field.input_name }}" class="fb-input mt-2 block w-full px-3 py-2 text-sm" {% if field.is_index %}required{% endif %}>
                     <option value=""></option>
                     {% for choice in field.choices %}
-                      <option value="{{ choice }}">{{ choice }}</option>
+                      <option value="{{ choice }}"{% if choice == field.value %} selected{% endif %}>{{ choice }}</option>
                     {% endfor %}
                   </select>
                 {% elif field.type == "boolean" %}
                   <select id="{{ field.input_id }}" name="{{ field.input_name }}" class="fb-input mt-2 block w-full px-3 py-2 text-sm" {% if field.is_index %}required{% endif %}>
                     <option value=""></option>
-                    <option value="true">True</option>
-                    <option value="false">False</option>
+                    <option value="true"{% if field.value == "true" %} selected{% endif %}>True</option>
+                    <option value="false"{% if field.value == "false" %} selected{% endif %}>False</option>
                   </select>
                 {% else %}
-                  <textarea id="{{ field.input_id }}" name="{{ field.input_name }}" rows="2" class="fb-input mt-2 block w-full px-3 py-2 text-sm" {% if field.is_index %}required{% endif %}></textarea>
+                  <textarea id="{{ field.input_id }}" name="{{ field.input_name }}" rows="2" class="fb-input mt-2 block w-full px-3 py-2 text-sm" {% if field.is_index %}required{% endif %}>{{ field.value }}</textarea>
                 {% endif %}
               </div>
             {% endfor %}

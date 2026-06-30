@@ -1009,6 +1009,29 @@ def test_dataset_detail_creates_row_from_ui(auth_client, profile):
     ).exists()
 
 
+def test_dataset_detail_preserves_new_row_values_on_create_error(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.post(
+        reverse("dataset_row_create", args=[dataset.key]),
+        data={
+            "field_0": "Duplicate Candidate",
+            "field_1": "ada@example.com",
+        },
+    )
+
+    dataset.refresh_from_db()
+    content = response.content.decode()
+    row_create_fields = response.context["row_create_fields"]
+    assert response.status_code == 200
+    assert "Row with index &#x27;ada@example.com&#x27; already exists." in content
+    assert "Duplicate Candidate" in content
+    assert row_create_fields[0]["value"] == "Duplicate Candidate"
+    assert row_create_fields[1]["value"] == "ada@example.com"
+    assert dataset.row_count == 2
+    assert not dataset.rows.filter(data__name="Duplicate Candidate").exists()
+
+
 def test_dataset_detail_create_row_uses_generated_index(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
