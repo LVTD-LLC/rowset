@@ -13,6 +13,7 @@ from django.db.models import Count, F, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
@@ -35,6 +36,7 @@ from apps.api.services import (
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project
 from apps.datasets.services import (
+    DATASET_ASSET_CACHE_CONTROL,
     DATASET_REFERENCE_TARGET,
     ROW_DEFAULT_SORT,
     ROW_FILTER_ABOVE,
@@ -435,7 +437,8 @@ def _dataset_asset_file_response(asset: DatasetAsset, variant: str) -> HttpRespo
         asset.original_filename or f"{asset.key}",
     )
     response["X-Content-Type-Options"] = "nosniff"
-    response["Cache-Control"] = "private, no-store"
+    response["Cache-Control"] = DATASET_ASSET_CACHE_CONTROL
+    patch_vary_headers(response, ["Authorization", "Cookie"])
     return response
 
 

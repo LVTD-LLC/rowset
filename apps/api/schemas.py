@@ -384,13 +384,6 @@ class DatasetRowPatchIn(Schema):
     data: dict[str, str]
 
 
-class DatasetRowOut(Schema):
-    id: int
-    row_number: int
-    index_value: str
-    data: dict[str, str]
-
-
 class DatasetAssetOut(Schema):
     key: str
     ref: str
@@ -406,10 +399,20 @@ class DatasetAssetOut(Schema):
     height: int | None = None
     checksum: str
     status: str
+    has_thumbnail: bool
     content_url: str
-    thumbnail_url: str
+    thumbnail_url: str | None = None
+    content_url_auth_required: bool
     created_at: datetime
     updated_at: datetime
+
+
+class DatasetRowOut(Schema):
+    id: int
+    row_number: int
+    index_value: str
+    data: dict[str, str]
+    assets: list[DatasetAssetOut] = Field(default_factory=list)
 
 
 class DatasetImageAttachIn(Schema):
