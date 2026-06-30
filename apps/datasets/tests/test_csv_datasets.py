@@ -2736,7 +2736,6 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert create_response.status_code == 201
     assert create_response.json()["dataset"]["public_enabled"] is False
     assert create_response.json()["dataset"]["public_url"] is None
-    assert create_response.json()["dataset"]["public_preview_status"] == "disabled"
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
 
     attach_response = client.post(

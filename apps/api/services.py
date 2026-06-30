@@ -543,7 +543,6 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "public_enabled": dataset.public_enabled,
         "public_key": str(dataset.public_key),
         "public_url": public_url,
-        "public_preview_status": "enabled" if dataset.public_enabled else "disabled",
         "public_page_size": dataset.public_page_size,
         "public_password_protected": dataset.is_public_password_protected,
         "created_at": dataset.created_at,

@@ -324,7 +324,6 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "public_url": (
                     "https://rowset.example/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/"
                 ),
-                "public_preview_status": "enabled",
                 "public_page_size": 25,
                 "public_password_protected": True,
                 "created_at": "2026-05-14T00:00:00Z",

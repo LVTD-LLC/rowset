@@ -203,7 +203,6 @@ class DatasetSummaryOut(Schema):
     public_enabled: bool
     public_key: str
     public_url: str | None = None
-    public_preview_status: str
     public_page_size: int
     public_password_protected: bool
     created_at: datetime
