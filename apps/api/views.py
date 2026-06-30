@@ -55,6 +55,8 @@ from apps.api.schemas import (
     DatasetRowIn,
     DatasetRowPatchIn,
     DatasetRowsOut,
+    DatasetSearchIn,
+    DatasetSearchOut,
     ProjectArchiveOut,
     ProjectCreateIn,
     ProjectCreateOut,
@@ -95,6 +97,7 @@ from apps.api.services import (
     reorder_profile_dataset_columns,
     resolve_profile_dataset_relationship,
     restore_profile_dataset,
+    search_profile_dataset_rows,
     search_profile_datasets,
     search_profile_projects,
     serialize_profile_archived_datasets,
@@ -1091,6 +1094,30 @@ def list_dataset_rows(
             filters=_parse_row_filters(filters),
             sort=sort,
             direction=direction,
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/search",
+    response=DatasetSearchOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def search_dataset_rows(
+    request: HttpRequest,
+    dataset_key: str,
+    payload: DatasetSearchIn,
+):
+    """Return ranked hybrid vector and lexical search results for one dataset."""
+    try:
+        return search_profile_dataset_rows(
+            request.auth,
+            dataset_key,
+            query=payload.query,
+            filters=payload.filters,
+            limit=payload.limit,
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)

@@ -5,8 +5,9 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 from uuid import UUID
 
+from django.conf import settings
 from django.contrib.auth.hashers import make_password
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import storages
 from django.db import IntegrityError, connection, transaction
@@ -16,6 +17,7 @@ from django.db.models.functions import Cast, Trim
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
+from django_q.tasks import async_task
 
 from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
@@ -24,6 +26,11 @@ from apps.datasets.constants import (
     MAX_DATASET_INSTRUCTIONS_LENGTH,
     MAX_DATASET_METADATA_BYTES,
     MAX_PROJECT_METADATA_BYTES,
+)
+from apps.datasets.embeddings import (
+    EmbeddingProvider,
+    EmbeddingProviderError,
+    get_embedding_provider,
 )
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import (
@@ -60,10 +67,18 @@ from apps.datasets.services import (
     validate_headers,
     validate_image_row_values,
 )
-from rowset.utils import build_absolute_public_url
+from apps.datasets.vector_search import (
+    QdrantVectorStore,
+    VectorStoreError,
+    build_dataset_row_search_document,
+)
+from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
+DATASET_SEARCH_MAX_LIMIT = 50
+DATASET_SEARCH_RRF_K = 60
+logger = get_rowset_logger(__name__)
 ColumnTypeSpec = str | dict[str, Any]
 DATASET_SUMMARY_ONLY_FIELDS = (
     "key",
@@ -121,6 +136,35 @@ class DatasetServiceError(Exception):
         self.status_code = status_code
         self.message = message
         super().__init__(message)
+
+
+def _enqueue_vector_task(task_path: str, *args) -> None:
+    if not settings.ROWSET_VECTOR_SEARCH_ENABLED:
+        return
+
+    def enqueue() -> None:
+        try:
+            async_task(task_path, *args)
+        except Exception:
+            logger.exception("Failed to enqueue vector task", task_path=task_path)
+
+    transaction.on_commit(enqueue)
+
+
+def _enqueue_dataset_vector_backfill(dataset_id: int) -> None:
+    _enqueue_vector_task("apps.datasets.tasks.backfill_dataset_vectors_task", dataset_id)
+
+
+def _enqueue_dataset_row_vector_index(row_id: int) -> None:
+    _enqueue_vector_task("apps.datasets.tasks.index_dataset_row_vector", row_id)
+
+
+def _enqueue_dataset_row_vector_delete(dataset_id: int, row_ids: list[int]) -> None:
+    _enqueue_vector_task("apps.datasets.tasks.delete_dataset_row_vectors", dataset_id, row_ids)
+
+
+def _enqueue_dataset_vector_delete(dataset_id: int) -> None:
+    _enqueue_vector_task("apps.datasets.tasks.delete_dataset_vectors", dataset_id)
 
 
 def _normalize_search_query(query: str | None) -> str:
@@ -1840,6 +1884,8 @@ def create_profile_dataset(
                 "project_key": str(project.key) if project else "",
             },
         )
+        if row_payloads:
+            _enqueue_dataset_vector_backfill(dataset.id)
 
     return {
         "status": "success",
@@ -2595,6 +2641,7 @@ def archive_profile_dataset(
                     agent_api_key=agent_api_key,
                     metadata={"public_preview_disabled": was_public_enabled},
                 )
+                _enqueue_dataset_vector_delete(dataset.id)
 
     return {
         "status": "success",
@@ -2925,6 +2972,220 @@ def attach_profile_dataset_image_asset(
     }
 
 
+def _normalize_dataset_search_limit(limit: int) -> int:
+    try:
+        normalized_limit = int(limit)
+    except (TypeError, ValueError):
+        normalized_limit = 10
+    return max(1, min(normalized_limit, DATASET_SEARCH_MAX_LIMIT))
+
+
+def _reciprocal_rank_score(rank: int | None) -> float:
+    if rank is None:
+        return 0.0
+    return 1 / (DATASET_SEARCH_RRF_K + rank)
+
+
+def _safe_vector_row_id(payload: dict[str, Any]) -> int | None:
+    try:
+        return int(payload.get("row_id"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _search_result_snippet(dataset: Dataset, row: DatasetRow) -> str:
+    document = build_dataset_row_search_document(dataset, row)
+    compact = " ".join(document.text.split())
+    if len(compact) <= 300:
+        return compact
+    return f"{compact[:297].rstrip()}..."
+
+
+def _dataset_search_querysets(
+    dataset: Dataset,
+    *,
+    query: str,
+    filters: dict[str, Any] | None,
+):
+    try:
+        filtered_queryset, row_query = apply_dataset_row_query(
+            dataset.rows.all(),
+            dataset,
+            filters=filters,
+            strict=True,
+        )
+        lexical_queryset, _lexical_query = apply_dataset_row_query(
+            dataset.rows.all(),
+            dataset,
+            query=query,
+            filters=filters,
+            strict=True,
+        )
+    except DatasetRowQueryError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+    return filtered_queryset, row_query, lexical_queryset
+
+
+def _dataset_vector_search_hits(
+    dataset: Dataset,
+    *,
+    query: str,
+    limit: int,
+    embedding_provider: EmbeddingProvider | None,
+    vector_store: QdrantVectorStore | None,
+):
+    try:
+        provider = embedding_provider or get_embedding_provider()
+        store = vector_store or QdrantVectorStore(
+            embedding_model=provider.model,
+            embedding_dimensions=provider.dimensions,
+        )
+        store.ensure_collection()
+        query_embedding = provider.embed_text(query)
+        return store.search_dataset_rows(dataset, query_embedding.vector, limit=limit * 3)
+    except (EmbeddingProviderError, ImproperlyConfigured, VectorStoreError, ValueError) as exc:
+        raise DatasetServiceError(503, f"Dataset vector search failed: {exc}") from exc
+
+
+def _dataset_search_candidates(
+    *,
+    vector_hits,
+    lexical_rows: list[DatasetRow],
+    allowed_row_ids: set[int] | None,
+) -> dict[int, dict[str, Any]]:
+    candidates: dict[int, dict[str, Any]] = {}
+    for vector_rank, hit in enumerate(vector_hits, start=1):
+        row_id = _safe_vector_row_id(hit.payload)
+        if row_id is None or (allowed_row_ids is not None and row_id not in allowed_row_ids):
+            continue
+        candidate = candidates.setdefault(row_id, {"row_id": row_id})
+        candidate.setdefault("vector_rank", vector_rank)
+        candidate.setdefault("vector_score", hit.score)
+        candidate.setdefault("point_id", hit.point_id)
+        candidate.setdefault("chunk_index", hit.payload.get("chunk_index"))
+        candidate.setdefault("content_hash", hit.payload.get("content_hash"))
+
+    for lexical_rank, row in enumerate(lexical_rows, start=1):
+        candidate = candidates.setdefault(row.id, {"row_id": row.id})
+        candidate.setdefault("lexical_rank", lexical_rank)
+    return candidates
+
+
+def _rank_dataset_search_candidates(
+    candidates: dict[int, dict[str, Any]],
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    for candidate in candidates.values():
+        vector_rank = candidate.get("vector_rank")
+        lexical_rank = candidate.get("lexical_rank")
+        candidate["score"] = _reciprocal_rank_score(vector_rank) + _reciprocal_rank_score(
+            lexical_rank
+        )
+        if vector_rank is not None and lexical_rank is not None:
+            candidate["source"] = "hybrid"
+        elif vector_rank is not None:
+            candidate["source"] = "vector"
+        else:
+            candidate["source"] = "lexical"
+
+    return sorted(
+        candidates.values(),
+        key=lambda candidate: (
+            -candidate["score"],
+            candidate.get("vector_rank") or 10_000,
+            candidate.get("lexical_rank") or 10_000,
+            candidate["row_id"],
+        ),
+    )[:limit]
+
+
+def _serialize_dataset_search_results(
+    dataset: Dataset,
+    ranked_candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows_by_id = {
+        row.id: row
+        for row in dataset.rows.prefetch_related("assets").filter(
+            id__in=[candidate["row_id"] for candidate in ranked_candidates]
+        )
+    }
+    results = []
+    for rank, candidate in enumerate(ranked_candidates, start=1):
+        row = rows_by_id.get(candidate["row_id"])
+        if row is None:
+            continue
+        results.append(
+            {
+                "rank": rank,
+                "score": candidate["score"],
+                "row": serialize_dataset_row(row, dataset=dataset),
+                "match": {
+                    "source": candidate["source"],
+                    "vector_score": candidate.get("vector_score"),
+                    "vector_rank": candidate.get("vector_rank"),
+                    "lexical_rank": candidate.get("lexical_rank"),
+                    "point_id": candidate.get("point_id"),
+                    "chunk_index": candidate.get("chunk_index"),
+                    "content_hash": candidate.get("content_hash"),
+                    "snippet": _search_result_snippet(dataset, row),
+                },
+            }
+        )
+    return results
+
+
+def search_profile_dataset_rows(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    query: str,
+    filters: dict[str, Any] | None = None,
+    limit: int = 10,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: QdrantVectorStore | None = None,
+) -> dict:
+    dataset = get_ready_profile_dataset(profile, dataset_key)
+    normalized_query = _normalize_search_query(query)
+    if not normalized_query:
+        raise DatasetServiceError(400, "Search query is required.")
+    normalized_limit = _normalize_dataset_search_limit(limit)
+    filtered_queryset, row_query, lexical_queryset = _dataset_search_querysets(
+        dataset,
+        query=normalized_query,
+        filters=filters,
+    )
+    vector_hits = _dataset_vector_search_hits(
+        dataset,
+        query=normalized_query,
+        limit=normalized_limit,
+        embedding_provider=embedding_provider,
+        vector_store=vector_store,
+    )
+
+    allowed_row_ids: set[int] | None = None
+    if row_query["filters"]:
+        allowed_row_ids = set(filtered_queryset.values_list("id", flat=True))
+
+    lexical_rows = list(lexical_queryset.only("id")[: normalized_limit * 3])
+    candidates = _dataset_search_candidates(
+        vector_hits=vector_hits,
+        lexical_rows=lexical_rows,
+        allowed_row_ids=allowed_row_ids,
+    )
+    ranked_candidates = _rank_dataset_search_candidates(candidates, limit=normalized_limit)
+    results = _serialize_dataset_search_results(dataset, ranked_candidates)
+
+    return {
+        "dataset": str(dataset.key),
+        "query": normalized_query,
+        "filters": row_query["filters"],
+        "limit": normalized_limit,
+        "count": len(results),
+        "results": results,
+    }
+
+
 def list_profile_dataset_rows(
     profile: Profile,
     dataset_key: str,
@@ -3031,6 +3292,7 @@ def create_profile_dataset_row(
                 "changed_fields": sorted(row.data),
             },
         )
+        _enqueue_dataset_row_vector_index(row.id)
         row = dataset.rows.prefetch_related("assets").get(id=row.id)
     return {
         "status": "success",
@@ -3218,6 +3480,7 @@ def _patch_dataset_row(
             "index_changed": index_changed,
         },
     )
+    _enqueue_dataset_row_vector_index(row.id)
     row = dataset.rows.prefetch_related("assets").get(id=row.id)
     return {
         "status": "success",
@@ -3257,6 +3520,7 @@ def delete_profile_dataset_row(
                 "row_number": row_number,
             },
         )
+        _enqueue_dataset_row_vector_delete(dataset.id, [row_id])
     return {"status": "success", "message": "Row deleted.", "dataset": str(dataset.key)}
 
 
@@ -3312,6 +3576,7 @@ def delete_profile_dataset_rows(
                     "row_number": row_number,
                 },
             )
+        _enqueue_dataset_row_vector_delete(dataset.id, [row_id for row_id, _ in deleted_rows])
 
     row_label = "row" if len(deleted_rows) == 1 else "rows"
     return {

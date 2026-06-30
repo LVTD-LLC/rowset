@@ -78,6 +78,8 @@ authenticated access boundaries.
 ### Rows
 
 - List rows with search, filters, and sort through `list_dataset_rows`.
+- Search rows with ranked hybrid retrieval through `search_dataset_rows` when
+  vector search is enabled.
 - Read rows with `get_dataset_row` or `get_dataset_row_by_index`.
 - Create rows with `create_dataset_row`.
 - Patch rows with `update_dataset_row` or `update_dataset_row_by_index`.

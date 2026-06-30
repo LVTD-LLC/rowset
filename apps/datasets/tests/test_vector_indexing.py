@@ -8,7 +8,13 @@ from django.test import override_settings
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.services import VectorBackfillResult, backfill_dataset_vectors
+from apps.datasets.services import (
+    VectorBackfillResult,
+    backfill_dataset_vectors,
+    delete_dataset_row_vectors,
+    delete_dataset_vectors,
+    index_dataset_row_vector,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -85,6 +91,8 @@ class FakeVectorStore:
         self.ensure_calls = 0
         self.upserts = []
         self.upsert_batches = []
+        self.deleted_row_ids = []
+        self.deleted_dataset_keys = []
 
     def ensure_collection(self):
         self.ensure_calls += 1
@@ -118,6 +126,12 @@ class FakeVectorStore:
                 embedding_model=row_vector.embedding_model,
                 embedding_dimensions=row_vector.embedding_dimensions,
             )
+
+    def delete_dataset_row_vectors(self, dataset, row_ids):
+        self.deleted_row_ids.append((str(dataset.key), list(row_ids)))
+
+    def delete_dataset_vectors(self, dataset):
+        self.deleted_dataset_keys.append(str(dataset.key))
 
 
 def test_backfill_dataset_vectors_upserts_ready_dataset_rows_in_row_order(dataset, rows):
@@ -168,6 +182,41 @@ def test_backfill_dataset_vectors_dry_run_counts_rows_without_external_calls(dat
     assert provider.text_batches == []
     assert store.ensure_calls == 0
     assert store.upserts == []
+
+
+def test_index_dataset_row_vector_embeds_and_upserts_one_row(dataset, rows):
+    provider = FakeEmbeddingProvider()
+    store = FakeVectorStore()
+
+    index_dataset_row_vector(
+        rows[0],
+        embedding_provider=provider,
+        vector_store=store,
+    )
+
+    assert store.ensure_calls == 1
+    assert len(provider.text_batches) == 1
+    assert len(provider.text_batches[0]) == 1
+    assert "title (Task title): Add embeddings" in provider.text_batches[0][0]
+    assert [upsert["row_id"] for upsert in store.upserts] == [rows[0].id]
+    assert store.upserts[0]["embedding_model"] == "fake-embedding"
+    assert store.upserts[0]["embedding_dimensions"] == 3
+
+
+def test_delete_dataset_row_vectors_delegates_to_store(dataset, rows):
+    store = FakeVectorStore()
+
+    delete_dataset_row_vectors(dataset, [rows[0].id], vector_store=store)
+
+    assert store.deleted_row_ids == [(str(dataset.key), [rows[0].id])]
+
+
+def test_delete_dataset_vectors_delegates_to_store(dataset):
+    store = FakeVectorStore()
+
+    delete_dataset_vectors(dataset, vector_store=store)
+
+    assert store.deleted_dataset_keys == [str(dataset.key)]
 
 
 def test_backfill_dataset_vectors_rejects_non_ready_datasets(dataset):

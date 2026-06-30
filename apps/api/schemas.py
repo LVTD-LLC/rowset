@@ -462,6 +462,28 @@ class DatasetRowsOut(Schema):
     rows: list[DatasetRowOut]
 
 
+class DatasetSearchIn(Schema):
+    query: str = Field(..., min_length=1, max_length=1000)
+    filters: dict[str, Any] | None = None
+    limit: int = Field(default=10, ge=1, le=50)
+
+
+class DatasetSearchResultOut(Schema):
+    rank: int
+    score: float
+    row: DatasetRowOut
+    match: dict[str, Any]
+
+
+class DatasetSearchOut(Schema):
+    dataset: str
+    query: str
+    filters: dict[str, str] = Field(default_factory=dict)
+    limit: int
+    count: int
+    results: list[DatasetSearchResultOut]
+
+
 class DatasetApiOut(Schema):
     status: str
     message: str

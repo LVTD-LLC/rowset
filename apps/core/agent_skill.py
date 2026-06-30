@@ -41,8 +41,9 @@ ROWSET_AGENT_SETUP_INSTRUCTIONS = (
     "before restoring archived datasets, and search_datasets when you need "
     "filters. If auth fails, confirm the env var contains the full key, not "
     "only its prefix. Use get_dataset before row work so dataset context, "
-    "schema, and relationships are in context. Use create_dataset when you "
-    "need to create a dataset on the fly. Use update_dataset_public_preview "
+    "schema, and relationships are in context. Use search_dataset_rows for "
+    "ranked row search when vector search is enabled. Use create_dataset when "
+    "you need to create a dataset on the fly. Use update_dataset_public_preview "
     "when the user asks for a shareable read-only preview."
 )
 ROWSET_SKILL_FALLBACK_DESCRIPTION = (

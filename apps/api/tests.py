@@ -25,7 +25,9 @@ from apps.api.views import (
 from apps.blog.choices import BlogPostStatus
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets.choices import DatasetStatus
+from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow, Project
+from apps.datasets.vector_search import DatasetRowVectorSearchHit
 
 
 def test_openapi_dataset_asset_thumbnail_url_is_required_string(client):
@@ -1206,3 +1208,335 @@ def test_update_profile_project_rejects_duplicate_name(django_user_model):
 
     assert exc.value.status_code == 409
     assert exc.value.message == "Project name already exists."
+
+
+@pytest.mark.django_db
+def test_create_profile_dataset_enqueues_vector_backfill_when_enabled(
+    django_user_model,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    from apps.api.services import create_profile_dataset
+
+    user = django_user_model.objects.create_user(
+        username="vectorcreateowner",
+        email="vectorcreateowner@example.com",
+        password="password123",
+    )
+    calls = []
+    monkeypatch.setattr(
+        "apps.api.services.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            response = create_profile_dataset(
+                user.profile,
+                name="Vector Tasks",
+                headers=["task_id", "title"],
+                index_column="task_id",
+                rows=[{"task_id": "TASK-1", "title": "Index initial rows"}],
+            )
+
+    dataset = Dataset.objects.get(key=response["dataset"]["key"])
+    assert calls == [("apps.datasets.tasks.backfill_dataset_vectors_task", (dataset.id,))]
+
+
+@pytest.mark.django_db
+def test_row_write_services_enqueue_vector_index_and_delete_when_enabled(
+    django_user_model,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    from apps.api.services import (
+        create_profile_dataset_row,
+        delete_profile_dataset_row,
+        patch_profile_dataset_row,
+    )
+
+    user = django_user_model.objects.create_user(
+        username="vectorrowowner",
+        email="vectorrowowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Vector Rows",
+        original_filename="rows.csv",
+        status=DatasetStatus.READY,
+        headers=["task_id", "title"],
+        index_column="task_id",
+    )
+    calls = []
+    monkeypatch.setattr(
+        "apps.api.services.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            create_response = create_profile_dataset_row(
+                user.profile,
+                str(dataset.key),
+                {"task_id": "TASK-1", "title": "Index row"},
+            )
+        row_id = create_response["row"]["id"]
+
+        with django_capture_on_commit_callbacks(execute=True):
+            patch_profile_dataset_row(
+                user.profile,
+                str(dataset.key),
+                row_id,
+                {"title": "Reindex row"},
+            )
+
+        with django_capture_on_commit_callbacks(execute=True):
+            delete_profile_dataset_row(user.profile, str(dataset.key), row_id)
+
+    assert calls == [
+        ("apps.datasets.tasks.index_dataset_row_vector", (row_id,)),
+        ("apps.datasets.tasks.index_dataset_row_vector", (row_id,)),
+        ("apps.datasets.tasks.delete_dataset_row_vectors", (dataset.id, [row_id])),
+    ]
+
+
+@pytest.mark.django_db
+def test_archive_profile_dataset_enqueues_vector_delete_when_enabled(
+    django_user_model,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    from apps.api.services import archive_profile_dataset
+
+    user = django_user_model.objects.create_user(
+        username="vectorarchiveowner",
+        email="vectorarchiveowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Archive vectors",
+        original_filename="archive.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+    )
+    calls = []
+    monkeypatch.setattr(
+        "apps.api.services.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            archive_profile_dataset(user.profile, str(dataset.key))
+
+    assert calls == [("apps.datasets.tasks.delete_dataset_vectors", (dataset.id,))]
+
+
+class FakeDatasetSearchEmbeddingProvider:
+    model = "fake-embedding"
+    dimensions = 3
+
+    def __init__(self):
+        self.queries = []
+
+    def embed_text(self, text):
+        self.queries.append(text)
+        return EmbeddingResult(vector=[0.1, 0.2, 0.3], model=self.model, dimensions=3)
+
+
+class FakeDatasetSearchVectorStore:
+    def __init__(self, hits):
+        self.hits = hits
+        self.ensure_calls = 0
+        self.searches = []
+
+    def ensure_collection(self):
+        self.ensure_calls += 1
+
+    def search_dataset_rows(self, dataset, vector, *, limit=10):
+        self.searches.append((str(dataset.key), vector, limit))
+        return self.hits
+
+
+@pytest.mark.django_db
+def test_search_profile_dataset_rows_fuses_exact_and_vector_matches(django_user_model):
+    from apps.api.services import search_profile_dataset_rows
+
+    user = django_user_model.objects.create_user(
+        username="vectorsearchowner",
+        email="vectorsearchowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Vector Search Tasks",
+        original_filename="tasks.csv",
+        status=DatasetStatus.READY,
+        headers=["task_id", "status", "title"],
+        index_column="task_id",
+    )
+    exact_row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ROW-VEC-001",
+        data={"task_id": "ROW-VEC-001", "status": "Ready", "title": "Define product scope"},
+    )
+    semantic_row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=2,
+        index_value="ROW-VEC-008",
+        data={"task_id": "ROW-VEC-008", "status": "Ready", "title": "Remove stale vectors"},
+    )
+    provider = FakeDatasetSearchEmbeddingProvider()
+    store = FakeDatasetSearchVectorStore(
+        [
+            DatasetRowVectorSearchHit(
+                point_id="semantic-point",
+                score=0.92,
+                payload={"row_id": semantic_row.id, "chunk_index": 0, "content_hash": "sem"},
+            ),
+            DatasetRowVectorSearchHit(
+                point_id="exact-point",
+                score=0.5,
+                payload={"row_id": exact_row.id, "chunk_index": 0, "content_hash": "exact"},
+            ),
+        ]
+    )
+
+    response = search_profile_dataset_rows(
+        user.profile,
+        str(dataset.key),
+        query="ROW-VEC-001",
+        embedding_provider=provider,
+        vector_store=store,
+    )
+
+    assert provider.queries == ["ROW-VEC-001"]
+    assert store.ensure_calls == 1
+    assert store.searches == [(str(dataset.key), [0.1, 0.2, 0.3], 30)]
+    assert [result["row"]["id"] for result in response["results"]] == [
+        exact_row.id,
+        semantic_row.id,
+    ]
+    assert response["results"][0]["match"]["source"] == "hybrid"
+    assert response["results"][0]["match"]["lexical_rank"] == 1
+    assert response["results"][0]["match"]["vector_rank"] == 2
+
+
+@pytest.mark.django_db
+def test_search_profile_dataset_rows_applies_canonical_filters_to_vector_hits(
+    django_user_model,
+):
+    from apps.api.services import search_profile_dataset_rows
+
+    user = django_user_model.objects.create_user(
+        username="vectorfilterowner",
+        email="vectorfilterowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Filtered Search Tasks",
+        original_filename="tasks.csv",
+        status=DatasetStatus.READY,
+        headers=["task_id", "status", "title"],
+        column_schema={"status": {"type": "choice", "choices": ["Ready", "Blocked"]}},
+        index_column="task_id",
+    )
+    ready_row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="TASK-1",
+        data={"task_id": "TASK-1", "status": "Ready", "title": "Allowed semantic match"},
+    )
+    blocked_row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=2,
+        index_value="TASK-2",
+        data={"task_id": "TASK-2", "status": "Blocked", "title": "Filtered semantic match"},
+    )
+    store = FakeDatasetSearchVectorStore(
+        [
+            DatasetRowVectorSearchHit(
+                point_id="blocked-point",
+                score=0.99,
+                payload={"row_id": blocked_row.id, "chunk_index": 0, "content_hash": "blocked"},
+            ),
+            DatasetRowVectorSearchHit(
+                point_id="ready-point",
+                score=0.7,
+                payload={"row_id": ready_row.id, "chunk_index": 0, "content_hash": "ready"},
+            ),
+        ]
+    )
+
+    response = search_profile_dataset_rows(
+        user.profile,
+        str(dataset.key),
+        query="semantic",
+        filters={"status": "Ready"},
+        embedding_provider=FakeDatasetSearchEmbeddingProvider(),
+        vector_store=store,
+    )
+
+    assert response["filters"] == {"status": "Ready"}
+    assert [result["row"]["id"] for result in response["results"]] == [ready_row.id]
+    assert response["results"][0]["match"]["point_id"] == "ready-point"
+
+
+@pytest.mark.django_db
+def test_dataset_search_endpoint_delegates_to_search_service(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    user = django_user_model.objects.create_user(
+        username="vectorendpointowner",
+        email="vectorendpointowner@example.com",
+        password="password123",
+    )
+    calls = []
+
+    def search_rows(profile, dataset_key, *, query, filters=None, limit=10):
+        calls.append((profile.id, dataset_key, query, filters, limit))
+        return {
+            "dataset": dataset_key,
+            "query": query,
+            "filters": filters or {},
+            "limit": limit,
+            "count": 1,
+            "results": [
+                {
+                    "rank": 1,
+                    "score": 0.03,
+                    "row": {
+                        "id": 123,
+                        "row_number": 1,
+                        "index_value": "TASK-1",
+                        "data": {"task_id": "TASK-1"},
+                        "assets": [],
+                    },
+                    "match": {
+                        "source": "hybrid",
+                        "vector_rank": 1,
+                        "lexical_rank": 1,
+                        "snippet": "task_id: TASK-1",
+                    },
+                }
+            ],
+        }
+
+    monkeypatch.setattr("apps.api.views.search_profile_dataset_rows", search_rows)
+
+    response = client.post(
+        f"/api/datasets/dataset-key/search?api_key={user.profile.key}",
+        data={"query": "TASK-1", "filters": {"status": "Ready"}, "limit": 5},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["match"]["source"] == "hybrid"
+    assert calls == [(user.profile.id, "dataset-key", "TASK-1", {"status": "Ready"}, 5)]

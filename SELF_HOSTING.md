@@ -499,6 +499,53 @@ local disk storage.
 - S3-compatible region name
 - Use `auto` for Cloudflare R2
 
+### Vector Search
+
+Configure these only when you want semantic dataset row search. Rowset/Postgres
+remains the canonical source of truth; Qdrant is a rebuildable retrieval index.
+
+**ROWSET_VECTOR_SEARCH_ENABLED**
+- Set to `True` to enable vector indexing, backfill, and search.
+- Leave `False` until Qdrant and the embedding provider are configured.
+
+**QDRANT_URL**
+- Qdrant HTTP URL.
+- For private Docker or CapRover deployments, prefer an internal service URL.
+
+**QDRANT_API_KEY**
+- Qdrant API key, if your Qdrant service requires one.
+- Keep this secret out of logs, docs examples, and screenshots.
+
+**QDRANT_COLLECTION_PREFIX**
+- Prefix for Rowset-managed Qdrant collections.
+- Defaults to `rowset`.
+
+**QDRANT_TIMEOUT_SECONDS**
+- Timeout for Qdrant client requests.
+- Defaults to `10`.
+
+**ROWSET_EMBEDDING_MODEL**
+- Embedding model used for dataset row vectors.
+- Defaults to `text-embedding-3-small`.
+
+**ROWSET_EMBEDDING_DIMENSIONS**
+- Embedding dimension count. Do not mix incompatible dimensions in one collection.
+- Defaults to `1536`.
+
+**OPENAI_API_KEY**
+- OpenAI API key used for the configured embedding model.
+- Required when vector search is enabled.
+
+After enabling vector search, backfill an existing ready dataset with:
+
+```bash
+python manage.py backfill_dataset_vectors <dataset_key> --dry-run
+python manage.py backfill_dataset_vectors <dataset_key>
+```
+
+Use `--limit` for a small first run and `--batch-size` to tune embedding and
+Qdrant write batches.
+
 ### MJML (Email Templates)
 
 **MJML_URL**

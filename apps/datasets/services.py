@@ -370,6 +370,57 @@ def backfill_dataset_vectors(
     )
 
 
+def index_dataset_row_vector(
+    row,
+    *,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: QdrantVectorStore | None = None,
+) -> None:
+    dataset = row.dataset
+    _validate_vector_backfill_dataset(dataset)
+    provider = embedding_provider or get_embedding_provider()
+    store = vector_store or QdrantVectorStore(
+        embedding_model=provider.model,
+        embedding_dimensions=provider.dimensions,
+    )
+    store.ensure_collection()
+    document = build_dataset_row_search_document(
+        dataset,
+        row,
+        embedding_model=provider.model,
+        embedding_dimensions=provider.dimensions,
+    )
+    embedding = provider.embed_text(document.text)
+    store.upsert_dataset_row_vector(
+        dataset,
+        row,
+        embedding.vector,
+        embedding_model=embedding.model,
+        embedding_dimensions=embedding.dimensions,
+    )
+
+
+def delete_dataset_row_vectors(
+    dataset,
+    row_ids: list[int],
+    *,
+    vector_store: QdrantVectorStore | None = None,
+) -> None:
+    if not row_ids:
+        return
+    store = vector_store or QdrantVectorStore()
+    store.delete_dataset_row_vectors(dataset, row_ids)
+
+
+def delete_dataset_vectors(
+    dataset,
+    *,
+    vector_store: QdrantVectorStore | None = None,
+) -> None:
+    store = vector_store or QdrantVectorStore()
+    store.delete_dataset_vectors(dataset)
+
+
 @dataclass(frozen=True)
 class TabularPreview:
     headers: list[str]
