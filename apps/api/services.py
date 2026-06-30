@@ -1121,7 +1121,9 @@ def resolve_profile_dataset_relationship(
     if not normalized_source_index:
         raise DatasetServiceError(400, "source_index_value is required.")
     try:
-        source_row = source_dataset.rows.get(index_value=normalized_source_index)
+        source_row = source_dataset.rows.prefetch_related("assets").get(
+            index_value=normalized_source_index
+        )
     except DatasetRow.DoesNotExist as exc:
         raise DatasetServiceError(404, "Source row not found.") from exc
 
@@ -1136,7 +1138,9 @@ def resolve_profile_dataset_relationship(
             "target_row": None,
         }
     try:
-        target_row = relationship.target_dataset.rows.get(index_value=target_index_value)
+        target_row = relationship.target_dataset.rows.prefetch_related("assets").get(
+            index_value=target_index_value
+        )
     except DatasetRow.DoesNotExist as exc:
         if not relationship.enforce_integrity:
             return {
@@ -2462,11 +2466,9 @@ def restore_profile_dataset(
 
 def _serialized_row_assets(row: DatasetRow, dataset: Dataset | None = None) -> list[dict]:
     row_data = row.data or {}
-    prefetched_assets = getattr(row, "_prefetched_objects_cache", {}).get("assets")
-    assets = prefetched_assets if prefetched_assets is not None else row.assets.all()
     return [
         serialize_dataset_asset(asset, dataset=dataset, row=row)
-        for asset in assets
+        for asset in row.assets.all()
         if str(row_data.get(asset.column_name, "") or "") == asset.asset_ref
     ]
 
@@ -2527,7 +2529,11 @@ def serialize_dataset_asset(
         "status": asset.status,
         "has_thumbnail": bool(asset.thumbnail),
         "content_url": _dataset_asset_content_url(asset, "original", dataset=dataset),
-        "thumbnail_url": _dataset_asset_content_url(asset, "thumbnail", dataset=dataset),
+        "thumbnail_url": (
+            _dataset_asset_content_url(asset, "thumbnail", dataset=dataset)
+            if asset.thumbnail
+            else None
+        ),
         "content_url_auth_required": True,
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,
@@ -2821,6 +2827,7 @@ def create_profile_dataset_row(
                 "changed_fields": sorted(row.data),
             },
         )
+        row = dataset.rows.prefetch_related("assets").get(id=row.id)
     return {
         "status": "success",
         "message": "Row created.",
@@ -3007,6 +3014,7 @@ def _patch_dataset_row(
             "index_changed": index_changed,
         },
     )
+    row = dataset.rows.prefetch_related("assets").get(id=row.id)
     return {
         "status": "success",
         "message": "Row updated.",

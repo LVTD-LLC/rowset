@@ -2761,6 +2761,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert asset_payload["width"] == 3
     assert asset_payload["height"] == 2
     assert asset_payload["has_thumbnail"] is False
+    assert asset_payload["thumbnail_url"] is None
     assert asset_payload["content_url_auth_required"] is True
     assert asset_payload["content_url"].endswith(
         f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
@@ -2776,6 +2777,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert metadata_response.status_code == 200
     assert metadata_response.json()["asset"]["ref"] == asset.asset_ref
     assert metadata_response.json()["asset"]["has_thumbnail"] is False
+    assert metadata_response.json()["asset"]["thumbnail_url"] is None
 
     list_response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={profile.key}")
     assert list_response.status_code == 200
