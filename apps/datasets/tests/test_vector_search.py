@@ -10,6 +10,7 @@ from apps.datasets.vector_search import (
     QDRANT_DENSE_VECTOR_NAME,
     DatasetRowVector,
     QdrantVectorStore,
+    VectorStoreError,
     build_dataset_row_point,
     build_dataset_row_search_document,
     dataset_row_content_hash,
@@ -157,10 +158,18 @@ def test_build_dataset_row_point_rejects_wrong_vector_dimensions(vector_dataset,
 
 
 class FakeQdrantClient:
-    def __init__(self, *, exists=False, exists_sequence=None, create_exception=None):
+    def __init__(
+        self,
+        *,
+        exists=False,
+        exists_sequence=None,
+        create_exception=None,
+        upsert_exception=None,
+    ):
         self.exists = exists
         self.exists_sequence = list(exists_sequence or [])
         self.create_exception = create_exception
+        self.upsert_exception = upsert_exception
         self.created_collection = None
         self.upserted = None
         self.upsert_calls = []
@@ -177,6 +186,8 @@ class FakeQdrantClient:
         self.exists = True
 
     def upsert(self, **kwargs):
+        if self.upsert_exception is not None:
+            raise self.upsert_exception
         self.upserted = kwargs
         self.upsert_calls.append(kwargs)
 
@@ -297,6 +308,32 @@ def test_vector_store_upserts_dataset_row_vectors_in_one_call(vector_dataset, ve
         vector_row.id,
         second_row.id,
     ]
+
+
+def test_vector_store_wraps_qdrant_upsert_errors(vector_dataset, vector_row):
+    client = FakeQdrantClient(
+        exists=True,
+        upsert_exception=_unexpected_response(status_code=500, content=b"qdrant down"),
+    )
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    with pytest.raises(VectorStoreError, match="Qdrant vector upsert failed"):
+        store.upsert_dataset_row_vectors(
+            vector_dataset,
+            [
+                DatasetRowVector(
+                    row=vector_row,
+                    vector=[0.1, 0.2, 0.3],
+                    embedding_model="custom-embedding",
+                    embedding_dimensions=3,
+                )
+            ],
+        )
 
 
 def test_vector_store_rejects_upsert_model_mismatch(vector_dataset, vector_row):

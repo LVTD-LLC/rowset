@@ -2,7 +2,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.datasets.models import Dataset
-from apps.datasets.services import backfill_dataset_vectors
+from apps.datasets.services import DEFAULT_VECTOR_BACKFILL_BATCH_SIZE, backfill_dataset_vectors
 
 
 class Command(BaseCommand):
@@ -11,7 +11,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("dataset_key")
         parser.add_argument("--limit", type=int)
-        parser.add_argument("--batch-size", type=int, default=500)
+        parser.add_argument("--batch-size", type=int, default=DEFAULT_VECTOR_BACKFILL_BATCH_SIZE)
         parser.add_argument("--dry-run", action="store_true")
         parser.add_argument("--stop-on-error", action="store_true")
 
@@ -49,6 +49,5 @@ class Command(BaseCommand):
             f"{result.failed} failed, {result.rows_seen} row(s) seen."
         )
         if result.failed:
-            self.stdout.write(self.style.WARNING(message))
-        else:
-            self.stdout.write(self.style.SUCCESS(message))
+            raise CommandError(message)
+        self.stdout.write(self.style.SUCCESS(message))

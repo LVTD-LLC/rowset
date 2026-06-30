@@ -40,10 +40,15 @@ from apps.datasets.constants import (
     MAX_DATASET_IMAGE_BYTES,
     MAX_DATASET_IMAGE_PIXELS,
 )
-from apps.datasets.embeddings import EmbeddingProvider, get_embedding_provider
+from apps.datasets.embeddings import (
+    EmbeddingProvider,
+    EmbeddingProviderError,
+    get_embedding_provider,
+)
 from apps.datasets.vector_search import (
     DatasetRowVector,
     QdrantVectorStore,
+    VectorStoreError,
     build_dataset_row_search_document,
 )
 
@@ -75,6 +80,7 @@ class VectorBackfillResult:
     errors: list[VectorBackfillError] = field(default_factory=list)
 
 
+DEFAULT_VECTOR_BACKFILL_BATCH_SIZE = 100
 GENERATED_INDEX_CHOICE = "__rowset_generated__"
 GENERATED_INDEX_BASENAME = "rowset_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
@@ -261,7 +267,7 @@ def _index_vector_backfill_batch(
             raise ValueError(
                 f"Embedding provider returned {len(embeddings)} result(s) for {len(rows)} row(s)."
             )
-    except Exception as exc:
+    except (EmbeddingProviderError, ValueError) as exc:
         if stop_on_error:
             raise
         return 0, [VectorBackfillError(row_id=row.id, message=str(exc)) for row in rows]
@@ -277,7 +283,7 @@ def _index_vector_backfill_batch(
     ]
     try:
         vector_store.upsert_dataset_row_vectors(dataset, row_vectors)
-    except Exception as exc:
+    except (VectorStoreError, ValueError) as exc:
         if stop_on_error:
             raise
         return (
@@ -298,7 +304,7 @@ def backfill_dataset_vectors(
     vector_store: QdrantVectorStore | None = None,
     dry_run: bool = False,
     limit: int | None = None,
-    batch_size: int = 500,
+    batch_size: int = DEFAULT_VECTOR_BACKFILL_BATCH_SIZE,
     stop_on_error: bool = False,
 ) -> VectorBackfillResult:
     _validate_vector_backfill_dataset(dataset)
