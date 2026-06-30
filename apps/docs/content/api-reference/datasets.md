@@ -102,6 +102,28 @@ inside a fixed set:
 Choice cells can be blank. Non-blank row values must match one of the configured
 choices exactly.
 
+Reference columns store canonical Rowset keys for objects in the same account.
+Use `target: "dataset"` when the cell points at another dataset, or
+`target: "project"` when it points at a project:
+
+```json
+{
+  "column_types": {
+    "source_dataset": {
+      "type": "reference",
+      "target": "dataset"
+    },
+    "owning_project": {
+      "type": "reference",
+      "target": "project"
+    }
+  }
+}
+```
+
+Reference cells can be blank. Non-blank values must be an owned Rowset key or
+matching Rowset URL; Rowset stores the canonical key.
+
 Image columns store private image assets. Create the column with type `image`,
 leave image cells blank during row writes, then attach the image with the image
 asset endpoint:
@@ -262,7 +284,8 @@ Supported types are `text`, `choice`, `integer`, `number`, `currency`, `boolean`
 `date`, `datetime`, `email`, `url`, `reference`, and `image`. Pass a metadata
 object when a column needs `description`, when a `choice` column needs `type`
 and `choices`, when a `reference` column needs `target`, or when an `image`
-column needs a description. Updating an existing column to `choice` fails if
+column needs a description. Reference targets can be `dataset` or `project`.
+Updating an existing column to `choice` fails if
 stored values are outside the allowed choices. Updating an existing column to
 `image` fails unless stored values are blank or existing Rowset asset
 references.

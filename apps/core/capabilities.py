@@ -140,6 +140,10 @@ ROWSET_CAPABILITIES = (
                 "another Rowset dataset key. Archived dataset targets remain valid."
             ),
             (
+                'Use {"type": "reference", "target": "project"} when a column stores '
+                "a Rowset project key. Archived project targets remain valid."
+            ),
+            (
                 "Add column descriptions when an agent should not infer column "
                 "meaning from the header alone."
             ),

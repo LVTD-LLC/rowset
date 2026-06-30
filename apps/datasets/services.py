@@ -75,6 +75,7 @@ COLUMN_SCHEMA_CHOICES_KEY = "choices"
 COLUMN_SCHEMA_DESCRIPTION_KEY = "description"
 COLUMN_SCHEMA_REFERENCE_TARGET_KEY = "target"
 DATASET_REFERENCE_TARGET = "dataset"
+PROJECT_REFERENCE_TARGET = "project"
 ROW_DEFAULT_SORT = "row_number"
 ROW_SORT_DESC = "desc"
 ROW_SEARCH_COLUMN_LIMIT = 20
@@ -159,17 +160,28 @@ COLUMN_TYPE_ALIASES = {
     "select": DatasetColumnType.CHOICE,
     "single_select": DatasetColumnType.CHOICE,
     "dataset_reference": DatasetColumnType.REFERENCE,
+    "project_reference": DatasetColumnType.REFERENCE,
     "rowset_reference": DatasetColumnType.REFERENCE,
+    "rowset_project": DatasetColumnType.REFERENCE,
     "image_url": DatasetColumnType.IMAGE,
     "img": DatasetColumnType.IMAGE,
     "str": DatasetColumnType.TEXT,
     "string": DatasetColumnType.TEXT,
     "timestamp": DatasetColumnType.DATETIME,
 }
+REFERENCE_TYPE_TARGET_ALIASES = {
+    "dataset_reference": DATASET_REFERENCE_TARGET,
+    "rowset_reference": DATASET_REFERENCE_TARGET,
+    "project_reference": PROJECT_REFERENCE_TARGET,
+    "rowset_project": PROJECT_REFERENCE_TARGET,
+}
 REFERENCE_TARGET_ALIASES = {
     "dataset": DATASET_REFERENCE_TARGET,
     "datasets": DATASET_REFERENCE_TARGET,
     "rowset_dataset": DATASET_REFERENCE_TARGET,
+    "project": PROJECT_REFERENCE_TARGET,
+    "projects": PROJECT_REFERENCE_TARGET,
+    "rowset_project": PROJECT_REFERENCE_TARGET,
 }
 BOOLEAN_VALUES = {"true", "false", "yes", "no", "y", "n", "1", "0"}
 TEXTUAL_BOOLEAN_VALUES = BOOLEAN_VALUES - {"1", "0"}
@@ -547,17 +559,29 @@ def _choice_source_entry(header: str, entry, fallback_entry):
 def _reference_target_from_schema_entry(entry, fallback_entry):
     if isinstance(entry, dict) and COLUMN_SCHEMA_REFERENCE_TARGET_KEY in entry:
         return entry.get(COLUMN_SCHEMA_REFERENCE_TARGET_KEY)
+    if inferred_target := _reference_target_from_type_entry(entry):
+        return inferred_target
     if isinstance(fallback_entry, dict) and COLUMN_SCHEMA_REFERENCE_TARGET_KEY in fallback_entry:
         return fallback_entry.get(COLUMN_SCHEMA_REFERENCE_TARGET_KEY)
+    if inferred_target := _reference_target_from_type_entry(fallback_entry):
+        return inferred_target
     return DATASET_REFERENCE_TARGET
+
+
+def _reference_target_from_type_entry(entry) -> str:
+    raw_type = entry.get(COLUMN_SCHEMA_TYPE_KEY) if isinstance(entry, dict) else entry
+    normalized_type = str(raw_type or "").strip().lower()
+    return REFERENCE_TYPE_TARGET_ALIASES.get(normalized_type, "")
 
 
 def _normalize_reference_target(header: str, raw_target) -> str:
     normalized_target = str(raw_target or "").strip().lower()
     normalized_target = REFERENCE_TARGET_ALIASES.get(normalized_target, normalized_target)
-    if normalized_target != DATASET_REFERENCE_TARGET:
+    allowed_targets = {DATASET_REFERENCE_TARGET, PROJECT_REFERENCE_TARGET}
+    if normalized_target not in allowed_targets:
+        allowed = ", ".join(sorted(allowed_targets))
         raise CSVParseError(
-            f"Reference column '{header}' target must be '{DATASET_REFERENCE_TARGET}'."
+            f"Reference column '{header}' target must be one of: {allowed}."
         )
     return normalized_target
 
