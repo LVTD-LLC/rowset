@@ -401,7 +401,7 @@ class DatasetAssetOut(Schema):
     status: str
     has_thumbnail: bool
     content_url: str
-    thumbnail_url: str | None = None
+    thumbnail_url: str
     content_url_auth_required: bool
     public_enabled: bool
     public_password_protected: bool

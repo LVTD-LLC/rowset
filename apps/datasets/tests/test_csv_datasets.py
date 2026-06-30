@@ -2980,7 +2980,9 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     assert asset_payload["width"] == 3
     assert asset_payload["height"] == 2
     assert asset_payload["has_thumbnail"] is False
-    assert asset_payload["thumbnail_url"] is None
+    assert asset_payload["thumbnail_url"].endswith(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=thumbnail"
+    )
     assert asset_payload["content_url_auth_required"] is True
     assert asset_payload["public_enabled"] is False
     assert asset_payload["public_content_url"] is None
@@ -3005,7 +3007,9 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     assert metadata_response.status_code == 200
     assert metadata_response.json()["asset"]["ref"] == asset.asset_ref
     assert metadata_response.json()["asset"]["has_thumbnail"] is False
-    assert metadata_response.json()["asset"]["thumbnail_url"] is None
+    assert metadata_response.json()["asset"]["thumbnail_url"].endswith(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=thumbnail"
+    )
     assert metadata_response.json()["asset"]["public_content_url"] is None
 
     unauthenticated_head_response = client.head(
@@ -3072,7 +3076,9 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     assert public_asset_payload["public_content_url"].endswith(
         f"/share/datasets/{dataset.public_key}/assets/{asset.key}/content/?variant=original"
     )
-    assert public_asset_payload["public_thumbnail_url"] is None
+    assert public_asset_payload["public_thumbnail_url"].endswith(
+        f"/share/datasets/{dataset.public_key}/assets/{asset.key}/content/?variant=thumbnail"
+    )
     with monkeypatch.context() as head_monkeypatch:
         head_monkeypatch.setattr(
             "apps.datasets.views._dataset_row_query_context",

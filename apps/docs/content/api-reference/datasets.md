@@ -300,6 +300,15 @@ The response includes the updated row and an asset record. The row cell stores
 `asset:{key}`. Use the returned `content_url` or `thumbnail_url` with the same
 private API authentication when a client needs to fetch the image bytes.
 
+`thumbnail_url` is a display URL for the thumbnail variant. `has_thumbnail`
+means Rowset generated a separate smaller thumbnail file. When `has_thumbnail`
+is false, the thumbnail variant still responds by falling back to the stored
+original image.
+
+Rowset validates and normalizes image bytes before storage. The returned
+`byte_size` and `checksum` describe the stored Rowset image, not necessarily the
+exact source file bytes sent by the client.
+
 ```http
 GET {{ api_base_url }}/datasets/{dataset_key}/assets/{asset_key}
 GET {{ api_base_url }}/datasets/{dataset_key}/assets/{asset_key}/content?variant=thumbnail
