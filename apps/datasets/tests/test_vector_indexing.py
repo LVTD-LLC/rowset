@@ -84,6 +84,7 @@ class FakeVectorStore:
     def __init__(self):
         self.ensure_calls = 0
         self.upserts = []
+        self.upsert_batches = []
 
     def ensure_collection(self):
         self.ensure_calls += 1
@@ -107,6 +108,17 @@ class FakeVectorStore:
             }
         )
 
+    def upsert_dataset_row_vectors(self, dataset, row_vectors):
+        self.upsert_batches.append(list(row_vectors))
+        for row_vector in row_vectors:
+            self.upsert_dataset_row_vector(
+                dataset,
+                row_vector.row,
+                row_vector.vector,
+                embedding_model=row_vector.embedding_model,
+                embedding_dimensions=row_vector.embedding_dimensions,
+            )
+
 
 def test_backfill_dataset_vectors_upserts_ready_dataset_rows_in_row_order(dataset, rows):
     provider = FakeEmbeddingProvider()
@@ -124,6 +136,11 @@ def test_backfill_dataset_vectors_upserts_ready_dataset_rows_in_row_order(datase
     assert result.failed == 0
     assert result.would_index == 0
     assert store.ensure_calls == 1
+    assert len(store.upsert_batches) == 1
+    assert [row_vector.row.id for row_vector in store.upsert_batches[0]] == [
+        rows[0].id,
+        rows[1].id,
+    ]
     assert [upsert["row_id"] for upsert in store.upserts] == [rows[0].id, rows[1].id]
     assert store.upserts[0]["embedding_model"] == "fake-embedding"
     assert store.upserts[0]["embedding_dimensions"] == 3

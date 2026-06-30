@@ -41,7 +41,11 @@ from apps.datasets.constants import (
     MAX_DATASET_IMAGE_PIXELS,
 )
 from apps.datasets.embeddings import EmbeddingProvider, get_embedding_provider
-from apps.datasets.vector_search import QdrantVectorStore, build_dataset_row_search_document
+from apps.datasets.vector_search import (
+    DatasetRowVector,
+    QdrantVectorStore,
+    build_dataset_row_search_document,
+)
 
 
 class CSVParseError(ValueError):
@@ -262,23 +266,29 @@ def _index_vector_backfill_batch(
             raise
         return 0, [VectorBackfillError(row_id=row.id, message=str(exc)) for row in rows]
 
-    indexed = 0
-    errors: list[VectorBackfillError] = []
-    for row, embedding in zip(rows, embeddings, strict=True):
-        try:
-            vector_store.upsert_dataset_row_vector(
-                dataset,
-                row,
-                embedding.vector,
-                embedding_model=embedding.model,
-                embedding_dimensions=embedding.dimensions,
-            )
-            indexed += 1
-        except Exception as exc:
-            errors.append(VectorBackfillError(row_id=row.id, message=str(exc)))
-            if stop_on_error:
-                raise
-    return indexed, errors
+    row_vectors = [
+        DatasetRowVector(
+            row=row,
+            vector=embedding.vector,
+            embedding_model=embedding.model,
+            embedding_dimensions=embedding.dimensions,
+        )
+        for row, embedding in zip(rows, embeddings, strict=True)
+    ]
+    try:
+        vector_store.upsert_dataset_row_vectors(dataset, row_vectors)
+    except Exception as exc:
+        if stop_on_error:
+            raise
+        return (
+            0,
+            [
+                VectorBackfillError(row_id=row_vector.row.id, message=str(exc))
+                for row_vector in row_vectors
+            ],
+        )
+
+    return len(row_vectors), []
 
 
 def backfill_dataset_vectors(

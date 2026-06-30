@@ -1,6 +1,7 @@
 import hashlib
 import re
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,6 +27,14 @@ class DatasetRowSearchDocument:
     text: str
     content_hash: str
     payload: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class DatasetRowVector:
+    row: DatasetRow
+    vector: list[float]
+    embedding_model: str | None = None
+    embedding_dimensions: int | None = None
 
 
 def _slug(value: str, *, fallback: str) -> str:
@@ -219,17 +228,7 @@ class QdrantVectorStore:
                 return
             raise
 
-    def upsert_dataset_row_vector(
-        self,
-        dataset: Dataset,
-        row: DatasetRow,
-        vector: list[float],
-        *,
-        embedding_model: str | None = None,
-        embedding_dimensions: int | None = None,
-    ) -> None:
-        model = embedding_model or self.embedding_model
-        dimensions = embedding_dimensions or self.embedding_dimensions
+    def _validate_embedding_config(self, model: str, dimensions: int) -> None:
         if model != self.embedding_model:
             raise ValueError(
                 f"Embedding model {model!r} does not match collection model "
@@ -241,15 +240,52 @@ class QdrantVectorStore:
                 f"{self.embedding_dimensions}."
             )
 
-        point = build_dataset_row_point(
+    def upsert_dataset_row_vector(
+        self,
+        dataset: Dataset,
+        row: DatasetRow,
+        vector: list[float],
+        *,
+        embedding_model: str | None = None,
+        embedding_dimensions: int | None = None,
+    ) -> None:
+        self.upsert_dataset_row_vectors(
             dataset,
-            row,
-            vector,
-            embedding_model=model,
-            embedding_dimensions=dimensions,
+            [
+                DatasetRowVector(
+                    row=row,
+                    vector=vector,
+                    embedding_model=embedding_model,
+                    embedding_dimensions=embedding_dimensions,
+                )
+            ],
         )
+
+    def upsert_dataset_row_vectors(
+        self,
+        dataset: Dataset,
+        row_vectors: Sequence[DatasetRowVector],
+    ) -> None:
+        if not row_vectors:
+            return
+
+        points = []
+        for row_vector in row_vectors:
+            model = row_vector.embedding_model or self.embedding_model
+            dimensions = row_vector.embedding_dimensions or self.embedding_dimensions
+            self._validate_embedding_config(model, dimensions)
+            points.append(
+                build_dataset_row_point(
+                    dataset,
+                    row_vector.row,
+                    row_vector.vector,
+                    embedding_model=model,
+                    embedding_dimensions=dimensions,
+                )
+            )
+
         self.client.upsert(
             collection_name=self.collection_name,
-            points=[point],
+            points=points,
             wait=True,
         )
