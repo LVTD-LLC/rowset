@@ -147,10 +147,15 @@ purpose, workflow rules, status conventions, or other JSON context without
 changing rows.
 
 Use `attach_image_to_dataset_row` for image columns after the target row exists.
-The tool accepts JPEG, PNG, or WebP bytes encoded as base64 and writes an
-opaque `asset:{key}` reference into the row cell. Use
-`get_dataset_image_asset` to retrieve asset metadata and authenticated Rowset
-content URLs.
+The tool accepts JPEG, PNG, or WebP bytes encoded as base64 or a data URI. For
+local files, agents should read the file bytes and encode them before calling
+the hosted MCP tool; hosted MCP cannot read the agent's local file path.
+
+Pass either `row_id` or the dataset `index_value`, not both. Rowset writes an
+opaque `asset:{key}` reference into the row cell. Use `get_dataset_image_asset`
+to retrieve asset metadata plus authenticated `content_url` and `thumbnail_url`
+values. Rowset normalizes image bytes before storage, so asset `byte_size` and
+`checksum` describe the stored Rowset file rather than the original file on disk.
 
 `get_dataset` returns dataset context, semantic column schema, and relationship
 summaries for the dataset being inspected. Agents should call it before row

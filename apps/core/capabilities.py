@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-CAPABILITY_VERSION = "2026-06-29"
+CAPABILITY_VERSION = "2026-06-30"
 
 
 @dataclass(frozen=True)
@@ -133,7 +133,7 @@ ROWSET_CAPABILITIES = (
         notes=(
             (
                 "column_schema supports text, choice, integer, number, currency, "
-                "boolean, date, datetime, email, url, and reference."
+                "boolean, date, datetime, email, url, image, and reference."
             ),
             (
                 'Use {"type": "reference", "target": "dataset"} when a column stores '
@@ -246,6 +246,42 @@ ROWSET_CAPABILITIES = (
         ),
     ),
     RowsetCapability(
+        id="image_assets",
+        title="Image assets",
+        summary=(
+            "Attach private JPEG, PNG, or WebP files to image columns after the target "
+            "dataset row exists. Rowset stores an opaque asset reference in the row cell "
+            "and returns metadata plus authenticated content URLs."
+        ),
+        mcp_tools=("attach_image_to_dataset_row", "get_dataset_image_asset"),
+        rest_paths=(
+            "/api/datasets/{dataset_key}/rows/{row_id}/image",
+            "/api/datasets/{dataset_key}/rows/by-index/image",
+            "/api/datasets/{dataset_key}/assets/{asset_key}",
+            "/api/datasets/{dataset_key}/assets/{asset_key}/content",
+        ),
+        notes=(
+            "Create image columns with type image and leave image cells blank during row writes.",
+            (
+                "For MCP, read local image bytes yourself and pass base64 or a data URI; "
+                "hosted MCP cannot read local file paths."
+            ),
+            (
+                "Use row_id or the dataset index_value to attach the image, then keep "
+                "the returned asset:{key} cell value as Rowset-managed metadata."
+            ),
+            (
+                "Rowset normalizes image bytes before storage; byte_size and checksum "
+                "describe the stored asset, not necessarily the original local file."
+            ),
+            (
+                "The thumbnail URL is a display URL. It returns a generated thumbnail "
+                "when one is smaller, otherwise it falls back to the stored original image."
+            ),
+            "Use update_dataset_public_preview only when the user asks for a browser share link.",
+        ),
+    ),
+    RowsetCapability(
         id="public_previews",
         title="Public previews",
         summary=(
@@ -354,12 +390,13 @@ ROWSET_USE_CASES = (
         ),
         starter_shape=(
             "Products dataset indexed by sku.",
-            "Currency and URL semantic column types for price and product links.",
+            "Image column for product photos, plus currency and URL semantic columns.",
             "Optional public preview for read-only sharing.",
         ),
         rowset_features=(
             "dataset_context",
             "rows",
+            "image_assets",
             "public_previews",
             "archive_restore_and_exports",
         ),

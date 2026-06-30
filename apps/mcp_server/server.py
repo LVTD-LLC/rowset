@@ -1425,10 +1425,10 @@ def create_dataset_row(
     name="attach_image_to_dataset_row",
     description=(
         "Attach or replace one image asset in an image column for a ready dataset row. "
-        "Provide exactly one of row_id or index_value. The row cell will store an "
-        "opaque asset reference, not raw image bytes. For a local file, read the "
-        "bytes in the agent environment and pass them as image_base64; hosted Rowset "
-        "MCP cannot read client-local file paths."
+        "The target row must already exist. Provide exactly one of row_id or index_value. "
+        "The row cell will store an opaque asset reference, not raw image bytes. For a "
+        "local file, read the bytes in the agent environment and pass base64 or a data "
+        "URI. Hosted MCP cannot read local file paths."
     ),
 )
 def attach_image_to_dataset_row(
@@ -1441,8 +1441,8 @@ def attach_image_to_dataset_row(
         str,
         Field(
             description=(
-                "JPEG, PNG, or WebP image bytes encoded as base64. Do not pass a "
-                "local file path; read the bytes client-side and base64 encode them."
+                "JPEG, PNG, or WebP image bytes encoded as base64 or a data URI. Do "
+                "not pass a local file path; read the bytes client-side and encode them."
             )
         ),
     ],

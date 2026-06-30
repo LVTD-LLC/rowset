@@ -306,7 +306,15 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         capability_ids = {capability["id"] for capability in payload["capabilities"]}
         assert "relationships" in capability_ids
         assert "dataset_context" in capability_ids
+        assert "image_assets" in capability_ids
         assert "get_dataset before row operations" in " ".join(payload["recommended_startup"])
+        image_assets = next(
+            capability
+            for capability in payload["capabilities"]
+            if capability["id"] == "image_assets"
+        )
+        assert "attach_image_to_dataset_row" in image_assets["mcp_tools"]
+        assert "hosted MCP cannot read local file paths" in " ".join(image_assets["notes"])
         assert "guardrails" in payload
 
     anyio.run(run)

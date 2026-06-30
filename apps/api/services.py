@@ -2514,14 +2514,9 @@ def _dataset_asset_public_content_url(
     variant: str,
     *,
     dataset: Dataset | None = None,
-    has_thumbnail: bool = True,
 ) -> str | None:
     dataset = dataset or asset.dataset
-    if (
-        not dataset.public_enabled
-        or dataset.is_public_password_protected
-        or (variant == "thumbnail" and not has_thumbnail)
-    ):
+    if not dataset.public_enabled or dataset.is_public_password_protected:
         return None
     path = reverse(
         "public_dataset_asset_content",
@@ -2556,11 +2551,7 @@ def serialize_dataset_asset(
         "status": asset.status,
         "has_thumbnail": has_thumbnail,
         "content_url": _dataset_asset_content_url(asset, "original", dataset=dataset),
-        "thumbnail_url": (
-            _dataset_asset_content_url(asset, "thumbnail", dataset=dataset)
-            if has_thumbnail
-            else None
-        ),
+        "thumbnail_url": _dataset_asset_content_url(asset, "thumbnail", dataset=dataset),
         "content_url_auth_required": True,
         "public_enabled": dataset.public_enabled,
         "public_password_protected": dataset.is_public_password_protected,
@@ -2573,7 +2564,6 @@ def serialize_dataset_asset(
             asset,
             "thumbnail",
             dataset=dataset,
-            has_thumbnail=has_thumbnail,
         ),
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,

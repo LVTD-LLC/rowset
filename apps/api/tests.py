@@ -28,6 +28,18 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow, Project
 
 
+def test_openapi_dataset_asset_thumbnail_url_is_required_string(client):
+    response = client.get("/api/openapi.json")
+
+    assert response.status_code == 200
+    asset_schema = response.json()["components"]["schemas"]["DatasetAssetOut"]
+    assert "thumbnail_url" in asset_schema["required"]
+    assert asset_schema["properties"]["thumbnail_url"] == {
+        "title": "Thumbnail Url",
+        "type": "string",
+    }
+
+
 class BlogPostApiTests(SimpleTestCase):
     @staticmethod
     def _request() -> HttpRequest:

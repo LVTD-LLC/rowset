@@ -118,6 +118,11 @@ def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     assert "get_user_info" in tool_names
     assert "get_rowset_capabilities" in tool_names
     assert "list_dataset_rows" in tool_names
+    image_tool = next(tool for tool in tools if tool["name"] == "attach_image_to_dataset_row")
+    assert "The target row must already exist" in image_tool["description"]
+    assert "Hosted MCP cannot read local file paths" in image_tool["description"]
+    image_base64_schema = image_tool["inputSchema"]["properties"]["image_base64"]
+    assert "base64 or a data URI" in image_base64_schema["description"]
 
 
 def test_mcp_get_user_info_uses_stateless_json_response(authenticated_mcp):

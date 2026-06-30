@@ -80,6 +80,17 @@ stores the file privately and writes an opaque `asset:{key}` reference into the
 cell. Agents should treat that reference as Rowset-managed metadata, not as a
 URL or raw image data.
 
+The target row must exist before an image can be attached. For MCP, agents read
+local image bytes themselves and pass base64 or a data URI to
+`attach_image_to_dataset_row`; hosted MCP cannot read a local file path from the
+agent's machine.
+
+Rowset validates and normalizes image bytes before storage. Asset `byte_size`
+and `checksum` describe the stored Rowset image, so they may differ from the
+source file on disk. The thumbnail URL is always a display URL: it returns a
+generated thumbnail when one is smaller, otherwise it falls back to the stored
+original image.
+
 Image assets appear in the authenticated dataset view and in public previews
 when sharing is enabled. Dataset exports include the `asset:{key}` reference so
 automated workflows can still use stable row data without embedding binary files
