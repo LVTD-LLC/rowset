@@ -172,3 +172,20 @@ def test_backfill_dataset_vectors_command_reports_missing_embedding_configuratio
     with override_settings(OPENAI_API_KEY=""):
         with pytest.raises(CommandError, match="OPENAI_API_KEY"):
             call_command("backfill_dataset_vectors", str(dataset.key))
+
+
+def test_backfill_dataset_vectors_command_reports_runtime_backfill_errors(
+    dataset,
+    rows,
+    monkeypatch,
+):
+    def fail_backfill(*args, **kwargs):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(
+        "apps.datasets.management.commands.backfill_dataset_vectors.backfill_dataset_vectors",
+        fail_backfill,
+    )
+
+    with pytest.raises(CommandError, match="provider unavailable"):
+        call_command("backfill_dataset_vectors", str(dataset.key), "--stop-on-error")

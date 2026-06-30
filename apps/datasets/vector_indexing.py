@@ -74,16 +74,16 @@ def backfill_dataset_vectors(
     rows = _dataset_rows_for_backfill(dataset, limit=limit)
     for row in rows.iterator(chunk_size=batch_size):
         rows_seen += 1
+        if dry_run:
+            would_index += 1
+            continue
+
         document = build_dataset_row_search_document(
             dataset,
             row,
             embedding_model=provider.model if provider else None,
             embedding_dimensions=provider.dimensions if provider else None,
         )
-
-        if dry_run:
-            would_index += 1
-            continue
 
         try:
             embedding = provider.embed_text(document.text)
