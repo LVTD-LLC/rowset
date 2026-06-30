@@ -1,6 +1,8 @@
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
+from httpx import Headers
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
@@ -13,6 +15,7 @@ from apps.datasets.vector_search import (
     dataset_row_point_id,
     dataset_row_search_text,
     get_qdrant_client,
+    qdrant_is_enabled,
     qdrant_row_collection_name,
 )
 
@@ -72,8 +75,21 @@ def test_qdrant_row_collection_name_uses_prefix_model_and_version():
         )
 
 
-def test_get_qdrant_client_requires_url():
-    with override_settings(QDRANT_URL=""):
+def test_qdrant_is_enabled_follows_feature_flag():
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=False):
+        assert qdrant_is_enabled() is False
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        assert qdrant_is_enabled() is True
+
+
+def test_get_qdrant_client_requires_feature_flag():
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=False, QDRANT_URL="http://qdrant:6333"):
+        with pytest.raises(ImproperlyConfigured, match="ROWSET_VECTOR_SEARCH_ENABLED"):
+            get_qdrant_client()
+
+
+def test_get_qdrant_client_requires_url_after_feature_flag_enabled():
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True, QDRANT_URL=""):
         with pytest.raises(ImproperlyConfigured, match="QDRANT_URL"):
             get_qdrant_client()
 
@@ -139,15 +155,21 @@ def test_build_dataset_row_point_rejects_wrong_vector_dimensions(vector_dataset,
 
 
 class FakeQdrantClient:
-    def __init__(self, *, exists=False):
+    def __init__(self, *, exists=False, exists_sequence=None, create_exception=None):
         self.exists = exists
+        self.exists_sequence = list(exists_sequence or [])
+        self.create_exception = create_exception
         self.created_collection = None
         self.upserted = None
 
     def collection_exists(self, *, collection_name):
+        if self.exists_sequence:
+            return self.exists_sequence.pop(0)
         return self.exists
 
     def create_collection(self, **kwargs):
+        if self.create_exception is not None:
+            raise self.create_exception
         self.created_collection = kwargs
         self.exists = True
 
@@ -168,14 +190,52 @@ def test_vector_store_ensure_collection_creates_named_dense_collection():
     assert vector_config.distance == "Cosine"
 
 
+def _unexpected_response(status_code=409, content=b"collection already exists"):
+    return UnexpectedResponse(
+        status_code=status_code,
+        reason_phrase="Conflict" if status_code == 409 else "Server Error",
+        content=content,
+        headers=Headers(),
+    )
+
+
+def test_vector_store_ensure_collection_tolerates_concurrent_create():
+    client = FakeQdrantClient(
+        exists_sequence=[False, True],
+        create_exception=_unexpected_response(),
+    )
+    store = QdrantVectorStore(client=client, collection_name="rowset_rows_test_v1")
+
+    store.ensure_collection()
+
+    assert client.exists_sequence == []
+
+
+def test_vector_store_ensure_collection_reraises_unexpected_qdrant_errors():
+    error = _unexpected_response(status_code=500, content=b"internal error")
+    client = FakeQdrantClient(exists_sequence=[False], create_exception=error)
+    store = QdrantVectorStore(client=client, collection_name="rowset_rows_test_v1")
+
+    with pytest.raises(UnexpectedResponse):
+        store.ensure_collection()
+
+
 def test_vector_store_upserts_dataset_row_point(vector_dataset, vector_row):
     client = FakeQdrantClient(exists=True)
     store = QdrantVectorStore(client=client, collection_name="rowset_rows_test_v1")
 
     with override_settings(ROWSET_EMBEDDING_DIMENSIONS=3):
-        store.upsert_dataset_row_vector(vector_dataset, vector_row, [0.1, 0.2, 0.3])
+        store.upsert_dataset_row_vector(
+            vector_dataset,
+            vector_row,
+            [0.1, 0.2, 0.3],
+            embedding_model="custom-embedding",
+            embedding_dimensions=3,
+        )
 
     assert client.upserted["collection_name"] == "rowset_rows_test_v1"
     assert client.upserted["wait"] is True
     assert len(client.upserted["points"]) == 1
     assert client.upserted["points"][0].payload["row_id"] == vector_row.id
+    assert client.upserted["points"][0].payload["embedding_model"] == "custom-embedding"
+    assert client.upserted["points"][0].payload["embedding_dimensions"] == 3

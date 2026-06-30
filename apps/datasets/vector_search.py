@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qdrant_models
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from apps.datasets.models import Dataset, DatasetRow
 
@@ -51,7 +52,15 @@ def qdrant_is_configured() -> bool:
     return bool(str(settings.QDRANT_URL or "").strip())
 
 
+def qdrant_is_enabled() -> bool:
+    return bool(settings.ROWSET_VECTOR_SEARCH_ENABLED)
+
+
 def get_qdrant_client() -> QdrantClient:
+    if not qdrant_is_enabled():
+        raise ImproperlyConfigured(
+            "ROWSET_VECTOR_SEARCH_ENABLED must be true before using vector search."
+        )
     if not qdrant_is_configured():
         raise ImproperlyConfigured("QDRANT_URL must be configured before using vector search.")
 
@@ -62,6 +71,12 @@ def get_qdrant_client() -> QdrantClient:
     if settings.QDRANT_API_KEY:
         kwargs["api_key"] = settings.QDRANT_API_KEY
     return QdrantClient(**kwargs)
+
+
+def _is_qdrant_collection_exists_error(exc: UnexpectedResponse) -> bool:
+    if exc.status_code == 409:
+        return True
+    return "already exists" in str(exc).lower()
 
 
 def dataset_row_point_id(dataset: Dataset, row: DatasetRow, *, chunk_index: int = 0) -> str:
@@ -175,23 +190,39 @@ class QdrantVectorStore:
         if self.client.collection_exists(collection_name=self.collection_name):
             return
 
-        self.client.create_collection(
-            collection_name=self.collection_name,
-            vectors_config={
-                QDRANT_DENSE_VECTOR_NAME: qdrant_models.VectorParams(
-                    size=settings.ROWSET_EMBEDDING_DIMENSIONS,
-                    distance=qdrant_models.Distance.COSINE,
-                ),
-            },
-        )
+        try:
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config={
+                    QDRANT_DENSE_VECTOR_NAME: qdrant_models.VectorParams(
+                        size=settings.ROWSET_EMBEDDING_DIMENSIONS,
+                        distance=qdrant_models.Distance.COSINE,
+                    ),
+                },
+            )
+        except UnexpectedResponse as exc:
+            if not _is_qdrant_collection_exists_error(exc):
+                raise
+            if self.client.collection_exists(collection_name=self.collection_name):
+                return
+            raise
 
     def upsert_dataset_row_vector(
         self,
         dataset: Dataset,
         row: DatasetRow,
         vector: list[float],
+        *,
+        embedding_model: str | None = None,
+        embedding_dimensions: int | None = None,
     ) -> None:
-        point = build_dataset_row_point(dataset, row, vector)
+        point = build_dataset_row_point(
+            dataset,
+            row,
+            vector,
+            embedding_model=embedding_model,
+            embedding_dimensions=embedding_dimensions,
+        )
         self.client.upsert(
             collection_name=self.collection_name,
             points=[point],
