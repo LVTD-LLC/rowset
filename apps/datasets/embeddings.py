@@ -19,6 +19,8 @@ class EmbeddingProvider(Protocol):
 
     def embed_text(self, text: str) -> EmbeddingResult: ...
 
+    def embed_texts(self, texts: list[str]) -> list[EmbeddingResult]: ...
+
 
 class OpenAIEmbeddingProvider:
     def __init__(
@@ -33,24 +35,43 @@ class OpenAIEmbeddingProvider:
         self.client = client or OpenAI(api_key=settings.OPENAI_API_KEY)
 
     def embed_text(self, text: str) -> EmbeddingResult:
+        return self._embed(text)[0]
+
+    def embed_texts(self, texts: list[str]) -> list[EmbeddingResult]:
+        if not texts:
+            return []
+        return self._embed(texts)
+
+    def _embed(self, input_value: str | list[str]) -> list[EmbeddingResult]:
         response = self.client.embeddings.create(
             model=self.model,
-            input=text,
+            input=input_value,
             dimensions=self.dimensions,
         )
-        vector = list(response.data[0].embedding)
-        if len(vector) != self.dimensions:
-            raise ValueError(
-                f"Expected embedding with {self.dimensions} dimensions, got {len(vector)}."
+        results = []
+        for item in response.data:
+            vector = list(item.embedding)
+            if len(vector) != self.dimensions:
+                raise ValueError(
+                    f"Expected embedding with {self.dimensions} dimensions, got {len(vector)}."
+                )
+            results.append(
+                EmbeddingResult(
+                    vector=vector,
+                    model=self.model,
+                    dimensions=self.dimensions,
+                )
             )
-        return EmbeddingResult(
-            vector=vector,
-            model=self.model,
-            dimensions=self.dimensions,
-        )
+        return results
 
 
 def get_embedding_provider() -> EmbeddingProvider:
+    from apps.datasets.vector_search import qdrant_is_enabled
+
+    if not qdrant_is_enabled():
+        raise ImproperlyConfigured(
+            "ROWSET_VECTOR_SEARCH_ENABLED must be true before embedding rows."
+        )
     if not str(settings.OPENAI_API_KEY or "").strip():
         raise ImproperlyConfigured("OPENAI_API_KEY must be configured before embedding rows.")
     return OpenAIEmbeddingProvider()
