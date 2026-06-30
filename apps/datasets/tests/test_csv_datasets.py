@@ -120,6 +120,15 @@ def image_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def palette_image_bytes() -> bytes:
+    buffer = io.BytesIO()
+    image = Image.new("P", (3, 2), 0)
+    image.putpalette([12, 34, 56, 240, 244, 248] + [0, 0, 0] * 254)
+    image.putdata([0, 1, 0, 1, 0, 1])
+    image.save(buffer, format="PNG", optimize=True)
+    return buffer.getvalue()
+
+
 def xlsx_cell_texts(content: bytes) -> list[str]:
     root = ET.fromstring(xlsx_sheet_xml(content))
     namespace = {"xlsx": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
@@ -2558,6 +2567,29 @@ def test_prepare_dataset_image_rejects_exif_transposed_image_over_pixel_limit(mo
         )
 
 
+def test_prepare_dataset_image_accepts_palette_png():
+    prepared = prepare_dataset_image(
+        image_bytes=palette_image_bytes(),
+        filename="palette.png",
+        content_type="image/png",
+    )
+
+    assert prepared.content_type == "image/png"
+    assert prepared.width == 3
+    assert prepared.height == 2
+    assert prepared.image_bytes.startswith(b"\x89PNG")
+
+
+def test_prepare_dataset_image_skips_larger_thumbnail_for_tiny_png():
+    prepared = prepare_dataset_image(
+        image_bytes=image_bytes(),
+        filename="tiny.png",
+        content_type="image/png",
+    )
+
+    assert prepared.thumbnail_bytes is None
+
+
 def test_image_attach_records_failed_rollback_file_cleanup(profile, monkeypatch):
     dataset = Dataset.objects.create(
         profile=profile,
@@ -2582,6 +2614,16 @@ def test_image_attach_records_failed_rollback_file_cleanup(profile, monkeypatch)
     saved_names = []
     deleted_names = []
 
+    class PreparedImage:
+        filename = "photo.png"
+        content_type = "image/png"
+        image_bytes = b"original"
+        thumbnail_bytes = b"thumbnail"
+        byte_size = len(image_bytes)
+        width = 3
+        height = 2
+        checksum = "a" * 64
+
     def fail_thumbnail_save(name: str, content, *args, **kwargs) -> str:
         saved_names.append(name)
         if name.endswith("thumbnail.jpg"):
@@ -2592,6 +2634,10 @@ def test_image_attach_records_failed_rollback_file_cleanup(profile, monkeypatch)
         deleted_names.append(name)
         raise OSError("delete failed")
 
+    monkeypatch.setattr(
+        "apps.api.services.prepare_dataset_image",
+        lambda **kwargs: PreparedImage(),
+    )
     monkeypatch.setattr(storage, "save", fail_thumbnail_save)
     monkeypatch.setattr(storage, "delete", fail_delete)
 
@@ -2717,25 +2763,27 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert asset_payload["content_type"] == "image/png"
     assert asset_payload["width"] == 3
     assert asset_payload["height"] == 2
-    assert asset_payload["has_thumbnail"] is True
+    assert asset_payload["has_thumbnail"] is False
+    assert asset_payload["thumbnail_url"] is None
+    assert asset_payload["content_url_auth_required"] is True
     assert asset_payload["public_enabled"] is False
     assert asset_payload["public_content_url"] is None
     assert asset_payload["public_thumbnail_url"] is None
     assert asset_payload["content_url"].endswith(
         f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
     )
-    assert asset_payload["thumbnail_url"].endswith(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=thumbnail"
-    )
     assert asset.file.name.endswith("/original.png")
-    assert asset.thumbnail.name.endswith("/thumbnail.jpg")
+    assert asset.thumbnail.name == ""
+    assert payload["row"]["assets"][0]["ref"] == asset.asset_ref
+    assert payload["row"]["assets"][0]["column"] == "photo"
 
     metadata_response = client.get(
         f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
     )
     assert metadata_response.status_code == 200
     assert metadata_response.json()["asset"]["ref"] == asset.asset_ref
-    assert metadata_response.json()["asset"]["has_thumbnail"] is True
+    assert metadata_response.json()["asset"]["has_thumbnail"] is False
+    assert metadata_response.json()["asset"]["thumbnail_url"] is None
     assert metadata_response.json()["asset"]["public_content_url"] is None
 
     unauthenticated_head_response = client.head(
@@ -2750,6 +2798,16 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert original_head_response.status_code == 200
     assert original_head_response["Content-Type"] == "image/png"
 
+    list_response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={profile.key}")
+    assert list_response.status_code == 200
+    assert list_response.json()["rows"][0]["assets"][0]["ref"] == asset.asset_ref
+
+    row_response = client.get(
+        f"/api/datasets/{dataset.key}/rows/by-index?api_key={profile.key}&index_value=A-1"
+    )
+    assert row_response.status_code == 200
+    assert row_response.json()["row"]["assets"][0]["ref"] == asset.asset_ref
+
     original_response = client.get(
         f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
         f"?api_key={profile.key}&variant=original"
@@ -2757,6 +2815,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert original_response.status_code == 200
     assert original_response["Content-Type"] == "image/png"
     assert original_response["X-Content-Type-Options"] == "nosniff"
+    assert original_response["Cache-Control"] == "private, max-age=86400, immutable"
     assert original_response.content.startswith(b"\x89PNG")
 
     thumbnail_response = client.get(
@@ -2764,8 +2823,9 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
         f"?api_key={profile.key}&variant=thumbnail"
     )
     assert thumbnail_response.status_code == 200
-    assert thumbnail_response["Content-Type"] == "image/jpeg"
-    assert thumbnail_response.content.startswith(b"\xff\xd8")
+    assert thumbnail_response["Content-Type"] == "image/png"
+    assert thumbnail_response["Cache-Control"] == "private, max-age=86400, immutable"
+    assert thumbnail_response.content.startswith(b"\x89PNG")
 
     client.force_login(profile.user)
     dataset_detail = client.get(dataset.get_absolute_url())
@@ -2784,9 +2844,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert public_asset_payload["public_content_url"].endswith(
         f"/share/datasets/{dataset.public_key}/assets/{asset.key}/content/?variant=original"
     )
-    assert public_asset_payload["public_thumbnail_url"].endswith(
-        f"/share/datasets/{dataset.public_key}/assets/{asset.key}/content/?variant=thumbnail"
-    )
+    assert public_asset_payload["public_thumbnail_url"] is None
     public_head_response = client.head(dataset.get_public_url())
     assert public_head_response.status_code == 200
     public_response = client.get(dataset.get_public_url())
@@ -2808,7 +2866,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
         "?variant=thumbnail"
     )
     assert public_asset_head_response.status_code == 200
-    assert public_asset_head_response["Content-Type"] == "image/jpeg"
+    assert public_asset_head_response["Content-Type"] == "image/png"
 
     public_row_response = client.get(
         reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])

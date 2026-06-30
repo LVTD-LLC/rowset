@@ -1,7 +1,7 @@
 import hashlib
 import json
 import uuid
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 
 from django.conf import settings
 from django.contrib import messages
@@ -13,6 +13,7 @@ from django.db.models import Count, F, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import DetailView, ListView
@@ -35,6 +36,7 @@ from apps.api.services import (
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project
 from apps.datasets.services import (
+    DATASET_ASSET_CACHE_CONTROL,
     DATASET_REFERENCE_TARGET,
     ROW_DEFAULT_SORT,
     ROW_FILTER_ABOVE,
@@ -136,54 +138,64 @@ def _rowset_link_hosts(request=None) -> set[str]:
     return hosts
 
 
-def _parse_rowset_dataset_link(value: str, request=None) -> dict[str, object] | None:
+def _normalized_rowset_href(value: str, request=None) -> tuple[str, ParseResult] | None:
     raw_value = value.strip()
-    if not raw_value:
+    if not raw_value or raw_value.startswith("//"):
         return None
 
-    if raw_value.startswith("//"):
-        return None
     if raw_value.startswith("/"):
-        href = raw_value
         parsed = urlparse(raw_value)
         if parsed.scheme or parsed.netloc:
             return None
-    else:
-        href = raw_value if "://" in raw_value else f"https://{raw_value}"
-        parsed = urlparse(href)
-        if parsed.scheme not in ROWSET_LINK_SCHEMES or not parsed.hostname:
-            return None
-        if parsed.hostname.lower() not in _rowset_link_hosts(request):
-            return None
+        return raw_value, parsed
 
-    path_parts = [part for part in parsed.path.split("/") if part]
-    is_public = False
-    dataset_key = ""
-    remaining_parts: list[str] = []
-    if len(path_parts) >= 2 and path_parts[0] == "datasets":
-        dataset_key = path_parts[1]
-        remaining_parts = path_parts[2:]
-    elif len(path_parts) >= 3 and path_parts[0:2] == ["share", "datasets"]:
-        is_public = True
-        dataset_key = path_parts[2]
-        remaining_parts = path_parts[3:]
-    else:
+    href = raw_value if "://" in raw_value else f"https://{raw_value}"
+    parsed = urlparse(href)
+    if parsed.scheme not in ROWSET_LINK_SCHEMES or not parsed.hostname:
         return None
+    if parsed.hostname.lower() not in _rowset_link_hosts(request):
+        return None
+    return href, parsed
+
+
+def _rowset_dataset_path_match(path: str) -> tuple[str, bool, list[str]] | None:
+    path_parts = [part for part in path.split("/") if part]
+    if len(path_parts) >= 2 and path_parts[0] == "datasets":
+        return path_parts[1], False, path_parts[2:]
+    if len(path_parts) >= 3 and path_parts[0:2] == ["share", "datasets"]:
+        return path_parts[2], True, path_parts[3:]
+    return None
+
+
+def _rowset_link_row_id(remaining_parts: list[str]) -> tuple[bool, int | None]:
+    if not remaining_parts:
+        return True, None
+    if len(remaining_parts) != 2 or remaining_parts[0] != "rows":
+        return False, None
+    try:
+        return True, int(remaining_parts[1])
+    except ValueError:
+        return False, None
+
+
+def _parse_rowset_dataset_link(value: str, request=None) -> dict[str, object] | None:
+    normalized_href = _normalized_rowset_href(value, request)
+    if normalized_href is None:
+        return None
+    href, parsed = normalized_href
+
+    path_match = _rowset_dataset_path_match(parsed.path)
+    if path_match is None:
+        return None
+    dataset_key, is_public, remaining_parts = path_match
 
     try:
         uuid.UUID(dataset_key)
     except ValueError:
         return None
 
-    row_id = None
-    if not remaining_parts:
-        pass
-    elif len(remaining_parts) == 2 and remaining_parts[0] == "rows":
-        try:
-            row_id = int(remaining_parts[1])
-        except ValueError:
-            return None
-    else:
+    is_valid_row_path, row_id = _rowset_link_row_id(remaining_parts)
+    if not is_valid_row_path:
         return None
 
     return {
@@ -435,7 +447,8 @@ def _dataset_asset_file_response(asset: DatasetAsset, variant: str) -> HttpRespo
         asset.original_filename or f"{asset.key}",
     )
     response["X-Content-Type-Options"] = "nosniff"
-    response["Cache-Control"] = "private, no-store"
+    response["Cache-Control"] = DATASET_ASSET_CACHE_CONTROL
+    patch_vary_headers(response, ["Authorization", "Cookie"])
     return response
 
 
