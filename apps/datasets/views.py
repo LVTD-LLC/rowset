@@ -1,7 +1,7 @@
 import hashlib
 import json
 import uuid
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 
 from django.conf import settings
 from django.contrib import messages
@@ -138,54 +138,64 @@ def _rowset_link_hosts(request=None) -> set[str]:
     return hosts
 
 
-def _parse_rowset_dataset_link(value: str, request=None) -> dict[str, object] | None:
+def _normalized_rowset_href(value: str, request=None) -> tuple[str, ParseResult] | None:
     raw_value = value.strip()
-    if not raw_value:
+    if not raw_value or raw_value.startswith("//"):
         return None
 
-    if raw_value.startswith("//"):
-        return None
     if raw_value.startswith("/"):
-        href = raw_value
         parsed = urlparse(raw_value)
         if parsed.scheme or parsed.netloc:
             return None
-    else:
-        href = raw_value if "://" in raw_value else f"https://{raw_value}"
-        parsed = urlparse(href)
-        if parsed.scheme not in ROWSET_LINK_SCHEMES or not parsed.hostname:
-            return None
-        if parsed.hostname.lower() not in _rowset_link_hosts(request):
-            return None
+        return raw_value, parsed
 
-    path_parts = [part for part in parsed.path.split("/") if part]
-    is_public = False
-    dataset_key = ""
-    remaining_parts: list[str] = []
-    if len(path_parts) >= 2 and path_parts[0] == "datasets":
-        dataset_key = path_parts[1]
-        remaining_parts = path_parts[2:]
-    elif len(path_parts) >= 3 and path_parts[0:2] == ["share", "datasets"]:
-        is_public = True
-        dataset_key = path_parts[2]
-        remaining_parts = path_parts[3:]
-    else:
+    href = raw_value if "://" in raw_value else f"https://{raw_value}"
+    parsed = urlparse(href)
+    if parsed.scheme not in ROWSET_LINK_SCHEMES or not parsed.hostname:
         return None
+    if parsed.hostname.lower() not in _rowset_link_hosts(request):
+        return None
+    return href, parsed
+
+
+def _rowset_dataset_path_match(path: str) -> tuple[str, bool, list[str]] | None:
+    path_parts = [part for part in path.split("/") if part]
+    if len(path_parts) >= 2 and path_parts[0] == "datasets":
+        return path_parts[1], False, path_parts[2:]
+    if len(path_parts) >= 3 and path_parts[0:2] == ["share", "datasets"]:
+        return path_parts[2], True, path_parts[3:]
+    return None
+
+
+def _rowset_link_row_id(remaining_parts: list[str]) -> tuple[bool, int | None]:
+    if not remaining_parts:
+        return True, None
+    if len(remaining_parts) != 2 or remaining_parts[0] != "rows":
+        return False, None
+    try:
+        return True, int(remaining_parts[1])
+    except ValueError:
+        return False, None
+
+
+def _parse_rowset_dataset_link(value: str, request=None) -> dict[str, object] | None:
+    normalized_href = _normalized_rowset_href(value, request)
+    if normalized_href is None:
+        return None
+    href, parsed = normalized_href
+
+    path_match = _rowset_dataset_path_match(parsed.path)
+    if path_match is None:
+        return None
+    dataset_key, is_public, remaining_parts = path_match
 
     try:
         uuid.UUID(dataset_key)
     except ValueError:
         return None
 
-    row_id = None
-    if not remaining_parts:
-        pass
-    elif len(remaining_parts) == 2 and remaining_parts[0] == "rows":
-        try:
-            row_id = int(remaining_parts[1])
-        except ValueError:
-            return None
-    else:
+    is_valid_row_path, row_id = _rowset_link_row_id(remaining_parts)
+    if not is_valid_row_path:
         return None
 
     return {
@@ -417,7 +427,12 @@ def _dataset_export_response(dataset: Dataset, export_format: str) -> HttpRespon
     return response
 
 
-def _dataset_asset_file_response(asset: DatasetAsset, variant: str) -> HttpResponse:
+def _dataset_asset_file_response(
+    asset: DatasetAsset,
+    variant: str,
+    *,
+    include_body: bool = True,
+) -> HttpResponse:
     try:
         field = dataset_asset_content_field(asset, variant)
     except DatasetServiceError as exc:
@@ -430,8 +445,11 @@ def _dataset_asset_file_response(asset: DatasetAsset, variant: str) -> HttpRespo
         if normalized_variant == "thumbnail" and asset.thumbnail
         else asset.content_type
     )
-    with field.open("rb") as asset_file:
-        response = HttpResponse(asset_file.read(), content_type=content_type)
+    if include_body:
+        with field.open("rb") as asset_file:
+            response = HttpResponse(asset_file.read(), content_type=content_type)
+    else:
+        response = HttpResponse(content_type=content_type)
     response["Content-Disposition"] = content_disposition_header(
         False,
         asset.original_filename or f"{asset.key}",
@@ -1875,7 +1893,7 @@ def dataset_export(request, dataset_key, export_format):
 
 
 @login_required
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "HEAD"])
 def dataset_asset_content(request, dataset_key, asset_key):
     asset = get_object_or_404(
         DatasetAsset.objects.select_related("dataset"),
@@ -1883,7 +1901,11 @@ def dataset_asset_content(request, dataset_key, asset_key):
         dataset__key=dataset_key,
         dataset__profile=request.user.profile,
     )
-    return _dataset_asset_file_response(asset, request.GET.get("variant", "original"))
+    return _dataset_asset_file_response(
+        asset,
+        request.GET.get("variant", "original"),
+        include_body=request.method != "HEAD",
+    )
 
 
 @login_required
@@ -1933,7 +1955,7 @@ def _handle_public_password_access(
     return _has_public_dataset_access(request, dataset), password_error, None
 
 
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET", "HEAD", "POST"])
 def public_dataset(request, public_key):
     dataset = get_object_or_404(
         Dataset,
@@ -1950,6 +1972,11 @@ def public_dataset(request, public_key):
     )
     if password_response is not None:
         return password_response
+
+    if request.method == "HEAD":
+        response = HttpResponse()
+        response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+        return response
 
     page_obj = None
     public_rows_with_values = []
@@ -2026,7 +2053,7 @@ def public_dataset(request, public_key):
     return response
 
 
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET", "HEAD", "POST"])
 def public_dataset_row_detail(request, public_key, row_id):
     dataset = get_object_or_404(
         Dataset,
@@ -2046,6 +2073,17 @@ def public_dataset_row_detail(request, public_key, row_id):
     )
     if password_response is not None:
         return password_response
+
+    if request.method == "HEAD":
+        if has_access:
+            get_object_or_404(
+                DatasetRow.objects.only("id"),
+                dataset=dataset,
+                id=row_id,
+            )
+        response = HttpResponse()
+        response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+        return response
 
     dataset_row = None
     row_cells = []
@@ -2081,7 +2119,7 @@ def public_dataset_row_detail(request, public_key, row_id):
     return response
 
 
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "HEAD"])
 def public_dataset_asset_content(request, public_key, asset_key):
     dataset = get_object_or_404(
         Dataset,
@@ -2097,6 +2135,10 @@ def public_dataset_asset_content(request, public_key, asset_key):
         key=asset_key,
         dataset=dataset,
     )
-    response = _dataset_asset_file_response(asset, request.GET.get("variant", "original"))
+    response = _dataset_asset_file_response(
+        asset,
+        request.GET.get("variant", "original"),
+        include_body=request.method != "HEAD",
+    )
     response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
     return response

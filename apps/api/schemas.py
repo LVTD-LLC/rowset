@@ -202,7 +202,7 @@ class DatasetSummaryOut(Schema):
     row_count: int
     public_enabled: bool
     public_key: str
-    public_url: str
+    public_url: str | None = None
     public_page_size: int
     public_password_protected: bool
     created_at: datetime
@@ -403,6 +403,10 @@ class DatasetAssetOut(Schema):
     content_url: str
     thumbnail_url: str | None = None
     content_url_auth_required: bool
+    public_enabled: bool
+    public_password_protected: bool
+    public_content_url: str | None = None
+    public_thumbnail_url: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -417,7 +421,15 @@ class DatasetRowOut(Schema):
 
 class DatasetImageAttachIn(Schema):
     column_name: str = Field(..., min_length=1)
-    image_base64: str = Field(..., min_length=1)
+    image_base64: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "JPEG, PNG, or WebP image bytes encoded as base64. For a local file, "
+            "read the file bytes in the agent environment and pass the base64 string; "
+            "hosted Rowset MCP cannot read local file paths."
+        ),
+    )
     filename: str | None = None
     content_type: str | None = None
 

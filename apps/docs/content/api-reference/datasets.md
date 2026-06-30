@@ -447,7 +447,8 @@ To remove an existing preview password:
 }
 ```
 
-The response includes `dataset.public_url`.
+The response includes `dataset.public_url` when `dataset.public_enabled` is true.
+When public preview sharing is disabled, `dataset.public_url` is `null`.
 
 ## Archive a dataset
 
