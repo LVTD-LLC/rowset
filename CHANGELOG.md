@@ -16,6 +16,9 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 
 ## [Unreleased]
 
+### Added
+- Added SEO/content planning files for Rowset's blog workflow, including brand positioning, link inventory, and an initial candidate backlog.
+
 ### Changed
 - Replaced inherited `AWS_*` media storage setup with explicit `ROWSET_ASSET_*` private dataset asset storage configuration for Cloudflare R2/S3-compatible storage.
 - Added Sentry request metrics for low-cardinality HTTP request counts and duration distributions, controlled by `SENTRY_ENABLE_METRICS`.
@@ -36,6 +39,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Google signup/login now asks only for basic profile/email access.
 
 ### Fixed
+- Restricted public blog listing, detail pages, and sitemap entries to published blog posts so draft CMS content is not exposed or indexed.
 - Declared `boto3` as an explicit runtime dependency so the django-storages S3 backend imports reliably in clean production builds.
 - Sentry request metrics middleware now wraps the full Django middleware stack so request counts include earlier middleware handling and durations include framework overhead.
 - REST API key authentication now accepts `Authorization: Bearer ...` and `X-API-Key` headers in addition to `?api_key=...`, matching the published docs and agent setup guidance.
