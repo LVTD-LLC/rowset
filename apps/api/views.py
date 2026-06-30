@@ -173,7 +173,12 @@ def _export_dataset_response(dataset, export_format: str) -> HttpResponse:
     return response
 
 
-def _dataset_asset_file_response(asset, variant: str) -> HttpResponse:
+def _dataset_asset_file_response(
+    asset,
+    variant: str,
+    *,
+    include_body: bool = True,
+) -> HttpResponse:
     field = dataset_asset_content_field(asset, variant)
     if not field or not field.name:
         raise DatasetServiceError(404, "Dataset asset file not found.")
@@ -183,8 +188,11 @@ def _dataset_asset_file_response(asset, variant: str) -> HttpResponse:
         if normalized_variant == "thumbnail" and asset.thumbnail
         else asset.content_type
     )
-    with field.open("rb") as asset_file:
-        response = HttpResponse(asset_file.read(), content_type=content_type)
+    if include_body:
+        with field.open("rb") as asset_file:
+            response = HttpResponse(asset_file.read(), content_type=content_type)
+    else:
+        response = HttpResponse(content_type=content_type)
     response["Content-Disposition"] = content_disposition_header(
         False,
         asset.original_filename or f"{asset.key}",
@@ -1191,7 +1199,11 @@ def get_dataset_asset_content(
     """Return original or thumbnail image bytes after Rowset API-key authorization."""
     try:
         asset = get_profile_dataset_asset(request.auth, dataset_key, asset_key)
-        return _dataset_asset_file_response(asset, variant)
+        return _dataset_asset_file_response(
+            asset,
+            variant,
+            include_body=request.method != "HEAD",
+        )
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 

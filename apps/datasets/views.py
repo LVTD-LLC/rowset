@@ -427,7 +427,12 @@ def _dataset_export_response(dataset: Dataset, export_format: str) -> HttpRespon
     return response
 
 
-def _dataset_asset_file_response(asset: DatasetAsset, variant: str) -> HttpResponse:
+def _dataset_asset_file_response(
+    asset: DatasetAsset,
+    variant: str,
+    *,
+    include_body: bool = True,
+) -> HttpResponse:
     try:
         field = dataset_asset_content_field(asset, variant)
     except DatasetServiceError as exc:
@@ -440,8 +445,11 @@ def _dataset_asset_file_response(asset: DatasetAsset, variant: str) -> HttpRespo
         if normalized_variant == "thumbnail" and asset.thumbnail
         else asset.content_type
     )
-    with field.open("rb") as asset_file:
-        response = HttpResponse(asset_file.read(), content_type=content_type)
+    if include_body:
+        with field.open("rb") as asset_file:
+            response = HttpResponse(asset_file.read(), content_type=content_type)
+    else:
+        response = HttpResponse(content_type=content_type)
     response["Content-Disposition"] = content_disposition_header(
         False,
         asset.original_filename or f"{asset.key}",
@@ -1893,7 +1901,11 @@ def dataset_asset_content(request, dataset_key, asset_key):
         dataset__key=dataset_key,
         dataset__profile=request.user.profile,
     )
-    return _dataset_asset_file_response(asset, request.GET.get("variant", "original"))
+    return _dataset_asset_file_response(
+        asset,
+        request.GET.get("variant", "original"),
+        include_body=request.method != "HEAD",
+    )
 
 
 @login_required
@@ -1960,6 +1972,11 @@ def public_dataset(request, public_key):
     )
     if password_response is not None:
         return password_response
+
+    if request.method == "HEAD":
+        response = HttpResponse()
+        response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+        return response
 
     page_obj = None
     public_rows_with_values = []
@@ -2057,6 +2074,17 @@ def public_dataset_row_detail(request, public_key, row_id):
     if password_response is not None:
         return password_response
 
+    if request.method == "HEAD":
+        if has_access:
+            get_object_or_404(
+                DatasetRow.objects.only("id"),
+                dataset=dataset,
+                id=row_id,
+            )
+        response = HttpResponse()
+        response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+        return response
+
     dataset_row = None
     row_cells = []
     if has_access:
@@ -2107,6 +2135,10 @@ def public_dataset_asset_content(request, public_key, asset_key):
         key=asset_key,
         dataset=dataset,
     )
-    response = _dataset_asset_file_response(asset, request.GET.get("variant", "original"))
+    response = _dataset_asset_file_response(
+        asset,
+        request.GET.get("variant", "original"),
+        include_body=request.method != "HEAD",
+    )
     response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
     return response

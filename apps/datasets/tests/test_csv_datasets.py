@@ -2716,7 +2716,7 @@ def test_dataset_asset_delete_records_failed_file_cleanup(
     assert deletion.last_error == ""
 
 
-def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
+def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, monkeypatch):
     create_response = client.post(
         f"/api/datasets?api_key={profile.key}",
         data={
@@ -2776,6 +2776,12 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert payload["row"]["assets"][0]["ref"] == asset.asset_ref
     assert payload["row"]["assets"][0]["column"] == "photo"
 
+    def fail_head_file_open(*args, **kwargs):
+        raise AssertionError("HEAD requests should not read image asset bytes.")
+
+    def fail_public_head_work(*args, **kwargs):
+        raise AssertionError("Public preview HEAD should not build row display state.")
+
     metadata_response = client.get(
         f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
     )
@@ -2790,10 +2796,16 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     )
     assert unauthenticated_head_response.status_code == 401
 
-    original_head_response = client.head(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
-        f"?api_key={profile.key}&variant=original"
-    )
+    with monkeypatch.context() as head_monkeypatch:
+        head_monkeypatch.setattr(
+            storages[DATASET_ASSET_STORAGE_ALIAS],
+            "open",
+            fail_head_file_open,
+        )
+        original_head_response = client.head(
+            f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
+            f"?api_key={profile.key}&variant=original"
+        )
     assert original_head_response.status_code == 200
     assert original_head_response["Content-Type"] == "image/png"
 
@@ -2844,7 +2856,12 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
         f"/share/datasets/{dataset.public_key}/assets/{asset.key}/content/?variant=original"
     )
     assert public_asset_payload["public_thumbnail_url"] is None
-    public_head_response = client.head(dataset.get_public_url())
+    with monkeypatch.context() as head_monkeypatch:
+        head_monkeypatch.setattr(
+            "apps.datasets.views._dataset_row_query_context",
+            fail_public_head_work,
+        )
+        public_head_response = client.head(dataset.get_public_url())
     assert public_head_response.status_code == 200
     public_response = client.get(dataset.get_public_url())
     public_content = public_response.content.decode()
@@ -2860,10 +2877,16 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     )
     assert public_asset_response.status_code == 200
     assert public_asset_response["X-Robots-Tag"] == "noindex, nofollow, noarchive"
-    public_asset_head_response = client.head(
-        f"{reverse('public_dataset_asset_content', args=[dataset.public_key, asset.key])}"
-        "?variant=thumbnail"
-    )
+    with monkeypatch.context() as head_monkeypatch:
+        head_monkeypatch.setattr(
+            storages[DATASET_ASSET_STORAGE_ALIAS],
+            "open",
+            fail_head_file_open,
+        )
+        public_asset_head_response = client.head(
+            f"{reverse('public_dataset_asset_content', args=[dataset.public_key, asset.key])}"
+            "?variant=thumbnail"
+        )
     assert public_asset_head_response.status_code == 200
     assert public_asset_head_response["Content-Type"] == "image/png"
 
@@ -2872,6 +2895,15 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     )
     assert public_row_response.status_code == 200
     assert "adapter.png" in public_row_response.content.decode()
+    with monkeypatch.context() as head_monkeypatch:
+        head_monkeypatch.setattr(
+            "apps.datasets.views._row_cells",
+            fail_public_head_work,
+        )
+        public_row_head_response = client.head(
+            reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
+        )
+    assert public_row_head_response.status_code == 200
 
 
 def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profile):
