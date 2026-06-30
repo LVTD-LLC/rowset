@@ -26,7 +26,7 @@ from apps.api.services import (
     create_profile_project,
     dataset_asset_content_field,
     delete_profile_dataset_relationship,
-    delete_profile_dataset_row,
+    delete_profile_dataset_rows,
     get_profile_dataset,
     patch_profile_dataset_row,
     update_profile_dataset_column_types,
@@ -398,44 +398,6 @@ def _delete_dataset(dataset: Dataset) -> None:
     if dataset.source_file:
         dataset.source_file.delete(save=False)
     dataset.delete()
-
-
-def _row_form_input_name(index: int) -> str:
-    return f"field_{index}"
-
-
-def _row_form_data_from_post(dataset: Dataset, post_data) -> dict[str, str]:
-    row_data = {}
-    for index, header in enumerate(dataset.headers):
-        if dataset.index_generated and header == dataset.index_column:
-            continue
-        row_data[header] = post_data.get(_row_form_input_name(index), "")
-    return row_data
-
-
-def _row_form_fields(
-    dataset: Dataset,
-    definitions: list[dict],
-    values: dict[str, object] | None = None,
-    *,
-    id_prefix: str,
-) -> list[dict[str, object]]:
-    values = values or {}
-    fields = []
-    for index, definition in enumerate(definitions):
-        header = definition["name"]
-        field_value = str(values.get(header, "") or "")
-        field = {
-            **definition,
-            "input_name": _row_form_input_name(index),
-            "input_id": f"{id_prefix}-{index}",
-            "value": field_value,
-            "use_textarea": "\n" in field_value,
-            "is_index": header == dataset.index_column,
-            "is_generated_index": dataset.index_generated and header == dataset.index_column,
-        }
-        fields.append(field)
-    return fields
 
 
 def _owned_dataset_queryset(profile):
@@ -860,6 +822,65 @@ def _column_filter_placeholder(column_type: str) -> str:
     if column_type == DatasetColumnType.DATETIME:
         return "Date/time"
     return "Number"
+
+
+def _row_form_values(dataset: Dataset, source) -> dict[str, str]:
+    return {header: _cell_value(source.get(header, "")) for header in dataset.headers}
+
+
+def _row_form_fields(
+    dataset: Dataset,
+    form_values: dict[str, str],
+    *,
+    prefix: str,
+) -> list[dict[str, object]]:
+    return [
+        {
+            "header": column["name"],
+            "description": column["description"],
+            "type_label": column["type_label"],
+            "value": form_values.get(column["name"], ""),
+            "input_id": f"{prefix}-{index}",
+            "is_index": column["name"] == dataset.index_column,
+            "is_managed_index": dataset.index_generated
+            and column["name"] == dataset.index_column,
+        }
+        for index, column in enumerate(column_definitions(dataset.headers, dataset.column_schema))
+    ]
+
+
+def _row_create_data(dataset: Dataset, post_data) -> dict[str, str]:
+    return {
+        header: post_data.get(header, "")
+        for header in dataset.headers
+        if not (dataset.index_generated and header == dataset.index_column)
+    }
+
+
+def _row_patch_data(dataset: Dataset, post_data) -> dict[str, str]:
+    return {
+        header: post_data.get(header, "")
+        for header in dataset.headers
+        if header in post_data
+        and not (dataset.index_generated and header == dataset.index_column)
+    }
+
+
+def _editable_row_cells(
+    dataset: Dataset,
+    row_cells: list[dict[str, object]],
+    form_values: dict[str, str],
+) -> list[dict[str, object]]:
+    editable_headers = set(dataset.headers)
+    for index, cell in enumerate(row_cells):
+        header = str(cell["header"])
+        is_managed_index = dataset.index_generated and header == dataset.index_column
+        cell["input_id"] = f"row-value-{index}"
+        cell["form_value"] = form_values.get(header, str(cell.get("value", "")))
+        cell["is_index"] = header == dataset.index_column
+        cell["is_managed_index"] = is_managed_index
+        cell["is_editable"] = header in editable_headers and not is_managed_index
+    return row_cells
 
 
 def _row_filter_fields(
@@ -1379,8 +1400,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         return _owned_dataset_queryset(self.request.user.profile)
 
     def get_context_data(self, **kwargs):
-        row_create_error = kwargs.pop("row_create_error", "")
-        row_create_values = kwargs.pop("row_create_values", None)
         context = super().get_context_data(**kwargs)
         dataset = self.object
         base_row_queryset = dataset.rows.select_related("updated_by_agent_api_key")
@@ -1389,7 +1408,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             dataset.headers,
             dataset.column_schema,
         )
-        rows_allow_mutation = dataset.status == DatasetStatus.READY and not dataset.archived_at
         row_queryset, row_query_context = _dataset_row_query_context(
             self.request,
             dataset,
@@ -1434,14 +1452,9 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                         cell.get("is_row_detail_primary") for cell in cells
                     ),
                     "actor_label": row.updated_by_actor_label,
+                    "id": row.id,
                     "row_number": row.row_number,
                     "url": row_url,
-                    "delete_url": reverse(
-                        "dataset_row_delete",
-                        kwargs={"dataset_key": dataset.key, "row_id": row.id},
-                    )
-                    if rows_allow_mutation
-                    else "",
                 }
             )
         if not has_imported_rows:
@@ -1473,26 +1486,22 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                         "actor_label": "",
                         "row_number": row_number,
                         "url": "",
-                        "delete_url": "",
                     }
                 )
         context.update(row_query_context if has_imported_rows else {})
         context["rows_with_values"] = rows_with_values
         context["column_definitions"] = column_definition_list
-        context["row_create_fields"] = _row_form_fields(
-            dataset,
-            column_definition_list,
-            row_create_values,
-            id_prefix="row-create-field",
-        )
-        context["row_create_error"] = row_create_error
-        context["rows_allow_mutation"] = rows_allow_mutation
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
         context["row_show_column_controls"] = has_imported_rows
+        context["rows_selectable"] = (
+            has_imported_rows
+            and dataset.status == DatasetStatus.READY
+            and dataset.archived_at is None
+        )
         context["hide_column_filter_section"] = True
         context["rows_colspan"] = (
-            len(dataset.headers) + int(has_imported_rows) + int(rows_allow_mutation)
+            len(dataset.headers) + int(has_imported_rows) + int(context["rows_selectable"])
         )
         context["rows_empty_message"] = (
             "No rows match these filters."
@@ -1519,14 +1528,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         )
         context.update(_dataset_relationship_context(dataset))
         return context
-
-
-def _dataset_detail_response(request, dataset: Dataset, **context_kwargs):
-    view = DatasetDetailView()
-    view.setup(request, dataset_key=dataset.key)
-    view.object = dataset
-    context = view.get_context_data(object=dataset, **context_kwargs)
-    return view.render_to_response(context)
 
 
 class DatasetChangesView(LoginRequiredMixin, DetailView):
@@ -1559,6 +1560,58 @@ class DatasetChangesView(LoginRequiredMixin, DetailView):
         return context
 
 
+class DatasetRowCreateView(LoginRequiredMixin, DetailView):
+    template_name = "datasets/dataset_row_create.html"
+    context_object_name = "dataset"
+    slug_url_kwarg = "dataset_key"
+    slug_field = "key"
+
+    def get_queryset(self):
+        return _owned_dataset_queryset(self.request.user.profile).filter(
+            archived_at__isnull=True,
+            status=DatasetStatus.READY,
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        form_values = kwargs.get("row_form_values")
+        if form_values is None:
+            form_values = _row_form_values(self.object, {})
+        context["row_form_fields"] = _row_form_fields(
+            self.object,
+            form_values,
+            prefix="create-row-field",
+        )
+        context["row_form_error"] = kwargs.get("row_form_error", "")
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form_values = _row_create_data(self.object, request.POST)
+        try:
+            result = create_profile_dataset_row(
+                request.user.profile,
+                str(self.object.key),
+                form_values,
+            )
+        except DatasetServiceError as exc:
+            if exc.status_code == 404:
+                raise Http404(exc.message) from exc
+            context = self.get_context_data(
+                object=self.object,
+                row_form_values={**_row_form_values(self.object, {}), **form_values},
+                row_form_error=exc.message,
+            )
+            return self.render_to_response(context)
+
+        messages.success(request, "Row created.")
+        return redirect(
+            "dataset_row_detail",
+            dataset_key=self.object.key,
+            row_id=result["row"]["id"],
+        )
+
+
 class DatasetRowDetailView(LoginRequiredMixin, DetailView):
     template_name = "datasets/dataset_row_detail.html"
     context_object_name = "dataset_row"
@@ -1579,7 +1632,7 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         row_form_error = kwargs.pop("row_form_error", "")
-        row_form_values = kwargs.pop("row_form_values", None)
+        form_values = kwargs.pop("row_form_values", None)
         context = super().get_context_data(**kwargs)
         row = self.object
         dataset = row.dataset
@@ -1589,62 +1642,86 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
             _dataset_reference_columns(column_definition_list),
             [row.data],
         )
+        if form_values is None:
+            form_values = _row_form_values(dataset, row.data)
         context["dataset"] = dataset
-        row_cells = _row_cells(
-            dataset.headers,
-            row.data,
-            dataset.column_schema,
-            relationship_links=_row_relationship_links(dataset, row.data),
-            reference_lookup=reference_lookup,
-            row_id=row.id,
-            image_assets=_image_asset_lookup(dataset, [row]),
-            request=self.request,
-            profile=self.request.user.profile,
-            link_cache={},
+        context["row_cells"] = _editable_row_cells(
+            dataset,
+            _row_cells(
+                dataset.headers,
+                row.data,
+                dataset.column_schema,
+                relationship_links=_row_relationship_links(dataset, row.data),
+                reference_lookup=reference_lookup,
+                row_id=row.id,
+                image_assets=_image_asset_lookup(dataset, [row]),
+                request=self.request,
+                profile=self.request.user.profile,
+                link_cache={},
+            ),
+            form_values,
         )
-        row_form_fields = {
-            field["name"]: field
-            for field in _row_form_fields(
-                dataset,
-                column_definition_list,
-                row_form_values or row.data,
-                id_prefix="row-update-field",
-            )
-        }
-        for cell in row_cells:
-            field = row_form_fields.get(cell["header"])
-            if field:
-                cell["form_field"] = field
-        context["row_cells"] = row_cells
         context["row_form_error"] = row_form_error
-        context["rows_allow_mutation"] = (
-            dataset.status == DatasetStatus.READY and not dataset.archived_at
-        )
         return context
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         dataset = self.object.dataset
-        row_data = _row_form_data_from_post(dataset, request.POST)
+        row_patch = _row_patch_data(dataset, request.POST)
+        if not row_patch:
+            context = self.get_context_data(
+                object=self.object,
+                row_form_error="Choose at least one value to edit.",
+            )
+            return self.render_to_response(context)
+
         try:
             patch_profile_dataset_row(
                 request.user.profile,
                 str(dataset.key),
                 self.object.id,
-                row_data,
+                row_patch,
             )
         except DatasetServiceError as exc:
             if exc.status_code == 404:
                 raise Http404(exc.message) from exc
             context = self.get_context_data(
                 object=self.object,
+                row_form_values={**_row_form_values(dataset, self.object.data), **row_patch},
                 row_form_error=exc.message,
-                row_form_values={**(self.object.data or {}), **row_data},
             )
             return self.render_to_response(context)
 
         messages.success(request, "Row updated.")
         return redirect(self.object.get_absolute_url())
+
+
+@login_required
+@require_POST
+def dataset_rows_bulk_action(request, dataset_key):
+    dataset = get_object_or_404(
+        _owned_dataset_queryset(request.user.profile),
+        key=dataset_key,
+    )
+    action = request.POST.get("bulk_action", "")
+    if action != "delete":
+        messages.error(request, "Choose a supported row action.")
+        return redirect(dataset.get_absolute_url())
+
+    try:
+        result = delete_profile_dataset_rows(
+            request.user.profile,
+            str(dataset.key),
+            request.POST.getlist("row_id"),
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, result["message"])
+
+    return redirect(dataset.get_absolute_url())
 
 
 class DatasetSettingsView(LoginRequiredMixin, DetailView):
@@ -1990,55 +2067,6 @@ def dataset_delete(request, dataset_key):
     if next_url in {"home", "settings"}:
         return redirect("home")
     return redirect("dataset_list")
-
-
-@login_required
-@require_POST
-def dataset_row_create(request, dataset_key):
-    dataset = get_object_or_404(
-        Dataset,
-        key=dataset_key,
-        profile=request.user.profile,
-    )
-    row_data = _row_form_data_from_post(dataset, request.POST)
-    try:
-        result = create_profile_dataset_row(
-            request.user.profile,
-            str(dataset.key),
-            row_data,
-        )
-    except DatasetServiceError as exc:
-        if exc.status_code == 404:
-            raise Http404(exc.message) from exc
-        return _dataset_detail_response(
-            request,
-            dataset,
-            row_create_error=exc.message,
-            row_create_values=row_data,
-        )
-
-    row_id = result["row"]["id"]
-    messages.success(request, "Row created.")
-    return redirect("dataset_row_detail", dataset_key=dataset_key, row_id=row_id)
-
-
-@login_required
-@require_POST
-def dataset_row_delete(request, dataset_key, row_id):
-    try:
-        result = delete_profile_dataset_row(
-            request.user.profile,
-            str(dataset_key),
-            row_id,
-        )
-    except DatasetServiceError as exc:
-        if exc.status_code == 404:
-            raise Http404(exc.message) from exc
-        messages.error(request, exc.message)
-    else:
-        messages.success(request, result["message"])
-
-    return redirect("dataset_detail", dataset_key=dataset_key)
 
 
 @login_required
