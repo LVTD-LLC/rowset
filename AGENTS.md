@@ -4,7 +4,8 @@
 
 This is the repo-level operating manual for AI coding agents working on Rowset.
 Read it before editing, then use `PRODUCT.md`, `TECH.md`, `STRUCTURE.md`,
-`VISION.md`, and `DESIGN.md` for deeper product, technical, repo, and UI context.
+`VISION.md`, `DESIGN.md`, and `BRAND.md` for deeper product, technical, repo,
+UI, and brand/content context.
 
 ## Project Summary
 
@@ -34,6 +35,9 @@ browser-friendly and read-only; REST and MCP are the private programmatic paths.
   the standard library already handle the need cleanly.
 - Preserve user data privacy. Never print API keys, OAuth tokens, raw secrets, or
   private dataset contents into logs, docs, screenshots, or final messages.
+- For SEO/content work, use `BRAND.md` and `seo-config.json`. The content
+  ledger, link inventory, and blog page CMS live in Rowset datasets referenced
+  from `seo-config.json`, not in repo markdown ledgers.
 
 ## Commands
 

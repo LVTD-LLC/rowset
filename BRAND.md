@@ -95,4 +95,4 @@ Rowset Team
 
 - Homepage and landing pages for agent-managed datasets.
 - Public docs for setup, MCP, REST API, datasets, projects, and public previews.
-- Blog model and admin-only blog management API backed by Django.
+- Blog pages sourced from the Rowset Blog Pages dataset.

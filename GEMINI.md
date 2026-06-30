@@ -8,6 +8,7 @@ Start with the repo steering files before making code changes:
 - `STRUCTURE.md`
 - `VISION.md`
 - `DESIGN.md`
+- `BRAND.md`
 
 ## Repo Instructions
 
@@ -18,6 +19,8 @@ Start with the repo steering files before making code changes:
 - Keep dataset, REST, and MCP behavior aligned through shared services.
 - Keep public previews read-only and separate from authenticated API/MCP access.
 - Keep secrets out of code, docs, logs, and responses.
+- For SEO/content work, use `seo-config.json` for the Rowset-backed content
+  ledger, link inventory, and blog page CMS dataset keys.
 
 ## File Placement
 

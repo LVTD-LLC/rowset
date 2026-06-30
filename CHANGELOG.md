@@ -17,7 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Added
-- Added SEO/content planning files for Rowset's blog workflow, including brand positioning, link inventory, and an initial candidate backlog.
+- Added root-level `BRAND.md` and `seo-config.json` for Rowset's SEO/content workflow, pointing content planning and blog CMS operations at Rowset datasets.
 
 ### Changed
 - Replaced inherited `AWS_*` media storage setup with explicit `ROWSET_ASSET_*` private dataset asset storage configuration for Cloudflare R2/S3-compatible storage.

@@ -1,0 +1,40 @@
+{
+  "domain": "https://rowset.lvtd.dev",
+  "stack": "django",
+  "language": "markdown",
+  "output_url_prefix": "/blog",
+  "keyword_tool": "dataforseo",
+  "fallback_research_tools": ["firecrawl", "web-serp-light"],
+  "ahrefs_project_id": null,
+  "brand_file": "BRAND.md",
+  "content_store": {
+    "type": "rowset",
+    "platform": "rowset-dataset",
+    "read_method": "rowset_api",
+    "write_method": "rowset_api",
+    "project_key": "72eed1ae-c192-432a-939d-fd1418bdfff8",
+    "project_name": "Rowset",
+    "dataset_key": "4f3f8d52-a210-4e72-8e80-655e6e82c64d",
+    "dataset_name": "Rowset Blog Pages",
+    "index_column": "slug",
+    "body_column": "body_markdown",
+    "body_format": "markdown",
+    "published_filter": {
+      "column": "status",
+      "value": "published"
+    },
+    "render_path": "/blog/:slug"
+  },
+  "planning_datasets": {
+    "content_ledger": {
+      "dataset_key": "42d8f057-abe5-4add-a1d1-aaa1f2923a3b",
+      "dataset_name": "Rowset SEO Content Ledger",
+      "index_column": "content_id"
+    },
+    "link_inventory": {
+      "dataset_key": "473b53e5-fe5c-405d-8694-18d6357419a9",
+      "dataset_name": "Rowset SEO Link Inventory",
+      "index_column": "link_id"
+    }
+  }
+}
