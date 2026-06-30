@@ -35,6 +35,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Google signup/login now asks only for basic profile/email access.
 
 ### Fixed
+- Declared `boto3` as an explicit runtime dependency so the django-storages S3 backend imports reliably in clean production builds.
 - Sentry request metrics middleware now wraps the full Django middleware stack so request counts include earlier middleware handling and durations include framework overhead.
 - REST API key authentication now accepts `Authorization: Bearer ...` and `X-API-Key` headers in addition to `?api_key=...`, matching the published docs and agent setup guidance.
 - API/MCP authentication logs no longer include raw API key values, and API-key profile lookups now eager-load users for the user-info endpoint.
