@@ -2905,6 +2905,21 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
         )
     assert public_row_head_response.status_code == 200
 
+    password_response = client.patch(
+        f"/api/datasets/{dataset.key}/public-preview?api_key={profile.key}",
+        data={"public_enabled": True, "public_password": "secret-table"},
+        content_type="application/json",
+    )
+    assert password_response.status_code == 200
+    password_metadata_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
+    )
+    password_asset_payload = password_metadata_response.json()["asset"]
+    assert password_asset_payload["public_enabled"] is True
+    assert password_asset_payload["public_password_protected"] is True
+    assert password_asset_payload["public_content_url"] is None
+    assert password_asset_payload["public_thumbnail_url"] is None
+
 
 def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profile):
     create_response = client.post(

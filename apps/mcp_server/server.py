@@ -1485,8 +1485,9 @@ def attach_image_to_dataset_row(
     name="get_dataset_image_asset",
     description=(
         "Return metadata plus authenticated content URLs for one image asset. "
-        "When the dataset public preview is enabled, the response also includes "
-        "public_content_url and public_thumbnail_url for browser sharing."
+        "When a dataset public preview is enabled without password protection, "
+        "the response also includes public_content_url and public_thumbnail_url "
+        "for browser sharing."
     ),
 )
 def get_dataset_image_asset(

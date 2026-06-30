@@ -2516,7 +2516,11 @@ def _dataset_asset_public_content_url(
     has_thumbnail: bool = True,
 ) -> str | None:
     dataset = dataset or asset.dataset
-    if not dataset.public_enabled or (variant == "thumbnail" and not has_thumbnail):
+    if (
+        not dataset.public_enabled
+        or dataset.is_public_password_protected
+        or (variant == "thumbnail" and not has_thumbnail)
+    ):
         return None
     path = reverse(
         "public_dataset_asset_content",
