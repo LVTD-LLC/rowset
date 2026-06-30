@@ -134,3 +134,23 @@ def test_get_embedding_provider_reuses_configured_provider():
         second = get_embedding_provider()
 
     assert first is second
+
+
+def test_get_embedding_provider_refreshes_when_api_key_changes():
+    with override_settings(
+        ROWSET_VECTOR_SEARCH_ENABLED=True,
+        OPENAI_API_KEY="sk-test-cache-a",
+        ROWSET_EMBEDDING_MODEL="text-embedding-3-small",
+        ROWSET_EMBEDDING_DIMENSIONS=3,
+    ):
+        first = get_embedding_provider()
+
+    with override_settings(
+        ROWSET_VECTOR_SEARCH_ENABLED=True,
+        OPENAI_API_KEY="sk-test-cache-b",
+        ROWSET_EMBEDDING_MODEL="text-embedding-3-small",
+        ROWSET_EMBEDDING_DIMENSIONS=3,
+    ):
+        second = get_embedding_provider()
+
+    assert first is not second

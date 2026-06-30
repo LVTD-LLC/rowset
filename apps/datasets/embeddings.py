@@ -1,10 +1,12 @@
+import hashlib
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Protocol
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from openai import OpenAI, OpenAIError
+
+from apps.datasets.vector_search import qdrant_is_enabled
 
 
 class EmbeddingProviderError(RuntimeError):
@@ -19,8 +21,11 @@ class EmbeddingResult:
 
 
 class EmbeddingProvider(Protocol):
-    model: str
-    dimensions: int
+    @property
+    def model(self) -> str: ...
+
+    @property
+    def dimensions(self) -> int: ...
 
     def embed_text(self, text: str) -> EmbeddingResult: ...
 
@@ -74,18 +79,33 @@ class OpenAIEmbeddingProvider:
         return results
 
 
-@lru_cache(maxsize=8)
+_CACHED_PROVIDER_KEY: tuple[str, int, str] | None = None
+_CACHED_PROVIDER: OpenAIEmbeddingProvider | None = None
+
+
+def _api_key_fingerprint(api_key: str) -> str:
+    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+
+
 def _cached_openai_embedding_provider(
     api_key: str,
     model: str,
     dimensions: int,
 ) -> OpenAIEmbeddingProvider:
-    return OpenAIEmbeddingProvider(api_key=api_key, model=model, dimensions=dimensions)
+    global _CACHED_PROVIDER, _CACHED_PROVIDER_KEY
+
+    cache_key = (model, dimensions, _api_key_fingerprint(api_key))
+    if _CACHED_PROVIDER is None or _CACHED_PROVIDER_KEY != cache_key:
+        _CACHED_PROVIDER = OpenAIEmbeddingProvider(
+            api_key=api_key,
+            model=model,
+            dimensions=dimensions,
+        )
+        _CACHED_PROVIDER_KEY = cache_key
+    return _CACHED_PROVIDER
 
 
 def get_embedding_provider() -> EmbeddingProvider:
-    from apps.datasets.vector_search import qdrant_is_enabled
-
     if not qdrant_is_enabled():
         raise ImproperlyConfigured(
             "ROWSET_VECTOR_SEARCH_ENABLED must be true before embedding rows."
