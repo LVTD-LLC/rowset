@@ -20,7 +20,14 @@
 
     <section class="fb-card p-5" aria-labelledby="row-data-heading">
       <h2 id="row-data-heading" class="fb-section-title">Row data</h2>
-      <div class="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+      {% if rows_allow_mutation %}
+        <form method="post" action="{{ dataset_row.get_absolute_url }}" class="mt-3 space-y-4">
+          {% csrf_token %}
+          {% if row_form_error %}
+            <div id="row-form-error" role="alert" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-100">{{ row_form_error }}</div>
+          {% endif %}
+      {% endif %}
+      <div class="{% if rows_allow_mutation %}overflow-x-auto{% else %}mt-3 overflow-x-auto{% endif %} rounded-lg border border-slate-200 dark:border-slate-800">
         <table class="fb-table">
           <caption class="sr-only">Full row data for row {{ dataset_row.row_number }} in {{ dataset.name }}</caption>
           <thead class="bg-slate-50 dark:bg-slate-900">
@@ -40,6 +47,10 @@
                   {% endif %}
                 </th>
                 <td class="min-w-96 break-words">
+                  {% if cell.form_field %}
+                    <div class="space-y-3">
+                      <div class="min-w-0">
+                  {% endif %}
                   {% dataset_external_href cell.value as external_href %}
                   {% if cell.is_image %}
                     <div class="max-w-xl">
@@ -66,12 +77,45 @@
                   {% else %}
                     <span class="text-slate-400 dark:text-slate-500">Blank</span>
                   {% endif %}
+                  {% if cell.form_field %}
+                      </div>
+                      <div>
+                        <label for="{{ cell.form_field.input_id }}" class="sr-only">Update {{ cell.header }}</label>
+                        {% if cell.form_field.is_generated_index %}
+                          <input id="{{ cell.form_field.input_id }}" type="text" value="{{ cell.form_field.value }}" disabled class="fb-input block w-full px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+                        {% elif cell.form_field.type == "choice" and cell.form_field.choices %}
+                          <select id="{{ cell.form_field.input_id }}" name="{{ cell.form_field.input_name }}" class="fb-input block w-full px-3 py-2 text-sm" {% if cell.form_field.is_index %}required{% endif %}>
+                            <option value=""></option>
+                            {% for choice in cell.form_field.choices %}
+                              <option value="{{ choice }}"{% if choice == cell.form_field.value %} selected{% endif %}>{{ choice }}</option>
+                            {% endfor %}
+                          </select>
+                        {% elif cell.form_field.type == "boolean" %}
+                          <select id="{{ cell.form_field.input_id }}" name="{{ cell.form_field.input_name }}" class="fb-input block w-full px-3 py-2 text-sm" {% if cell.form_field.is_index %}required{% endif %}>
+                            <option value=""></option>
+                            <option value="true"{% if cell.form_field.value == "true" %} selected{% endif %}>True</option>
+                            <option value="false"{% if cell.form_field.value == "false" %} selected{% endif %}>False</option>
+                          </select>
+                        {% elif cell.form_field.use_textarea %}
+                          <textarea id="{{ cell.form_field.input_id }}" name="{{ cell.form_field.input_name }}" rows="3" class="fb-input block w-full px-3 py-2 text-sm" {% if cell.form_field.is_index %}required{% endif %}>{{ cell.form_field.value }}</textarea>
+                        {% else %}
+                          <input id="{{ cell.form_field.input_id }}" name="{{ cell.form_field.input_name }}" type="text" value="{{ cell.form_field.value }}" class="fb-input block w-full px-3 py-2 text-sm" {% if cell.form_field.is_index %}required{% endif %}>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endif %}
                 </td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% if rows_allow_mutation %}
+          <div class="flex justify-end">
+            <button type="submit" class="fb-button-primary">Save row</button>
+          </div>
+        </form>
+      {% endif %}
     </section>
   </div>
 </div>

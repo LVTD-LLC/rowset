@@ -982,6 +982,113 @@ def test_dataset_detail_links_imported_rows_and_truncates_cells(auth_client, pro
     assert 'aria-hidden="true" tabindex="-1"' in content
 
 
+def test_dataset_detail_creates_row_from_ui(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.post(
+        reverse("dataset_row_create", args=[dataset.key]),
+        data={
+            "field_0": "Katherine Johnson",
+            "field_1": "kat@example.com",
+        },
+    )
+
+    row = dataset.rows.get(index_value="kat@example.com")
+    dataset.refresh_from_db()
+    assert response.status_code == 302
+    assert response.url == row.get_absolute_url()
+    assert row.row_number == 3
+    assert row.data == {
+        "name": "Katherine Johnson",
+        "email": "kat@example.com",
+    }
+    assert dataset.row_count == 3
+    assert dataset.mutations.filter(
+        mutation_type=DatasetMutationType.ROW_CREATED,
+        target_identifier=row.id,
+    ).exists()
+
+
+def test_dataset_detail_preserves_new_row_values_on_create_error(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.post(
+        reverse("dataset_row_create", args=[dataset.key]),
+        data={
+            "field_0": "Duplicate Candidate",
+            "field_1": "ada@example.com",
+        },
+    )
+
+    dataset.refresh_from_db()
+    content = response.content.decode()
+    row_create_fields = response.context["row_create_fields"]
+    assert response.status_code == 200
+    assert "Row with index &#x27;ada@example.com&#x27; already exists." in content
+    assert "Duplicate Candidate" in content
+    assert row_create_fields[0]["value"] == "Duplicate Candidate"
+    assert row_create_fields[1]["value"] == "ada@example.com"
+    assert dataset.row_count == 2
+    assert not dataset.rows.filter(data__name="Duplicate Candidate").exists()
+
+
+def test_dataset_detail_create_row_uses_generated_index(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Tasks",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["rowset_id", "task"],
+        index_column="rowset_id",
+        index_generated=True,
+        row_count=0,
+    )
+
+    response = auth_client.post(
+        reverse("dataset_row_create", args=[dataset.key]),
+        data={"field_1": "Ship UI CRUD"},
+    )
+
+    row = dataset.rows.get()
+    dataset.refresh_from_db()
+    assert response.status_code == 302
+    assert response.url == row.get_absolute_url()
+    assert row.index_value == "1"
+    assert row.data == {"rowset_id": "1", "task": "Ship UI CRUD"}
+    assert dataset.row_count == 1
+
+
+def test_dataset_detail_deletes_row_from_ui(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+
+    response = auth_client.post(reverse("dataset_row_delete", args=[dataset.key, row.id]))
+
+    dataset.refresh_from_db()
+    assert response.status_code == 302
+    assert response.url == dataset.get_absolute_url()
+    assert not DatasetRow.objects.filter(id=row.id).exists()
+    assert dataset.row_count == 1
+    assert dataset.mutations.filter(
+        mutation_type=DatasetMutationType.ROW_DELETED,
+        target_identifier=row.id,
+    ).exists()
+
+
+def test_dataset_detail_delete_confirmation_escapes_dataset_name(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.name = 'Research "Alpha"'
+    dataset.save(update_fields=["name"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'onsubmit="return confirm(this.dataset.confirmMessage);"' in content
+    assert 'data-confirm-message="Delete row 1 from Research &quot;Alpha&quot;?"' in content
+
+
 def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
     target = create_ready_dataset(profile)
     target.name = "Archived sprint tasks"
@@ -1637,6 +1744,60 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     assert "Back to dataset" in content
     assert 'td class="min-w-96 whitespace-pre-wrap break-words"' not in content
     assert '<span class="whitespace-pre-wrap break-words">Ada</span>' in content
+
+
+def test_dataset_row_detail_updates_row_fields_inline(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+
+    response = auth_client.post(
+        reverse("dataset_row_detail", args=[dataset.key, row.id]),
+        data={
+            "field_0": "Ada Lovelace",
+            "field_1": "ada+ui@example.com",
+        },
+    )
+
+    row.refresh_from_db()
+    assert response.status_code == 302
+    assert response.url == row.get_absolute_url()
+    assert row.index_value == "ada+ui@example.com"
+    assert row.data == {
+        "name": "Ada Lovelace",
+        "email": "ada+ui@example.com",
+    }
+    assert dataset.mutations.filter(
+        mutation_type=DatasetMutationType.ROW_UPDATED,
+        target_identifier=row.id,
+    ).exists()
+
+
+def test_dataset_row_detail_rejects_other_users_inline_update(
+    client,
+    django_user_model,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    row = dataset.rows.get(row_number=1)
+    other_user = django_user_model.objects.create_user(
+        username="other-row-editor",
+        email="other-row-editor@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.post(
+        reverse("dataset_row_detail", args=[dataset.key, row.id]),
+        data={
+            "field_0": "Edited elsewhere",
+            "field_1": "edited@example.com",
+        },
+    )
+
+    row.refresh_from_db()
+    assert response.status_code == 404
+    assert row.data["name"] == "Ada"
+    assert row.index_value == "ada@example.com"
 
 
 def test_dataset_row_detail_linkifies_external_url_cells(auth_client, profile):

@@ -31,6 +31,16 @@ urlpatterns = [
         name="dataset_row_detail",
     ),
     path(
+        "datasets/<uuid:dataset_key>/rows/create/",
+        views.dataset_row_create,
+        name="dataset_row_create",
+    ),
+    path(
+        "datasets/<uuid:dataset_key>/rows/<int:row_id>/delete/",
+        views.dataset_row_delete,
+        name="dataset_row_delete",
+    ),
+    path(
         "datasets/<uuid:dataset_key>/archive/",
         views.dataset_archive,
         name="dataset_archive",
