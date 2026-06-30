@@ -8,7 +8,7 @@ from django.test import override_settings
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.services import backfill_dataset_vectors
+from apps.datasets.services import VectorBackfillResult, backfill_dataset_vectors
 
 pytestmark = pytest.mark.django_db
 
@@ -216,3 +216,20 @@ def test_backfill_dataset_vectors_command_reports_runtime_backfill_errors(
 
     with pytest.raises(CommandError, match="provider unavailable"):
         call_command("backfill_dataset_vectors", str(dataset.key), "--stop-on-error")
+
+
+def test_backfill_dataset_vectors_command_exits_nonzero_on_partial_failures(
+    dataset,
+    rows,
+    monkeypatch,
+):
+    def partially_fail_backfill(*args, **kwargs):
+        return VectorBackfillResult(rows_seen=2, indexed=1, failed=1)
+
+    monkeypatch.setattr(
+        "apps.datasets.management.commands.backfill_dataset_vectors.backfill_dataset_vectors",
+        partially_fail_backfill,
+    )
+
+    with pytest.raises(CommandError, match="1 indexed, 1 failed, 2 row"):
+        call_command("backfill_dataset_vectors", str(dataset.key))

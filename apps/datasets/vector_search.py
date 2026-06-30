@@ -9,7 +9,11 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qdrant_models
-from qdrant_client.http.exceptions import UnexpectedResponse
+from qdrant_client.http.exceptions import (
+    ApiException,
+    ResponseHandlingException,
+    UnexpectedResponse,
+)
 
 from apps.datasets.models import Dataset, DatasetRow
 
@@ -19,6 +23,10 @@ QDRANT_COLLECTION_VERSION = 1
 QDRANT_COLLECTION_KIND = "rows"
 QDRANT_APP_PAYLOAD_VALUE = "rowset"
 QDRANT_POINT_NAMESPACE = uuid.UUID("bbd2624c-7177-4888-8b38-16d830f078fb")
+
+
+class VectorStoreError(RuntimeError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -284,8 +292,11 @@ class QdrantVectorStore:
                 )
             )
 
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=points,
-            wait=True,
-        )
+        try:
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points,
+                wait=True,
+            )
+        except (ApiException, ResponseHandlingException, UnexpectedResponse) as exc:
+            raise VectorStoreError(f"Qdrant vector upsert failed: {exc}") from exc
