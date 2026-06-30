@@ -8,7 +8,7 @@ from django.test import override_settings
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow
-from apps.datasets.vector_indexing import backfill_dataset_vectors
+from apps.datasets.services import backfill_dataset_vectors
 
 pytestmark = pytest.mark.django_db
 
@@ -60,16 +60,24 @@ class FakeEmbeddingProvider:
     dimensions = 3
 
     def __init__(self):
-        self.texts = []
+        self.text_batches = []
 
     def embed_text(self, text):
-        self.texts.append(text)
-        value = float(len(self.texts))
-        return EmbeddingResult(
-            vector=[value, value + 0.1, value + 0.2],
-            model=self.model,
-            dimensions=self.dimensions,
-        )
+        return self.embed_texts([text])[0]
+
+    def embed_texts(self, texts):
+        self.text_batches.append(list(texts))
+        results = []
+        for index, _text in enumerate(texts, start=1):
+            value = float(index)
+            results.append(
+                EmbeddingResult(
+                    vector=[value, value + 0.1, value + 0.2],
+                    model=self.model,
+                    dimensions=self.dimensions,
+                )
+            )
+        return results
 
 
 class FakeVectorStore:
@@ -108,7 +116,7 @@ def test_backfill_dataset_vectors_upserts_ready_dataset_rows_in_row_order(datase
         dataset,
         embedding_provider=provider,
         vector_store=store,
-        batch_size=1,
+        batch_size=2,
     )
 
     assert result.rows_seen == 2
@@ -119,7 +127,9 @@ def test_backfill_dataset_vectors_upserts_ready_dataset_rows_in_row_order(datase
     assert [upsert["row_id"] for upsert in store.upserts] == [rows[0].id, rows[1].id]
     assert store.upserts[0]["embedding_model"] == "fake-embedding"
     assert store.upserts[0]["embedding_dimensions"] == 3
-    assert "title (Task title): Add embeddings" in provider.texts[0]
+    assert len(provider.text_batches) == 1
+    assert "title (Task title): Add embeddings" in provider.text_batches[0][0]
+    assert "title (Task title): Backfill vectors" in provider.text_batches[0][1]
 
 
 def test_backfill_dataset_vectors_dry_run_counts_rows_without_external_calls(dataset, rows):
@@ -138,7 +148,7 @@ def test_backfill_dataset_vectors_dry_run_counts_rows_without_external_calls(dat
     assert result.indexed == 0
     assert result.failed == 0
     assert result.would_index == 1
-    assert provider.texts == []
+    assert provider.text_batches == []
     assert store.ensure_calls == 0
     assert store.upserts == []
 
@@ -169,7 +179,7 @@ def test_backfill_dataset_vectors_command_supports_dry_run(dataset, rows):
 
 
 def test_backfill_dataset_vectors_command_reports_missing_embedding_configuration(dataset, rows):
-    with override_settings(OPENAI_API_KEY=""):
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True, OPENAI_API_KEY=""):
         with pytest.raises(CommandError, match="OPENAI_API_KEY"):
             call_command("backfill_dataset_vectors", str(dataset.key))
 

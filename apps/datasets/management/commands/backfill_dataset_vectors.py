@@ -2,7 +2,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.datasets.models import Dataset
-from apps.datasets.vector_indexing import backfill_dataset_vectors
+from apps.datasets.services import backfill_dataset_vectors
 
 
 class Command(BaseCommand):
