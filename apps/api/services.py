@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterable
 from datetime import UTC, date, datetime, time
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -3098,11 +3099,11 @@ def delete_profile_dataset_row(
 def delete_profile_dataset_rows(
     profile: Profile,
     dataset_key: str,
-    row_ids,
+    row_ids: Iterable[int | str],
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
-    ordered_row_ids = []
-    seen_row_ids = set()
+    ordered_row_ids: list[int] = []
+    seen_row_ids: set[int] = set()
     for row_id in row_ids:
         try:
             normalized_row_id = int(row_id)
@@ -3118,10 +3119,7 @@ def delete_profile_dataset_rows(
 
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
-        rows_by_id = {
-            row.id: row
-            for row in dataset.rows.select_for_update().filter(id__in=ordered_row_ids)
-        }
+        rows_by_id = {row.id: row for row in dataset.rows.filter(id__in=ordered_row_ids)}
         ordered_rows = []
         for row_id in ordered_row_ids:
             row = rows_by_id.get(row_id)
