@@ -32,6 +32,8 @@ class Command(BaseCommand):
             )
         except (ImproperlyConfigured, ValueError) as exc:
             raise CommandError(str(exc)) from exc
+        except Exception as exc:
+            raise CommandError(f"Vector backfill failed: {exc}") from exc
 
         if options["dry_run"]:
             self.stdout.write(
