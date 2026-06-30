@@ -1,9 +1,11 @@
 import json
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
+from time import perf_counter
 from typing import Any
 from urllib.parse import unquote, urlparse
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
@@ -79,6 +81,17 @@ MAX_API_DATASET_CREATE_ROWS = 1000
 DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
 logger = get_rowset_logger(__name__)
+
+
+@dataclass(frozen=True)
+class _DatasetVectorSearchResult:
+    hits: list[Any]
+    embedding_model: str
+    embedding_dimensions: int
+    embedding_latency_ms: float
+    vector_latency_ms: float
+
+
 ColumnTypeSpec = str | dict[str, Any]
 DATASET_SUMMARY_ONLY_FIELDS = (
     "key",
@@ -2683,6 +2696,7 @@ def restore_profile_dataset(
                 "Dataset restored.",
                 agent_api_key=agent_api_key,
             )
+            _enqueue_dataset_vector_backfill(dataset.id)
 
     return {
         "status": "success",
@@ -3041,8 +3055,19 @@ def _dataset_vector_search_hits(
             embedding_dimensions=provider.dimensions,
         )
         store.ensure_collection()
+        embedding_started_at = perf_counter()
         query_embedding = provider.embed_text(query)
-        return store.search_dataset_rows(dataset, query_embedding.vector, limit=limit * 3)
+        embedding_latency_ms = (perf_counter() - embedding_started_at) * 1000
+        vector_started_at = perf_counter()
+        hits = store.search_dataset_rows(dataset, query_embedding.vector, limit=limit * 3)
+        vector_latency_ms = (perf_counter() - vector_started_at) * 1000
+        return _DatasetVectorSearchResult(
+            hits=hits,
+            embedding_model=query_embedding.model,
+            embedding_dimensions=query_embedding.dimensions,
+            embedding_latency_ms=embedding_latency_ms,
+            vector_latency_ms=vector_latency_ms,
+        )
     except (EmbeddingProviderError, ImproperlyConfigured, VectorStoreError, ValueError) as exc:
         raise DatasetServiceError(503, f"Dataset vector search failed: {exc}") from exc
 
@@ -3145,6 +3170,8 @@ def search_profile_dataset_rows(
     embedding_provider: EmbeddingProvider | None = None,
     vector_store: QdrantVectorStore | None = None,
 ) -> dict:
+    query_id = uuid4().hex
+    search_started_at = perf_counter()
     dataset = get_ready_profile_dataset(profile, dataset_key)
     normalized_query = _normalize_search_query(query)
     if not normalized_query:
@@ -3155,13 +3182,14 @@ def search_profile_dataset_rows(
         query=normalized_query,
         filters=filters,
     )
-    vector_hits = _dataset_vector_search_hits(
+    vector_search = _dataset_vector_search_hits(
         dataset,
         query=normalized_query,
         limit=normalized_limit,
         embedding_provider=embedding_provider,
         vector_store=vector_store,
     )
+    vector_hits = vector_search.hits
 
     allowed_row_ids: set[int] | None = None
     if row_query["filters"]:
@@ -3175,6 +3203,34 @@ def search_profile_dataset_rows(
     )
     ranked_candidates = _rank_dataset_search_candidates(candidates, limit=normalized_limit)
     results = _serialize_dataset_search_results(dataset, ranked_candidates)
+    hydration_misses = len(ranked_candidates) - len(results)
+    top_result = results[0] if results else None
+    logger.info(
+        "Dataset hybrid search complete",
+        query_id=query_id,
+        profile_id=profile.id,
+        dataset_id=dataset.id,
+        dataset_key=str(dataset.key),
+        filters_count=len(row_query["filters"]),
+        limit=normalized_limit,
+        vector_hit_count=len(vector_hits),
+        lexical_candidate_count=len(lexical_rows),
+        fused_candidate_count=len(ranked_candidates),
+        result_count=len(results),
+        hydration_misses=hydration_misses,
+        top_source=top_result["match"]["source"] if top_result else "",
+        top_score=round(top_result["score"], 6) if top_result else None,
+        top_vector_score=(
+            round(top_result["match"]["vector_score"], 6)
+            if top_result and top_result["match"]["vector_score"] is not None
+            else None
+        ),
+        embedding_model=vector_search.embedding_model,
+        embedding_dimensions=vector_search.embedding_dimensions,
+        embedding_latency_ms=round(vector_search.embedding_latency_ms, 2),
+        vector_latency_ms=round(vector_search.vector_latency_ms, 2),
+        search_latency_ms=round((perf_counter() - search_started_at) * 1000, 2),
+    )
 
     return {
         "dataset": str(dataset.key),

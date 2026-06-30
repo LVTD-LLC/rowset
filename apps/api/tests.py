@@ -1335,16 +1335,53 @@ def test_archive_profile_dataset_enqueues_vector_delete_when_enabled(
     assert calls == [("apps.datasets.tasks.delete_dataset_vectors", (dataset.id,))]
 
 
+@pytest.mark.django_db
+def test_restore_profile_dataset_enqueues_vector_backfill_when_enabled(
+    django_user_model,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    from apps.api.services import restore_profile_dataset
+
+    user = django_user_model.objects.create_user(
+        username="vectorrestoreowner",
+        email="vectorrestoreowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Restore vectors",
+        original_filename="restore.csv",
+        status=DatasetStatus.READY,
+        headers=["id"],
+        index_column="id",
+        archived_at=timezone.now(),
+    )
+    calls = []
+    monkeypatch.setattr(
+        "apps.api.services.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            restore_profile_dataset(user.profile, str(dataset.key))
+
+    assert calls == [("apps.datasets.tasks.backfill_dataset_vectors_task", (dataset.id,))]
+
+
 class FakeDatasetSearchEmbeddingProvider:
     model = "fake-embedding"
     dimensions = 3
 
-    def __init__(self):
+    def __init__(self, vectors_by_query=None):
         self.queries = []
+        self.vectors_by_query = vectors_by_query or {}
 
     def embed_text(self, text):
         self.queries.append(text)
-        return EmbeddingResult(vector=[0.1, 0.2, 0.3], model=self.model, dimensions=3)
+        vector = self.vectors_by_query.get(text, [0.1, 0.2, 0.3])
+        return EmbeddingResult(vector=vector, model=self.model, dimensions=3)
 
 
 class FakeDatasetSearchVectorStore:
@@ -1359,6 +1396,20 @@ class FakeDatasetSearchVectorStore:
     def search_dataset_rows(self, dataset, vector, *, limit=10):
         self.searches.append((str(dataset.key), vector, limit))
         return self.hits
+
+
+class FakeDatasetSearchEvalVectorStore:
+    def __init__(self, hits_by_vector):
+        self.hits_by_vector = hits_by_vector
+        self.ensure_calls = 0
+        self.searches = []
+
+    def ensure_collection(self):
+        self.ensure_calls += 1
+
+    def search_dataset_rows(self, dataset, vector, *, limit=10):
+        self.searches.append((str(dataset.key), vector, limit))
+        return self.hits_by_vector[tuple(vector)]
 
 
 @pytest.mark.django_db
@@ -1424,6 +1475,187 @@ def test_search_profile_dataset_rows_fuses_exact_and_vector_matches(django_user_
     assert response["results"][0]["match"]["source"] == "hybrid"
     assert response["results"][0]["match"]["lexical_rank"] == 1
     assert response["results"][0]["match"]["vector_rank"] == 2
+
+
+@pytest.mark.django_db
+def test_search_quality_eval_fixtures_keep_expected_rows_on_top(django_user_model):
+    from apps.api.services import search_profile_dataset_rows
+
+    user = django_user_model.objects.create_user(
+        username="vectorqualityowner",
+        email="vectorqualityowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Search Quality Fixtures",
+        original_filename="quality.csv",
+        status=DatasetStatus.READY,
+        headers=["record_id", "kind", "title", "notes"],
+        index_column="record_id",
+    )
+    fixture_rows = {}
+    for row_number, data in enumerate(
+        [
+            {
+                "record_id": "ROW-VEC-001",
+                "kind": "taskboard",
+                "title": "Define v1 hybrid search product scope",
+                "notes": "Narrow the first product surface for agent-native dataset search.",
+            },
+            {
+                "record_id": "ROW-VEC-008",
+                "kind": "taskboard",
+                "title": "Handle deletion, archival, and stale vectors",
+                "notes": "Deleted or archived rows must not leak from the retrieval index.",
+            },
+            {
+                "record_id": "ROW-VEC-013",
+                "kind": "taskboard",
+                "title": "Create search quality fixtures and evals",
+                "notes": "Small regression checks should catch ranking quality drift.",
+            },
+            {
+                "record_id": "CRM-001",
+                "kind": "crm",
+                "title": "Acme renewal risk",
+                "notes": "Procurement is stalled and the champion asked for a security review.",
+            },
+        ],
+        start=1,
+    ):
+        fixture_rows[data["record_id"]] = DatasetRow.objects.create(
+            dataset=dataset,
+            row_number=row_number,
+            index_value=data["record_id"],
+            data=data,
+        )
+
+    eval_cases = [
+        {
+            "query": "ROW-VEC-001",
+            "expected_top": "ROW-VEC-001",
+            "vector_ranked_ids": ["ROW-VEC-008", "ROW-VEC-001"],
+        },
+        {
+            "query": "how do we avoid stale vectors?",
+            "expected_top": "ROW-VEC-008",
+            "vector_ranked_ids": ["ROW-VEC-008", "ROW-VEC-013"],
+        },
+        {
+            "query": "search quality regression baseline",
+            "expected_top": "ROW-VEC-013",
+            "vector_ranked_ids": ["ROW-VEC-013", "ROW-VEC-001"],
+        },
+        {
+            "query": "renewal risk procurement",
+            "expected_top": "CRM-001",
+            "vector_ranked_ids": ["CRM-001", "ROW-VEC-008"],
+        },
+    ]
+    vectors_by_query = {
+        case["query"]: [float(index), 0.0, 0.0] for index, case in enumerate(eval_cases, start=1)
+    }
+    hits_by_vector = {}
+    for case in eval_cases:
+        hits_by_vector[tuple(vectors_by_query[case["query"]])] = [
+            DatasetRowVectorSearchHit(
+                point_id=f"{record_id}-point",
+                score=1 - (rank * 0.1),
+                payload={
+                    "row_id": fixture_rows[record_id].id,
+                    "chunk_index": 0,
+                    "content_hash": f"{record_id}-hash",
+                },
+            )
+            for rank, record_id in enumerate(case["vector_ranked_ids"], start=1)
+        ]
+
+    provider = FakeDatasetSearchEmbeddingProvider(vectors_by_query=vectors_by_query)
+    store = FakeDatasetSearchEvalVectorStore(hits_by_vector)
+    actual_top_by_query = {}
+    for case in eval_cases:
+        response = search_profile_dataset_rows(
+            user.profile,
+            str(dataset.key),
+            query=case["query"],
+            limit=3,
+            embedding_provider=provider,
+            vector_store=store,
+        )
+        actual_top_by_query[case["query"]] = response["results"][0]["row"]["index_value"]
+
+    assert actual_top_by_query == {
+        case["query"]: case["expected_top"] for case in eval_cases
+    }
+    assert provider.queries == [case["query"] for case in eval_cases]
+    assert store.ensure_calls == len(eval_cases)
+
+
+@pytest.mark.django_db
+def test_search_profile_dataset_rows_logs_safe_observability_fields(
+    django_user_model,
+    monkeypatch,
+):
+    from apps.api.services import search_profile_dataset_rows
+
+    user = django_user_model.objects.create_user(
+        username="vectorlogowner",
+        email="vectorlogowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Search Logs",
+        original_filename="logs.csv",
+        status=DatasetStatus.READY,
+        headers=["id", "title"],
+        index_column="id",
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="LOG-1",
+        data={"id": "LOG-1", "title": "Safe diagnostic row"},
+    )
+    log_events = []
+
+    class FakeLogger:
+        def info(self, message, **fields):
+            log_events.append((message, fields))
+
+    monkeypatch.setattr("apps.api.services.logger", FakeLogger())
+    response = search_profile_dataset_rows(
+        user.profile,
+        str(dataset.key),
+        query="private customer phrase",
+        embedding_provider=FakeDatasetSearchEmbeddingProvider(),
+        vector_store=FakeDatasetSearchVectorStore(
+            [
+                DatasetRowVectorSearchHit(
+                    point_id="log-point",
+                    score=0.91,
+                    payload={"row_id": row.id, "chunk_index": 0, "content_hash": "log"},
+                )
+            ]
+        ),
+    )
+
+    assert response["count"] == 1
+    assert len(log_events) == 1
+    message, fields = log_events[0]
+    assert message == "Dataset hybrid search complete"
+    assert len(fields["query_id"]) == 32
+    assert fields["dataset_key"] == str(dataset.key)
+    assert fields["vector_hit_count"] == 1
+    assert fields["lexical_candidate_count"] == 0
+    assert fields["result_count"] == 1
+    assert fields["hydration_misses"] == 0
+    assert fields["top_source"] == "vector"
+    assert fields["top_vector_score"] == 0.91
+    assert fields["embedding_model"] == "fake-embedding"
+    assert fields["embedding_dimensions"] == 3
+    assert "private customer phrase" not in str(fields)
 
 
 @pytest.mark.django_db

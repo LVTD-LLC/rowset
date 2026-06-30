@@ -115,6 +115,25 @@ returned.
 The response includes rank, score, source, vector rank, lexical rank, vector
 score, point id, chunk index, content hash, snippet, and the hydrated row.
 
+## Observability
+
+Search emits one structured completion log per successful request. The log uses
+a generated `query_id` and includes dataset/profile identifiers, limit, filter
+count, vector hit count, lexical candidate count, fused candidate count, result
+count, hydration misses, top-result source and scores, embedding model,
+embedding dimensions, embedding latency, Qdrant search latency, and total search
+latency.
+
+Worker logs cover row indexing completion/failure, dataset backfill
+completion/failure, row vector deletion completion/failure, and dataset vector
+deletion completion/failure. Backfill completion includes rows seen, indexed,
+and failed.
+
+Quality regressions are covered by a small deterministic test fixture with
+taskboard and CRM-style rows. It checks exact identifiers such as
+`ROW-VEC-001`, fuzzy semantic queries such as stale-vector cleanup, quality
+fixture queries, and CRM renewal-risk lookups.
+
 ## Operational Notes
 
 Keep vector debug output free of raw private row text, embeddings, API keys, and

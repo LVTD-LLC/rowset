@@ -110,6 +110,13 @@ def index_dataset_row_vector(row_id: int) -> None:
         index_dataset_row_vector_service(row)
     except Exception:
         logger.exception("Vector row indexing failed", row_id=row_id)
+    else:
+        logger.info(
+            "Vector row indexing complete",
+            dataset_id=row.dataset_id,
+            dataset_key=str(row.dataset.key),
+            row_id=row_id,
+        )
 
 
 def backfill_dataset_vectors_task(dataset_id: int) -> None:
@@ -129,6 +136,7 @@ def backfill_dataset_vectors_task(dataset_id: int) -> None:
         logger.info(
             "Vector dataset backfill complete",
             dataset_id=dataset_id,
+            dataset_key=str(dataset.key),
             rows_seen=result.rows_seen,
             indexed=result.indexed,
             failed=result.failed,
@@ -156,6 +164,13 @@ def delete_dataset_row_vectors(dataset_id: int, row_ids: list[int]) -> None:
             dataset_id=dataset_id,
             row_ids=row_ids,
         )
+    else:
+        logger.info(
+            "Vector row deletion complete",
+            dataset_id=dataset_id,
+            dataset_key=str(dataset.key),
+            row_count=len(row_ids),
+        )
 
 
 def delete_dataset_vectors(dataset_id: int) -> None:
@@ -171,3 +186,9 @@ def delete_dataset_vectors(dataset_id: int) -> None:
         delete_dataset_vectors_service(dataset)
     except Exception:
         logger.exception("Vector dataset deletion failed", dataset_id=dataset_id)
+    else:
+        logger.info(
+            "Vector dataset deletion complete",
+            dataset_id=dataset_id,
+            dataset_key=str(dataset.key),
+        )
