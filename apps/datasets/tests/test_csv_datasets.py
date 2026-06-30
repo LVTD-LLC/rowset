@@ -2688,6 +2688,9 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
         content_type="application/json",
     )
     assert create_response.status_code == 201
+    assert create_response.json()["dataset"]["public_enabled"] is False
+    assert create_response.json()["dataset"]["public_url"] is None
+    assert create_response.json()["dataset"]["public_preview_status"] == "disabled"
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
 
     attach_response = client.post(
@@ -2714,8 +2717,15 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     assert asset_payload["content_type"] == "image/png"
     assert asset_payload["width"] == 3
     assert asset_payload["height"] == 2
+    assert asset_payload["has_thumbnail"] is True
+    assert asset_payload["public_enabled"] is False
+    assert asset_payload["public_content_url"] is None
+    assert asset_payload["public_thumbnail_url"] is None
     assert asset_payload["content_url"].endswith(
         f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
+    )
+    assert asset_payload["thumbnail_url"].endswith(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=thumbnail"
     )
     assert asset.file.name.endswith("/original.png")
     assert asset.thumbnail.name.endswith("/thumbnail.jpg")
@@ -2725,6 +2735,20 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     )
     assert metadata_response.status_code == 200
     assert metadata_response.json()["asset"]["ref"] == asset.asset_ref
+    assert metadata_response.json()["asset"]["has_thumbnail"] is True
+    assert metadata_response.json()["asset"]["public_content_url"] is None
+
+    unauthenticated_head_response = client.head(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
+    )
+    assert unauthenticated_head_response.status_code == 401
+
+    original_head_response = client.head(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
+        f"?api_key={profile.key}&variant=original"
+    )
+    assert original_head_response.status_code == 200
+    assert original_head_response["Content-Type"] == "image/png"
 
     original_response = client.get(
         f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
@@ -2752,6 +2776,19 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
 
     dataset.public_enabled = True
     dataset.save(update_fields=["public_enabled"])
+    public_metadata_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
+    )
+    public_asset_payload = public_metadata_response.json()["asset"]
+    assert public_asset_payload["public_enabled"] is True
+    assert public_asset_payload["public_content_url"].endswith(
+        f"/share/datasets/{dataset.public_key}/assets/{asset.key}/content/?variant=original"
+    )
+    assert public_asset_payload["public_thumbnail_url"].endswith(
+        f"/share/datasets/{dataset.public_key}/assets/{asset.key}/content/?variant=thumbnail"
+    )
+    public_head_response = client.head(dataset.get_public_url())
+    assert public_head_response.status_code == 200
     public_response = client.get(dataset.get_public_url())
     public_content = public_response.content.decode()
     assert public_response.status_code == 200
@@ -2766,6 +2803,12 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile):
     )
     assert public_asset_response.status_code == 200
     assert public_asset_response["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+    public_asset_head_response = client.head(
+        f"{reverse('public_dataset_asset_content', args=[dataset.public_key, asset.key])}"
+        "?variant=thumbnail"
+    )
+    assert public_asset_head_response.status_code == 200
+    assert public_asset_head_response["Content-Type"] == "image/jpeg"
 
     public_row_response = client.get(
         reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])

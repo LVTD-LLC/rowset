@@ -337,6 +337,9 @@ def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
             "Primary contact address for the customer."
         )
         assert payload["datasets"][0]["row_count"] == 42
+        assert payload["datasets"][0]["public_enabled"] is False
+        assert payload["datasets"][0]["public_url"] is None
+        assert payload["datasets"][0]["public_preview_status"] == "disabled"
         assert "rows" not in payload["datasets"][0]
 
     anyio.run(run)
@@ -415,6 +418,9 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
         assert payload["column_schema"]["email"]["description"] == (
             "Primary contact address for the customer."
         )
+        assert payload["public_enabled"] is False
+        assert payload["public_url"] is None
+        assert payload["public_preview_status"] == "disabled"
         assert payload["relationships"] == {"outgoing": [], "incoming": []}
         assert "rows" not in payload
 

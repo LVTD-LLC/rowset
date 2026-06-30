@@ -1872,7 +1872,7 @@ def dataset_export(request, dataset_key, export_format):
 
 
 @login_required
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "HEAD"])
 def dataset_asset_content(request, dataset_key, asset_key):
     asset = get_object_or_404(
         DatasetAsset.objects.select_related("dataset"),
@@ -1930,7 +1930,7 @@ def _handle_public_password_access(
     return _has_public_dataset_access(request, dataset), password_error, None
 
 
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET", "HEAD", "POST"])
 def public_dataset(request, public_key):
     dataset = get_object_or_404(
         Dataset,
@@ -2023,7 +2023,7 @@ def public_dataset(request, public_key):
     return response
 
 
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET", "HEAD", "POST"])
 def public_dataset_row_detail(request, public_key, row_id):
     dataset = get_object_or_404(
         Dataset,
@@ -2078,7 +2078,7 @@ def public_dataset_row_detail(request, public_key, row_id):
     return response
 
 
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "HEAD"])
 def public_dataset_asset_content(request, public_key, asset_key):
     dataset = get_object_or_404(
         Dataset,

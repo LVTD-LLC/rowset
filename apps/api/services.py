@@ -12,6 +12,7 @@ from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Exists, OuterRef, Q, TextField
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast, Trim
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
@@ -34,15 +35,15 @@ from apps.datasets.models import (
     record_dataset_asset_file_deletion_failure,
 )
 from apps.datasets.services import (
-    CSVParseError,
     COLUMN_SCHEMA_REFERENCE_TARGET_KEY,
     COLUMN_SCHEMA_TYPE_KEY,
     DATASET_REFERENCE_TARGET,
+    CSVParseError,
     DatasetImageError,
     DatasetRowQueryError,
     apply_dataset_row_query,
-    dataset_asset_key_from_ref,
     choice_constraints_from_schema,
+    dataset_asset_key_from_ref,
     dataset_asset_ref,
     decode_image_base64,
     generated_index_column_name,
@@ -518,6 +519,9 @@ def serialize_profile_project_detail(
 
 def serialize_dataset_summary(dataset: Dataset) -> dict:
     """Return machine-friendly dataset metadata without row payloads."""
+    public_url = (
+        build_absolute_public_url(dataset.get_public_url()) if dataset.public_enabled else None
+    )
     return {
         "key": str(dataset.key),
         "name": dataset.name,
@@ -538,7 +542,8 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "row_count": dataset.row_count,
         "public_enabled": dataset.public_enabled,
         "public_key": str(dataset.public_key),
-        "public_url": build_absolute_public_url(dataset.get_public_url()),
+        "public_url": public_url,
+        "public_preview_status": "enabled" if dataset.public_enabled else "disabled",
         "public_page_size": dataset.public_page_size,
         "public_password_protected": dataset.is_public_password_protected,
         "created_at": dataset.created_at,
@@ -2484,8 +2489,19 @@ def _dataset_asset_content_url(asset: DatasetAsset, variant: str) -> str:
     )
 
 
+def _dataset_asset_public_content_url(asset: DatasetAsset, variant: str) -> str | None:
+    if not asset.dataset.public_enabled:
+        return None
+    path = reverse(
+        "public_dataset_asset_content",
+        kwargs={"public_key": asset.dataset.public_key, "asset_key": asset.key},
+    )
+    return build_absolute_public_url(f"{path}?variant={variant}")
+
+
 def serialize_dataset_asset(asset: DatasetAsset) -> dict:
     row = asset.row
+    has_thumbnail = bool(asset.thumbnail and asset.thumbnail.name)
     return {
         "key": str(asset.key),
         "ref": dataset_asset_ref(asset.key),
@@ -2501,8 +2517,13 @@ def serialize_dataset_asset(asset: DatasetAsset) -> dict:
         "height": asset.height,
         "checksum": asset.checksum,
         "status": asset.status,
+        "has_thumbnail": has_thumbnail,
         "content_url": _dataset_asset_content_url(asset, "original"),
         "thumbnail_url": _dataset_asset_content_url(asset, "thumbnail"),
+        "public_enabled": asset.dataset.public_enabled,
+        "public_password_protected": asset.dataset.is_public_password_protected,
+        "public_content_url": _dataset_asset_public_content_url(asset, "original"),
+        "public_thumbnail_url": _dataset_asset_public_content_url(asset, "thumbnail"),
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,
     }

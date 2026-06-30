@@ -11,9 +11,9 @@ from apps.api.services import (
     MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
     add_profile_dataset_column,
-    attach_profile_dataset_image_asset,
     archive_profile_dataset,
     archive_profile_project,
+    attach_profile_dataset_image_asset,
     create_profile_dataset,
     create_profile_dataset_relationship,
     create_profile_dataset_row,
@@ -35,8 +35,8 @@ from apps.api.services import (
     search_profile_datasets,
     search_profile_projects,
     serialize_dataset_detail,
-    serialize_profile_dataset_asset,
     serialize_profile_archived_datasets,
+    serialize_profile_dataset_asset,
     serialize_profile_datasets,
     serialize_profile_project_detail,
     serialize_profile_projects,
@@ -1426,7 +1426,9 @@ def create_dataset_row(
     description=(
         "Attach or replace one image asset in an image column for a ready dataset row. "
         "Provide exactly one of row_id or index_value. The row cell will store an "
-        "opaque asset reference, not raw image bytes."
+        "opaque asset reference, not raw image bytes. For a local file, read the "
+        "bytes in the agent environment and pass them as image_base64; hosted Rowset "
+        "MCP cannot read client-local file paths."
     ),
 )
 def attach_image_to_dataset_row(
@@ -1437,7 +1439,12 @@ def attach_image_to_dataset_row(
     ],
     image_base64: Annotated[
         str,
-        Field(description="JPEG, PNG, or WebP image bytes encoded as base64."),
+        Field(
+            description=(
+                "JPEG, PNG, or WebP image bytes encoded as base64. Do not pass a "
+                "local file path; read the bytes client-side and base64 encode them."
+            )
+        ),
     ],
     row_id: Annotated[
         int | None,
@@ -1476,7 +1483,11 @@ def attach_image_to_dataset_row(
 
 @mcp.tool(
     name="get_dataset_image_asset",
-    description="Return metadata and Rowset content URLs for one image asset.",
+    description=(
+        "Return metadata plus authenticated content URLs for one image asset. "
+        "When the dataset public preview is enabled, the response also includes "
+        "public_content_url and public_thumbnail_url for browser sharing."
+    ),
 )
 def get_dataset_image_asset(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],

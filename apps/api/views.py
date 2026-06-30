@@ -71,17 +71,17 @@ from apps.api.schemas import (
 from apps.api.services import (
     DatasetServiceError,
     add_profile_dataset_column,
-    attach_profile_dataset_image_asset,
     archive_profile_dataset,
     archive_profile_project,
+    attach_profile_dataset_image_asset,
     create_profile_dataset,
     create_profile_dataset_relationship,
     create_profile_dataset_row,
     create_profile_project,
+    dataset_asset_content_field,
     delete_profile_dataset_relationship,
     delete_profile_dataset_row,
     drop_profile_dataset_column,
-    dataset_asset_content_field,
     get_profile_dataset_asset,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
@@ -1173,7 +1173,8 @@ def get_dataset_asset_metadata(request: HttpRequest, dataset_key: str, asset_key
         _raise_http_error(exc)
 
 
-@api.get(
+@api.api_operation(
+    ["GET", "HEAD"],
     "/datasets/{dataset_key}/assets/{asset_key}/content",
     auth=[api_key_auth],
     tags=["datasets"],
