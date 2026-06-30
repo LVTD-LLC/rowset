@@ -37,6 +37,7 @@ def qdrant_row_collection_name(
     *,
     prefix: str | None = None,
     embedding_model: str | None = None,
+    embedding_dimensions: int | None = None,
     version: int = QDRANT_COLLECTION_VERSION,
 ) -> str:
     """Return the collection name for Rowset row vectors."""
@@ -45,7 +46,11 @@ def qdrant_row_collection_name(
         embedding_model or settings.ROWSET_EMBEDDING_MODEL,
         fallback="embedding",
     )
-    return f"{normalized_prefix}_{QDRANT_COLLECTION_KIND}_{normalized_model}_v{version}"
+    dimensions = embedding_dimensions or settings.ROWSET_EMBEDDING_DIMENSIONS
+    return (
+        f"{normalized_prefix}_{QDRANT_COLLECTION_KIND}_"
+        f"{normalized_model}_d{dimensions}_v{version}"
+    )
 
 
 def qdrant_is_configured() -> bool:
@@ -182,9 +187,16 @@ class QdrantVectorStore:
         *,
         client: QdrantClient | None = None,
         collection_name: str | None = None,
+        embedding_model: str | None = None,
+        embedding_dimensions: int | None = None,
     ) -> None:
         self.client = client or get_qdrant_client()
-        self.collection_name = collection_name or qdrant_row_collection_name()
+        self.embedding_model = embedding_model or settings.ROWSET_EMBEDDING_MODEL
+        self.embedding_dimensions = embedding_dimensions or settings.ROWSET_EMBEDDING_DIMENSIONS
+        self.collection_name = collection_name or qdrant_row_collection_name(
+            embedding_model=self.embedding_model,
+            embedding_dimensions=self.embedding_dimensions,
+        )
 
     def ensure_collection(self) -> None:
         if self.client.collection_exists(collection_name=self.collection_name):
@@ -195,7 +207,7 @@ class QdrantVectorStore:
                 collection_name=self.collection_name,
                 vectors_config={
                     QDRANT_DENSE_VECTOR_NAME: qdrant_models.VectorParams(
-                        size=settings.ROWSET_EMBEDDING_DIMENSIONS,
+                        size=self.embedding_dimensions,
                         distance=qdrant_models.Distance.COSINE,
                     ),
                 },
@@ -216,12 +228,25 @@ class QdrantVectorStore:
         embedding_model: str | None = None,
         embedding_dimensions: int | None = None,
     ) -> None:
+        model = embedding_model or self.embedding_model
+        dimensions = embedding_dimensions or self.embedding_dimensions
+        if model != self.embedding_model:
+            raise ValueError(
+                f"Embedding model {model!r} does not match collection model "
+                f"{self.embedding_model!r}."
+            )
+        if dimensions != self.embedding_dimensions:
+            raise ValueError(
+                f"Embedding dimensions {dimensions} do not match collection dimensions "
+                f"{self.embedding_dimensions}."
+            )
+
         point = build_dataset_row_point(
             dataset,
             row,
             vector,
-            embedding_model=embedding_model,
-            embedding_dimensions=embedding_dimensions,
+            embedding_model=model,
+            embedding_dimensions=dimensions,
         )
         self.client.upsert(
             collection_name=self.collection_name,

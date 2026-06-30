@@ -69,9 +69,10 @@ def test_qdrant_row_collection_name_uses_prefix_model_and_version():
     with override_settings(
         QDRANT_COLLECTION_PREFIX="Rowset Prod",
         ROWSET_EMBEDDING_MODEL="text-embedding-3-small",
+        ROWSET_EMBEDDING_DIMENSIONS=768,
     ):
         assert qdrant_row_collection_name(version=2) == (
-            "rowset_prod_rows_text_embedding_3_small_v2"
+            "rowset_prod_rows_text_embedding_3_small_d768_v2"
         )
 
 
@@ -179,13 +180,16 @@ class FakeQdrantClient:
 
 def test_vector_store_ensure_collection_creates_named_dense_collection():
     client = FakeQdrantClient(exists=False)
-    store = QdrantVectorStore(client=client, collection_name="rowset_rows_test_v1")
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_test_d3_v1",
+        embedding_dimensions=3,
+    )
 
-    with override_settings(ROWSET_EMBEDDING_DIMENSIONS=3):
-        store.ensure_collection()
+    store.ensure_collection()
 
     vector_config = client.created_collection["vectors_config"][QDRANT_DENSE_VECTOR_NAME]
-    assert client.created_collection["collection_name"] == "rowset_rows_test_v1"
+    assert client.created_collection["collection_name"] == "rowset_rows_test_d3_v1"
     assert vector_config.size == 3
     assert vector_config.distance == "Cosine"
 
@@ -222,20 +226,62 @@ def test_vector_store_ensure_collection_reraises_unexpected_qdrant_errors():
 
 def test_vector_store_upserts_dataset_row_point(vector_dataset, vector_row):
     client = FakeQdrantClient(exists=True)
-    store = QdrantVectorStore(client=client, collection_name="rowset_rows_test_v1")
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
 
-    with override_settings(ROWSET_EMBEDDING_DIMENSIONS=3):
-        store.upsert_dataset_row_vector(
-            vector_dataset,
-            vector_row,
-            [0.1, 0.2, 0.3],
-            embedding_model="custom-embedding",
-            embedding_dimensions=3,
-        )
+    store.upsert_dataset_row_vector(
+        vector_dataset,
+        vector_row,
+        [0.1, 0.2, 0.3],
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
 
-    assert client.upserted["collection_name"] == "rowset_rows_test_v1"
+    assert client.upserted["collection_name"] == "rowset_rows_custom_embedding_d3_v1"
     assert client.upserted["wait"] is True
     assert len(client.upserted["points"]) == 1
     assert client.upserted["points"][0].payload["row_id"] == vector_row.id
     assert client.upserted["points"][0].payload["embedding_model"] == "custom-embedding"
     assert client.upserted["points"][0].payload["embedding_dimensions"] == 3
+
+
+def test_vector_store_rejects_upsert_model_mismatch(vector_dataset, vector_row):
+    client = FakeQdrantClient(exists=True)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    with pytest.raises(ValueError, match="does not match collection model"):
+        store.upsert_dataset_row_vector(
+            vector_dataset,
+            vector_row,
+            [0.1, 0.2, 0.3],
+            embedding_model="other-embedding",
+            embedding_dimensions=3,
+        )
+
+
+def test_vector_store_rejects_upsert_dimension_mismatch(vector_dataset, vector_row):
+    client = FakeQdrantClient(exists=True)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    with pytest.raises(ValueError, match="do not match collection dimensions"):
+        store.upsert_dataset_row_vector(
+            vector_dataset,
+            vector_row,
+            [0.1, 0.2, 0.3, 0.4],
+            embedding_model="custom-embedding",
+            embedding_dimensions=4,
+        )
