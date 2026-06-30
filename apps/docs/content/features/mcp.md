@@ -162,6 +162,13 @@ summaries for the dataset being inspected. Agents should call it before row
 operations so they do not miss instructions, choice values, or links to related
 datasets.
 
+For typed reference cells, use `{"type": "reference", "target": "dataset"}` to
+store another Rowset dataset key or `{"type": "reference", "target": "project"}`
+to store a Rowset project key. Rowset validates non-blank values in the same
+account and stores canonical keys. When references are present, `get_dataset`
+includes `dataset_references` and `project_references` grouped by source column
+and target key.
+
 Use dataset relationship tools when a source dataset column stores another
 dataset row's index value. For example, a Personal CRM messages dataset can store
 `person_id` values that point at the People dataset's `person_id` index. With

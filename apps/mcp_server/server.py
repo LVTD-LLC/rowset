@@ -811,8 +811,8 @@ def create_dataset(
                 "columns, pass metadata "
                 "like "
                 '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}. '
-                'For a dataset reference column, pass {"type": "reference", '
-                '"target": "dataset"}. '
+                'For a dataset or project reference column, pass {"type": "reference", '
+                '"target": "dataset"} or {"type": "reference", "target": "project"}. '
                 'Add "description" to any metadata object to give agents column context.'
             ),
         ),
@@ -932,8 +932,9 @@ def update_dataset_column_types(
                 "include text, image, choice, integer, number, currency, boolean, "
                 'date, datetime, email, url, and reference. For choice columns, pass '
                 '{"type": "choice", '
-                '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset reference '
-                'column, pass {"type": "reference", "target": "dataset"}. Add '
+                '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
+                'reference column, pass {"type": "reference", "target": "dataset"} or '
+                '{"type": "reference", "target": "project"}. Add '
                 '"description" to any metadata object to give agents column context.'
             ),
         ),
@@ -978,8 +979,9 @@ def add_column(
                 "include text, image, choice, integer, number, currency, boolean, "
                 'date, datetime, email, url, and reference. For a choice column, pass '
                 '{"type": "choice", '
-                '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset reference '
-                'column, pass {"type": "reference", "target": "dataset"}. Add '
+                '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
+                'reference column, pass {"type": "reference", "target": "dataset"} or '
+                '{"type": "reference", "target": "project"}. Add '
                 '"description" to the metadata object to give agents column context.'
             ),
         ),

@@ -28,6 +28,7 @@ from apps.api.services import (
     delete_profile_dataset_relationship,
     delete_profile_dataset_rows,
     get_profile_dataset,
+    get_profile_project_reference,
     patch_profile_dataset_row,
     update_profile_dataset_column_types,
     update_profile_dataset_metadata,
@@ -41,6 +42,7 @@ from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project
 from apps.datasets.services import (
     DATASET_ASSET_CACHE_CONTROL,
     DATASET_REFERENCE_TARGET,
+    PROJECT_REFERENCE_TARGET,
     ROW_DEFAULT_SORT,
     ROW_FILTER_ABOVE,
     ROW_FILTER_BELOW,
@@ -717,13 +719,21 @@ def _row_relationship_links(
     return links
 
 
-def _dataset_reference_columns(column_definition_list: list[dict]) -> set[str]:
+def _rowset_reference_columns(column_definition_list: list[dict], target: str) -> set[str]:
     return {
         column["name"]
         for column in column_definition_list
         if column.get("type") == DatasetColumnType.REFERENCE
-        and column.get("target") == DATASET_REFERENCE_TARGET
+        and column.get("target") == target
     }
+
+
+def _dataset_reference_columns(column_definition_list: list[dict]) -> set[str]:
+    return _rowset_reference_columns(column_definition_list, DATASET_REFERENCE_TARGET)
+
+
+def _project_reference_columns(column_definition_list: list[dict]) -> set[str]:
+    return _rowset_reference_columns(column_definition_list, PROJECT_REFERENCE_TARGET)
 
 
 def _dataset_reference_lookup(
@@ -760,6 +770,67 @@ def _dataset_reference_lookup(
                 ),
                 "rowset_link_label": f"Open Rowset dataset {target_dataset.name}",
             }
+    return lookup
+
+
+def _project_reference_lookup(
+    profile,
+    reference_columns: set[str],
+    row_data_items: list[dict[str, object]],
+) -> dict[tuple[str, str], dict[str, str]]:
+    if not reference_columns:
+        return {}
+
+    raw_values_by_column: dict[str, set[str]] = {column: set() for column in reference_columns}
+    for row_data in row_data_items:
+        if not row_data:
+            continue
+        for column in reference_columns:
+            raw_value = str(row_data.get(column, "") or "").strip()
+            if raw_value:
+                raw_values_by_column[column].add(raw_value)
+
+    lookup = {}
+    for column, raw_values in raw_values_by_column.items():
+        for raw_value in raw_values:
+            try:
+                target_project = get_profile_project_reference(profile, raw_value)
+            except DatasetServiceError:
+                continue
+            dataset_count = getattr(target_project, "dataset_count", 0)
+            plural = "dataset" if dataset_count == 1 else "datasets"
+            link_payload = {
+                "rowset_link_text": target_project.name,
+                "rowset_link_detail": "Archived project"
+                if target_project.archived_at
+                else f"{dataset_count} {plural}",
+                "rowset_link_label": f"Open Rowset project {target_project.name}",
+            }
+            if target_project.archived_at:
+                link_payload["value"] = target_project.name
+            else:
+                link_payload["rowset_link_url"] = target_project.get_absolute_url()
+            lookup[(column, raw_value)] = link_payload
+    return lookup
+
+
+def _rowset_reference_lookup(
+    profile,
+    column_definition_list: list[dict],
+    row_data_items: list[dict[str, object]],
+) -> dict[tuple[str, str], dict[str, str]]:
+    lookup = _dataset_reference_lookup(
+        profile,
+        _dataset_reference_columns(column_definition_list),
+        row_data_items,
+    )
+    lookup.update(
+        _project_reference_lookup(
+            profile,
+            _project_reference_columns(column_definition_list),
+            row_data_items,
+        )
+    )
     return lookup
 
 
@@ -1419,11 +1490,10 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
         rowset_link_cache = {}
-        reference_columns = _dataset_reference_columns(column_definition_list)
         row_objects = list(row_page_obj.object_list)
-        reference_lookup = _dataset_reference_lookup(
+        reference_lookup = _rowset_reference_lookup(
             self.request.user.profile,
-            reference_columns,
+            column_definition_list,
             [row.data for row in row_objects],
         )
         image_asset_lookup = _image_asset_lookup(dataset, row_objects)
@@ -1462,9 +1532,9 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         if not has_imported_rows:
             rows_with_values = []
             preview_rows = dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE]
-            reference_lookup = _dataset_reference_lookup(
+            reference_lookup = _rowset_reference_lookup(
                 self.request.user.profile,
-                reference_columns,
+                column_definition_list,
                 preview_rows,
             )
             for row_number, preview_row in enumerate(
@@ -1639,9 +1709,9 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
         row = self.object
         dataset = row.dataset
         column_definition_list = column_definitions(dataset.headers, dataset.column_schema)
-        reference_lookup = _dataset_reference_lookup(
+        reference_lookup = _rowset_reference_lookup(
             self.request.user.profile,
-            _dataset_reference_columns(column_definition_list),
+            column_definition_list,
             [row.data],
         )
         if form_values is None:

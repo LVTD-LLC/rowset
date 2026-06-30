@@ -60,6 +60,20 @@ Agents can create, list, delete, and resolve relationships through MCP or REST.
 can see table links during normal dataset inspection. The dashboard also shows
 outgoing and incoming relationships on dataset pages.
 
+## Reference columns
+
+Use reference columns when a cell should point at another Rowset object instead
+of storing free text. Set the column type to `reference` and choose a target:
+
+- `{"type": "reference", "target": "dataset"}` stores a Rowset dataset key
+- `{"type": "reference", "target": "project"}` stores a Rowset project key
+
+Rowset validates non-blank reference values against objects in the same account
+and stores the canonical key. Archived dataset and project targets remain valid
+so historical rows keep their links. `get_dataset` groups referenced object
+metadata in `dataset_references` and `project_references` by source column and
+target key.
+
 ## Choice columns
 
 Use experimental choice columns when agents should keep a text value inside a

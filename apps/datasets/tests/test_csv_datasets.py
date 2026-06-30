@@ -1040,6 +1040,93 @@ def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
     assert "Archived dataset" in content
 
 
+def test_dataset_detail_links_project_reference_cells(auth_client, profile):
+    target = Project.objects.create(
+        profile=profile,
+        name="Launch ops",
+        description="Project referenced from a dataset cell.",
+    )
+    source = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sprint_id", "owning_project"],
+        column_schema={
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+            "owning_project": {
+                "type": DatasetColumnType.REFERENCE,
+                "target": "project",
+            },
+        },
+        index_column="sprint_id",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=source,
+        row_number=1,
+        index_value="SPRINT-1",
+        data={
+            "sprint_id": "SPRINT-1",
+            "owning_project": str(target.key),
+        },
+    )
+
+    response = auth_client.get(source.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{target.get_absolute_url()}"' in content
+    assert "Launch ops" in content
+
+
+def test_dataset_detail_renders_archived_project_reference_cells_without_dead_link(
+    auth_client,
+    profile,
+):
+    target = Project.objects.create(profile=profile, name="Archived launch ops")
+    target.archived_at = timezone.now()
+    target.save(update_fields=["archived_at"])
+    source = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sprint_id", "owning_project"],
+        column_schema={
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+            "owning_project": {
+                "type": DatasetColumnType.REFERENCE,
+                "target": "project",
+            },
+        },
+        index_column="sprint_id",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=source,
+        row_number=1,
+        index_value="SPRINT-1",
+        data={
+            "sprint_id": "SPRINT-1",
+            "owning_project": str(target.key),
+        },
+    )
+
+    response = auth_client.get(source.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{target.get_absolute_url()}"' not in content
+    assert "Archived launch ops" in content
+
+
 def test_dataset_detail_renders_owned_rowset_dataset_urls_as_internal_links(
     auth_client,
     profile,
@@ -4375,6 +4462,50 @@ def test_normalize_column_schema_accepts_dataset_reference_metadata():
     }
 
 
+def test_normalize_column_schema_accepts_project_reference_metadata():
+    schema = normalize_column_schema(
+        ["owning_project"],
+        {
+            "owning_project": {
+                "type": "reference",
+                "target": "project",
+                "description": "Project responsible for this row.",
+            }
+        },
+        reject_unknown=True,
+    )
+
+    assert schema == {
+        "owning_project": {
+            "type": "reference",
+            "target": "project",
+            "description": "Project responsible for this row.",
+        }
+    }
+
+
+def test_normalize_column_schema_infers_project_reference_alias_target():
+    schema = normalize_column_schema(
+        ["owning_project", "fallback_project"],
+        {
+            "owning_project": "project_reference",
+            "fallback_project": {"type": "rowset_project"},
+        },
+        reject_unknown=True,
+    )
+
+    assert schema == {
+        "owning_project": {
+            "type": "reference",
+            "target": "project",
+        },
+        "fallback_project": {
+            "type": "reference",
+            "target": "project",
+        },
+    }
+
+
 def test_choice_constraints_from_normalized_schema_allows_none():
     assert choice_constraints_from_schema(["status"], None, normalized=True) == {}
 
@@ -4451,6 +4582,127 @@ def test_dataset_api_dataset_reference_columns_reject_missing_datasets(client, p
     )
 
 
+def test_dataset_api_project_reference_columns_accept_archived_projects(client, profile):
+    target = Project.objects.create(profile=profile, name="Review Gate")
+    target.archived_at = timezone.now()
+    target.save(update_fields=["archived_at"])
+
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Review Gate Sprint History",
+            "headers": ["sprint_id", "owning_project"],
+            "index_column": "sprint_id",
+            "column_types": {
+                "owning_project": {
+                    "type": "reference",
+                    "target": "project",
+                }
+            },
+            "rows": [
+                {
+                    "sprint_id": "RG-SPRINT-001",
+                    "owning_project": str(target.key),
+                }
+            ],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    dataset = Dataset.objects.get(key=response.json()["dataset"]["key"], profile=profile)
+    row = dataset.rows.get(index_value="RG-SPRINT-001")
+    assert row.data["owning_project"] == str(target.key)
+
+    payload = serialize_dataset_detail(dataset)
+    reference = payload["project_references"]["owning_project"][str(target.key)]
+    assert reference["name"] == "Review Gate"
+    assert reference["archived_at"] == target.archived_at
+    assert reference["dataset_count"] == 0
+
+
+def test_dataset_api_project_reference_columns_reject_missing_projects(client, profile):
+    missing_key = "38698383-f515-4b60-b426-4f4ae3bc94ce"
+
+    response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Review Gate Sprint History",
+            "headers": ["sprint_id", "owning_project"],
+            "index_column": "sprint_id",
+            "column_types": {
+                "owning_project": {
+                    "type": "reference",
+                    "target": "project",
+                }
+            },
+            "rows": [
+                {
+                    "sprint_id": "RG-SPRINT-001",
+                    "owning_project": missing_key,
+                }
+            ],
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Column 'owning_project' references a project that does not exist or is not owned "
+        "by this profile."
+    )
+
+
+def test_dataset_api_project_reference_columns_reject_other_profile_projects(
+    client,
+    profile,
+    django_user_model,
+):
+    other_user = django_user_model.objects.create_user(
+        username="projectreferenceother",
+        email="projectreferenceother@example.com",
+        password="password123",
+    )
+    other_project = Project.objects.create(profile=other_user.profile, name="Other launch")
+    source = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sprint_id", "owning_project"],
+        column_schema={
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+            "owning_project": {
+                "type": DatasetColumnType.REFERENCE,
+                "target": "project",
+            },
+        },
+        index_column="sprint_id",
+        row_count=0,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+
+    response = client.post(
+        f"/api/datasets/{source.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "sprint_id": "RG-SPRINT-001",
+                "owning_project": str(other_project.key),
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Column 'owning_project' references a project that does not exist or is not owned "
+        "by this profile."
+    )
+    assert not source.rows.exists()
+
+
 def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, profile):
     target = create_ready_dataset(profile)
     source = Dataset.objects.create(
@@ -4501,6 +4753,97 @@ def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, p
     )
     row.refresh_from_db()
     assert row.data["task_dataset"] == str(target.key)
+
+
+def test_dataset_api_project_reference_columns_canonicalize_row_writes(client, profile):
+    target = Project.objects.create(profile=profile, name="Launch")
+    source = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sprint_id", "owning_project"],
+        column_schema={
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+            "owning_project": {
+                "type": DatasetColumnType.REFERENCE,
+                "target": "project",
+            },
+        },
+        index_column="sprint_id",
+        row_count=0,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+
+    create_response = client.post(
+        f"/api/datasets/{source.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "sprint_id": "RG-SPRINT-001",
+                "owning_project": target.get_absolute_url(),
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert create_response.status_code == 200
+    row = source.rows.get(index_value="RG-SPRINT-001")
+    assert row.data["owning_project"] == str(target.key)
+
+    invalid_patch = client.patch(
+        f"/api/datasets/{source.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"owning_project": "38698383-f515-4b60-b426-4f4ae3bc94ce"}},
+        content_type="application/json",
+    )
+
+    assert invalid_patch.status_code == 400
+    assert invalid_patch.json()["detail"] == (
+        "Column 'owning_project' references a project that does not exist or is not owned "
+        "by this profile."
+    )
+    row.refresh_from_db()
+    assert row.data["owning_project"] == str(target.key)
+
+
+def test_dataset_api_project_reference_index_canonicalizes_row_writes(client, profile):
+    target = Project.objects.create(profile=profile, name="Launch")
+    source = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["owning_project", "sprint_id"],
+        column_schema={
+            "owning_project": {
+                "type": DatasetColumnType.REFERENCE,
+                "target": "project",
+            },
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+        },
+        index_column="owning_project",
+        row_count=0,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+
+    response = client.post(
+        f"/api/datasets/{source.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "owning_project": target.get_absolute_url(),
+                "sprint_id": "RG-SPRINT-001",
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    row = source.rows.get()
+    assert row.index_value == str(target.key)
+    assert row.data["owning_project"] == str(target.key)
 
 
 def test_dataset_api_enforces_choice_values(client, profile):
@@ -5219,6 +5562,118 @@ def test_dataset_api_updates_column_types(client, profile):
             "description": "Primary contact email for row lookup.",
         },
     }
+
+
+def test_dataset_api_updates_column_types_to_project_reference(client, profile):
+    target = Project.objects.create(profile=profile, name="Launch")
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sprint_id", "owning_project"],
+        column_schema={
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+            "owning_project": {"type": DatasetColumnType.TEXT},
+        },
+        index_column="sprint_id",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="RG-SPRINT-001",
+        data={
+            "sprint_id": "RG-SPRINT-001",
+            "owning_project": str(target.key),
+        },
+    )
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+        data={
+            "column_types": {
+                "owning_project": {
+                    "type": "reference",
+                    "target": "project",
+                }
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["dataset"]["column_schema"]["owning_project"] == {
+        "type": "reference",
+        "target": "project",
+    }
+    dataset.refresh_from_db()
+    assert dataset.column_schema["owning_project"] == {
+        "type": "reference",
+        "target": "project",
+    }
+
+
+def test_dataset_api_rejects_project_reference_column_type_for_other_profile_value(
+    client,
+    profile,
+    django_user_model,
+):
+    other_user = django_user_model.objects.create_user(
+        username="projecttypeother",
+        email="projecttypeother@example.com",
+        password="password123",
+    )
+    other_project = Project.objects.create(profile=other_user.profile, name="Other launch")
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Sprint history",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["sprint_id", "owning_project"],
+        column_schema={
+            "sprint_id": {"type": DatasetColumnType.TEXT},
+            "owning_project": {"type": DatasetColumnType.TEXT},
+        },
+        index_column="sprint_id",
+        row_count=1,
+        confirmed_at=timezone.now(),
+        processed_at=timezone.now(),
+    )
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="RG-SPRINT-001",
+        data={
+            "sprint_id": "RG-SPRINT-001",
+            "owning_project": str(other_project.key),
+        },
+    )
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+        data={
+            "column_types": {
+                "owning_project": {
+                    "type": "reference",
+                    "target": "project",
+                }
+            }
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Column 'owning_project' references a project that does not exist or is not owned "
+        "by this profile."
+    )
+    dataset.refresh_from_db()
+    assert dataset.column_schema["owning_project"] == {"type": DatasetColumnType.TEXT}
 
 
 def test_dataset_api_rejects_image_type_for_unowned_existing_asset_ref(client, profile):
