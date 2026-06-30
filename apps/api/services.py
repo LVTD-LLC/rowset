@@ -659,13 +659,11 @@ def _project_reference_columns(headers: list[str], column_schema: dict | None) -
     return _reference_columns(headers, column_schema, PROJECT_REFERENCE_TARGET)
 
 
-def serialize_dataset_reference_context(dataset: Dataset) -> dict[str, dict[str, dict]]:
-    """Return referenced dataset metadata grouped by source column and target key."""
-    reference_columns = _dataset_reference_columns(dataset.headers, dataset.column_schema)
-    if not reference_columns:
-        return {}
-
-    referenced: dict[str, dict[str, dict]] = {column: {} for column in reference_columns}
+def _reference_values_by_column(
+    dataset: Dataset,
+    reference_columns: list[str],
+) -> dict[str, set[str]]:
+    values_by_column: dict[str, set[str]] = {column: set() for column in reference_columns}
     row_data_queryset = dataset.rows.order_by("row_number", "id").values_list("data", flat=True)
     row_data_items = row_data_queryset if dataset.row_count else dataset.preview_rows
     for row_data in row_data_items:
@@ -673,17 +671,58 @@ def serialize_dataset_reference_context(dataset: Dataset) -> dict[str, dict[str,
             continue
         for column in reference_columns:
             raw_value = str(row_data.get(column, "") or "").strip()
-            if not raw_value:
-                continue
-            try:
-                target_dataset = get_profile_dataset(dataset.profile, raw_value)
-            except DatasetServiceError:
-                continue
-            referenced[column][str(target_dataset.key)] = serialize_dataset_reference(
-                target_dataset
-            )
+            if raw_value:
+                values_by_column[column].add(raw_value)
+    return values_by_column
 
-    return {column: targets for column, targets in referenced.items() if targets}
+
+def serialize_dataset_reference_context(dataset: Dataset) -> dict[str, dict[str, dict]]:
+    """Return referenced dataset metadata grouped by source column and target key."""
+    reference_columns = _dataset_reference_columns(dataset.headers, dataset.column_schema)
+    if not reference_columns:
+        return {}
+
+    values_by_column = _reference_values_by_column(dataset, reference_columns)
+    identifiers_by_value: dict[str, UUID] = {}
+    for raw_value in {value for values in values_by_column.values() for value in values}:
+        try:
+            identifiers_by_value[raw_value] = _dataset_identifier_uuid(raw_value)
+        except DatasetServiceError:
+            continue
+
+    if not identifiers_by_value:
+        return {}
+
+    identifiers = set(identifiers_by_value.values())
+    target_datasets = _dataset_summary_queryset(
+        Dataset.objects.filter(profile=dataset.profile)
+    ).filter(
+        Q(key__in=identifiers) | Q(public_key__in=identifiers),
+    )
+    datasets_by_key = {target_dataset.key: target_dataset for target_dataset in target_datasets}
+    datasets_by_public_key = {
+        target_dataset.public_key: target_dataset
+        for target_dataset in target_datasets
+        if target_dataset.public_key
+    }
+
+    referenced: dict[str, dict[str, dict]] = {}
+    for column, raw_values in values_by_column.items():
+        targets: dict[str, dict] = {}
+        for raw_value in raw_values:
+            identifier = identifiers_by_value.get(raw_value)
+            if identifier is None:
+                continue
+            target_dataset = datasets_by_key.get(identifier) or datasets_by_public_key.get(
+                identifier
+            )
+            if target_dataset is None:
+                continue
+            targets[str(target_dataset.key)] = serialize_dataset_reference(target_dataset)
+        if targets:
+            referenced[column] = targets
+
+    return referenced
 
 
 def serialize_project_reference_context(dataset: Dataset) -> dict[str, dict[str, dict]]:
@@ -692,25 +731,47 @@ def serialize_project_reference_context(dataset: Dataset) -> dict[str, dict[str,
     if not reference_columns:
         return {}
 
-    referenced: dict[str, dict[str, dict]] = {column: {} for column in reference_columns}
-    row_data_queryset = dataset.rows.order_by("row_number", "id").values_list("data", flat=True)
-    row_data_items = row_data_queryset if dataset.row_count else dataset.preview_rows
-    for row_data in row_data_items:
-        if not isinstance(row_data, dict):
+    values_by_column = _reference_values_by_column(dataset, reference_columns)
+    project_keys_by_value: dict[str, UUID] = {}
+    for raw_value in {value for values in values_by_column.values() for value in values}:
+        try:
+            project_keys_by_value[raw_value] = _project_identifier_uuid(raw_value)
+        except DatasetServiceError:
             continue
-        for column in reference_columns:
-            raw_value = str(row_data.get(column, "") or "").strip()
-            if not raw_value:
-                continue
-            try:
-                target_project = get_profile_project_reference(dataset.profile, raw_value)
-            except DatasetServiceError:
-                continue
-            referenced[column][str(target_project.key)] = serialize_project_summary(
-                target_project
-            )
 
-    return {column: targets for column, targets in referenced.items() if targets}
+    if not project_keys_by_value:
+        return {}
+
+    target_projects = (
+        Project.objects.annotate(dataset_count=_visible_project_dataset_count())
+        .only(
+            "key",
+            "name",
+            "description",
+            "metadata",
+            "created_at",
+            "updated_at",
+            "archived_at",
+        )
+        .filter(profile=dataset.profile, key__in=set(project_keys_by_value.values()))
+    )
+    projects_by_key = {target_project.key: target_project for target_project in target_projects}
+
+    referenced: dict[str, dict[str, dict]] = {}
+    for column, raw_values in values_by_column.items():
+        targets: dict[str, dict] = {}
+        for raw_value in raw_values:
+            project_key = project_keys_by_value.get(raw_value)
+            if project_key is None:
+                continue
+            target_project = projects_by_key.get(project_key)
+            if target_project is None:
+                continue
+            targets[str(target_project.key)] = serialize_project_summary(target_project)
+        if targets:
+            referenced[column] = targets
+
+    return referenced
 
 
 def serialize_dataset_detail(dataset: Dataset) -> dict:
