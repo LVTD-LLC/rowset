@@ -8,6 +8,7 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.vector_search import (
     QDRANT_DENSE_VECTOR_NAME,
+    DatasetRowVector,
     QdrantVectorStore,
     build_dataset_row_point,
     build_dataset_row_search_document,
@@ -162,6 +163,7 @@ class FakeQdrantClient:
         self.create_exception = create_exception
         self.created_collection = None
         self.upserted = None
+        self.upsert_calls = []
 
     def collection_exists(self, *, collection_name):
         if self.exists_sequence:
@@ -176,6 +178,7 @@ class FakeQdrantClient:
 
     def upsert(self, **kwargs):
         self.upserted = kwargs
+        self.upsert_calls.append(kwargs)
 
 
 def test_vector_store_ensure_collection_creates_named_dense_collection():
@@ -243,10 +246,57 @@ def test_vector_store_upserts_dataset_row_point(vector_dataset, vector_row):
 
     assert client.upserted["collection_name"] == "rowset_rows_custom_embedding_d3_v1"
     assert client.upserted["wait"] is True
+    assert len(client.upsert_calls) == 1
     assert len(client.upserted["points"]) == 1
     assert client.upserted["points"][0].payload["row_id"] == vector_row.id
     assert client.upserted["points"][0].payload["embedding_model"] == "custom-embedding"
     assert client.upserted["points"][0].payload["embedding_dimensions"] == 3
+
+
+def test_vector_store_upserts_dataset_row_vectors_in_one_call(vector_dataset, vector_row):
+    second_row = DatasetRow.objects.create(
+        dataset=vector_dataset,
+        row_number=2,
+        index_value="TASK-2",
+        data={
+            "task_id": "TASK-2",
+            "status": "Doing",
+            "notes": "Batch Qdrant writes",
+        },
+    )
+    client = FakeQdrantClient(exists=True)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    store.upsert_dataset_row_vectors(
+        vector_dataset,
+        [
+            DatasetRowVector(
+                row=vector_row,
+                vector=[0.1, 0.2, 0.3],
+                embedding_model="custom-embedding",
+                embedding_dimensions=3,
+            ),
+            DatasetRowVector(
+                row=second_row,
+                vector=[0.4, 0.5, 0.6],
+                embedding_model="custom-embedding",
+                embedding_dimensions=3,
+            ),
+        ],
+    )
+
+    assert len(client.upsert_calls) == 1
+    assert client.upserted["collection_name"] == "rowset_rows_custom_embedding_d3_v1"
+    assert client.upserted["wait"] is True
+    assert [point.payload["row_id"] for point in client.upserted["points"]] == [
+        vector_row.id,
+        second_row.id,
+    ]
 
 
 def test_vector_store_rejects_upsert_model_mismatch(vector_dataset, vector_row):
