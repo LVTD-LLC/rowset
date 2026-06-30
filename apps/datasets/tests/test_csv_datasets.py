@@ -1655,7 +1655,27 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     assert 'data-controller="row-inline-edit"' in content
     assert 'aria-label="Edit name"' in content
     assert 'aria-label="Edit email"' in content
+    email_input_index = content.index('name="email"')
+    email_input_snippet = content[email_input_index : email_input_index + 420]
+    assert "required" in email_input_snippet
     assert "Save row" in content
+
+
+def test_dataset_row_detail_hides_edit_controls_for_archived_dataset(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at"])
+    row = dataset.rows.get(row_number=1)
+
+    response = auth_client.get(reverse("dataset_row_detail", args=[dataset.key, row.id]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Ada" in content
+    assert "Edit individual values without leaving the row." not in content
+    assert 'data-controller="row-inline-edit"' not in content
+    assert 'aria-label="Edit name"' not in content
+    assert "Save row" not in content
 
 
 def test_dataset_row_create_view_creates_row(auth_client, profile):

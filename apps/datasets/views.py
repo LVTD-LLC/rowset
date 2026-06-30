@@ -870,6 +870,8 @@ def _editable_row_cells(
     dataset: Dataset,
     row_cells: list[dict[str, object]],
     form_values: dict[str, str],
+    *,
+    allow_edit: bool,
 ) -> list[dict[str, object]]:
     editable_headers = set(dataset.headers)
     for index, cell in enumerate(row_cells):
@@ -879,7 +881,7 @@ def _editable_row_cells(
         cell["form_value"] = form_values.get(header, str(cell.get("value", "")))
         cell["is_index"] = header == dataset.index_column
         cell["is_managed_index"] = is_managed_index
-        cell["is_editable"] = header in editable_headers and not is_managed_index
+        cell["is_editable"] = allow_edit and header in editable_headers and not is_managed_index
     return row_cells
 
 
@@ -1644,6 +1646,7 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
         )
         if form_values is None:
             form_values = _row_form_values(dataset, row.data)
+        row_is_editable = dataset.status == DatasetStatus.READY and dataset.archived_at is None
         context["dataset"] = dataset
         context["row_cells"] = _editable_row_cells(
             dataset,
@@ -1660,7 +1663,9 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
                 link_cache={},
             ),
             form_values,
+            allow_edit=row_is_editable,
         )
+        context["row_is_editable"] = row_is_editable
         context["row_form_error"] = row_form_error
         return context
 

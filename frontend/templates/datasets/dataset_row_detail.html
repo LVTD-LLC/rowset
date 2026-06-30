@@ -22,7 +22,9 @@
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="row-data-heading" class="fb-section-title">Row data</h2>
-          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Edit individual values without leaving the row.</p>
+          {% if row_is_editable %}
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Edit individual values without leaving the row.</p>
+          {% endif %}
         </div>
       </div>
       {% if row_form_error %}
@@ -30,8 +32,12 @@
           {{ row_form_error }}
         </div>
       {% endif %}
-      <form method="post" action="{{ dataset_row.get_absolute_url }}" data-controller="row-inline-edit" class="mt-3">
-        {% csrf_token %}
+      {% if row_is_editable %}
+        <form method="post" action="{{ dataset_row.get_absolute_url }}" data-controller="row-inline-edit" class="mt-3">
+          {% csrf_token %}
+      {% else %}
+        <div class="mt-3">
+      {% endif %}
       <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
         <table class="fb-table">
           <caption class="sr-only">Full row data for row {{ dataset_row.row_number }} in {{ dataset.name }}</caption>
@@ -109,6 +115,7 @@
                           class="fb-input block w-full px-3 py-2 text-sm"
                           data-row-inline-edit-target="input"
                           data-original-value="{{ cell.form_value }}"
+                          {% if cell.is_index %}required{% endif %}
                           disabled
                         ></textarea>
                       </div>
@@ -120,6 +127,7 @@
           </tbody>
         </table>
       </div>
+      {% if row_is_editable %}
         <div data-row-inline-edit-target="actions" class="mt-4 hidden rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm text-slate-600 dark:text-slate-300">Only opened fields will be saved.</p>
@@ -129,7 +137,10 @@
             </div>
           </div>
         </div>
-      </form>
+        </form>
+      {% else %}
+        </div>
+      {% endif %}
     </section>
   </div>
 </div>
