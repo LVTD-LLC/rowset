@@ -22,10 +22,13 @@ from apps.api.services import (
     DatasetServiceError,
     archive_profile_dataset,
     create_profile_dataset_relationship,
+    create_profile_dataset_row,
     create_profile_project,
     dataset_asset_content_field,
     delete_profile_dataset_relationship,
+    delete_profile_dataset_row,
     get_profile_dataset,
+    patch_profile_dataset_row,
     update_profile_dataset_column_types,
     update_profile_dataset_metadata,
     update_profile_dataset_project,
@@ -385,6 +388,44 @@ def _delete_dataset(dataset: Dataset) -> None:
     if dataset.source_file:
         dataset.source_file.delete(save=False)
     dataset.delete()
+
+
+def _row_form_input_name(index: int) -> str:
+    return f"field_{index}"
+
+
+def _row_form_data_from_post(dataset: Dataset, post_data) -> dict[str, str]:
+    row_data = {}
+    for index, header in enumerate(dataset.headers):
+        if dataset.index_generated and header == dataset.index_column:
+            continue
+        row_data[header] = post_data.get(_row_form_input_name(index), "")
+    return row_data
+
+
+def _row_form_fields(
+    dataset: Dataset,
+    definitions: list[dict],
+    values: dict[str, object] | None = None,
+    *,
+    id_prefix: str,
+) -> list[dict[str, object]]:
+    values = values or {}
+    fields = []
+    for index, definition in enumerate(definitions):
+        header = definition["name"]
+        field_value = str(values.get(header, "") or "")
+        field = {
+            **definition,
+            "input_name": _row_form_input_name(index),
+            "input_id": f"{id_prefix}-{index}",
+            "value": field_value,
+            "use_textarea": "\n" in field_value,
+            "is_index": header == dataset.index_column,
+            "is_generated_index": dataset.index_generated and header == dataset.index_column,
+        }
+        fields.append(field)
+    return fields
 
 
 def _owned_dataset_queryset(profile):
@@ -1328,6 +1369,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             dataset.headers,
             dataset.column_schema,
         )
+        rows_allow_mutation = dataset.status == DatasetStatus.READY and not dataset.archived_at
         row_queryset, row_query_context = _dataset_row_query_context(
             self.request,
             dataset,
@@ -1374,6 +1416,12 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                     "actor_label": row.updated_by_actor_label,
                     "row_number": row.row_number,
                     "url": row_url,
+                    "delete_url": reverse(
+                        "dataset_row_delete",
+                        kwargs={"dataset_key": dataset.key, "row_id": row.id},
+                    )
+                    if rows_allow_mutation
+                    else "",
                 }
             )
         if not has_imported_rows:
@@ -1405,16 +1453,25 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                         "actor_label": "",
                         "row_number": row_number,
                         "url": "",
+                        "delete_url": "",
                     }
                 )
         context.update(row_query_context if has_imported_rows else {})
         context["rows_with_values"] = rows_with_values
         context["column_definitions"] = column_definition_list
+        context["row_create_fields"] = _row_form_fields(
+            dataset,
+            column_definition_list,
+            id_prefix="row-create-field",
+        )
+        context["rows_allow_mutation"] = rows_allow_mutation
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
         context["row_show_column_controls"] = has_imported_rows
         context["hide_column_filter_section"] = True
-        context["rows_colspan"] = len(dataset.headers) + int(has_imported_rows)
+        context["rows_colspan"] = (
+            len(dataset.headers) + int(has_imported_rows) + int(rows_allow_mutation)
+        )
         context["rows_empty_message"] = (
             "No rows match these filters."
             if context.get("has_row_filters")
@@ -1491,6 +1548,8 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
         )
 
     def get_context_data(self, **kwargs):
+        row_form_error = kwargs.pop("row_form_error", "")
+        row_form_values = kwargs.pop("row_form_values", None)
         context = super().get_context_data(**kwargs)
         row = self.object
         dataset = row.dataset
@@ -1501,7 +1560,7 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
             [row.data],
         )
         context["dataset"] = dataset
-        context["row_cells"] = _row_cells(
+        row_cells = _row_cells(
             dataset.headers,
             row.data,
             dataset.column_schema,
@@ -1513,7 +1572,49 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
             profile=self.request.user.profile,
             link_cache={},
         )
+        row_form_fields = {
+            field["name"]: field
+            for field in _row_form_fields(
+                dataset,
+                column_definition_list,
+                row_form_values or row.data,
+                id_prefix="row-update-field",
+            )
+        }
+        for cell in row_cells:
+            field = row_form_fields.get(cell["header"])
+            if field:
+                cell["form_field"] = field
+        context["row_cells"] = row_cells
+        context["row_form_error"] = row_form_error
+        context["rows_allow_mutation"] = (
+            dataset.status == DatasetStatus.READY and not dataset.archived_at
+        )
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        dataset = self.object.dataset
+        row_data = _row_form_data_from_post(dataset, request.POST)
+        try:
+            patch_profile_dataset_row(
+                request.user.profile,
+                str(dataset.key),
+                self.object.id,
+                row_data,
+            )
+        except DatasetServiceError as exc:
+            if exc.status_code == 404:
+                raise Http404(exc.message) from exc
+            context = self.get_context_data(
+                object=self.object,
+                row_form_error=exc.message,
+                row_form_values={**(self.object.data or {}), **row_data},
+            )
+            return self.render_to_response(context)
+
+        messages.success(request, "Row updated.")
+        return redirect(self.object.get_absolute_url())
 
 
 class DatasetSettingsView(LoginRequiredMixin, DetailView):
@@ -1859,6 +1960,50 @@ def dataset_delete(request, dataset_key):
     if next_url in {"home", "settings"}:
         return redirect("home")
     return redirect("dataset_list")
+
+
+@login_required
+@require_POST
+def dataset_row_create(request, dataset_key):
+    dataset = get_object_or_404(
+        Dataset,
+        key=dataset_key,
+        profile=request.user.profile,
+    )
+    try:
+        result = create_profile_dataset_row(
+            request.user.profile,
+            str(dataset.key),
+            _row_form_data_from_post(dataset, request.POST),
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+        return redirect("dataset_detail", dataset_key=dataset_key)
+
+    row_id = result["row"]["id"]
+    messages.success(request, "Row created.")
+    return redirect("dataset_row_detail", dataset_key=dataset_key, row_id=row_id)
+
+
+@login_required
+@require_POST
+def dataset_row_delete(request, dataset_key, row_id):
+    try:
+        result = delete_profile_dataset_row(
+            request.user.profile,
+            str(dataset_key),
+            row_id,
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, result["message"])
+
+    return redirect("dataset_detail", dataset_key=dataset_key)
 
 
 @login_required
