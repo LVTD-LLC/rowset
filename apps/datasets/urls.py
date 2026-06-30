@@ -26,19 +26,19 @@ urlpatterns = [
         name="dataset_changes",
     ),
     path(
-        "datasets/<uuid:dataset_key>/rows/<int:row_id>/",
-        views.DatasetRowDetailView.as_view(),
-        name="dataset_row_detail",
-    ),
-    path(
         "datasets/<uuid:dataset_key>/rows/create/",
-        views.dataset_row_create,
+        views.DatasetRowCreateView.as_view(),
         name="dataset_row_create",
     ),
     path(
-        "datasets/<uuid:dataset_key>/rows/<int:row_id>/delete/",
-        views.dataset_row_delete,
-        name="dataset_row_delete",
+        "datasets/<uuid:dataset_key>/rows/actions/",
+        views.dataset_rows_bulk_action,
+        name="dataset_rows_bulk_action",
+    ),
+    path(
+        "datasets/<uuid:dataset_key>/rows/<int:row_id>/",
+        views.DatasetRowDetailView.as_view(),
+        name="dataset_row_detail",
     ),
     path(
         "datasets/<uuid:dataset_key>/archive/",

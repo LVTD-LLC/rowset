@@ -19,15 +19,26 @@
     </div>
 
     <section class="fb-card p-5" aria-labelledby="row-data-heading">
-      <h2 id="row-data-heading" class="fb-section-title">Row data</h2>
-      {% if rows_allow_mutation %}
-        <form method="post" action="{{ dataset_row.get_absolute_url }}" class="mt-3 space-y-4">
-          {% csrf_token %}
-          {% if row_form_error %}
-            <div id="row-form-error" role="alert" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-100">{{ row_form_error }}</div>
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 id="row-data-heading" class="fb-section-title">Row data</h2>
+          {% if row_is_editable %}
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Edit individual values without leaving the row.</p>
           {% endif %}
+        </div>
+      </div>
+      {% if row_form_error %}
+        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200" role="alert">
+          {{ row_form_error }}
+        </div>
       {% endif %}
-      <div class="{% if rows_allow_mutation %}overflow-x-auto{% else %}mt-3 overflow-x-auto{% endif %} rounded-lg border border-slate-200 dark:border-slate-800">
+      {% if row_is_editable %}
+        <form method="post" action="{{ dataset_row.get_absolute_url }}" data-controller="row-inline-edit" class="mt-3">
+          {% csrf_token %}
+      {% else %}
+        <div class="mt-3">
+      {% endif %}
+      <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
         <table class="fb-table">
           <caption class="sr-only">Full row data for row {{ dataset_row.row_number }} in {{ dataset.name }}</caption>
           <thead class="bg-slate-50 dark:bg-slate-900">
@@ -47,74 +58,88 @@
                   {% endif %}
                 </th>
                 <td class="min-w-96 break-words">
-                  {% if cell.form_field %}
-                    <div class="space-y-3">
-                      <div class="min-w-0">
-                  {% endif %}
-                  {% dataset_external_href cell.value as external_href %}
-                  {% if cell.is_image %}
-                    <div class="max-w-xl">
-                      <a href="{{ cell.image_full_url }}" class="fb-focus inline-block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900" aria-label="Open image {{ cell.value }}">
-                        <img src="{{ cell.image_url }}" alt="{{ cell.image_alt }}" class="max-h-96 w-auto object-contain">
-                      </a>
-                      <p class="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{{ cell.value }}</p>
-                      {% if cell.image_detail %}
-                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ cell.image_detail }}</p>
-                      {% endif %}
-                    </div>
-                  {% elif cell.is_missing_image %}
-                    <span class="text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
-                  {% elif cell.relationship_url %}
-                    <a href="{{ cell.relationship_url }}" class="fb-focus font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" aria-label="{{ cell.relationship_label }}">{{ cell.value }}</a>
-                  {% elif cell.rowset_link_url %}
-                    {% include "datasets/partials/rowset_link_cell.html" %}
-                  {% elif cell.plain_link_url %}
-                    <a href="{{ cell.plain_link_url }}" class="fb-focus whitespace-pre-wrap break-words text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:decoration-slate-700 dark:hover:text-emerald-300" aria-label="{{ cell.plain_link_label }}">{{ cell.value }}</a>
-                  {% elif external_href %}
-                    <a href="{{ external_href }}" target="_blank" rel="nofollow ugc noopener noreferrer" class="fb-focus whitespace-pre-wrap break-words font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ cell.value }}</a>
-                  {% elif cell.value %}
-                    <span class="whitespace-pre-wrap break-words">{{ cell.value }}</span>
-                  {% else %}
-                    <span class="text-slate-400 dark:text-slate-500">Blank</span>
-                  {% endif %}
-                  {% if cell.form_field %}
-                      </div>
-                      <div>
-                        <label for="{{ cell.form_field.input_id }}" class="sr-only">Update {{ cell.header }}</label>
-                        {% if cell.form_field.is_generated_index %}
-                          <input id="{{ cell.form_field.input_id }}" type="text" value="{{ cell.form_field.value }}" disabled class="fb-input block w-full px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
-                        {% elif cell.form_field.type == "choice" and cell.form_field.choices %}
-                          <select id="{{ cell.form_field.input_id }}" name="{{ cell.form_field.input_name }}" class="fb-input block w-full px-3 py-2 text-sm" {% if cell.form_field.is_index %}required{% endif %}>
-                            <option value=""></option>
-                            {% for choice in cell.form_field.choices %}
-                              <option value="{{ choice }}"{% if choice == cell.form_field.value %} selected{% endif %}>{{ choice }}</option>
-                            {% endfor %}
-                          </select>
-                        {% elif cell.form_field.type == "boolean" %}
-                          <select id="{{ cell.form_field.input_id }}" name="{{ cell.form_field.input_name }}" class="fb-input block w-full px-3 py-2 text-sm" {% if cell.form_field.is_index %}required{% endif %}>
-                            <option value=""></option>
-                            <option value="true"{% if cell.form_field.value == "true" %} selected{% endif %}>True</option>
-                            <option value="false"{% if cell.form_field.value == "false" %} selected{% endif %}>False</option>
-                          </select>
-                        {% elif cell.form_field.use_textarea %}
-                          <textarea id="{{ cell.form_field.input_id }}" name="{{ cell.form_field.input_name }}" rows="3" class="fb-input block w-full px-3 py-2 text-sm" {% if cell.form_field.is_index %}required{% endif %}>{{ cell.form_field.value }}</textarea>
+                  <div data-row-inline-edit-field class="min-w-0">
+                    <div class="flex min-w-0 items-start gap-2">
+                      <div data-row-inline-edit-target="display" class="min-w-0 flex-1">
+                        {% dataset_external_href cell.value as external_href %}
+                        {% if cell.is_image %}
+                          <div class="max-w-xl">
+                            <a href="{{ cell.image_full_url }}" class="fb-focus inline-block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900" aria-label="Open image {{ cell.value }}">
+                              <img src="{{ cell.image_url }}" alt="{{ cell.image_alt }}" class="max-h-96 w-auto object-contain">
+                            </a>
+                            <p class="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{{ cell.value }}</p>
+                            {% if cell.image_detail %}
+                              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ cell.image_detail }}</p>
+                            {% endif %}
+                          </div>
+                        {% elif cell.is_missing_image %}
+                          <span class="text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
+                        {% elif cell.relationship_url %}
+                          <a href="{{ cell.relationship_url }}" class="fb-focus font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" aria-label="{{ cell.relationship_label }}">{{ cell.value }}</a>
+                        {% elif cell.rowset_link_url %}
+                          {% include "datasets/partials/rowset_link_cell.html" %}
+                        {% elif cell.plain_link_url %}
+                          <a href="{{ cell.plain_link_url }}" class="fb-focus whitespace-pre-wrap break-words text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:decoration-slate-700 dark:hover:text-emerald-300" aria-label="{{ cell.plain_link_label }}">{{ cell.value }}</a>
+                        {% elif external_href %}
+                          <a href="{{ external_href }}" target="_blank" rel="nofollow ugc noopener noreferrer" class="fb-focus whitespace-pre-wrap break-words font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ cell.value }}</a>
+                        {% elif cell.value %}
+                          <span class="whitespace-pre-wrap break-words">{{ cell.value }}</span>
                         {% else %}
-                          <input id="{{ cell.form_field.input_id }}" name="{{ cell.form_field.input_name }}" type="text" value="{{ cell.form_field.value }}" class="fb-input block w-full px-3 py-2 text-sm" {% if cell.form_field.is_index %}required{% endif %}>
+                          <span class="text-slate-400 dark:text-slate-500">Blank</span>
                         {% endif %}
                       </div>
+                      {% if cell.is_editable %}
+                        <button
+                          type="button"
+                          data-action="row-inline-edit#edit"
+                          class="fb-focus inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-emerald-300"
+                          aria-label="Edit {{ cell.header }}"
+                          title="Edit {{ cell.header }}"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                          </svg>
+                        </button>
+                      {% elif cell.is_managed_index %}
+                        <span class="inline-flex shrink-0 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">Managed</span>
+                      {% endif %}
                     </div>
-                  {% endif %}
+                    {% if cell.is_editable %}
+                      <div data-row-inline-edit-target="inputWrapper" class="mt-2 hidden">
+                        <label for="{{ cell.input_id }}" class="sr-only">{{ cell.header }}</label>
+                        <textarea
+                          id="{{ cell.input_id }}"
+                          name="{{ cell.header }}"
+                          rows="3"
+                          class="fb-input block w-full px-3 py-2 text-sm"
+                          data-row-inline-edit-target="input"
+                          data-original-value="{{ cell.form_value }}"
+                          {% if cell.is_index %}required{% endif %}
+                          disabled
+                        ></textarea>
+                      </div>
+                    {% endif %}
+                  </div>
                 </td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-      {% if rows_allow_mutation %}
-          <div class="flex justify-end">
-            <button type="submit" class="fb-button-primary">Save row</button>
+      {% if row_is_editable %}
+        <div data-row-inline-edit-target="actions" class="mt-4 hidden rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm text-slate-600 dark:text-slate-300">Only opened fields will be saved.</p>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button type="button" data-action="row-inline-edit#cancel" class="fb-button-secondary">Cancel</button>
+              <button type="submit" class="fb-button-primary">Save row</button>
+            </div>
           </div>
+        </div>
         </form>
+      {% else %}
+        </div>
       {% endif %}
     </section>
   </div>

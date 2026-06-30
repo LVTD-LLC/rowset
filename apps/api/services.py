@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterable
 from datetime import UTC, date, datetime, time
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -3093,3 +3094,65 @@ def delete_profile_dataset_row(
             },
         )
     return {"status": "success", "message": "Row deleted.", "dataset": str(dataset.key)}
+
+
+def delete_profile_dataset_rows(
+    profile: Profile,
+    dataset_key: str,
+    row_ids: Iterable[int | str],
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    ordered_row_ids: list[int] = []
+    seen_row_ids: set[int] = set()
+    for row_id in row_ids:
+        try:
+            normalized_row_id = int(row_id)
+        except (TypeError, ValueError) as exc:
+            raise DatasetServiceError(400, "Row IDs must be integers.") from exc
+        if normalized_row_id in seen_row_ids:
+            continue
+        seen_row_ids.add(normalized_row_id)
+        ordered_row_ids.append(normalized_row_id)
+
+    if not ordered_row_ids:
+        raise DatasetServiceError(400, "Select at least one row.")
+
+    with transaction.atomic():
+        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        rows_by_id = {row.id: row for row in dataset.rows.filter(id__in=ordered_row_ids)}
+        ordered_rows = []
+        for row_id in ordered_row_ids:
+            row = rows_by_id.get(row_id)
+            if row is None:
+                raise DatasetServiceError(404, "Row not found.")
+            ordered_rows.append(row)
+
+        for row in ordered_rows:
+            _raise_if_target_row_is_referenced(dataset, row.index_value)
+
+        deleted_rows = [(row.id, row.row_number) for row in ordered_rows]
+        dataset.rows.filter(id__in=ordered_row_ids).delete()
+        dataset.row_count = dataset.rows.count()
+        dataset.updated_by_agent_api_key = agent_api_key
+        dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
+        for row_id, row_number in deleted_rows:
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.ROW_DELETED,
+                f"Row {row_number} deleted.",
+                agent_api_key=agent_api_key,
+                target_type="row",
+                target_identifier=row_id,
+                metadata={
+                    "row_id": row_id,
+                    "row_number": row_number,
+                },
+            )
+
+    row_label = "row" if len(deleted_rows) == 1 else "rows"
+    return {
+        "status": "success",
+        "message": f"Deleted {len(deleted_rows)} {row_label}.",
+        "dataset": str(dataset.key),
+        "deleted_count": len(deleted_rows),
+    }
