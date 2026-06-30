@@ -68,5 +68,5 @@ class BlogPublicViewTests(TestCase):
         blog_sitemap = sitemaps["blog"]
         urls = [item["location"] for item in blog_sitemap.get_urls(site=None)]
 
-        assert published.get_absolute_url() in urls
-        assert "/blog/draft-guide" not in urls
+        assert f"https://example.com{published.get_absolute_url()}" in urls
+        assert all("/blog/draft-guide" not in url for url in urls)

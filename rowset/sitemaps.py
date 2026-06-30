@@ -100,7 +100,9 @@ sitemaps = {
     "use_cases": UseCaseSitemap,
     "blog": GenericSitemap(
         {
-            "queryset": BlogPost.objects.filter(status=BlogPostStatus.PUBLISHED),
+            "queryset": BlogPost.objects.filter(status=BlogPostStatus.PUBLISHED).order_by(
+                "-created_at"
+            ),
             "date_field": "created_at",
         },
         priority=0.85,
