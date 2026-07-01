@@ -149,3 +149,8 @@ and hydration misses instead.
 Qdrant can be rebuilt from Rowset/Postgres. If the index is suspected stale or a
 model rollout fails, disable vector search, fix configuration, and rerun scoped
 backfills.
+
+## Related Notes
+
+- [Hybrid search V1 scope](vector-search-v1-scope.md)
+- [Vector provider evaluation](vector-provider-evaluation.md)
