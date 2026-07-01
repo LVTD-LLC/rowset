@@ -131,6 +131,7 @@
         });
 
         this.flashLabel(copied ? "Copied" : "Copy failed");
+        this.trackCopy(copied);
         this.busy = false;
       },
 
@@ -174,6 +175,15 @@
         this.resetTimer = window.setTimeout(() => {
           this.label = originalLabel;
         }, 1600);
+      },
+
+      trackCopy(copied) {
+        const eventName = this.$el.dataset.copyTrackingEvent || "";
+        if (!copied || !eventName || typeof window.posthog?.capture !== "function") {
+          return;
+        }
+
+        window.posthog.capture(eventName);
       },
     }));
 

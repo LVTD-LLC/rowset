@@ -2,8 +2,6 @@ import json
 from urllib.parse import unquote
 
 import posthog
-
-
 import requests
 from django.conf import settings
 
@@ -11,6 +9,7 @@ from apps.core.models import Profile
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+
 
 def add_email_to_buttondown(email, tag):
     if not settings.BUTTONDOWN_API_KEY:
@@ -87,7 +86,7 @@ def track_event(
         return f"Profile with id {profile_id} not found."
 
     posthog.capture(
-        profile.user.email,
+        str(profile.id),
         event=event_name,
         properties={
             "profile_id": profile.id,
@@ -101,6 +100,45 @@ def track_event(
 
     return f"Tracked event {event_name} for profile {profile_id}"
 
+
+def track_activation_event(
+    profile_id: int,
+    event_name: str,
+    properties: dict | None = None,
+    source_function: str = None,
+) -> str:
+    if not settings.POSTHOG_API_KEY:
+        return "PostHog API key not found."
+
+    base_log_data = {
+        "profile_id": profile_id,
+        "event_name": event_name,
+        "property_keys": sorted((properties or {}).keys()),
+        "source_function": source_function,
+    }
+
+    try:
+        profile = Profile.objects.select_related("user").get(id=profile_id)
+    except Profile.DoesNotExist:
+        logger.error("[ActivationTracking] Profile not found.", **base_log_data)
+        return f"Profile with id {profile_id} not found."
+
+    posthog.capture(
+        str(profile.id),
+        event=event_name,
+        properties={
+            "profile_id": profile.id,
+            "current_state": profile.state,
+            "$set": {
+                "email": profile.user.email,
+                "username": profile.user.username,
+            },
+            **(properties or {}),
+        },
+    )
+
+    logger.info("[ActivationTracking] Tracked event", **base_log_data)
+    return f"Tracked activation event {event_name} for profile {profile_id}"
 
 
 def track_state_change(

@@ -113,7 +113,7 @@
                 <span x-ref="label" x-text="label">Copy key</span>
               </button>
             </span>
-            <span x-data="copyPanel" data-copy-url="{% url 'agent_api_key_setup_prompt' agent_api_key.uuid %}" data-copy-response-key="prompt" data-copy-label="Copy setup prompt">
+            <span x-data="copyPanel" data-copy-url="{% url 'agent_api_key_setup_prompt' agent_api_key.uuid %}" data-copy-response-key="prompt" data-copy-label="Copy setup prompt" data-copy-tracking-event="rowset_agent_setup_prompt_copied">
               <button type="button" @click="copy" :disabled="busy" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs">
                 <span x-ref="label" x-text="label">Copy setup prompt</span>
               </button>

@@ -8,6 +8,10 @@ from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
 from django.utils import timezone
 
+from apps.core.analytics import (
+    ROWSET_AGENT_API_KEY_CREATED,
+    track_activation_event,
+)
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey, Profile
 
@@ -157,6 +161,15 @@ def create_agent_api_key(
     agent_api_key.token_hash = hash_agent_api_key(raw_key)
     agent_api_key.token_ciphertext = encrypt_agent_api_key_token(raw_key)
     agent_api_key.save()
+    track_activation_event(
+        profile,
+        ROWSET_AGENT_API_KEY_CREATED,
+        {
+            "created_agent_api_key_id": agent_api_key.id,
+            "created_agent_api_key_access_level": agent_api_key.access_level,
+        },
+        source_function="create_agent_api_key",
+    )
     return AgentApiKeyCredential(agent_api_key=agent_api_key, raw_key=raw_key)
 
 

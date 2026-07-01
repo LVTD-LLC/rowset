@@ -53,6 +53,11 @@ from apps.api.services import (
     update_profile_project_metadata,
     update_profile_project_section,
 )
+from apps.core.analytics import (
+    ROWSET_GET_USER_INFO_SUCCEEDED,
+    agent_api_key_tracking_properties,
+    track_activation_event,
+)
 from apps.core.capabilities import rowset_capabilities_payload
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey, Profile
@@ -347,9 +352,19 @@ def get_user_info() -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile()
     try:
-        return serialize_user_info(profile)
+        payload = serialize_user_info(profile)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
+    track_activation_event(
+        profile,
+        ROWSET_GET_USER_INFO_SUCCEEDED,
+        {
+            "interface": "mcp",
+            **agent_api_key_tracking_properties(getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None)),
+        },
+        source_function="apps.mcp_server.server.get_user_info",
+    )
+    return payload
 
 
 @mcp.tool(

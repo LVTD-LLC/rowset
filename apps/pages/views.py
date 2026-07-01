@@ -5,6 +5,7 @@ from django.http import Http404
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
+from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
 from apps.core.models import Profile
 from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import get_rowset_logger
@@ -71,6 +72,12 @@ class SignupTrackingMixin:
             },
             source_function=f"{self.tracking_source_name} - form_valid",
             group="Track Event",
+        )
+        track_activation_event(
+            profile,
+            ROWSET_SIGNUP_COMPLETED,
+            {"signup_method": self.tracking_source_name},
+            source_function=f"{self.tracking_source_name} - form_valid",
         )
 
     def form_valid(self, form):

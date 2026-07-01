@@ -67,8 +67,6 @@ services:
     command: sh -c "npm install && npm run start"
     volumes:
       - .:/app
-    ports:
-      - "9091:9091"
     healthcheck:
       test: ["CMD-SHELL", "test -f /app/frontend/build/manifest.json"]
       interval: 5s

@@ -7,6 +7,7 @@ from django.test import override_settings
 from fastmcp import Client
 
 from apps.api.services import DatasetServiceError
+from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
@@ -140,10 +141,19 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
 
 
 def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
+    calls = []
+
+    def track_activation_event(profile, event_name, properties, source_function=None):
+        calls.append((profile.id, event_name, properties, source_function))
+
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
             lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.track_activation_event",
+            track_activation_event,
         )
 
         async with Client(mcp) as client:
@@ -157,6 +167,19 @@ def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
         assert "is_superuser" not in payload
 
     anyio.run(run)
+    assert calls == [
+        (
+            11,
+            ROWSET_GET_USER_INFO_SUCCEEDED,
+            {
+                "interface": "mcp",
+                "agent_api_key_present": True,
+                "agent_api_key_id": 3,
+                "agent_api_key_access_level": AgentApiKeyAccessLevel.READ_WRITE,
+            },
+            "apps.mcp_server.server.get_user_info",
+        )
+    ]
 
 
 def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
@@ -280,9 +303,7 @@ def test_create_agent_api_key_mcp_tool_rejects_legacy_profile_key(monkeypatch):
         payload = _extract_mcp_error_payload(exc_info.value)
         assert payload == _expected_mcp_error(
             code="API_KEY_FORBIDDEN",
-            message=(
-                "This Rowset API key has Read access, but this action requires Admin access."
-            ),
+            message=("This Rowset API key has Read access, but this action requires Admin access."),
             suggested_action="Use a Rowset API key with enough permissions for this action.",
             http_status=403,
         )
