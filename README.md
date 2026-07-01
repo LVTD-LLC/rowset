@@ -1,181 +1,995 @@
-<p align="center">
-  <img src="#" width="230" alt="Rowset Logo">
-</p>
+# Rowset
 
-<!--  -->
-<div align="center">
-  <b>Rowset</b>
-  <b>MCP and REST datasets for AI agents.</b>
-</div>
+Rowset is a private MCP and REST backend for structured datasets that trusted AI
+agents can create, inspect, update, export, and share. Users sign in, copy an
+agent setup prompt, authorize a scoped API key, and let the agent work with
+owned datasets through stable programmatic interfaces instead of browser
+automation.
 
-***
+## Key Features
 
-## Overview
+- Hosted Streamable HTTP MCP server for AI-agent workflows.
+- Authenticated REST API for account checks, projects, datasets, rows, exports,
+  relationships, image assets, and public preview settings.
+- API-backed datasets with stable headers, semantic column metadata, persistent
+  agent instructions, JSON metadata, and an explicit index column.
+- Row CRUD by internal Rowset row id or by dataset index value.
+- Projects and project sections for organizing related datasets without changing
+  authentication boundaries.
+- Choice, reference, image, date, datetime, currency, number, boolean, email,
+  URL, and text column metadata.
+- Read-only public previews with optional password protection for human review.
+- CSV, JSONL, XLSX, SQLite, and dashboard-oriented Parquet export paths.
+- Private image asset storage on local disk or S3-compatible storage such as
+  Cloudflare R2.
+- Optional Qdrant-backed hybrid vector and lexical search for dataset rows.
 
-- Add info about your project here
+## Table of Contents
 
-### Theme
-
-This template includes a dark/light mode toggle in the navbar. The preference is stored in `localStorage` and applied early to avoid a flash of incorrect theme.
-
-### Project structure: `/apps`
-
-This project keeps Django apps inside the `/apps` directory. This is both for human clarity and to help AI/code assistants put code in the right place.
-
-- `apps/core`: main app functionality (shared domain logic, base models, services, etc.)
-- `apps/docs`: user-facing documentation
-- `apps/api`: all API needs (Django Ninja routers, schemas, API-specific logic)
-- `apps/pages`: landing/marketing pages (pricing, TOS, privacy policy, etc.)
-- `apps/blog`: user-facing blog
-
-### Blog management API endpoints (admin)
-
-When blog generation is enabled, the template includes a ready-to-extend blog post management API in `apps/api/views.py`:
-
-- `POST /api/blog-posts/submit`
-- `GET /api/internal/blog-posts`
-- `GET /api/internal/blog-posts/{blog_post_id}`
-- `PUT /api/internal/blog-posts/{blog_post_id}`
-- `PATCH /api/internal/blog-posts/{blog_post_id}`
-- `DELETE /api/internal/blog-posts/{blog_post_id}`
-- `POST /api/internal/blog-posts/{blog_post_id}/review`
-- `POST /api/internal/blog-posts/{blog_post_id}/publish`
-
-These endpoints use superuser API auth by default and are intended as a starter baseline you can adapt for your product-specific content workflows.
-
-
-***
-
-## TOC
-
-- [Overview](#overview)
-- [TOC](#toc)
+- [Tech Stack](#tech-stack)
+- [Product Boundaries](#product-boundaries)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Agent Golden Path](#agent-golden-path)
+- [REST API Quick Start](#rest-api-quick-start)
+- [Architecture](#architecture)
+- [Data Model](#data-model)
+- [Environment Variables](#environment-variables)
+- [Available Commands](#available-commands)
+- [Testing](#testing)
 - [Deployment](#deployment)
-  - [Render](#render)
-  - [Docker Compose](#docker-compose)
-  - [Pure Python / Django deployment](#pure-python--django-deployment)
-  - [Custom Deployment on Caprover](#custom-deployment-on-caprover)
-- [Local Development](#local-development)
-- [Stripe Setup](#stripe-setup)
-  - [Configure Stripe](#configure-stripe)
-  - [Test Webhooks Locally](#test-webhooks-locally)
+- [Troubleshooting](#troubleshooting)
+- [Contributor Notes](#contributor-notes)
 
-***
+## Tech Stack
+
+| Area | Technology |
+| --- | --- |
+| Language | Python 3.14.2 (`.python-version`, `pyproject.toml`) |
+| Backend | Django 6 |
+| REST API | Django Ninja |
+| MCP | FastMCP mounted through Starlette in `rowset/asgi.py` |
+| Auth | Django allauth, session auth, API-key auth, hosted MCP bearer auth |
+| Data stores | PostgreSQL, Redis |
+| Background jobs | Django Q2 workers |
+| Tabular work | Python `csv`, `json`, `sqlite3`, `zipfile`, plus Polars |
+| Frontend | Django templates, HTMX, Alpine.js, Tailwind, PostCSS |
+| Assets | Custom Node 24 build script in `scripts/build-assets.mjs` |
+| Local stack | Docker Compose with Postgres, Redis, backend, workers, frontend, Mailhog, Stripe CLI, MJML, and MinIO |
+| Observability | Sentry, Logfire, PostHog |
+| Integrations | Mailgun, Buttondown, Stripe, Chatwoot, S3-compatible storage, Qdrant/OpenRouter for optional vector search |
+| Active deployment path | Docker images plus CapRover GitHub Actions |
+
+## Product Boundaries
+
+Rowset is intentionally centered on agent-managed datasets.
+
+In scope:
+
+- A signed-in user copies a Rowset setup prompt into a trusted agent.
+- The agent stores the API key privately and connects to Rowset MCP with
+  `Authorization: Bearer <key>`.
+- The agent creates or discovers datasets, inspects schema/context, mutates rows,
+  manages projects, exports snapshots, or enables a public preview when asked.
+- The dashboard helps humans with setup, settings, recent dataset state, schema
+  review, exports, public preview review, and account recovery.
+
+Out of scope for the current product path:
+
+- Dashboard upload/import wizards as the primary workflow.
+- Rowset-managed Google Sheets import, sync, or write-back.
+- Public previews as authentication or as a substitute for REST/MCP access.
+- Browser automation as the preferred agent integration.
+- Broad BI, warehouse, or ETL orchestration promises.
+
+Agents can still read local files, Google Sheets, databases, or other upstream
+sources with their own capabilities, then send structured rows into Rowset
+through MCP or REST.
+
+## Prerequisites
+
+For the supported local workflow:
+
+- Docker Desktop or Docker Engine with Docker Compose.
+- Git.
+- A shell that can run `make`.
+
+For host-side debugging outside Docker:
+
+- Python 3.14.2.
+- `uv`.
+- Node.js 24.11 or newer and npm 11 or newer.
+- PostgreSQL and Redis reachable from your environment.
+
+Most contributors should start with Docker Compose. The local Compose stack
+builds the Python image, installs Node dependencies in the frontend service, and
+runs Postgres and Redis for you.
+
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/LVTD-LLC/rowset.git
+cd rowset
+```
+
+### 2. Create local environment configuration
+
+```bash
+cp .env.example .env
+```
+
+The checked-in defaults are designed for the local Docker Compose stack:
+
+- Postgres host: `db`
+- Postgres database/user/password: `rowset`
+- Redis host: `redis`
+- Redis password: `rowset`
+- Site URL: `http://localhost:8000`
+- Environment: `dev`
+- Debug: `on`
+
+Do not commit `.env`.
+
+### 3. Start the full local stack
+
+```bash
+make serve
+```
+
+This runs:
+
+- `docker compose -f docker-compose-local.yml up -d --build`
+- backend logs for the `backend` service
+
+The local stack includes:
+
+| Service | Purpose | Local port |
+| --- | --- | --- |
+| `backend` | Django app and ASGI server | `8000` |
+| `workers` | Django Q worker process | internal |
+| `frontend` | PostCSS/Tailwind/asset watcher | internal |
+| `db` | PostgreSQL | `5432` |
+| `redis` | Redis | `6379` |
+| `mailhog` | Local email capture | `1025`, `8025` |
+| `stripe` | Optional Stripe webhook forwarding | internal |
+| `mjml` | MJML HTTP renderer | `15500` |
+| `minio` | Local S3-compatible storage | `9000`, `9001` |
+
+Open the app at:
+
+```text
+http://localhost:8000
+```
+
+Mailhog is available at:
+
+```text
+http://localhost:8025
+```
+
+MinIO's console is available at:
+
+```text
+http://localhost:9001
+```
+
+### 4. Create an account
+
+Use the local app UI to sign up. Email verification is non-blocking in the
+current app: local confirmation links are captured by Mailhog or printed through
+the configured email backend.
+
+### 5. Create an agent API key
+
+In the app:
+
+1. Go to `Settings`.
+2. Create an agent API key.
+3. Use the smallest permission level that fits the agent:
+   - `Read` for inspection and exports.
+   - `Read + write` for dataset, row, project, relationship, and public preview
+     changes.
+   - `Admin` only when automation must create more agent API keys.
+
+The dashboard and settings pages generate a copyable agent setup prompt. The
+preview masks the key; the copy endpoint returns the full key and uses
+`Cache-Control: no-store`.
+
+### 6. Verify the golden path
+
+For local development, the setup values are:
+
+```text
+Rowset MCP URL: http://localhost:8000/mcp/
+Rowset REST API base: http://localhost:8000/api/
+Rowset skill: http://localhost:8000/SKILL.md
+```
+
+Store the copied API key in a private environment variable:
+
+```bash
+export ROWSET_API_KEY="replace-with-your-copied-key"
+```
+
+Verify REST authentication:
+
+```bash
+curl -H "Authorization: Bearer $ROWSET_API_KEY" \
+  http://localhost:8000/api/user
+```
+
+## Agent Golden Path
+
+Rowset's primary workflow is agent handoff, not manual row editing.
+
+Recommended agent startup order:
+
+1. Read the Rowset setup prompt.
+2. Store the full API key privately as `ROWSET_API_KEY`.
+3. Configure the remote MCP server with bearer-token auth.
+4. Discover live MCP tools and schemas from the connected server.
+5. Call `get_user_info` to verify authentication.
+6. Call `get_rowset_capabilities` for the current feature guide.
+7. Call `get_all_datasets`, `get_archived_datasets`, or `search_datasets`
+   before creating duplicates.
+8. Call `get_dataset` before row operations so the agent sees headers, index
+   column, semantic schema, dataset instructions, metadata, and relationships.
+
+For Codex/OpenClaw-compatible clients:
+
+```bash
+codex mcp add rowset \
+  --url http://localhost:8000/mcp/ \
+  --bearer-token-env-var ROWSET_API_KEY
+```
+
+For production, replace the URL with:
+
+```text
+https://your-rowset-domain.example/mcp/
+```
+
+Do not put the raw API key in the MCP server config. Store the key in the
+agent's private runtime environment or secret store and configure the client to
+send:
+
+```http
+Authorization: Bearer <key>
+```
+
+### MCP tool groups
+
+The live MCP server is the exact source for tool schemas. The current workflow
+groups are:
+
+| Workflow | Representative MCP tools |
+| --- | --- |
+| Account and setup | `get_user_info`, `get_rowset_capabilities` |
+| API keys | `create_agent_api_key` |
+| Dataset discovery | `get_all_datasets`, `get_archived_datasets`, `search_datasets`, `get_dataset` |
+| Dataset creation/context | `create_dataset`, `update_dataset_metadata`, `update_dataset_column_types` |
+| Projects | `get_all_projects`, `search_projects`, `create_project`, `get_project`, `get_project_sections`, `create_project_section`, `update_project`, `update_project_metadata`, `update_project_section`, `archive_project_section`, `archive_project`, `update_dataset_project` |
+| Rows | `list_dataset_rows`, `search_dataset_rows`, `get_dataset_row`, `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`, `update_dataset_row_by_index`, `delete_dataset_row` |
+| Schema changes | `add_column`, `rename_column`, `drop_column`, `reorder_columns` |
+| Relationships | `list_dataset_relationships`, `create_dataset_relationship`, `resolve_dataset_relationship`, `delete_dataset_relationship` |
+| Image assets | `attach_image_to_dataset_row`, `get_dataset_image_asset` |
+| Public previews | `update_dataset_public_preview` |
+| Archive/restore | `archive_dataset`, `restore_dataset` |
+
+Agents should ask before destructive actions such as row deletion, dataset
+archive, project archive, or clearing a public preview password unless the user
+explicitly requested that action.
+
+### Canonical task-board example
+
+A useful Rowset dogfood pattern is a task board indexed by `task_id`:
+
+```json
+{
+  "name": "Agent Task Board",
+  "description": "Durable task board for one agent workflow",
+  "instructions": "Keep task_id stable. Move status to done only after definition_of_done is satisfied.",
+  "metadata": {
+    "status_order": ["todo", "doing", "blocked", "review", "done"],
+    "priority_meaning": {
+      "P0": "Highest leverage or blocking",
+      "P1": "Important current-cycle work"
+    }
+  },
+  "headers": [
+    "task_id",
+    "status",
+    "priority",
+    "task",
+    "definition_of_done",
+    "owner",
+    "updated_on",
+    "notes"
+  ],
+  "index_column": "task_id",
+  "column_types": {
+    "task_id": "text",
+    "status": {
+      "type": "choice",
+      "choices": ["todo", "doing", "blocked", "review", "done"]
+    },
+    "priority": {
+      "type": "choice",
+      "choices": ["P0", "P1", "P2", "P3"]
+    },
+    "updated_on": "date"
+  }
+}
+```
+
+That shape demonstrates the Rowset core: stable index, choice metadata,
+persistent instructions, JSON conventions, and updates by index.
+
+## REST API Quick Start
+
+The REST API base is:
+
+```text
+http://localhost:8000/api/
+```
+
+In production, it is:
+
+```text
+https://your-rowset-domain.example/api/
+```
+
+Generated API docs are served from:
+
+```text
+/api/docs
+```
+
+Use bearer auth for private REST requests:
+
+```http
+Authorization: Bearer <key>
+```
+
+`X-API-Key` and `?api_key=` are compatibility fallbacks for clients that cannot
+send bearer tokens.
+
+### Verify a key
+
+```bash
+curl -H "Authorization: Bearer $ROWSET_API_KEY" \
+  http://localhost:8000/api/user
+```
+
+### Create a dataset
+
+```bash
+curl -X POST http://localhost:8000/api/datasets \
+  -H "Authorization: Bearer $ROWSET_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Products",
+    "description": "Supplier catalog managed by an agent",
+    "instructions": "Keep sku stable. Treat price as USD unless a row says otherwise.",
+    "headers": ["sku", "name", "price", "status"],
+    "index_column": "sku",
+    "column_types": {
+      "sku": "text",
+      "name": "text",
+      "price": "currency",
+      "status": {
+        "type": "choice",
+        "choices": ["draft", "active", "retired"]
+      }
+    },
+    "rows": [
+      {"sku": "A-1", "name": "Adapter", "price": "19.99", "status": "active"}
+    ]
+  }'
+```
+
+### List rows
+
+```bash
+curl -H "Authorization: Bearer $ROWSET_API_KEY" \
+  "http://localhost:8000/api/datasets/{dataset_key}/rows"
+```
+
+### Update a row by index
+
+```bash
+curl -X PATCH \
+  "http://localhost:8000/api/datasets/{dataset_key}/rows/by-index?index_value=A-1" \
+  -H "Authorization: Bearer $ROWSET_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"data": {"status": "retired"}}'
+```
+
+### Export a snapshot
+
+```bash
+curl -H "Authorization: Bearer $ROWSET_API_KEY" \
+  "http://localhost:8000/api/datasets/{dataset_key}/export.csv" \
+  -o dataset.csv
+```
+
+REST export endpoints include:
+
+- `GET /api/datasets/{dataset_key}/export.csv`
+- `GET /api/datasets/{dataset_key}/export.jsonl`
+- `GET /api/datasets/{dataset_key}/export.xlsx`
+- `GET /api/datasets/{dataset_key}/export.sqlite`
+
+## Architecture
+
+### Directory structure
+
+```text
+.
+|-- rowset/                    # Django settings, URLs, ASGI/WSGI, storage, logging, sitemap
+|-- apps/
+|   |-- core/                  # Profiles, agent API keys, setup prompt, billing, feedback, email
+|   |-- api/                   # Django Ninja API, auth, schemas, thin REST views, API services
+|   |-- mcp_server/            # FastMCP server, MCP bearer auth, MCP tools and tests
+|   |-- datasets/              # Dataset models, services, views, exports, assets, vector search
+|   |-- docs/                  # In-app Markdown docs and navigation
+|   |-- pages/                 # Landing, pricing, legal, use-case pages
+|   `-- blog/                  # Blog models, views, choices, and admin endpoints
+|-- frontend/
+|   |-- templates/             # Django templates for public and authenticated pages
+|   |-- src/js/                # Alpine component registration and browser enhancements
+|   |-- src/styles/            # Tailwind/PostCSS source CSS
+|   `-- vendors/               # Vendored frontend assets copied into the build
+|-- scripts/build-assets.mjs   # Frontend asset build and watch script
+|-- deployment/                # CapRover/server/worker Dockerfiles and entrypoint
+|-- docker-compose-local.yml   # Local development stack
+|-- docker-compose-prod.yml    # Production Compose stack using GHCR images
+|-- docker-compose-test.yml    # Compose overrides for test runs
+|-- pyproject.toml             # Python dependencies and tooling config
+|-- package.json               # Frontend build/lint dependencies
+|-- Makefile                   # Supported local commands
+`-- .github/workflows/         # CI, ReviewGate, CapRover deploy workflows
+```
+
+### Request lifecycle
+
+1. HTTP traffic enters the ASGI app in `rowset/asgi.py`.
+2. `/mcp` redirects to `/mcp/`.
+3. `/mcp/` is handled by the FastMCP HTTP app.
+4. All other paths are mounted into Django.
+5. Django routes public pages, account views, dataset UI, docs, and `/api/`.
+6. REST requests hit Django Ninja routes in `apps/api/views.py`.
+7. Views authenticate the user/profile and call shared services.
+8. Shared dataset behavior lives in `apps/api/services.py` and
+   `apps/datasets/services.py`.
+9. Responses are serialized for REST, MCP, or templates at the boundary.
+
+### MCP flow
+
+```text
+Agent
+  -> Streamable HTTP MCP client
+  -> /mcp/ with Authorization: Bearer <ROWSET_API_KEY>
+  -> apps.mcp_server.auth
+  -> apps.mcp_server.server tool
+  -> shared API/dataset services
+  -> PostgreSQL/Redis/storage
+```
+
+MCP tool bodies should stay thin: authenticate, call services, convert service
+errors, and return structured data.
+
+### REST flow
+
+```text
+Client or agent
+  -> /api/... with Authorization: Bearer <ROWSET_API_KEY>
+  -> apps.api.auth
+  -> apps.api.views endpoint
+  -> apps.api.services and apps.datasets.services
+  -> PostgreSQL/Redis/storage
+```
+
+REST and MCP should reuse service functions so dataset validation, ownership,
+row rules, and error handling stay aligned.
+
+### Frontend flow
+
+```text
+Browser
+  -> Django template view
+  -> frontend/templates
+  -> static assets from frontend/build
+  -> HTMX for partial server round trips
+  -> Alpine.js for local browser state
+```
+
+The asset build:
+
+1. Reads `frontend/src/styles/index.css`.
+2. Runs PostCSS import, Tailwind, Autoprefixer, and cssnano in production.
+3. Copies `frontend/src/js`.
+4. Copies vendored assets and Alpine.
+5. Writes `frontend/build/manifest.json`.
+
+## Data Model
+
+Core entities:
+
+| Model | Purpose |
+| --- | --- |
+| `Profile` | Rowset account state for a Django user. Owns datasets, projects, keys, feedback, and billing state. |
+| `AgentApiKey` | Scoped API key record. Stores a prefix, token hash, encrypted token ciphertext, access level, and revocation state. |
+| `Project` | User-owned grouping for related datasets. Carries description and JSON metadata. |
+| `ProjectSection` | Optional grouping inside one project. Does not affect access control. |
+| `Dataset` | The central object: headers, column schema, index column, context, rows, preview settings, project link, status, and archive state. |
+| `DatasetRow` | One row of data. Stores `row_number`, `index_value`, and JSON data keyed by dataset headers. |
+| `DatasetRelationship` | Simple foreign-key-style link from one source dataset column to another dataset's index values. |
+| `DatasetAsset` | Private image asset attached to one image column on one row. Row cells store `asset:{key}` references. |
+| `DatasetMutation` | Audit-style record of dataset, row, schema, asset, and public preview changes. |
+
+Important rules:
+
+- Headers must be present, non-empty, and unique.
+- If an index column is supplied, index values must be non-blank and unique.
+- If no reliable index exists, omit `index_column`; Rowset generates `rowset_id`.
+- Stored row data is string-keyed by dataset headers.
+- Choice cells can be blank, but non-blank values must match configured choices.
+- Reference columns store canonical Rowset dataset or project keys.
+- Relationships point to ready datasets in the same account.
+- Public previews are read-only browser views, not API authentication.
+- Archived datasets keep rows and schema metadata recoverable.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` for local development:
+
+```bash
+cp .env.example .env
+```
+
+### Required
+
+| Variable | Description | Local default |
+| --- | --- | --- |
+| `ENVIRONMENT` | `dev` locally, `prod` in production. | `dev` |
+| `DEBUG` | Use `on`/truthy locally and `off`/false in production. | `on` |
+| `SECRET_KEY` | Django signing secret. Generate a strong value for production. | `super-secret-key` |
+| `SITE_URL` | Absolute public site URL used for links, CSRF, docs, MCP URL, and setup prompt. | `http://localhost:8000` |
+| `POSTGRES_DB` | PostgreSQL database name. | `rowset` |
+| `POSTGRES_USER` | PostgreSQL username. | `rowset` |
+| `POSTGRES_PASSWORD` | PostgreSQL password. | `rowset` |
+| `POSTGRES_HOST` | PostgreSQL host. Use `db` inside Compose. | `db` |
+| `POSTGRES_PORT` | PostgreSQL port. | `5432` |
+| `REDIS_HOST` | Redis host. Use `redis` inside Compose. | `redis` |
+| `REDIS_PASSWORD` | Redis password. | `rowset` |
+| `REDIS_PORT` | Redis port. | `6379` |
+
+### Account and auth
+
+| Variable | Description |
+| --- | --- |
+| `ALLOW_SIGNUPS` | Set to `False` to pause new signups while keeping existing logins available. |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Optional GitHub social login. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional Google social login. |
+
+### Dataset assets
+
+Leave `ROWSET_ASSET_S3_ENDPOINT_URL` blank to store private dataset image assets
+on local disk.
+
+| Variable | Description |
+| --- | --- |
+| `ROWSET_ASSET_S3_ENDPOINT_URL` | S3-compatible endpoint, such as Cloudflare R2. |
+| `ROWSET_ASSET_STORAGE_BUCKET_NAME` | Bucket name for private dataset image assets. Required when endpoint is set. |
+| `ROWSET_ASSET_ACCESS_KEY_ID` | S3/R2 access key id. Required when endpoint is set. |
+| `ROWSET_ASSET_SECRET_ACCESS_KEY` | S3/R2 secret access key. Required when endpoint is set. |
+| `ROWSET_ASSET_REGION_NAME` | Region name. Use `auto` for Cloudflare R2. |
+
+### Email, support, and marketing
+
+| Variable | Description |
+| --- | --- |
+| `MAILGUN_API_KEY` | Enables Mailgun transactional email. Empty uses console email fallback outside local SMTP. |
+| `MAILGUN_SENDER_DOMAIN` | Optional Mailgun sender domain. Defaults to `mg.lvtd.dev` in settings. |
+| `BUTTONDOWN_API_KEY` | Optional Buttondown integration. |
+| `CHATWOOT_BASE_URL` | Optional Chatwoot support widget base URL. |
+| `CHATWOOT_WEBSITE_TOKEN` | Optional Chatwoot website inbox token. |
+| `CHATWOOT_HMAC_SECRET` | Optional Chatwoot identity validation secret. |
+
+### Billing
+
+| Variable | Description |
+| --- | --- |
+| `STRIPE_SECRET_KEY` | Stripe secret key for Checkout, Portal, and webhooks. |
+| `STRIPE_CONTEXT` | Optional Stripe Organization account context. |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret. |
+| `STRIPE_PRICE_ID_ROWSET_PRO_MONTHLY` | Price id for the Rowset Pro monthly plan. |
+| `WEBHOOK_UUID` | Optional UUID segment for webhook URLs. |
+| `STRIPE_PUBLISHABLE_KEY` | Present in `.env.example`; only needed if client-side Stripe.js is wired in. |
+
+### Vector search
+
+Vector search is optional. PostgreSQL remains the source of truth; Qdrant is a
+rebuildable retrieval index.
+
+| Variable | Description |
+| --- | --- |
+| `ROWSET_VECTOR_SEARCH_ENABLED` | Set to `True` only after Qdrant and embeddings are configured. |
+| `QDRANT_URL` | Qdrant HTTP URL. |
+| `QDRANT_API_KEY` | Qdrant API key, if required. |
+| `QDRANT_COLLECTION_PREFIX` | Prefix for Rowset-managed Qdrant collections. |
+| `QDRANT_TIMEOUT_SECONDS` | Qdrant request timeout. |
+| `ROWSET_EMBEDDING_MODEL` | Embedding model. Default is `openai/text-embedding-3-small`. |
+| `ROWSET_EMBEDDING_DIMENSIONS` | Embedding dimension count. Default is `1536`. |
+| `OPENROUTER_BASE_URL` | OpenRouter API base URL for embeddings. |
+| `OPENROUTER_API_KEY` | Required when vector search is enabled. |
+| `OPENAI_API_KEY` | Optional key for code paths that use OpenAI directly. |
+
+Backfill an existing ready dataset after vector search is configured:
+
+```bash
+make manage backfill_dataset_vectors <dataset_key> --dry-run
+make manage backfill_dataset_vectors <dataset_key>
+```
+
+### Observability and runtime
+
+| Variable | Description |
+| --- | --- |
+| `LOGFIRE_TOKEN` | Enables Logfire instrumentation. |
+| `LOGFIRE_CONSOLE_SHOW_PROJECT_LINK` | Controls Logfire console link display. |
+| `SENTRY_DSN` | Enables Sentry in production. |
+| `SENTRY_RELEASE` | Optional release identifier. |
+| `SENTRY_TRACES_SAMPLE_RATE` | Sentry trace sample rate. |
+| `SENTRY_PROFILE_SESSION_SAMPLE_RATE` | Sentry profiling sample rate. |
+| `SENTRY_ENABLE_LOGS` | Enables Sentry structured logs. |
+| `SENTRY_ENABLE_METRICS` | Enables Sentry request metrics middleware. |
+| `SENTRY_SEND_DEFAULT_PII` | Defaults false. Only enable if your privacy policy allows it. |
+| `SENTRY_INCLUDE_LOCAL_VARIABLES` | Defaults false to avoid capturing secrets. |
+| `SENTRY_MAX_BREADCRUMBS` | Max Sentry breadcrumbs. |
+| `POSTHOG_API_KEY` | Enables product analytics. |
+| `DJANGO_LOG_LEVEL` | Production logger level for the `rowset` logger. |
+| `MJML_URL` | MJML HTTP server URL, local default `http://mjml:15500`. |
+| `REDIS_DB` | Redis database number. Defaults to `0` in settings. |
+
+## Available Commands
+
+Use the Makefile commands unless you are intentionally debugging the host
+environment.
+
+| Command | Description |
+| --- | --- |
+| `make serve` | Build and start the local Docker Compose stack, then follow backend logs. |
+| `make shell` | Open Django `shell_plus` inside the backend container. |
+| `make manage <command>` | Run a Django management command inside the backend container. |
+| `make makemigrations` | Run Django migration generation in the backend container. |
+| `make migrate` | Apply migrations in the backend container. |
+| `make test` | Run pytest through Docker Compose. |
+| `make test apps/datasets/tests/test_csv_datasets.py` | Run a focused test file. |
+| `make test -- -k dataset -q` | Pass pytest flags through the Makefile. |
+| `make restart-worker` | Recreate the `workers` service. |
+| `npm run build` | Build frontend assets on the host. |
+| `npm run start` | Watch and rebuild frontend assets on the host. |
+| `npm run watch` | Alias for the asset watcher. |
+| `npm run lint` | Lint frontend JS and build scripts. |
+
+Useful direct Docker commands:
+
+```bash
+docker compose -f docker-compose-local.yml ps
+docker compose -f docker-compose-local.yml logs backend
+docker compose -f docker-compose-local.yml logs workers
+docker compose -f docker-compose-local.yml down
+```
+
+## Testing
+
+The supported test path is Docker-backed:
+
+```bash
+make test
+```
+
+Run focused tests while iterating:
+
+```bash
+make test apps/mcp_server/tests/test_server.py
+make test apps/api/tests.py
+make test apps/datasets/tests/test_csv_datasets.py
+make test -- -k public_preview -q
+```
+
+Before PRs that touch backend behavior, run at least:
+
+```bash
+make test
+```
+
+For frontend changes:
+
+```bash
+npm run build
+npm run lint
+```
+
+CI (`.github/workflows/ci.yml`) runs on pull requests and performs:
+
+1. PostgreSQL 18 service setup.
+2. Redis 7 service setup.
+3. `uv python install 3.14`.
+4. `uv sync`.
+5. Dummy `frontend/build/manifest.json` creation for tests.
+6. `uv run python manage.py makemigrations --check --dry-run`.
+7. `uv run python manage.py check`.
+8. `uv run pytest -q`.
+
+ReviewGate also runs on pull requests in report mode when `OPENROUTER_API_KEY`
+is configured in GitHub secrets.
 
 ## Deployment
 
-### Render
+### Docker Compose production
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=)
+`docker-compose-prod.yml` runs four services:
 
-**Note:** This should work out of the box with Render's free tier if you provide the AI API keys. Here's what you need to know about the limitations:
-
-- **Worker Service Limitation**: The worker service is not a dedicated worker type (those are only available on paid plans). For the free tier, I had to use a web service through a small hack, but it works fine for most use cases.
-
-- **Memory Constraints**: The free web service has a 512 MB RAM limit, which can cause issues with **automated background tasks only**. When you add a project, it runs a suite of background tasks to analyze your website, generate articles, keywords, and other content. These automated processes can hit memory limits and potentially cause failures.
-
-- **Manual Tasks Work Fine**: However, if you perform tasks manually (like generating a single article), these typically use the web service instead of the worker and should work reliably since it's one request at a time.
-
-- **Upgrade Recommendation**: If you do upgrade to a paid plan, use the actual worker service instead of the web service workaround for better automated task reliability.
-
-**Reality Check**: The website functionality should be usable on the free tier - you'll only pay for API costs. Manual operations work fine, but automated background tasks (especially when adding multiple projects) may occasionally fail due to memory constraints. It's not super comfortable for heavy automated use, but perfectly functional for manual content generation.
-
-If you know of any other services like Render that allow deployment via a button and provide free Redis, Postgres, and web services, please let me know in the [Issues](/issues) section. I can try to create deployments for those. Bear in mind that free services are usually not large enough to run this application reliably.
-
-
-### Docker Compose
-
-This should also be pretty streamlined. On your server you can create a folder in which you will have 2 files:
-
-1. `.env`
-
-Copy the contents of `.env.example` into `.env` and update all the necessary values.
-
-2. `docker-compose-prod.yml`
-
-Copy the contents of `docker-compose-prod.yml` into `docker-compose-prod.yml` and run the suggested command from the top of the `docker-compose-prod.yml` file.
-
-How you are going to expose the backend container is up to you. I usually do it via Nginx Reverse Proxy with `http://rowset-backend-1:80` UPSTREAM_HTTP_ADDRESS.
-
-
-### Pure Python / Django deployment
-
-Not recommended due to not being too safe for production and not being tested by me.
-
-If you are not into Docker or Render and just wanto to run this via regular commands you will need to have 5 processes running:
-- `python manage.py collectstatic --noinput && python manage.py migrate && gunicorn ${PROJECT_NAME}.asgi:application --bind 0.0.0.0:80 --workers 3 --worker-class uvicorn_worker.UvicornWorker`
-- `python manage.py qcluster`
-- `npm install && npm run start`
-- `postgres`
+- `db`
 - `redis`
+- `backend`
+- `workers`
 
-You'd still need to make sure .env has correct values.
+The backend and worker images currently point at:
 
-### Custom Deployment on Caprover
+```text
+ghcr.io/rasulkireev/rowset:latest
+ghcr.io/rasulkireev/rowset-workers:latest
+```
 
-1. Create 4 apps on CapRover.
-  - `rowset`
-  - `rowset-workers`
-  - `rowset-postgres`
-  - `rowset-redis`
+On a server:
 
-2. Create a new CapRover app token for:
-   - `rowset`
-   - `rowset-workers`
+```bash
+mkdir rowset
+cd rowset
+cp /path/to/.env.example .env
+```
 
-3. Add Environment Variables to those same apps from `.env`.
+Edit `.env` for production:
 
-4. Create a new GitHub Actions secret with the following:
-   - `CAPROVER_SERVER`
-   - `CAPROVER_APP_TOKEN`
-   - `WORKERS_APP_TOKEN`
-   - `REGISTRY_TOKEN`
+- `ENVIRONMENT=prod`
+- `DEBUG=off`
+- strong `SECRET_KEY`
+- production `SITE_URL`
+- strong Postgres and Redis passwords
+- any optional provider keys you actually use
 
-5. Then just push main branch.
+Start:
 
-6. Github Workflow in this repo should take care of the rest.
+```bash
+docker compose -f docker-compose-prod.yml -p rowset up --detach --remove-orphans
+```
 
-## Local Development
+The backend maps container port `80` to host port `8000`:
 
-1. Update the name of the `.env.example` to `.env` and update relevant variables.
-2. Run `uv sync`
-3. Run `uv run python manage.py makemigrations`
-   - Important: run this **without specifying app names** so Django detects changes across **all apps**.
-   - Do this before feature work and before first local run.
-4. Run `make serve`
-   - The frontend dev container uses Node 24 and runs the PostCSS/static asset watcher before the backend boots, so the first page load should not race the asset pipeline.
-5. Run `make restart-worker` just in case, it sometimes has troubles connecting to REDIS on first deployment.
+```text
+http://server-ip:8000
+```
 
-### CI (optional)
+Use a reverse proxy such as Nginx, Caddy, Traefik, or CapRover to terminate TLS
+and forward traffic to the backend.
 
-If you generated the project with `use_ci = y`, it includes a GitHub Actions workflow at `.github/workflows/ci.yml` that runs on pull requests.
+### CapRover production
 
-It boots Postgres + Redis, runs `python manage.py makemigrations --check --dry-run`, then `python manage.py check`, and then runs `pytest`.
+The active push-to-main deployment path is the CapRover workflow pair:
 
-If you don’t want CI, set `use_ci = n` during Cookiecutter generation and the workflow will be removed.
+- `.github/workflows/deploy.yml`
+- `.github/workflows/deploy-workers.yml`
 
+The workflows create tar deployment bundles with:
 
-## Stripe Setup
+- `deployment/Dockerfile.server`
+- `deployment/Dockerfile.workers`
 
-This app uses Stripe Checkout for purchases and the Billing Portal for subscription management.
+Required GitHub secrets:
 
-### Configure Stripe
+| Secret | Used by | Description |
+| --- | --- | --- |
+| `CAPROVER_SERVER` | server and workers | CapRover server URL. |
+| `APP_TOKEN` | server | CapRover app token for the `rowset` app. |
+| `WORKERS_APP_TOKEN` | workers | CapRover app token for the `rowset-workers` app. |
 
-- Set the following in `.env`:
-  - `STRIPE_SECRET_KEY`
-  - `STRIPE_CONTEXT` (optional; set this to the target account ID when using a Stripe Organization API key)
-  - `STRIPE_PUBLISHABLE_KEY` (optional, only needed for client-side Stripe.js)
-  - `STRIPE_WEBHOOK_SECRET`
-  - `STRIPE_PRICE_ID_ROWSET_PRO_MONTHLY`
-  - `WEBHOOK_UUID` (optional, used to gate webhook URLs)
-- Enable the Billing Portal in the Stripe Dashboard and allow subscription updates and cancellations.
-- Create a webhook endpoint in the Stripe Dashboard:
-  - URL: `https://<your-domain>/stripe/webhook/<WEBHOOK_UUID>/` (or `/stripe/webhook/` if no UUID)
-  - Events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `checkout.session.completed`
+The workflows deploy on pushes to `main`.
 
-### Test Webhooks Locally
+The production Dockerfiles:
 
-- Use the Stripe CLI container (see `docker-compose-local.yml`) to forward webhooks:
-  - `docker compose -f docker-compose-local.yml run --rm stripe listen --forward-to http://backend:8000/stripe/webhook/${WEBHOOK_UUID}/`
-- Trigger a test event:
-  - `docker compose -f docker-compose-local.yml run --rm stripe trigger customer.subscription.created`
+1. Build frontend assets with Node 24.
+2. Build a Python 3.14 runtime.
+3. Install Python dependencies with `uv sync --no-dev --no-install-project`.
+4. Copy `frontend/build` from the Node build stage.
+5. Run `deployment/entrypoint.sh`.
+
+The server entrypoint waits for the database, collects static files, runs
+migrations, then starts:
+
+```bash
+gunicorn rowset.asgi:application \
+  --bind 0.0.0.0:80 \
+  --workers 3 \
+  --worker-class uvicorn_worker.UvicornWorker
+```
+
+The worker entrypoint waits for the database, then starts:
+
+```bash
+python manage.py qcluster
+```
+
+### Render blueprint
+
+The repository includes `render.yaml`, but the current blueprint still carries
+legacy `filebridge-*` resource names and references `requirements.txt`, while
+the repository now uses `pyproject.toml` and `uv`. Treat the Render blueprint as
+present but not the primary verified deployment path until it is updated and
+tested against the current Python 3.14/uv setup.
+
+### Manual host deployment
+
+Manual host deployment is useful for debugging but is not the preferred
+production path.
+
+Install dependencies:
+
+```bash
+uv sync --no-dev
+npm ci
+npm run build
+```
+
+Run setup commands:
+
+```bash
+uv run python manage.py collectstatic --noinput
+uv run python manage.py migrate
+```
+
+Run the server:
+
+```bash
+uv run gunicorn rowset.asgi:application \
+  --bind 0.0.0.0:8000 \
+  --workers 3 \
+  --worker-class uvicorn_worker.UvicornWorker
+```
+
+Run workers separately:
+
+```bash
+uv run python manage.py qcluster
+```
+
+You must also provide PostgreSQL, Redis, HTTPS termination, static/media
+storage, process supervision, and secret management.
+
+## Troubleshooting
+
+### `make serve` starts but the page has missing CSS
+
+The backend waits for `frontend/build/manifest.json`, but local volumes can
+still get into a stale state. Rebuild assets:
+
+```bash
+docker compose -f docker-compose-local.yml restart frontend
+docker compose -f docker-compose-local.yml logs frontend
+```
+
+Or build on the host:
+
+```bash
+npm install
+npm run build
+```
+
+### Database connection errors
+
+Check the Postgres service:
+
+```bash
+docker compose -f docker-compose-local.yml ps db
+docker compose -f docker-compose-local.yml logs db
+```
+
+For local Compose, `.env` should use:
+
+```text
+POSTGRES_HOST=db
+POSTGRES_DB=rowset
+POSTGRES_USER=rowset
+POSTGRES_PASSWORD=rowset
+```
+
+### Redis connection errors
+
+Check the Redis service:
+
+```bash
+docker compose -f docker-compose-local.yml ps redis
+docker compose -f docker-compose-local.yml logs redis
+```
+
+For local Compose, `.env` should use:
+
+```text
+REDIS_HOST=redis
+REDIS_PASSWORD=rowset
+REDIS_PORT=6379
+```
+
+### MCP authentication fails
+
+Confirm the agent runtime has the full key:
+
+```bash
+printenv ROWSET_API_KEY
+```
+
+Do not paste the key into logs or public chat. In MCP clients, configure the
+bearer-token env-var field to `ROWSET_API_KEY`; do not configure the visible key
+prefix.
+
+Then verify REST with:
+
+```bash
+curl -H "Authorization: Bearer $ROWSET_API_KEY" \
+  http://localhost:8000/api/user
+```
+
+### REST returns the landing page for an API path
+
+Use `/api/`, not the legacy `/api/v1/` path. Unknown API paths are handled as
+JSON 404s by the current URL configuration.
+
+### `manage.py check` warns about missing frontend assets
+
+Build assets:
+
+```bash
+npm run build
+```
+
+In CI, a dummy manifest is created because backend tests do not exercise the
+compiled frontend.
+
+### Vector search raises configuration errors
+
+Vector search requires all of the following:
+
+- `ROWSET_VECTOR_SEARCH_ENABLED=True`
+- `QDRANT_URL`
+- `OPENROUTER_API_KEY`
+- `OPENROUTER_BASE_URL`
+- compatible `ROWSET_EMBEDDING_MODEL` and `ROWSET_EMBEDDING_DIMENSIONS`
+
+Keep `ROWSET_VECTOR_SEARCH_ENABLED=False` until those services are ready.
+
+### Public preview confusion
+
+Public previews are browser pages for human review. They are read-only and may
+be password-protected, but they are not API authentication. Agents and systems
+should use REST or MCP with bearer API-key auth.
+
+## Contributor Notes
+
+- Read `AGENTS.md`, `PRODUCT.md`, `TECH.md`, `STRUCTURE.md`, `VISION.md`, and
+  `DESIGN.md` before changing product behavior.
+- For documentation under `apps/docs`, also read `apps/docs/AGENTS.md`.
+- Keep reusable dataset behavior in services, not views, templates, or MCP tool
+  bodies.
+- Keep REST and MCP behavior aligned by reusing service functions.
+- Keep private authenticated dataset access as the default.
+- Do not print API keys, OAuth tokens, raw secrets, or private dataset contents
+  into logs, docs, screenshots, commits, or final messages.
+- Do not hand-write migrations. Change models first, then run
+  `make makemigrations`.
+- Prefer focused tests first, then broaden when changing shared services, auth,
+  data import, API, or MCP behavior.
