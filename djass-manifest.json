@@ -58,7 +58,7 @@
     ".browserslistrc",
     ".cursor",
     ".env.example",
-    ".eslintrc",
+    "eslint.config.js",
     ".github",
     ".gitignore",
     ".nvmrc",

@@ -34,16 +34,12 @@ module.exports = merge(common, {
   module: {
     rules: [
       {
-        test: /\.html$/i,
-        loader: "html-loader",
-      },
-      {
         test: /\.js$/,
         include: Path.resolve(__dirname, "../src"),
         loader: "babel-loader",
       },
       {
-        test: /\.s?css$/i,
+        test: /\.css$/i,
         use: [
           MiniCssExtractPlugin.loader,
           {
@@ -53,7 +49,6 @@ module.exports = merge(common, {
             },
           },
           "postcss-loader",
-          "sass-loader",
         ],
       },
     ],

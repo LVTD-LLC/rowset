@@ -8,6 +8,6 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY pyproject.toml uv.lock ./
 RUN pip install --upgrade pip && pip install --no-cache-dir uv
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --all-groups --no-install-project
 
 COPY . .

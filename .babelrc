@@ -1,15 +1,15 @@
 {
   "presets": [
-    [
-      "@babel/preset-env",
-      {
-        "useBuiltIns": "usage",
-        "corejs": "3.0.0"
-      }
-    ]
+    "@babel/preset-env"
   ],
   "plugins": [
-    "@babel/plugin-syntax-dynamic-import",
-    "@babel/plugin-proposal-class-properties"
+    [
+      "babel-plugin-polyfill-corejs3",
+      {
+        "method": "usage-global",
+        "version": "3.49"
+      }
+    ],
+    "@babel/plugin-transform-class-properties"
   ]
 }

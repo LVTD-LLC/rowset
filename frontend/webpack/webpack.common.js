@@ -2,7 +2,7 @@ const glob = require("glob");
 const Path = require("path");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
-const WebpackAssetsManifest = require("webpack-assets-manifest");
+const { WebpackAssetsManifest } = require("webpack-assets-manifest");
 
 const getEntryObject = () => {
   const entries = {};
