@@ -875,7 +875,13 @@ def serialize_profile_project_detail(
     )
     total_count = project.dataset_count
     datasets = list(queryset[offset : offset + limit])
-    dataset_groups = _project_dataset_groups(sections, datasets)
+    active_section_ids = [section.id for section in sections]
+    unsectioned_dataset_count = queryset.exclude(section_id__in=active_section_ids).count()
+    dataset_groups = _project_dataset_groups(
+        sections,
+        datasets,
+        unsectioned_dataset_count=unsectioned_dataset_count,
+    )
     return {
         "status": "success",
         "message": "Project retrieved.",
@@ -904,8 +910,14 @@ def _dataset_group_items_payload(datasets: list[Dataset], total_count: int) -> d
 def _project_dataset_groups(
     sections: list[ProjectSection],
     datasets: list[Dataset],
+    *,
+    unsectioned_dataset_count: int | None = None,
 ) -> list[dict]:
-    groups = project_section_dataset_groups(sections, datasets)
+    groups = project_section_dataset_groups(
+        sections,
+        datasets,
+        unsectioned_dataset_count=unsectioned_dataset_count,
+    )
     return [
         {
             "label": group["label"],

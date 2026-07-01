@@ -84,6 +84,8 @@ ROW_SEARCH_COLUMN_LIMIT = 20
 def project_section_dataset_groups(
     sections: list[Any],
     datasets: list[Any],
+    *,
+    unsectioned_dataset_count: int | None = None,
 ) -> list[dict[str, Any]]:
     """Group project datasets by active section, with unmatched datasets left unsectioned."""
     section_ids = {getattr(section, "id", None) for section in sections}
@@ -115,11 +117,16 @@ def project_section_dataset_groups(
         )
 
     if unsectioned_datasets:
+        dataset_count = (
+            unsectioned_dataset_count
+            if unsectioned_dataset_count is not None
+            else len(unsectioned_datasets)
+        )
         groups.append(
             {
                 "label": "Unsectioned",
                 "section": None,
-                "dataset_count": len(unsectioned_datasets),
+                "dataset_count": dataset_count,
                 "datasets": unsectioned_datasets,
             }
         )

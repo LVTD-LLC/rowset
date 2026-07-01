@@ -1434,11 +1434,22 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             .annotate(dataset_count=_visible_project_section_dataset_count())
             .order_by("name", "id")
         )
+        active_section_ids = [section.id for section in sections]
+        unsectioned_dataset_count = (
+            self.object.datasets.filter(archived_at__isnull=True)
+            .exclude(status=DatasetStatus.PREVIEWED)
+            .exclude(section_id__in=active_section_ids)
+            .count()
+        )
         datasets = list(page_obj.object_list)
         context["page_obj"] = page_obj
         context["datasets"] = datasets
         context["sections"] = sections
-        context["section_groups"] = project_section_dataset_groups(sections, datasets)
+        context["section_groups"] = project_section_dataset_groups(
+            sections,
+            datasets,
+            unsectioned_dataset_count=unsectioned_dataset_count,
+        )
         context.setdefault("project_edit_mode", self.request.GET.get("edit") == "1")
         context.setdefault(
             "project_form_values",

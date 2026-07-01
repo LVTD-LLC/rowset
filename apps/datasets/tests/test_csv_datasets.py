@@ -5465,6 +5465,30 @@ def test_project_section_api_archives_section_and_unsections_datasets(client, pr
     assert list_response.json()["sections"] == []
 
 
+def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(client, profile):
+    project = Project.objects.create(profile=profile, name="Rowset")
+    first = create_ready_dataset(profile)
+    first.name = "Signals"
+    first.project = project
+    first.save(update_fields=["name", "project"])
+    second = create_ready_dataset(profile)
+    second.name = "Inventory"
+    second.project = project
+    second.save(update_fields=["name", "project"])
+
+    response = client.get(f"/api/projects/{project.key}?api_key={profile.key}&limit=1")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["datasets"]["count"] == 1
+    assert payload["datasets"]["total_count"] == 2
+    assert payload["dataset_groups"][0]["label"] == "Unsectioned"
+    assert payload["dataset_groups"][0]["dataset_count"] == 2
+    assert payload["dataset_groups"][0]["datasets"]["count"] == 1
+    assert payload["dataset_groups"][0]["datasets"]["total_count"] == 2
+    assert payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == str(second.key)
+
+
 def test_dataset_api_rejects_invalid_project_assignment_dataset_key(client, profile):
     project = Project.objects.create(profile=profile, name="Customers")
 
@@ -6511,6 +6535,16 @@ def test_project_detail_groups_datasets_by_section(auth_client, profile):
     Dataset.objects.create(
         profile=profile,
         project=project,
+        name="Backlog",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["signal"],
+        index_column="signal",
+    )
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
         name="Signals",
         original_filename="Created via API",
         file_type="api",
@@ -6526,6 +6560,8 @@ def test_project_detail_groups_datasets_by_section(auth_client, profile):
     assert response.context["section_groups"][0]["label"] == "Blog"
     assert response.context["section_groups"][0]["datasets"][0].name == "Content ledger"
     assert response.context["section_groups"][1]["label"] == "Unsectioned"
+    assert response.context["section_groups"][1]["dataset_count"] == 2
+    assert len(response.context["section_groups"][1]["datasets"]) == 2
     assert response.context["section_groups"][1]["datasets"][0].name == "Signals"
     assert "Blog" in content
     assert "Unsectioned" in content
