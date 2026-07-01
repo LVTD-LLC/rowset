@@ -555,6 +555,80 @@ class DatasetSearchOut(Schema):
     results: list[DatasetSearchResultOut]
 
 
+class ProfileRowSearchIn(Schema):
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Natural language or keyword search text.",
+    )
+    filters: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional row field filters. Datasets missing these headers are excluded.",
+    )
+    filter_operators: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Optional row filter operators keyed by header, such as contains, is, above, "
+            "or below."
+        ),
+    )
+    dataset_key: str | None = Field(
+        default=None,
+        description="Optional dataset key/public key/URL.",
+    )
+    project_key: str | None = None
+    section_key: str | None = None
+    status: str | None = Field(
+        default=None,
+        description="Optional dataset status. Defaults to ready.",
+    )
+    archived: bool | None = Field(
+        default=False,
+        description=(
+            "False searches active datasets, true searches archived datasets, null searches both."
+        ),
+    )
+    sort: str | None = Field(default="rank", description="rank, dataset, or row_number.")
+    direction: str | None = Field(default=None, description="asc or desc.")
+    limit: int = Field(default=10, ge=1, le=50)
+
+
+class ProfileRowSearchDatasetOut(Schema):
+    key: str
+    name: str
+    project: ProjectReferenceOut | None = None
+    section: ProjectSectionReferenceOut | None = None
+    status: str
+    headers: list[str]
+    index_column: str
+    row_count: int
+    public_enabled: bool
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    archived_at: datetime | None = None
+
+
+class ProfileRowSearchResultOut(Schema):
+    rank: int
+    score: float
+    dataset: ProfileRowSearchDatasetOut
+    row: DatasetRowOut
+    match: dict[str, Any]
+
+
+class ProfileRowSearchOut(Schema):
+    query: str
+    filters: dict[str, Any] = Field(default_factory=dict)
+    filter_operators: dict[str, Any] = Field(default_factory=dict)
+    dataset_filters: dict[str, Any] = Field(default_factory=dict)
+    sort: str
+    direction: str
+    limit: int
+    count: int
+    results: list[ProfileRowSearchResultOut]
+
+
 class DatasetApiOut(Schema):
     status: str
     message: str

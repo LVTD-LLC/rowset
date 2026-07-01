@@ -148,6 +148,32 @@ def dataset_row_search_filter(dataset: Dataset) -> qdrant_models.Filter:
     return vector_filter
 
 
+def profile_dataset_row_search_filter(
+    profile_id: int,
+    *,
+    dataset_ids: Sequence[int] | None = None,
+    dataset_status: str | None = DatasetStatus.READY,
+    dataset_archived: bool | None = False,
+) -> qdrant_models.Filter:
+    must = [
+        _payload_match("app", QDRANT_APP_PAYLOAD_VALUE),
+        _payload_match("content_type", QDRANT_CONTENT_TYPE_DATASET_ROW),
+        _payload_match("profile_id", profile_id),
+    ]
+    if dataset_ids:
+        must.append(
+            qdrant_models.FieldCondition(
+                key="dataset_id",
+                match=qdrant_models.MatchAny(any=list(dataset_ids)),
+            )
+        )
+    if dataset_status:
+        must.append(_payload_match("dataset_status", dataset_status))
+    if dataset_archived is not None:
+        must.append(_payload_match("dataset_archived", dataset_archived))
+    return qdrant_models.Filter(must=must)
+
+
 def dataset_row_point_id(dataset: Dataset, row: DatasetRow, *, chunk_index: int = 0) -> str:
     raw_id = f"rowset:dataset:{dataset.key}:row:{row.id}:chunk:{chunk_index}"
     return str(uuid.uuid5(QDRANT_POINT_NAMESPACE, raw_id))
@@ -366,6 +392,44 @@ class QdrantVectorStore:
                 query=vector,
                 using=QDRANT_DENSE_VECTOR_NAME,
                 query_filter=dataset_row_search_filter(dataset),
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+            )
+        except (ApiException, ResponseHandlingException, UnexpectedResponse) as exc:
+            raise VectorStoreError(f"Qdrant vector search failed: {exc}") from exc
+
+        return [
+            DatasetRowVectorSearchHit(
+                point_id=str(point.id),
+                score=float(point.score),
+                payload=dict(point.payload or {}),
+            )
+            for point in response.points
+        ]
+
+    def search_profile_dataset_rows(
+        self,
+        profile,
+        vector: list[float],
+        *,
+        dataset_ids: Sequence[int] | None = None,
+        dataset_status: str | None = DatasetStatus.READY,
+        dataset_archived: bool | None = False,
+        limit: int = 10,
+    ) -> list[DatasetRowVectorSearchHit]:
+        self._validate_vector_dimensions(vector)
+        try:
+            response = self.client.query_points(
+                collection_name=self.collection_name,
+                query=vector,
+                using=QDRANT_DENSE_VECTOR_NAME,
+                query_filter=profile_dataset_row_search_filter(
+                    profile.id,
+                    dataset_ids=dataset_ids,
+                    dataset_status=dataset_status,
+                    dataset_archived=dataset_archived,
+                ),
                 limit=limit,
                 with_payload=True,
                 with_vectors=False,

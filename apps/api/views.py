@@ -57,6 +57,8 @@ from apps.api.schemas import (
     DatasetRowsOut,
     DatasetSearchIn,
     DatasetSearchOut,
+    ProfileRowSearchIn,
+    ProfileRowSearchOut,
     ProjectArchiveOut,
     ProjectCreateIn,
     ProjectCreateOut,
@@ -108,6 +110,7 @@ from apps.api.services import (
     search_profile_dataset_rows,
     search_profile_datasets,
     search_profile_projects,
+    search_profile_rows,
     serialize_profile_archived_datasets,
     serialize_profile_dataset_asset,
     serialize_profile_project_detail,
@@ -509,6 +512,33 @@ def publish_internal_blog_post(request: HttpRequest, blog_post_id: int):
 def get_user_info(request: HttpRequest):
     """Return safe profile and account details for the authenticated API key."""
     return serialize_user_info(request.auth)
+
+
+@api.post(
+    "/search",
+    response=ProfileRowSearchOut,
+    auth=[api_key_auth],
+    tags=["search"],
+)
+def search_rows(request: HttpRequest, payload: ProfileRowSearchIn):
+    """Search rows across ready datasets with hybrid vector and lexical retrieval."""
+    try:
+        return search_profile_rows(
+            request.auth,
+            query=payload.query,
+            filters=payload.filters,
+            filter_operators=payload.filter_operators,
+            dataset_key=payload.dataset_key,
+            project_key=payload.project_key,
+            section_key=payload.section_key,
+            status=payload.status,
+            archived=payload.archived,
+            sort=payload.sort,
+            direction=payload.direction,
+            limit=payload.limit,
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.post(

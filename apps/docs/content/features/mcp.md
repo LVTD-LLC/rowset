@@ -110,6 +110,12 @@ that dataset key immediately with the row tools. Pass `description`,
 `instructions`, or `metadata` when the dataset should carry persistent operating
 context for future agent runs.
 
+For row discovery across datasets, agents can use:
+
+```text
+search_rows
+```
+
 For a specific ready dataset, agents can use:
 
 ```text
@@ -144,10 +150,13 @@ Dataset and row tools enforce the authenticated user's ownership boundary.
 contents, so agents should ask the user before using them unless the user explicitly
 requested the change.
 
-Use `search_dataset_rows` when vector search is enabled and the agent needs
-ranked row matches instead of a paginated table scan. Results are hydrated from
-Rowset rows and include match metadata such as source, ranks, scores, point id,
-chunk index, and content hash. Rowset/Postgres remains the source of truth.
+Use `search_rows` when vector search is enabled and the agent needs ranked row
+matches across datasets. It accepts natural-language search text, dataset or
+project filters, row field filters, archived filtering, sort, and limit. Use
+`search_dataset_rows` when the agent already knows the dataset key and wants the
+same ranked search inside that one dataset. Results are hydrated from Rowset
+rows and include match metadata such as source, ranks, scores, point id, chunk
+index, and content hash. Rowset/Postgres remains the source of truth.
 
 Use `add_column`, `rename_column`, `drop_column`, and `reorder_columns` when an
 existing ready dataset needs schema changes without recreating it. Existing rows
