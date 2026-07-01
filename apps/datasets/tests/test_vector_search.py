@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
@@ -8,7 +10,9 @@ from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.vector_search import (
     QDRANT_DENSE_VECTOR_NAME,
+    DatasetRowVector,
     QdrantVectorStore,
+    VectorStoreError,
     build_dataset_row_point,
     build_dataset_row_search_document,
     dataset_row_content_hash,
@@ -156,12 +160,29 @@ def test_build_dataset_row_point_rejects_wrong_vector_dimensions(vector_dataset,
 
 
 class FakeQdrantClient:
-    def __init__(self, *, exists=False, exists_sequence=None, create_exception=None):
+    def __init__(
+        self,
+        *,
+        exists=False,
+        exists_sequence=None,
+        create_exception=None,
+        upsert_exception=None,
+        query_response=None,
+        query_exception=None,
+        delete_exception=None,
+    ):
         self.exists = exists
         self.exists_sequence = list(exists_sequence or [])
         self.create_exception = create_exception
+        self.upsert_exception = upsert_exception
+        self.query_response = query_response or SimpleNamespace(points=[])
+        self.query_exception = query_exception
+        self.delete_exception = delete_exception
         self.created_collection = None
         self.upserted = None
+        self.upsert_calls = []
+        self.query_points_call = None
+        self.deleted = None
 
     def collection_exists(self, *, collection_name):
         if self.exists_sequence:
@@ -175,7 +196,21 @@ class FakeQdrantClient:
         self.exists = True
 
     def upsert(self, **kwargs):
+        if self.upsert_exception is not None:
+            raise self.upsert_exception
         self.upserted = kwargs
+        self.upsert_calls.append(kwargs)
+
+    def query_points(self, **kwargs):
+        if self.query_exception is not None:
+            raise self.query_exception
+        self.query_points_call = kwargs
+        return self.query_response
+
+    def delete(self, **kwargs):
+        if self.delete_exception is not None:
+            raise self.delete_exception
+        self.deleted = kwargs
 
 
 def test_vector_store_ensure_collection_creates_named_dense_collection():
@@ -243,10 +278,218 @@ def test_vector_store_upserts_dataset_row_point(vector_dataset, vector_row):
 
     assert client.upserted["collection_name"] == "rowset_rows_custom_embedding_d3_v1"
     assert client.upserted["wait"] is True
+    assert len(client.upsert_calls) == 1
     assert len(client.upserted["points"]) == 1
     assert client.upserted["points"][0].payload["row_id"] == vector_row.id
     assert client.upserted["points"][0].payload["embedding_model"] == "custom-embedding"
     assert client.upserted["points"][0].payload["embedding_dimensions"] == 3
+
+
+def test_vector_store_upserts_dataset_row_vectors_in_one_call(vector_dataset, vector_row):
+    second_row = DatasetRow.objects.create(
+        dataset=vector_dataset,
+        row_number=2,
+        index_value="TASK-2",
+        data={
+            "task_id": "TASK-2",
+            "status": "Doing",
+            "notes": "Batch Qdrant writes",
+        },
+    )
+    client = FakeQdrantClient(exists=True)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    store.upsert_dataset_row_vectors(
+        vector_dataset,
+        [
+            DatasetRowVector(
+                row=vector_row,
+                vector=[0.1, 0.2, 0.3],
+                embedding_model="custom-embedding",
+                embedding_dimensions=3,
+            ),
+            DatasetRowVector(
+                row=second_row,
+                vector=[0.4, 0.5, 0.6],
+                embedding_model="custom-embedding",
+                embedding_dimensions=3,
+            ),
+        ],
+    )
+
+    assert len(client.upsert_calls) == 1
+    assert client.upserted["collection_name"] == "rowset_rows_custom_embedding_d3_v1"
+    assert client.upserted["wait"] is True
+    assert [point.payload["row_id"] for point in client.upserted["points"]] == [
+        vector_row.id,
+        second_row.id,
+    ]
+
+
+def test_vector_store_wraps_qdrant_upsert_errors(vector_dataset, vector_row):
+    client = FakeQdrantClient(
+        exists=True,
+        upsert_exception=_unexpected_response(status_code=500, content=b"qdrant down"),
+    )
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    with pytest.raises(VectorStoreError, match="Qdrant vector upsert failed"):
+        store.upsert_dataset_row_vectors(
+            vector_dataset,
+            [
+                DatasetRowVector(
+                    row=vector_row,
+                    vector=[0.1, 0.2, 0.3],
+                    embedding_model="custom-embedding",
+                    embedding_dimensions=3,
+                )
+            ],
+        )
+
+
+def _filter_match_values(vector_filter):
+    values = {}
+    for condition in vector_filter.must:
+        if hasattr(condition.match, "value"):
+            values[condition.key] = condition.match.value
+    return values
+
+
+def test_vector_store_searches_dataset_rows_with_required_payload_filter(
+    vector_dataset,
+    vector_row,
+):
+    client = FakeQdrantClient(
+        exists=True,
+        query_response=SimpleNamespace(
+            points=[
+                SimpleNamespace(
+                    id="point-1",
+                    score=0.91,
+                    payload={
+                        "row_id": vector_row.id,
+                        "chunk_index": 0,
+                        "content_hash": "abc123",
+                    },
+                )
+            ]
+        ),
+    )
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    hits = store.search_dataset_rows(vector_dataset, [0.1, 0.2, 0.3], limit=5)
+
+    assert len(hits) == 1
+    assert hits[0].point_id == "point-1"
+    assert hits[0].score == 0.91
+    assert hits[0].payload["row_id"] == vector_row.id
+    assert client.query_points_call["collection_name"] == "rowset_rows_custom_embedding_d3_v1"
+    assert client.query_points_call["query"] == [0.1, 0.2, 0.3]
+    assert client.query_points_call["using"] == QDRANT_DENSE_VECTOR_NAME
+    assert client.query_points_call["limit"] == 5
+    assert client.query_points_call["with_vectors"] is False
+    assert _filter_match_values(client.query_points_call["query_filter"]) == {
+        "app": "rowset",
+        "content_type": "dataset_row",
+        "profile_id": vector_dataset.profile_id,
+        "dataset_id": vector_dataset.id,
+        "dataset_status": DatasetStatus.READY,
+        "dataset_archived": False,
+    }
+
+
+def test_vector_store_rejects_search_dimension_mismatch(vector_dataset):
+    client = FakeQdrantClient(exists=True)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    with pytest.raises(ValueError, match="3 dimensions"):
+        store.search_dataset_rows(vector_dataset, [0.1, 0.2], limit=5)
+
+
+def test_vector_store_deletes_dataset_row_vectors_with_payload_filter(
+    vector_dataset,
+    vector_row,
+):
+    client = FakeQdrantClient(exists=True)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    store.delete_dataset_row_vectors(vector_dataset, [vector_row.id])
+
+    selector = client.deleted["points_selector"]
+    assert client.deleted["collection_name"] == "rowset_rows_custom_embedding_d3_v1"
+    assert client.deleted["wait"] is True
+    assert _filter_match_values(selector.filter) == {
+        "app": "rowset",
+        "content_type": "dataset_row",
+        "profile_id": vector_dataset.profile_id,
+        "dataset_id": vector_dataset.id,
+    }
+    row_condition = next(
+        condition for condition in selector.filter.must if condition.key == "row_id"
+    )
+    assert row_condition.match.any == [vector_row.id]
+
+
+def test_vector_store_deletes_all_dataset_vectors_with_payload_filter(vector_dataset):
+    client = FakeQdrantClient(exists=True)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    store.delete_dataset_vectors(vector_dataset)
+
+    selector = client.deleted["points_selector"]
+    assert _filter_match_values(selector.filter) == {
+        "app": "rowset",
+        "content_type": "dataset_row",
+        "profile_id": vector_dataset.profile_id,
+        "dataset_id": vector_dataset.id,
+    }
+    assert all(condition.key != "row_id" for condition in selector.filter.must)
+
+
+def test_vector_store_wraps_qdrant_delete_errors(vector_dataset, vector_row):
+    client = FakeQdrantClient(
+        exists=True,
+        delete_exception=_unexpected_response(status_code=500, content=b"qdrant down"),
+    )
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    with pytest.raises(VectorStoreError, match="Qdrant vector delete failed"):
+        store.delete_dataset_row_vectors(vector_dataset, [vector_row.id])
 
 
 def test_vector_store_rejects_upsert_model_mismatch(vector_dataset, vector_row):

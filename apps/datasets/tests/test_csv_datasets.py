@@ -14,6 +14,7 @@ from django.contrib import messages as message_constants
 from django.contrib.messages import get_messages
 from django.core.files.storage import storages
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
@@ -549,6 +550,93 @@ def test_import_uses_stored_source_text_when_file_is_not_available(profile):
     dataset.refresh_from_db()
     assert dataset.status == DatasetStatus.READY
     assert dataset.rows.count() == 2
+
+
+def test_import_enqueues_vector_reindex_after_commit_when_enabled(
+    profile,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file="datasets/csv/missing.csv",
+        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name", "email"],
+        index_column="email",
+        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+        row_count=2,
+    )
+    stale_row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="old@example.com",
+        data={"name": "Old", "email": "old@example.com"},
+    )
+    calls = []
+    monkeypatch.setattr(
+        "apps.datasets.vector_tasks.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            import_dataset_rows(dataset.id)
+
+    dataset.refresh_from_db()
+    assert dataset.status == DatasetStatus.READY
+    assert calls == [
+        ("apps.datasets.tasks.delete_dataset_row_vectors", (dataset.id, [stale_row.id])),
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
+    ]
+
+
+def test_import_chunks_stale_vector_delete_tasks_when_enabled(
+    profile,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file="datasets/csv/missing.csv",
+        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name", "email"],
+        index_column="email",
+        row_count=3,
+    )
+    stale_rows = [
+        DatasetRow.objects.create(
+            dataset=dataset,
+            row_number=index,
+            index_value=f"old-{index}@example.com",
+            data={"name": f"Old {index}", "email": f"old-{index}@example.com"},
+        )
+        for index in range(1, 4)
+    ]
+    calls = []
+    monkeypatch.setattr(
+        "apps.datasets.vector_tasks.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+    monkeypatch.setattr("apps.datasets.tasks.VECTOR_ROW_DELETE_TASK_BATCH_SIZE", 2)
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            import_dataset_rows(dataset.id)
+
+    assert calls == [
+        (
+            "apps.datasets.tasks.delete_dataset_row_vectors",
+            (dataset.id, [stale_rows[0].id, stale_rows[1].id]),
+        ),
+        ("apps.datasets.tasks.delete_dataset_row_vectors", (dataset.id, [stale_rows[2].id])),
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
+    ]
 
 
 def test_import_file_fallback_uses_selected_index_column(profile):

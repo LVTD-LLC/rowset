@@ -32,6 +32,7 @@ from apps.api.services import (
     reorder_profile_dataset_columns,
     resolve_profile_dataset_relationship,
     restore_profile_dataset,
+    search_profile_dataset_rows,
     search_profile_datasets,
     search_profile_projects,
     serialize_dataset_detail,
@@ -1365,6 +1366,42 @@ def list_dataset_rows(
             filters=filters,
             sort=sort,
             direction=direction,
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="search_dataset_rows",
+    description=(
+        "Search one ready dataset with hybrid vector and lexical retrieval. "
+        "Results are hydrated from Rowset rows and include match metadata."
+    ),
+)
+def search_dataset_rows(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    query: Annotated[str, Field(description="Search text to match semantically and exactly.")],
+    filters: Annotated[
+        dict[str, str] | None,
+        Field(
+            default=None,
+            description="Optional mapping from dataset header to canonical row filter value.",
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(default=10, ge=1, le=50, description="Maximum ranked results to return."),
+    ] = 10,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return search_profile_dataset_rows(
+            profile,
+            dataset_key,
+            query=query,
+            filters=filters,
+            limit=limit,
         )
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
