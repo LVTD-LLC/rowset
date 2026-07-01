@@ -567,6 +567,12 @@ def test_import_enqueues_vector_reindex_after_commit_when_enabled(
         preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
         row_count=2,
     )
+    stale_row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="old@example.com",
+        data={"name": "Old", "email": "old@example.com"},
+    )
     calls = []
     monkeypatch.setattr(
         "apps.datasets.tasks.async_task",
@@ -579,7 +585,9 @@ def test_import_enqueues_vector_reindex_after_commit_when_enabled(
 
     dataset.refresh_from_db()
     assert dataset.status == DatasetStatus.READY
-    assert calls == [("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,))]
+    assert calls == [
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id, [stale_row.id]))
+    ]
 
 
 def test_import_file_fallback_uses_selected_index_column(profile):

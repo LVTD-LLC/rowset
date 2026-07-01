@@ -219,21 +219,25 @@ def test_delete_dataset_vectors_delegates_to_store(dataset):
     assert store.deleted_dataset_keys == [str(dataset.key)]
 
 
-def test_reindex_dataset_vectors_task_deletes_then_backfills_when_enabled(dataset, monkeypatch):
+def test_reindex_dataset_vectors_task_backfills_then_deletes_stale_rows_when_enabled(
+    dataset,
+    rows,
+    monkeypatch,
+):
     from apps.datasets.tasks import reindex_dataset_vectors_task
 
     calls = []
 
-    def fake_delete_dataset_vectors(task_dataset):
-        calls.append(("delete", task_dataset.id))
+    def fake_delete_dataset_row_vectors(task_dataset, row_ids):
+        calls.append(("delete_stale", task_dataset.id, row_ids))
 
     def fake_backfill_dataset_vectors(task_dataset):
         calls.append(("backfill", task_dataset.id))
         return VectorBackfillResult(rows_seen=2, indexed=2, failed=0)
 
     monkeypatch.setattr(
-        "apps.datasets.tasks.delete_dataset_vectors_service",
-        fake_delete_dataset_vectors,
+        "apps.datasets.tasks.delete_dataset_row_vectors_service",
+        fake_delete_dataset_row_vectors,
     )
     monkeypatch.setattr(
         "apps.datasets.tasks.backfill_dataset_vectors",
@@ -241,9 +245,12 @@ def test_reindex_dataset_vectors_task_deletes_then_backfills_when_enabled(datase
     )
 
     with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
-        reindex_dataset_vectors_task(dataset.id)
+        reindex_dataset_vectors_task(dataset.id, [rows[0].id])
 
-    assert calls == [("delete", dataset.id), ("backfill", dataset.id)]
+    assert calls == [
+        ("backfill", dataset.id),
+        ("delete_stale", dataset.id, [rows[0].id]),
+    ]
 
 
 def test_backfill_dataset_vectors_rejects_non_ready_datasets(dataset):

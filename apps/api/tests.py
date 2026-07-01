@@ -1370,6 +1370,76 @@ def test_restore_profile_dataset_enqueues_vector_backfill_when_enabled(
     assert calls == [("apps.datasets.tasks.backfill_dataset_vectors_task", (dataset.id,))]
 
 
+@pytest.mark.django_db
+def test_schema_mutation_services_enqueue_vector_reindex_when_enabled(
+    django_user_model,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    from apps.api.services import (
+        add_profile_dataset_column,
+        drop_profile_dataset_column,
+        rename_profile_dataset_column,
+        update_profile_dataset_column_types,
+    )
+
+    user = django_user_model.objects.create_user(
+        username="vectorschemaowner",
+        email="vectorschemaowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Schema vectors",
+        original_filename="schema.csv",
+        status=DatasetStatus.READY,
+        headers=["task_id", "title"],
+        index_column="task_id",
+    )
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="TASK-1",
+        data={"task_id": "TASK-1", "title": "Reindex schema changes"},
+    )
+    calls = []
+    monkeypatch.setattr(
+        "apps.api.services.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            update_profile_dataset_column_types(
+                user.profile,
+                str(dataset.key),
+                {"title": {"type": "text", "description": "Task title"}},
+            )
+        with django_capture_on_commit_callbacks(execute=True):
+            add_profile_dataset_column(
+                user.profile,
+                str(dataset.key),
+                name="status",
+                default_value="Ready",
+            )
+        with django_capture_on_commit_callbacks(execute=True):
+            rename_profile_dataset_column(
+                user.profile,
+                str(dataset.key),
+                old_name="status",
+                new_name="state",
+            )
+        with django_capture_on_commit_callbacks(execute=True):
+            drop_profile_dataset_column(user.profile, str(dataset.key), name="state")
+
+    assert calls == [
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
+    ]
+
+
 class FakeDatasetSearchEmbeddingProvider:
     model = "fake-embedding"
     dimensions = 3

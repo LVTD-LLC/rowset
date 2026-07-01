@@ -83,6 +83,7 @@ def import_dataset_rows(dataset_id: int) -> None:
         ]
 
         with transaction.atomic():
+            stale_row_ids = list(dataset.rows.values_list("id", flat=True))
             dataset.rows.all().delete()
             DatasetRow.objects.bulk_create(rows, batch_size=1000)
             dataset.row_count = len(rows)
@@ -102,7 +103,11 @@ def import_dataset_rows(dataset_id: int) -> None:
                     "updated_at",
                 ]
             )
-            _enqueue_vector_task("apps.datasets.tasks.reindex_dataset_vectors_task", dataset.id)
+            _enqueue_vector_task(
+                "apps.datasets.tasks.reindex_dataset_vectors_task",
+                dataset.id,
+                stale_row_ids,
+            )
         logger.info("Finished CSV dataset import", dataset_id=dataset.id, row_count=len(rows))
     except Exception as exc:
         dataset.status = DatasetStatus.FAILED
@@ -158,7 +163,7 @@ def backfill_dataset_vectors_task(dataset_id: int) -> None:
         )
 
 
-def reindex_dataset_vectors_task(dataset_id: int) -> None:
+def reindex_dataset_vectors_task(dataset_id: int, stale_row_ids: list[int] | None = None) -> None:
     if not qdrant_is_enabled():
         return
     try:
@@ -168,19 +173,33 @@ def reindex_dataset_vectors_task(dataset_id: int) -> None:
         return
 
     try:
-        delete_dataset_vectors_service(dataset)
         result = backfill_dataset_vectors(dataset)
     except Exception:
         logger.exception("Vector dataset reindex failed", dataset_id=dataset_id)
-    else:
-        logger.info(
-            "Vector dataset reindex complete",
-            dataset_id=dataset_id,
-            dataset_key=str(dataset.key),
-            rows_seen=result.rows_seen,
-            indexed=result.indexed,
-            failed=result.failed,
-        )
+        return
+
+    stale_cleanup_failed = False
+    if stale_row_ids:
+        try:
+            delete_dataset_row_vectors_service(dataset, stale_row_ids)
+        except Exception:
+            stale_cleanup_failed = True
+            logger.exception(
+                "Vector stale row cleanup failed after reindex",
+                dataset_id=dataset_id,
+                stale_row_count=len(stale_row_ids),
+            )
+
+    logger.info(
+        "Vector dataset reindex complete",
+        dataset_id=dataset_id,
+        dataset_key=str(dataset.key),
+        rows_seen=result.rows_seen,
+        indexed=result.indexed,
+        failed=result.failed,
+        stale_row_count=len(stale_row_ids or []),
+        stale_cleanup_failed=stale_cleanup_failed,
+    )
 
 
 def delete_dataset_row_vectors(dataset_id: int, row_ids: list[int]) -> None:

@@ -168,6 +168,10 @@ def _enqueue_dataset_vector_backfill(dataset_id: int) -> None:
     _enqueue_vector_task("apps.datasets.tasks.backfill_dataset_vectors_task", dataset_id)
 
 
+def _enqueue_dataset_vector_reindex(dataset_id: int) -> None:
+    _enqueue_vector_task("apps.datasets.tasks.reindex_dataset_vectors_task", dataset_id)
+
+
 def _enqueue_dataset_row_vector_index(row_id: int) -> None:
     _enqueue_vector_task("apps.datasets.tasks.index_dataset_row_vector", row_id)
 
@@ -1964,6 +1968,8 @@ def update_profile_dataset_column_types(
                 "updated_columns": sorted(column_types),
             },
         )
+        if dataset.status == DatasetStatus.READY:
+            _enqueue_dataset_vector_reindex(dataset.id)
 
     return {
         "status": "success",
@@ -2226,6 +2232,7 @@ def add_profile_dataset_column(
                 "default_value_provided": default_value not in ("", None),
             },
         )
+        _enqueue_dataset_vector_reindex(dataset.id)
 
     return {
         "status": "success",
@@ -2310,6 +2317,7 @@ def rename_profile_dataset_column(
                 "index_column_renamed": dataset.index_column == new_column_name,
             },
         )
+        _enqueue_dataset_vector_reindex(dataset.id)
 
     return {
         "status": "success",
@@ -2377,6 +2385,7 @@ def drop_profile_dataset_column(
                 "column_schema": current_schema.get(column_name, {}),
             },
         )
+        _enqueue_dataset_vector_reindex(dataset.id)
 
     return {
         "status": "success",
