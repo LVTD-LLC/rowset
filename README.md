@@ -819,12 +819,12 @@ Each push to `main` also publishes:
 
 - a UTC date alias such as `2026-07-01`
 - an immutable date-based release tag such as `2026-07-01.123`
-- a `sha-<shortsha>` traceability tag
+- the full Git commit SHA traceability tag
 
 The plain date tag is a daily alias and can move if there is more than one
 release on the same UTC day. Pin the date-based release tag or the SHA tag for
 rollbacks and reproducible self-hosted deployments. CapRover production deploys
-the current build's immutable `sha-<shortsha>` tag.
+the current build's full Git commit SHA tag.
 
 CapRover pulls the published image from GHCR during deployment. Before
 switching production to these workflows, make sure either:

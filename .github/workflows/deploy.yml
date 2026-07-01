@@ -33,7 +33,6 @@ jobs:
           echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
           echo "release_date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
           echo "release_version=$(date -u +%F).${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          echo "short_sha=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -55,30 +54,20 @@ jobs:
             ${{ steps.image.outputs.image_name }}:latest
             ${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_date }}
             ${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_version }}
-            ${{ steps.image.outputs.image_name }}:sha-${{ steps.image.outputs.short_sha }}
+            ${{ steps.image.outputs.image_name }}:${{ github.sha }}
 
-      - name: Deploy server and workers to CapRover
-        shell: bash
-        env:
-          CAPROVER_SERVER: ${{ secrets.CAPROVER_SERVER }}
-          CAPROVER_APP_TOKEN: ${{ secrets.APP_TOKEN }}
-          CAPROVER_WORKERS_APP_TOKEN: ${{ secrets.WORKERS_APP_TOKEN }}
-          IMAGE_NAME: ${{ steps.image.outputs.image_name }}:sha-${{ steps.image.outputs.short_sha }}
-        run: |
-          # CapRover pulls this prebuilt image at deploy time; GHCR packages must be public
-          # or the CapRover host must have a ghcr.io registry credential configured.
-          tmpdir="$(mktemp -d)"
-          printf '{"schemaVersion":2,"imageName":"%s"}\n' "$IMAGE_NAME" > "$tmpdir/captain-definition"
-          tar -C "$tmpdir" -cf /tmp/rowset-image.tar captain-definition
+      - name: Deploy server to CapRover
+        uses: caprover/deploy-from-github@v1.2.0
+        with:
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app: ${{ env.CAPROVER_APP_NAME }}
+          token: ${{ secrets.APP_TOKEN }}
+          image: ${{ steps.image.outputs.image_name }}:${{ github.sha }}
 
-          npx -y -p node@20 -p caprover caprover deploy \
-            --caproverUrl "$CAPROVER_SERVER" \
-            --appToken "$CAPROVER_APP_TOKEN" \
-            --caproverApp "$CAPROVER_APP_NAME" \
-            --tarFile /tmp/rowset-image.tar
-
-          npx -y -p node@20 -p caprover caprover deploy \
-            --caproverUrl "$CAPROVER_SERVER" \
-            --appToken "$CAPROVER_WORKERS_APP_TOKEN" \
-            --caproverApp "${CAPROVER_APP_NAME}-workers" \
-            --tarFile /tmp/rowset-image.tar
+      - name: Deploy workers to CapRover
+        uses: caprover/deploy-from-github@v1.2.0
+        with:
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app: ${{ env.CAPROVER_APP_NAME }}-workers
+          token: ${{ secrets.WORKERS_APP_TOKEN }}
+          image: ${{ steps.image.outputs.image_name }}:${{ github.sha }}
