@@ -75,6 +75,30 @@ class Project(BaseModel):
         return reverse("project_detail", kwargs={"project_key": self.key})
 
 
+class ProjectSection(BaseModel):
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="project_sections")
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="sections")
+    key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        ordering = ["project__name", "name", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                "project",
+                Lower("name"),
+                condition=models.Q(archived_at__isnull=True),
+                name="unique_active_project_section_name_ci",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.project.name} / {self.name}"
+
+
 class Dataset(BaseModel):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="datasets")
     created_by_agent_api_key = models.ForeignKey(
@@ -100,6 +124,13 @@ class Dataset(BaseModel):
     )
     project = models.ForeignKey(
         Project,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="datasets",
+    )
+    section = models.ForeignKey(
+        ProjectSection,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

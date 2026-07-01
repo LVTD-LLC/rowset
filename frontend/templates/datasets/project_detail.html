@@ -64,6 +64,56 @@
       </form>
     </section>
 
+    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-sections-heading">
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div>
+          <h2 id="project-sections-heading" class="fb-section-title">Project sections</h2>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Optional grouping for related datasets inside this project.</p>
+
+          {% if sections %}
+            <div class="mt-4 overflow-hidden rounded-md border border-slate-200 dark:border-slate-800">
+              <ul class="divide-y divide-slate-200 dark:divide-slate-800" aria-label="Project sections">
+                {% for section in sections %}
+                  <li class="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-semibold text-slate-950 dark:text-slate-100">{{ section.name }}</p>
+                      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ section.dataset_count }} datasets</p>
+                      {% if section.description %}
+                        <p class="mt-2 break-words text-sm leading-6 text-slate-600 dark:text-slate-300">{{ section.description }}</p>
+                      {% endif %}
+                    </div>
+                    <form method="post" action="{% url 'project_section_delete' project.key section.key %}" onsubmit="return confirm('Archive section {{ section.name|escapejs }}? Datasets will stay in this project and become unsectioned.');">
+                      {% csrf_token %}
+                      <button type="submit" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Archive</button>
+                    </form>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% else %}
+            <p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">No sections yet.</p>
+          {% endif %}
+        </div>
+
+        <form method="post" action="{% url 'project_section_create' project.key %}" class="space-y-4">
+          {% csrf_token %}
+          <div>
+            <label for="section_name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
+            <input id="section_name" name="name" type="text" maxlength="255" required placeholder="Blog" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label for="section_description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
+            <textarea id="section_description" name="description" rows="3" class="fb-input mt-2 block w-full px-3 py-2 text-sm"></textarea>
+          </div>
+          <div>
+            <label for="section_metadata" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
+            <textarea id="section_metadata" name="metadata" rows="4" spellcheck="false" class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6" placeholder='{"goal":"content-led growth"}'></textarea>
+          </div>
+          <button type="submit" class="fb-button-primary w-full">Create section</button>
+        </form>
+      </div>
+    </section>
+
     <section class="rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30" aria-labelledby="delete-project-heading">
       <h2 id="delete-project-heading" class="text-lg font-semibold text-red-900 dark:text-red-100">Delete project</h2>
       <p class="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">Delete this project grouping. Assigned datasets stay in Rowset and become ungrouped. This cannot be undone.</p>
@@ -79,33 +129,43 @@
       </div>
 
       {% if datasets %}
-        <div class="overflow-x-auto">
-          <table class="fb-table">
-            <caption class="sr-only">Datasets in {{ project.name }}</caption>
-            <thead class="bg-slate-50 dark:bg-slate-900">
-              <tr>
-                <th scope="col">Dataset</th>
-                <th scope="col">Rows</th>
-                <th scope="col">Columns</th>
-                <th scope="col">Updated</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
-              {% for dataset in datasets %}
-                <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
-                  <td class="max-w-md">
-                    <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
-                    <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
-                    <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
-                  </td>
-                  <td>{{ dataset.row_count }}</td>
-                  <td>{{ dataset.headers|length }}</td>
-                  <td class="whitespace-nowrap">{{ dataset.updated_at|date:"M d, Y" }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+        {% for group in section_groups %}
+          <div class="{% if not forloop.first %}border-t border-slate-200 dark:border-slate-800{% endif %}">
+            <div class="bg-slate-50 px-5 py-3 dark:bg-slate-900">
+              <h3 class="text-sm font-semibold text-slate-950 dark:text-slate-100">{{ group.label }}</h3>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ group.dataset_count }} datasets</p>
+            </div>
+            {% if group.datasets %}
+              <div class="overflow-x-auto">
+                <table class="fb-table">
+                  <caption class="sr-only">{{ group.label }} datasets in {{ project.name }}</caption>
+                  <thead class="bg-white dark:bg-slate-950">
+                    <tr>
+                      <th scope="col">Dataset</th>
+                      <th scope="col">Rows</th>
+                      <th scope="col">Columns</th>
+                      <th scope="col">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+                    {% for dataset in group.datasets %}
+                      <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+                        <td class="max-w-md">
+                          <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+                          <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
+                          <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
+                        </td>
+                        <td>{{ dataset.row_count }}</td>
+                        <td>{{ dataset.headers|length }}</td>
+                        <td class="whitespace-nowrap">{{ dataset.updated_at|date:"M d, Y" }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
         {% if page_obj.has_other_pages %}
           <nav class="flex flex-col gap-3 border-t border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between" aria-label="Project dataset pagination">
             <p class="text-slate-600 dark:text-slate-300">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>

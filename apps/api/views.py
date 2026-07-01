@@ -62,6 +62,12 @@ from apps.api.schemas import (
     ProjectListOut,
     ProjectMetadataOut,
     ProjectMetadataPatchIn,
+    ProjectSectionArchiveOut,
+    ProjectSectionCreateIn,
+    ProjectSectionCreateOut,
+    ProjectSectionListOut,
+    ProjectSectionUpdateIn,
+    ProjectSectionUpdateOut,
     ProjectUpdateIn,
     ProjectUpdateOut,
     SubmitFeedbackIn,
@@ -74,11 +80,13 @@ from apps.api.services import (
     add_profile_dataset_column,
     archive_profile_dataset,
     archive_profile_project,
+    archive_profile_project_section,
     attach_profile_dataset_image_asset,
     create_profile_dataset,
     create_profile_dataset_relationship,
     create_profile_dataset_row,
     create_profile_project,
+    create_profile_project_section,
     dataset_asset_content_field,
     delete_profile_dataset_relationship,
     delete_profile_dataset_row,
@@ -100,6 +108,7 @@ from apps.api.services import (
     serialize_profile_archived_datasets,
     serialize_profile_dataset_asset,
     serialize_profile_project_detail,
+    serialize_profile_project_sections,
     serialize_user_info,
     update_profile_dataset_column_types,
     update_profile_dataset_metadata,
@@ -107,6 +116,7 @@ from apps.api.services import (
     update_profile_dataset_public_preview,
     update_profile_project,
     update_profile_project_metadata,
+    update_profile_project_section,
 )
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
@@ -657,6 +667,109 @@ def patch_project_metadata(
         _raise_http_error(exc)
 
 
+@api.get(
+    "/projects/{project_key}/sections",
+    response=ProjectSectionListOut,
+    auth=[api_key_auth],
+    tags=["projects"],
+)
+def list_project_sections(
+    request: HttpRequest,
+    project_key: str,
+    limit: int = 100,
+    offset: int = 0,
+):
+    """Return a page of active sections inside one project."""
+    try:
+        return serialize_profile_project_sections(
+            request.auth,
+            project_key,
+            limit=limit,
+            offset=offset,
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/projects/{project_key}/sections",
+    response={201: ProjectSectionCreateOut},
+    auth=[api_key_write_auth],
+    tags=["projects"],
+)
+def create_project_section(
+    request: HttpRequest,
+    project_key: str,
+    payload: ProjectSectionCreateIn,
+):
+    """Create a section for grouping datasets inside one project."""
+    try:
+        return Status(
+            201,
+            create_profile_project_section(
+                request.auth,
+                project_key,
+                name=payload.name,
+                description=payload.description,
+                metadata=payload.metadata,
+            ),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.patch(
+    "/projects/{project_key}/sections/{section_key}",
+    response=ProjectSectionUpdateOut,
+    auth=[api_key_write_auth],
+    tags=["projects"],
+)
+def patch_project_section(
+    request: HttpRequest,
+    project_key: str,
+    section_key: str,
+    payload: ProjectSectionUpdateIn,
+):
+    """Update a section name or description inside one project."""
+    updates = payload.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        if value is None:
+            raise HttpError(
+                400,
+                (
+                    f"Project section {key} cannot be null. "
+                    "Omit it to leave the current value unchanged."
+                ),
+            )
+    try:
+        return update_profile_project_section(
+            request.auth,
+            project_key,
+            section_key,
+            **updates,
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.delete(
+    "/projects/{project_key}/sections/{section_key}",
+    response=ProjectSectionArchiveOut,
+    auth=[api_key_write_auth],
+    tags=["projects"],
+)
+def archive_project_section(
+    request: HttpRequest,
+    project_key: str,
+    section_key: str,
+):
+    """Archive a section without deleting its datasets."""
+    try:
+        return archive_profile_project_section(request.auth, project_key, section_key)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
 @api.delete(
     "/projects/{project_key}",
     response=ProjectArchiveOut,
@@ -683,6 +796,7 @@ def list_datasets(
     offset: int = 0,
     query: str | None = None,
     project_key: str | None = None,
+    section_key: str | None = None,
     header_contains: str | None = None,
     status: str | None = None,
     updated_after: str | None = None,
@@ -693,6 +807,7 @@ def list_datasets(
             request.auth,
             query=query,
             project_key=project_key,
+            section_key=section_key,
             header_contains=header_contains,
             status=status,
             updated_after=updated_after,
@@ -736,6 +851,7 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 index_column=payload.index_column,
                 column_types=payload.column_types,
                 project_key=payload.project_key,
+                section_key=payload.section_key,
                 **_agent_actor_kwargs(request),
             ),
         )
@@ -942,6 +1058,7 @@ def patch_dataset_project(
             request.auth,
             dataset_key,
             payload.project_key,
+            section_key=payload.section_key,
             **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:

@@ -81,13 +81,18 @@ get_all_projects
 search_projects
 create_project
 get_project
+get_project_sections
+create_project_section
 update_project
 update_project_metadata
+update_project_section
+archive_project_section
 archive_project
 ```
 
 Use project metadata for source links, kickoff threads, planning docs, or other
-JSON context that should stay with the project. Pass an empty object to
+JSON context that should stay with the project. Use sections for optional
+grouping inside a project, such as Blog or Sales. Pass an empty object to
 `update_project_metadata` to clear it.
 Use `archive_project` when a project should disappear from normal project
 discovery. Archiving a project does not delete or archive its datasets.
@@ -99,7 +104,8 @@ create_dataset
 ```
 
 The tool returns the new dataset key. Pass `project_key` to create it inside an
-existing project, or omit `project_key` to leave it ungrouped. Agents can use
+existing project, or pass both `project_key` and `section_key` to create it
+inside a project section. Omit both fields to leave it ungrouped. Agents can use
 that dataset key immediately with the row tools. Pass `description`,
 `instructions`, or `metadata` when the dataset should carry persistent operating
 context for future agent runs.
@@ -184,7 +190,9 @@ public preview sharing. Use `get_archived_datasets` to find archived dataset key
 use `restore_dataset` to bring an archived dataset back.
 
 Use `update_dataset_project` when the user asks to organize or move a dataset
-between projects. Passing `null` for `project_key` leaves the dataset ungrouped.
+between projects or into a project section. Pass `section_key` with `project_key`
+to assign a section. Passing `null` for `project_key` leaves the dataset
+ungrouped.
 
 Use `update_dataset_public_preview` only when the user asks to share a read-only
 browser preview. The tool returns the public preview URL.

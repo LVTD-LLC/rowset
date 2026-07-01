@@ -33,6 +33,7 @@ from apps.datasets.models import (
     DatasetRelationship,
     DatasetRow,
     Project,
+    ProjectSection,
     record_dataset_asset_file_deletion_failure,
 )
 from apps.datasets.services import (
@@ -88,6 +89,11 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "project__name",
     "project__description",
     "project__archived_at",
+    "section",
+    "section__key",
+    "section__name",
+    "section__description",
+    "section__archived_at",
     "created_at",
     "updated_at",
     "confirmed_at",
@@ -104,6 +110,13 @@ def _visible_project_dataset_count():
     )
 
 
+def _visible_project_section_dataset_count():
+    return Count(
+        "datasets",
+        filter=Q(datasets__archived_at__isnull=True) & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+    )
+
+
 def _active_dataset_queryset(queryset):
     return queryset.filter(archived_at__isnull=True)
 
@@ -114,6 +127,10 @@ def _archived_dataset_queryset(queryset):
 
 def _active_project_queryset(queryset):
     return queryset.filter(archived_at__isnull=True)
+
+
+def _active_project_section_queryset(queryset):
+    return queryset.filter(archived_at__isnull=True, project__archived_at__isnull=True)
 
 
 class DatasetServiceError(Exception):
@@ -198,6 +215,19 @@ def _normalize_project_description(description: str | None) -> str:
     return (description or "").strip()
 
 
+def _normalize_project_section_name(name: str) -> str:
+    normalized_name = (name or "").strip()
+    if not normalized_name:
+        raise DatasetServiceError(400, "Project section name is required.")
+    if len(normalized_name) > 255:
+        raise DatasetServiceError(400, "Project section name must be 255 characters or fewer.")
+    return normalized_name
+
+
+def _normalize_project_section_description(description: str | None) -> str:
+    return (description or "").strip()
+
+
 def _normalize_metadata_object(
     metadata: dict[str, Any] | None,
     *,
@@ -243,6 +273,14 @@ def _normalize_project_metadata(metadata: dict[str, Any] | None) -> dict[str, An
     )
 
 
+def _normalize_project_section_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+    return _normalize_metadata_object(
+        metadata,
+        label="Project section",
+        max_bytes=MAX_PROJECT_METADATA_BYTES,
+    )
+
+
 def serialize_project_reference(project: Project | None) -> dict | None:
     """Return the project fields embedded in dataset metadata."""
     if project is None or getattr(project, "archived_at", None) is not None:
@@ -251,6 +289,17 @@ def serialize_project_reference(project: Project | None) -> dict | None:
         "key": str(project.key),
         "name": project.name,
         "description": project.description,
+    }
+
+
+def serialize_project_section_reference(section: ProjectSection | None) -> dict | None:
+    """Return the section fields embedded in dataset metadata."""
+    if section is None or getattr(section, "archived_at", None) is not None:
+        return None
+    return {
+        "key": str(section.key),
+        "name": section.name,
+        "description": section.description,
     }
 
 
@@ -272,6 +321,28 @@ def serialize_project_summary(project: Project) -> dict:
         "created_at": project.created_at,
         "updated_at": project.updated_at,
         "archived_at": getattr(project, "archived_at", None),
+    }
+
+
+def serialize_project_section_summary(section: ProjectSection) -> dict:
+    """Return machine-friendly project section metadata without row payloads."""
+    dataset_count = getattr(section, "dataset_count", None)
+    if dataset_count is None:
+        dataset_count = (
+            _active_dataset_queryset(section.datasets)
+            .exclude(status=DatasetStatus.PREVIEWED)
+            .count()
+        )
+    return {
+        "key": str(section.key),
+        "project": serialize_project_reference(section.project),
+        "name": section.name,
+        "description": section.description,
+        "metadata": section.metadata or {},
+        "dataset_count": dataset_count,
+        "created_at": section.created_at,
+        "updated_at": section.updated_at,
+        "archived_at": getattr(section, "archived_at", None),
     }
 
 
@@ -474,6 +545,242 @@ def get_profile_project_reference(profile: Profile, project_key: str) -> Project
         raise DatasetServiceError(404, "Project not found.") from exc
 
 
+def _project_section_identifier_uuid(section_identifier: str) -> UUID:
+    try:
+        return UUID(str(section_identifier or "").strip())
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise DatasetServiceError(404, "Project section not found.") from exc
+
+
+def get_profile_project_section(
+    profile: Profile,
+    project_key: str,
+    section_key: str,
+) -> ProjectSection:
+    project = get_profile_project(profile, project_key)
+    return get_profile_project_section_for_project(profile, project, section_key)
+
+
+def get_profile_project_section_for_project(
+    profile: Profile,
+    project: Project,
+    section_key: str,
+) -> ProjectSection:
+    try:
+        return (
+            _active_project_section_queryset(
+                ProjectSection.objects.select_related("project").annotate(
+                    dataset_count=_visible_project_section_dataset_count()
+                )
+            )
+            .only(
+                "key",
+                "project",
+                "project__key",
+                "project__name",
+                "project__description",
+                "project__archived_at",
+                "name",
+                "description",
+                "metadata",
+                "created_at",
+                "updated_at",
+                "archived_at",
+            )
+            .get(
+                key=_project_section_identifier_uuid(section_key),
+                profile=profile,
+                project=project,
+            )
+        )
+    except (ProjectSection.DoesNotExist, ValidationError, ValueError) as exc:
+        raise DatasetServiceError(404, "Project section not found.") from exc
+
+
+def serialize_profile_project_sections(
+    profile: Profile,
+    project_key: str,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict:
+    """Return a bounded page of active sections inside one owned project."""
+    project = get_profile_project(profile, project_key)
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+    queryset = (
+        _active_project_section_queryset(
+            project.sections.select_related("project").annotate(
+                dataset_count=_visible_project_section_dataset_count()
+            )
+        )
+        .only(
+            "key",
+            "project",
+            "project__key",
+            "project__name",
+            "project__description",
+            "project__archived_at",
+            "name",
+            "description",
+            "metadata",
+            "created_at",
+            "updated_at",
+            "archived_at",
+        )
+        .order_by("name", "id")
+    )
+    total_count = queryset.count()
+    sections = list(queryset[offset : offset + limit])
+    return {
+        "count": len(sections),
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + len(sections) < total_count,
+        "sections": [serialize_project_section_summary(section) for section in sections],
+    }
+
+
+def create_profile_project_section(
+    profile: Profile,
+    project_key: str,
+    *,
+    name: str,
+    description: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict:
+    """Create a section for grouping datasets inside one authenticated project."""
+    project = get_profile_project(profile, project_key)
+    normalized_name = _normalize_project_section_name(name)
+    normalized_description = _normalize_project_section_description(description)
+    normalized_metadata = _normalize_project_section_metadata(metadata)
+    if _active_project_section_queryset(
+        ProjectSection.objects.filter(project=project, name__iexact=normalized_name)
+    ).exists():
+        raise DatasetServiceError(409, "Project section name already exists.")
+
+    try:
+        section = ProjectSection.objects.create(
+            profile=profile,
+            project=project,
+            name=normalized_name,
+            description=normalized_description,
+            metadata=normalized_metadata,
+        )
+    except IntegrityError as exc:
+        raise DatasetServiceError(409, "Project section name already exists.") from exc
+
+    section.dataset_count = 0
+    return {
+        "status": "success",
+        "message": "Project section created.",
+        "section": serialize_project_section_summary(section),
+    }
+
+
+def update_profile_project_section(
+    profile: Profile,
+    project_key: str,
+    section_key: str,
+    *,
+    name: Any = UNSET,
+    description: Any = UNSET,
+) -> dict:
+    """Update an active section inside one authenticated project."""
+    if name is UNSET and description is UNSET:
+        raise DatasetServiceError(400, "Provide name or description to update.")
+
+    normalized_name = _normalize_project_section_name(name) if name is not UNSET else UNSET
+    normalized_description = (
+        _normalize_project_section_description(description)
+        if description is not UNSET
+        else UNSET
+    )
+
+    with transaction.atomic():
+        project = get_profile_project(profile, project_key)
+        section = get_profile_project_section_for_project(profile, project, section_key)
+
+        update_fields = []
+        if normalized_name is not UNSET and section.name != normalized_name:
+            if (
+                _active_project_section_queryset(
+                    ProjectSection.objects.filter(
+                        project=project,
+                        name__iexact=normalized_name,
+                    )
+                )
+                .exclude(pk=section.pk)
+                .exists()
+            ):
+                raise DatasetServiceError(409, "Project section name already exists.")
+            section.name = normalized_name
+            update_fields.append("name")
+
+        if (
+            normalized_description is not UNSET
+            and section.description != normalized_description
+        ):
+            section.description = normalized_description
+            update_fields.append("description")
+
+        if update_fields:
+            try:
+                section.save(update_fields=[*update_fields, "updated_at"])
+            except IntegrityError as exc:
+                raise DatasetServiceError(409, "Project section name already exists.") from exc
+
+    return {
+        "status": "success",
+        "message": "Project section updated."
+        if update_fields
+        else "No project section changes detected.",
+        "section": serialize_project_section_summary(section),
+    }
+
+
+def archive_profile_project_section(
+    profile: Profile,
+    project_key: str,
+    section_key: str,
+) -> dict:
+    """Archive a project section and leave its datasets in the parent project."""
+    with transaction.atomic():
+        project = get_profile_project(profile, project_key)
+        section = get_profile_project_section_for_project(profile, project, section_key)
+
+        message = "Project section was already archived."
+        if section.archived_at is None:
+            archived_at = timezone.now()
+            section.archived_at = archived_at
+            section.save(update_fields=["archived_at", "updated_at"])
+            Dataset.objects.filter(profile=profile, project=project, section=section).update(
+                section=None,
+                updated_at=archived_at,
+            )
+            section.dataset_count = 0
+            message = "Project section archived."
+
+    return {
+        "status": "success",
+        "message": message,
+        "section": serialize_project_section_summary(section),
+    }
+
+
+def _resolve_project_section_assignment(
+    profile: Profile,
+    project: Project | None,
+    section_key: str | None,
+) -> ProjectSection | None:
+    normalized_section_key = str(section_key or "").strip()
+    if not normalized_section_key:
+        return None
+    if project is None:
+        raise DatasetServiceError(400, "section_key requires project_key.")
+    return get_profile_project_section_for_project(profile, project, normalized_section_key)
+
+
 def update_profile_project_metadata(
     profile: Profile,
     project_key: str,
@@ -543,12 +850,40 @@ def serialize_profile_project_detail(
     queryset = _dataset_summary_queryset(
         _active_dataset_queryset(project.datasets).exclude(status=DatasetStatus.PREVIEWED)
     )
+    sections = list(
+        _active_project_section_queryset(
+            project.sections.select_related("project").annotate(
+                dataset_count=_visible_project_section_dataset_count()
+            )
+        )
+        .only(
+            "key",
+            "project",
+            "project__key",
+            "project__name",
+            "project__description",
+            "project__archived_at",
+            "name",
+            "description",
+            "metadata",
+            "created_at",
+            "updated_at",
+            "archived_at",
+        )
+        .order_by("name", "id")
+    )
     total_count = project.dataset_count
     datasets = list(queryset[offset : offset + limit])
+    dataset_groups = _project_dataset_groups(
+        sections,
+        datasets,
+    )
     return {
         "status": "success",
         "message": "Project retrieved.",
         "project": serialize_project_summary(project),
+        "sections": [serialize_project_section_summary(section) for section in sections],
+        "dataset_groups": dataset_groups,
         "datasets": {
             "count": len(datasets),
             "total_count": total_count,
@@ -558,6 +893,65 @@ def serialize_profile_project_detail(
             "datasets": [serialize_dataset_summary(dataset) for dataset in datasets],
         },
     }
+
+
+def _dataset_page_payload(datasets: list[Dataset], total_count: int) -> dict:
+    return {
+        "count": len(datasets),
+        "total_count": total_count,
+        "limit": len(datasets),
+        "offset": 0,
+        "has_more": len(datasets) < total_count,
+        "datasets": [serialize_dataset_summary(dataset) for dataset in datasets],
+    }
+
+
+def _project_dataset_groups(
+    sections: list[ProjectSection],
+    datasets: list[Dataset],
+) -> list[dict]:
+    datasets_by_section_id: dict[int | None, list[Dataset]] = {}
+    for dataset in datasets:
+        datasets_by_section_id.setdefault(dataset.section_id, []).append(dataset)
+
+    groups = []
+    for section in sections:
+        section_datasets = datasets_by_section_id.pop(section.id, [])
+        dataset_count = getattr(section, "dataset_count", len(section_datasets))
+        if not section_datasets and not dataset_count:
+            continue
+        groups.append(
+            {
+                "label": section.name,
+                "section": serialize_project_section_reference(section),
+                "dataset_count": dataset_count,
+                "datasets": _dataset_page_payload(section_datasets, dataset_count),
+            }
+        )
+
+    unsectioned_datasets = datasets_by_section_id.pop(None, [])
+    if unsectioned_datasets:
+        groups.append(
+            {
+                "label": "Unsectioned",
+                "section": None,
+                "dataset_count": len(unsectioned_datasets),
+                "datasets": _dataset_page_payload(unsectioned_datasets, len(unsectioned_datasets)),
+            }
+        )
+
+    for orphaned_datasets in datasets_by_section_id.values():
+        if orphaned_datasets:
+            groups.append(
+                {
+                    "label": "Unsectioned",
+                    "section": None,
+                    "dataset_count": len(orphaned_datasets),
+                    "datasets": _dataset_page_payload(orphaned_datasets, len(orphaned_datasets)),
+                }
+            )
+
+    return groups
 
 
 def serialize_dataset_summary(dataset: Dataset) -> dict:
@@ -572,6 +966,7 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "instructions": dataset.instructions,
         "metadata": dataset.metadata or {},
         "project": serialize_project_reference(getattr(dataset, "project", None)),
+        "section": serialize_project_section_reference(getattr(dataset, "section", None)),
         "original_filename": dataset.original_filename,
         "file_type": dataset.file_type,
         "status": dataset.status,
@@ -627,6 +1022,7 @@ def serialize_dataset_reference(dataset: Dataset) -> dict:
         "key": str(dataset.key),
         "name": dataset.name,
         "project": serialize_project_reference(getattr(dataset, "project", None)),
+        "section": serialize_project_section_reference(getattr(dataset, "section", None)),
         "status": dataset.status,
         "headers": dataset.headers,
         "index_column": dataset.index_column,
@@ -785,7 +1181,7 @@ def serialize_dataset_detail(dataset: Dataset) -> dict:
 
 
 def _dataset_summary_queryset(queryset):
-    return queryset.select_related("project").only(*DATASET_SUMMARY_ONLY_FIELDS)
+    return queryset.select_related("project", "section").only(*DATASET_SUMMARY_ONLY_FIELDS)
 
 
 def search_profile_datasets(
@@ -793,6 +1189,7 @@ def search_profile_datasets(
     *,
     query: str | None = None,
     project_key: str | None = None,
+    section_key: str | None = None,
     header_contains: str | None = None,
     status: str | None = None,
     updated_after: str | date | datetime | None = None,
@@ -802,13 +1199,14 @@ def search_profile_datasets(
     """
     Return a bounded, optionally filtered page of datasets owned by the profile.
 
-    Query text matches dataset name, original filename, and assigned project metadata.
-    Ungrouped datasets match only on dataset fields because they have no project metadata.
+    Query text matches dataset name, original filename, and assigned project/section metadata.
+    Ungrouped datasets match only on dataset fields because they have no grouping metadata.
     """
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     normalized_query = _normalize_search_query(query)
     normalized_project_key = str(project_key or "").strip()
+    normalized_section_key = str(section_key or "").strip()
     normalized_header = str(header_contains or "").strip()
     normalized_status = _normalize_dataset_status(status)
     normalized_updated_after = _normalize_updated_after(updated_after)
@@ -828,6 +1226,14 @@ def search_profile_datasets(
                 project__archived_at__isnull=True,
                 project__description__icontains=normalized_query,
             )
+            | Q(
+                section__archived_at__isnull=True,
+                section__name__icontains=normalized_query,
+            )
+            | Q(
+                section__archived_at__isnull=True,
+                section__description__icontains=normalized_query,
+            )
         )
     if normalized_project_key:
         try:
@@ -838,6 +1244,17 @@ def search_profile_datasets(
             queryset = queryset.filter(
                 project__key=project_key_uuid,
                 project__archived_at__isnull=True,
+            )
+    if normalized_section_key:
+        try:
+            section_key_uuid = UUID(normalized_section_key)
+        except ValueError as exc:
+            raise DatasetServiceError(400, "section_key must be a valid UUID.") from exc
+        else:
+            queryset = queryset.filter(
+                section__key=section_key_uuid,
+                section__archived_at__isnull=True,
+                section__project__archived_at__isnull=True,
             )
     if normalized_status:
         queryset = queryset.filter(status=normalized_status)
@@ -931,7 +1348,7 @@ def _get_profile_dataset_from_queryset(
 
 def get_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     return _get_profile_dataset_from_queryset(
-        Dataset.objects.select_related("project"),
+        Dataset.objects.select_related("project", "section"),
         profile,
         dataset_key,
     )
@@ -1730,6 +2147,7 @@ def create_profile_dataset(
     index_column: str | None = None,
     column_types: dict[str, ColumnTypeSpec] | None = None,
     project_key: str | None = None,
+    section_key: str | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     """Create a ready API-backed dataset for an authenticated profile."""
@@ -1741,6 +2159,7 @@ def create_profile_dataset(
     project = (
         get_profile_project(profile, normalized_project_key) if normalized_project_key else None
     )
+    section = _resolve_project_section_assignment(profile, project, section_key)
     normalized_rows = _normalize_create_rows(rows)
     base_headers = _normalize_create_headers(headers, normalized_rows)
     _validate_rows_match_headers(normalized_rows, base_headers)
@@ -1792,6 +2211,7 @@ def create_profile_dataset(
         dataset = Dataset.objects.create(
             profile=profile,
             project=project,
+            section=section,
             created_by_agent_api_key=agent_api_key,
             updated_by_agent_api_key=agent_api_key,
             name=normalized_name,
@@ -1838,6 +2258,7 @@ def create_profile_dataset(
                 "instructions": normalized_instructions,
                 "metadata": normalized_metadata,
                 "project_key": str(project.key) if project else "",
+                "section_key": str(section.key) if section else "",
             },
         )
 
@@ -2495,6 +2916,7 @@ def update_profile_dataset_project(
     profile: Profile,
     dataset_key: str,
     project_key: str | None,
+    section_key: str | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     """Attach an existing dataset to a project owned by the profile, or detach it."""
@@ -2502,6 +2924,7 @@ def update_profile_dataset_project(
     project = (
         get_profile_project(profile, normalized_project_key) if normalized_project_key else None
     )
+    section = _resolve_project_section_assignment(profile, project, section_key)
 
     with transaction.atomic():
         dataset = _get_profile_dataset_from_queryset(
@@ -2514,9 +2937,12 @@ def update_profile_dataset_project(
 
         previous_project_key = str(dataset.project.key) if dataset.project else ""
         previous_project_name = dataset.project.name if dataset.project else ""
+        previous_section_key = str(dataset.section.key) if dataset.section else ""
+        previous_section_name = dataset.section.name if dataset.section else ""
         dataset.project = project
+        dataset.section = section
         dataset.updated_by_agent_api_key = agent_api_key
-        dataset.save(update_fields=["project", "updated_by_agent_api_key", "updated_at"])
+        dataset.save(update_fields=["project", "section", "updated_by_agent_api_key", "updated_at"])
         record_dataset_mutation(
             dataset,
             DatasetMutationType.DATASET_PROJECT_UPDATED,
@@ -2527,8 +2953,12 @@ def update_profile_dataset_project(
             metadata={
                 "previous_project_key": previous_project_key,
                 "previous_project_name": previous_project_name,
+                "previous_section_key": previous_section_key,
+                "previous_section_name": previous_section_name,
                 "project_key": str(project.key) if project else "",
                 "project_name": project.name if project else "",
+                "section_key": str(section.key) if section else "",
+                "section_name": section.name if section else "",
             },
         )
 

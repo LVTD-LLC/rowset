@@ -13,11 +13,13 @@ from apps.api.services import (
     add_profile_dataset_column,
     archive_profile_dataset,
     archive_profile_project,
+    archive_profile_project_section,
     attach_profile_dataset_image_asset,
     create_profile_dataset,
     create_profile_dataset_relationship,
     create_profile_dataset_row,
     create_profile_project,
+    create_profile_project_section,
     delete_profile_dataset_relationship,
     delete_profile_dataset_row,
     drop_profile_dataset_column,
@@ -39,6 +41,7 @@ from apps.api.services import (
     serialize_profile_dataset_asset,
     serialize_profile_datasets,
     serialize_profile_project_detail,
+    serialize_profile_project_sections,
     serialize_profile_projects,
     serialize_user_info,
     update_profile_dataset_column_types,
@@ -47,6 +50,7 @@ from apps.api.services import (
     update_profile_dataset_public_preview,
     update_profile_project,
     update_profile_project_metadata,
+    update_profile_project_section,
 )
 from apps.core.capabilities import rowset_capabilities_payload
 from apps.core.choices import AgentApiKeyAccessLevel
@@ -223,6 +227,7 @@ def _dataset_service_error_code(exc: DatasetServiceError) -> str:
             (
                 ("row not found", "ROW_NOT_FOUND"),
                 ("dataset not found", "DATASET_NOT_FOUND"),
+                ("project section not found", "PROJECT_SECTION_NOT_FOUND"),
                 ("project not found", "PROJECT_NOT_FOUND"),
                 ("column not found", "COLUMN_NOT_FOUND"),
             ),
@@ -256,6 +261,7 @@ def _dataset_service_error_suggested_action(code: str) -> str:
             "for a dataset owned by this profile."
         ),
         "PROJECT_NOT_FOUND": "Check the project key and try again.",
+        "PROJECT_SECTION_NOT_FOUND": "Check the project section key and parent project key.",
         "COLUMN_NOT_FOUND": "Check the column name against the dataset headers and try again.",
         "VALIDATION_ERROR": "Check the tool arguments against the dataset schema and try again.",
         "DATASET_ARCHIVED": "Restore the dataset before making changes.",
@@ -479,6 +485,10 @@ def search_datasets(
         str | None,
         Field(default=None, description="Optional project key/UUID to restrict results."),
     ] = None,
+    section_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional project section key/UUID to restrict results."),
+    ] = None,
     header_contains: Annotated[
         str | None,
         Field(default=None, description="Optional exact header name that results must contain."),
@@ -520,6 +530,7 @@ def search_datasets(
             profile,
             query=query,
             project_key=project_key,
+            section_key=section_key,
             header_contains=header_contains,
             status=status,
             updated_after=updated_after,
@@ -632,6 +643,70 @@ def create_project(
 
 
 @mcp.tool(
+    name="get_project_sections",
+    description="Return sections inside one Rowset project for grouping related datasets.",
+)
+def get_project_sections(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+    limit: Annotated[
+        int,
+        Field(default=100, ge=1, le=500, description="Maximum sections to return."),
+    ] = 100,
+    offset: Annotated[
+        int,
+        Field(default=0, ge=0, description="Number of sections to skip."),
+    ] = 0,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return serialize_profile_project_sections(
+            profile,
+            project_key,
+            limit=limit,
+            offset=offset,
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="create_project_section",
+    description=(
+        "Create a section inside a Rowset project, such as Blog or Sales, for grouping "
+        "related datasets without changing access boundaries."
+    ),
+)
+def create_project_section(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+    name: Annotated[str, Field(description="Human-readable section name.")],
+    description: Annotated[
+        str | None,
+        Field(default=None, description="Optional section description."),
+    ] = None,
+    metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            default=None,
+            description="Optional JSON object for arbitrary section metadata.",
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+    try:
+        return create_profile_project_section(
+            profile,
+            project_key,
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
     name="get_project",
     description="Return one project and a bounded page of datasets assigned to it.",
 )
@@ -719,6 +794,65 @@ def update_project_metadata(
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
     try:
         return update_profile_project_metadata(profile, project_key, metadata=metadata)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="update_project_section",
+    description="Update a Rowset project section name or description.",
+)
+def update_project_section(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+    section_key: Annotated[str, Field(description="Rowset project section key/UUID.")],
+    name: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional new section name. Omit or pass null to keep the current name."
+            ),
+        ),
+    ] = None,
+    description: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional new section description. Use an empty string to clear it; "
+                "omit or pass null to keep the current description."
+            ),
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+    updates = {}
+    if name is not None:
+        updates["name"] = name
+    if description is not None:
+        updates["description"] = description
+    try:
+        return update_profile_project_section(profile, project_key, section_key, **updates)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="archive_project_section",
+    description=(
+        "Archive a Rowset project section without deleting datasets. Datasets remain in "
+        "the parent project and become unsectioned."
+    ),
+)
+def archive_project_section(
+    project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
+    section_key: Annotated[str, Field(description="Rowset project section key/UUID.")],
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+    try:
+        return archive_profile_project_section(profile, project_key, section_key)
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
 
@@ -837,6 +971,16 @@ def create_dataset(
             ),
         ),
     ] = None,
+    section_key: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional Rowset project section key. Requires project_key and must belong "
+                "to the same project."
+            ),
+        ),
+    ] = None,
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
@@ -852,6 +996,7 @@ def create_dataset(
             index_column=index_column,
             column_types=column_types,
             project_key=project_key,
+            section_key=section_key,
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
@@ -1078,8 +1223,8 @@ def reorder_columns(
 @mcp.tool(
     name="update_dataset_project",
     description=(
-        "Attach an existing Rowset dataset to a project, or detach it from its project by "
-        "passing null for project_key."
+        "Attach an existing Rowset dataset to a project and optional section, or detach "
+        "it from its project by passing null for project_key."
     ),
 )
 def update_dataset_project(
@@ -1091,6 +1236,16 @@ def update_dataset_project(
             description="Rowset project key/UUID. Pass null to leave the dataset ungrouped.",
         ),
     ] = None,
+    section_key: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Optional Rowset project section key. Requires project_key and clears the "
+                "section when omitted or null."
+            ),
+        ),
+    ] = None,
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
@@ -1099,6 +1254,7 @@ def update_dataset_project(
             profile,
             dataset_key,
             project_key,
+            section_key=section_key,
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:

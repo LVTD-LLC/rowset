@@ -21,9 +21,11 @@ from django.views.generic import DetailView, ListView
 from apps.api.services import (
     DatasetServiceError,
     archive_profile_dataset,
+    archive_profile_project_section,
     create_profile_dataset_relationship,
     create_profile_dataset_row,
     create_profile_project,
+    create_profile_project_section,
     dataset_asset_content_field,
     delete_profile_dataset_relationship,
     delete_profile_dataset_rows,
@@ -38,7 +40,7 @@ from apps.api.services import (
     update_profile_project_metadata,
 )
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
-from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project
+from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project, ProjectSection
 from apps.datasets.services import (
     DATASET_ASSET_CACHE_CONTROL,
     DATASET_REFERENCE_TARGET,
@@ -396,6 +398,13 @@ def _visible_project_dataset_count():
     )
 
 
+def _visible_project_section_dataset_count():
+    return Count(
+        "datasets",
+        filter=Q(datasets__archived_at__isnull=True) & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+    )
+
+
 def _delete_dataset(dataset: Dataset) -> None:
     if dataset.source_file:
         dataset.source_file.delete(save=False)
@@ -405,6 +414,7 @@ def _delete_dataset(dataset: Dataset) -> None:
 def _owned_dataset_queryset(profile):
     return profile.datasets.select_related(
         "project",
+        "section",
         "created_by_agent_api_key",
         "updated_by_agent_api_key",
     ).all()
@@ -1393,6 +1403,51 @@ class ProjectListView(LoginRequiredMixin, ListView):
         return context
 
 
+def _project_section_groups(sections: list[ProjectSection], datasets: list[Dataset]) -> list[dict]:
+    datasets_by_section_id: dict[int | None, list[Dataset]] = {}
+    for dataset in datasets:
+        datasets_by_section_id.setdefault(dataset.section_id, []).append(dataset)
+
+    groups = []
+    for section in sections:
+        section_datasets = datasets_by_section_id.pop(section.id, [])
+        dataset_count = getattr(section, "dataset_count", len(section_datasets))
+        if not section_datasets and not dataset_count:
+            continue
+        groups.append(
+            {
+                "label": section.name,
+                "section": section,
+                "dataset_count": dataset_count,
+                "datasets": section_datasets,
+            }
+        )
+
+    unsectioned_datasets = datasets_by_section_id.pop(None, [])
+    if unsectioned_datasets:
+        groups.append(
+            {
+                "label": "Unsectioned",
+                "section": None,
+                "dataset_count": len(unsectioned_datasets),
+                "datasets": unsectioned_datasets,
+            }
+        )
+
+    for orphaned_datasets in datasets_by_section_id.values():
+        if orphaned_datasets:
+            groups.append(
+                {
+                    "label": "Unsectioned",
+                    "section": None,
+                    "dataset_count": len(orphaned_datasets),
+                    "datasets": orphaned_datasets,
+                }
+            )
+
+    return groups
+
+
 class ProjectDetailView(LoginRequiredMixin, DetailView):
     template_name = "datasets/project_detail.html"
     context_object_name = "project"
@@ -1408,6 +1463,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         paginator = Paginator(
             self.object.datasets.select_related(
+                "section",
                 "created_by_agent_api_key",
                 "updated_by_agent_api_key",
             )
@@ -1417,8 +1473,16 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             100,
         )
         page_obj = paginator.get_page(self.request.GET.get("page"))
+        sections = list(
+            self.object.sections.filter(archived_at__isnull=True)
+            .annotate(dataset_count=_visible_project_section_dataset_count())
+            .order_by("name", "id")
+        )
+        datasets = list(page_obj.object_list)
         context["page_obj"] = page_obj
-        context["datasets"] = page_obj.object_list
+        context["datasets"] = datasets
+        context["sections"] = sections
+        context["section_groups"] = _project_section_groups(sections, datasets)
         context.setdefault("project_edit_mode", self.request.GET.get("edit") == "1")
         context.setdefault(
             "project_form_values",
@@ -1814,6 +1878,15 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
         context["project_choices"] = self.request.user.profile.projects.filter(
             archived_at__isnull=True
         )
+        context["section_choices"] = (
+            ProjectSection.objects.select_related("project")
+            .filter(
+                profile=self.request.user.profile,
+                archived_at__isnull=True,
+                project__archived_at__isnull=True,
+            )
+            .order_by("project__name", "name", "id")
+        )
         context["relationship_target_dataset_choices"] = (
             _owned_dataset_queryset(self.request.user.profile)
             .filter(status=DatasetStatus.READY)
@@ -1861,6 +1934,56 @@ def project_create(request):
 
     messages.success(request, "Project created.")
     return redirect("project_detail", project_key=result["project"]["key"])
+
+
+@login_required
+@require_POST
+def project_section_create(request, project_key):
+    raw_metadata = request.POST.get("metadata", "").strip()
+    if raw_metadata:
+        try:
+            metadata = json.loads(raw_metadata)
+        except json.JSONDecodeError:
+            messages.error(request, "Project section metadata must be valid JSON.")
+            return redirect("project_detail", project_key=project_key)
+    else:
+        metadata = {}
+
+    try:
+        create_profile_project_section(
+            request.user.profile,
+            str(project_key),
+            name=request.POST.get("name", ""),
+            description=request.POST.get("description", ""),
+            metadata=metadata,
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, "Project section created.")
+
+    return redirect("project_detail", project_key=project_key)
+
+
+@login_required
+@require_POST
+def project_section_delete(request, project_key, section_key):
+    try:
+        result = archive_profile_project_section(
+            request.user.profile,
+            str(project_key),
+            str(section_key),
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, result["message"])
+
+    return redirect("project_detail", project_key=project_key)
 
 
 @login_required
@@ -1969,8 +2092,14 @@ def dataset_update_public_settings(request, dataset_key):
 @require_POST
 def dataset_update_project(request, dataset_key):
     project_key = request.POST.get("project_key") or None
+    section_key = request.POST.get("section_key") or None
     try:
-        update_profile_dataset_project(request.user.profile, str(dataset_key), project_key)
+        update_profile_dataset_project(
+            request.user.profile,
+            str(dataset_key),
+            project_key,
+            section_key=section_key,
+        )
     except DatasetServiceError as exc:
         if exc.status_code == 404:
             raise Http404(exc.message) from exc

@@ -48,8 +48,9 @@ how to use the dataset. For example, a task board can store status rules,
 priority conventions, or review steps in dataset metadata instead of requiring
 the user to explain them on every run.
 
-To create the dataset inside an existing project, include `project_key`. Omit it
-to leave the dataset ungrouped.
+To create the dataset inside an existing project, include `project_key`. To place
+it inside a project section, include both `project_key` and `section_key`. Omit
+both fields to leave the dataset ungrouped.
 
 ```json
 {
@@ -63,6 +64,7 @@ to leave the dataset ungrouped.
     }
   },
   "project_key": "{project_key}",
+  "section_key": "{section_key}",
   "headers": ["sku", "name", "price"],
   "index_column": "sku",
   "column_types": {
@@ -153,14 +155,14 @@ GET {{ api_base_url }}/datasets?query=feature&status=ready
 ```
 
 The dataset list endpoint accepts filters for `query`, `project_key`,
-`header_contains`, `status`, and `updated_after`. `query` matches dataset name,
-description, instructions, filename, and project text. `header_contains` should
-be an exact header name. Accepted `status` values are `previewed`, `processing`,
-`ready`, and `failed`. `updated_after` accepts an ISO 8601 date or datetime;
-values without a timezone offset, including bare dates, are interpreted as UTC.
-For example, `2026-06-01` is treated as `2026-06-01T00:00:00Z`. Use these filters
-when an agent needs to find the right dataset before reading rows or making
-updates.
+`section_key`, `header_contains`, `status`, and `updated_after`. `query` matches
+dataset name, description, instructions, filename, project text, and section
+text. `header_contains` should be an exact header name. Accepted `status` values
+are `previewed`, `processing`, `ready`, and `failed`. `updated_after` accepts an
+ISO 8601 date or datetime; values without a timezone offset, including bare
+dates, are interpreted as UTC. For example, `2026-06-01` is treated as
+`2026-06-01T00:00:00Z`. Use these filters when an agent needs to find the right
+dataset before reading rows or making updates.
 
 ## List archived datasets
 
@@ -442,6 +444,15 @@ Attach a dataset to one project:
 ```json
 {
   "project_key": "{project_key}"
+}
+```
+
+Attach it to a section inside the project:
+
+```json
+{
+  "project_key": "{project_key}",
+  "section_key": "{section_key}"
 }
 ```
 

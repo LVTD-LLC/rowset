@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-CAPABILITY_VERSION = "2026-06-30"
+CAPABILITY_VERSION = "2026-07-01"
 
 
 @dataclass(frozen=True)
@@ -198,17 +198,21 @@ ROWSET_CAPABILITIES = (
         id="projects",
         title="Projects",
         summary=(
-            "Group related datasets into semantic projects, store project-level JSON "
-            "metadata, and archive projects that should disappear from normal project "
-            "discovery."
+            "Group related datasets into semantic projects, optionally organize them "
+            "into sections inside a project, store project-level JSON metadata, and "
+            "archive projects that should disappear from normal project discovery."
         ),
         mcp_tools=(
             "get_all_projects",
             "search_projects",
             "create_project",
+            "get_project_sections",
+            "create_project_section",
             "get_project",
             "update_project",
             "update_project_metadata",
+            "update_project_section",
+            "archive_project_section",
             "archive_project",
             "update_dataset_project",
         ),
@@ -216,11 +220,15 @@ ROWSET_CAPABILITIES = (
             "/api/projects",
             "/api/projects/{project_key}",
             "/api/projects/{project_key}/metadata",
+            "/api/projects/{project_key}/sections",
+            "/api/projects/{project_key}/sections/{section_key}",
             "/api/datasets/{dataset_key}/project",
         ),
         notes=(
             "Projects organize data; they do not change authentication boundaries.",
+            "Sections organize datasets inside a project; they do not change access boundaries.",
             "Archiving a project does not delete or archive its datasets.",
+            "Archiving a section leaves datasets in the parent project as unsectioned.",
         ),
     ),
     RowsetCapability(

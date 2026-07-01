@@ -114,7 +114,7 @@
               {% csrf_token %}
               <div>
                 <h3 id="project-settings-heading" class="fb-section-title">Project</h3>
-                <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Assign this dataset to one semantic group, or leave it ungrouped.</p>
+                <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Assign this dataset to one semantic group and an optional section inside it.</p>
               </div>
 
               <div>
@@ -125,6 +125,17 @@
                     <option value="{{ project.key }}" {% if dataset.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
                   {% endfor %}
                 </select>
+              </div>
+
+              <div>
+                <label for="section_key" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Section</label>
+                <select id="section_key" name="section_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+                  <option value="">No section</option>
+                  {% for section in section_choices %}
+                    <option value="{{ section.key }}" {% if dataset.section_id == section.id %}selected{% endif %}>{{ section.project.name }} / {{ section.name }}</option>
+                  {% endfor %}
+                </select>
+                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">The selected section must belong to the selected project.</p>
               </div>
 
               <div class="flex flex-col gap-3 sm:flex-row">

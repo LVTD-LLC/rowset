@@ -24,6 +24,7 @@ from apps.api.views import (
 )
 from apps.blog.choices import BlogPostStatus
 from apps.core.choices import AgentApiKeyAccessLevel
+from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow, Project
 
@@ -317,6 +318,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
                     "name": "Launch",
                     "description": "Launch datasets",
                 },
+                "section": None,
                 "original_filename": "customers.csv",
                 "file_type": "csv",
                 "status": "ready",
@@ -346,7 +348,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
             }
         ]
         datasets.filter.assert_called_once_with(archived_at__isnull=True)
-        active_datasets.select_related.assert_called_once_with("project")
+        active_datasets.select_related.assert_called_once_with("project", "section")
         active_datasets.select_related.return_value.only.assert_called_once()
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
@@ -400,7 +402,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
         assert response["datasets"][0]["archived_at"] == "2026-05-15T00:00:00Z"
         datasets.filter.assert_called_once_with(archived_at__isnull=False)
         archived_datasets.exclude.assert_called_once_with(status=DatasetStatus.PREVIEWED)
-        visible_archived_datasets.select_related.assert_called_once_with("project")
+        visible_archived_datasets.select_related.assert_called_once_with("project", "section")
         visible_archived_datasets.select_related.return_value.only.assert_called_once()
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
@@ -1206,3 +1208,62 @@ def test_update_profile_project_rejects_duplicate_name(django_user_model):
 
     assert exc.value.status_code == 409
     assert exc.value.message == "Project name already exists."
+
+
+@pytest.mark.django_db
+def test_project_section_services_create_assign_and_group_datasets(django_user_model):
+    from apps.api.services import (
+        create_profile_project_section,
+        serialize_profile_project_detail,
+        update_profile_dataset_project,
+    )
+
+    assert hasattr(dataset_models, "ProjectSection")
+
+    user = django_user_model.objects.create_user(
+        username="projectsectionowner",
+        email="projectsectionowner@example.com",
+        password="password123",
+    )
+    project = Project.objects.create(profile=user.profile, name="Rowset")
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        project=project,
+        name="Content ledger",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["slug"],
+        index_column="slug",
+    )
+
+    section_response = create_profile_project_section(
+        user.profile,
+        str(project.key),
+        name="Blog",
+        description="Content operations datasets.",
+        metadata={"goal": "content-led growth"},
+    )
+    update_response = update_profile_dataset_project(
+        user.profile,
+        str(dataset.key),
+        str(project.key),
+        section_key=section_response["section"]["key"],
+    )
+    detail_response = serialize_profile_project_detail(user.profile, str(project.key))
+
+    assert section_response["section"]["name"] == "Blog"
+    assert section_response["section"]["dataset_count"] == 0
+    assert update_response["dataset"]["section"]["key"] == section_response["section"]["key"]
+    assert update_response["dataset"]["section"]["name"] == "Blog"
+    dataset.refresh_from_db()
+    assert dataset.section.name == "Blog"
+    assert detail_response["sections"][0]["key"] == section_response["section"]["key"]
+    assert detail_response["sections"][0]["dataset_count"] == 1
+    assert detail_response["dataset_groups"][0]["label"] == "Blog"
+    assert detail_response["dataset_groups"][0]["section"]["key"] == (
+        section_response["section"]["key"]
+    )
+    assert detail_response["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == (
+        str(dataset.key)
+    )

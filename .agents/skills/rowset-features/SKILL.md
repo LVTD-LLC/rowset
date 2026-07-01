@@ -68,12 +68,18 @@ row's index value. For example, `Messages.person_id` can point to
 - Discover projects with `get_all_projects` and `search_projects`.
 - Create projects with `create_project`.
 - Inspect a project and its datasets with `get_project`.
+- Discover project sections with `get_project_sections`.
+- Create sections with `create_project_section`.
 - Update project name or description with `update_project`.
 - Replace project JSON metadata with `update_project_metadata`.
-- Move datasets with `update_dataset_project`.
+- Update sections with `update_project_section`.
+- Archive sections with `archive_project_section`.
+- Move datasets with `update_dataset_project`, optionally passing `section_key`
+  with `project_key`.
 
-Projects organize datasets and carry workflow metadata. They do not change
-authenticated access boundaries.
+Projects organize datasets and carry workflow metadata. Sections optionally
+organize datasets inside one project. Neither changes authenticated access
+boundaries.
 
 ### Rows
 

@@ -1,14 +1,15 @@
 ---
 title: Project API
-description: Create, update, and archive Rowset projects, then assign datasets to semantic groups.
-keywords: Rowset projects, dataset projects, project API
+description: Create, update, and archive Rowset projects and sections, then assign datasets to semantic groups.
+keywords: Rowset projects, project sections, dataset projects, project API
 ---
 
 # Project API
 
 Projects group datasets by topic, client, workflow, or any other label that helps
 agents and users find the right table. A dataset can belong to one project, or no
-project.
+project. Inside a project, optional sections group related datasets for a goal
+such as Blog, Sales, or Support.
 
 Projects do not replace authentication. REST and MCP access still uses the
 authenticated profile boundary.
@@ -54,7 +55,8 @@ GET {{ api_base_url }}/projects?query=launch
 GET {{ api_base_url }}/projects/{project_key}
 ```
 
-Returns the project plus a page of datasets currently assigned to it.
+Returns the project, active sections, grouped datasets, and a flat page of
+datasets currently assigned to it.
 
 ## Update a project
 
@@ -91,6 +93,57 @@ Content-Type: application/json
 
 Send an empty object to clear project metadata.
 
+## Create a section
+
+```http
+POST {{ api_base_url }}/projects/{project_key}/sections
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Blog",
+  "description": "Content operations datasets",
+  "metadata": {
+    "goal": "content-led growth"
+  }
+}
+```
+
+The response includes `section.key`. Use that key with `project_key` when
+creating or moving datasets into the section.
+
+## List sections
+
+```http
+GET {{ api_base_url }}/projects/{project_key}/sections
+```
+
+Returns active sections for one project with `dataset_count`.
+
+## Update a section
+
+```http
+PATCH {{ api_base_url }}/projects/{project_key}/sections/{section_key}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Editorial",
+  "description": "Blog planning and publishing datasets"
+}
+```
+
+## Archive a section
+
+```http
+DELETE {{ api_base_url }}/projects/{project_key}/sections/{section_key}
+```
+
+Archiving a section does not delete datasets. Datasets stay in the parent project
+and become unsectioned.
+
 ## Archive a project
 
 ```http
@@ -111,6 +164,15 @@ Content-Type: application/json
 ```json
 {
   "project_key": "{project_key}"
+}
+```
+
+Attach a dataset to a section inside the project:
+
+```json
+{
+  "project_key": "{project_key}",
+  "section_key": "{section_key}"
 }
 ```
 

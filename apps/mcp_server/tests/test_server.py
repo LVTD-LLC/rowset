@@ -116,7 +116,7 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
             return self
 
         def select_related(self, *fields):
-            assert fields == ("project",)
+            assert fields == ("project", "section")
             return self
 
         def only(self, *fields):
@@ -441,6 +441,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
         *,
         query=None,
         project_key=None,
+        section_key=None,
         header_contains=None,
         status=None,
         updated_after=None,
@@ -453,6 +454,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 authenticated_profile.id,
                 query,
                 project_key,
+                section_key,
                 header_contains,
                 status,
                 updated_after,
@@ -494,6 +496,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 {
                     "query": "feature",
                     "project_key": "project-key",
+                    "section_key": "section-key",
                     "header_contains": "suggestion_id",
                     "status": "ready",
                     "updated_after": "2026-06-01",
@@ -514,6 +517,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 11,
                 "feature",
                 "project-key",
+                "section-key",
                 "suggestion_id",
                 "ready",
                 "2026-06-01",
@@ -553,6 +557,82 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             },
         }
 
+    def create_project_section(
+        authenticated_profile,
+        project_key,
+        *,
+        name,
+        description=None,
+        metadata=None,
+    ):
+        calls.append(
+            (
+                "create_project_section",
+                authenticated_profile.id,
+                project_key,
+                name,
+                description,
+                metadata,
+            )
+        )
+        return {
+            "status": "success",
+            "message": "Project section created.",
+            "section": {
+                "key": "section-key",
+                "name": name,
+                "description": description,
+                "metadata": metadata,
+            },
+        }
+
+    def list_project_sections(authenticated_profile, project_key, limit=100, offset=0):
+        calls.append(
+            ("list_project_sections", authenticated_profile.id, project_key, limit, offset)
+        )
+        return {
+            "count": 1,
+            "total_count": 1,
+            "limit": limit,
+            "offset": offset,
+            "has_more": False,
+            "sections": [{"key": "section-key", "name": "Blog"}],
+        }
+
+    def update_project_section(
+        authenticated_profile,
+        project_key,
+        section_key,
+        *,
+        name=None,
+        description=None,
+    ):
+        calls.append(
+            (
+                "update_project_section",
+                authenticated_profile.id,
+                project_key,
+                section_key,
+                name,
+                description,
+            )
+        )
+        return {
+            "status": "success",
+            "message": "Project section updated.",
+            "section": {"key": section_key, "name": name, "description": description},
+        }
+
+    def archive_project_section(authenticated_profile, project_key, section_key):
+        calls.append(
+            ("archive_project_section", authenticated_profile.id, project_key, section_key)
+        )
+        return {
+            "status": "success",
+            "message": "Project section archived.",
+            "section": {"key": section_key, "archived_at": "2026-05-14T00:00:00Z"},
+        }
+
     def get_project(authenticated_profile, project_key, limit=100, offset=0):
         calls.append(("get_project", authenticated_profile.id, project_key, limit, offset))
         return {
@@ -579,13 +659,29 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
         }
 
     def update_dataset_project(
-        authenticated_profile, dataset_key, project_key, agent_api_key=None
+        authenticated_profile,
+        dataset_key,
+        project_key,
+        section_key=None,
+        agent_api_key=None,
     ):
-        calls.append(("update_dataset_project", authenticated_profile.id, dataset_key, project_key))
+        calls.append(
+            (
+                "update_dataset_project",
+                authenticated_profile.id,
+                dataset_key,
+                project_key,
+                section_key,
+            )
+        )
         return {
             "status": "success",
             "message": "Dataset project updated.",
-            "dataset": {"key": dataset_key, "project": {"key": project_key}},
+            "dataset": {
+                "key": dataset_key,
+                "project": {"key": project_key},
+                "section": {"key": section_key},
+            },
         }
 
     def update_project_metadata(authenticated_profile, project_key, **kwargs):
@@ -611,6 +707,22 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
         )
         monkeypatch.setattr("apps.mcp_server.server.serialize_profile_projects", list_projects)
         monkeypatch.setattr("apps.mcp_server.server.create_profile_project", create_project)
+        monkeypatch.setattr(
+            "apps.mcp_server.server.create_profile_project_section",
+            create_project_section,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.serialize_profile_project_sections",
+            list_project_sections,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.update_profile_project_section",
+            update_project_section,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.archive_profile_project_section",
+            archive_project_section,
+        )
         monkeypatch.setattr("apps.mcp_server.server.serialize_profile_project_detail", get_project)
         monkeypatch.setattr("apps.mcp_server.server.update_profile_project", update_project_details)
         monkeypatch.setattr(
@@ -640,6 +752,32 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                 "get_project",
                 {"project_key": "project-key", "limit": 2},
             )
+            section_create_result = await client.call_tool(
+                "create_project_section",
+                {
+                    "project_key": "project-key",
+                    "name": "Blog",
+                    "description": "Content operations datasets",
+                    "metadata": {"goal": "content-led growth"},
+                },
+            )
+            section_list_result = await client.call_tool(
+                "get_project_sections",
+                {"project_key": "project-key", "limit": 10},
+            )
+            section_update_result = await client.call_tool(
+                "update_project_section",
+                {
+                    "project_key": "project-key",
+                    "section_key": "section-key",
+                    "name": "Editorial",
+                    "description": "",
+                },
+            )
+            section_archive_result = await client.call_tool(
+                "archive_project_section",
+                {"project_key": "project-key", "section_key": "section-key"},
+            )
             update_project_result = await client.call_tool(
                 "update_project",
                 {
@@ -661,7 +799,11 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             )
             update_result = await client.call_tool(
                 "update_dataset_project",
-                {"dataset_key": "dataset-key", "project_key": "project-key"},
+                {
+                    "dataset_key": "dataset-key",
+                    "project_key": "project-key",
+                    "section_key": "section-key",
+                },
             )
 
         assert list_result.data["projects"][0]["key"] == "project-key"
@@ -670,6 +812,10 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
             "https://github.com/acme/launch"
         )
         assert detail_result.data["project"]["key"] == "project-key"
+        assert section_create_result.data["section"]["name"] == "Blog"
+        assert section_list_result.data["sections"][0]["key"] == "section-key"
+        assert section_update_result.data["section"]["name"] == "Editorial"
+        assert section_archive_result.data["section"]["archived_at"] == "2026-05-14T00:00:00Z"
         assert update_project_result.data["project"]["name"] == "Launch operations"
         assert update_project_result.data["project"]["description"] == ""
         assert metadata_result.data["project"]["metadata"]["notion_doc"] == (
@@ -677,6 +823,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
         )
         assert archive_result.data["project"]["archived_at"] == "2026-05-14T00:00:00Z"
         assert update_result.data["dataset"]["project"]["key"] == "project-key"
+        assert update_result.data["dataset"]["section"]["key"] == "section-key"
         assert calls == [
             ("list_projects", 11, 5, 0),
             (
@@ -687,6 +834,24 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                 {"github_repo": "https://github.com/acme/launch"},
             ),
             ("get_project", 11, "project-key", 2, 0),
+            (
+                "create_project_section",
+                11,
+                "project-key",
+                "Blog",
+                "Content operations datasets",
+                {"goal": "content-led growth"},
+            ),
+            ("list_project_sections", 11, "project-key", 10, 0),
+            (
+                "update_project_section",
+                11,
+                "project-key",
+                "section-key",
+                "Editorial",
+                "",
+            ),
+            ("archive_project_section", 11, "project-key", "section-key"),
             (
                 "update_project_details",
                 11,
@@ -701,7 +866,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):
                 {"metadata": {"notion_doc": "https://notion.so/acme/launch"}},
             ),
             ("archive_project", 11, "project-key"),
-            ("update_dataset_project", 11, "dataset-key", "project-key"),
+            ("update_dataset_project", 11, "dataset-key", "project-key", "section-key"),
         ]
 
     anyio.run(run)
@@ -722,6 +887,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
         index_column=None,
         column_types=None,
         project_key=None,
+        section_key=None,
         agent_api_key=None,
     ):
         calls.append(
@@ -736,6 +902,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                 index_column,
                 column_types,
                 project_key,
+                section_key,
             )
         )
         return {
@@ -769,6 +936,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                     "index_column": "sku",
                     "column_types": {"sku": "text", "name": "text"},
                     "project_key": "project-key",
+                    "section_key": "section-key",
                 },
             )
 
@@ -785,6 +953,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                 "sku",
                 {"sku": "text", "name": "text"},
                 "project-key",
+                "section-key",
             )
         ]
 
@@ -1409,6 +1578,7 @@ def test_choice_column_metadata_mcp_tools_call_dataset_services(monkeypatch):
         index_column=None,
         column_types=None,
         project_key=None,
+        section_key=None,
         agent_api_key=None,
     ):
         calls.append(("create", authenticated_profile.id, column_types))
