@@ -5,17 +5,21 @@ def referrer_banner(request):
     2. Black Friday banner as fallback (if it exists and is active)
     Only displays one banner at most.
     """
+    from django.db import DatabaseError
+
     from apps.pages.models import ReferrerBanner
 
     referrer_code = request.GET.get("ref") or request.GET.get("utm_source")
 
-    if referrer_code:
-        try:
+    try:
+        if referrer_code:
             banner = ReferrerBanner.objects.get(referrer=referrer_code)
             if banner.should_display:
                 return {"referrer_banner": banner}
-        except ReferrerBanner.DoesNotExist:
-            pass
+    except ReferrerBanner.DoesNotExist:
+        pass
+    except DatabaseError:
+        return {}
 
     try:
         black_friday_banner = ReferrerBanner.objects.get(
@@ -33,5 +37,7 @@ def referrer_banner(request):
         )
         if black_friday_banner and black_friday_banner.should_display:
             return {"referrer_banner": black_friday_banner}
+    except DatabaseError:
+        return {}
 
     return {}
