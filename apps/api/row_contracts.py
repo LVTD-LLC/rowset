@@ -17,22 +17,16 @@ class RowSearchCandidate(TypedDict, total=False):
     chunk_index: int | None
     content_hash: str | None
     lexical_rank: int
-    score: float
-    source: RowSearchSource
 
 
-class RowSearchMatch(TypedDict):
-    source: RowSearchSource
-    vector_score: float | None
-    vector_rank: int | None
-    lexical_rank: int | None
-    point_id: str | None
-    chunk_index: int | None
-    content_hash: str | None
-    snippet: str
+class RankedRowSearchCandidate(RowSearchCandidate):
+    score: Required[float]
+    source: Required[RowSearchSource]
 
 
 def stringify_row_cell(value: RowCellValue) -> str:
+    if value is None:
+        return ""
     return str(value)
 
 

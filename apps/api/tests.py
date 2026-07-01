@@ -70,7 +70,7 @@ def test_row_contracts_normalize_row_data_for_declared_headers():
     assert payload == {
         "name": "Ada",
         "score": "42",
-        "empty": "None",
+        "empty": "",
         "missing": "",
     }
 
@@ -107,6 +107,13 @@ def test_row_contracts_reject_blank_search_filter_headers():
 
     with pytest.raises(ValueError, match="Search filter headers must be non-empty"):
         normalize_search_filters({" ": "Ready"})
+
+
+def test_row_contracts_reject_blank_search_filter_operator_headers():
+    from apps.api.row_contracts import normalize_search_filter_operators
+
+    with pytest.raises(ValueError, match="Search filter operator headers must be non-empty"):
+        normalize_search_filter_operators({" ": "is"}, {"status": "Ready"})
 
 
 @pytest.mark.django_db

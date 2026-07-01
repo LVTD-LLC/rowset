@@ -20,6 +20,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
 from apps.api.row_contracts import (
+    RankedRowSearchCandidate,
     RowFilterOperators,
     RowFilters,
     RowSearchCandidate,
@@ -3648,7 +3649,7 @@ def _rank_dataset_search_candidates(
     candidates: dict[int, RowSearchCandidate],
     *,
     limit: int,
-) -> list[RowSearchCandidate]:
+) -> list[RankedRowSearchCandidate]:
     for candidate in candidates.values():
         vector_rank = candidate.get("vector_rank")
         lexical_rank = candidate.get("lexical_rank")
@@ -3675,7 +3676,7 @@ def _rank_dataset_search_candidates(
 
 def _serialize_dataset_search_results(
     dataset: Dataset,
-    ranked_candidates: list[RowSearchCandidate],
+    ranked_candidates: list[RankedRowSearchCandidate],
 ) -> list[dict[str, Any]]:
     rows_by_id = {
         row.id: row
@@ -3911,7 +3912,7 @@ def _profile_allowed_vector_row_ids(
 
 
 def _serialize_profile_row_search_results(
-    ranked_candidates: list[RowSearchCandidate],
+    ranked_candidates: list[RankedRowSearchCandidate],
 ) -> list[dict[str, Any]]:
     rows_by_id = {
         row.id: row
