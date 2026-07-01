@@ -1168,7 +1168,7 @@ def test_dataset_detail_links_row_create_and_bulk_actions(auth_client, profile):
     assert reverse("dataset_rows_bulk_action", args=[dataset.key]) in content
     assert "Delete selected rows" in content
     assert f'value="{row.id}"' in content
-    assert 'data-controller="row-bulk-actions"' in content
+    assert 'x-data="rowBulkActions"' in content
 
 
 def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
@@ -1913,7 +1913,7 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     assert "Back to dataset" in content
     assert 'td class="min-w-96 whitespace-pre-wrap break-words"' not in content
     assert '<span class="whitespace-pre-wrap break-words">Ada</span>' in content
-    assert 'data-controller="row-inline-edit"' in content
+    assert 'x-data="rowInlineEdit"' in content
     assert 'aria-label="Edit name"' in content
     assert 'aria-label="Edit email"' in content
     email_input_index = content.index('name="email"')
@@ -1934,7 +1934,7 @@ def test_dataset_row_detail_hides_edit_controls_for_archived_dataset(auth_client
     assert response.status_code == 200
     assert "Ada" in content
     assert "Edit individual values without leaving the row." not in content
-    assert 'data-controller="row-inline-edit"' not in content
+    assert 'x-data="rowInlineEdit"' not in content
     assert 'aria-label="Edit name"' not in content
     assert "Save row" not in content
 
@@ -2449,7 +2449,7 @@ def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client,
     assert "Dataset API" not in content
     assert "Export CSV" not in content
     assert "Export Parquet" not in content
-    assert 'data-controller="export-menu"' in content
+    assert "@click.outside" in content
     assert "CSV snapshot" in content
     assert "JSONL snapshot" in content
     assert "XLSX snapshot" in content
@@ -2549,7 +2549,9 @@ def test_dataset_detail_exposes_processing_status_live_region(auth_client, profi
     assert response.status_code == 200
     assert 'aria-label="Dataset status: Processing"' in content
     assert ">Processing</span>" in content
-    assert 'data-dataset-status-target="message"' in content
+    assert 'id="dataset-status-panel"' in content
+    assert 'hx-get="' in content
+    assert 'hx-trigger="every 2.5s"' in content
     assert 'role="status"' in content
     assert 'aria-live="polite"' in content
     assert "Still importing rows" in content
@@ -2576,6 +2578,43 @@ def test_dataset_detail_failed_status_has_accessible_fallback_message(auth_clien
     assert 'role="alert"' in content
     assert 'aria-live="assertive"' in content
     assert "Import failed. Check the source data and try again." in content
+
+
+def test_dataset_status_htmx_renders_processing_partial(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Processing import",
+        original_filename="processing.csv",
+        source_text="name\nAda\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name"],
+        preview_rows=[{"name": "Ada"}],
+        row_count=0,
+    )
+
+    response = auth_client.get(
+        reverse("dataset_status", args=[dataset.key]),
+        HTTP_HX_REQUEST="true",
+    )
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'id="dataset-status-panel"' in content
+    assert 'hx-trigger="every 2.5s"' in content
+    assert "<html" not in content.lower()
+    assert "Still importing rows" in content
+
+
+def test_dataset_status_htmx_refreshes_when_ready(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(
+        reverse("dataset_status", args=[dataset.key]),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert response.headers["HX-Refresh"] == "true"
 
 
 def test_project_detail_dataset_rows_omit_status_and_actions(auth_client, profile):
@@ -2608,13 +2647,13 @@ def test_project_detail_shows_inline_project_summary_editor(auth_client, profile
 
     assert response.status_code == 200
     assert "Project details" not in content
-    assert 'data-controller="project-detail"' in content
-    assert 'data-project-detail-target="display"' in content
-    assert 'data-project-detail-target="form" class="hidden min-w-0 flex-1 space-y-4"' in content
+    assert 'x-data="projectDetail"' in content
+    assert 'x-show="!editing"' in content
+    assert 'x-show="editing" class="min-w-0 flex-1 space-y-4"' in content
     assert ">Frontier</h1>" in content
     assert "Canonical Rowset project for Frontier." in content
     assert "View all datasets" in content
-    assert 'data-project-detail-target="editButton"' in content
+    assert 'x-ref="editButton"' in content
 
 
 def test_project_detail_edit_query_shows_inline_project_form(auth_client, profile):
@@ -2629,14 +2668,11 @@ def test_project_detail_edit_query_shows_inline_project_form(auth_client, profil
 
     assert response.status_code == 200
     assert response.context["project_edit_mode"] is True
-    assert 'data-project-detail-target="display" class="hidden min-w-0 flex-1 space-y-3"' in content
-    assert 'data-project-detail-target="form" class="min-w-0 flex-1 space-y-4"' in content
+    assert 'x-cloak x-show="!editing" class="min-w-0 flex-1 space-y-3"' in content
+    assert 'x-show="editing" class="min-w-0 flex-1 space-y-4"' in content
     assert 'value="Frontier"' in content
     assert ">Canonical Rowset project for Frontier.</textarea>" in content
-    assert (
-        'data-project-detail-target="editButton" '
-        'data-action="project-detail#edit" class="hidden fb-button-secondary"'
-    ) in content
+    assert 'x-ref="editButton" x-cloak x-show="!editing" @click="edit($event)"' in content
 
 
 def test_project_detail_shows_delete_project_action(auth_client, profile):
@@ -6929,7 +6965,7 @@ def test_project_detail_update_rejects_duplicate_project_name(auth_client, profi
     assert response.status_code == 200
     assert response.context["project_edit_mode"] is True
     assert "Project name already exists." in content
-    assert 'data-project-detail-target="form" class="min-w-0 flex-1 space-y-4"' in content
+    assert 'x-show="editing" class="min-w-0 flex-1 space-y-4"' in content
     project.refresh_from_db()
     assert project.name == "Launch"
     assert project.description == "Launch datasets"
@@ -7190,10 +7226,10 @@ def test_dataset_project_settings_marks_section_options_by_project(auth_client, 
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert 'data-controller="dataset-project"' in content
-    assert 'data-dataset-project-target="projectSelect"' in content
-    assert 'data-action="change->dataset-project#syncSections"' in content
-    assert 'data-dataset-project-target="sectionSelect"' in content
+    assert 'x-data="datasetProject"' in content
+    assert 'x-ref="projectSelect"' in content
+    assert '@change="syncSections()"' in content
+    assert 'x-ref="sectionSelect"' in content
     assert f'value="{rowset_section.key}"' in content
     assert f'data-project-key="{rowset_project.key}"' in content
     assert "Rowset / Blog" in content
@@ -7274,9 +7310,10 @@ def test_dataset_detail_shows_column_descriptions_on_header_hover(
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert 'data-controller="row-column-menu"' in content
+    assert 'x-data="rowColumnMenu"' in content
     assert 'title="Human-readable full name."' in content
-    assert 'data-action="click->row-column-menu#open contextmenu->row-column-menu#open"' in content
+    assert '@click="open($event)"' in content
+    assert '@contextmenu="open($event)"' in content
     assert '<dialog' in content
     assert 'aria-describedby="row-column-menu-description-0"' in content
     assert 'id="row-column-menu-description-0"' in content

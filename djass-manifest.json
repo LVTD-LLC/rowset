@@ -54,7 +54,6 @@
     "started_at": "2026-05-12T10:09:13.165534+00:00"
   },
   "top_level_paths": [
-    ".babelrc",
     ".browserslistrc",
     ".cursor",
     ".env.example",

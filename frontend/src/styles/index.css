@@ -13,6 +13,10 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
+  [x-cloak] {
+    display: none !important;
+  }
+
   h1,
   h2,
   h3 {

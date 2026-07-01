@@ -17,9 +17,10 @@
 - `apps/blog/` - blog models, views, choices, and admin endpoints.
 - `frontend/templates/` - Django templates for public pages, authenticated app,
   account flows, datasets, docs, MCP auth, components, and email.
-- `frontend/src/controllers/` - Stimulus controllers.
-- `frontend/src/styles/` - app CSS and Pygments styles.
-- `frontend/webpack/` - Webpack configs.
+- `frontend/src/js/` - Alpine component registration and small global browser
+  enhancements.
+- `frontend/src/styles/` - app CSS and Pygments styles compiled by PostCSS.
+- `scripts/build-assets.mjs` - frontend asset build and watch script.
 - `deployment/` - deployment entrypoint and server/worker Dockerfiles.
 - `.github/workflows/` - CI and deploy workflows.
 - `.cursor/rules/` - Cursor-specific rules.
@@ -40,8 +41,9 @@
 - Put docs writing guidance in `apps/docs/AGENTS.md`, not repeated in every doc.
 - Put Django templates under the matching `frontend/templates/<area>/` folder.
 - Put shared template fragments in `frontend/templates/components/`.
-- Put new browser behavior in Stimulus controllers under
-  `frontend/src/controllers`.
+- Use HTMX attributes for server round trips and Alpine.js for local-only
+  browser state. Put reusable Alpine components or small shared DOM behavior in
+  `frontend/src/js`.
 - Put new tests next to the app they cover, using existing `tests.py` or
   `tests/test_*.py` patterns.
 

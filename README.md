@@ -143,7 +143,7 @@ You'd still need to make sure .env has correct values.
    - Important: run this **without specifying app names** so Django detects changes across **all apps**.
    - Do this before feature work and before first local run.
 4. Run `make serve`
-   - The frontend dev container now uses Node 24 and the backend waits for `frontend/build/manifest.json` before booting, so the first page load should not race the asset pipeline.
+   - The frontend dev container uses Node 24 and runs the PostCSS/static asset watcher before the backend boots, so the first page load should not race the asset pipeline.
 5. Run `make restart-worker` just in case, it sometimes has troubles connecting to REDIS on first deployment.
 
 ### CI (optional)

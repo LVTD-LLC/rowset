@@ -9,7 +9,8 @@
 - Data: PostgreSQL, Redis, Django Q workers.
 - Tabular processing: Python `csv`, `json`, `sqlite3`, and `zipfile` plus
   Polars for dataset parsing and CSV, JSONL, XLSX, SQLite, and Parquet exports.
-- Frontend: Django templates, Stimulus, Webpack, Tailwind, Bootstrap.
+- Frontend: Django templates, HTMX, Alpine.js, Tailwind, and PostCSS-built
+  static assets.
 - Local containers: Docker Compose with Postgres, Redis, backend, workers,
   frontend Node 24, Mailhog, Stripe CLI, MJML, and MinIO.
 - Observability/integrations: Sentry, Logfire, PostHog, Chatwoot, Mailgun,
@@ -54,7 +55,10 @@ contents.
 - `apps/docs` renders Markdown docs from `apps/docs/content` and navigation YAML.
 - `frontend/templates` contains Django templates for landing, authenticated app,
   datasets, docs, account flows, and shared components.
-- `frontend/src/controllers` contains Stimulus controllers.
+- `frontend/src/js` contains Alpine component registration and small global
+  browser enhancements.
+- `scripts/build-assets.mjs` compiles Tailwind/PostCSS and copies vendor/static
+  assets into `frontend/build`.
 - `deployment`, Dockerfiles, Compose files, and Render config own deployment.
 
 ## Dataset Rules
@@ -88,8 +92,11 @@ contents.
 ## Frontend Rules
 
 - Use Django templates for server-rendered pages.
-- Use Stimulus controllers for interactivity; put new controllers in
-  `frontend/src/controllers`.
+- Use HTMX for server-rendered partial updates and form/list refreshes.
+- Use Alpine.js for local browser state such as menus, dialogs, copy controls,
+  inline toggles, and disabled/loading state.
+- Put reusable Alpine components and small shared DOM enhancements in
+  `frontend/src/js`.
 - Global scripts or head snippets should live in shared components and be
   included by both `base_landing.html` and `base_app.html` when they apply
   globally.

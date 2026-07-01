@@ -110,7 +110,7 @@
           </section>
 
           <section id="project" class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-settings-heading">
-            <form method="post" action="{% url 'dataset_update_project' dataset.key %}" class="space-y-5" data-controller="dataset-project">
+            <form method="post" action="{% url 'dataset_update_project' dataset.key %}" class="space-y-5" x-data="datasetProject">
               {% csrf_token %}
               <div>
                 <h3 id="project-settings-heading" class="fb-section-title">Project</h3>
@@ -119,7 +119,7 @@
 
               <div>
                 <label for="project_key" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Project</label>
-                <select id="project_key" name="project_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm" data-dataset-project-target="projectSelect" data-action="change->dataset-project#syncSections">
+                <select id="project_key" name="project_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm" x-ref="projectSelect" @change="syncSections()">
                   <option value="">No project</option>
                   {% for project in project_choices %}
                     <option value="{{ project.key }}" {% if dataset.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
@@ -129,7 +129,7 @@
 
               <div>
                 <label for="section_key" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Section</label>
-                <select id="section_key" name="section_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm" data-dataset-project-target="sectionSelect">
+                <select id="section_key" name="section_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm" x-ref="sectionSelect">
                   <option value="">No section</option>
                   {% for section in section_choices %}
                     <option value="{{ section.key }}" data-project-key="{{ section.project.key }}" {% if dataset.section_id == section.id %}selected{% endif %}>{{ section.project.name }} / {{ section.name }}</option>

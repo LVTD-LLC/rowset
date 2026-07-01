@@ -180,7 +180,7 @@ class TestHomeView:
         )
         assert reverse("agent_setup_prompt") not in content
         assert "Copy agent prompt" in content
-        assert 'data-copy-tracking-event-value="rowset_agent_setup_prompt_copied"' in content
+        assert 'data-copy-tracking-event="rowset_agent_setup_prompt_copied"' in content
         assert "Copy request" in content
         assert "Verify Rowset with get_user_info" in content
         assert "Hide setup guide" in content

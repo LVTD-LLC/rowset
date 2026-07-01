@@ -3,18 +3,18 @@
   "version": "1.0.0",
   "description": "MCP and REST datasets for AI agents.",
   "scripts": {
-    "build": "cross-env NODE_ENV=production webpack --config frontend/webpack/webpack.config.prod.js",
-    "start": "npm run watch",
-    "watch": "webpack --watch --config frontend/webpack/webpack.config.watch.js",
-    "lint": "eslint \"frontend/src/**/*.js\""
+    "build": "cross-env NODE_ENV=production node scripts/build-assets.mjs",
+    "start": "node scripts/build-assets.mjs --watch",
+    "watch": "node scripts/build-assets.mjs --watch",
+    "lint": "eslint \"frontend/src/**/*.js\" \"scripts/**/*.mjs\""
   },
   "repository": {
     "type": "git",
     "url": ""
   },
   "keywords": [
-    "webpack",
-    "startkit",
+    "htmx",
+    "alpinejs",
     "frontend"
   ],
   "author": "Rasul Kireev",
@@ -27,42 +27,22 @@
     "url": "/issues"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.1",
-    "@babel/plugin-transform-class-properties": "^8.0.1",
-    "@babel/preset-env": "^8.0.2",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4.3.2",
     "@tailwindcss/typography": "^0.5.20",
     "autoprefixer": "^10.5.2",
-    "babel-loader": "^10.1.1",
-    "babel-plugin-polyfill-corejs3": "^1.0.0",
-    "clean-webpack-plugin": "^4.0.0",
-    "copy-webpack-plugin": "^14.0.0",
     "cross-env": "^10.1.0",
-    "css-loader": "^7.1.4",
     "cssnano": "^8.0.2",
     "eslint": "^10.6.0",
-    "eslint-webpack-plugin": "^6.0.0",
-    "glob": "^13.0.6",
-    "mini-css-extract-plugin": "^2.10.2",
     "postcss": "^8.5.16",
     "postcss-import": "^16.1.1",
-    "postcss-loader": "^8.2.1",
     "stylelint": "^17.14.0",
     "stylelint-config-standard": "^40.0.0",
-    "stylelint-webpack-plugin": "^5.1.0",
-    "tailwindcss": "^4.3.2",
-    "webpack": "^5.108.3",
-    "webpack-assets-manifest": "^6.5.2",
-    "webpack-cli": "^7.1.0",
-    "webpack-merge": "^6.0.1"
+    "tailwindcss": "^4.3.2"
   },
   "dependencies": {
-    "@hotwired/stimulus": "^3.2.2",
-    "@hotwired/stimulus-webpack-helpers": "^1.0.1",
-    "@stimulus-components/dropdown": "^3.0.0",
-    "@stimulus-components/reveal": "^5.0.0",
-    "core-js": "^3.49.0"
+    "alpinejs": "^3.15.12",
+    "mjml": "^4.15.3"
   }
 }

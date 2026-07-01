@@ -42,15 +42,19 @@
       {% endif %}
     </div>
 
-    <div class="ml-auto md:hidden" data-controller="mobile-menu">
+    <div
+      class="ml-auto md:hidden"
+      x-data="{ open: false }"
+      @keydown.escape.window="open = false"
+      @click.outside="open = false"
+    >
       <button
         type="button"
         class="fb-focus inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
         aria-label="Open navigation menu"
-        aria-expanded="false"
+        :aria-expanded="open.toString()"
         aria-controls="site-mobile-menu-{{ nav_variant }}"
-        data-mobile-menu-target="button"
-        data-action="click->mobile-menu#toggle click@window->mobile-menu#close"
+        @click.stop="open = !open"
       >
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" />
@@ -59,8 +63,10 @@
 
       <div
         id="site-mobile-menu-{{ nav_variant }}"
-        data-mobile-menu-target="menu"
-        class="absolute left-3 right-3 top-16 hidden rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950"
+        x-cloak
+        x-show="open"
+        x-transition
+        class="absolute left-3 right-3 top-16 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950"
       >
         <nav class="grid gap-1" aria-label="Mobile navigation">
           {% if nav_variant == 'app' and user.is_authenticated %}

@@ -160,7 +160,7 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     assert reverse("agent_api_key_token", args=[agent_api_key.uuid]) in content
     assert "Copy setup prompt" in content
     assert reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid]) in content
-    assert 'data-copy-tracking-event-value="rowset_agent_setup_prompt_copied"' in content
+    assert 'data-copy-tracking-event="rowset_agent_setup_prompt_copied"' in content
 
     followup = auth_client.get(reverse("settings"))
     assert followup.context["created_agent_api_key"] is None

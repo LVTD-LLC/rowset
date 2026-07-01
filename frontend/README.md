@@ -1,22 +1,19 @@
-# README
+# Frontend
 
-This project was created with [python-webpack-boilerplate](https://github.com/AccordBox/python-webpack-boilerplate)
+Rowset uses Django templates, HTMX, Alpine.js, Tailwind, and a small PostCSS
+asset build. There is no Webpack bundle.
 
 ## Available Scripts
 
-In the project directory, you can run:
+### `npm run build`
+
+Compiles `frontend/src/styles/index.css`, copies `frontend/src/js`, copies
+vendor images, and copies Alpine.js into `frontend/build`.
 
 ### `npm run start`
 
-`npm run start` runs the webpack watcher.
-
-If you change JS or CSS files, the watcher rebuilds the asset manifest that Django serves from `frontend/build`.
-This replaces the old webpack-dev-server hot-reload workflow; refresh the browser after the watcher rebuilds.
+Runs the same asset build in watch mode for local Docker development.
 
 ### `npm run watch`
 
-run webpack in `watch` mode.
-
-### `npm run build`
-
-[production mode](https://webpack.js.org/guides/production/), Webpack would focus on minified bundles, lighter weight source maps, and optimized assets to improve load time.
+Alias for the watch-mode asset build.

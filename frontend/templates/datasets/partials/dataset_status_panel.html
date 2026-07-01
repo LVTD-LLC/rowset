@@ -1,0 +1,32 @@
+<div
+  id="dataset-status-panel"
+  class="space-y-3"
+  {% if dataset.status == "processing" %}
+    hx-get="{% url 'dataset_status' dataset.key %}"
+    hx-trigger="every 2.5s"
+    hx-swap="outerHTML"
+  {% endif %}
+>
+  <div class="flex flex-wrap items-center gap-3">
+    <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Dataset</p>
+    {% if dataset.status != "ready" %}
+      <span
+        aria-label="Dataset status: {{ dataset.get_status_display }}"
+        class="inline-flex w-fit rounded-md px-2 py-1 text-xs font-semibold {% if dataset.status == "processing" %}bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200{% elif dataset.status == "failed" %}bg-red-50 text-red-800 dark:bg-red-950/50 dark:text-red-200{% else %}bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300{% endif %}"
+      >{{ dataset.get_status_display }}</span>
+    {% endif %}
+    {% if dataset.archived_at %}
+      <span aria-label="Dataset archived" class="inline-flex w-fit rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">Archived</span>
+    {% endif %}
+  </div>
+  {% if dataset.status != "ready" %}
+    <p
+      role="{% if dataset.status == "failed" %}alert{% else %}status{% endif %}"
+      aria-live="{% if dataset.status == "failed" %}assertive{% else %}polite{% endif %}"
+      aria-atomic="true"
+      class="break-words text-sm {% if dataset.status == "failed" %}text-red-700 dark:text-red-300{% else %}text-slate-600 dark:text-slate-300{% endif %}"
+    >
+      {% if dataset.status == "processing" %}Still importing rows...{% elif dataset.status == "failed" %}{% firstof dataset.parse_error "Import failed. Check the source data and try again." %}{% else %}Previewed. Confirm import to create API rows.{% endif %}
+    </p>
+  {% endif %}
+</div>

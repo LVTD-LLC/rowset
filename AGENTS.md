@@ -30,8 +30,8 @@ browser-friendly and read-only; REST and MCP are the private programmatic paths.
   duplicating row or dataset rules.
 - Do not hand-write migrations. Change models first, then run Django's migration
   generator.
-- Do not add new dependencies when Django, Django Ninja, FastMCP, Stimulus, or
-  the standard library already handle the need cleanly.
+- Do not add new dependencies when Django, Django Ninja, FastMCP, HTMX,
+  Alpine.js, or the standard library already handle the need cleanly.
 - Preserve user data privacy. Never print API keys, OAuth tokens, raw secrets, or
   private dataset contents into logs, docs, screenshots, or final messages.
 
@@ -63,8 +63,8 @@ host environment. The supported path is the Docker-backed `make test`.
   and the equivalent REST/MCP behavior where applicable.
 - For template or frontend changes, check both public/landing and authenticated
   app shells when the change is global.
-- `manage.py check` can warn when `frontend/build/manifest.json` is missing; use
-  the frontend build or local stack when asset rendering is part of the change.
+- `manage.py check` can warn when frontend build assets are missing; use the
+  frontend build or local stack when asset rendering is part of the change.
 
 ## Product Guardrails
 
@@ -92,7 +92,8 @@ host environment. The supported path is the Docker-backed `make test`.
 - Keep dataset parsing/import/export behavior in `apps/datasets/services.py`.
 - Keep MCP tool descriptions user-facing and concrete. Tool bodies should
   authenticate, call services, convert service errors, and return structured data.
-- Use Stimulus controllers for browser interactivity in Django templates.
+- Use HTMX for server-rendered partial updates and Alpine.js for browser-local
+  state in Django templates.
 - Keep docs action-oriented, user-facing, and short enough to scan.
 
 ## Git
