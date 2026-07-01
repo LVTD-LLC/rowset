@@ -19,12 +19,16 @@
       data-row-column-menu-target="dialog"
       data-action="click->row-column-menu#closeFromBackdrop"
       aria-labelledby="row-column-menu-title-{{ column.index }}"
+      {% if column.description %}aria-describedby="row-column-menu-description-{{ column.index }}"{% endif %}
       class="w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-0 text-left text-slate-900 shadow-xl backdrop:bg-slate-950/30 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:backdrop:bg-slate-950/70"
     >
       <div class="flex items-start justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800">
         <div class="min-w-0">
           <h3 id="row-column-menu-title-{{ column.index }}" class="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{{ column.header }}</h3>
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ column.type_label }} column</p>
+          {% if column.description %}
+            <p id="row-column-menu-description-{{ column.index }}" class="mt-2 max-w-full whitespace-pre-wrap break-words text-xs leading-5 text-slate-600 dark:text-slate-300">{{ column.description }}</p>
+          {% endif %}
         </div>
         <button
           type="button"

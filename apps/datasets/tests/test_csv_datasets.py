@@ -6997,6 +6997,8 @@ def test_dataset_detail_shows_column_descriptions_on_header_hover(
     assert 'title="Human-readable full name."' in content
     assert 'data-action="click->row-column-menu#open contextmenu->row-column-menu#open"' in content
     assert '<dialog' in content
+    assert 'aria-describedby="row-column-menu-description-0"' in content
+    assert 'id="row-column-menu-description-0"' in content
     assert 'name="row_sort" value="col_0"' in content
     assert "Contains text" in content
 
