@@ -11,7 +11,7 @@ from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import storages
-from django.db import IntegrityError, connection, transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Q, TextField
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast, Trim
@@ -19,9 +19,28 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
+from apps.api.errors import DatasetServiceError
+from apps.api.row_mutations import (
+    RowMutationHooks,
+    normalize_row_ids,
+    profile_has_row_mutation,
+    stringify_cell,
+    track_dataset_row_mutation,
+)
+from apps.api.row_mutations import (
+    create_dataset_row as create_api_dataset_row,
+)
+from apps.api.row_mutations import (
+    delete_dataset_row as delete_api_dataset_row,
+)
+from apps.api.row_mutations import (
+    delete_dataset_rows as delete_api_dataset_rows,
+)
+from apps.api.row_mutations import (
+    patch_dataset_row as patch_api_dataset_row,
+)
 from apps.core.analytics import (
     ROWSET_DATASET_CREATED,
-    ROWSET_DATASET_ROW_MUTATED,
     agent_api_key_tracking_properties,
     track_activation_event,
 )
@@ -43,7 +62,6 @@ from apps.datasets.models import (
     DATASET_ASSET_STORAGE_ALIAS,
     Dataset,
     DatasetAsset,
-    DatasetMutation,
     DatasetRelationship,
     DatasetRow,
     Project,
@@ -100,11 +118,6 @@ PROFILE_ROW_SEARCH_SORTS = {
 }
 FREE_ACCOUNT_DATASET_LIMIT = 2
 FREE_ACCOUNT_ROW_LIMIT = 50
-ROW_MUTATION_TYPES = (
-    DatasetMutationType.ROW_CREATED,
-    DatasetMutationType.ROW_UPDATED,
-    DatasetMutationType.ROW_DELETED,
-)
 logger = get_rowset_logger(__name__)
 
 
@@ -183,13 +196,6 @@ def _active_project_queryset(queryset):
 
 def _active_project_section_queryset(queryset):
     return queryset.filter(archived_at__isnull=True, project__archived_at__isnull=True)
-
-
-class DatasetServiceError(Exception):
-    def __init__(self, status_code: int, message: str):
-        self.status_code = status_code
-        self.message = message
-        super().__init__(message)
 
 
 def _visible_profile_dataset_queryset(profile: Profile):
@@ -299,43 +305,6 @@ def _raise_if_archived(dataset: Dataset) -> None:
             409,
             "Dataset is archived. Restore it before making changes.",
         )
-
-
-def _profile_has_row_mutation(profile: Profile) -> bool:
-    return DatasetMutation.objects.filter(
-        profile=profile,
-        mutation_type__in=ROW_MUTATION_TYPES,
-    ).exists()
-
-
-def _track_dataset_row_mutation(
-    *,
-    profile: Profile,
-    dataset: Dataset,
-    mutation_type: str,
-    agent_api_key: AgentApiKey | None,
-    is_first_row_mutation: bool,
-    changed_field_count: int = 0,
-    deleted_count: int = 0,
-    index_changed: bool = False,
-    image_asset_attached: bool = False,
-) -> None:
-    track_activation_event(
-        profile,
-        ROWSET_DATASET_ROW_MUTATED,
-        {
-            "mutation_type": mutation_type,
-            "dataset_id": dataset.id,
-            "row_count_after": dataset.row_count,
-            "changed_field_count": changed_field_count,
-            "deleted_count": deleted_count,
-            "index_changed": index_changed,
-            "image_asset_attached": image_asset_attached,
-            "is_first_row_mutation": is_first_row_mutation,
-            **agent_api_key_tracking_properties(agent_api_key),
-        },
-        source_function="apps.api.services.dataset_row_mutation",
-    )
 
 
 def serialize_user_info(profile: Profile) -> dict:
@@ -1847,34 +1816,6 @@ def resolve_profile_dataset_relationship(
     }
 
 
-def _stringify_cell(value: Any) -> str:
-    if value is None:
-        return ""
-    return str(value)
-
-
-def _row_field_changes(
-    current_data: dict,
-    patch_data: dict,
-    candidate_fields: list[str],
-) -> list[dict[str, str]]:
-    field_changes = []
-    for field in candidate_fields:
-        before_value = _stringify_cell(current_data.get(field, ""))
-        after_value = _stringify_cell(patch_data.get(field, ""))
-        if before_value == after_value:
-            continue
-
-        field_changes.append(
-            {
-                "field": field,
-                "before": before_value,
-                "after": after_value,
-            }
-        )
-    return field_changes
-
-
 def _normalize_dataset_name(name: str) -> str:
     normalized_name = (name or "").strip()
     if not normalized_name:
@@ -1931,7 +1872,7 @@ def _normalize_create_rows(rows: list[dict[str, Any]] | None) -> list[dict[str, 
                     400,
                     f"Dataset row contains duplicate normalized header '{header}'.",
                 )
-            normalized_row[header] = _stringify_cell(value)
+            normalized_row[header] = stringify_cell(value)
         normalized_rows.append(normalized_row)
     return normalized_rows
 
@@ -2676,7 +2617,7 @@ def add_profile_dataset_column(
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
         column_name = _normalize_new_column_name(dataset, name)
-        default_cell = _stringify_cell(default_value)
+        default_cell = stringify_cell(default_value)
         next_headers = [*dataset.headers, column_name]
         try:
             dataset.column_schema = normalize_column_schema(
@@ -2711,7 +2652,7 @@ def add_profile_dataset_column(
 
         def add_column(data: dict) -> dict[str, str]:
             next_data = dict(data)
-            next_data[column_name] = _stringify_cell(next_data.get(column_name, default_cell))
+            next_data[column_name] = stringify_cell(next_data.get(column_name, default_cell))
             return next_data
 
         dataset.headers = next_headers
@@ -2790,7 +2731,7 @@ def rename_profile_dataset_column(
 
         def rename_column(data: dict) -> dict[str, str]:
             next_data = dict(data)
-            next_data[new_column_name] = _stringify_cell(next_data.pop(old_column_name, ""))
+            next_data[new_column_name] = stringify_cell(next_data.pop(old_column_name, ""))
             return next_data
 
         dataset.headers = next_headers
@@ -3448,7 +3389,7 @@ def attach_profile_dataset_image_asset(
             row.save(update_fields=["data", "updated_by_agent_api_key", "updated_at"])
             dataset.updated_by_agent_api_key = agent_api_key
             dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
-            is_first_row_mutation = not _profile_has_row_mutation(profile)
+            is_first_row_mutation = not profile_has_row_mutation(profile)
             record_dataset_mutation(
                 dataset,
                 DatasetMutationType.ROW_UPDATED,
@@ -3477,7 +3418,7 @@ def attach_profile_dataset_image_asset(
                     "height": prepared_image.height,
                 },
             )
-            _track_dataset_row_mutation(
+            track_dataset_row_mutation(
                 profile=profile,
                 dataset=dataset,
                 mutation_type=DatasetMutationType.ROW_UPDATED,
@@ -4282,6 +4223,19 @@ def list_profile_dataset_rows(
     }
 
 
+def _row_mutation_hooks() -> RowMutationHooks:
+    return RowMutationHooks(
+        validate_choice_row_data=_validate_choice_row_data,
+        validate_image_row_data=_validate_image_row_data,
+        normalize_reference_row_data=_normalize_reference_row_data,
+        validate_relationship_row_data=_validate_relationship_row_data,
+        raise_if_target_row_is_referenced=_raise_if_target_row_is_referenced,
+        serialize_dataset_row=serialize_dataset_row,
+        enqueue_dataset_row_vector_index=_enqueue_dataset_row_vector_index,
+        enqueue_dataset_row_vector_delete=_enqueue_dataset_row_vector_delete,
+    )
+
+
 def create_profile_dataset_row(
     profile: Profile,
     dataset_key: str,
@@ -4292,76 +4246,13 @@ def create_profile_dataset_row(
         quota_profile = _lock_profile_for_quota(profile)
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
         _enforce_dataset_row_create_quota(quota_profile, dataset)
-
-        last_row_number = (
-            dataset.rows.order_by("-row_number").values_list("row_number", flat=True).first() or 0
-        )
-        row_number = last_row_number + 1
-        if dataset.index_generated:
-            row_data = {**data, dataset.index_column: str(row_number)}
-        else:
-            row_data = data
-
-        serialized_data = {header: str(row_data.get(header, "")) for header in dataset.headers}
-        _validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
-        _validate_image_row_data(dataset.headers, dataset.column_schema, serialized_data)
-        serialized_data = _normalize_reference_row_data(
+        return create_api_dataset_row(
             profile,
-            dataset.headers,
-            dataset.column_schema,
-            serialized_data,
-        )
-        index_value = str(serialized_data.get(dataset.index_column, "")).strip()
-        if not index_value:
-            raise DatasetServiceError(
-                400,
-                f"Index column '{dataset.index_column}' is required.",
-            )
-        if dataset.rows.filter(index_value=index_value).exists():
-            raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
-        _validate_relationship_row_data(dataset, serialized_data)
-
-        row = DatasetRow.objects.create(
-            dataset=dataset,
-            created_by_agent_api_key=agent_api_key,
-            updated_by_agent_api_key=agent_api_key,
-            row_number=row_number,
-            index_value=index_value,
-            data=serialized_data,
-        )
-        dataset.row_count = dataset.rows.count()
-        dataset.updated_by_agent_api_key = agent_api_key
-        dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
-        is_first_row_mutation = not _profile_has_row_mutation(profile)
-        record_dataset_mutation(
             dataset,
-            DatasetMutationType.ROW_CREATED,
-            f"Row {row.row_number} added.",
+            data,
             agent_api_key=agent_api_key,
-            target_type="row",
-            target_identifier=row.id,
-            metadata={
-                "row_id": row.id,
-                "row_number": row.row_number,
-                "changed_fields": sorted(row.data),
-            },
+            hooks=_row_mutation_hooks(),
         )
-        _track_dataset_row_mutation(
-            profile=profile,
-            dataset=dataset,
-            mutation_type=DatasetMutationType.ROW_CREATED,
-            agent_api_key=agent_api_key,
-            is_first_row_mutation=is_first_row_mutation,
-            changed_field_count=len(row.data),
-        )
-        _enqueue_dataset_row_vector_index(row.id)
-        row = dataset.rows.prefetch_related("assets").get(id=row.id)
-    return {
-        "status": "success",
-        "message": "Row created.",
-        "dataset": str(dataset.key),
-        "row": serialize_dataset_row(row, dataset=dataset),
-    }
 
 
 def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
@@ -4405,12 +4296,13 @@ def patch_profile_dataset_row(
             row = dataset.rows.get(id=row_id)
         except DatasetRow.DoesNotExist as exc:
             raise DatasetServiceError(404, "Row not found.") from exc
-        return _patch_dataset_row(
+        return patch_api_dataset_row(
             profile,
             dataset,
             row,
             data,
             agent_api_key=agent_api_key,
+            hooks=_row_mutation_hooks(),
         )
 
 
@@ -4427,140 +4319,14 @@ def patch_profile_dataset_row_by_index(
             row = dataset.rows.get(index_value=index_value)
         except DatasetRow.DoesNotExist as exc:
             raise DatasetServiceError(404, "Row not found.") from exc
-        return _patch_dataset_row(
+        return patch_api_dataset_row(
             profile,
             dataset,
             row,
             data,
             agent_api_key=agent_api_key,
+            hooks=_row_mutation_hooks(),
         )
-
-
-def _patch_dataset_row(
-    profile: Profile,
-    dataset: Dataset,
-    row: DatasetRow,
-    data: dict,
-    agent_api_key: AgentApiKey | None = None,
-) -> dict:
-    if not connection.in_atomic_block:
-        raise AssertionError("_patch_dataset_row must be called inside transaction.atomic().")
-
-    row_patch = {key: str(value) for key, value in data.items() if key in dataset.headers}
-    patched_fields = sorted(row_patch)
-    image_columns = set(image_columns_from_schema(dataset.headers, dataset.column_schema))
-    changed_image_columns = [
-        field
-        for field in patched_fields
-        if field in image_columns
-        and row_patch.get(field, "") != str((row.data or {}).get(field, "") or "")
-    ]
-    invalid_image_asset_ref_columns = [
-        field
-        for field in changed_image_columns
-        if dataset_asset_key_from_ref(row_patch.get(field, ""))
-    ]
-    if invalid_image_asset_ref_columns:
-        column = invalid_image_asset_ref_columns[0]
-        raise DatasetServiceError(
-            400,
-            f"Column '{column}' is an image column. Attach a new image asset instead.",
-        )
-    _validate_image_row_data(
-        dataset.headers,
-        dataset.column_schema,
-        row_patch,
-        columns=changed_image_columns,
-    )
-    cleared_image_columns = [
-        field
-        for field in changed_image_columns
-        if field in image_columns and row_patch.get(field, "") == ""
-    ]
-    row_patch = _normalize_reference_row_data(
-        profile,
-        dataset.headers,
-        dataset.column_schema,
-        row_patch,
-        columns=patched_fields,
-    )
-    _validate_choice_row_data(
-        dataset.headers,
-        dataset.column_schema,
-        row_patch,
-        columns=patched_fields,
-    )
-    field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
-    changed_fields = [str(change["field"]) for change in field_changes]
-    row.data = {**row.data, **row_patch}
-    index_changed = False
-    if dataset.index_column in data:
-        index_value = str(row_patch.get(dataset.index_column, "")).strip()
-        if dataset.index_generated:
-            if index_value != row.index_value:
-                raise DatasetServiceError(
-                    400,
-                    f"Index column '{dataset.index_column}' is managed by Rowset "
-                    "and cannot be updated.",
-                )
-        if not index_value:
-            raise DatasetServiceError(
-                400,
-                f"Index column '{dataset.index_column}' cannot be blank.",
-            )
-        if dataset.rows.exclude(id=row.id).filter(index_value=index_value).exists():
-            raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
-        index_changed = row.index_value != index_value
-        if index_changed:
-            _raise_if_target_row_is_referenced(dataset, row.index_value)
-        row.index_value = index_value
-    _validate_relationship_row_data(dataset, row.data, columns=patched_fields)
-    if cleared_image_columns:
-        DatasetAsset.objects.filter(
-            dataset=dataset,
-            row=row,
-            column_name__in=cleared_image_columns,
-        ).delete()
-    row.updated_by_agent_api_key = agent_api_key
-    row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
-    dataset.updated_by_agent_api_key = agent_api_key
-    dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
-    is_first_row_mutation = not _profile_has_row_mutation(profile)
-    record_dataset_mutation(
-        dataset,
-        DatasetMutationType.ROW_UPDATED,
-        f"Row {row.row_number} updated.",
-        agent_api_key=agent_api_key,
-        target_type="row",
-        target_identifier=row.id,
-        metadata={
-            "row_id": row.id,
-            "row_number": row.row_number,
-            "changed_fields": changed_fields,
-            # Authenticated change history intentionally retains row diff values.
-            # Any future erasure flow must account for this audit metadata too.
-            "field_changes": field_changes,
-            "value_changes_recorded": True,
-            "index_changed": index_changed,
-        },
-    )
-    _track_dataset_row_mutation(
-        profile=profile,
-        dataset=dataset,
-        mutation_type=DatasetMutationType.ROW_UPDATED,
-        agent_api_key=agent_api_key,
-        is_first_row_mutation=is_first_row_mutation,
-        changed_field_count=len(changed_fields),
-        index_changed=index_changed,
-    )
-    _enqueue_dataset_row_vector_index(row.id)
-    row = dataset.rows.prefetch_related("assets").get(id=row.id)
-    return {
-        "status": "success",
-        "message": "Row updated.",
-        "dataset": str(dataset.key),
-        "row": serialize_dataset_row(row, dataset=dataset),
-    }
 
 
 def delete_profile_dataset_row(
@@ -4575,35 +4341,13 @@ def delete_profile_dataset_row(
             row = dataset.rows.get(id=row_id)
         except DatasetRow.DoesNotExist as exc:
             raise DatasetServiceError(404, "Row not found.") from exc
-        row_number = row.row_number
-        _raise_if_target_row_is_referenced(dataset, row.index_value)
-        row.delete()
-        dataset.row_count = dataset.rows.count()
-        dataset.updated_by_agent_api_key = agent_api_key
-        dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
-        is_first_row_mutation = not _profile_has_row_mutation(profile)
-        record_dataset_mutation(
+        return delete_api_dataset_row(
+            profile,
             dataset,
-            DatasetMutationType.ROW_DELETED,
-            f"Row {row_number} deleted.",
+            row,
             agent_api_key=agent_api_key,
-            target_type="row",
-            target_identifier=row_id,
-            metadata={
-                "row_id": row_id,
-                "row_number": row_number,
-            },
+            hooks=_row_mutation_hooks(),
         )
-        _track_dataset_row_mutation(
-            profile=profile,
-            dataset=dataset,
-            mutation_type=DatasetMutationType.ROW_DELETED,
-            agent_api_key=agent_api_key,
-            is_first_row_mutation=is_first_row_mutation,
-            deleted_count=1,
-        )
-        _enqueue_dataset_row_vector_delete(dataset.id, [row_id])
-    return {"status": "success", "message": "Row deleted.", "dataset": str(dataset.key)}
 
 
 def delete_profile_dataset_rows(
@@ -4612,67 +4356,14 @@ def delete_profile_dataset_rows(
     row_ids: Iterable[int | str],
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
-    ordered_row_ids: list[int] = []
-    seen_row_ids: set[int] = set()
-    for row_id in row_ids:
-        try:
-            normalized_row_id = int(row_id)
-        except (TypeError, ValueError) as exc:
-            raise DatasetServiceError(400, "Row IDs must be integers.") from exc
-        if normalized_row_id in seen_row_ids:
-            continue
-        seen_row_ids.add(normalized_row_id)
-        ordered_row_ids.append(normalized_row_id)
-
-    if not ordered_row_ids:
-        raise DatasetServiceError(400, "Select at least one row.")
+    ordered_row_ids = normalize_row_ids(row_ids)
 
     with transaction.atomic():
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
-        rows_by_id = {row.id: row for row in dataset.rows.filter(id__in=ordered_row_ids)}
-        ordered_rows = []
-        for row_id in ordered_row_ids:
-            row = rows_by_id.get(row_id)
-            if row is None:
-                raise DatasetServiceError(404, "Row not found.")
-            ordered_rows.append(row)
-
-        for row in ordered_rows:
-            _raise_if_target_row_is_referenced(dataset, row.index_value)
-
-        deleted_rows = [(row.id, row.row_number) for row in ordered_rows]
-        dataset.rows.filter(id__in=ordered_row_ids).delete()
-        dataset.row_count = dataset.rows.count()
-        dataset.updated_by_agent_api_key = agent_api_key
-        dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
-        is_first_row_mutation = not _profile_has_row_mutation(profile)
-        for row_id, row_number in deleted_rows:
-            record_dataset_mutation(
-                dataset,
-                DatasetMutationType.ROW_DELETED,
-                f"Row {row_number} deleted.",
-                agent_api_key=agent_api_key,
-                target_type="row",
-                target_identifier=row_id,
-                metadata={
-                    "row_id": row_id,
-                    "row_number": row_number,
-                },
-            )
-        _track_dataset_row_mutation(
+        return delete_api_dataset_rows(
             profile=profile,
             dataset=dataset,
-            mutation_type=DatasetMutationType.ROW_DELETED,
+            ordered_row_ids=ordered_row_ids,
             agent_api_key=agent_api_key,
-            is_first_row_mutation=is_first_row_mutation,
-            deleted_count=len(deleted_rows),
+            hooks=_row_mutation_hooks(),
         )
-        _enqueue_dataset_row_vector_delete(dataset.id, [row_id for row_id, _ in deleted_rows])
-
-    row_label = "row" if len(deleted_rows) == 1 else "rows"
-    return {
-        "status": "success",
-        "message": f"Deleted {len(deleted_rows)} {row_label}.",
-        "dataset": str(dataset.key),
-        "deleted_count": len(deleted_rows),
-    }
