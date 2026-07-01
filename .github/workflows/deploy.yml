@@ -72,12 +72,34 @@ jobs:
           # CapRover pulls this prebuilt image at deploy time; GHCR packages must be public
           # or the CapRover host must have a ghcr.io registry credential configured.
           uv run --with caprover-api python - <<'PY'
+          import json
           import os
           from caprover_api.caprover_api import CaproverAPI
+
+
+          def deploy_prebuilt_image(cap, app_name, image_name):
+              definition = {
+                  "schemaVersion": cap.schema_version,
+                  "imageName": image_name,
+              }
+              response = cap.session.post(
+                  cap._build_url(CaproverAPI.APP_DATA_PATH) + f"/{app_name}",
+                  headers=cap.headers,
+                  data=json.dumps(
+                      {
+                          "captainDefinitionContent": json.dumps(definition),
+                          "gitHash": "",
+                      }
+                  ),
+              )
+              CaproverAPI._check_errors(response.json())
+              cap._wait_until_app_ready(app_name=app_name)
+              cap._ensure_app_build_success(app_name=app_name)
+
 
           cap = CaproverAPI(os.environ["CAPROVER_SERVER"], os.environ["CAPROVER_PASSWORD"])
           image = os.environ["IMAGE_NAME"]
           app = os.environ["CAPROVER_APP_NAME"]
-          cap.deploy_app(app, image_name=image)
-          cap.deploy_app(f"{app}-workers", image_name=image)
+          deploy_prebuilt_image(cap, app, image)
+          deploy_prebuilt_image(cap, f"{app}-workers", image)
           PY
