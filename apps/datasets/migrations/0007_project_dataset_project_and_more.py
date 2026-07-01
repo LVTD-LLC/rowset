@@ -7,36 +7,55 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0004_mark_existing_google_sheets_connections'),
-        ('datasets', '0006_dataset_column_schema'),
+        ("core", "0004_mark_existing_google_sheets_connections"),
+        ("datasets", "0006_dataset_column_schema"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Project',
+            name="Project",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('uuid', models.UUIDField(default=uuid.uuid4, editable=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('key', models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
-                ('name', models.CharField(max_length=255)),
-                ('description', models.TextField(blank=True, default='')),
-                ('profile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='projects', to='core.profile')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("uuid", models.UUIDField(default=uuid.uuid4, editable=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("key", models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
+                ("name", models.CharField(max_length=255)),
+                ("description", models.TextField(blank=True, default="")),
+                (
+                    "profile",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="projects",
+                        to="core.profile",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name', '-created_at'],
+                "ordering": ["name", "-created_at"],
             },
         ),
         migrations.AddField(
-            model_name='dataset',
-            name='project',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='datasets', to='datasets.project'),
+            model_name="dataset",
+            name="project",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="datasets",
+                to="datasets.project",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='project',
-            constraint=models.UniqueConstraint(fields=('profile', 'name'), name='unique_profile_project_name'),
+            model_name="project",
+            constraint=models.UniqueConstraint(
+                fields=("profile", "name"), name="unique_profile_project_name"
+            ),
         ),
     ]

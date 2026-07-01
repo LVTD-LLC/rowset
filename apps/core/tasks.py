@@ -146,7 +146,7 @@ def track_state_change(
     from_state: str,
     to_state: str,
     metadata: dict = None,
-    source_function: str = None
+    source_function: str = None,
 ) -> None:
     from apps.core.models import Profile, ProfileStateTransition
 

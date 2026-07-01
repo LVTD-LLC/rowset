@@ -826,9 +826,7 @@ def update_project_section(
         str | None,
         Field(
             default=None,
-            description=(
-                "Optional new section name. Omit or pass null to keep the current name."
-            ),
+            description=("Optional new section name. Omit or pass null to keep the current name."),
         ),
     ] = None,
     description: Annotated[
@@ -1092,7 +1090,7 @@ def update_dataset_column_types(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
                 "include text, image, choice, integer, number, currency, boolean, "
-                'date, datetime, email, url, and reference. For choice columns, pass '
+                "date, datetime, email, url, and reference. For choice columns, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
                 'reference column, pass {"type": "reference", "target": "dataset"} or '
@@ -1139,7 +1137,7 @@ def add_column(
             description=(
                 "Optional semantic type or metadata for the new column. Supported types "
                 "include text, image, choice, integer, number, currency, boolean, "
-                'date, datetime, email, url, and reference. For a choice column, pass '
+                "date, datetime, email, url, and reference. For a choice column, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
                 'reference column, pass {"type": "reference", "target": "dataset"} or '

@@ -15,8 +15,7 @@ class CoreConfig(AppConfig):
     def ready(self):
         import apps.core.signals  # noqa
 
-        import apps.core.stripe_webhooks # noqa
-        
+        import apps.core.stripe_webhooks  # noqa
 
         if settings.POSTHOG_API_KEY:
             posthog.api_key = settings.POSTHOG_API_KEY
@@ -24,4 +23,3 @@ class CoreConfig(AppConfig):
 
         if settings.ENVIRONMENT == "dev":
             posthog.debug = True
-        

@@ -35,11 +35,11 @@ class DivErrorList(ErrorList):
                   </svg>
                 </div>
                 <div class="ml-3 text-sm text-red-800 dark:text-red-200">
-                      {''.join([f'<p>{e}</p>' for e in self])}
+                      {"".join([f"<p>{e}</p>" for e in self])}
                 </div>
               </div>
             </div>
-         """ # noqa: E501
+         """  # noqa: E501
 
 
 def ping_healthchecks(ping_id):
@@ -47,7 +47,6 @@ def ping_healthchecks(ping_id):
         requests.get(f"https://healthchecks.cr.lvtd.dev/ping/{ping_id}", timeout=10)
     except requests.RequestException as e:
         logger.error("Ping failed", error=e, exc_info=True)
-
 
 
 def get_email_delivery_provider() -> str:
@@ -76,7 +75,6 @@ def is_transient_email_error(error: Exception) -> bool:
     return isinstance(error, transient_types)
 
 
-
 def bump_email_delivery_metric(*, email_type: EmailType, provider: str, outcome: str) -> None:
     metric_key = f"{email_type}:{provider}:{outcome}"
     EMAIL_DELIVERY_METRICS[metric_key] += 1
@@ -88,7 +86,6 @@ def bump_email_delivery_metric(*, email_type: EmailType, provider: str, outcome:
         metric_name="email_delivery_total",
         metric_value=EMAIL_DELIVERY_METRICS[metric_key],
     )
-
 
 
 def track_email_sent(email_address: str, email_type: EmailType, profile: Profile = None):
@@ -118,7 +115,6 @@ def track_email_sent(email_address: str, email_type: EmailType, profile: Profile
             exc_info=True,
         )
         return None
-
 
 
 def send_transactional_email(

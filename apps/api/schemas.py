@@ -569,8 +569,7 @@ class ProfileRowSearchIn(Schema):
     filter_operators: dict[str, Any] | None = Field(
         default=None,
         description=(
-            "Optional row filter operators keyed by header, such as contains, is, above, "
-            "or below."
+            "Optional row filter operators keyed by header, such as contains, is, above, or below."
         ),
     )
     dataset_key: str | None = Field(

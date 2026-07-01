@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('datasets', '0004_dataset_public_sharing'),
+        ("datasets", "0004_dataset_public_sharing"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='dataset',
-            name='source_url',
-            field=models.URLField(blank=True, default='', max_length=2000),
+            model_name="dataset",
+            name="source_url",
+            field=models.URLField(blank=True, default="", max_length=2000),
         ),
         migrations.AlterField(
-            model_name='dataset',
-            name='source_file',
-            field=models.FileField(blank=True, upload_to='datasets/csv/%Y/%m/%d/'),
+            model_name="dataset",
+            name="source_file",
+            field=models.FileField(blank=True, upload_to="datasets/csv/%Y/%m/%d/"),
         ),
     ]

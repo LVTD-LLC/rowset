@@ -3385,9 +3385,7 @@ def test_dataset_asset_delete_records_failed_file_cleanup(
     assert deletion.attempts == 1
     assert deletion.deleted_at is None
     assert "r2 timeout" in deletion.last_error
-    assert not DatasetAssetFileDeletion.objects.filter(
-        file_name=asset.thumbnail.name
-    ).exists()
+    assert not DatasetAssetFileDeletion.objects.filter(file_name=asset.thumbnail.name).exists()
 
     retry_deleted_names = []
     monkeypatch.setattr(storage, "delete", retry_deleted_names.append)
@@ -3424,8 +3422,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
 
     attach_response = client.post(
-        f"/api/datasets/{dataset.key}/rows/by-index/image"
-        f"?api_key={profile.key}&index_value=A-1",
+        f"/api/datasets/{dataset.key}/rows/by-index/image?api_key={profile.key}&index_value=A-1",
         data={
             "column_name": "photo",
             "filename": "adapter.png",
@@ -4095,15 +4092,11 @@ def test_dataset_api_lists_archived_datasets_separately(client, profile):
     ]
     assert archived_response.json()["datasets"][0]["name"] == "Archived people"
     assert archived_response.json()["datasets"][0]["archived_at"] is not None
-    assert "Archived draft" not in {
-        item["name"] for item in archived_response.json()["datasets"]
-    }
+    assert "Archived draft" not in {item["name"] for item in archived_response.json()["datasets"]}
 
     active_response = client.get(f"/api/datasets?api_key={profile.key}")
     assert active_response.status_code == 200
-    assert [item["key"] for item in active_response.json()["datasets"]] == [
-        str(active_dataset.key)
-    ]
+    assert [item["key"] for item in active_response.json()["datasets"]] == [str(active_dataset.key)]
 
 
 def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
@@ -4536,13 +4529,9 @@ def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(clien
     assert relationship.source_dataset == messages
     assert relationship.target_dataset == people
 
-    list_response = client.get(
-        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}"
-    )
+    list_response = client.get(f"/api/datasets/{messages.key}/relationships?api_key={profile.key}")
     assert list_response.status_code == 200
-    assert [item["key"] for item in list_response.json()["relationships"]] == [
-        relationship_key
-    ]
+    assert [item["key"] for item in list_response.json()["relationships"]] == [relationship_key]
 
     resolve_response = client.get(
         f"/api/datasets/{messages.key}/relationships/{relationship_key}/resolve"
@@ -4592,9 +4581,7 @@ def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(clien
     )
     assert delete_response.status_code == 200
     assert not DatasetRelationship.objects.filter(key=relationship_key).exists()
-    delete_mutation = messages.mutations.get(
-        mutation_type=DatasetMutationType.RELATIONSHIP_DELETED
-    )
+    delete_mutation = messages.mutations.get(mutation_type=DatasetMutationType.RELATIONSHIP_DELETED)
     assert delete_mutation.metadata["enforce_integrity"] is True
 
 
@@ -5794,8 +5781,9 @@ def test_project_section_api_creates_section_and_assigns_dataset(client, profile
     assert "limit" not in detail_payload["dataset_groups"][0]["datasets"]
     assert "offset" not in detail_payload["dataset_groups"][0]["datasets"]
     assert "has_more" not in detail_payload["dataset_groups"][0]["datasets"]
-    assert detail_payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == (
-        dataset_payload["key"]
+    assert (
+        detail_payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"]
+        == (dataset_payload["key"])
     )
 
 
@@ -7394,7 +7382,7 @@ def test_dataset_detail_shows_column_descriptions_on_header_hover(
     assert 'title="Human-readable full name."' in content
     assert '@click="open($event)"' in content
     assert '@contextmenu="open($event)"' in content
-    assert '<dialog' in content
+    assert "<dialog" in content
     assert 'aria-describedby="row-column-menu-description-0"' in content
     assert 'id="row-column-menu-description-0"' in content
     assert 'name="row_sort" value="col_0"' in content

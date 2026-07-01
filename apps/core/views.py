@@ -384,9 +384,7 @@ def revoke_agent_api_key_view(request, agent_api_key_uuid):
     settings_url = reverse("settings")
     created_agent_api_key_uuid = request.POST.get("created_agent_api_key_uuid")
     if created_agent_api_key_uuid:
-        created_query = urlencode(
-            {CREATED_AGENT_API_KEY_QUERY_PARAM: created_agent_api_key_uuid}
-        )
+        created_query = urlencode({CREATED_AGENT_API_KEY_QUERY_PARAM: created_agent_api_key_uuid})
         settings_url = f"{settings_url}?{created_query}"
     return redirect(settings_url)
 

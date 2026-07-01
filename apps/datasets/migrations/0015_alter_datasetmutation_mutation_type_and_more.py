@@ -8,38 +8,105 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0006_agentapikey_token_ciphertext'),
-        ('datasets', '0014_project_metadata'),
+        ("core", "0006_agentapikey_token_ciphertext"),
+        ("datasets", "0014_project_metadata"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='datasetmutation',
-            name='mutation_type',
-            field=models.CharField(choices=[('dataset.created', 'Dataset created'), ('dataset.archived', 'Dataset archived'), ('dataset.restored', 'Dataset restored'), ('dataset.metadata_updated', 'Metadata updated'), ('dataset.project_updated', 'Project updated'), ('dataset.public_preview_updated', 'Public preview updated'), ('relationship.created', 'Relationship created'), ('relationship.deleted', 'Relationship deleted'), ('schema.column_types_updated', 'Column types updated'), ('schema.column_added', 'Column added'), ('schema.column_renamed', 'Column renamed'), ('schema.column_dropped', 'Column dropped'), ('schema.columns_reordered', 'Columns reordered'), ('row.created', 'Row created'), ('row.updated', 'Row updated'), ('row.deleted', 'Row deleted')], max_length=64),
+            model_name="datasetmutation",
+            name="mutation_type",
+            field=models.CharField(
+                choices=[
+                    ("dataset.created", "Dataset created"),
+                    ("dataset.archived", "Dataset archived"),
+                    ("dataset.restored", "Dataset restored"),
+                    ("dataset.metadata_updated", "Metadata updated"),
+                    ("dataset.project_updated", "Project updated"),
+                    ("dataset.public_preview_updated", "Public preview updated"),
+                    ("relationship.created", "Relationship created"),
+                    ("relationship.deleted", "Relationship deleted"),
+                    ("schema.column_types_updated", "Column types updated"),
+                    ("schema.column_added", "Column added"),
+                    ("schema.column_renamed", "Column renamed"),
+                    ("schema.column_dropped", "Column dropped"),
+                    ("schema.columns_reordered", "Columns reordered"),
+                    ("row.created", "Row created"),
+                    ("row.updated", "Row updated"),
+                    ("row.deleted", "Row deleted"),
+                ],
+                max_length=64,
+            ),
         ),
         migrations.CreateModel(
-            name='DatasetRelationship',
+            name="DatasetRelationship",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('uuid', models.UUIDField(default=uuid.uuid4, editable=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('key', models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
-                ('name', models.CharField(max_length=120)),
-                ('source_column', models.CharField(max_length=255)),
-                ('target_index_column', models.CharField(max_length=255)),
-                ('enforce_integrity', models.BooleanField(default=True)),
-                ('profile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='dataset_relationships', to='core.profile')),
-                ('source_dataset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='outgoing_relationships', to='datasets.dataset')),
-                ('target_dataset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='incoming_relationships', to='datasets.dataset')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("uuid", models.UUIDField(default=uuid.uuid4, editable=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("key", models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
+                ("name", models.CharField(max_length=120)),
+                ("source_column", models.CharField(max_length=255)),
+                ("target_index_column", models.CharField(max_length=255)),
+                ("enforce_integrity", models.BooleanField(default=True)),
+                (
+                    "profile",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="dataset_relationships",
+                        to="core.profile",
+                    ),
+                ),
+                (
+                    "source_dataset",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="outgoing_relationships",
+                        to="datasets.dataset",
+                    ),
+                ),
+                (
+                    "target_dataset",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="incoming_relationships",
+                        to="datasets.dataset",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['source_dataset__name', 'name', '-created_at'],
-                'indexes': [models.Index(fields=['profile', 'source_dataset'], name='dataset_rel_source_idx'), models.Index(fields=['profile', 'target_dataset'], name='dataset_rel_target_idx')],
-                'constraints': [models.UniqueConstraint(models.F('source_dataset'), django.db.models.functions.text.Lower('name'), name='unique_dataset_relationship_name_ci'), models.UniqueConstraint(fields=('source_dataset', 'source_column', 'target_dataset', 'target_index_column'), name='unique_dataset_relationship_path')],
+                "ordering": ["source_dataset__name", "name", "-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["profile", "source_dataset"], name="dataset_rel_source_idx"
+                    ),
+                    models.Index(
+                        fields=["profile", "target_dataset"], name="dataset_rel_target_idx"
+                    ),
+                ],
+                "constraints": [
+                    models.UniqueConstraint(
+                        models.F("source_dataset"),
+                        django.db.models.functions.text.Lower("name"),
+                        name="unique_dataset_relationship_name_ci",
+                    ),
+                    models.UniqueConstraint(
+                        fields=(
+                            "source_dataset",
+                            "source_column",
+                            "target_dataset",
+                            "target_index_column",
+                        ),
+                        name="unique_dataset_relationship_path",
+                    ),
+                ],
             },
         ),
     ]

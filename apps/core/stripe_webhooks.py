@@ -20,7 +20,7 @@ def get_profile_for_customer(customer_id, metadata=None):
         if user_id:
             try:
                 profile = Profile.objects.get(user_id=int(user_id))
-            except (Profile.DoesNotExist, ValueError, TypeError):
+            except Profile.DoesNotExist, ValueError, TypeError:
                 profile = None
 
     return profile

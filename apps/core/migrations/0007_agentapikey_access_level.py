@@ -4,15 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0006_agentapikey_token_ciphertext'),
+        ("core", "0006_agentapikey_token_ciphertext"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agentapikey',
-            name='access_level',
-            field=models.CharField(choices=[('read', 'Read'), ('read_write', 'Read + write'), ('admin', 'Admin')], default='read_write', max_length=20),
+            model_name="agentapikey",
+            name="access_level",
+            field=models.CharField(
+                choices=[("read", "Read"), ("read_write", "Read + write"), ("admin", "Admin")],
+                default="read_write",
+                max_length=20,
+            ),
         ),
     ]

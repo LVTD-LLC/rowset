@@ -4,37 +4,36 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('mcp_server', '0001_initial'),
+        ("mcp_server", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='mcpoauthaccesstoken',
-            name='profile',
+            model_name="mcpoauthaccesstoken",
+            name="profile",
         ),
         migrations.RemoveField(
-            model_name='mcpoauthauthorizationcode',
-            name='profile',
+            model_name="mcpoauthauthorizationcode",
+            name="profile",
         ),
         migrations.DeleteModel(
-            name='McpOAuthAuthorizationRequest',
+            name="McpOAuthAuthorizationRequest",
         ),
         migrations.DeleteModel(
-            name='McpOAuthClient',
+            name="McpOAuthClient",
         ),
         migrations.RemoveField(
-            model_name='mcpoauthrefreshtoken',
-            name='profile',
+            model_name="mcpoauthrefreshtoken",
+            name="profile",
         ),
         migrations.DeleteModel(
-            name='McpOAuthAccessToken',
+            name="McpOAuthAccessToken",
         ),
         migrations.DeleteModel(
-            name='McpOAuthAuthorizationCode',
+            name="McpOAuthAuthorizationCode",
         ),
         migrations.DeleteModel(
-            name='McpOAuthRefreshToken',
+            name="McpOAuthRefreshToken",
         ),
     ]

@@ -10,17 +10,15 @@ class Migration(migrations.Migration):
     Consider using CreateExtension operation or 'IF NOT EXISTS' for safety.
     """
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.RunSQL(
-            sql='CREATE EXTENSION IF NOT EXISTS vector;',
-            reverse_sql='DROP EXTENSION IF EXISTS vector;',
-            ),
-        
+            sql="CREATE EXTENSION IF NOT EXISTS vector;",
+            reverse_sql="DROP EXTENSION IF EXISTS vector;",
+        ),
         migrations.RunSQL(
-            sql='CREATE EXTENSION IF NOT EXISTS pg_stat_statements;',
-            reverse_sql='DROP EXTENSION IF EXISTS pg_stat_statements;',
+            sql="CREATE EXTENSION IF NOT EXISTS pg_stat_statements;",
+            reverse_sql="DROP EXTENSION IF EXISTS pg_stat_statements;",
         ),
     ]
