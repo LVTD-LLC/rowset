@@ -5399,6 +5399,11 @@ def test_project_section_api_creates_section_and_assigns_dataset(client, profile
     assert detail_payload["sections"][0]["dataset_count"] == 1
     assert detail_payload["dataset_groups"][0]["label"] == "Blog"
     assert detail_payload["dataset_groups"][0]["section"]["key"] == section_payload["key"]
+    assert detail_payload["dataset_groups"][0]["datasets"]["count"] == 1
+    assert detail_payload["dataset_groups"][0]["datasets"]["total_count"] == 1
+    assert "limit" not in detail_payload["dataset_groups"][0]["datasets"]
+    assert "offset" not in detail_payload["dataset_groups"][0]["datasets"]
+    assert "has_more" not in detail_payload["dataset_groups"][0]["datasets"]
     assert detail_payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == (
         dataset_payload["key"]
     )
@@ -6590,6 +6595,63 @@ def test_dataset_owner_can_assign_project_section_from_settings(auth_client, pro
     assert dataset.section == section
     mutation = dataset.mutations.get(mutation_type=DatasetMutationType.DATASET_PROJECT_UPDATED)
     assert mutation.metadata["section_name"] == "Blog"
+
+
+def test_dataset_project_settings_rejects_mismatched_section_with_message(auth_client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    dataset = create_ready_dataset(profile)
+    project = Project.objects.create(profile=profile, name="Rowset")
+    other_project = Project.objects.create(profile=profile, name="Other")
+    section = ProjectSection.objects.create(profile=profile, project=other_project, name="Blog")
+
+    response = auth_client.post(
+        reverse("dataset_update_project", args=[dataset.key]),
+        {"project_key": str(project.key), "section_key": str(section.key)},
+    )
+
+    assert response.status_code == 302
+    assert response.url == dataset.get_settings_url()
+    dataset.refresh_from_db()
+    assert dataset.project is None
+    assert dataset.section is None
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == "Project section not found."
+
+
+def test_dataset_project_settings_marks_section_options_by_project(auth_client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    dataset = create_ready_dataset(profile)
+    rowset_project = Project.objects.create(profile=profile, name="Rowset")
+    other_project = Project.objects.create(profile=profile, name="Other")
+    rowset_section = ProjectSection.objects.create(
+        profile=profile,
+        project=rowset_project,
+        name="Blog",
+    )
+    other_section = ProjectSection.objects.create(
+        profile=profile,
+        project=other_project,
+        name="Sales",
+    )
+
+    response = auth_client.get(dataset.get_settings_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'data-controller="dataset-project"' in content
+    assert 'data-dataset-project-target="projectSelect"' in content
+    assert 'data-action="change->dataset-project#syncSections"' in content
+    assert 'data-dataset-project-target="sectionSelect"' in content
+    assert f'value="{rowset_section.key}"' in content
+    assert f'data-project-key="{rowset_project.key}"' in content
+    assert "Rowset / Blog" in content
+    assert f'value="{other_section.key}"' in content
+    assert f'data-project-key="{other_project.key}"' in content
+    assert "Other / Sales" in content
 
 
 def test_dataset_owner_can_update_metadata_from_settings(auth_client, profile):

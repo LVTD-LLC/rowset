@@ -1264,6 +1264,11 @@ def test_project_section_services_create_assign_and_group_datasets(django_user_m
     assert detail_response["dataset_groups"][0]["section"]["key"] == (
         section_response["section"]["key"]
     )
+    assert detail_response["dataset_groups"][0]["datasets"]["count"] == 1
+    assert detail_response["dataset_groups"][0]["datasets"]["total_count"] == 1
+    assert "limit" not in detail_response["dataset_groups"][0]["datasets"]
+    assert "offset" not in detail_response["dataset_groups"][0]["datasets"]
+    assert "has_more" not in detail_response["dataset_groups"][0]["datasets"]
     assert detail_response["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == (
         str(dataset.key)
     )

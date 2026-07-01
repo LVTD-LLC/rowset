@@ -2057,7 +2057,7 @@ def dataset_update_project(request, dataset_key):
             section_key=section_key,
         )
     except DatasetServiceError as exc:
-        if exc.status_code == 404:
+        if exc.status_code == 404 and exc.message != "Project section not found.":
             raise Http404(exc.message) from exc
         messages.error(request, exc.message)
     else:

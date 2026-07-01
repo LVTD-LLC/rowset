@@ -893,13 +893,10 @@ def serialize_profile_project_detail(
     }
 
 
-def _dataset_page_payload(datasets: list[Dataset], total_count: int) -> dict:
+def _dataset_group_items_payload(datasets: list[Dataset], total_count: int) -> dict:
     return {
         "count": len(datasets),
         "total_count": total_count,
-        "limit": len(datasets),
-        "offset": 0,
-        "has_more": len(datasets) < total_count,
         "datasets": [serialize_dataset_summary(dataset) for dataset in datasets],
     }
 
@@ -914,7 +911,7 @@ def _project_dataset_groups(
             "label": group["label"],
             "section": serialize_project_section_reference(group["section"]),
             "dataset_count": group["dataset_count"],
-            "datasets": _dataset_page_payload(group["datasets"], group["dataset_count"]),
+            "datasets": _dataset_group_items_payload(group["datasets"], group["dataset_count"]),
         }
         for group in groups
     ]
