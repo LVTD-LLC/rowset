@@ -1,4 +1,3 @@
-import hashlib
 import json
 import uuid
 from urllib.parse import ParseResult, urlparse
@@ -43,6 +42,11 @@ from apps.api.services import (
 )
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project, ProjectSection
+from apps.datasets.public_previews import (
+    PUBLIC_PREVIEW_ROBOTS_POLICY,
+    grant_public_preview_access,
+    has_public_preview_access,
+)
 from apps.datasets.services import (
     DATASET_ASSET_CACHE_CONTROL,
     DATASET_REFERENCE_TARGET,
@@ -73,9 +77,6 @@ from apps.datasets.services import (
     rows_to_sqlite_bytes,
     rows_to_xlsx_bytes,
 )
-
-PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
-PUBLIC_PREVIEW_ROBOTS_POLICY = "noindex, nofollow, noarchive"
 
 DATASET_SORT_OPTIONS = (
     ("recent", "Recently updated"),
@@ -2401,18 +2402,8 @@ def dataset_status(request, dataset_key):
     )
 
 
-def _public_access_session_key(dataset: Dataset) -> str:
-    return f"{PUBLIC_ACCESS_SESSION_PREFIX}{dataset.public_key}"
-
-
-def _public_access_session_value(dataset: Dataset) -> str:
-    return hashlib.sha256(dataset.public_password_hash.encode()).hexdigest()
-
-
 def _has_public_dataset_access(request, dataset: Dataset) -> bool:
-    return not dataset.is_public_password_protected or request.session.get(
-        _public_access_session_key(dataset)
-    ) == _public_access_session_value(dataset)
+    return has_public_preview_access(request.session, dataset)
 
 
 def _handle_public_password_access(
@@ -2424,8 +2415,7 @@ def _handle_public_password_access(
     if request.method == "POST" and dataset.is_public_password_protected:
         password = request.POST.get("password", "")
         if dataset.public_password_matches(password):
-            session_key = _public_access_session_key(dataset)
-            request.session[session_key] = _public_access_session_value(dataset)
+            grant_public_preview_access(request.session, dataset)
             return True, password_error, redirect(success_url)
         password_error = "That password did not work. Please try again."
 

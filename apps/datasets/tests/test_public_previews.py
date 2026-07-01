@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType
+from apps.datasets.public_previews import update_public_preview_settings
 from apps.datasets.tests.factories import (
     configure_filterable_dataset,
     create_dataset,
@@ -52,6 +53,33 @@ def test_dataset_owner_can_enable_public_sharing(auth_client, profile):
         dataset.mutations.filter(mutation_type=DatasetMutationType.PUBLIC_PREVIEW_UPDATED).count()
         == 1
     )
+
+
+def test_public_preview_settings_helper_records_mutation_metadata(profile):
+    dataset = create_ready_dataset(profile)
+
+    result = update_public_preview_settings(
+        dataset,
+        public_enabled=True,
+        public_page_size=1,
+        public_password=" secret-table ",
+    )
+
+    dataset.refresh_from_db()
+    assert result.settings_changed is True
+    assert dataset.public_enabled is True
+    assert dataset.public_page_size == 1
+    assert dataset.is_public_password_protected is True
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.PUBLIC_PREVIEW_UPDATED)
+    assert mutation.metadata == {
+        "previous_public_enabled": False,
+        "public_enabled": True,
+        "previous_public_page_size": 10,
+        "public_page_size": 1,
+        "previous_password_protected": False,
+        "password_protected": True,
+        "password_changed": True,
+    }
 
 
 def test_public_dataset_view_paginates_rows(client, profile):

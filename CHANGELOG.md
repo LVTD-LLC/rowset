@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- Extracted public-preview settings and session-token helpers out of the API service kernel while preserving REST, MCP, and browser-preview behavior.
 - Added Rowset agent eval seeds, code tours, and task templates for common dataset, API, MCP, vector search, access, and public-preview work.
 - CI and `make ci-local` now run the scoped `ty` type-check baseline, with documented expansion guidance.
 - Added shared Rowset dataset test factories, split public-preview tests out of the large dataset test module, and added REST/MCP parity characterization tests for shared dataset behavior.
