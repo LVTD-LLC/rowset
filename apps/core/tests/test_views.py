@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 from allauth.account.models import EmailAddress
 from django.test import override_settings
@@ -5,10 +7,100 @@ from django.urls import reverse
 
 from apps.core import agent_skill
 from apps.core.services import create_agent_api_key
-from apps.core.views import build_agent_setup_prompt
+from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_customer
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project
 from rowset.utils import build_absolute_public_url
+
+
+@pytest.mark.django_db
+@override_settings(STRIPE_CONTEXT="acct_test")
+def test_get_or_create_stripe_customer_passes_stripe_context(profile, monkeypatch):
+    calls = []
+
+    def create_customer(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(id="cus_test")
+
+    monkeypatch.setattr("apps.core.views.stripe.Customer.create", create_customer)
+
+    customer = get_or_create_stripe_customer(profile, profile.user)
+
+    assert customer.id == "cus_test"
+    assert calls[0]["stripe_context"] == "acct_test"
+
+
+@pytest.mark.django_db
+@override_settings(STRIPE_CONTEXT="acct_test")
+def test_get_or_create_stripe_customer_retrieve_passes_stripe_context(profile, monkeypatch):
+    profile.stripe_customer_id = "cus_existing"
+    profile.save(update_fields=["stripe_customer_id"])
+    calls = []
+
+    def retrieve_customer(customer_id, **kwargs):
+        calls.append((customer_id, kwargs))
+        return SimpleNamespace(id=customer_id)
+
+    monkeypatch.setattr("apps.core.views.stripe.Customer.retrieve", retrieve_customer)
+
+    customer = get_or_create_stripe_customer(profile, profile.user)
+
+    assert customer.id == "cus_existing"
+    assert calls == [("cus_existing", {"stripe_context": "acct_test"})]
+
+
+@pytest.mark.django_db
+@override_settings(
+    STRIPE_CONTEXT="acct_test",
+    STRIPE_PRICE_IDS={"monthly": "price_test"},
+)
+def test_checkout_session_passes_stripe_context(auth_client, profile, monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(
+        "apps.core.views.get_or_create_stripe_customer",
+        lambda profile, user: SimpleNamespace(id="cus_test"),
+    )
+
+    def create_session(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(url="https://checkout.stripe.test/session")
+
+    monkeypatch.setattr("apps.core.views.stripe.checkout.Session.create", create_session)
+
+    response = auth_client.post(
+        reverse("user_upgrade_checkout_session", args=[profile.user_id, "monthly"])
+    )
+
+    assert response.status_code == 303
+    assert response["Location"] == "https://checkout.stripe.test/session"
+    assert calls[0]["stripe_context"] == "acct_test"
+
+
+@pytest.mark.django_db
+@override_settings(STRIPE_CONTEXT="acct_test")
+def test_billing_portal_session_passes_stripe_context(auth_client, profile, monkeypatch):
+    profile.stripe_customer_id = "cus_test"
+    profile.save(update_fields=["stripe_customer_id"])
+    calls = []
+
+    def create_session(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(url="https://billing.stripe.test/session")
+
+    monkeypatch.setattr("apps.core.views.stripe.billing_portal.Session.create", create_session)
+
+    response = auth_client.get(reverse("create_customer_portal_session"))
+
+    assert response.status_code == 303
+    assert response["Location"] == "https://billing.stripe.test/session"
+    assert calls == [
+        {
+            "customer": "cus_test",
+            "return_url": "http://testserver/home",
+            "stripe_context": "acct_test",
+        }
+    ]
 
 
 @pytest.mark.django_db

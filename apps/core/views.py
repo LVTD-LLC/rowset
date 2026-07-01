@@ -48,6 +48,18 @@ AGENT_API_KEY_MASK = "***"
 CREATED_AGENT_API_KEY_QUERY_PARAM = "created_agent_api_key"
 
 
+def stripe_request_options():
+    if settings.STRIPE_CONTEXT:
+        return {"stripe_context": settings.STRIPE_CONTEXT}
+    return {}
+
+
+def stripe_redirect(url: str) -> HttpResponse:
+    response = redirect(url)
+    response.status_code = 303
+    return response
+
+
 def _serialize_created_agent_api_key(agent_api_key: AgentApiKey) -> dict:
     return {
         "uuid": str(agent_api_key.uuid),
@@ -522,7 +534,10 @@ def create_checkout_session(request, pk, plan):
     }
 
     try:
-        checkout_session = stripe.checkout.Session.create(**session_params)
+        checkout_session = stripe.checkout.Session.create(
+            **session_params,
+            **stripe_request_options(),
+        )
     except stripe.error.StripeError as exc:
         logger.error(
             "Stripe checkout session creation failed",
@@ -533,7 +548,7 @@ def create_checkout_session(request, pk, plan):
         messages.error(request, "Unable to start checkout. Please try again.")
         return redirect("pricing")
 
-    return redirect(checkout_session.url, code=303)
+    return stripe_redirect(checkout_session.url)
 
 
 @login_required
@@ -548,6 +563,7 @@ def create_customer_portal_session(request):
         session = stripe.billing_portal.Session.create(
             customer=profile.stripe_customer_id,
             return_url=request.build_absolute_uri(reverse("home")),
+            **stripe_request_options(),
         )
     except stripe.error.StripeError as exc:
         logger.error(
@@ -559,7 +575,7 @@ def create_customer_portal_session(request):
         messages.error(request, "Unable to open the billing portal. Please try again.")
         return redirect("pricing")
 
-    return redirect(session.url, code=303)
+    return stripe_redirect(session.url)
 
 
 class AdminPanelView(UserPassesTestMixin, TemplateView):
@@ -673,7 +689,10 @@ def get_price_id_for_plan(plan):
 def get_or_create_stripe_customer(profile, user):
     if profile.stripe_customer_id:
         try:
-            return stripe.Customer.retrieve(profile.stripe_customer_id)
+            return stripe.Customer.retrieve(
+                profile.stripe_customer_id,
+                **stripe_request_options(),
+            )
         except stripe.error.InvalidRequestError as exc:
             logger.warning(
                 "Stripe customer lookup failed",
@@ -686,6 +705,7 @@ def get_or_create_stripe_customer(profile, user):
         email=user.email,
         name=user.get_full_name() or user.username,
         metadata={"user_id": user.id},
+        **stripe_request_options(),
     )
     profile.stripe_customer_id = customer.id
     profile.save(update_fields=["stripe_customer_id"])
