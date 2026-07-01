@@ -9,6 +9,8 @@ from fastmcp import Client
 from apps.api.services import DatasetServiceError
 from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.models import Feedback
+from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.mcp_server.server import (
@@ -339,6 +341,81 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         assert "guardrails" in payload
 
     anyio.run(run)
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(
+    DEFAULT_FROM_EMAIL="feedback@rowset.example",
+    SITE_URL="https://rowset.example",
+)
+def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model, monkeypatch):
+    user = django_user_model.objects.create_user(
+        username="feedback-mcp-user",
+        email="feedback-mcp-user@example.com",
+        password="password123",
+    )
+    profile = user.profile
+    sent_messages = []
+    observed = {}
+
+    def fake_send_mail(subject, message, from_email, recipient_list, fail_silently=False):
+        sent_messages.append(message)
+        return 1
+
+    credential = create_agent_api_key(profile, "Feedback Agent")
+    setattr(profile, AGENT_API_KEY_PROFILE_ATTR, credential.agent_api_key)
+    monkeypatch.setattr("apps.core.models.send_mail", fake_send_mail)
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "submit_feedback",
+                {
+                    "feedback": "MCP feedback should be saved.",
+                    "page": "get_rowset_capabilities",
+                    "context": {"tool": "get_rowset_capabilities", "category": "docs"},
+                },
+            )
+
+        observed["payload"] = result.data
+
+    anyio.run(run)
+    payload = observed["payload"]
+    feedback = Feedback.objects.get(id=payload["feedback"]["id"])
+    dataset = Dataset.objects.select_related("project", "section").get(key=payload["dataset"])
+    row = dataset.rows.get(id=payload["row"])
+
+    assert payload["status"] == "success"
+    assert payload["row_url"] == f"https://rowset.example/datasets/{dataset.key}/rows/{row.id}/"
+    assert payload["feedback"] == {
+        "id": feedback.id,
+        "page": "get_rowset_capabilities",
+        "submitted_via": "mcp",
+        "context": {"tool": "get_rowset_capabilities", "category": "docs"},
+    }
+    assert dataset.project.name == "Rowset"
+    assert dataset.section.name == "CX"
+    assert row.created_by_agent_api_key == credential.agent_api_key
+    assert row.data["feedback_id"] == str(feedback.id)
+    assert row.data["submitted_via"] == "mcp"
+    assert row.data["context"] == '{"category":"docs","tool":"get_rowset_capabilities"}'
+    assert row.data["feedback"] == "MCP feedback should be saved."
+    assert sent_messages == [
+        (
+            "New feedback was submitted:\n\n"
+            "User: feedback-mcp-user@example.com\n"
+            "Feedback: MCP feedback should be saved.\n"
+            "Page: get_rowset_capabilities\n"
+            "Submitted via: mcp\n"
+            'Context: {"category":"docs","tool":"get_rowset_capabilities"}\n'
+            f"Rowset row: {payload['row_url']}"
+        )
+    ]
 
 
 def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):

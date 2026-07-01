@@ -69,6 +69,7 @@ from apps.core.services import (
     require_agent_api_key_access,
     resolve_api_key_profile,
     serialize_agent_api_key,
+    submit_profile_feedback,
 )
 from apps.mcp_server.auth import mcp_auth
 from rowset.utils import get_rowset_logger
@@ -431,6 +432,84 @@ def get_rowset_capabilities() -> dict:
     close_old_connections()
     _mcp_authenticated_profile()
     return rowset_capabilities_payload()
+
+
+@mcp.tool(
+    name="submit_feedback",
+    description=(
+        "Submit product feedback about Rowset from the authenticated agent. Rowset stores "
+        "the feedback in the private Rowset/CX Feedback dataset and sends the configured "
+        "feedback notification with a link to the created row."
+    ),
+)
+def submit_feedback_tool(
+    feedback: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=2000,
+            description="Feedback text to send to the Rowset team.",
+        ),
+    ],
+    page: Annotated[
+        str | None,
+        Field(
+            default="",
+            max_length=255,
+            description="Optional Rowset page, URL, MCP tool, or context for the feedback.",
+        ),
+    ] = "",
+    context: Annotated[
+        dict[str, Any] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional small JSON object with non-sensitive context such as tool name, "
+                "category, or workflow. Do not include API keys, secrets, or private data."
+            ),
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    try:
+        profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+        try:
+            result = submit_profile_feedback(
+                profile,
+                feedback,
+                page=page,
+                submitted_via="mcp",
+                context=context,
+                **_agent_actor_kwargs(profile),
+            )
+        except DatasetServiceError as exc:
+            raise _service_error_to_tool_error(exc) from exc
+        except ValueError as exc:
+            raise _mcp_tool_error(
+                _mcp_error_payload(
+                    code="VALIDATION_ERROR",
+                    message=str(exc),
+                    retryable=False,
+                    suggested_action="Provide non-empty feedback up to 2,000 characters.",
+                    details={"http_status": 400},
+                )
+            ) from exc
+
+        return {
+            "status": "success",
+            "message": "Feedback submitted successfully.",
+            "feedback": {
+                "id": result.feedback.id,
+                "page": result.feedback.page,
+                "submitted_via": "mcp",
+                "context": context or {},
+            },
+            "dataset": str(result.dataset.key),
+            "row": result.row.id,
+            "row_url": result.row_url,
+        }
+    finally:
+        close_old_connections()
 
 
 @mcp.tool(

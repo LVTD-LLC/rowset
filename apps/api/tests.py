@@ -26,6 +26,7 @@ from apps.api.views import (
 from apps.blog.choices import BlogPostStatus
 from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.models import Feedback
 from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
@@ -56,6 +57,42 @@ def test_capabilities_endpoint_supports_current_and_legacy_api_prefixes(client):
     assert legacy_root_response["Location"] == "/api/"
     assert current_response.json()["product"] == "Rowset"
     assert legacy_response.json()["product"] == "Rowset"
+
+
+@pytest.mark.django_db
+@override_settings(
+    DEFAULT_FROM_EMAIL="feedback@rowset.example",
+    SITE_URL="https://rowset.example",
+)
+def test_submit_feedback_api_creates_feedback_dataset_row(client, django_user_model, monkeypatch):
+    user = django_user_model.objects.create_user(
+        username="feedback-api-user",
+        email="feedback-api-user@example.com",
+        password="password123",
+    )
+    client.force_login(user)
+    monkeypatch.setattr("apps.core.models.send_mail", lambda *args, **kwargs: 1)
+
+    response = client.post(
+        "/api/submit-feedback",
+        data=json.dumps({"feedback": "API feedback", "page": "/settings/"}),
+        content_type="application/json",
+    )
+
+    feedback = Feedback.objects.get()
+    dataset = Dataset.objects.get(name="Feedback")
+    row = dataset.rows.get(index_value=str(feedback.id))
+    expected_row_url = f"https://rowset.example/datasets/{dataset.key}/rows/{row.id}/"
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "message": "Feedback submitted successfully",
+        "row_url": expected_row_url,
+    }
+    assert row.data["context"] == ""
+    assert row.data["submitted_via"] == "web"
+    assert row.data["feedback"] == "API feedback"
 
 
 def test_legacy_v1_api_prefix_serves_dataset_endpoints(client):

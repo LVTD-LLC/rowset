@@ -151,40 +151,63 @@ class Feedback(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.profile.user.email}: {self.feedback}"
+        return f"{self._submitter_label()}: {self.feedback}"
+
+    def _submitter_label(self) -> str:
+        return self.profile.user.email if self.profile else "Anonymous"
+
+    def send_notification(
+        self,
+        *,
+        dataset_row_url: str = "",
+        submitted_via: str = "",
+        feedback_context: str = "",
+    ) -> None:
+        subject = "New Feedback Submitted"
+        message_parts = [
+            "New feedback was submitted:",
+            "",
+            f"User: {self._submitter_label()}",
+            f"Feedback: {self.feedback}",
+            f"Page: {self.page}",
+        ]
+        if submitted_via:
+            message_parts.append(f"Submitted via: {submitted_via}")
+        if feedback_context:
+            message_parts.append(f"Context: {feedback_context}")
+        if dataset_row_url:
+            message_parts.append(f"Rowset row: {dataset_row_url}")
+
+        message = "\n".join(message_parts)
+        from_email = settings.DEFAULT_FROM_EMAIL
+        recipient_list = [settings.DEFAULT_FROM_EMAIL]
+
+        for recipient_email in recipient_list:
+            send_transactional_email(
+                lambda recipient=recipient_email: send_mail(
+                    subject,
+                    message,
+                    from_email,
+                    [recipient],
+                    fail_silently=False,
+                ),
+                email_address=recipient_email,
+                email_type=EmailType.FEEDBACK_NOTIFICATION,
+                profile=self.profile,
+                context={
+                    "flow": "feedback_notification",
+                    "feedback_id": self.id,
+                    "dataset_row_url": dataset_row_url,
+                    "submitted_via": submitted_via,
+                },
+            )
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         super().save(*args, **kwargs)
 
-        if is_new:
-            subject = "New Feedback Submitted"
-            message = f"""
-                New feedback was submitted:\n\n
-                User: {self.profile.user.email if self.profile else "Anonymous"}
-                Feedback: {self.feedback}
-                Page: {self.page}
-            """
-            from_email = settings.DEFAULT_FROM_EMAIL
-            recipient_list = [settings.DEFAULT_FROM_EMAIL]
-
-            for recipient_email in recipient_list:
-                send_transactional_email(
-                    lambda recipient=recipient_email: send_mail(
-                        subject,
-                        message,
-                        from_email,
-                        [recipient],
-                        fail_silently=False,
-                    ),
-                    email_address=recipient_email,
-                    email_type=EmailType.FEEDBACK_NOTIFICATION,
-                    profile=self.profile,
-                    context={
-                        "flow": "feedback_notification",
-                        "feedback_id": self.id,
-                    },
-                )
+        if is_new and not getattr(self, "_skip_feedback_notification", False):
+            self.send_notification()
 
 
 class EmailSent(BaseModel):

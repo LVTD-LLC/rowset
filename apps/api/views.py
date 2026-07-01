@@ -134,12 +134,12 @@ from apps.core.analytics import (
     track_activation_event,
 )
 from apps.core.capabilities import rowset_capabilities_payload
-from apps.core.models import Feedback
 from apps.core.services import (
     create_agent_api_key as create_agent_api_key_credential,
 )
 from apps.core.services import (
     serialize_agent_api_key,
+    submit_profile_feedback,
 )
 from apps.datasets.services import (
     DATASET_ASSET_CACHE_CONTROL,
@@ -335,8 +335,17 @@ def healthcheck(request: HttpRequest):
 def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
     profile = request.auth
     try:
-        Feedback.objects.create(profile=profile, feedback=data.feedback, page=data.page)
-        return {"success": True, "message": "Feedback submitted successfully"}
+        result = submit_profile_feedback(
+            profile,
+            data.feedback,
+            page=data.page,
+            submitted_via="web",
+        )
+        return {
+            "success": True,
+            "message": "Feedback submitted successfully",
+            "row_url": result.row_url,
+        }
     except Exception as e:
         logger.error("Failed to submit feedback", error=str(e), profile_id=profile.id)
         return {"success": False, "message": "Failed to submit feedback. Please try again."}

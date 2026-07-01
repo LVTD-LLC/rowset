@@ -28,6 +28,7 @@ class SubmitFeedbackIn(Schema):
 class SubmitFeedbackOut(Schema):
     success: bool
     message: str
+    row_url: str = ""
 
 
 class BlogPostIn(Schema):
