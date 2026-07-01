@@ -180,7 +180,7 @@ def backfill_dataset_vectors_task(dataset_id: int) -> None:
         )
 
 
-def reindex_dataset_vectors_task(dataset_id: int, stale_row_ids: list[int] | None = None) -> None:
+def reindex_dataset_vectors_task(dataset_id: int) -> None:
     if not qdrant_is_enabled():
         return
     try:
@@ -195,18 +195,6 @@ def reindex_dataset_vectors_task(dataset_id: int, stale_row_ids: list[int] | Non
         logger.exception("Vector dataset reindex failed", dataset_id=dataset_id)
         return
 
-    stale_cleanup_failed = False
-    if stale_row_ids:
-        try:
-            delete_dataset_row_vectors_service(dataset, stale_row_ids)
-        except Exception:
-            stale_cleanup_failed = True
-            logger.exception(
-                "Vector stale row cleanup failed after reindex",
-                dataset_id=dataset_id,
-                stale_row_count=len(stale_row_ids),
-            )
-
     logger.info(
         "Vector dataset reindex complete",
         dataset_id=dataset_id,
@@ -214,8 +202,6 @@ def reindex_dataset_vectors_task(dataset_id: int, stale_row_ids: list[int] | Non
         rows_seen=result.rows_seen,
         indexed=result.indexed,
         failed=result.failed,
-        stale_row_count=len(stale_row_ids or []),
-        stale_cleanup_failed=stale_cleanup_failed,
     )
 
 
