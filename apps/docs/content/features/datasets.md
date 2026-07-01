@@ -35,11 +35,15 @@ Use projects to group related datasets by client, workflow, campaign, or agent
 task. New datasets are ungrouped by default. Agents can create datasets inside an
 existing project or move an existing dataset into one project.
 
+Use sections when a project needs optional sub-grouping. For example, a Rowset
+project can have a Blog section with `content-ledger`, `link-inventory`, and
+`blog-pages` datasets.
+
 Projects can also carry JSON metadata such as a GitHub repository, Slack thread,
 or Notion doc. That metadata is available through the dashboard, REST, and MCP.
 
-Projects are organization metadata only. They do not change authenticated API or
-MCP access.
+Projects and sections are organization metadata only. They do not change
+authenticated API or MCP access.
 
 ## Linking datasets
 

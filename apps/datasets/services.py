@@ -106,6 +106,61 @@ PROJECT_REFERENCE_TARGET = "project"
 ROW_DEFAULT_SORT = "row_number"
 ROW_SORT_DESC = "desc"
 ROW_SEARCH_COLUMN_LIMIT = 20
+
+
+def project_section_dataset_groups(
+    sections: list[Any],
+    datasets: list[Any],
+    *,
+    unsectioned_dataset_count: int | None = None,
+) -> list[dict[str, Any]]:
+    """Group project datasets by active section, with unmatched datasets left unsectioned."""
+    section_ids = {getattr(section, "id", None) for section in sections}
+    datasets_by_section_id: dict[int, list[Any]] = {}
+    unsectioned_datasets = []
+
+    for dataset in datasets:
+        section_id = getattr(dataset, "section_id", None)
+        if section_id in section_ids:
+            datasets_by_section_id.setdefault(section_id, []).append(dataset)
+        else:
+            unsectioned_datasets.append(dataset)
+
+    groups = []
+    for section in sections:
+        section_datasets = datasets_by_section_id.get(section.id, [])
+        dataset_count = getattr(section, "dataset_count", None)
+        if dataset_count is None:
+            dataset_count = len(section_datasets)
+        if not section_datasets and not dataset_count:
+            continue
+        groups.append(
+            {
+                "label": section.name,
+                "section": section,
+                "dataset_count": dataset_count,
+                "datasets": section_datasets,
+            }
+        )
+
+    dataset_count = (
+        unsectioned_dataset_count
+        if unsectioned_dataset_count is not None
+        else len(unsectioned_datasets)
+    )
+    if unsectioned_datasets or dataset_count:
+        groups.append(
+            {
+                "label": "Unsectioned",
+                "section": None,
+                "dataset_count": dataset_count,
+                "datasets": unsectioned_datasets,
+            }
+        )
+
+    return groups
+
+
 ROW_FILTER_ABOVE = "above"
 ROW_FILTER_BELOW = "below"
 ROW_FILTER_CONTAINS = "contains"

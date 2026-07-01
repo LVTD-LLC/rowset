@@ -30,6 +30,7 @@ from apps.api.services import (
 )
 from apps.core.choices import AgentApiKeyAccessLevel, ProfileStates
 from apps.core.services import create_agent_api_key
+from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.constants import MAX_DATASET_IMAGE_BYTES
 from apps.datasets.history import record_dataset_mutation
@@ -5440,6 +5441,179 @@ def test_dataset_api_updates_project_assignment(client, profile):
     assert dataset.project is None
 
 
+def test_project_section_api_creates_section_and_assigns_dataset(client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    project = Project.objects.create(profile=profile, name="Rowset")
+
+    section_response = client.post(
+        f"/api/projects/{project.key}/sections?api_key={profile.key}",
+        data={
+            "name": "Blog",
+            "description": "Content operations datasets.",
+            "metadata": {"goal": "content-led growth"},
+        },
+        content_type="application/json",
+    )
+
+    assert section_response.status_code == 201
+    section_payload = section_response.json()["section"]
+    assert section_payload["name"] == "Blog"
+    assert section_payload["description"] == "Content operations datasets."
+    assert section_payload["metadata"] == {"goal": "content-led growth"}
+    assert section_payload["dataset_count"] == 0
+
+    dataset_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Content ledger",
+            "headers": ["slug", "status"],
+            "rows": [{"slug": "launch-post", "status": "draft"}],
+            "index_column": "slug",
+            "project_key": str(project.key),
+            "section_key": section_payload["key"],
+        },
+        content_type="application/json",
+    )
+
+    assert dataset_response.status_code == 201
+    dataset_payload = dataset_response.json()["dataset"]
+    assert dataset_payload["project"]["key"] == str(project.key)
+    assert dataset_payload["section"]["key"] == section_payload["key"]
+    assert dataset_payload["section"]["name"] == "Blog"
+
+    detail_response = client.get(f"/api/projects/{project.key}?api_key={profile.key}")
+
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    assert detail_payload["sections"][0]["key"] == section_payload["key"]
+    assert detail_payload["sections"][0]["dataset_count"] == 1
+    assert detail_payload["dataset_groups"][0]["label"] == "Blog"
+    assert detail_payload["dataset_groups"][0]["section"]["key"] == section_payload["key"]
+    assert detail_payload["dataset_groups"][0]["datasets"]["count"] == 1
+    assert detail_payload["dataset_groups"][0]["datasets"]["total_count"] == 1
+    assert "limit" not in detail_payload["dataset_groups"][0]["datasets"]
+    assert "offset" not in detail_payload["dataset_groups"][0]["datasets"]
+    assert "has_more" not in detail_payload["dataset_groups"][0]["datasets"]
+    assert detail_payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == (
+        dataset_payload["key"]
+    )
+
+
+def test_dataset_api_rejects_section_from_another_project(client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    project = Project.objects.create(profile=profile, name="Rowset")
+    other_project = Project.objects.create(profile=profile, name="Other")
+    section = ProjectSection.objects.create(
+        profile=profile,
+        project=other_project,
+        name="Blog",
+    )
+    dataset = create_ready_dataset(profile)
+
+    response = client.patch(
+        f"/api/datasets/{dataset.key}/project?api_key={profile.key}",
+        data={"project_key": str(project.key), "section_key": str(section.key)},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project section not found."
+    dataset.refresh_from_db()
+    assert dataset.project is None
+    assert dataset.section is None
+
+
+def test_project_section_api_archives_section_and_unsections_datasets(client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    project = Project.objects.create(profile=profile, name="Rowset")
+    section = ProjectSection.objects.create(profile=profile, project=project, name="Blog")
+    dataset = create_ready_dataset(profile)
+    dataset.project = project
+    dataset.section = section
+    dataset.save(update_fields=["project", "section"])
+
+    response = client.delete(
+        f"/api/projects/{project.key}/sections/{section.key}?api_key={profile.key}"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"] == "Project section archived."
+    assert payload["section"]["key"] == str(section.key)
+    assert payload["section"]["archived_at"] is not None
+    section.refresh_from_db()
+    assert section.archived_at is not None
+    dataset.refresh_from_db()
+    assert dataset.project == project
+    assert dataset.section is None
+
+    list_response = client.get(f"/api/projects/{project.key}/sections?api_key={profile.key}")
+
+    assert list_response.status_code == 200
+    assert list_response.json()["sections"] == []
+
+
+def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(client, profile):
+    project = Project.objects.create(profile=profile, name="Rowset")
+    first = create_ready_dataset(profile)
+    first.name = "Signals"
+    first.project = project
+    first.save(update_fields=["name", "project"])
+    second = create_ready_dataset(profile)
+    second.name = "Inventory"
+    second.project = project
+    second.save(update_fields=["name", "project"])
+
+    response = client.get(f"/api/projects/{project.key}?api_key={profile.key}&limit=1")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["datasets"]["count"] == 1
+    assert payload["datasets"]["total_count"] == 2
+    assert payload["dataset_groups"][0]["label"] == "Unsectioned"
+    assert payload["dataset_groups"][0]["dataset_count"] == 2
+    assert payload["dataset_groups"][0]["datasets"]["count"] == 1
+    assert payload["dataset_groups"][0]["datasets"]["total_count"] == 2
+    assert payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == str(second.key)
+
+
+def test_project_detail_api_includes_empty_page_unsectioned_group(client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    project = Project.objects.create(profile=profile, name="Rowset")
+    blog = ProjectSection.objects.create(profile=profile, project=project, name="Blog")
+    first = create_ready_dataset(profile)
+    first.name = "Signals"
+    first.project = project
+    first.save(update_fields=["name", "project"])
+    second = create_ready_dataset(profile)
+    second.name = "Inventory"
+    second.project = project
+    second.save(update_fields=["name", "project"])
+    sectioned = create_ready_dataset(profile)
+    sectioned.name = "Content ledger"
+    sectioned.project = project
+    sectioned.section = blog
+    sectioned.save(update_fields=["name", "project", "section"])
+
+    response = client.get(f"/api/projects/{project.key}?api_key={profile.key}&limit=1")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["datasets"]["count"] == 1
+    assert payload["datasets"]["datasets"][0]["key"] == str(sectioned.key)
+    assert payload["dataset_groups"][0]["label"] == "Blog"
+    assert payload["dataset_groups"][0]["dataset_count"] == 1
+    assert payload["dataset_groups"][0]["datasets"]["count"] == 1
+    assert payload["dataset_groups"][1]["label"] == "Unsectioned"
+    assert payload["dataset_groups"][1]["dataset_count"] == 2
+    assert payload["dataset_groups"][1]["datasets"]["count"] == 0
+    assert payload["dataset_groups"][1]["datasets"]["total_count"] == 2
+    assert payload["dataset_groups"][1]["datasets"]["datasets"] == []
+
+
 def test_dataset_api_rejects_invalid_project_assignment_dataset_key(client, profile):
     project = Project.objects.create(profile=profile, name="Customers")
 
@@ -6573,6 +6747,57 @@ def test_project_detail_paginates_assigned_datasets(auth_client, profile):
     assert "Page 2 of 2" in page_two.content.decode()
 
 
+def test_project_detail_groups_datasets_by_section(auth_client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    project = Project.objects.create(profile=profile, name="Rowset")
+    blog = ProjectSection.objects.create(profile=profile, project=project, name="Blog")
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        section=blog,
+        name="Content ledger",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["slug"],
+        index_column="slug",
+    )
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Backlog",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["signal"],
+        index_column="signal",
+    )
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Signals",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["signal"],
+        index_column="signal",
+    )
+
+    response = auth_client.get(project.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["section_groups"][0]["label"] == "Blog"
+    assert response.context["section_groups"][0]["datasets"][0].name == "Content ledger"
+    assert response.context["section_groups"][1]["label"] == "Unsectioned"
+    assert response.context["section_groups"][1]["dataset_count"] == 2
+    assert len(response.context["section_groups"][1]["datasets"]) == 2
+    assert response.context["section_groups"][1]["datasets"][0].name == "Signals"
+    assert "Blog" in content
+    assert "Unsectioned" in content
+
+
 def test_dataset_settings_page_has_section_navigation(auth_client, profile):
     dataset = create_ready_dataset(profile)
 
@@ -6617,6 +6842,83 @@ def test_dataset_owner_can_assign_project_from_settings(auth_client, profile):
     assert detach_response.status_code == 302
     dataset.refresh_from_db()
     assert dataset.project is None
+
+
+def test_dataset_owner_can_assign_project_section_from_settings(auth_client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    dataset = create_ready_dataset(profile)
+    project = Project.objects.create(profile=profile, name="Rowset")
+    section = ProjectSection.objects.create(profile=profile, project=project, name="Blog")
+
+    response = auth_client.post(
+        reverse("dataset_update_project", args=[dataset.key]),
+        {"project_key": str(project.key), "section_key": str(section.key)},
+    )
+
+    assert response.status_code == 302
+    dataset.refresh_from_db()
+    assert dataset.project == project
+    assert dataset.section == section
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.DATASET_PROJECT_UPDATED)
+    assert mutation.metadata["section_name"] == "Blog"
+
+
+def test_dataset_project_settings_rejects_mismatched_section_with_message(auth_client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    dataset = create_ready_dataset(profile)
+    project = Project.objects.create(profile=profile, name="Rowset")
+    other_project = Project.objects.create(profile=profile, name="Other")
+    section = ProjectSection.objects.create(profile=profile, project=other_project, name="Blog")
+
+    response = auth_client.post(
+        reverse("dataset_update_project", args=[dataset.key]),
+        {"project_key": str(project.key), "section_key": str(section.key)},
+    )
+
+    assert response.status_code == 302
+    assert response.url == dataset.get_settings_url()
+    dataset.refresh_from_db()
+    assert dataset.project is None
+    assert dataset.section is None
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == "Project section not found."
+
+
+def test_dataset_project_settings_marks_section_options_by_project(auth_client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    dataset = create_ready_dataset(profile)
+    rowset_project = Project.objects.create(profile=profile, name="Rowset")
+    other_project = Project.objects.create(profile=profile, name="Other")
+    rowset_section = ProjectSection.objects.create(
+        profile=profile,
+        project=rowset_project,
+        name="Blog",
+    )
+    other_section = ProjectSection.objects.create(
+        profile=profile,
+        project=other_project,
+        name="Sales",
+    )
+
+    response = auth_client.get(dataset.get_settings_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'data-controller="dataset-project"' in content
+    assert 'data-dataset-project-target="projectSelect"' in content
+    assert 'data-action="change->dataset-project#syncSections"' in content
+    assert 'data-dataset-project-target="sectionSelect"' in content
+    assert f'value="{rowset_section.key}"' in content
+    assert f'data-project-key="{rowset_project.key}"' in content
+    assert "Rowset / Blog" in content
+    assert f'value="{other_section.key}"' in content
+    assert f'data-project-key="{other_project.key}"' in content
+    assert "Other / Sales" in content
 
 
 def test_dataset_owner_can_update_metadata_from_settings(auth_client, profile):

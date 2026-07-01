@@ -137,6 +137,59 @@ class ProjectSummaryOut(ProjectReferenceOut):
     archived_at: datetime | None = None
 
 
+class ProjectSectionReferenceOut(Schema):
+    key: str
+    name: str
+    description: str
+
+
+class ProjectSectionSummaryOut(ProjectSectionReferenceOut):
+    project: ProjectReferenceOut | None = None
+    metadata: dict[str, Any]
+    dataset_count: int
+    created_at: datetime
+    updated_at: datetime
+    archived_at: datetime | None = None
+
+
+class ProjectSectionListOut(Schema):
+    count: int
+    total_count: int
+    limit: int
+    offset: int
+    has_more: bool
+    sections: list[ProjectSectionSummaryOut]
+
+
+class ProjectSectionCreateIn(Schema):
+    name: str
+    description: str | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class ProjectSectionUpdateIn(Schema):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+
+
+class ProjectSectionCreateOut(Schema):
+    status: str
+    message: str
+    section: ProjectSectionSummaryOut
+
+
+class ProjectSectionUpdateOut(Schema):
+    status: str
+    message: str
+    section: ProjectSectionSummaryOut
+
+
+class ProjectSectionArchiveOut(Schema):
+    status: str
+    message: str
+    section: ProjectSectionSummaryOut
+
+
 class ProjectListOut(Schema):
     count: int
     total_count: int
@@ -192,6 +245,7 @@ class DatasetSummaryOut(Schema):
     instructions: str
     metadata: dict[str, Any]
     project: ProjectReferenceOut | None = None
+    section: ProjectSectionReferenceOut | None = None
     original_filename: str
     file_type: str
     status: str
@@ -221,10 +275,25 @@ class DatasetListOut(Schema):
     datasets: list[DatasetSummaryOut]
 
 
+class DatasetGroupItemsOut(Schema):
+    count: int
+    total_count: int
+    datasets: list[DatasetSummaryOut]
+
+
+class ProjectDatasetGroupOut(Schema):
+    label: str
+    section: ProjectSectionReferenceOut | None = None
+    dataset_count: int
+    datasets: DatasetGroupItemsOut
+
+
 class ProjectDetailOut(Schema):
     status: str
     message: str
     project: ProjectSummaryOut
+    sections: list[ProjectSectionSummaryOut]
+    dataset_groups: list[ProjectDatasetGroupOut]
     datasets: DatasetListOut
 
 
@@ -244,6 +313,7 @@ class DatasetCreateIn(Schema):
         description=COLUMN_TYPE_DESCRIPTION,
     )
     project_key: str | None = None
+    section_key: str | None = None
 
 
 class DatasetCreateOut(Schema):
@@ -320,6 +390,7 @@ class DatasetPublicPreviewOut(Schema):
 
 class DatasetProjectPatchIn(Schema):
     project_key: str | None = None
+    section_key: str | None = None
 
 
 class DatasetProjectOut(Schema):

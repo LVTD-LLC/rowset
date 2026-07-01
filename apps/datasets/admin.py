@@ -7,6 +7,7 @@ from apps.datasets.models import (
     DatasetMutation,
     DatasetRow,
     Project,
+    ProjectSection,
 )
 
 
@@ -18,12 +19,22 @@ class ProjectAdmin(admin.ModelAdmin):
     readonly_fields = ("key", "created_at", "updated_at")
 
 
+@admin.register(ProjectSection)
+class ProjectSectionAdmin(admin.ModelAdmin):
+    list_display = ("name", "project", "profile", "archived_at", "created_at")
+    list_select_related = ("project", "profile__user")
+    search_fields = ("name", "description", "project__name", "profile__user__email")
+    list_filter = ("project", "archived_at", "created_at")
+    readonly_fields = ("key", "created_at", "updated_at")
+
+
 @admin.register(Dataset)
 class DatasetAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "profile",
         "project",
+        "section",
         "status",
         "row_count",
         "public_enabled",
@@ -36,6 +47,7 @@ class DatasetAdmin(admin.ModelAdmin):
     list_select_related = (
         "profile__user",
         "project",
+        "section",
         "created_by_agent_api_key__profile__user",
         "updated_by_agent_api_key__profile__user",
         "archived_by_agent_api_key__profile__user",
@@ -46,6 +58,7 @@ class DatasetAdmin(admin.ModelAdmin):
         "instructions",
         "original_filename",
         "project__name",
+        "section__name",
         "profile__user__email",
         "created_by_agent_api_key__name",
         "updated_by_agent_api_key__name",
@@ -54,6 +67,7 @@ class DatasetAdmin(admin.ModelAdmin):
     list_filter = (
         "status",
         "project",
+        "section",
         "public_enabled",
         "archived_at",
         "created_by_agent_api_key",
