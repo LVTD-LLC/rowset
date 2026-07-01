@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- Added Rowset Pro billing copy/configuration for a single $50/month plan and enforced free-account dataset quotas through shared REST/MCP services.
 - Replaced inherited `AWS_*` media storage setup with explicit `ROWSET_ASSET_*` private dataset asset storage configuration for Cloudflare R2/S3-compatible storage.
 - Added Sentry request metrics for low-cardinality HTTP request counts and duration distributions, controlled by `SENTRY_ENABLE_METRICS`.
 - Tightened the copyable agent setup prompt, public `/SKILL.md`, and MCP docs with a concrete Codex/OpenClaw `codex mcp add ... --bearer-token-env-var ROWSET_API_KEY` setup path and first-run verification checklist.

@@ -165,8 +165,7 @@ This app uses Stripe Checkout for purchases and the Billing Portal for subscript
   - `STRIPE_SECRET_KEY`
   - `STRIPE_PUBLISHABLE_KEY` (optional, only needed for client-side Stripe.js)
   - `STRIPE_WEBHOOK_SECRET`
-  - `STRIPE_PRICE_ID_MONTHLY`
-  - `STRIPE_PRICE_ID_YEARLY`
+  - `STRIPE_PRICE_ID_ROWSET_PRO_MONTHLY`
   - `WEBHOOK_UUID` (optional, used to gate webhook URLs)
 - Enable the Billing Portal in the Stripe Dashboard and allow subscription updates and cancellations.
 - Create a webhook endpoint in the Stripe Dashboard:

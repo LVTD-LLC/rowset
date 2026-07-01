@@ -22,13 +22,12 @@
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="upgrade-heading" class="fb-section-title">Hosted billing</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Choose a hosted plan when you need managed infrastructure.</p>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Free accounts can have 2 datasets with 50 rows each. Upgrade for unlimited hosted datasets and rows.</p>
         </div>
       </div>
-      <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3" aria-label="Billing plans">
-        <a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" class="fb-button-primary">Monthly · $10/m</a>
-        <a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='yearly' %}" class="fb-button-secondary">Yearly · $100/y</a>
-        <a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='one-time' %}" class="fb-button-secondary">Lifetime · $500</a>
+      <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" aria-label="Billing plans">
+        <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Rowset Pro · $50/month</p>
+        <a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" class="fb-button-primary">Upgrade</a>
       </div>
     </section>
     {% endif %}
