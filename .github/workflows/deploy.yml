@@ -71,7 +71,7 @@ jobs:
         run: |
           # CapRover pulls this prebuilt image at deploy time; GHCR packages must be public
           # or the CapRover host must have a ghcr.io registry credential configured.
-          uv run --with caprover-api python - <<'PY'
+          uv run --with caprover-api==0.1.24 python - <<'PY'
           import json
           import os
           from caprover_api.caprover_api import CaproverAPI
