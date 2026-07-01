@@ -669,6 +669,45 @@ def test_read_only_agent_api_key_can_read_but_cannot_write(client, django_user_m
 
 
 @pytest.mark.django_db
+def test_agent_api_key_can_submit_feedback_through_rest(client, django_user_model):
+    from apps.core.choices import FeedbackSource
+    from apps.core.models import Feedback
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="feedbackapiuser",
+        email="feedbackapiuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(user.profile, "Feedback Agent", AgentApiKeyAccessLevel.READ)
+
+    response = client.post(
+        "/api/feedback",
+        data=json.dumps(
+            {
+                "feedback": "The MCP setup prompt should mention bearer-token env vars.",
+                "page": "mcp:setup",
+                "context": {"tool": "get_rowset_capabilities"},
+            }
+        ),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 201
+    feedback = Feedback.objects.get(profile=user.profile)
+    assert feedback.feedback == "The MCP setup prompt should mention bearer-token env vars."
+    assert feedback.page == "mcp:setup"
+    assert feedback.source == FeedbackSource.API
+    assert feedback.metadata == {"tool": "get_rowset_capabilities"}
+    assert feedback.agent_api_key == credential.agent_api_key
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["feedback"]["uuid"] == str(feedback.uuid)
+    assert payload["feedback"]["source"] == FeedbackSource.API
+
+
+@pytest.mark.django_db
 def test_legacy_profile_api_key_can_read_but_cannot_write(client, django_user_model):
     user = django_user_model.objects.create_user(
         username="legacyreadonlyapiuser",
