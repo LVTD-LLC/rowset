@@ -72,7 +72,7 @@ def test_checkout_session_passes_stripe_context(auth_client, profile, monkeypatc
         reverse("user_upgrade_checkout_session", args=[profile.user_id, "monthly"])
     )
 
-    assert response.status_code == 303
+    assert response.status_code == 302
     assert response["Location"] == "https://checkout.stripe.test/session"
     assert calls[0]["stripe_context"] == "acct_test"
 
@@ -97,7 +97,7 @@ def test_billing_portal_session_passes_stripe_context(auth_client, profile, monk
     assert calls == [
         {
             "customer": "cus_test",
-            "return_url": "http://testserver/",
+            "return_url": "http://testserver/home",
             "stripe_context": "acct_test",
         }
     ]
