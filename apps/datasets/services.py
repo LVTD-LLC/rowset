@@ -116,12 +116,12 @@ def project_section_dataset_groups(
             }
         )
 
-    if unsectioned_datasets:
-        dataset_count = (
-            unsectioned_dataset_count
-            if unsectioned_dataset_count is not None
-            else len(unsectioned_datasets)
-        )
+    dataset_count = (
+        unsectioned_dataset_count
+        if unsectioned_dataset_count is not None
+        else len(unsectioned_datasets)
+    )
+    if unsectioned_datasets or dataset_count:
         groups.append(
             {
                 "label": "Unsectioned",

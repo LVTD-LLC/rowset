@@ -5489,6 +5489,41 @@ def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(cl
     assert payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == str(second.key)
 
 
+def test_project_detail_api_includes_empty_page_unsectioned_group(client, profile):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    project = Project.objects.create(profile=profile, name="Rowset")
+    blog = ProjectSection.objects.create(profile=profile, project=project, name="Blog")
+    first = create_ready_dataset(profile)
+    first.name = "Signals"
+    first.project = project
+    first.save(update_fields=["name", "project"])
+    second = create_ready_dataset(profile)
+    second.name = "Inventory"
+    second.project = project
+    second.save(update_fields=["name", "project"])
+    sectioned = create_ready_dataset(profile)
+    sectioned.name = "Content ledger"
+    sectioned.project = project
+    sectioned.section = blog
+    sectioned.save(update_fields=["name", "project", "section"])
+
+    response = client.get(f"/api/projects/{project.key}?api_key={profile.key}&limit=1")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["datasets"]["count"] == 1
+    assert payload["datasets"]["datasets"][0]["key"] == str(sectioned.key)
+    assert payload["dataset_groups"][0]["label"] == "Blog"
+    assert payload["dataset_groups"][0]["dataset_count"] == 1
+    assert payload["dataset_groups"][0]["datasets"]["count"] == 1
+    assert payload["dataset_groups"][1]["label"] == "Unsectioned"
+    assert payload["dataset_groups"][1]["dataset_count"] == 2
+    assert payload["dataset_groups"][1]["datasets"]["count"] == 0
+    assert payload["dataset_groups"][1]["datasets"]["total_count"] == 2
+    assert payload["dataset_groups"][1]["datasets"]["datasets"] == []
+
+
 def test_dataset_api_rejects_invalid_project_assignment_dataset_key(client, profile):
     project = Project.objects.create(profile=profile, name="Customers")
 
