@@ -3,42 +3,42 @@ from types import SimpleNamespace
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
-from openai import OpenAIError
 
 from apps.datasets.embeddings import (
     EmbeddingProviderError,
     EmbeddingResult,
-    OpenAIEmbeddingProvider,
+    OpenRouterPydanticAIEmbeddingProvider,
     get_embedding_provider,
 )
 
 
-class FakeEmbeddingsClient:
+class FakePydanticAIEmbedder:
     def __init__(self, vectors, *, error=None):
         self.vectors = vectors
         self.error = error
         self.calls = []
 
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
+    def embed_query_sync(self, query):
+        self.calls.append(("query", query))
+        if self.error is not None:
+            raise self.error
+        return SimpleNamespace(embeddings=[self.vectors])
+
+    def embed_documents_sync(self, documents):
+        self.calls.append(("documents", documents))
         if self.error is not None:
             raise self.error
         vectors = self.vectors
         if vectors and not isinstance(vectors[0], list):
             vectors = [vectors]
-        return SimpleNamespace(data=[SimpleNamespace(embedding=vector) for vector in vectors])
+        return SimpleNamespace(embeddings=vectors)
 
 
-class FakeOpenAIClient:
-    def __init__(self, vector, *, error=None):
-        self.embeddings = FakeEmbeddingsClient(vector, error=error)
-
-
-def test_openai_embedding_provider_embeds_text_with_configured_model_and_dimensions():
-    client = FakeOpenAIClient([0.1, 0.2, 0.3])
-    provider = OpenAIEmbeddingProvider(
-        client=client,
-        model="text-embedding-3-small",
+def test_openrouter_embedding_provider_embeds_text_with_configured_model_and_dimensions():
+    embedder = FakePydanticAIEmbedder([0.1, 0.2, 0.3])
+    provider = OpenRouterPydanticAIEmbeddingProvider(
+        embedder=embedder,
+        model="openai/text-embedding-3-small",
         dimensions=3,
     )
 
@@ -46,22 +46,16 @@ def test_openai_embedding_provider_embeds_text_with_configured_model_and_dimensi
 
     assert result == EmbeddingResult(
         vector=[0.1, 0.2, 0.3],
-        model="text-embedding-3-small",
+        model="openai/text-embedding-3-small",
         dimensions=3,
     )
-    assert client.embeddings.calls == [
-        {
-            "model": "text-embedding-3-small",
-            "input": "Dataset: Tasks\nTitle: Add vector search",
-            "dimensions": 3,
-        }
-    ]
+    assert embedder.calls == [("query", "Dataset: Tasks\nTitle: Add vector search")]
 
 
-def test_openai_embedding_provider_rejects_dimension_mismatch():
-    provider = OpenAIEmbeddingProvider(
-        client=FakeOpenAIClient([0.1, 0.2]),
-        model="text-embedding-3-small",
+def test_openrouter_embedding_provider_rejects_dimension_mismatch():
+    provider = OpenRouterPydanticAIEmbeddingProvider(
+        embedder=FakePydanticAIEmbedder([0.1, 0.2]),
+        model="openai/text-embedding-3-small",
         dimensions=3,
     )
 
@@ -69,11 +63,11 @@ def test_openai_embedding_provider_rejects_dimension_mismatch():
         provider.embed_text("short text")
 
 
-def test_openai_embedding_provider_embeds_texts_in_one_request():
-    client = FakeOpenAIClient([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
-    provider = OpenAIEmbeddingProvider(
-        client=client,
-        model="text-embedding-3-small",
+def test_openrouter_embedding_provider_embeds_texts_in_one_request():
+    embedder = FakePydanticAIEmbedder([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+    provider = OpenRouterPydanticAIEmbeddingProvider(
+        embedder=embedder,
+        model="openai/text-embedding-3-small",
         dimensions=3,
     )
 
@@ -82,52 +76,57 @@ def test_openai_embedding_provider_embeds_texts_in_one_request():
     assert results == [
         EmbeddingResult(
             vector=[0.1, 0.2, 0.3],
-            model="text-embedding-3-small",
+            model="openai/text-embedding-3-small",
             dimensions=3,
         ),
         EmbeddingResult(
             vector=[0.4, 0.5, 0.6],
-            model="text-embedding-3-small",
+            model="openai/text-embedding-3-small",
             dimensions=3,
         ),
     ]
-    assert client.embeddings.calls == [
-        {
-            "model": "text-embedding-3-small",
-            "input": ["first row", "second row"],
-            "dimensions": 3,
-        }
-    ]
+    assert embedder.calls == [("documents", ["first row", "second row"])]
 
 
-def test_openai_embedding_provider_wraps_openai_errors():
-    provider = OpenAIEmbeddingProvider(
-        client=FakeOpenAIClient([], error=OpenAIError("network unavailable")),
-        model="text-embedding-3-small",
+def test_openrouter_embedding_provider_wraps_provider_errors():
+    provider = OpenRouterPydanticAIEmbeddingProvider(
+        embedder=FakePydanticAIEmbedder([], error=RuntimeError("network unavailable")),
+        model="openai/text-embedding-3-small",
         dimensions=3,
     )
 
-    with pytest.raises(EmbeddingProviderError, match="OpenAI embedding request failed"):
+    with pytest.raises(EmbeddingProviderError, match="OpenRouter embedding request failed"):
         provider.embed_text("short text")
 
 
 def test_get_embedding_provider_requires_vector_search_feature_flag():
-    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=False, OPENAI_API_KEY="sk-test"):
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=False, OPENROUTER_API_KEY="sk-test"):
         with pytest.raises(ImproperlyConfigured, match="ROWSET_VECTOR_SEARCH_ENABLED"):
             get_embedding_provider()
 
 
-def test_get_embedding_provider_requires_openai_api_key():
-    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True, OPENAI_API_KEY=""):
-        with pytest.raises(ImproperlyConfigured, match="OPENAI_API_KEY"):
+def test_get_embedding_provider_requires_openrouter_api_key():
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True, OPENROUTER_API_KEY=""):
+        with pytest.raises(ImproperlyConfigured, match="OPENROUTER_API_KEY"):
+            get_embedding_provider()
+
+
+def test_get_embedding_provider_requires_openrouter_base_url():
+    with override_settings(
+        ROWSET_VECTOR_SEARCH_ENABLED=True,
+        OPENROUTER_API_KEY="sk-test",
+        OPENROUTER_BASE_URL="",
+    ):
+        with pytest.raises(ImproperlyConfigured, match="OPENROUTER_BASE_URL"):
             get_embedding_provider()
 
 
 def test_get_embedding_provider_reuses_configured_provider():
     with override_settings(
         ROWSET_VECTOR_SEARCH_ENABLED=True,
-        OPENAI_API_KEY="sk-test-cache",
-        ROWSET_EMBEDDING_MODEL="text-embedding-3-small",
+        OPENROUTER_API_KEY="sk-test-cache",
+        OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
+        ROWSET_EMBEDDING_MODEL="openai/text-embedding-3-small",
         ROWSET_EMBEDDING_DIMENSIONS=3,
     ):
         first = get_embedding_provider()
@@ -139,16 +138,18 @@ def test_get_embedding_provider_reuses_configured_provider():
 def test_get_embedding_provider_refreshes_when_api_key_changes():
     with override_settings(
         ROWSET_VECTOR_SEARCH_ENABLED=True,
-        OPENAI_API_KEY="sk-test-cache-a",
-        ROWSET_EMBEDDING_MODEL="text-embedding-3-small",
+        OPENROUTER_API_KEY="sk-test-cache-a",
+        OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
+        ROWSET_EMBEDDING_MODEL="openai/text-embedding-3-small",
         ROWSET_EMBEDDING_DIMENSIONS=3,
     ):
         first = get_embedding_provider()
 
     with override_settings(
         ROWSET_VECTOR_SEARCH_ENABLED=True,
-        OPENAI_API_KEY="sk-test-cache-b",
-        ROWSET_EMBEDDING_MODEL="text-embedding-3-small",
+        OPENROUTER_API_KEY="sk-test-cache-b",
+        OPENROUTER_BASE_URL="https://openrouter.ai/api/v1",
+        ROWSET_EMBEDDING_MODEL="openai/text-embedding-3-small",
         ROWSET_EMBEDDING_DIMENSIONS=3,
     ):
         second = get_embedding_provider()

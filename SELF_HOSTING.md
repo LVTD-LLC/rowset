@@ -526,14 +526,18 @@ remains the canonical source of truth; Qdrant is a rebuildable retrieval index.
 
 **ROWSET_EMBEDDING_MODEL**
 - Embedding model used for dataset row vectors.
-- Defaults to `text-embedding-3-small`.
+- Defaults to `openai/text-embedding-3-small`.
 
 **ROWSET_EMBEDDING_DIMENSIONS**
 - Embedding dimension count. Do not mix incompatible dimensions in one collection.
 - Defaults to `1536`.
 
-**OPENAI_API_KEY**
-- OpenAI API key used for the configured embedding model.
+**OPENROUTER_BASE_URL**
+- OpenRouter API base URL used by PydanticAI embeddings.
+- Defaults to `https://openrouter.ai/api/v1`.
+
+**OPENROUTER_API_KEY**
+- OpenRouter API key used for the configured embedding model.
 - Required when vector search is enabled.
 
 After enabling vector search, backfill an existing ready dataset with:
