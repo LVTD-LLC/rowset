@@ -54,6 +54,12 @@ def stripe_request_options():
     return {}
 
 
+def stripe_redirect(url: str) -> HttpResponse:
+    response = redirect(url)
+    response.status_code = 303
+    return response
+
+
 def _serialize_created_agent_api_key(agent_api_key: AgentApiKey) -> dict:
     return {
         "uuid": str(agent_api_key.uuid),
@@ -542,7 +548,7 @@ def create_checkout_session(request, pk, plan):
         messages.error(request, "Unable to start checkout. Please try again.")
         return redirect("pricing")
 
-    return redirect(checkout_session.url, code=303)
+    return stripe_redirect(checkout_session.url)
 
 
 @login_required
@@ -569,7 +575,7 @@ def create_customer_portal_session(request):
         messages.error(request, "Unable to open the billing portal. Please try again.")
         return redirect("pricing")
 
-    return redirect(session.url, code=303)
+    return stripe_redirect(session.url)
 
 
 class AdminPanelView(UserPassesTestMixin, TemplateView):
