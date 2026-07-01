@@ -818,9 +818,24 @@ minimal CapRover bundle whose `captain-definition` points at the already-built
 - `ghcr.io/lvtd-llc/rowset:latest`
 - `ghcr.io/lvtd-llc/rowset-workers:latest`
 
-Each push to `main` also publishes a UTC date release tag such as
-`2026-07-01`, plus a `sha-<shortsha>` traceability tag. CapRover production uses
-`:latest`; public/self-hosted deployments can pin a date tag.
+Each push to `main` also publishes:
+
+- a UTC date alias such as `2026-07-01`
+- an immutable date-based release tag such as `2026-07-01.123`
+- a `sha-<shortsha>` traceability tag
+
+The plain date tag is a daily alias and can move if there is more than one
+release on the same UTC day. Pin the date-based release tag or the SHA tag for
+rollbacks and reproducible self-hosted deployments. CapRover production uses
+`:latest`.
+
+CapRover pulls the published `:latest` image from GHCR during deployment. Before
+switching production to these workflows, make sure either:
+
+- the `ghcr.io/lvtd-llc/rowset` and `ghcr.io/lvtd-llc/rowset-workers` packages
+  are public after their first publish, or
+- the CapRover host has a `ghcr.io` registry credential with package read access
+  configured.
 
 Required GitHub secrets:
 

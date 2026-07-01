@@ -30,6 +30,7 @@ jobs:
           owner_lc="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           echo "image_repository=ghcr.io/${owner_lc}/rowset-workers" >> "$GITHUB_OUTPUT"
           echo "release_date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          echo "release_version=$(date -u +%F).${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "short_sha=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -51,11 +52,14 @@ jobs:
           tags: |
             ${{ steps.image.outputs.image_repository }}:latest
             ${{ steps.image.outputs.image_repository }}:${{ steps.image.outputs.release_date }}
+            ${{ steps.image.outputs.image_repository }}:${{ steps.image.outputs.release_version }}
             ${{ steps.image.outputs.image_repository }}:sha-${{ steps.image.outputs.short_sha }}
 
       - name: Prepare CapRover deployment bundle
         run: |
           tmpdir="$(mktemp -d)"
+          # CapRover pulls this prebuilt image at deploy time; GHCR packages must be public
+          # or the CapRover host must have a ghcr.io registry credential configured.
           printf '{"schemaVersion":2,"imageName":"%s"}\n' "${{ steps.image.outputs.image_repository }}:latest" > "$tmpdir/captain-definition"
           tar -C "$tmpdir" -cf /tmp/rowset-workers.tar .
 

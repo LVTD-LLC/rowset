@@ -17,7 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
-- Production deploy workflows now build server and worker images in GitHub Actions, publish them to GHCR with `latest`, UTC date, and short-SHA tags, then deploy the prebuilt `latest` images to CapRover.
+- Production deploy workflows now build server and worker images in GitHub Actions, publish them to GHCR with `latest`, UTC date, date-run, and short-SHA tags, then deploy the prebuilt `latest` images to CapRover.
 - Added Rowset agent eval seeds, code tours, and task templates for common dataset, API, MCP, vector search, access, and public-preview work.
 - CI and `make ci-local` now run the scoped `ty` type-check baseline, with documented expansion guidance.
 - Added shared Rowset dataset test factories, split public-preview tests out of the large dataset test module, and added REST/MCP parity characterization tests for shared dataset behavior.
