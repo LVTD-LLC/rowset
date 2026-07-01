@@ -86,10 +86,10 @@ jobs:
           EOF
 
       - name: Migrations check
-        run: uv run python manage.py makemigrations --check --dry-run
+        run: make migrations-check CHECK_PYTHON_RUN="uv run python"
 
       - name: Django checks
-        run: uv run python manage.py check
+        run: make django-check CHECK_PYTHON_RUN="uv run python"
 
       - name: Pytest
-        run: uv run pytest -q
+        run: make test PYTEST_RUN="uv run pytest" -- -q

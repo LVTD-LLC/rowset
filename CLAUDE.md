@@ -16,6 +16,7 @@ vendor-neutral steering set:
 - Use `rg`/`rg --files` for search.
 - Keep views and MCP tools thin; put reusable behavior in services.
 - Run tests through `make test ...` instead of host `pytest`.
+- Use `docs/quality.md` for the local CI path and touched-area checks.
 - Never hand-write migrations. Use `make makemigrations`.
 - Ask before destructive data actions or anything that exposes credentials.
 - For docs under `apps/docs`, follow `apps/docs/AGENTS.md`.
