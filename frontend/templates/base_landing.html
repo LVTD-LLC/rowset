@@ -101,7 +101,6 @@
   </head>
 
   <body
-    hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'
     data-csrf-token="{{ csrf_token }}"
     {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}
   >
