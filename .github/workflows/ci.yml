@@ -100,6 +100,9 @@ jobs:
       - name: Pytest
         run: make test PYTEST_RUN="uv run pytest" -- -q
 
+      - name: High-risk coverage report
+        run: make coverage-high-risk COVERAGE_RUN="bash -c" -- apps/api apps/datasets apps/mcp_server -q
+
   frontend:
     runs-on: ubuntu-latest
 

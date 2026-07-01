@@ -5,11 +5,20 @@ CHECK_PYTHON_RUN ?= $(COMPOSE_TEST) run --rm backend python
 PYTEST_RUN ?= $(COMPOSE_TEST) run --rm backend pytest
 UV_RUN ?= uv run
 NPM ?= npm
+COVERAGE_RUN ?= $(COMPOSE_TEST) run --rm backend sh -c
+COVERAGE_PYTEST ?= uv run --with coverage coverage run --source=apps,rowset -m pytest
+COVERAGE_REPORT ?= uv run --with coverage coverage report -m
+HIGH_RISK_COVERAGE_FILES = \
+	apps/api/services.py \
+	apps/datasets/services.py \
+	apps/datasets/vector_search.py \
+	apps/mcp_server/server.py
 TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 
 .PHONY: \
 	ci-local \
 	coverage \
+	coverage-high-risk \
 	django-check \
 	format-check \
 	format-python \
@@ -73,7 +82,10 @@ type-check:
 	$(UV_RUN) ty check apps/core/capabilities.py apps/core/agent_skill.py rowset/utils.py rowset/logging_utils.py
 
 coverage:
-	$(COMPOSE_TEST) run --rm backend sh -c 'uv run --with coverage coverage run -m pytest $(TARGET_ARGS) && uv run --with coverage coverage report -m'
+	$(COVERAGE_RUN) '$(COVERAGE_PYTEST) $(TARGET_ARGS) && $(COVERAGE_REPORT)'
+
+coverage-high-risk:
+	$(COVERAGE_RUN) '$(COVERAGE_PYTEST) $(TARGET_ARGS) && $(COVERAGE_REPORT) $(HIGH_RISK_COVERAGE_FILES)'
 
 template-check:
 	$(UV_RUN) djlint frontend/templates --check

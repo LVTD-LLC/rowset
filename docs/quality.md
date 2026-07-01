@@ -44,7 +44,7 @@ follow-up tasks.
 | Shared dataset or API behavior | `make test apps/datasets/tests/test_csv_datasets.py apps/api/tests.py apps/mcp_server/tests/test_server.py` | Add focused `-k` filters while iterating |
 | Python imports, lint, or style | `make lint-python` | `make format-check`; use `make format-python` only for intentional formatting work |
 | Scoped low-noise typing | `make type-check` | Expand the typed scope only in focused type-checking work |
-| Coverage visibility | `make coverage -- <pytest args>` | Use on high-risk modules; coverage output is a map, not a global target |
+| Coverage visibility | `make coverage -- <pytest args>` | Use `make coverage-high-risk -- <pytest args>` for the CI hotspot report; see [coverage.md](coverage.md) |
 | Templates | `make template-check` | Run focused Django template-loading tests if rendering behavior changed |
 | Frontend JavaScript or assets | `make frontend-install`, then `make frontend-check` | Run `make frontend-lint` or `make frontend-build` separately while iterating |
 | Docs-only changes | Check the rendered docs path when UI rendering changed | No backend test run is required for prose-only edits |
