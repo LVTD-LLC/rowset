@@ -478,7 +478,7 @@ class DatasetSearchResultOut(Schema):
 class DatasetSearchOut(Schema):
     dataset: str
     query: str
-    filters: dict[str, str] = Field(default_factory=dict)
+    filters: dict[str, Any] = Field(default_factory=dict)
     limit: int
     count: int
     results: list[DatasetSearchResultOut]

@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -25,6 +27,25 @@ from apps.datasets.vector_tasks import enqueue_vector_task
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+VECTOR_ROW_DELETE_TASK_BATCH_SIZE = 1000
+
+
+def _enqueue_stale_row_vector_deletes(dataset_id: int, row_ids: Iterable[int]) -> int:
+    stale_row_count = 0
+    batch = []
+    for row_id in row_ids:
+        stale_row_count += 1
+        batch.append(int(row_id))
+        if len(batch) < VECTOR_ROW_DELETE_TASK_BATCH_SIZE:
+            continue
+
+        enqueue_vector_task("apps.datasets.tasks.delete_dataset_row_vectors", dataset_id, batch)
+        batch = []
+
+    if batch:
+        enqueue_vector_task("apps.datasets.tasks.delete_dataset_row_vectors", dataset_id, batch)
+
+    return stale_row_count
 
 
 def _ensure_index_config(dataset: Dataset) -> None:
@@ -70,7 +91,12 @@ def import_dataset_rows(dataset_id: int) -> None:
         ]
 
         with transaction.atomic():
-            stale_row_ids = list(dataset.rows.values_list("id", flat=True))
+            stale_row_count = _enqueue_stale_row_vector_deletes(
+                dataset.id,
+                dataset.rows.values_list("id", flat=True).iterator(
+                    chunk_size=VECTOR_ROW_DELETE_TASK_BATCH_SIZE
+                ),
+            )
             dataset.rows.all().delete()
             DatasetRow.objects.bulk_create(rows, batch_size=1000)
             dataset.row_count = len(rows)
@@ -93,9 +119,13 @@ def import_dataset_rows(dataset_id: int) -> None:
             enqueue_vector_task(
                 "apps.datasets.tasks.reindex_dataset_vectors_task",
                 dataset.id,
-                stale_row_ids,
             )
-        logger.info("Finished CSV dataset import", dataset_id=dataset.id, row_count=len(rows))
+        logger.info(
+            "Finished CSV dataset import",
+            dataset_id=dataset.id,
+            row_count=len(rows),
+            stale_row_count=stale_row_count,
+        )
     except Exception as exc:
         dataset.status = DatasetStatus.FAILED
         dataset.parse_error = str(exc)
