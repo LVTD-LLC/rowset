@@ -548,7 +548,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.print_rowset_schema and not args.seed_id:
+    if args.print_rowset_schema:
         print(json.dumps(rowset_eval_result_schema_payload(), indent=2))
         return 0
 

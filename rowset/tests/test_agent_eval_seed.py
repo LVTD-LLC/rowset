@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import subprocess
 import sys
 from io import BytesIO
 from pathlib import Path
@@ -141,3 +142,25 @@ def test_write_rowset_eval_result_row_reports_connection_failures_cleanly(monkey
         assert "Unable to reach Rowset API: connection refused" in str(exc)
     else:
         raise AssertionError("Expected RowsetApiError")
+
+
+def test_print_rowset_schema_takes_precedence_over_seed_run(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT_PATH),
+            "EVAL-001",
+            "--print-rowset-schema",
+            "--runs-dir",
+            str(tmp_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = json.loads(result.stdout)
+
+    assert payload["index_column"] == "run_id"
+    assert payload["metadata"]["dataset_kind"] == "agent_eval_results"
+    assert list(tmp_path.iterdir()) == []
