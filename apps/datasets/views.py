@@ -910,25 +910,95 @@ def _row_form_values(dataset: Dataset, source) -> dict[str, str]:
     return {header: _cell_value(source.get(header, "")) for header in dataset.headers}
 
 
+def _row_form_input_type(column_type: str) -> str:
+    return {
+        DatasetColumnType.DATE: "date",
+        DatasetColumnType.DATETIME: "datetime-local",
+        DatasetColumnType.EMAIL: "email",
+        DatasetColumnType.INTEGER: "number",
+        DatasetColumnType.NUMBER: "number",
+        DatasetColumnType.CURRENCY: "number",
+        DatasetColumnType.URL: "url",
+    }.get(column_type, "text")
+
+
+def _row_form_number_step(column_type: str) -> str:
+    if column_type == DatasetColumnType.INTEGER:
+        return "1"
+    if column_type in {DatasetColumnType.NUMBER, DatasetColumnType.CURRENCY}:
+        return "any"
+    return ""
+
+
+def _row_form_input_mode(column_type: str) -> str:
+    if column_type == DatasetColumnType.INTEGER:
+        return "numeric"
+    if column_type in {DatasetColumnType.NUMBER, DatasetColumnType.CURRENCY}:
+        return "decimal"
+    return ""
+
+
+def _row_form_choice_options(column: dict[str, object], value: str) -> list[dict[str, object]]:
+    return [
+        {
+            "value": choice,
+            "selected": choice == value,
+        }
+        for choice in column.get("choices", [])
+    ]
+
+
+def _row_form_boolean_options(value: str) -> list[dict[str, object]]:
+    normalized_value = value.lower()
+    return [
+        {
+            "value": "true",
+            "label": "True",
+            "selected": normalized_value == "true",
+        },
+        {
+            "value": "false",
+            "label": "False",
+            "selected": normalized_value == "false",
+        },
+    ]
+
+
 def _row_form_fields(
     dataset: Dataset,
     form_values: dict[str, str],
     *,
     prefix: str,
 ) -> list[dict[str, object]]:
-    return [
-        {
-            "header": column["name"],
-            "description": column["description"],
-            "type_label": column["type_label"],
-            "value": form_values.get(column["name"], ""),
-            "input_id": f"{prefix}-{index}",
-            "is_index": column["name"] == dataset.index_column,
-            "is_managed_index": dataset.index_generated
-            and column["name"] == dataset.index_column,
-        }
-        for index, column in enumerate(column_definitions(dataset.headers, dataset.column_schema))
-    ]
+    fields = []
+    for index, column in enumerate(column_definitions(dataset.headers, dataset.column_schema)):
+        column_type = column["type"]
+        value = form_values.get(column["name"], "")
+        is_index = column["name"] == dataset.index_column
+        fields.append(
+            {
+                "header": column["name"],
+                "description": column["description"],
+                "type": column_type,
+                "type_label": column["type_label"],
+                "value": value,
+                "input_id": f"{prefix}-{index}",
+                "input_type": _row_form_input_type(column_type),
+                "input_step": _row_form_number_step(column_type),
+                "input_mode": _row_form_input_mode(column_type),
+                "is_index": is_index,
+                "is_managed_index": dataset.index_generated
+                and column["name"] == dataset.index_column,
+                "is_boolean": column_type == DatasetColumnType.BOOLEAN,
+                "is_choice": column_type == DatasetColumnType.CHOICE,
+                "is_image": column_type == DatasetColumnType.IMAGE,
+                "is_textarea": column_type == DatasetColumnType.TEXT and not is_index,
+                "choices": _row_form_choice_options(column, value),
+                "boolean_options": _row_form_boolean_options(value),
+            }
+        )
+    return fields
+
 
 
 def _row_create_data(dataset: Dataset, post_data) -> dict[str, str]:
