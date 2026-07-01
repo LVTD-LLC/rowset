@@ -66,6 +66,8 @@ Implementation:
 - Move one coherent behavior group at a time.
 - Prefer shared factories over copying setup blocks.
 - Do not mix behavior changes into a test split.
+- Do not combine a test split with broad formatting, CI gate changes, or service
+  refactors.
 
 Verification:
 - `make test -- <moved test file> <old test file> -q`
@@ -111,9 +113,13 @@ Implementation:
 - Keep local and CI commands aligned.
 - Prefer small, actionable scopes over noisy whole-repo gates.
 - Document expansion rules before enforcing new checks.
+- Keep mechanical command wiring separate from unrelated fixture rewrites or
+  runtime behavior changes.
 
 Verification:
 - Run the new command locally.
+- Run `make quality-drift-check` when the command should appear in local CI,
+  GitHub Actions, or this quality matrix.
 - Parse `.github/workflows/ci.yml`.
 - Run `make lint-python` and `make format-check`.
 ```
@@ -132,6 +138,8 @@ Implementation:
 - Keep docs task-oriented.
 - Name files to inspect, commands to run, and common footguns.
 - Link from AGENTS.md or the nearest index when the doc is a new entry point.
+- Keep process-only docs separate from service refactors unless they document
+  the same changed command or behavior.
 
 Verification:
 - Check links and commands manually.
