@@ -35,6 +35,18 @@ cleanup_backend_runs() {
 
 reset_test_database() {
   "${COMPOSE_TEST[@]}" up -d db >/dev/null
+
+  for attempt in {1..30}; do
+    if "${COMPOSE_TEST[@]}" exec -T db pg_isready -U rowset -d postgres >/dev/null; then
+      break
+    fi
+    if [[ "$attempt" -eq 30 ]]; then
+      printf "Postgres did not become ready after 30 seconds.\n" >&2
+      exit 1
+    fi
+    sleep 1
+  done
+
   "${COMPOSE_TEST[@]}" exec -T db psql -U rowset -d postgres -v ON_ERROR_STOP=1 <<'SQL'
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
