@@ -1450,6 +1450,24 @@ def test_dataset_detail_falls_back_for_malformed_rowset_row_urls(
     assert "Rowset row" not in content
 
 
+def test_dataset_detail_ignores_invalid_ipv6_rowset_url_candidates(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    raw_url = "https://[rowset.lvtd.dev/datasets/5f250d73-2a70-414e-826e-271e28837f28/"
+    row = dataset.rows.first()
+    row.data["name"] = raw_url
+    row.save(update_fields=["data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert raw_url in content
+    assert "Rowset dataset" not in content
+
+
 def test_dataset_detail_falls_back_for_unsupported_rowset_row_subpaths(
     auth_client,
     profile,

@@ -45,6 +45,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Google signup/login now asks only for basic profile/email access.
 
 ### Fixed
+- Dataset detail pages now ignore malformed Rowset-looking URL values that Python parses as invalid IPv6 URLs instead of failing the page render.
 - Generated-index row patches now accept an unchanged generated index value, avoiding validation failures when agents send full-row update payloads.
 - Local CI backend checks now run with DB/Redis dependencies only, avoiding frontend container churn between backend test groups.
 - The Ruff lint baseline now passes by applying mechanical import and pyupgrade fixes and documenting two existing complexity exceptions.

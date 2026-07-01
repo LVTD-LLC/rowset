@@ -164,16 +164,23 @@ def _normalized_rowset_href(value: str, request=None) -> tuple[str, ParseResult]
         return None
 
     if raw_value.startswith("/"):
-        parsed = urlparse(raw_value)
+        try:
+            parsed = urlparse(raw_value)
+        except ValueError:
+            return None
         if parsed.scheme or parsed.netloc:
             return None
         return raw_value, parsed
 
     href = raw_value if "://" in raw_value else f"https://{raw_value}"
-    parsed = urlparse(href)
-    if parsed.scheme not in ROWSET_LINK_SCHEMES or not parsed.hostname:
+    try:
+        parsed = urlparse(href)
+        hostname = parsed.hostname
+    except ValueError:
         return None
-    if parsed.hostname.lower() not in _rowset_link_hosts(request):
+    if parsed.scheme not in ROWSET_LINK_SCHEMES or not hostname:
+        return None
+    if hostname.lower() not in _rowset_link_hosts(request):
         return None
     return href, parsed
 
