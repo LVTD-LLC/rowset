@@ -8,7 +8,10 @@ import RevealController from '@stimulus-components/reveal';
 
 const application = Application.start();
 
-const context = require.context("../controllers", true, /\.js$/);
+const context = import.meta.webpackContext("../controllers", {
+  recursive: true,
+  regExp: /\.js$/,
+});
 application.load(definitionsFromContext(context));
 
 application.register('dropdown', Dropdown);

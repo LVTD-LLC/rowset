@@ -1,4 +1,3 @@
-/* global Map */
 import { Controller } from "@hotwired/stimulus";
 
 const DEFAULT_TIMEOUT_MS = 8000;

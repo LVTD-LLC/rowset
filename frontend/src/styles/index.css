@@ -340,13 +340,9 @@
 /* Keep fenced docs blocks readable over Tailwind Typography defaults. */
 .docs-code-blocks pre,
 .docs-code-blocks pre code {
+  background-color: var(--rs-code-bg) !important;
   color: var(--rs-code-text) !important;
   opacity: 1 !important;
-}
-
-.docs-code-blocks pre,
-.docs-code-blocks pre code {
-  background-color: var(--rs-code-bg) !important;
 }
 
 .docs-code-blocks pre code {
