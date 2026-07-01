@@ -3,6 +3,7 @@
     !(function (t, e) {
       var o, n, p, r;
       e.__SV ||
+        (window.posthog && window.posthog.__loaded) ||
         ((window.posthog = e),
         (e._i = []),
         (e.init = function (i, s, a) {
@@ -50,7 +51,7 @@
       api_host: "https://us.i.posthog.com",
       autocapture: false,
       capture_pageview: false,
-      defaults: "2025-05-24",
+      defaults: "2026-05-30",
       person_profiles: "identified_only",
     });
     {% if posthog_distinct_id %}

@@ -302,7 +302,9 @@ class TestHomeView:
         assert 'posthog.init("phc_test"' in content
         assert "autocapture: false" in content
         assert "capture_pageview: false" in content
+        assert 'defaults: "2026-05-30"' in content
         assert 'person_profiles: "identified_only"' in content
+        assert "window.posthog && window.posthog.__loaded" in content
         assert f'posthog.identify("{profile.id}"' in content
         assert f'email: "{profile.user.email}"' in content
         assert "posthog.reset();" not in content
