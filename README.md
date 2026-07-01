@@ -422,6 +422,9 @@ REST export endpoints include:
 - `GET /api/datasets/{dataset_key}/export.xlsx`
 - `GET /api/datasets/{dataset_key}/export.sqlite`
 
+Parquet export is available from the authenticated dashboard export menu, not
+through the REST API endpoints above.
+
 ## Architecture
 
 ### Directory structure
