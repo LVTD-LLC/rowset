@@ -1115,6 +1115,22 @@ def _choice_cell_value(value) -> str:
     return str(value)
 
 
+def _choice_value_match_key(value: str) -> str:
+    normalized = re.sub(r"[\s_-]+", " ", value.strip()).strip()
+    return normalized.casefold()
+
+
+def _canonical_choice_value(value: str, choices: list[str]) -> str | None:
+    if value in choices:
+        return value
+
+    match_key = _choice_value_match_key(value)
+    matches = [choice for choice in choices if _choice_value_match_key(choice) == match_key]
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
 def choice_constraints_from_schema(
     headers: list[str],
     column_schema: dict | None,
@@ -1135,7 +1151,7 @@ def choice_constraints_from_schema(
     return constraints
 
 
-def validate_choice_row_values(
+def validate_and_canonicalize_choice_row_values(
     headers: list[str],
     column_schema: dict | None,
     row_data: dict,
@@ -1143,6 +1159,7 @@ def validate_choice_row_values(
     columns: list[str] | set[str] | None = None,
     choice_constraints: dict[str, list[str]] | None = None,
 ) -> None:
+    """Validate choice values and mutate row_data to store canonical schema labels."""
     constraints = choice_constraints
     if constraints is None:
         constraints = choice_constraints_from_schema(headers, column_schema)
@@ -1153,9 +1170,29 @@ def validate_choice_row_values(
         value = _choice_cell_value(row_data.get(header, ""))
         if value == "":
             continue
-        if value not in choices:
+        canonical_value = _canonical_choice_value(value, choices)
+        if canonical_value is None:
             allowed = ", ".join(choices)
             raise CSVParseError(f"Column '{header}' must be blank or one of: {allowed}.")
+        row_data[header] = canonical_value
+
+
+def validate_choice_row_values(
+    headers: list[str],
+    column_schema: dict | None,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    choice_constraints: dict[str, list[str]] | None = None,
+) -> None:
+    """Backward-compatible alias for choice validation with canonicalization."""
+    validate_and_canonicalize_choice_row_values(
+        headers,
+        column_schema,
+        row_data,
+        columns=columns,
+        choice_constraints=choice_constraints,
+    )
 
 
 def invalid_choice_values_by_column(
@@ -1171,7 +1208,7 @@ def invalid_choice_values_by_column(
     for row_data in rows:
         for header, choices in choice_columns.items():
             value = _choice_cell_value((row_data or {}).get(header, ""))
-            if value and value not in choices:
+            if value and _canonical_choice_value(value, choices) is None:
                 invalid_values[header].add(value)
 
     return {header: values for header, values in invalid_values.items() if values}
