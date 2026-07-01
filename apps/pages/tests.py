@@ -138,6 +138,7 @@ def test_use_cases_index_lists_public_use_case_pages(client):
     assert "Agent workflows that start as structured rows." in content
     assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
     assert reverse("use_case_detail", kwargs={"slug": "agent-task-board"}) in content
+    assert reverse("use_case_detail", kwargs={"slug": "agent-eval-tracking"}) in content
     assert "product-inventory-catalog" in content
 
 

@@ -85,6 +85,36 @@ USE_CASE_PAGE_COPY: dict[str, UseCasePageCopy] = {
             ("Close", "Completed tasks stay searchable for review."),
         ),
     ),
+    "agent_eval_results": UseCasePageCopy(
+        slug="agent-eval-tracking",
+        eyebrow="Agent eval tracking",
+        hero_title="Track agent eval runs as private Rowset rows.",
+        meta_description=(
+            "Use Rowset to record agent-eval runs, checks, changed files, results, "
+            "failure modes, and follow-up notes without storing secrets or full logs."
+        ),
+        short_summary=(
+            "Keep eval results durable and comparable so agents and humans can see "
+            "which seeds pass, fail, or need follow-up over time."
+        ),
+        example_name="agent_eval_results",
+        index_column="run_id",
+        sample_rows=(
+            ("sample-dry-run-eval-001", "dry_run", "EVAL-001 scaffolded"),
+            ("20260701T231500Z-eval-004", "fail", "Preview password test failed"),
+            ("20260702T090000Z-eval-010", "pass", "Quality gate drift fixed"),
+        ),
+        agent_actions=(
+            "Create the eval-results dataset from the harness schema.",
+            "Upsert each run by stable run_id after checks complete.",
+            "Summarize failures without storing secrets, private data, or full logs.",
+        ),
+        workflow_steps=(
+            ("Prepare", "The harness creates a structured run artifact for one seed."),
+            ("Record", "It writes or refreshes the matching Rowset row by run_id."),
+            ("Compare", "Agents search prior runs to spot repeated failure modes."),
+        ),
+    ),
     "feedback_triage": UseCasePageCopy(
         slug="feedback-triage",
         eyebrow="Feedback triage",
