@@ -4,6 +4,7 @@ from typing import Any
 from ninja import Schema
 from pydantic import Field
 
+from apps.api.row_contracts import RowData, RowFilterOperators, RowFilters
 from apps.api.services import MAX_API_DATASET_CREATE_ROWS
 from apps.blog.choices import BlogPostStatus
 from apps.core.choices import AgentApiKeyAccessLevel
@@ -465,11 +466,11 @@ class DatasetArchiveOut(Schema):
 
 
 class DatasetRowIn(Schema):
-    data: dict[str, str]
+    data: RowData
 
 
 class DatasetRowPatchIn(Schema):
-    data: dict[str, str]
+    data: RowData
 
 
 class DatasetAssetOut(Schema):
@@ -503,7 +504,7 @@ class DatasetRowOut(Schema):
     id: int
     row_number: int
     index_value: str
-    data: dict[str, str]
+    data: RowData
     assets: list[DatasetAssetOut] = Field(default_factory=list)
 
 
@@ -544,7 +545,7 @@ class DatasetRowsOut(Schema):
     offset: int
     has_more: bool
     query: str
-    filters: dict[str, str] = Field(default_factory=dict)
+    filters: RowFilters = Field(default_factory=dict)
     sort: str
     direction: str
     rows: list[DatasetRowOut]
@@ -566,7 +567,7 @@ class DatasetSearchResultOut(Schema):
 class DatasetSearchOut(Schema):
     dataset: str
     query: str
-    filters: dict[str, Any] = Field(default_factory=dict)
+    filters: RowFilters = Field(default_factory=dict)
     limit: int
     count: int
     results: list[DatasetSearchResultOut]
@@ -644,8 +645,8 @@ class ProfileRowSearchResultOut(Schema):
 
 class ProfileRowSearchOut(Schema):
     query: str
-    filters: dict[str, Any] = Field(default_factory=dict)
-    filter_operators: dict[str, Any] = Field(default_factory=dict)
+    filters: RowFilters = Field(default_factory=dict)
+    filter_operators: RowFilterOperators = Field(default_factory=dict)
     dataset_filters: dict[str, Any] = Field(default_factory=dict)
     sort: str
     direction: str

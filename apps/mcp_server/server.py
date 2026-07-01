@@ -7,6 +7,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from pydantic import Field
 
+from apps.api.row_contracts import RowData, RowFilterOperators, RowFilters
 from apps.api.services import (
     MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
@@ -1576,7 +1577,7 @@ def list_dataset_rows(
         Field(default=None, description="Optional text to search across row values."),
     ] = None,
     filters: Annotated[
-        dict[str, str] | None,
+        RowFilters | None,
         Field(
             default=None,
             description=(
@@ -1626,7 +1627,7 @@ def list_dataset_rows(
 def search_rows(
     query: Annotated[str, Field(description="Natural language or keyword search text.")],
     filters: Annotated[
-        dict[str, str] | None,
+        RowFilters | None,
         Field(
             default=None,
             description=(
@@ -1636,7 +1637,7 @@ def search_rows(
         ),
     ] = None,
     filter_operators: Annotated[
-        dict[str, str] | None,
+        RowFilterOperators | None,
         Field(
             default=None,
             description=(
@@ -1719,7 +1720,7 @@ def search_dataset_rows(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     query: Annotated[str, Field(description="Search text to match semantically and exactly.")],
     filters: Annotated[
-        dict[str, str] | None,
+        RowFilters | None,
         Field(
             default=None,
             description="Optional mapping from dataset header to canonical row filter value.",
@@ -1782,7 +1783,7 @@ def get_dataset_row_by_index(
 )
 def create_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
-    data: Annotated[dict[str, str], Field(description="Row values keyed by dataset header.")],
+    data: Annotated[RowData, Field(description="Row values keyed by dataset header.")],
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
@@ -1885,7 +1886,7 @@ def get_dataset_image_asset(
 def update_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     row_id: Annotated[int, Field(ge=1, description="Internal Rowset row id.")],
-    data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
+    data: Annotated[RowData, Field(description="Header values to update on the row.")],
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
@@ -1908,7 +1909,7 @@ def update_dataset_row(
 def update_dataset_row_by_index(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     index_value: Annotated[str, Field(description="Value from the dataset index column.")],
-    data: Annotated[dict[str, str], Field(description="Header values to update on the row.")],
+    data: Annotated[RowData, Field(description="Header values to update on the row.")],
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
