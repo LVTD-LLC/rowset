@@ -38,7 +38,7 @@ dependencies = [
 
     "django-mjml>=1.5",
 
-    "openai>=2.44.0",
+    "pydantic-ai-slim[openai]>=2.2.0",
     "qdrant-client>=1.18.0",
 
     "logfire>=4.37.0",

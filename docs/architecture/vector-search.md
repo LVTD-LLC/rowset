@@ -76,7 +76,8 @@ Rowset indexes rows after canonical writes commit:
 5. The worker fetches the canonical row and dataset.
 6. The worker renders deterministic search text from the dataset name, index
    column, headers, column descriptions, and row values.
-7. The embedding provider returns a vector with model and dimensions metadata.
+7. The PydanticAI embedding provider calls OpenRouter and returns a vector with
+   model and dimensions metadata.
 8. Qdrant upserts the point into the configured collection.
 
 Indexing failures are logged by workers and do not roll back Rowset writes.
@@ -109,7 +110,8 @@ returned.
 
 1. REST or MCP authenticates the caller and resolves one ready dataset owned by
    the caller.
-2. Rowset embeds the query with the configured embedding provider.
+2. Rowset embeds the query with the configured PydanticAI/OpenRouter embedding
+   provider.
 3. Qdrant receives dense vector search with server-derived payload filters for
    app, content type, profile, dataset, ready status, and non-archived state.
 4. Rowset runs canonical lexical row search and row filters in Postgres.

@@ -337,6 +337,88 @@ def configure_datetime_dataset(dataset):
     return dataset
 
 
+TYPED_ROW_HEADERS = [
+    "row_id",
+    "status",
+    "active",
+    "due_on",
+    "scheduled_at",
+    "count",
+    "score",
+    "budget",
+    "contact",
+    "website",
+    "related_dataset",
+    "notes",
+    "photo",
+]
+
+
+def typed_row_data(**overrides):
+    data = {
+        "row_id": "ROW-1",
+        "status": "Backlog",
+        "active": "true",
+        "due_on": "2026-07-01",
+        "scheduled_at": "2026-07-01T09:30",
+        "count": "2",
+        "score": "9.5",
+        "budget": "120.00",
+        "contact": "ada@example.com",
+        "website": "https://example.com",
+        "related_dataset": "",
+        "notes": "Initial row",
+        "photo": "",
+    }
+    data.update(overrides)
+    return data
+
+
+def typed_row_post_data(**overrides):
+    data = typed_row_data(**overrides)
+    data.pop("photo")
+    return data
+
+
+def create_typed_row_dataset(profile):
+    row_data = typed_row_data()
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Typed rows",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=TYPED_ROW_HEADERS,
+        index_column="row_id",
+        row_count=1,
+        column_schema={
+            "row_id": {"type": DatasetColumnType.TEXT},
+            "status": {
+                "type": DatasetColumnType.CHOICE,
+                "choices": ["Backlog", "Doing", "Done"],
+            },
+            "active": {"type": DatasetColumnType.BOOLEAN},
+            "due_on": {"type": DatasetColumnType.DATE},
+            "scheduled_at": {"type": DatasetColumnType.DATETIME},
+            "count": {"type": DatasetColumnType.INTEGER},
+            "score": {"type": DatasetColumnType.NUMBER},
+            "budget": {"type": DatasetColumnType.CURRENCY},
+            "contact": {"type": DatasetColumnType.EMAIL},
+            "website": {"type": DatasetColumnType.URL},
+            "related_dataset": {"type": DatasetColumnType.REFERENCE},
+            "notes": {"type": DatasetColumnType.TEXT},
+            "photo": {"type": DatasetColumnType.IMAGE},
+        },
+    )
+    DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ROW-1",
+        data=row_data,
+    )
+    return dataset
+
+
 def add_invalid_datetime_row(dataset):
     DatasetRow.objects.bulk_create(
         [
@@ -1871,6 +1953,127 @@ def test_dataset_row_create_view_creates_row(auth_client, profile):
     assert dataset.row_count == 3
     assert row.data == {"name": "Katherine", "email": "kat@example.com"}
     assert dataset.mutations.filter(mutation_type=DatasetMutationType.ROW_CREATED).exists()
+
+
+def test_dataset_row_create_view_renders_schema_specific_inputs(auth_client, profile):
+    dataset = create_typed_row_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_row_create", args=[dataset.key]))
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    fields = {field["header"]: field for field in response.context["row_form_fields"]}
+    assert fields["row_id"]["input_type"] == "text"
+    assert fields["row_id"]["is_textarea"] is False
+    assert fields["status"]["is_choice"] is True
+    assert [choice["value"] for choice in fields["status"]["choices"]] == [
+        "Backlog",
+        "Doing",
+        "Done",
+    ]
+    assert fields["active"]["is_boolean"] is True
+    assert fields["due_on"]["input_type"] == "date"
+    assert fields["scheduled_at"]["input_type"] == "datetime-local"
+    assert fields["count"]["input_type"] == "number"
+    assert fields["count"]["input_step"] == "1"
+    assert fields["count"]["input_mode"] == "numeric"
+    assert fields["score"]["input_step"] == "any"
+    assert fields["budget"]["input_step"] == "any"
+    assert fields["contact"]["input_type"] == "email"
+    assert fields["website"]["input_type"] == "url"
+    assert fields["related_dataset"]["input_type"] == "text"
+    assert fields["notes"]["is_textarea"] is True
+    assert fields["photo"]["is_image"] is True
+    assert 'name="status"' in content
+    assert 'value="Doing"' in content
+    assert 'name="active"' in content
+    assert 'value="false"' in content
+    assert 'name="due_on"' in content
+    assert 'type="date"' in content
+    assert 'name="scheduled_at"' in content
+    assert 'type="datetime-local"' in content
+    assert 'name="count"' in content
+    assert 'step="1"' in content
+    assert 'name="score"' in content
+    assert 'step="any"' in content
+    assert 'name="contact"' in content
+    assert 'type="email"' in content
+    assert 'name="website"' in content
+    assert 'type="url"' in content
+    assert "Image assets can be attached after the row is created." in content
+
+
+def test_dataset_row_create_view_creates_row_from_schema_specific_inputs(
+    auth_client,
+    profile,
+):
+    dataset = create_typed_row_dataset(profile)
+
+    response = auth_client.post(
+        reverse("dataset_row_create", args=[dataset.key]),
+        data=typed_row_post_data(
+            row_id="ROW-2",
+            status="Doing",
+            active="false",
+            count="3",
+            score="9.75",
+            budget="250.50",
+            contact="grace@example.com",
+            website="https://example.com/grace",
+            notes="Follow up\nSend recap",
+        ),
+    )
+
+    row = dataset.rows.get(index_value="ROW-2")
+    assert response.status_code == 302
+    assert response.url == row.get_absolute_url()
+    assert row.data == {
+        "row_id": "ROW-2",
+        "status": "Doing",
+        "active": "false",
+        "due_on": "2026-07-01",
+        "scheduled_at": "2026-07-01T09:30",
+        "count": "3",
+        "score": "9.75",
+        "budget": "250.50",
+        "contact": "grace@example.com",
+        "website": "https://example.com/grace",
+        "related_dataset": "",
+        "notes": "Follow up\nSend recap",
+        "photo": "",
+    }
+
+
+def test_dataset_row_create_view_rerenders_schema_specific_values_on_error(
+    auth_client,
+    profile,
+):
+    dataset = create_typed_row_dataset(profile)
+
+    response = auth_client.post(
+        reverse("dataset_row_create", args=[dataset.key]),
+        data=typed_row_post_data(
+            status="Doing",
+            active="false",
+            count="3",
+            score="9.75",
+            budget="250.50",
+            contact="grace@example.com",
+            website="https://example.com/grace",
+            notes="Follow up",
+        ),
+    )
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Row with index" in content
+    assert '<option value="Doing" selected>Doing</option>' in content
+    assert '<option value="false" selected>False</option>' in content
+    assert 'value="2026-07-01"' in content
+    assert 'value="2026-07-01T09:30"' in content
+    assert 'value="9.75"' in content
+    assert "Follow up</textarea>" in content
+    assert dataset.rows.count() == 1
 
 
 def test_dataset_row_create_view_rerenders_service_errors(auth_client, profile):

@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 from httpx import Headers
@@ -135,7 +136,7 @@ def test_build_dataset_row_search_document_has_stable_id_hash_and_payload(
         "index_value": "TASK-1",
         "chunk_index": 0,
         "content_hash": document.content_hash,
-        "embedding_model": "text-embedding-3-small",
+        "embedding_model": settings.ROWSET_EMBEDDING_MODEL,
         "embedding_dimensions": 1536,
     }
 

@@ -47,7 +47,35 @@
               <div class="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                 Rowset will assign the next generated index value.
               </div>
-            {% else %}
+            {% elif field.is_choice %}
+              <select
+                id="{{ field.input_id }}"
+                name="{{ field.header }}"
+                class="fb-input mt-2 block w-full px-3 py-2 text-sm"
+                {% if field.is_index %}required{% endif %}
+              >
+                <option value="" {% if not field.value %}selected{% endif %}>Blank</option>
+                {% for choice in field.choices %}
+                  <option value="{{ choice.value }}" {% if choice.selected %}selected{% endif %}>{{ choice.value }}</option>
+                {% endfor %}
+              </select>
+            {% elif field.is_boolean %}
+              <select
+                id="{{ field.input_id }}"
+                name="{{ field.header }}"
+                class="fb-input mt-2 block w-full px-3 py-2 text-sm"
+                {% if field.is_index %}required{% endif %}
+              >
+                <option value="" {% if not field.value %}selected{% endif %}>Blank</option>
+                {% for option in field.boolean_options %}
+                  <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+              </select>
+            {% elif field.is_image %}
+              <div class="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                Image assets can be attached after the row is created.
+              </div>
+            {% elif field.is_textarea %}
               <textarea
                 id="{{ field.input_id }}"
                 name="{{ field.header }}"
@@ -55,6 +83,19 @@
                 class="fb-input mt-2 block w-full px-3 py-2 text-sm"
                 placeholder="{{ field.type_label }}"
               >{{ field.value }}</textarea>
+            {% else %}
+              <input
+                id="{{ field.input_id }}"
+                name="{{ field.header }}"
+                type="{{ field.input_type }}"
+                value="{{ field.value }}"
+                class="fb-input mt-2 block w-full px-3 py-2 text-sm"
+                placeholder="{{ field.type_label }}"
+                {% if field.input_step %}step="{{ field.input_step }}"{% endif %}
+                {% if field.input_mode %}inputmode="{{ field.input_mode }}"{% endif %}
+                {% if field.input_type == "email" %}autocomplete="email"{% elif field.input_type == "url" %}autocomplete="url"{% else %}autocomplete="off"{% endif %}
+                {% if field.is_index %}required{% endif %}
+              >
             {% endif %}
           </div>
         {% endfor %}
