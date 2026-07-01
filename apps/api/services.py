@@ -4040,13 +4040,16 @@ def _patch_dataset_row(
     )
     index_changed = False
     if dataset.index_column in data:
-        if dataset.index_generated:
-            raise DatasetServiceError(
-                400,
-                f"Index column '{dataset.index_column}' is managed by Rowset "
-                "and cannot be updated.",
-            )
         index_value = str(row_patch.get(dataset.index_column, "")).strip()
+        if dataset.index_generated:
+            if index_value == row.index_value:
+                index_value = row.index_value
+            else:
+                raise DatasetServiceError(
+                    400,
+                    f"Index column '{dataset.index_column}' is managed by Rowset "
+                    "and cannot be updated.",
+                )
         if not index_value:
             raise DatasetServiceError(
                 400,
