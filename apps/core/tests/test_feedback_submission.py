@@ -137,6 +137,29 @@ def test_submit_profile_feedback_recovers_from_concurrent_dataset_create(
 
 
 @pytest.mark.django_db
+def test_submit_profile_feedback_preserves_feedback_when_dataset_row_write_fails(
+    profile,
+    monkeypatch,
+):
+    def raise_dataset_row_error(*args, **kwargs):
+        raise DatasetServiceError(503, "Feedback dataset row could not be created.")
+
+    monkeypatch.setattr("apps.core.services.create_profile_dataset_row", raise_dataset_row_error)
+
+    with pytest.raises(DatasetServiceError, match="Feedback dataset row could not be created"):
+        submit_profile_feedback(
+            profile=profile,
+            feedback="Preserve this feedback even if Rowset row creation fails.",
+            metadata={"tool": "submit_feedback"},
+        )
+
+    feedback = Feedback.objects.get(profile=profile)
+    assert feedback.feedback == "Preserve this feedback even if Rowset row creation fails."
+    assert feedback.metadata == {"tool": "submit_feedback"}
+    assert Dataset.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_submit_profile_feedback_rejects_blank_feedback(profile):
     with pytest.raises(ValueError, match="Feedback is required"):
         submit_profile_feedback(profile=profile, feedback="   ", page="/")

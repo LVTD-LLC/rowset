@@ -588,6 +588,8 @@ def submit_agent_feedback(request: HttpRequest, payload: SubmitFeedbackIn):
         )
     except ValueError as exc:
         raise HttpError(400, str(exc)) from exc
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
     return Status(
         201,

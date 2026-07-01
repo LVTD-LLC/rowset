@@ -448,15 +448,15 @@ def submit_profile_feedback(
     normalized_metadata = _normalize_feedback_metadata(metadata)
     context_text = _feedback_metadata_text(normalized_metadata)
 
+    feedback_record = Feedback.objects.create(
+        profile=profile,
+        agent_api_key=agent_api_key if profile is not None else None,
+        source=normalized_source,
+        feedback=normalized_feedback,
+        page=normalized_page,
+        metadata=normalized_metadata,
+    )
     if profile is None:
-        feedback_record = Feedback.objects.create(
-            profile=None,
-            agent_api_key=None,
-            source=normalized_source,
-            feedback=normalized_feedback,
-            page=normalized_page,
-            metadata=normalized_metadata,
-        )
         queue_feedback_notification(feedback_record)
         return FeedbackSubmissionResult(
             feedback=feedback_record,
@@ -475,15 +475,6 @@ def submit_profile_feedback(
             section,
             agent_api_key=agent_api_key,
         )
-        feedback_record = Feedback(
-            profile=profile,
-            agent_api_key=agent_api_key,
-            source=normalized_source,
-            feedback=normalized_feedback,
-            page=normalized_page,
-            metadata=normalized_metadata,
-        )
-        feedback_record.save()
         row_result = create_profile_dataset_row(
             profile,
             str(dataset.key),

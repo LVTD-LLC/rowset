@@ -769,6 +769,42 @@ def test_agent_api_key_can_submit_feedback_through_rest(client, django_user_mode
 
 
 @pytest.mark.django_db
+def test_agent_feedback_returns_dataset_service_errors(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    from apps.api.services import DatasetServiceError
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="feedbackerrorapiuser",
+        email="feedbackerrorapiuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(
+        user.profile,
+        "Feedback Agent",
+        AgentApiKeyAccessLevel.READ_WRITE,
+    )
+
+    def raise_dataset_error(*args, **kwargs):
+        raise DatasetServiceError(429, "Feedback dataset quota exceeded.")
+
+    monkeypatch.setattr("apps.api.views.submit_profile_feedback", raise_dataset_error)
+
+    response = client.post(
+        "/api/feedback",
+        data=json.dumps({"feedback": "This should return a service error."}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 429
+    assert response.json() == {"detail": "Feedback dataset quota exceeded."}
+
+
+@pytest.mark.django_db
 def test_legacy_profile_api_key_can_read_but_cannot_write(client, django_user_model):
     user = django_user_model.objects.create_user(
         username="legacyreadonlyapiuser",
