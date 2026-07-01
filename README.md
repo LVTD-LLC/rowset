@@ -610,7 +610,7 @@ on local disk.
 | `STRIPE_CONTEXT` | Optional Stripe Organization account context. |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret. |
 | `STRIPE_PRICE_ID_ROWSET_PRO_MONTHLY` | Price id for the Rowset Pro monthly plan. |
-| `WEBHOOK_UUID` | Optional UUID segment for webhook URLs. |
+| `WEBHOOK_UUID` | Read into settings as `STRIPE_WEBHOOK_UUID`, but currently not used by routing; the Stripe webhook path is fixed at `/stripe-webhook/`. |
 | `STRIPE_PUBLISHABLE_KEY` | Present in `.env.example`; only needed if client-side Stripe.js is wired in. |
 
 ### Vector search
