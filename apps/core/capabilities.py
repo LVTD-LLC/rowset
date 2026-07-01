@@ -240,6 +240,7 @@ ROWSET_CAPABILITIES = (
         ),
         mcp_tools=(
             "list_dataset_rows",
+            "search_dataset_rows",
             "get_dataset_row",
             "get_dataset_row_by_index",
             "create_dataset_row",
@@ -249,11 +250,13 @@ ROWSET_CAPABILITIES = (
         ),
         rest_paths=(
             "/api/datasets/{dataset_key}/rows",
+            "/api/datasets/{dataset_key}/search",
             "/api/datasets/{dataset_key}/rows/by-index",
             "/api/datasets/{dataset_key}/rows/{row_id}",
         ),
         notes=(
             "Use by-index tools when the workflow has a stable business key.",
+            "Use search_dataset_rows for ranked hybrid search when vector search is enabled.",
             "Ask the user before deleting rows unless the user explicitly requested deletion.",
         ),
     ),

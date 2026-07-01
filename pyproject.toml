@@ -42,6 +42,7 @@ dependencies = [
     "django-mjml>=1.5",
 
     "pydantic-ai>=1.93.0",
+    "openai>=2.43.0",
     "pgvector>=0.4.2",
     "qdrant-client>=1.18.0",
 

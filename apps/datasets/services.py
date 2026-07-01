@@ -34,11 +34,22 @@ from django.db.models.functions import Cast, Concat, Lower, Replace, Substr, Tri
 from django.utils import timezone
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from apps.datasets.choices import DatasetColumnType
+from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.constants import (
     MAX_COLUMN_DESCRIPTION_LENGTH,
     MAX_DATASET_IMAGE_BYTES,
     MAX_DATASET_IMAGE_PIXELS,
+)
+from apps.datasets.embeddings import (
+    EmbeddingProvider,
+    EmbeddingProviderError,
+    get_embedding_provider,
+)
+from apps.datasets.vector_search import (
+    DatasetRowVector,
+    QdrantVectorStore,
+    VectorStoreError,
+    build_dataset_row_search_document,
 )
 
 
@@ -54,6 +65,22 @@ class DatasetImageError(ValueError):
     pass
 
 
+@dataclass(frozen=True)
+class VectorBackfillError:
+    row_id: int
+    message: str
+
+
+@dataclass(frozen=True)
+class VectorBackfillResult:
+    rows_seen: int = 0
+    indexed: int = 0
+    would_index: int = 0
+    failed: int = 0
+    errors: list[VectorBackfillError] = field(default_factory=list)
+
+
+DEFAULT_VECTOR_BACKFILL_BATCH_SIZE = 100
 GENERATED_INDEX_CHOICE = "__rowset_generated__"
 GENERATED_INDEX_BASENAME = "rowset_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
@@ -250,6 +277,203 @@ CURRENCY_HEADER_TOKENS = {
     "revenue",
     "total",
 }
+
+
+def _validate_vector_backfill_dataset(dataset) -> None:
+    if dataset.status != DatasetStatus.READY:
+        raise ValueError("Vector backfill requires a ready dataset.")
+    if dataset.archived_at is not None:
+        raise ValueError("Vector backfill cannot index archived datasets.")
+
+
+def _dataset_rows_for_vector_backfill(dataset, *, limit: int | None = None):
+    rows = dataset.rows.order_by("row_number", "id").only(
+        "id",
+        "dataset_id",
+        "row_number",
+        "index_value",
+        "data",
+    )
+    if limit is not None:
+        rows = rows[:limit]
+    return rows
+
+
+def _index_vector_backfill_batch(
+    *,
+    dataset,
+    rows,
+    embedding_provider: EmbeddingProvider,
+    vector_store: QdrantVectorStore,
+    stop_on_error: bool,
+) -> tuple[int, list[VectorBackfillError]]:
+    documents = [
+        build_dataset_row_search_document(
+            dataset,
+            row,
+            embedding_model=embedding_provider.model,
+            embedding_dimensions=embedding_provider.dimensions,
+        )
+        for row in rows
+    ]
+    try:
+        embeddings = embedding_provider.embed_texts([document.text for document in documents])
+        if len(embeddings) != len(rows):
+            raise ValueError(
+                f"Embedding provider returned {len(embeddings)} result(s) for {len(rows)} row(s)."
+            )
+    except (EmbeddingProviderError, ValueError) as exc:
+        if stop_on_error:
+            raise
+        return 0, [VectorBackfillError(row_id=row.id, message=str(exc)) for row in rows]
+
+    row_vectors = [
+        DatasetRowVector(
+            row=row,
+            vector=embedding.vector,
+            embedding_model=embedding.model,
+            embedding_dimensions=embedding.dimensions,
+        )
+        for row, embedding in zip(rows, embeddings, strict=True)
+    ]
+    try:
+        vector_store.upsert_dataset_row_vectors(dataset, row_vectors)
+    except (VectorStoreError, ValueError) as exc:
+        if stop_on_error:
+            raise
+        return (
+            0,
+            [
+                VectorBackfillError(row_id=row_vector.row.id, message=str(exc))
+                for row_vector in row_vectors
+            ],
+        )
+
+    return len(row_vectors), []
+
+
+def backfill_dataset_vectors(
+    dataset,
+    *,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: QdrantVectorStore | None = None,
+    dry_run: bool = False,
+    limit: int | None = None,
+    batch_size: int = DEFAULT_VECTOR_BACKFILL_BATCH_SIZE,
+    stop_on_error: bool = False,
+) -> VectorBackfillResult:
+    _validate_vector_backfill_dataset(dataset)
+    if batch_size < 1:
+        raise ValueError("batch_size must be at least 1.")
+    if limit is not None and limit < 1:
+        raise ValueError("limit must be at least 1 when provided.")
+
+    provider = None if dry_run else embedding_provider or get_embedding_provider()
+    store = None
+    if not dry_run:
+        store = vector_store or QdrantVectorStore(
+            embedding_model=provider.model,
+            embedding_dimensions=provider.dimensions,
+        )
+        store.ensure_collection()
+
+    rows_seen = 0
+    indexed = 0
+    would_index = 0
+    errors: list[VectorBackfillError] = []
+    batch = []
+
+    rows = _dataset_rows_for_vector_backfill(dataset, limit=limit)
+    for row in rows.iterator(chunk_size=batch_size):
+        rows_seen += 1
+        if dry_run:
+            would_index += 1
+            continue
+
+        batch.append(row)
+        if len(batch) < batch_size:
+            continue
+
+        indexed_count, batch_errors = _index_vector_backfill_batch(
+            dataset=dataset,
+            rows=batch,
+            embedding_provider=provider,
+            vector_store=store,
+            stop_on_error=stop_on_error,
+        )
+        indexed += indexed_count
+        errors.extend(batch_errors)
+        batch = []
+
+    if batch:
+        indexed_count, batch_errors = _index_vector_backfill_batch(
+            dataset=dataset,
+            rows=batch,
+            embedding_provider=provider,
+            vector_store=store,
+            stop_on_error=stop_on_error,
+        )
+        indexed += indexed_count
+        errors.extend(batch_errors)
+
+    return VectorBackfillResult(
+        rows_seen=rows_seen,
+        indexed=indexed,
+        would_index=would_index,
+        failed=len(errors),
+        errors=errors,
+    )
+
+
+def index_dataset_row_vector(
+    row,
+    *,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: QdrantVectorStore | None = None,
+) -> None:
+    dataset = row.dataset
+    _validate_vector_backfill_dataset(dataset)
+    provider = embedding_provider or get_embedding_provider()
+    store = vector_store or QdrantVectorStore(
+        embedding_model=provider.model,
+        embedding_dimensions=provider.dimensions,
+    )
+    store.ensure_collection()
+    document = build_dataset_row_search_document(
+        dataset,
+        row,
+        embedding_model=provider.model,
+        embedding_dimensions=provider.dimensions,
+    )
+    embedding = provider.embed_text(document.text)
+    store.upsert_dataset_row_vector(
+        dataset,
+        row,
+        embedding.vector,
+        embedding_model=embedding.model,
+        embedding_dimensions=embedding.dimensions,
+    )
+
+
+def delete_dataset_row_vectors(
+    dataset,
+    row_ids: list[int],
+    *,
+    vector_store: QdrantVectorStore | None = None,
+) -> None:
+    if not row_ids:
+        return
+    store = vector_store or QdrantVectorStore()
+    store.delete_dataset_row_vectors(dataset, row_ids)
+
+
+def delete_dataset_vectors(
+    dataset,
+    *,
+    vector_store: QdrantVectorStore | None = None,
+) -> None:
+    store = vector_store or QdrantVectorStore()
+    store.delete_dataset_vectors(dataset)
 
 
 @dataclass(frozen=True)

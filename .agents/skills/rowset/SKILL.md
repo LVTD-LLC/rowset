@@ -85,9 +85,9 @@ Use this default order when the user asks Rowset to work with data:
    `update_dataset_project` when the user wants to organize datasets into
    project groups.
 6. Use row tools for dataset contents:
-   `list_dataset_rows`, `get_dataset_row`, `get_dataset_row_by_index`,
-   `create_dataset_row`, `update_dataset_row`, `update_dataset_row_by_index`,
-   and `delete_dataset_row`.
+   `list_dataset_rows`, `search_dataset_rows`, `get_dataset_row`,
+   `get_dataset_row_by_index`, `create_dataset_row`, `update_dataset_row`,
+   `update_dataset_row_by_index`, and `delete_dataset_row`.
 7. Use relationship tools when one dataset stores another dataset row's index
    value: `list_dataset_relationships`, `create_dataset_relationship`,
    `resolve_dataset_relationship`, and `delete_dataset_relationship`.

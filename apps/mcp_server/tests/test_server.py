@@ -482,6 +482,26 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
             "projects": [{"key": "project-key", "name": "Rowset"}],
         }
 
+    def search_rows(authenticated_profile, dataset_key, *, query, filters=None, limit=10):
+        calls.append(
+            (
+                "search_dataset_rows",
+                authenticated_profile.id,
+                dataset_key,
+                query,
+                filters,
+                limit,
+            )
+        )
+        return {
+            "dataset": dataset_key,
+            "query": query,
+            "filters": filters or {},
+            "limit": limit,
+            "count": 1,
+            "results": [{"rank": 1, "row": {"id": 1}, "match": {"source": "hybrid"}}],
+        }
+
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -489,6 +509,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
         )
         monkeypatch.setattr("apps.mcp_server.server.search_profile_datasets", search_datasets)
         monkeypatch.setattr("apps.mcp_server.server.search_profile_projects", search_projects)
+        monkeypatch.setattr("apps.mcp_server.server.search_profile_dataset_rows", search_rows)
 
         async with Client(mcp) as client:
             dataset_result = await client.call_tool(
@@ -508,9 +529,19 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 "search_projects",
                 {"query": "rowset", "limit": 3},
             )
+            row_result = await client.call_tool(
+                "search_dataset_rows",
+                {
+                    "dataset_key": "dataset-key",
+                    "query": "stale vectors",
+                    "filters": {"status": "Ready"},
+                    "limit": 4,
+                },
+            )
 
         assert dataset_result.data["datasets"][0]["key"] == "dataset-key"
         assert project_result.data["projects"][0]["key"] == "project-key"
+        assert row_result.data["results"][0]["match"]["source"] == "hybrid"
         assert calls == [
             (
                 "search_datasets",
@@ -525,6 +556,14 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 2,
             ),
             ("search_projects", 11, "rowset", 3, 0),
+            (
+                "search_dataset_rows",
+                11,
+                "dataset-key",
+                "stale vectors",
+                {"status": "Ready"},
+                4,
+            ),
         ]
 
     anyio.run(run)

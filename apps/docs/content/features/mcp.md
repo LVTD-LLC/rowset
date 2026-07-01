@@ -115,6 +115,7 @@ For a specific ready dataset, agents can use:
 ```text
 get_dataset
 list_dataset_rows
+search_dataset_rows
 get_dataset_row
 get_dataset_row_by_index
 create_dataset_row
@@ -142,6 +143,11 @@ Dataset and row tools enforce the authenticated user's ownership boundary.
 `create_dataset`, row mutation tools, and schema mutation tools change dataset
 contents, so agents should ask the user before using them unless the user explicitly
 requested the change.
+
+Use `search_dataset_rows` when vector search is enabled and the agent needs
+ranked row matches instead of a paginated table scan. Results are hydrated from
+Rowset rows and include match metadata such as source, ranks, scores, point id,
+chunk index, and content hash. Rowset/Postgres remains the source of truth.
 
 Use `add_column`, `rename_column`, `drop_column`, and `reorder_columns` when an
 existing ready dataset needs schema changes without recreating it. Existing rows

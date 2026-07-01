@@ -182,6 +182,29 @@ GET {{ api_base_url }}/datasets/{dataset_key}/rows
 
 Returns the dataset rows.
 
+## Search rows
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/search
+Content-Type: application/json
+```
+
+Search one ready dataset with hybrid vector and lexical retrieval when vector
+search is enabled. Rowset returns ranked results hydrated from canonical rows;
+the vector database is only a retrieval index.
+
+```json
+{
+  "query": "stale vectors",
+  "filters": {"status": "Ready"},
+  "limit": 10
+}
+```
+
+Each result includes the row plus match metadata such as `source`,
+`vector_rank`, `lexical_rank`, `vector_score`, `point_id`, `chunk_index`,
+`content_hash`, and a short `snippet`.
+
 ## Get a row by index
 
 ```http

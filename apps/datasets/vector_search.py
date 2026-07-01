@@ -1,6 +1,7 @@
 import hashlib
 import re
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -8,8 +9,13 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qdrant_models
-from qdrant_client.http.exceptions import UnexpectedResponse
+from qdrant_client.http.exceptions import (
+    ApiException,
+    ResponseHandlingException,
+    UnexpectedResponse,
+)
 
+from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 
 QDRANT_CONTENT_TYPE_DATASET_ROW = "dataset_row"
@@ -20,11 +26,30 @@ QDRANT_APP_PAYLOAD_VALUE = "rowset"
 QDRANT_POINT_NAMESPACE = uuid.UUID("bbd2624c-7177-4888-8b38-16d830f078fb")
 
 
+class VectorStoreError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class DatasetRowSearchDocument:
     point_id: str
     text: str
     content_hash: str
+    payload: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class DatasetRowVector:
+    row: DatasetRow
+    vector: list[float]
+    embedding_model: str | None = None
+    embedding_dimensions: int | None = None
+
+
+@dataclass(frozen=True)
+class DatasetRowVectorSearchHit:
+    point_id: str
+    score: float
     payload: dict[str, Any]
 
 
@@ -82,6 +107,45 @@ def _is_qdrant_collection_exists_error(exc: UnexpectedResponse) -> bool:
     if exc.status_code == 409:
         return True
     return "already exists" in str(exc).lower()
+
+
+def _payload_match(key: str, value: Any) -> qdrant_models.FieldCondition:
+    return qdrant_models.FieldCondition(
+        key=key,
+        match=qdrant_models.MatchValue(value=value),
+    )
+
+
+def _dataset_row_filter(
+    dataset: Dataset,
+    *,
+    row_ids: Sequence[int] | None = None,
+) -> qdrant_models.Filter:
+    must = [
+        _payload_match("app", QDRANT_APP_PAYLOAD_VALUE),
+        _payload_match("content_type", QDRANT_CONTENT_TYPE_DATASET_ROW),
+        _payload_match("profile_id", dataset.profile_id),
+        _payload_match("dataset_id", dataset.id),
+    ]
+    if row_ids:
+        must.append(
+            qdrant_models.FieldCondition(
+                key="row_id",
+                match=qdrant_models.MatchAny(any=list(row_ids)),
+            )
+        )
+    return qdrant_models.Filter(must=must)
+
+
+def dataset_row_search_filter(dataset: Dataset) -> qdrant_models.Filter:
+    vector_filter = _dataset_row_filter(dataset)
+    vector_filter.must.extend(
+        [
+            _payload_match("dataset_status", DatasetStatus.READY),
+            _payload_match("dataset_archived", False),
+        ]
+    )
+    return vector_filter
 
 
 def dataset_row_point_id(dataset: Dataset, row: DatasetRow, *, chunk_index: int = 0) -> str:
@@ -219,17 +283,7 @@ class QdrantVectorStore:
                 return
             raise
 
-    def upsert_dataset_row_vector(
-        self,
-        dataset: Dataset,
-        row: DatasetRow,
-        vector: list[float],
-        *,
-        embedding_model: str | None = None,
-        embedding_dimensions: int | None = None,
-    ) -> None:
-        model = embedding_model or self.embedding_model
-        dimensions = embedding_dimensions or self.embedding_dimensions
+    def _validate_embedding_config(self, model: str, dimensions: int) -> None:
         if model != self.embedding_model:
             raise ValueError(
                 f"Embedding model {model!r} does not match collection model "
@@ -241,15 +295,108 @@ class QdrantVectorStore:
                 f"{self.embedding_dimensions}."
             )
 
-        point = build_dataset_row_point(
+    def _validate_vector_dimensions(self, vector: list[float]) -> None:
+        if len(vector) != self.embedding_dimensions:
+            raise ValueError(f"Vector must contain {self.embedding_dimensions} dimensions.")
+
+    def upsert_dataset_row_vector(
+        self,
+        dataset: Dataset,
+        row: DatasetRow,
+        vector: list[float],
+        *,
+        embedding_model: str | None = None,
+        embedding_dimensions: int | None = None,
+    ) -> None:
+        self.upsert_dataset_row_vectors(
             dataset,
-            row,
-            vector,
-            embedding_model=model,
-            embedding_dimensions=dimensions,
+            [
+                DatasetRowVector(
+                    row=row,
+                    vector=vector,
+                    embedding_model=embedding_model,
+                    embedding_dimensions=embedding_dimensions,
+                )
+            ],
         )
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=[point],
-            wait=True,
-        )
+
+    def upsert_dataset_row_vectors(
+        self,
+        dataset: Dataset,
+        row_vectors: Sequence[DatasetRowVector],
+    ) -> None:
+        if not row_vectors:
+            return
+
+        points = []
+        for row_vector in row_vectors:
+            model = row_vector.embedding_model or self.embedding_model
+            dimensions = row_vector.embedding_dimensions or self.embedding_dimensions
+            self._validate_embedding_config(model, dimensions)
+            points.append(
+                build_dataset_row_point(
+                    dataset,
+                    row_vector.row,
+                    row_vector.vector,
+                    embedding_model=model,
+                    embedding_dimensions=dimensions,
+                )
+            )
+
+        try:
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points,
+                wait=True,
+            )
+        except (ApiException, ResponseHandlingException, UnexpectedResponse) as exc:
+            raise VectorStoreError(f"Qdrant vector upsert failed: {exc}") from exc
+
+    def search_dataset_rows(
+        self,
+        dataset: Dataset,
+        vector: list[float],
+        *,
+        limit: int = 10,
+    ) -> list[DatasetRowVectorSearchHit]:
+        self._validate_vector_dimensions(vector)
+        try:
+            response = self.client.query_points(
+                collection_name=self.collection_name,
+                query=vector,
+                using=QDRANT_DENSE_VECTOR_NAME,
+                query_filter=dataset_row_search_filter(dataset),
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+            )
+        except (ApiException, ResponseHandlingException, UnexpectedResponse) as exc:
+            raise VectorStoreError(f"Qdrant vector search failed: {exc}") from exc
+
+        return [
+            DatasetRowVectorSearchHit(
+                point_id=str(point.id),
+                score=float(point.score),
+                payload=dict(point.payload or {}),
+            )
+            for point in response.points
+        ]
+
+    def delete_dataset_row_vectors(self, dataset: Dataset, row_ids: Sequence[int]) -> None:
+        normalized_row_ids = [int(row_id) for row_id in row_ids]
+        if not normalized_row_ids:
+            return
+        self._delete_by_filter(_dataset_row_filter(dataset, row_ids=normalized_row_ids))
+
+    def delete_dataset_vectors(self, dataset: Dataset) -> None:
+        self._delete_by_filter(_dataset_row_filter(dataset))
+
+    def _delete_by_filter(self, vector_filter: qdrant_models.Filter) -> None:
+        try:
+            self.client.delete(
+                collection_name=self.collection_name,
+                points_selector=qdrant_models.FilterSelector(filter=vector_filter),
+                wait=True,
+            )
+        except (ApiException, ResponseHandlingException, UnexpectedResponse) as exc:
+            raise VectorStoreError(f"Qdrant vector delete failed: {exc}") from exc

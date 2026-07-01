@@ -14,6 +14,7 @@ from django.contrib import messages as message_constants
 from django.contrib.messages import get_messages
 from django.core.files.storage import storages
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
@@ -21,11 +22,13 @@ from PIL import Image
 from apps.api.services import (
     DatasetServiceError,
     attach_profile_dataset_image_asset,
+    create_profile_dataset,
+    create_profile_dataset_row,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
     serialize_dataset_detail,
 )
-from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.choices import AgentApiKeyAccessLevel, ProfileStates
 from apps.core.services import create_agent_api_key
 from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
@@ -548,6 +551,93 @@ def test_import_uses_stored_source_text_when_file_is_not_available(profile):
     dataset.refresh_from_db()
     assert dataset.status == DatasetStatus.READY
     assert dataset.rows.count() == 2
+
+
+def test_import_enqueues_vector_reindex_after_commit_when_enabled(
+    profile,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file="datasets/csv/missing.csv",
+        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name", "email"],
+        index_column="email",
+        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
+        row_count=2,
+    )
+    stale_row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="old@example.com",
+        data={"name": "Old", "email": "old@example.com"},
+    )
+    calls = []
+    monkeypatch.setattr(
+        "apps.datasets.vector_tasks.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            import_dataset_rows(dataset.id)
+
+    dataset.refresh_from_db()
+    assert dataset.status == DatasetStatus.READY
+    assert calls == [
+        ("apps.datasets.tasks.delete_dataset_row_vectors", (dataset.id, [stale_row.id])),
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
+    ]
+
+
+def test_import_chunks_stale_vector_delete_tasks_when_enabled(
+    profile,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="People",
+        original_filename="people.csv",
+        source_file="datasets/csv/missing.csv",
+        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
+        status=DatasetStatus.PROCESSING,
+        headers=["name", "email"],
+        index_column="email",
+        row_count=3,
+    )
+    stale_rows = [
+        DatasetRow.objects.create(
+            dataset=dataset,
+            row_number=index,
+            index_value=f"old-{index}@example.com",
+            data={"name": f"Old {index}", "email": f"old-{index}@example.com"},
+        )
+        for index in range(1, 4)
+    ]
+    calls = []
+    monkeypatch.setattr(
+        "apps.datasets.vector_tasks.async_task",
+        lambda task_path, *args: calls.append((task_path, args)),
+    )
+    monkeypatch.setattr("apps.datasets.tasks.VECTOR_ROW_DELETE_TASK_BATCH_SIZE", 2)
+
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
+        with django_capture_on_commit_callbacks(execute=True):
+            import_dataset_rows(dataset.id)
+
+    assert calls == [
+        (
+            "apps.datasets.tasks.delete_dataset_row_vectors",
+            (dataset.id, [stale_rows[0].id, stale_rows[1].id]),
+        ),
+        ("apps.datasets.tasks.delete_dataset_row_vectors", (dataset.id, [stale_rows[2].id])),
+        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
+    ]
 
 
 def test_import_file_fallback_uses_selected_index_column(profile):
@@ -6252,8 +6342,6 @@ def test_dataset_api_rejects_too_many_initial_rows(client, profile):
 
 
 def test_create_profile_dataset_enforces_initial_row_limit(profile):
-    from apps.api.services import DatasetServiceError, create_profile_dataset
-
     with pytest.raises(DatasetServiceError, match="at most 1000 initial rows") as exc_info:
         create_profile_dataset(
             profile,
@@ -6264,6 +6352,114 @@ def test_create_profile_dataset_enforces_initial_row_limit(profile):
 
     assert exc_info.value.status_code == 400
     assert not Dataset.objects.filter(profile=profile, name="Too many rows").exists()
+
+
+def test_free_account_rejects_third_active_dataset(profile):
+    for index in range(2):
+        Dataset.objects.create(
+            profile=profile,
+            name=f"Dataset {index}",
+            original_filename="api",
+            status=DatasetStatus.READY,
+            headers=["rowset_id", "name"],
+            index_column="rowset_id",
+            index_generated=True,
+            row_count=0,
+        )
+
+    with pytest.raises(DatasetServiceError, match="at most 2 active datasets") as exc_info:
+        create_profile_dataset(
+            profile,
+            name="Third dataset",
+            headers=["name"],
+            rows=[],
+        )
+
+    assert exc_info.value.status_code == 403
+    assert not Dataset.objects.filter(profile=profile, name="Third dataset").exists()
+
+
+def test_free_account_rejects_dataset_with_more_than_50_initial_rows(profile):
+    rows = [{"name": str(index)} for index in range(51)]
+
+    with pytest.raises(DatasetServiceError, match="at most 50 rows") as exc_info:
+        create_profile_dataset(
+            profile,
+            name="Too many free rows",
+            headers=["name"],
+            rows=rows,
+        )
+
+    assert exc_info.value.status_code == 403
+    assert not Dataset.objects.filter(profile=profile, name="Too many free rows").exists()
+
+
+def test_paid_account_can_create_more_than_free_dataset_and_row_limits(profile):
+    profile.state = ProfileStates.SUBSCRIBED
+    profile.save(update_fields=["state"])
+    for index in range(2):
+        Dataset.objects.create(
+            profile=profile,
+            name=f"Existing dataset {index}",
+            original_filename="api",
+            status=DatasetStatus.READY,
+            headers=["rowset_id", "name"],
+            index_column="rowset_id",
+            index_generated=True,
+            row_count=0,
+        )
+
+    result = create_profile_dataset(
+        profile,
+        name="Paid dataset",
+        headers=["name"],
+        rows=[{"name": str(index)} for index in range(51)],
+    )
+
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert dataset.row_count == 51
+    assert Dataset.objects.filter(profile=profile, status=DatasetStatus.READY).count() == 3
+
+
+def test_free_account_rejects_51st_dataset_row(profile):
+    result = create_profile_dataset(
+        profile,
+        name="Free row capped dataset",
+        headers=["name"],
+        rows=[{"name": str(index)} for index in range(50)],
+    )
+
+    with pytest.raises(DatasetServiceError, match="at most 50 rows per dataset") as exc_info:
+        create_profile_dataset_row(
+            profile,
+            result["dataset"]["key"],
+            {"name": "51"},
+        )
+
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert exc_info.value.status_code == 403
+    assert dataset.row_count == 50
+
+
+def test_paid_account_can_create_51st_dataset_row(profile):
+    profile.state = ProfileStates.SUBSCRIBED
+    profile.save(update_fields=["state"])
+    result = create_profile_dataset(
+        profile,
+        name="Paid row uncapped dataset",
+        headers=["name"],
+        rows=[{"name": str(index)} for index in range(50)],
+    )
+
+    row_result = create_profile_dataset_row(
+        profile,
+        result["dataset"]["key"],
+        {"name": "51"},
+    )
+
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert row_result["message"] == "Row created."
+    assert dataset.row_count == 51
 
 
 def test_dataset_api_rejects_patch_to_generated_index(client, profile):
