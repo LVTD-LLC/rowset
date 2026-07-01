@@ -163,6 +163,7 @@ This app uses Stripe Checkout for purchases and the Billing Portal for subscript
 
 - Set the following in `.env`:
   - `STRIPE_SECRET_KEY`
+  - `STRIPE_CONTEXT` (optional; set this to the target account ID when using a Stripe Organization API key)
   - `STRIPE_PUBLISHABLE_KEY` (optional, only needed for client-side Stripe.js)
   - `STRIPE_WEBHOOK_SECRET`
   - `STRIPE_PRICE_ID_ROWSET_PRO_MONTHLY`
