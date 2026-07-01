@@ -1,0 +1,38 @@
+{
+  "artifact_schema_version": 1,
+  "run_id": "sample-dry-run-eval-001",
+  "seed_id": "EVAL-001",
+  "seed_title": "Choice Column Canonicalization",
+  "created_at": "2026-07-01T00:00:00Z",
+  "status": "dry_run",
+  "agent": "manual-or-agent",
+  "model": "unknown",
+  "base_sha": "sample-base-sha",
+  "head_sha": "sample-head-sha",
+  "changed_files": [
+    "TODO: record changed files after the run"
+  ],
+  "seed": {
+    "prompt": "Make API and MCP row writes accept unambiguous whitespace, hyphen, underscore, and case variants for choice values while storing the canonical schema choice.",
+    "expected_files": [
+      "apps/api/services.py",
+      "apps/datasets/tests/test_csv_datasets.py",
+      "apps/mcp_server/tests/test_rest_mcp_parity.py"
+    ],
+    "fail_to_pass_check": "Add or expose a failing test for `Ready_to-do` storing as `Ready to do`.",
+    "pass_to_pass_checks": [
+      "make test -- apps/datasets apps/mcp_server -q",
+      "make lint-python",
+      "make format-check"
+    ],
+    "trace_notes": "Watch whether the agent updates the shared service instead of patching REST and MCP separately."
+  },
+  "required_checks": [
+    "make test -- apps/datasets apps/mcp_server -q",
+    "make lint-python",
+    "make format-check"
+  ],
+  "observed_checks": [],
+  "result_status": "dry_run",
+  "follow_up_notes": "Sample dry-run artifact showing the structure committed by the harness."
+}

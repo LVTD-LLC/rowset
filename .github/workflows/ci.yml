@@ -75,6 +75,12 @@ jobs:
       - name: Ruff format check
         run: make format-check
 
+      - name: Quality command drift check
+        run: make quality-drift-check
+
+      - name: Production-like startup/import smoke
+        run: make startup-smoke
+
       - name: Scoped type check
         run: make type-check
 

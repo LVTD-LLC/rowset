@@ -24,6 +24,27 @@ Default setup for every seed:
 - Do not use production API keys, OAuth tokens, or private dataset contents.
 - Seed-specific setup is called out only when it differs from this default.
 
+## Runnable Harness
+
+List available seeds:
+
+```bash
+make agent-eval-seed
+```
+
+Create a structured dry-run artifact for a seed:
+
+```bash
+make agent-eval-seed EVAL-001
+```
+
+The command writes `result.json` and `result.md` under
+`docs/agent-evals/runs/<run-id>/`. It records the seed id, prompt, expected
+files, base SHA, changed-file placeholder, required checks, observed checks,
+result status, and follow-up notes. This first harness does not invoke an agent
+automatically; it gives humans and agents a consistent wrapper for measured
+runs.
+
 ## Seeds
 
 ### EVAL-001: Choice Column Canonicalization

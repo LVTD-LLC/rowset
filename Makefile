@@ -17,6 +17,7 @@ HIGH_RISK_COVERAGE_FILES = \
 TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 
 .PHONY: \
+	agent-eval-seed \
 	ci-local \
 	coverage \
 	coverage-high-risk \
@@ -32,9 +33,11 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 	makemigrations \
 	migrate \
 	migrations-check \
+	quality-drift-check \
 	restart-worker \
 	serve \
 	shell \
+	startup-smoke \
 	template-check \
 	test \
 	type-check
@@ -45,6 +48,9 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 serve:
 	$(COMPOSE_LOCAL) up -d --build
 	$(COMPOSE_LOCAL) logs -f backend
+
+agent-eval-seed:
+	$(UV_RUN) python scripts/agent-eval-seed.py $(TARGET_ARGS)
 
 shell:
 	$(PYTHON_RUN) ./manage.py shell_plus --ipython
@@ -75,6 +81,12 @@ lint-python:
 
 format-check:
 	$(UV_RUN) ruff format --check .
+
+quality-drift-check:
+	$(UV_RUN) python scripts/check-quality-drift.py
+
+startup-smoke:
+	$(UV_RUN) python scripts/startup-smoke.py
 
 format-python:
 	$(UV_RUN) ruff format .

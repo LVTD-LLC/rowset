@@ -60,6 +60,8 @@ SQL
 run_step "Clean stale test containers" cleanup_backend_runs
 run_step "Ruff lint" make lint-python
 run_step "Ruff format check" make format-check
+run_step "Quality command drift check" make quality-drift-check
+run_step "Production-like startup/import smoke" make startup-smoke
 run_step "Scoped type check" make type-check
 run_step "Install frontend dependencies" make frontend-install
 run_step "Frontend lint and build" make frontend-check
