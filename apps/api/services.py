@@ -57,6 +57,7 @@ from apps.datasets.services import (
     normalize_column_schema,
     normalize_public_page_size,
     prepare_dataset_image,
+    project_section_dataset_groups,
     validate_choice_row_values,
     validate_headers,
     validate_image_row_values,
@@ -777,7 +778,7 @@ def _resolve_project_section_assignment(
     if not normalized_section_key:
         return None
     if project is None:
-        raise DatasetServiceError(400, "section_key requires project_key.")
+        raise DatasetServiceError(404, "Project section not found.")
     return get_profile_project_section_for_project(profile, project, normalized_section_key)
 
 
@@ -874,10 +875,7 @@ def serialize_profile_project_detail(
     )
     total_count = project.dataset_count
     datasets = list(queryset[offset : offset + limit])
-    dataset_groups = _project_dataset_groups(
-        sections,
-        datasets,
-    )
+    dataset_groups = _project_dataset_groups(sections, datasets)
     return {
         "status": "success",
         "message": "Project retrieved.",
@@ -910,48 +908,16 @@ def _project_dataset_groups(
     sections: list[ProjectSection],
     datasets: list[Dataset],
 ) -> list[dict]:
-    datasets_by_section_id: dict[int | None, list[Dataset]] = {}
-    for dataset in datasets:
-        datasets_by_section_id.setdefault(dataset.section_id, []).append(dataset)
-
-    groups = []
-    for section in sections:
-        section_datasets = datasets_by_section_id.pop(section.id, [])
-        dataset_count = getattr(section, "dataset_count", len(section_datasets))
-        if not section_datasets and not dataset_count:
-            continue
-        groups.append(
-            {
-                "label": section.name,
-                "section": serialize_project_section_reference(section),
-                "dataset_count": dataset_count,
-                "datasets": _dataset_page_payload(section_datasets, dataset_count),
-            }
-        )
-
-    unsectioned_datasets = datasets_by_section_id.pop(None, [])
-    if unsectioned_datasets:
-        groups.append(
-            {
-                "label": "Unsectioned",
-                "section": None,
-                "dataset_count": len(unsectioned_datasets),
-                "datasets": _dataset_page_payload(unsectioned_datasets, len(unsectioned_datasets)),
-            }
-        )
-
-    for orphaned_datasets in datasets_by_section_id.values():
-        if orphaned_datasets:
-            groups.append(
-                {
-                    "label": "Unsectioned",
-                    "section": None,
-                    "dataset_count": len(orphaned_datasets),
-                    "datasets": _dataset_page_payload(orphaned_datasets, len(orphaned_datasets)),
-                }
-            )
-
-    return groups
+    groups = project_section_dataset_groups(sections, datasets)
+    return [
+        {
+            "label": group["label"],
+            "section": serialize_project_section_reference(group["section"]),
+            "dataset_count": group["dataset_count"],
+            "datasets": _dataset_page_payload(group["datasets"], group["dataset_count"]),
+        }
+        for group in groups
+    ]
 
 
 def serialize_dataset_summary(dataset: Dataset) -> dict:

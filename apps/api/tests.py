@@ -1267,3 +1267,42 @@ def test_project_section_services_create_assign_and_group_datasets(django_user_m
     assert detail_response["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == (
         str(dataset.key)
     )
+
+
+@pytest.mark.django_db
+def test_dataset_project_update_rejects_section_without_project(django_user_model):
+    from apps.api.services import DatasetServiceError, update_profile_dataset_project
+
+    assert hasattr(dataset_models, "ProjectSection")
+
+    user = django_user_model.objects.create_user(
+        username="sectionwithoutproject",
+        email="sectionwithoutproject@example.com",
+        password="password123",
+    )
+    project = Project.objects.create(profile=user.profile, name="Rowset")
+    section = dataset_models.ProjectSection.objects.create(
+        profile=user.profile,
+        project=project,
+        name="Blog",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Content ledger",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["slug"],
+        index_column="slug",
+    )
+
+    with pytest.raises(DatasetServiceError) as exc:
+        update_profile_dataset_project(
+            user.profile,
+            str(dataset.key),
+            project_key=None,
+            section_key=str(section.key),
+        )
+
+    assert exc.value.status_code == 404
+    assert exc.value.message == "Project section not found."

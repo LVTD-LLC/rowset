@@ -64,6 +64,7 @@ from apps.datasets.services import (
     normalize_dataset_row_sort_direction,
     normalize_public_page_size,
     ordered_row_values,
+    project_section_dataset_groups,
     rows_to_csv_text,
     rows_to_jsonl_text,
     rows_to_parquet_bytes,
@@ -1403,51 +1404,6 @@ class ProjectListView(LoginRequiredMixin, ListView):
         return context
 
 
-def _project_section_groups(sections: list[ProjectSection], datasets: list[Dataset]) -> list[dict]:
-    datasets_by_section_id: dict[int | None, list[Dataset]] = {}
-    for dataset in datasets:
-        datasets_by_section_id.setdefault(dataset.section_id, []).append(dataset)
-
-    groups = []
-    for section in sections:
-        section_datasets = datasets_by_section_id.pop(section.id, [])
-        dataset_count = getattr(section, "dataset_count", len(section_datasets))
-        if not section_datasets and not dataset_count:
-            continue
-        groups.append(
-            {
-                "label": section.name,
-                "section": section,
-                "dataset_count": dataset_count,
-                "datasets": section_datasets,
-            }
-        )
-
-    unsectioned_datasets = datasets_by_section_id.pop(None, [])
-    if unsectioned_datasets:
-        groups.append(
-            {
-                "label": "Unsectioned",
-                "section": None,
-                "dataset_count": len(unsectioned_datasets),
-                "datasets": unsectioned_datasets,
-            }
-        )
-
-    for orphaned_datasets in datasets_by_section_id.values():
-        if orphaned_datasets:
-            groups.append(
-                {
-                    "label": "Unsectioned",
-                    "section": None,
-                    "dataset_count": len(orphaned_datasets),
-                    "datasets": orphaned_datasets,
-                }
-            )
-
-    return groups
-
-
 class ProjectDetailView(LoginRequiredMixin, DetailView):
     template_name = "datasets/project_detail.html"
     context_object_name = "project"
@@ -1482,7 +1438,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["page_obj"] = page_obj
         context["datasets"] = datasets
         context["sections"] = sections
-        context["section_groups"] = _project_section_groups(sections, datasets)
+        context["section_groups"] = project_section_dataset_groups(sections, datasets)
         context.setdefault("project_edit_mode", self.request.GET.get("edit") == "1")
         context.setdefault(
             "project_form_values",
