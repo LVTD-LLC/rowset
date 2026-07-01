@@ -86,7 +86,7 @@ def track_event(
         return f"Profile with id {profile_id} not found."
 
     posthog.capture(
-        profile.user.email,
+        str(profile.id),
         event=event_name,
         properties={
             "profile_id": profile.id,

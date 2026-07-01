@@ -71,10 +71,14 @@ export default class extends Controller {
       return;
     }
 
-    window.posthog.capture(this.trackingEventValue, {
+    const properties = {
       copy_source: this.hasUrlValue && this.urlValue ? "endpoint" : "inline",
       path: window.location.pathname,
-      response_key: this.hasResponseKeyValue ? this.responseKeyValue : "",
-    });
+    };
+    if (this.hasResponseKeyValue && this.responseKeyValue) {
+      properties.response_key = this.responseKeyValue;
+    }
+
+    window.posthog.capture(this.trackingEventValue, properties);
   }
 }
