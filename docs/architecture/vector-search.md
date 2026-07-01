@@ -67,12 +67,15 @@ filters directly.
 Rowset indexes rows after canonical writes commit:
 
 1. Dataset creation with initial rows enqueues a dataset backfill.
-2. Row create/update enqueues one row indexing task.
-3. The worker fetches the canonical row and dataset.
-4. The worker renders deterministic search text from the dataset name, index
+2. CSV import enqueues a dataset reindex after the import transaction commits;
+   the reindex worker deletes old dataset vectors before backfilling imported
+   rows.
+3. Row create/update enqueues one row indexing task.
+4. The worker fetches the canonical row and dataset.
+5. The worker renders deterministic search text from the dataset name, index
    column, headers, column descriptions, and row values.
-5. The embedding provider returns a vector with model and dimensions metadata.
-6. Qdrant upserts the point into the configured collection.
+6. The embedding provider returns a vector with model and dimensions metadata.
+7. Qdrant upserts the point into the configured collection.
 
 Indexing failures are logged by workers and do not roll back Rowset writes.
 

@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.utils import timezone
+from django_q.tasks import async_task
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
@@ -24,6 +25,19 @@ from apps.datasets.vector_search import qdrant_is_enabled
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+
+
+def _enqueue_vector_task(task_path: str, *args) -> None:
+    if not qdrant_is_enabled():
+        return
+
+    def enqueue() -> None:
+        try:
+            async_task(task_path, *args)
+        except Exception:
+            logger.exception("Failed to enqueue vector task", task_path=task_path)
+
+    transaction.on_commit(enqueue)
 
 
 def _ensure_index_config(dataset: Dataset) -> None:
@@ -88,6 +102,7 @@ def import_dataset_rows(dataset_id: int) -> None:
                     "updated_at",
                 ]
             )
+            _enqueue_vector_task("apps.datasets.tasks.reindex_dataset_vectors_task", dataset.id)
         logger.info("Finished CSV dataset import", dataset_id=dataset.id, row_count=len(rows))
     except Exception as exc:
         dataset.status = DatasetStatus.FAILED
@@ -135,6 +150,31 @@ def backfill_dataset_vectors_task(dataset_id: int) -> None:
     else:
         logger.info(
             "Vector dataset backfill complete",
+            dataset_id=dataset_id,
+            dataset_key=str(dataset.key),
+            rows_seen=result.rows_seen,
+            indexed=result.indexed,
+            failed=result.failed,
+        )
+
+
+def reindex_dataset_vectors_task(dataset_id: int) -> None:
+    if not qdrant_is_enabled():
+        return
+    try:
+        dataset = Dataset.objects.get(id=dataset_id)
+    except Dataset.DoesNotExist:
+        logger.info("Skipping vector reindex for missing dataset", dataset_id=dataset_id)
+        return
+
+    try:
+        delete_dataset_vectors_service(dataset)
+        result = backfill_dataset_vectors(dataset)
+    except Exception:
+        logger.exception("Vector dataset reindex failed", dataset_id=dataset_id)
+    else:
+        logger.info(
+            "Vector dataset reindex complete",
             dataset_id=dataset_id,
             dataset_key=str(dataset.key),
             rows_seen=result.rows_seen,
