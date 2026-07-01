@@ -163,9 +163,10 @@ class HomeView(DatasetListView):
     login_url = "account_login"
     template_name = "pages/home.html"
     default_view_mode = DATASET_VIEW_MODE_GROUPED
+    view_mode_options = ((DATASET_VIEW_MODE_GROUPED, "Grouped by project/section"),)
     dataset_list_url_name = "home"
     dataset_list_eyebrow = "Home"
-    dataset_list_title = "Projects and datasets"
+    dataset_list_title = "Datasets by project"
     dataset_list_description = (
         "Browse every active dataset your agents have created, grouped by project and section."
     )
@@ -175,24 +176,6 @@ class HomeView(DatasetListView):
         if not hasattr(self, "_profile"):
             self._profile = get_or_create_profile_for_user(self.request.user)
         return self._profile
-
-    def get_projects(self):
-        if not hasattr(self, "_projects"):
-            visible_dataset_filter = Q(datasets__archived_at__isnull=True) & ~Q(
-                datasets__status=DatasetStatus.PREVIEWED
-            )
-            self._projects = self.get_profile().projects.filter(archived_at__isnull=True).annotate(
-                dataset_count=Count("datasets", filter=visible_dataset_filter, distinct=True),
-                section_count=Count(
-                    "sections",
-                    filter=Q(sections__archived_at__isnull=True),
-                    distinct=True,
-                ),
-            ).order_by("name", "id")
-        return self._projects
-
-    def get_total_projects(self, base_queryset):
-        return len(self.get_projects())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -205,10 +188,6 @@ class HomeView(DatasetListView):
 
         profile = self.get_profile()
         context["dashboard_stats"] = context["dataset_stats"]
-        context["projects"] = self.get_projects()
-        context["ungrouped_dataset_count"] = self.get_base_queryset().filter(
-            project__isnull=True
-        ).count()
         show_agent_setup_prompt = (
             not profile.agent_setup_prompt_dismissed
             and context["dashboard_stats"]["total_datasets"] == 0

@@ -1,7 +1,7 @@
 <div class="overflow-x-auto">
   <table class="fb-table">
     <caption class="sr-only">{{ grouped_table_caption }}</caption>
-    <thead class="bg-white dark:bg-slate-950">
+    <thead class="bg-slate-50 dark:bg-slate-900/70">
       <tr>
         <th scope="col">Dataset</th>
         <th scope="col">Rows</th>
@@ -12,12 +12,10 @@
     <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
       {% for dataset in grouped_datasets %}
         <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
-          <td class="max-w-md pl-8 sm:pl-10">
-            <div class="border-l-2 border-emerald-200 pl-4 dark:border-emerald-900">
-              <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
-              <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
-              <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
-            </div>
+          <td class="min-w-72 max-w-xl">
+            <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+            <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
+            <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
           </td>
           <td>{{ dataset.row_count }}</td>
           <td>{{ dataset.headers|length }}</td>
