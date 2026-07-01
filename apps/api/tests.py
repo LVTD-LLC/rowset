@@ -4,8 +4,9 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from django.db import OperationalError
 from django.http import HttpRequest
-from django.test import SimpleTestCase, override_settings
+from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.utils import timezone
 
 from apps.api.views import (
@@ -42,6 +43,99 @@ def test_openapi_dataset_asset_thumbnail_url_is_required_string(client):
         "title": "Thumbnail Url",
         "type": "string",
     }
+
+
+def test_capabilities_endpoint_supports_current_and_legacy_api_prefixes(client):
+    current_response = client.get("/api/capabilities")
+    legacy_response = client.get("/api/v1/capabilities", follow=True)
+    legacy_root_response = client.get("/api/v1")
+
+    assert current_response.status_code == 200
+    assert legacy_response.status_code == 200
+    assert legacy_root_response.status_code == 308
+    assert legacy_root_response["Location"] == "/api/"
+    assert current_response.json()["product"] == "Rowset"
+    assert legacy_response.json()["product"] == "Rowset"
+
+
+def test_legacy_v1_api_prefix_serves_dataset_endpoints(client):
+    profile = SimpleNamespace(id=11)
+    payload = {
+        "count": 0,
+        "total_count": 0,
+        "limit": 100,
+        "offset": 0,
+        "has_more": False,
+        "datasets": [],
+    }
+
+    with (
+        patch("apps.api.auth.resolve_api_key_profile", return_value=(profile, None)),
+        patch("apps.api.views.search_profile_datasets", return_value=payload),
+    ):
+        response = client.get(
+            "/api/v1/datasets",
+            follow=True,
+            HTTP_AUTHORIZATION="Bearer test-key",
+        )
+
+    assert response.status_code == 200
+    assert response.json()["count"] == 0
+
+
+def test_unknown_api_paths_return_json_without_rendering_landing_context(client, monkeypatch):
+    from apps.pages.models import ReferrerBanner
+
+    def fail_if_queried(*args, **kwargs):
+        raise AssertionError("API 404 responses must not render landing-page context")
+
+    monkeypatch.setattr(ReferrerBanner.objects, "get", fail_if_queried)
+
+    current_response = client.get("/api/missing-endpoint/")
+    legacy_response = client.get("/api/v1/missing-endpoint/", follow=True)
+    trailing_slash_response = client.get("/api/v1/datasets/", follow=True)
+
+    assert current_response.status_code == 404
+    assert legacy_response.status_code == 404
+    assert trailing_slash_response.status_code == 401
+    assert current_response["Content-Type"] == "application/json"
+    assert legacy_response["Content-Type"] == "application/json"
+    assert trailing_slash_response["Content-Type"].startswith("application/json")
+    assert current_response.json() == {"detail": "Not Found"}
+    assert legacy_response.json() == {"detail": "Not Found"}
+    assert trailing_slash_response.json() == {"detail": "Unauthorized"}
+
+
+def test_referrer_banner_ignores_database_connection_errors(monkeypatch):
+    from apps.pages.context_processors import referrer_banner
+    from apps.pages.models import ReferrerBanner
+
+    def raise_database_error(*args, **kwargs):
+        raise OperationalError("the connection is closed")
+
+    monkeypatch.setattr(ReferrerBanner.objects, "get", raise_database_error)
+
+    request = RequestFactory().get("/missing-page/")
+
+    assert referrer_banner(request) == {}
+
+
+def test_referrer_banner_ignores_database_errors_in_multiple_banner_fallback(monkeypatch):
+    from apps.pages.context_processors import referrer_banner
+    from apps.pages.models import ReferrerBanner
+
+    def raise_multiple_objects(*args, **kwargs):
+        raise ReferrerBanner.MultipleObjectsReturned
+
+    def raise_database_error(*args, **kwargs):
+        raise OperationalError("the connection is closed")
+
+    monkeypatch.setattr(ReferrerBanner.objects, "get", raise_multiple_objects)
+    monkeypatch.setattr(ReferrerBanner.objects, "filter", raise_database_error)
+
+    request = RequestFactory().get("/missing-page/")
+
+    assert referrer_banner(request) == {}
 
 
 class BlogPostApiTests(SimpleTestCase):

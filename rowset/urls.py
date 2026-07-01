@@ -19,6 +19,7 @@ from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 from django.views.generic import TemplateView
 
+from apps.api.views import api_not_found, api_v1_redirect
 from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView
 from rowset.sitemaps import sitemaps
 
@@ -35,7 +36,11 @@ urlpatterns = [
     path("anymail/", include("anymail.urls")),
     path("uses", TemplateView.as_view(template_name="pages/uses.html"), name="uses"),
     path("blog/", include("apps.blog.urls")),
+    path("api/v1", api_v1_redirect, name="api_v1_redirect_root"),
+    path("api/v1/", api_v1_redirect, name="api_v1_redirect_root_slash"),
+    path("api/v1/<path:unmatched>", api_v1_redirect, name="api_v1_redirect"),
     path("api/", include("apps.api.urls")),
+    path("api/<path:unmatched>", api_not_found, name="api_not_found"),
     path("", include("apps.datasets.urls")),
     path("", include("apps.pages.urls")),
     path("", include("apps.core.urls")),
