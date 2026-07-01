@@ -38,6 +38,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Google signup/login now asks only for basic profile/email access.
 
 ### Fixed
+- Added Docker health checks to the CapRover server and worker images so non-persistent app deploys can use health-gated rolling updates instead of routing to containers before they are ready.
 - Generated-index row patches now accept an unchanged generated index value, avoiding validation failures when agents send full-row update payloads.
 - Choice-column row writes now accept unambiguous case, whitespace, hyphen, or underscore variants and store the schema's canonical choice label.
 - Canonical legacy `/api/v1` REST requests now resolve to the current API surface, unknown or trailing-slash API paths return JSON 404s without rendering landing-page context, and referrer banner lookup failures no longer turn bad-path traffic into Sentry database errors.
