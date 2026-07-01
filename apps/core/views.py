@@ -34,7 +34,11 @@ from apps.core.agent_skill import (
 from apps.core.capabilities import render_rowset_llms_txt
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
-from apps.core.services import create_agent_api_key, get_agent_api_key_token
+from apps.core.services import (
+    create_agent_api_key,
+    get_agent_api_key_token,
+    get_or_create_profile_for_user,
+)
 from apps.core.stripe_webhooks import EVENT_HANDLERS
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.views import DATASET_VIEW_MODE_GROUPED, DatasetListView
@@ -134,7 +138,7 @@ def build_agent_setup_prompt(
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
     if profile is None:
-        profile, _created = Profile.objects.get_or_create(user=request.user)
+        profile = get_or_create_profile_for_user(request.user)
     if mask_api_key:
         api_key = AGENT_API_KEY_MASK
     elif api_key is None:
@@ -169,7 +173,7 @@ class HomeView(DatasetListView):
 
     def get_profile(self):
         if not hasattr(self, "_profile"):
-            self._profile, _created = Profile.objects.get_or_create(user=self.request.user)
+            self._profile = get_or_create_profile_for_user(self.request.user)
         return self._profile
 
     def get_projects(self):
@@ -285,7 +289,7 @@ def llms_txt(request):
 @login_required
 @require_GET
 def agent_setup_prompt(request):
-    profile, _created = Profile.objects.get_or_create(user=request.user)
+    profile = get_or_create_profile_for_user(request.user)
     response = JsonResponse({"prompt": build_agent_setup_prompt(request, profile=profile)})
     response["Cache-Control"] = "no-store"
     return response
@@ -409,7 +413,7 @@ def revoke_agent_api_key_view(request, agent_api_key_uuid):
 @login_required
 @require_POST
 def dismiss_agent_setup_prompt(request):
-    profile, _created = Profile.objects.get_or_create(user=request.user)
+    profile = get_or_create_profile_for_user(request.user)
     if not profile.agent_setup_prompt_dismissed:
         profile.agent_setup_prompt_dismissed = True
         profile.save(update_fields=["agent_setup_prompt_dismissed", "updated_at"])
