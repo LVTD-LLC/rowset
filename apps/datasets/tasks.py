@@ -1,6 +1,5 @@
 from django.db import transaction
 from django.utils import timezone
-from django_q.tasks import async_task
 
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
@@ -22,22 +21,10 @@ from apps.datasets.services import (
     index_dataset_row_vector as index_dataset_row_vector_service,
 )
 from apps.datasets.vector_search import qdrant_is_enabled
+from apps.datasets.vector_tasks import enqueue_vector_task
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
-
-
-def _enqueue_vector_task(task_path: str, *args) -> None:
-    if not qdrant_is_enabled():
-        return
-
-    def enqueue() -> None:
-        try:
-            async_task(task_path, *args)
-        except Exception:
-            logger.exception("Failed to enqueue vector task", task_path=task_path)
-
-    transaction.on_commit(enqueue)
 
 
 def _ensure_index_config(dataset: Dataset) -> None:
@@ -103,7 +90,7 @@ def import_dataset_rows(dataset_id: int) -> None:
                     "updated_at",
                 ]
             )
-            _enqueue_vector_task(
+            enqueue_vector_task(
                 "apps.datasets.tasks.reindex_dataset_vectors_task",
                 dataset.id,
                 stale_row_ids,

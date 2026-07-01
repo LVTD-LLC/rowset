@@ -575,7 +575,7 @@ def test_import_enqueues_vector_reindex_after_commit_when_enabled(
     )
     calls = []
     monkeypatch.setattr(
-        "apps.datasets.tasks.async_task",
+        "apps.datasets.vector_tasks.async_task",
         lambda task_path, *args: calls.append((task_path, args)),
     )
 

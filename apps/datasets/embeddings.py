@@ -1,5 +1,6 @@
 import hashlib
 from dataclasses import dataclass
+from threading import Lock
 from typing import Protocol
 
 from django.conf import settings
@@ -81,6 +82,7 @@ class OpenAIEmbeddingProvider:
 
 _CACHED_PROVIDER_KEY: tuple[str, int, str] | None = None
 _CACHED_PROVIDER: OpenAIEmbeddingProvider | None = None
+_CACHED_PROVIDER_LOCK = Lock()
 
 
 def _api_key_fingerprint(api_key: str) -> str:
@@ -95,14 +97,16 @@ def _cached_openai_embedding_provider(
     global _CACHED_PROVIDER, _CACHED_PROVIDER_KEY
 
     cache_key = (model, dimensions, _api_key_fingerprint(api_key))
-    if _CACHED_PROVIDER is None or _CACHED_PROVIDER_KEY != cache_key:
-        _CACHED_PROVIDER = OpenAIEmbeddingProvider(
-            api_key=api_key,
-            model=model,
-            dimensions=dimensions,
-        )
-        _CACHED_PROVIDER_KEY = cache_key
-    return _CACHED_PROVIDER
+    with _CACHED_PROVIDER_LOCK:
+        if _CACHED_PROVIDER is None or _CACHED_PROVIDER_KEY != cache_key:
+            provider = OpenAIEmbeddingProvider(
+                api_key=api_key,
+                model=model,
+                dimensions=dimensions,
+            )
+            _CACHED_PROVIDER = provider
+            _CACHED_PROVIDER_KEY = cache_key
+        return _CACHED_PROVIDER
 
 
 def get_embedding_provider() -> EmbeddingProvider:

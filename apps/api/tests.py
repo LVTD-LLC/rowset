@@ -1225,7 +1225,7 @@ def test_create_profile_dataset_enqueues_vector_backfill_when_enabled(
     )
     calls = []
     monkeypatch.setattr(
-        "apps.api.services.async_task",
+        "apps.datasets.vector_tasks.async_task",
         lambda task_path, *args: calls.append((task_path, args)),
     )
 
@@ -1270,7 +1270,7 @@ def test_row_write_services_enqueue_vector_index_and_delete_when_enabled(
     )
     calls = []
     monkeypatch.setattr(
-        "apps.api.services.async_task",
+        "apps.datasets.vector_tasks.async_task",
         lambda task_path, *args: calls.append((task_path, args)),
     )
 
@@ -1324,7 +1324,7 @@ def test_archive_profile_dataset_enqueues_vector_delete_when_enabled(
     )
     calls = []
     monkeypatch.setattr(
-        "apps.api.services.async_task",
+        "apps.datasets.vector_tasks.async_task",
         lambda task_path, *args: calls.append((task_path, args)),
     )
 
@@ -1359,7 +1359,7 @@ def test_restore_profile_dataset_enqueues_vector_backfill_when_enabled(
     )
     calls = []
     monkeypatch.setattr(
-        "apps.api.services.async_task",
+        "apps.datasets.vector_tasks.async_task",
         lambda task_path, *args: calls.append((task_path, args)),
     )
 
@@ -1404,7 +1404,7 @@ def test_schema_mutation_services_enqueue_vector_reindex_when_enabled(
     )
     calls = []
     monkeypatch.setattr(
-        "apps.api.services.async_task",
+        "apps.datasets.vector_tasks.async_task",
         lambda task_path, *args: calls.append((task_path, args)),
     )
 
@@ -1536,7 +1536,7 @@ def test_search_profile_dataset_rows_fuses_exact_and_vector_matches(django_user_
     )
 
     assert provider.queries == ["ROW-VEC-001"]
-    assert store.ensure_calls == 1
+    assert store.ensure_calls == 0
     assert store.searches == [(str(dataset.key), [0.1, 0.2, 0.3], 30)]
     assert [result["row"]["id"] for result in response["results"]] == [
         exact_row.id,
@@ -1659,7 +1659,7 @@ def test_search_quality_eval_fixtures_keep_expected_rows_on_top(django_user_mode
         case["query"]: case["expected_top"] for case in eval_cases
     }
     assert provider.queries == [case["query"] for case in eval_cases]
-    assert store.ensure_calls == len(eval_cases)
+    assert store.ensure_calls == 0
 
 
 @pytest.mark.django_db

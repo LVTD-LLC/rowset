@@ -7,7 +7,6 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 from uuid import UUID, uuid4
 
-from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.base import ContentFile
@@ -19,7 +18,6 @@ from django.db.models.functions import Cast, Trim
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
-from django_q.tasks import async_task
 
 from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
@@ -74,6 +72,7 @@ from apps.datasets.vector_search import (
     VectorStoreError,
     build_dataset_row_search_document,
 )
+from apps.datasets.vector_tasks import enqueue_vector_task
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 API_CREATED_FILE_TYPE = "api"
@@ -151,37 +150,24 @@ class DatasetServiceError(Exception):
         super().__init__(message)
 
 
-def _enqueue_vector_task(task_path: str, *args) -> None:
-    if not settings.ROWSET_VECTOR_SEARCH_ENABLED:
-        return
-
-    def enqueue() -> None:
-        try:
-            async_task(task_path, *args)
-        except Exception:
-            logger.exception("Failed to enqueue vector task", task_path=task_path)
-
-    transaction.on_commit(enqueue)
-
-
 def _enqueue_dataset_vector_backfill(dataset_id: int) -> None:
-    _enqueue_vector_task("apps.datasets.tasks.backfill_dataset_vectors_task", dataset_id)
+    enqueue_vector_task("apps.datasets.tasks.backfill_dataset_vectors_task", dataset_id)
 
 
 def _enqueue_dataset_vector_reindex(dataset_id: int) -> None:
-    _enqueue_vector_task("apps.datasets.tasks.reindex_dataset_vectors_task", dataset_id)
+    enqueue_vector_task("apps.datasets.tasks.reindex_dataset_vectors_task", dataset_id)
 
 
 def _enqueue_dataset_row_vector_index(row_id: int) -> None:
-    _enqueue_vector_task("apps.datasets.tasks.index_dataset_row_vector", row_id)
+    enqueue_vector_task("apps.datasets.tasks.index_dataset_row_vector", row_id)
 
 
 def _enqueue_dataset_row_vector_delete(dataset_id: int, row_ids: list[int]) -> None:
-    _enqueue_vector_task("apps.datasets.tasks.delete_dataset_row_vectors", dataset_id, row_ids)
+    enqueue_vector_task("apps.datasets.tasks.delete_dataset_row_vectors", dataset_id, row_ids)
 
 
 def _enqueue_dataset_vector_delete(dataset_id: int) -> None:
-    _enqueue_vector_task("apps.datasets.tasks.delete_dataset_vectors", dataset_id)
+    enqueue_vector_task("apps.datasets.tasks.delete_dataset_vectors", dataset_id)
 
 
 def _normalize_search_query(query: str | None) -> str:
@@ -3063,7 +3049,6 @@ def _dataset_vector_search_hits(
             embedding_model=provider.model,
             embedding_dimensions=provider.dimensions,
         )
-        store.ensure_collection()
         embedding_started_at = perf_counter()
         query_embedding = provider.embed_text(query)
         embedding_latency_ms = (perf_counter() - embedding_started_at) * 1000
@@ -3202,7 +3187,16 @@ def search_profile_dataset_rows(
 
     allowed_row_ids: set[int] | None = None
     if row_query["filters"]:
-        allowed_row_ids = set(filtered_queryset.values_list("id", flat=True))
+        vector_row_ids = [
+            row_id
+            for row_id in (_safe_vector_row_id(hit.payload) for hit in vector_hits)
+            if row_id is not None
+        ]
+        allowed_row_ids = (
+            set(filtered_queryset.filter(id__in=vector_row_ids).values_list("id", flat=True))
+            if vector_row_ids
+            else set()
+        )
 
     lexical_rows = list(lexical_queryset.only("id")[: normalized_limit * 3])
     candidates = _dataset_search_candidates(
