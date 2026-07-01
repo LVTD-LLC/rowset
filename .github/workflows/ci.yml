@@ -75,6 +75,9 @@ jobs:
       - name: Ruff format check
         run: make format-check
 
+      - name: Scoped type check
+        run: make type-check
+
       - name: Create dummy webpack manifest (tests)
         run: |
           mkdir -p frontend/build
