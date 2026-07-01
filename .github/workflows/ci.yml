@@ -69,6 +69,15 @@ jobs:
       - name: Sync dependencies
         run: uv sync
 
+      - name: Ruff lint
+        run: make lint-python
+
+      - name: Ruff format check
+        run: make format-check
+
+      - name: Scoped type check
+        run: make type-check
+
       - name: Create dummy webpack manifest (tests)
         run: |
           mkdir -p frontend/build
@@ -93,3 +102,24 @@ jobs:
 
       - name: Pytest
         run: make test PYTEST_RUN="uv run pytest" -- -q
+
+      - name: High-risk coverage report
+        run: make coverage-high-risk COVERAGE_RUN="bash -c" -- apps/api apps/datasets apps/mcp_server -q
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: make frontend-install
+
+      - name: Frontend lint and build
+        run: make frontend-check

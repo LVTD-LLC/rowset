@@ -49,7 +49,6 @@ def populate_existing_indexes(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("datasets", "0002_dataset_source_text"),
     ]

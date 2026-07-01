@@ -94,9 +94,7 @@ def test_confirmation_mail_failures_do_not_bubble_to_signup(user, monkeypatch):
     )
 
     adapter = CustomAccountAdapter()
-    emailconfirmation = SimpleNamespace(
-        email_address=SimpleNamespace(user=user, email=user.email)
-    )
+    emailconfirmation = SimpleNamespace(email_address=SimpleNamespace(user=user, email=user.email))
 
     adapter.send_confirmation_mail(None, emailconfirmation, signup=True)
 

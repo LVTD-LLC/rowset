@@ -240,9 +240,7 @@ def _invalid_public_slugs() -> tuple[str, ...]:
             invalid_slugs.append(f"{use_case_id}: <invalid page copy>")
             continue
 
-        if not isinstance(page_copy.slug, str) or not PUBLIC_SLUG_PATTERN.fullmatch(
-            page_copy.slug
-        ):
+        if not isinstance(page_copy.slug, str) or not PUBLIC_SLUG_PATTERN.fullmatch(page_copy.slug):
             invalid_slugs.append(f"{use_case_id}: {page_copy.slug or '<empty>'}")
 
     return tuple(invalid_slugs)
@@ -263,9 +261,7 @@ def get_use_case_page_registry_errors() -> tuple[str, ...]:
     for use_case in ROWSET_USE_CASES:
         missing_feature_ids = sorted(set(use_case.rowset_features) - valid_feature_ids)
         if missing_feature_ids:
-            unknown_feature_references.append(
-                f"{use_case.id}: {', '.join(missing_feature_ids)}"
-            )
+            unknown_feature_references.append(f"{use_case.id}: {', '.join(missing_feature_ids)}")
 
     errors = []
     if missing_page_copy_ids:
@@ -280,18 +276,15 @@ def get_use_case_page_registry_errors() -> tuple[str, ...]:
         )
     if duplicate_capability_ids:
         errors.append(
-            "ROWSET_CAPABILITIES contains duplicate IDs: "
-            + ", ".join(duplicate_capability_ids)
+            "ROWSET_CAPABILITIES contains duplicate IDs: " + ", ".join(duplicate_capability_ids)
         )
     if duplicate_slugs:
         errors.append(
-            "USE_CASE_PAGE_COPY contains duplicate public slugs: "
-            + ", ".join(duplicate_slugs)
+            "USE_CASE_PAGE_COPY contains duplicate public slugs: " + ", ".join(duplicate_slugs)
         )
     if invalid_slugs:
         errors.append(
-            "USE_CASE_PAGE_COPY contains invalid public slugs: "
-            + ", ".join(invalid_slugs)
+            "USE_CASE_PAGE_COPY contains invalid public slugs: " + ", ".join(invalid_slugs)
         )
     if unknown_feature_references:
         errors.append(

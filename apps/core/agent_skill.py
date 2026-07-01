@@ -11,8 +11,7 @@ ROWSET_SKILL_REPOSITORY_PATH = ".agents/skills/rowset/SKILL.md"
 ROWSET_FEATURES_SKILL_REPOSITORY_PATH = ".agents/skills/rowset-features/SKILL.md"
 ROWSET_USE_CASES_SKILL_REPOSITORY_PATH = ".agents/skills/rowset-use-cases/SKILL.md"
 ROWSET_SKILL_SOURCE_URL = (
-    "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
-    f"{ROWSET_SKILL_REPOSITORY_PATH}"
+    f"https://raw.githubusercontent.com/LVTD-LLC/rowset/main/{ROWSET_SKILL_REPOSITORY_PATH}"
 )
 ROWSET_FEATURES_SKILL_SOURCE_URL = (
     "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"

@@ -4,6 +4,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 _IGNORED_LOGGERS = {"ask_hn_digest"}
 
+
 class CustomLoggingIntegration(LoggingIntegration):
     def _handle_record(self, record: LogRecord) -> None:
         # This match upper logger names, e.g. "celery" will match "celery.worker"

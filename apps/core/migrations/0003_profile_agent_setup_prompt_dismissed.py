@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0002_initial'),
+        ("core", "0002_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='profile',
-            name='agent_setup_prompt_dismissed',
+            model_name="profile",
+            name="agent_setup_prompt_dismissed",
             field=models.BooleanField(default=False),
         ),
     ]

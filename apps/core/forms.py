@@ -52,8 +52,7 @@ class AgentApiKeyCreateForm(forms.Form):
         max_length=80,
         label="App or agent name",
         help_text=(
-            "Use an app name or AI agent name. Rowset shows this name in dataset "
-            "change history."
+            "Use an app name or AI agent name. Rowset shows this name in dataset change history."
         ),
     )
     access_level = forms.ChoiceField(

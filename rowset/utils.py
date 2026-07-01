@@ -26,7 +26,4 @@ def build_absolute_public_url(path: str) -> str:
 def get_rowset_logger(name):
     """This will add a `rowset` prefix to logger for easy configuration."""
 
-    return structlog.get_logger(
-        f"rowset.{name}",
-        project="rowset"
-    )
+    return structlog.get_logger(f"rowset.{name}", project="rowset")

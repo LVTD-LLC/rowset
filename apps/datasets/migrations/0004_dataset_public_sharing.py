@@ -13,7 +13,6 @@ def populate_public_keys(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("datasets", "0003_dataset_file_type_dataset_index_column_and_more"),
     ]

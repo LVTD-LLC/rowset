@@ -89,6 +89,7 @@ API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
 DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
+DATASET_SEARCH_LIMIT_ERRORS = (TypeError, ValueError)
 PROFILE_ROW_SEARCH_SORT_RANK = "rank"
 PROFILE_ROW_SEARCH_SORT_DATASET = "dataset"
 PROFILE_ROW_SEARCH_SORT_ROW_NUMBER = "row_number"
@@ -192,9 +193,7 @@ class DatasetServiceError(Exception):
 
 
 def _visible_profile_dataset_queryset(profile: Profile):
-    return profile.datasets.filter(archived_at__isnull=True).exclude(
-        status=DatasetStatus.PREVIEWED
-    )
+    return profile.datasets.filter(archived_at__isnull=True).exclude(status=DatasetStatus.PREVIEWED)
 
 
 def _lock_profile_for_quota(profile: Profile) -> Profile:
@@ -599,9 +598,8 @@ def update_profile_project(
 
     with transaction.atomic():
         try:
-            project = (
-                _active_project_queryset(Project.objects.select_for_update())
-                .get(key=project_key, profile=profile)
+            project = _active_project_queryset(Project.objects.select_for_update()).get(
+                key=project_key, profile=profile
             )
         except (Project.DoesNotExist, ValidationError, ValueError) as exc:
             raise DatasetServiceError(404, "Project not found.") from exc
@@ -619,10 +617,7 @@ def update_profile_project(
             project.name = normalized_name
             update_fields.append("name")
 
-        if (
-            normalized_description is not UNSET
-            and project.description != normalized_description
-        ):
+        if normalized_description is not UNSET and project.description != normalized_description:
             project.description = normalized_description
             update_fields.append("description")
 
@@ -848,9 +843,7 @@ def update_profile_project_section(
 
     normalized_name = _normalize_project_section_name(name) if name is not UNSET else UNSET
     normalized_description = (
-        _normalize_project_section_description(description)
-        if description is not UNSET
-        else UNSET
+        _normalize_project_section_description(description) if description is not UNSET else UNSET
     )
 
     with transaction.atomic():
@@ -873,10 +866,7 @@ def update_profile_project_section(
             section.name = normalized_name
             update_fields.append("name")
 
-        if (
-            normalized_description is not UNSET
-            and section.description != normalized_description
-        ):
+        if normalized_description is not UNSET and section.description != normalized_description:
             section.description = normalized_description
             update_fields.append("description")
 
@@ -1314,7 +1304,7 @@ def _dataset_summary_queryset(queryset):
     return queryset.select_related("project", "section").only(*DATASET_SUMMARY_ONLY_FIELDS)
 
 
-def search_profile_datasets(
+def search_profile_datasets(  # noqa: C901
     profile: Profile,
     *,
     query: str | None = None,
@@ -1642,9 +1632,11 @@ def _raise_if_target_row_is_referenced(dataset: Dataset, index_value: str) -> No
         enforce_integrity=True
     ).select_related("source_dataset")
     for relationship in incoming_relationships:
-        if _relationship_source_rows_with_values(relationship).filter(
-            rowset_relationship_value=normalized_index_value
-        ).exists():
+        if (
+            _relationship_source_rows_with_values(relationship)
+            .filter(rowset_relationship_value=normalized_index_value)
+            .exists()
+        ):
             raise DatasetServiceError(
                 409,
                 f"Row is referenced by relationship '{relationship.name}' from "
@@ -1729,10 +1721,9 @@ def create_profile_dataset_relationship(
 
 def list_profile_dataset_relationships(profile: Profile, dataset_key: str) -> dict:
     source_dataset = get_ready_profile_dataset(profile, dataset_key)
-    relationships = (
-        source_dataset.outgoing_relationships.select_related("source_dataset", "target_dataset")
-        .order_by("name", "id")
-    )
+    relationships = source_dataset.outgoing_relationships.select_related(
+        "source_dataset", "target_dataset"
+    ).order_by("name", "id")
     return {
         "dataset": str(source_dataset.key),
         "relationships": [
@@ -2056,8 +2047,10 @@ def _validate_image_rows(
 
 
 def _iter_dataset_row_data(dataset: Dataset):
-    yield from dataset.rows.order_by("row_number", "id").values_list("data", flat=True).iterator(
-        chunk_size=1000
+    yield from (
+        dataset.rows.order_by("row_number", "id")
+        .values_list("data", flat=True)
+        .iterator(chunk_size=1000)
     )
 
 
@@ -2192,8 +2185,8 @@ def _validate_existing_image_values(dataset: Dataset, column_schema: dict) -> No
     image_columns = image_columns_from_schema(dataset.headers, column_schema)
     if not image_columns:
         return
-    for row in dataset.rows.order_by("row_number", "id").only("id", "data").iterator(
-        chunk_size=1000
+    for row in (
+        dataset.rows.order_by("row_number", "id").only("id", "data").iterator(chunk_size=1000)
     ):
         row_data = row.data or {}
         _validate_image_row_data(
@@ -2205,12 +2198,15 @@ def _validate_existing_image_values(dataset: Dataset, column_schema: dict) -> No
         )
         for column in image_columns:
             asset_key = dataset_asset_key_from_ref(row_data.get(column, ""))
-            if asset_key and not DatasetAsset.objects.filter(
-                dataset=dataset,
-                row=row,
-                column_name=column,
-                key=asset_key,
-            ).exists():
+            if (
+                asset_key
+                and not DatasetAsset.objects.filter(
+                    dataset=dataset,
+                    row=row,
+                    column_name=column,
+                    key=asset_key,
+                ).exists()
+            ):
                 raise DatasetServiceError(
                     400,
                     f"Column '{column}' references an image asset that does not exist.",
@@ -3532,7 +3528,7 @@ def attach_profile_dataset_image_asset(
 def _normalize_dataset_search_limit(limit: int) -> int:
     try:
         normalized_limit = int(limit)
-    except (TypeError, ValueError):
+    except DATASET_SEARCH_LIMIT_ERRORS:
         normalized_limit = 10
     return max(1, min(normalized_limit, DATASET_SEARCH_MAX_LIMIT))
 
@@ -3546,7 +3542,7 @@ def _reciprocal_rank_score(rank: int | None) -> float:
 def _safe_vector_row_id(payload: dict[str, Any]) -> int | None:
     try:
         return int(payload.get("row_id"))
-    except (TypeError, ValueError):
+    except DATASET_SEARCH_LIMIT_ERRORS:
         return None
 
 
