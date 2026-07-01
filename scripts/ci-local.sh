@@ -56,6 +56,10 @@ SQL
 }
 
 run_step "Clean stale test containers" cleanup_backend_runs
+run_step "Ruff lint" make lint-python
+run_step "Ruff format check" make format-check
+run_step "Install frontend dependencies" make frontend-install
+run_step "Frontend lint and build" make frontend-check
 run_step "Reset local test database" reset_test_database
 run_step "Migration check" make migrations-check
 run_step "Django system checks" make django-check
