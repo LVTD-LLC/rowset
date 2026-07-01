@@ -18,7 +18,8 @@ def _site_host_header() -> str:
 
 
 def check_server() -> None:
-    connection = http.client.HTTPConnection("127.0.0.1", 80, timeout=4)
+    port = int(os.environ.get("PORT", "80"))
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=4)
     try:
         connection.request(
             "GET",
@@ -67,14 +68,17 @@ def check_worker() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Container health checks for Rowset.")
-    parser.add_argument("target", choices=["server", "worker"])
+    parser.add_argument("target", nargs="?", choices=["server", "worker"])
     args = parser.parse_args()
+    target = args.target or os.environ.get("APP_PROCESS_TYPE", "server")
 
     try:
-        if args.target == "server":
+        if target == "server":
             check_server()
-        else:
+        elif target == "worker":
             check_worker()
+        else:
+            raise RuntimeError(f"Unsupported healthcheck target: {target!r}")
     except Exception as exc:
         print(f"Healthcheck failed: {exc}", file=sys.stderr)
         return 1

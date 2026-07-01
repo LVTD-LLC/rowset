@@ -446,7 +446,7 @@ through the REST API endpoints above.
 |   |-- src/styles/            # Tailwind/PostCSS source CSS
 |   `-- vendors/               # Vendored frontend assets copied into the build
 |-- scripts/build-assets.mjs   # Frontend asset build and watch script
-|-- deployment/                # CapRover/server/worker Dockerfiles and entrypoint
+|-- deployment/                # CapRover Dockerfile, entrypoint, and healthcheck
 |-- docker-compose-local.yml   # Local development stack
 |-- docker-compose-prod.yml    # Production Compose stack using GHCR images
 |-- docker-compose-test.yml    # Compose overrides for test runs
@@ -767,8 +767,7 @@ is configured in GitHub secrets.
 The backend and worker images currently point at:
 
 ```text
-ghcr.io/rasulkireev/rowset:latest
-ghcr.io/rasulkireev/rowset-workers:latest
+ghcr.io/lvtd-llc/rowset:latest
 ```
 
 On a server, fetch the repository files first so `docker-compose-prod.yml` and
@@ -806,31 +805,55 @@ and forward traffic to the backend.
 
 ### CapRover production
 
-The active push-to-main deployment path is the CapRover workflow pair:
+The active push-to-main deployment path is:
 
 - `.github/workflows/deploy.yml`
-- `.github/workflows/deploy-workers.yml`
 
-The workflows create tar deployment bundles with:
+The workflow builds and publishes one prebuilt Docker image to GHCR, then
+deploys that same immutable image tag to the `rowset` and `rowset-workers`
+CapRover apps:
 
-- `deployment/Dockerfile.server`
-- `deployment/Dockerfile.workers`
+- `ghcr.io/lvtd-llc/rowset:latest`
+
+Each push to `main` also publishes:
+
+- a UTC date alias such as `2026-07-01`
+- an immutable date-based release tag such as `2026-07-01.123`
+- the full Git commit SHA traceability tag
+
+The plain date tag is a daily alias and can move if there is more than one
+release on the same UTC day. Pin the date-based release tag or the SHA tag for
+rollbacks and reproducible self-hosted deployments. CapRover production deploys
+the current build's full Git commit SHA tag.
+
+CapRover pulls the published image from GHCR during deployment. Before
+switching production to these workflows, make sure either:
+
+- the `ghcr.io/lvtd-llc/rowset` package is public after its first publish, or
+- the CapRover host has a `ghcr.io` registry credential with package read access
+  configured.
+
+The `rowset` and `rowset-workers` CapRover apps run the same image. Production
+apps must set `APP_PROCESS_TYPE`:
+
+- `rowset`: `APP_PROCESS_TYPE=server`
+- `rowset-workers`: `APP_PROCESS_TYPE=worker`
 
 Required GitHub secrets:
 
 | Secret | Used by | Description |
 | --- | --- | --- |
 | `CAPROVER_SERVER` | server and workers | CapRover server URL. |
-| `APP_TOKEN` | server | CapRover app token for the `rowset` app. |
-| `WORKERS_APP_TOKEN` | workers | CapRover app token for the `rowset-workers` app. |
+| `APP_TOKEN` | server | CapRover deploy token for the `rowset` app. |
+| `WORKERS_APP_TOKEN` | workers | CapRover deploy token for the `rowset-workers` app. |
 
-The workflows deploy on pushes to `main`.
+The workflow deploys on pushes to `main`.
 
-The production Dockerfiles:
+The production Dockerfile:
 
 1. Build frontend assets with Node 24.
 2. Build a Python 3.14 runtime.
-3. Install Python dependencies with `uv sync --no-dev --no-install-project`.
+3. Install Python dependencies with `uv sync --locked --no-dev --no-install-project`.
 4. Copy `frontend/build` from the Node build stage.
 5. Run `deployment/entrypoint.sh`.
 
