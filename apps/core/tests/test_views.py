@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from allauth.account.models import EmailAddress
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.test import override_settings
 from django.urls import reverse
 
@@ -295,6 +295,20 @@ class TestHomeView:
         monkeypatch.setattr(Profile.objects, "get_or_create", raise_integrity_error)
 
         assert get_or_create_profile_for_user(user) == profile
+
+    def test_get_or_create_profile_for_user_recovers_inside_transaction(
+        self,
+        user,
+        profile,
+        monkeypatch,
+    ):
+        def raise_integrity_error(*args, **kwargs):
+            raise IntegrityError("duplicate profile")
+
+        monkeypatch.setattr(Profile.objects, "get_or_create", raise_integrity_error)
+
+        with transaction.atomic():
+            assert get_or_create_profile_for_user(user) == profile
 
     def test_home_create_agent_api_key_redirects_back_to_onboarding(self, auth_client):
         response = auth_client.post(

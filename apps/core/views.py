@@ -177,20 +177,22 @@ class HomeView(DatasetListView):
         return self._profile
 
     def get_projects(self):
-        visible_dataset_filter = Q(datasets__archived_at__isnull=True) & ~Q(
-            datasets__status=DatasetStatus.PREVIEWED
-        )
-        return self.get_profile().projects.filter(archived_at__isnull=True).annotate(
-            dataset_count=Count("datasets", filter=visible_dataset_filter, distinct=True),
-            section_count=Count(
-                "sections",
-                filter=Q(sections__archived_at__isnull=True),
-                distinct=True,
-            ),
-        )
+        if not hasattr(self, "_projects"):
+            visible_dataset_filter = Q(datasets__archived_at__isnull=True) & ~Q(
+                datasets__status=DatasetStatus.PREVIEWED
+            )
+            self._projects = self.get_profile().projects.filter(archived_at__isnull=True).annotate(
+                dataset_count=Count("datasets", filter=visible_dataset_filter, distinct=True),
+                section_count=Count(
+                    "sections",
+                    filter=Q(sections__archived_at__isnull=True),
+                    distinct=True,
+                ),
+            ).order_by("name", "id")
+        return self._projects
 
     def get_total_projects(self, base_queryset):
-        return self.get_projects().count()
+        return len(self.get_projects())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -203,7 +205,7 @@ class HomeView(DatasetListView):
 
         profile = self.get_profile()
         context["dashboard_stats"] = context["dataset_stats"]
-        context["projects"] = self.get_projects().order_by("name", "id")
+        context["projects"] = self.get_projects()
         context["ungrouped_dataset_count"] = self.get_base_queryset().filter(
             project__isnull=True
         ).count()

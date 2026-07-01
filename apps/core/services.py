@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.core.analytics import (
@@ -37,7 +37,8 @@ class AgentApiKeyCredential:
 
 def get_or_create_profile_for_user(user) -> Profile:
     try:
-        profile, _created = Profile.objects.get_or_create(user=user)
+        with transaction.atomic():
+            profile, _created = Profile.objects.get_or_create(user=user)
     except IntegrityError:
         logger.warning(
             "Recovering existing profile after concurrent profile creation",
