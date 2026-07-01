@@ -69,7 +69,7 @@ from apps.core.services import (
     require_agent_api_key_access,
     resolve_api_key_profile,
     serialize_agent_api_key,
-    serialize_feedback,
+    serialize_feedback_submission_result,
     submit_profile_feedback,
 )
 from apps.mcp_server.auth import mcp_auth
@@ -498,22 +498,11 @@ def submit_feedback(
                 )
             ) from exc
 
-        feedback_payload = serialize_feedback(result.feedback)
-        feedback_payload.update(
-            {
-                "id": result.feedback.id,
-                "page": result.feedback.page,
-                "context": context or {},
-            }
+        return serialize_feedback_submission_result(
+            result,
+            feedback_context=context or {},
+            include_feedback_id=True,
         )
-        return {
-            "status": "success",
-            "message": "Feedback submitted successfully.",
-            "feedback": feedback_payload,
-            "dataset": str(result.dataset.key) if result.dataset else "",
-            "row": result.row.id if result.row else None,
-            "row_url": result.row_url,
-        }
     finally:
         close_old_connections()
 

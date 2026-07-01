@@ -1,13 +1,11 @@
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.mail import send_mail
 from django.db import models
 from django_q.tasks import async_task
 
 from apps.core.base_models import BaseModel
 from apps.core.choices import AgentApiKeyAccessLevel, EmailType, FeedbackSource, ProfileStates
 from apps.core.model_utils import generate_random_key
-from apps.core.utils import send_transactional_email
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -176,46 +174,6 @@ class Feedback(BaseModel):
 
     def _submitter_label(self) -> str:
         return self.profile.user.email if self.profile else "Anonymous"
-
-    def save(self, *args, **kwargs):
-        is_new = self._state.adding
-        super().save(*args, **kwargs)
-
-        if is_new and not getattr(self, "_skip_feedback_notification", False):
-            agent_api_key = (
-                f"{self.agent_api_key.name} ({self.agent_api_key.key_prefix})"
-                if self.agent_api_key
-                else "None"
-            )
-            subject = "New Feedback Submitted"
-            message = f"""
-                New feedback was submitted:\n\n
-                User: {self._submitter_label()}
-                Source: {self.get_source_display()}
-                Agent API key: {agent_api_key}
-                Feedback: {self.feedback}
-                Page: {self.page}
-            """
-            from_email = settings.DEFAULT_FROM_EMAIL
-            recipient_list = [settings.DEFAULT_FROM_EMAIL]
-
-            for recipient_email in recipient_list:
-                send_transactional_email(
-                    lambda recipient=recipient_email: send_mail(
-                        subject,
-                        message,
-                        from_email,
-                        [recipient],
-                        fail_silently=False,
-                    ),
-                    email_address=recipient_email,
-                    email_type=EmailType.FEEDBACK_NOTIFICATION,
-                    profile=self.profile,
-                    context={
-                        "flow": "feedback_notification",
-                        "feedback_id": self.id,
-                    },
-                )
 
 
 class EmailSent(BaseModel):

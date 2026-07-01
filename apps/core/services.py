@@ -394,6 +394,29 @@ def serialize_feedback(feedback: Feedback) -> dict:
     }
 
 
+def serialize_feedback_submission_result(
+    result: FeedbackSubmissionResult,
+    *,
+    feedback_context: dict | None = None,
+    include_feedback_id: bool = False,
+) -> dict:
+    feedback_payload = serialize_feedback(result.feedback)
+    feedback_payload["page"] = result.feedback.page
+    if include_feedback_id:
+        feedback_payload["id"] = result.feedback.id
+    if feedback_context is not None:
+        feedback_payload["context"] = feedback_context
+
+    return {
+        "status": "success",
+        "message": "Feedback submitted successfully.",
+        "feedback": feedback_payload,
+        "dataset": str(result.dataset.key) if result.dataset else "",
+        "row": result.row.id if result.row else None,
+        "row_url": result.row_url,
+    }
+
+
 def queue_feedback_notification(feedback: Feedback) -> None:
     if not getattr(settings, "ROWSET_FEEDBACK_APPRISE_URLS", ()):
         return
@@ -442,16 +465,16 @@ def submit_profile_feedback(
             row_url="",
         )
 
-    project = _get_or_create_feedback_project(profile)
-    section = _get_or_create_feedback_section(profile, project)
-    dataset = _get_or_create_feedback_dataset(
-        profile,
-        project,
-        section,
-        agent_api_key=agent_api_key,
-    )
-
     with transaction.atomic():
+        Profile.objects.select_for_update().only("id").get(id=profile.id)
+        project = _get_or_create_feedback_project(profile)
+        section = _get_or_create_feedback_section(profile, project)
+        dataset = _get_or_create_feedback_dataset(
+            profile,
+            project,
+            section,
+            agent_api_key=agent_api_key,
+        )
         feedback_record = Feedback(
             profile=profile,
             agent_api_key=agent_api_key,
@@ -460,7 +483,6 @@ def submit_profile_feedback(
             page=normalized_page,
             metadata=normalized_metadata,
         )
-        feedback_record._skip_feedback_notification = True
         feedback_record.save()
         row_result = create_profile_dataset_row(
             profile,
