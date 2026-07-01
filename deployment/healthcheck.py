@@ -18,7 +18,7 @@ def _site_host_header() -> str:
 
 
 def check_server() -> None:
-    connection = http.client.HTTPConnection("127.0.0.1", 80, timeout=5)
+    connection = http.client.HTTPConnection("127.0.0.1", 80, timeout=4)
     try:
         connection.request(
             "GET",
