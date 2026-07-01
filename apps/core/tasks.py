@@ -5,10 +5,98 @@ import posthog
 import requests
 from django.conf import settings
 
-from apps.core.models import Profile
+from apps.core.models import Feedback, Profile
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+
+
+def _feedback_source_label(feedback: Feedback) -> str:
+    if feedback.source == "mcp":
+        return "MCP"
+    if feedback.source == "api":
+        return "API"
+    return "Browser"
+
+
+def _format_feedback_apprise_body(feedback: Feedback) -> str:
+    submitter = feedback.profile.user.email if feedback.profile else "Anonymous"
+    lines = [
+        f"Source: {_feedback_source_label(feedback)}",
+        f"User: {submitter}",
+    ]
+
+    if feedback.agent_api_key:
+        lines.append(
+            f"Agent API key: {feedback.agent_api_key.name} ({feedback.agent_api_key.key_prefix})"
+        )
+    if feedback.page:
+        lines.append(f"Page: {feedback.page}")
+
+    metadata = feedback.metadata if isinstance(feedback.metadata, dict) else {}
+    if metadata:
+        context_keys = ", ".join(sorted(str(key) for key in metadata))
+        lines.append(f"Context keys: {context_keys}")
+
+    lines.extend(["", feedback.feedback])
+    return "\n".join(lines)
+
+
+def notify_feedback_apprise(feedback_id: int) -> str:
+    urls = tuple(getattr(settings, "ROWSET_FEEDBACK_APPRISE_URLS", ()))
+    if not urls:
+        return "Apprise feedback notifications are not configured."
+
+    try:
+        feedback = Feedback.objects.select_related("profile__user", "agent_api_key").get(
+            id=feedback_id
+        )
+    except Feedback.DoesNotExist:
+        logger.warning(
+            "Feedback notification skipped because feedback was not found",
+            feedback_id=feedback_id,
+        )
+        return f"Feedback {feedback_id} was not found."
+
+    import apprise
+
+    apprise_client = apprise.Apprise()
+    added_url_count = 0
+    for url in urls:
+        if apprise_client.add(url):
+            added_url_count += 1
+
+    if added_url_count == 0:
+        logger.warning(
+            "Feedback notification skipped because no Apprise URLs could be parsed",
+            feedback_id=feedback_id,
+            configured_url_count=len(urls),
+        )
+        return "No Apprise feedback notification URLs could be parsed."
+
+    try:
+        sent = apprise_client.notify(
+            title=getattr(settings, "ROWSET_FEEDBACK_APPRISE_TITLE", "New Rowset feedback"),
+            body=_format_feedback_apprise_body(feedback),
+        )
+    except Exception as exc:
+        logger.error(
+            "Failed to send Apprise feedback notification",
+            feedback_id=feedback_id,
+            error=str(exc),
+            exc_info=True,
+        )
+        return f"Failed to send Apprise feedback notification for feedback {feedback_id}."
+
+    if not sent:
+        logger.warning(
+            "Apprise feedback notification returned a failure result",
+            feedback_id=feedback_id,
+            configured_url_count=len(urls),
+        )
+        return f"Apprise feedback notification failed for feedback {feedback_id}."
+
+    return f"Sent Apprise feedback notification for feedback {feedback_id}."
 
 
 def add_email_to_buttondown(email, tag):
@@ -146,7 +234,7 @@ def track_state_change(
     from_state: str,
     to_state: str,
     metadata: dict = None,
-    source_function: str = None
+    source_function: str = None,
 ) -> None:
     from apps.core.models import Profile, ProfileStateTransition
 

@@ -5,7 +5,7 @@ from django.db import models
 from django_q.tasks import async_task
 
 from apps.core.base_models import BaseModel
-from apps.core.choices import AgentApiKeyAccessLevel, EmailType, ProfileStates
+from apps.core.choices import AgentApiKeyAccessLevel, EmailType, FeedbackSource, ProfileStates
 from apps.core.model_utils import generate_random_key
 from apps.core.utils import send_transactional_email
 from rowset.utils import get_rowset_logger
@@ -142,26 +142,55 @@ class Feedback(BaseModel):
         related_name="feedback",
         help_text="The user who submitted the feedback",
     )
+    agent_api_key = models.ForeignKey(
+        AgentApiKey,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="feedback",
+        help_text="The agent API key used to submit the feedback, when available",
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=FeedbackSource.choices,
+        default=FeedbackSource.BROWSER,
+        help_text="The interface that submitted the feedback",
+    )
     feedback = models.TextField(
         help_text="The feedback text",
     )
     page = models.CharField(
         max_length=255,
+        blank=True,
+        default="",
         help_text="The page where the feedback was submitted",
+    )
+    metadata = models.JSONField(
+        blank=True,
+        default=dict,
+        help_text="Optional structured context supplied with the feedback",
     )
 
     def __str__(self):
-        return f"{self.profile.user.email}: {self.feedback}"
+        submitter = self.profile.user.email if self.profile else "Anonymous"
+        return f"{submitter}: {self.feedback}"
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         super().save(*args, **kwargs)
 
         if is_new:
+            agent_api_key = (
+                f"{self.agent_api_key.name} ({self.agent_api_key.key_prefix})"
+                if self.agent_api_key
+                else "None"
+            )
             subject = "New Feedback Submitted"
             message = f"""
                 New feedback was submitted:\n\n
                 User: {self.profile.user.email if self.profile else "Anonymous"}
+                Source: {self.get_source_display()}
+                Agent API key: {agent_api_key}
                 Feedback: {self.feedback}
                 Page: {self.page}
             """

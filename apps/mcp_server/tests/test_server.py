@@ -341,6 +341,51 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
     anyio.run(run)
 
 
+@pytest.mark.django_db(transaction=True)
+def test_submit_feedback_mcp_tool_persists_agent_feedback(monkeypatch, django_user_model):
+    from apps.core.choices import FeedbackSource
+    from apps.core.models import Feedback
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="feedbackmcpuser",
+        email="feedbackmcpuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(user.profile, "Feedback Agent", AgentApiKeyAccessLevel.READ)
+    profile = user.profile
+    setattr(profile, AGENT_API_KEY_PROFILE_ATTR, credential.agent_api_key)
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile,
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "submit_feedback",
+                {
+                    "feedback": "The update_dataset_metadata tool needs a shorter example.",
+                    "page": "mcp:update_dataset_metadata",
+                    "context": {"tool": "update_dataset_metadata", "category": "docs"},
+                },
+            )
+
+        payload = result.data
+        assert payload["status"] == "success"
+        assert payload["feedback"]["source"] == FeedbackSource.MCP
+
+    anyio.run(run)
+
+    feedback = Feedback.objects.get(profile=profile)
+    assert feedback.feedback == "The update_dataset_metadata tool needs a shorter example."
+    assert feedback.page == "mcp:update_dataset_metadata"
+    assert feedback.source == FeedbackSource.MCP
+    assert feedback.metadata == {"tool": "update_dataset_metadata", "category": "docs"}
+    assert feedback.agent_api_key == credential.agent_api_key
+
+
 def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
     async def run():
         monkeypatch.setattr(

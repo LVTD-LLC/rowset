@@ -36,6 +36,16 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 
+
+def _split_env_urls(value: str) -> tuple[str, ...]:
+    urls = []
+    for line in str(value or "").replace(",", "\n").splitlines():
+        url = line.strip()
+        if url:
+            urls.append(url)
+    return tuple(urls)
+
+
 # Options: dev, prod
 ENVIRONMENT = env("ENVIRONMENT")
 
@@ -592,6 +602,9 @@ POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
 CHATWOOT_BASE_URL = env("CHATWOOT_BASE_URL", default="")
 CHATWOOT_WEBSITE_TOKEN = env("CHATWOOT_WEBSITE_TOKEN", default="")
 CHATWOOT_HMAC_SECRET = env("CHATWOOT_HMAC_SECRET", default="")
+
+ROWSET_FEEDBACK_APPRISE_URLS = _split_env_urls(env("ROWSET_FEEDBACK_APPRISE_URLS", default=""))
+ROWSET_FEEDBACK_APPRISE_TITLE = env("ROWSET_FEEDBACK_APPRISE_TITLE", default="New Rowset feedback")
 
 
 BUTTONDOWN_API_KEY = env("BUTTONDOWN_API_KEY", default="")

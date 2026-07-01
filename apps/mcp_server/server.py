@@ -60,7 +60,7 @@ from apps.core.analytics import (
     track_activation_event,
 )
 from apps.core.capabilities import rowset_capabilities_payload
-from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import (
     create_agent_api_key as create_agent_api_key_credential,
@@ -69,6 +69,8 @@ from apps.core.services import (
     require_agent_api_key_access,
     resolve_api_key_profile,
     serialize_agent_api_key,
+    serialize_feedback,
+    submit_profile_feedback,
 )
 from apps.mcp_server.auth import mcp_auth
 from rowset.utils import get_rowset_logger
@@ -431,6 +433,75 @@ def get_rowset_capabilities() -> dict:
     close_old_connections()
     _mcp_authenticated_profile()
     return rowset_capabilities_payload()
+
+
+@mcp.tool(
+    name="submit_feedback",
+    description=(
+        "Submit concise product feedback about Rowset from the authenticated agent. "
+        "Use this for setup friction, confusing MCP/API behavior, missing docs, or "
+        "feature requests. Do not include API keys, secrets, or private dataset contents."
+    ),
+)
+def submit_feedback(
+    feedback: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=2000,
+            description="Concise feedback text. Do not include secrets or private row data.",
+        ),
+    ],
+    page: Annotated[
+        str | None,
+        Field(
+            default=None,
+            max_length=255,
+            description=(
+                "Optional Rowset page, API path, MCP tool, or workflow where this came up."
+            ),
+        ),
+    ] = None,
+    context: Annotated[
+        dict[str, Any] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional small JSON object with non-sensitive context such as tool name, "
+                "category, or workflow."
+            ),
+        ),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        feedback_record = submit_profile_feedback(
+            profile=profile,
+            feedback=feedback,
+            page=page,
+            source=FeedbackSource.MCP,
+            metadata=context,
+            agent_api_key=getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None),
+        )
+    except ValueError as exc:
+        raise _mcp_tool_error(
+            _mcp_error_payload(
+                code="VALIDATION_ERROR",
+                message=str(exc),
+                retryable=False,
+                suggested_action=(
+                    "Submit concise feedback with a small non-sensitive context object."
+                ),
+                details={"http_status": 400},
+            )
+        ) from exc
+
+    return {
+        "status": "success",
+        "message": "Feedback submitted successfully.",
+        "feedback": serialize_feedback(feedback_record),
+    }
 
 
 @mcp.tool(
@@ -826,9 +897,7 @@ def update_project_section(
         str | None,
         Field(
             default=None,
-            description=(
-                "Optional new section name. Omit or pass null to keep the current name."
-            ),
+            description=("Optional new section name. Omit or pass null to keep the current name."),
         ),
     ] = None,
     description: Annotated[
@@ -1092,7 +1161,7 @@ def update_dataset_column_types(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
                 "include text, image, choice, integer, number, currency, boolean, "
-                'date, datetime, email, url, and reference. For choice columns, pass '
+                "date, datetime, email, url, and reference. For choice columns, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
                 'reference column, pass {"type": "reference", "target": "dataset"} or '
@@ -1139,7 +1208,7 @@ def add_column(
             description=(
                 "Optional semantic type or metadata for the new column. Supported types "
                 "include text, image, choice, integer, number, currency, boolean, "
-                'date, datetime, email, url, and reference. For a choice column, pass '
+                "date, datetime, email, url, and reference. For a choice column, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
                 'reference column, pass {"type": "reference", "target": "dataset"} or '

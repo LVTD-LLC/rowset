@@ -89,6 +89,20 @@ ROWSET_CAPABILITIES = (
         ),
     ),
     RowsetCapability(
+        id="product_feedback",
+        title="Product feedback",
+        summary=(
+            "Submit concise Rowset product feedback from an authenticated agent when MCP, "
+            "REST, setup, docs, or workflow behavior is confusing or missing."
+        ),
+        mcp_tools=("submit_feedback",),
+        rest_paths=("/api/feedback",),
+        notes=(
+            "Read-level agent API keys may submit feedback.",
+            "Do not include API keys, secrets, or private dataset contents in feedback.",
+        ),
+    ),
+    RowsetCapability(
         id="datasets",
         title="Datasets",
         summary=(

@@ -22,6 +22,7 @@ from apps.api.auth import (
 from apps.api.schemas import (
     AgentApiKeyCreateIn,
     AgentApiKeyCreateOut,
+    AgentFeedbackSubmitOut,
     BlogPostDetailOut,
     BlogPostIn,
     BlogPostItemOut,
@@ -134,12 +135,14 @@ from apps.core.analytics import (
     track_activation_event,
 )
 from apps.core.capabilities import rowset_capabilities_payload
-from apps.core.models import Feedback
+from apps.core.choices import FeedbackSource
 from apps.core.services import (
     create_agent_api_key as create_agent_api_key_credential,
 )
 from apps.core.services import (
     serialize_agent_api_key,
+    serialize_feedback,
+    submit_profile_feedback,
 )
 from apps.datasets.services import (
     DATASET_ASSET_CACHE_CONTROL,
@@ -335,8 +338,16 @@ def healthcheck(request: HttpRequest):
 def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
     profile = request.auth
     try:
-        Feedback.objects.create(profile=profile, feedback=data.feedback, page=data.page)
+        submit_profile_feedback(
+            profile=profile,
+            feedback=data.feedback,
+            page=data.page,
+            source=FeedbackSource.BROWSER,
+            metadata=data.context,
+        )
         return {"success": True, "message": "Feedback submitted successfully"}
+    except ValueError as exc:
+        return {"success": False, "message": str(exc)}
     except Exception as e:
         logger.error("Failed to submit feedback", error=str(e), profile_id=profile.id)
         return {"success": False, "message": "Failed to submit feedback. Please try again."}
@@ -552,6 +563,36 @@ def get_user_info(request: HttpRequest):
         source_function="apps.api.views.get_user_info",
     )
     return payload
+
+
+@api.post(
+    "/feedback",
+    response={201: AgentFeedbackSubmitOut},
+    auth=[api_key_auth],
+    tags=["feedback"],
+)
+def submit_agent_feedback(request: HttpRequest, payload: SubmitFeedbackIn):
+    """Submit product feedback from an authenticated REST or agent client."""
+    try:
+        feedback = submit_profile_feedback(
+            profile=request.auth,
+            feedback=payload.feedback,
+            page=payload.page,
+            source=FeedbackSource.API,
+            metadata=payload.context,
+            agent_api_key=getattr(request, "agent_api_key", None),
+        )
+    except ValueError as exc:
+        raise HttpError(400, str(exc)) from exc
+
+    return Status(
+        201,
+        {
+            "status": "success",
+            "message": "Feedback submitted successfully.",
+            "feedback": serialize_feedback(feedback),
+        },
+    )
 
 
 @api.post(

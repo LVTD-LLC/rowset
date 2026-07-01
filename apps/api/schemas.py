@@ -23,11 +23,24 @@ COLUMN_TYPE_DESCRIPTION = (
 class SubmitFeedbackIn(Schema):
     feedback: str = Field(..., min_length=1, max_length=2000)
     page: str = Field("", max_length=255)
+    context: dict[str, Any] | None = None
 
 
 class SubmitFeedbackOut(Schema):
     success: bool
     message: str
+
+
+class FeedbackRecordOut(Schema):
+    uuid: str
+    source: str
+    created_at: str
+
+
+class AgentFeedbackSubmitOut(Schema):
+    status: str
+    message: str
+    feedback: FeedbackRecordOut
 
 
 class BlogPostIn(Schema):
@@ -569,8 +582,7 @@ class ProfileRowSearchIn(Schema):
     filter_operators: dict[str, Any] | None = Field(
         default=None,
         description=(
-            "Optional row filter operators keyed by header, such as contains, is, above, "
-            "or below."
+            "Optional row filter operators keyed by header, such as contains, is, above, or below."
         ),
     )
     dataset_key: str | None = Field(
