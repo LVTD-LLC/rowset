@@ -79,6 +79,8 @@ API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
 DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
+FREE_ACCOUNT_DATASET_LIMIT = 2
+FREE_ACCOUNT_ROW_LIMIT = 50
 logger = get_rowset_logger(__name__)
 
 
@@ -148,6 +150,54 @@ class DatasetServiceError(Exception):
         self.status_code = status_code
         self.message = message
         super().__init__(message)
+
+
+def _visible_profile_dataset_queryset(profile: Profile):
+    return profile.datasets.filter(archived_at__isnull=True).exclude(
+        status=DatasetStatus.PREVIEWED
+    )
+
+
+def _lock_profile_for_quota(profile: Profile) -> Profile:
+    return Profile.objects.select_for_update().select_related("user").get(pk=profile.pk)
+
+
+def _enforce_dataset_create_quota(profile: Profile, initial_row_count: int) -> None:
+    if profile.has_active_subscription:
+        return
+
+    active_dataset_count = _visible_profile_dataset_queryset(profile).count()
+    if active_dataset_count >= FREE_ACCOUNT_DATASET_LIMIT:
+        raise DatasetServiceError(
+            403,
+            (
+                "Free accounts can have at most "
+                f"{FREE_ACCOUNT_DATASET_LIMIT} active datasets. Upgrade for unlimited datasets."
+            ),
+        )
+
+    if initial_row_count > FREE_ACCOUNT_ROW_LIMIT:
+        raise DatasetServiceError(
+            403,
+            (
+                "Free accounts can create datasets with at most "
+                f"{FREE_ACCOUNT_ROW_LIMIT} rows. Upgrade for unlimited rows."
+            ),
+        )
+
+
+def _enforce_dataset_row_create_quota(profile: Profile, dataset: Dataset) -> None:
+    if profile.has_active_subscription:
+        return
+
+    if dataset.row_count >= FREE_ACCOUNT_ROW_LIMIT:
+        raise DatasetServiceError(
+            403,
+            (
+                "Free accounts can store at most "
+                f"{FREE_ACCOUNT_ROW_LIMIT} rows per dataset. Upgrade for unlimited rows."
+            ),
+        )
 
 
 def _enqueue_dataset_vector_backfill(dataset_id: int) -> None:
@@ -1834,8 +1884,10 @@ def create_profile_dataset(
         seen_index_values.add(index_value)
         row_payloads.append((row_number, index_value, serialized_data))
 
-    now = timezone.now()
     with transaction.atomic():
+        quota_profile = _lock_profile_for_quota(profile)
+        _enforce_dataset_create_quota(quota_profile, len(row_payloads))
+        now = timezone.now()
         dataset = Dataset.objects.create(
             profile=profile,
             project=project,
@@ -3297,7 +3349,9 @@ def create_profile_dataset_row(
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
+        quota_profile = _lock_profile_for_quota(profile)
         dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        _enforce_dataset_row_create_quota(quota_profile, dataset)
 
         last_row_number = (
             dataset.rows.order_by("-row_number").values_list("row_number", flat=True).first() or 0

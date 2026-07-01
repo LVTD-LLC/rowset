@@ -22,11 +22,13 @@ from PIL import Image
 from apps.api.services import (
     DatasetServiceError,
     attach_profile_dataset_image_asset,
+    create_profile_dataset,
+    create_profile_dataset_row,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
     serialize_dataset_detail,
 )
-from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.choices import AgentApiKeyAccessLevel, ProfileStates
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.constants import MAX_DATASET_IMAGE_BYTES
@@ -6166,8 +6168,6 @@ def test_dataset_api_rejects_too_many_initial_rows(client, profile):
 
 
 def test_create_profile_dataset_enforces_initial_row_limit(profile):
-    from apps.api.services import DatasetServiceError, create_profile_dataset
-
     with pytest.raises(DatasetServiceError, match="at most 1000 initial rows") as exc_info:
         create_profile_dataset(
             profile,
@@ -6178,6 +6178,114 @@ def test_create_profile_dataset_enforces_initial_row_limit(profile):
 
     assert exc_info.value.status_code == 400
     assert not Dataset.objects.filter(profile=profile, name="Too many rows").exists()
+
+
+def test_free_account_rejects_third_active_dataset(profile):
+    for index in range(2):
+        Dataset.objects.create(
+            profile=profile,
+            name=f"Dataset {index}",
+            original_filename="api",
+            status=DatasetStatus.READY,
+            headers=["rowset_id", "name"],
+            index_column="rowset_id",
+            index_generated=True,
+            row_count=0,
+        )
+
+    with pytest.raises(DatasetServiceError, match="at most 2 active datasets") as exc_info:
+        create_profile_dataset(
+            profile,
+            name="Third dataset",
+            headers=["name"],
+            rows=[],
+        )
+
+    assert exc_info.value.status_code == 403
+    assert not Dataset.objects.filter(profile=profile, name="Third dataset").exists()
+
+
+def test_free_account_rejects_dataset_with_more_than_50_initial_rows(profile):
+    rows = [{"name": str(index)} for index in range(51)]
+
+    with pytest.raises(DatasetServiceError, match="at most 50 rows") as exc_info:
+        create_profile_dataset(
+            profile,
+            name="Too many free rows",
+            headers=["name"],
+            rows=rows,
+        )
+
+    assert exc_info.value.status_code == 403
+    assert not Dataset.objects.filter(profile=profile, name="Too many free rows").exists()
+
+
+def test_paid_account_can_create_more_than_free_dataset_and_row_limits(profile):
+    profile.state = ProfileStates.SUBSCRIBED
+    profile.save(update_fields=["state"])
+    for index in range(2):
+        Dataset.objects.create(
+            profile=profile,
+            name=f"Existing dataset {index}",
+            original_filename="api",
+            status=DatasetStatus.READY,
+            headers=["rowset_id", "name"],
+            index_column="rowset_id",
+            index_generated=True,
+            row_count=0,
+        )
+
+    result = create_profile_dataset(
+        profile,
+        name="Paid dataset",
+        headers=["name"],
+        rows=[{"name": str(index)} for index in range(51)],
+    )
+
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert dataset.row_count == 51
+    assert Dataset.objects.filter(profile=profile, status=DatasetStatus.READY).count() == 3
+
+
+def test_free_account_rejects_51st_dataset_row(profile):
+    result = create_profile_dataset(
+        profile,
+        name="Free row capped dataset",
+        headers=["name"],
+        rows=[{"name": str(index)} for index in range(50)],
+    )
+
+    with pytest.raises(DatasetServiceError, match="at most 50 rows per dataset") as exc_info:
+        create_profile_dataset_row(
+            profile,
+            result["dataset"]["key"],
+            {"name": "51"},
+        )
+
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert exc_info.value.status_code == 403
+    assert dataset.row_count == 50
+
+
+def test_paid_account_can_create_51st_dataset_row(profile):
+    profile.state = ProfileStates.SUBSCRIBED
+    profile.save(update_fields=["state"])
+    result = create_profile_dataset(
+        profile,
+        name="Paid row uncapped dataset",
+        headers=["name"],
+        rows=[{"name": str(index)} for index in range(50)],
+    )
+
+    row_result = create_profile_dataset_row(
+        profile,
+        result["dataset"]["key"],
+        {"name": "51"},
+    )
+
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert row_result["message"] == "Row created."
+    assert dataset.row_count == 51
 
 
 def test_dataset_api_rejects_patch_to_generated_index(client, profile):
