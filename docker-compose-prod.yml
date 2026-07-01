@@ -22,7 +22,7 @@ services:
       - .env
 
   backend:
-    image: ghcr.io/rasulkireev/rowset:latest
+    image: ghcr.io/lvtd-llc/rowset:latest
     working_dir: /app
     ports:
       - "8000:80"
@@ -35,7 +35,7 @@ services:
       - .env
 
   workers:
-    image: ghcr.io/rasulkireev/rowset-workers:latest
+    image: ghcr.io/lvtd-llc/rowset-workers:latest
     working_dir: /app
     depends_on:
       db:

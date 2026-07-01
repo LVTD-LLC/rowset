@@ -767,8 +767,8 @@ is configured in GitHub secrets.
 The backend and worker images currently point at:
 
 ```text
-ghcr.io/rasulkireev/rowset:latest
-ghcr.io/rasulkireev/rowset-workers:latest
+ghcr.io/lvtd-llc/rowset:latest
+ghcr.io/lvtd-llc/rowset-workers:latest
 ```
 
 On a server, fetch the repository files first so `docker-compose-prod.yml` and
@@ -811,10 +811,16 @@ The active push-to-main deployment path is the CapRover workflow pair:
 - `.github/workflows/deploy.yml`
 - `.github/workflows/deploy-workers.yml`
 
-The workflows create tar deployment bundles with:
+The workflows build and publish prebuilt Docker images to GHCR, then deploy a
+minimal CapRover bundle whose `captain-definition` points at the already-built
+`:latest` image:
 
-- `deployment/Dockerfile.server`
-- `deployment/Dockerfile.workers`
+- `ghcr.io/lvtd-llc/rowset:latest`
+- `ghcr.io/lvtd-llc/rowset-workers:latest`
+
+Each push to `main` also publishes a UTC date release tag such as
+`2026-07-01`, plus a `sha-<shortsha>` traceability tag. CapRover production uses
+`:latest`; public/self-hosted deployments can pin a date tag.
 
 Required GitHub secrets:
 

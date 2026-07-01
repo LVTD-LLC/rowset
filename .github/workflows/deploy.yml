@@ -9,6 +9,10 @@ concurrency:
   group: rowset-server-prod
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   PROJECT_NAME: rowset
 
@@ -20,11 +24,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare image tags
+        id: image
+        run: |
+          owner_lc="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "image_repository=ghcr.io/${owner_lc}/rowset" >> "$GITHUB_OUTPUT"
+          echo "release_date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployment/Dockerfile.server
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image_repository }}:latest
+            ${{ steps.image.outputs.image_repository }}:${{ steps.image.outputs.release_date }}
+            ${{ steps.image.outputs.image_repository }}:sha-${{ steps.image.outputs.short_sha }}
+
       - name: Prepare CapRover deployment bundle
         run: |
           tmpdir="$(mktemp -d)"
-          rsync -a --exclude .git ./ "$tmpdir/"
-          printf '{"schemaVersion":2,"dockerfilePath":"./deployment/Dockerfile.server"}\n' > "$tmpdir/captain-definition"
+          printf '{"schemaVersion":2,"imageName":"%s"}\n' "${{ steps.image.outputs.image_repository }}:latest" > "$tmpdir/captain-definition"
           tar -C "$tmpdir" -cf /tmp/rowset-server.tar .
 
       - name: Deploy to CapRover
