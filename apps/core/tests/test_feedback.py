@@ -28,7 +28,7 @@ def test_submit_profile_feedback_persists_agent_context_and_queues_notification(
     monkeypatch.setattr("apps.core.services.async_task", fake_async_task)
 
     with django_capture_on_commit_callbacks(execute=True):
-        feedback = submit_profile_feedback(
+        result = submit_profile_feedback(
             profile=profile,
             feedback="  The MCP schema for rows is hard to follow.  ",
             page="mcp:submit_feedback",
@@ -37,12 +37,19 @@ def test_submit_profile_feedback_persists_agent_context_and_queues_notification(
             agent_api_key=credential.agent_api_key,
         )
 
+    feedback = result.feedback
     feedback.refresh_from_db()
     assert feedback.feedback == "The MCP schema for rows is hard to follow."
     assert feedback.page == "mcp:submit_feedback"
     assert feedback.source == FeedbackSource.MCP
-    assert feedback.metadata == {"tool": "create_dataset", "category": "docs"}
+    assert feedback.metadata == {
+        "tool": "create_dataset",
+        "category": "docs",
+        "rowset_row_url": result.row_url,
+    }
     assert feedback.agent_api_key == credential.agent_api_key
+    assert result.dataset.name == "Feedback"
+    assert result.row_url
     assert queued == [
         (
             "apps.core.tasks.notify_feedback_apprise",
@@ -69,7 +76,10 @@ def test_notify_feedback_apprise_sends_configured_notification(profile, monkeypa
         feedback="Agent could not tell whether public previews were authenticated.",
         page="mcp:submit_feedback",
         source=FeedbackSource.MCP,
-        metadata={"tool": "update_dataset_public_preview"},
+        metadata={
+            "tool": "update_dataset_public_preview",
+            "rowset_row_url": "https://rowset.example/datasets/abc/rows/1/",
+        },
     )
     calls = []
 
@@ -96,6 +106,7 @@ def test_notify_feedback_apprise_sends_configured_notification(profile, monkeypa
     assert title == "New Rowset feedback"
     assert "Source: MCP" in body
     assert "User: testuser@example.com" in body
+    assert "Rowset row: https://rowset.example/datasets/abc/rows/1/" in body
     assert "Agent could not tell whether public previews were authenticated." in body
     assert "Context keys: tool" in body
 

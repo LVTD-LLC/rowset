@@ -338,14 +338,18 @@ def healthcheck(request: HttpRequest):
 def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
     profile = request.auth
     try:
-        submit_profile_feedback(
+        result = submit_profile_feedback(
             profile=profile,
             feedback=data.feedback,
             page=data.page,
             source=FeedbackSource.BROWSER,
             metadata=data.context,
         )
-        return {"success": True, "message": "Feedback submitted successfully"}
+        return {
+            "success": True,
+            "message": "Feedback submitted successfully",
+            "row_url": result.row_url,
+        }
     except ValueError as exc:
         return {"success": False, "message": str(exc)}
     except Exception as e:
@@ -568,13 +572,13 @@ def get_user_info(request: HttpRequest):
 @api.post(
     "/feedback",
     response={201: AgentFeedbackSubmitOut},
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["feedback"],
 )
 def submit_agent_feedback(request: HttpRequest, payload: SubmitFeedbackIn):
     """Submit product feedback from an authenticated REST or agent client."""
     try:
-        feedback = submit_profile_feedback(
+        result = submit_profile_feedback(
             profile=request.auth,
             feedback=payload.feedback,
             page=payload.page,
@@ -584,13 +588,18 @@ def submit_agent_feedback(request: HttpRequest, payload: SubmitFeedbackIn):
         )
     except ValueError as exc:
         raise HttpError(400, str(exc)) from exc
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
     return Status(
         201,
         {
             "status": "success",
             "message": "Feedback submitted successfully.",
-            "feedback": serialize_feedback(feedback),
+            "feedback": serialize_feedback(result.feedback),
+            "dataset": str(result.dataset.key) if result.dataset else "",
+            "row": result.row.id if result.row else None,
+            "row_url": result.row_url,
         },
     )
 

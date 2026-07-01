@@ -8,7 +8,9 @@ from fastmcp import Client
 
 from apps.api.services import DatasetServiceError
 from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
-from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
+from apps.core.models import Feedback
+from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.mcp_server.server import (
@@ -342,18 +344,23 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_submit_feedback_mcp_tool_persists_agent_feedback(monkeypatch, django_user_model):
-    from apps.core.choices import FeedbackSource
-    from apps.core.models import Feedback
-    from apps.core.services import create_agent_api_key
-
+@override_settings(
+    SITE_URL="https://rowset.example",
+)
+def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model, monkeypatch):
     user = django_user_model.objects.create_user(
-        username="feedbackmcpuser",
-        email="feedbackmcpuser@example.com",
+        username="feedback-mcp-user",
+        email="feedback-mcp-user@example.com",
         password="password123",
     )
-    credential = create_agent_api_key(user.profile, "Feedback Agent", AgentApiKeyAccessLevel.READ)
     profile = user.profile
+    observed = {}
+
+    credential = create_agent_api_key(
+        profile,
+        "Feedback Agent",
+        AgentApiKeyAccessLevel.READ_WRITE,
+    )
     setattr(profile, AGENT_API_KEY_PROFILE_ATTR, credential.agent_api_key)
 
     async def run():
@@ -366,24 +373,46 @@ def test_submit_feedback_mcp_tool_persists_agent_feedback(monkeypatch, django_us
             result = await client.call_tool(
                 "submit_feedback",
                 {
-                    "feedback": "The update_dataset_metadata tool needs a shorter example.",
-                    "page": "mcp:update_dataset_metadata",
-                    "context": {"tool": "update_dataset_metadata", "category": "docs"},
+                    "feedback": "MCP feedback should be saved.",
+                    "page": "get_rowset_capabilities",
+                    "context": {"tool": "get_rowset_capabilities", "category": "docs"},
                 },
             )
 
-        payload = result.data
-        assert payload["status"] == "success"
-        assert payload["feedback"]["source"] == FeedbackSource.MCP
+        observed["payload"] = result.data
 
     anyio.run(run)
+    payload = observed["payload"]
+    feedback = Feedback.objects.get(id=payload["feedback"]["id"])
+    dataset = Dataset.objects.select_related("project", "section").get(key=payload["dataset"])
+    row = dataset.rows.get(id=payload["row"])
 
-    feedback = Feedback.objects.get(profile=profile)
-    assert feedback.feedback == "The update_dataset_metadata tool needs a shorter example."
-    assert feedback.page == "mcp:update_dataset_metadata"
+    assert payload["status"] == "success"
+    assert payload["row_url"] == f"https://rowset.example/datasets/{dataset.key}/rows/{row.id}/"
+    assert payload["feedback"]["id"] == feedback.id
+    assert payload["feedback"]["uuid"] == str(feedback.uuid)
+    assert payload["feedback"]["source"] == FeedbackSource.MCP
+    assert payload["feedback"]["page"] == "get_rowset_capabilities"
+    assert payload["feedback"]["context"] == {
+        "tool": "get_rowset_capabilities",
+        "category": "docs",
+    }
+    assert feedback.feedback == "MCP feedback should be saved."
+    assert feedback.page == "get_rowset_capabilities"
     assert feedback.source == FeedbackSource.MCP
-    assert feedback.metadata == {"tool": "update_dataset_metadata", "category": "docs"}
     assert feedback.agent_api_key == credential.agent_api_key
+    assert feedback.metadata == {
+        "tool": "get_rowset_capabilities",
+        "category": "docs",
+        "rowset_row_url": payload["row_url"],
+    }
+    assert dataset.project.name == "Rowset"
+    assert dataset.section.name == "CX"
+    assert row.created_by_agent_api_key == credential.agent_api_key
+    assert row.data["feedback_id"] == str(feedback.id)
+    assert row.data["submitted_via"] == "mcp"
+    assert row.data["context"] == '{"category":"docs","tool":"get_rowset_capabilities"}'
+    assert row.data["feedback"] == "MCP feedback should be saved."
 
 
 def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):

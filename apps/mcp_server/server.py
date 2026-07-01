@@ -69,7 +69,7 @@ from apps.core.services import (
     require_agent_api_key_access,
     resolve_api_key_profile,
     serialize_agent_api_key,
-    serialize_feedback,
+    serialize_feedback_submission_result,
     submit_profile_feedback,
 )
 from apps.mcp_server.auth import mcp_auth
@@ -440,7 +440,8 @@ def get_rowset_capabilities() -> dict:
     description=(
         "Submit concise product feedback about Rowset from the authenticated agent. "
         "Use this for setup friction, confusing MCP/API behavior, missing docs, or "
-        "feature requests. Do not include API keys, secrets, or private dataset contents."
+        "feature requests. Rowset stores it in the private Rowset/CX Feedback dataset. "
+        "Do not include API keys, secrets, or private dataset contents."
     ),
 )
 def submit_feedback(
@@ -473,35 +474,37 @@ def submit_feedback(
         ),
     ] = None,
 ) -> dict:
-    close_old_connections()
-    profile = _mcp_authenticated_profile()
     try:
-        feedback_record = submit_profile_feedback(
-            profile=profile,
-            feedback=feedback,
-            page=page,
-            source=FeedbackSource.MCP,
-            metadata=context,
-            agent_api_key=getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None),
-        )
-    except ValueError as exc:
-        raise _mcp_tool_error(
-            _mcp_error_payload(
-                code="VALIDATION_ERROR",
-                message=str(exc),
-                retryable=False,
-                suggested_action=(
-                    "Submit concise feedback with a small non-sensitive context object."
-                ),
-                details={"http_status": 400},
+        profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+        try:
+            result = submit_profile_feedback(
+                profile=profile,
+                feedback=feedback,
+                page=page,
+                source=FeedbackSource.MCP,
+                metadata=context,
+                **_agent_actor_kwargs(profile),
             )
-        ) from exc
+        except DatasetServiceError as exc:
+            raise _service_error_to_tool_error(exc) from exc
+        except ValueError as exc:
+            raise _mcp_tool_error(
+                _mcp_error_payload(
+                    code="VALIDATION_ERROR",
+                    message=str(exc),
+                    retryable=False,
+                    suggested_action="Provide non-empty feedback up to 2,000 characters.",
+                    details={"http_status": 400},
+                )
+            ) from exc
 
-    return {
-        "status": "success",
-        "message": "Feedback submitted successfully.",
-        "feedback": serialize_feedback(feedback_record),
-    }
+        return serialize_feedback_submission_result(
+            result,
+            feedback_context=context or {},
+            include_feedback_id=True,
+        )
+    finally:
+        close_old_connections()
 
 
 @mcp.tool(

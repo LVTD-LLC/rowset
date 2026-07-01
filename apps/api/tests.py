@@ -26,6 +26,7 @@ from apps.api.views import (
 from apps.blog.choices import BlogPostStatus
 from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.models import Feedback
 from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
@@ -56,6 +57,42 @@ def test_capabilities_endpoint_supports_current_and_legacy_api_prefixes(client):
     assert legacy_root_response["Location"] == "/api/"
     assert current_response.json()["product"] == "Rowset"
     assert legacy_response.json()["product"] == "Rowset"
+
+
+@pytest.mark.django_db
+@override_settings(
+    DEFAULT_FROM_EMAIL="feedback@rowset.example",
+    SITE_URL="https://rowset.example",
+)
+def test_submit_feedback_api_creates_feedback_dataset_row(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        username="feedback-api-user",
+        email="feedback-api-user@example.com",
+        password="password123",
+    )
+    client.force_login(user)
+
+    response = client.post(
+        "/api/submit-feedback",
+        data=json.dumps({"feedback": "API feedback", "page": "/settings/"}),
+        content_type="application/json",
+    )
+
+    feedback = Feedback.objects.get()
+    dataset = Dataset.objects.get(name="Feedback")
+    row = dataset.rows.get(index_value=str(feedback.id))
+    expected_row_url = f"https://rowset.example/datasets/{dataset.key}/rows/{row.id}/"
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "message": "Feedback submitted successfully",
+        "row_url": expected_row_url,
+    }
+    assert row.data["context"] == ""
+    assert row.data["submitted_via"] == "browser"
+    assert row.data["feedback"] == "API feedback"
+    assert feedback.metadata == {"rowset_row_url": expected_row_url}
 
 
 def test_legacy_v1_api_prefix_serves_dataset_endpoints(client):
@@ -662,13 +699,21 @@ def test_read_only_agent_api_key_can_read_but_cannot_write(client, django_user_m
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
     )
+    feedback_response = client.post(
+        "/api/feedback",
+        data=json.dumps({"feedback": "Read-only keys should not create feedback rows."}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
 
     assert read_response.status_code == 200
     assert read_response.json()["email"] == "readonlyapiuser@example.com"
     assert write_response.status_code == 401
+    assert feedback_response.status_code == 401
 
 
 @pytest.mark.django_db
+@override_settings(SITE_URL="https://rowset.example")
 def test_agent_api_key_can_submit_feedback_through_rest(client, django_user_model):
     from apps.core.choices import FeedbackSource
     from apps.core.models import Feedback
@@ -679,7 +724,11 @@ def test_agent_api_key_can_submit_feedback_through_rest(client, django_user_mode
         email="feedbackapiuser@example.com",
         password="password123",
     )
-    credential = create_agent_api_key(user.profile, "Feedback Agent", AgentApiKeyAccessLevel.READ)
+    credential = create_agent_api_key(
+        user.profile,
+        "Feedback Agent",
+        AgentApiKeyAccessLevel.READ_WRITE,
+    )
 
     response = client.post(
         "/api/feedback",
@@ -696,15 +745,63 @@ def test_agent_api_key_can_submit_feedback_through_rest(client, django_user_mode
 
     assert response.status_code == 201
     feedback = Feedback.objects.get(profile=user.profile)
+    dataset = Dataset.objects.get(name="Feedback")
+    row = dataset.rows.get(index_value=str(feedback.id))
+    expected_row_url = f"https://rowset.example/datasets/{dataset.key}/rows/{row.id}/"
     assert feedback.feedback == "The MCP setup prompt should mention bearer-token env vars."
     assert feedback.page == "mcp:setup"
     assert feedback.source == FeedbackSource.API
-    assert feedback.metadata == {"tool": "get_rowset_capabilities"}
+    assert feedback.metadata == {
+        "tool": "get_rowset_capabilities",
+        "rowset_row_url": expected_row_url,
+    }
     assert feedback.agent_api_key == credential.agent_api_key
     payload = response.json()
     assert payload["status"] == "success"
     assert payload["feedback"]["uuid"] == str(feedback.uuid)
     assert payload["feedback"]["source"] == FeedbackSource.API
+    assert payload["dataset"] == str(dataset.key)
+    assert payload["row"] == row.id
+    assert payload["row_url"] == expected_row_url
+    assert row.created_by_agent_api_key == credential.agent_api_key
+    assert row.data["context"] == '{"tool":"get_rowset_capabilities"}'
+    assert row.data["submitted_via"] == "api"
+
+
+@pytest.mark.django_db
+def test_agent_feedback_returns_dataset_service_errors(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    from apps.api.services import DatasetServiceError
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="feedbackerrorapiuser",
+        email="feedbackerrorapiuser@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(
+        user.profile,
+        "Feedback Agent",
+        AgentApiKeyAccessLevel.READ_WRITE,
+    )
+
+    def raise_dataset_error(*args, **kwargs):
+        raise DatasetServiceError(429, "Feedback dataset quota exceeded.")
+
+    monkeypatch.setattr("apps.api.views.submit_profile_feedback", raise_dataset_error)
+
+    response = client.post(
+        "/api/feedback",
+        data=json.dumps({"feedback": "This should return a service error."}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 429
+    assert response.json() == {"detail": "Feedback dataset quota exceeded."}
 
 
 @pytest.mark.django_db

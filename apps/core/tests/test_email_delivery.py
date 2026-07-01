@@ -102,12 +102,7 @@ def test_confirmation_mail_failures_do_not_bubble_to_signup(user, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_feedback_notifications_swallow_email_failures(profile, monkeypatch):
-    def fake_send_mail(*args, **kwargs):
-        raise TimeoutError("smtp timeout")
-
-    monkeypatch.setattr("apps.core.models.send_mail", fake_send_mail)
-
+def test_feedback_model_save_does_not_require_email_delivery(profile):
     feedback = Feedback(
         profile=profile,
         feedback="This page helped.",

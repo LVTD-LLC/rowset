@@ -27,9 +27,14 @@ def _format_feedback_apprise_body(feedback: Feedback) -> str:
         lines.append(f"Page: {feedback.page}")
 
     metadata = feedback.metadata if isinstance(feedback.metadata, dict) else {}
+    rowset_row_url = metadata.get("rowset_row_url")
+    if rowset_row_url:
+        lines.append(f"Rowset row: {rowset_row_url}")
+
     if metadata:
-        context_keys = ", ".join(sorted(str(key) for key in metadata))
-        lines.append(f"Context keys: {context_keys}")
+        context_keys = ", ".join(sorted(str(key) for key in metadata if key != "rowset_row_url"))
+        if context_keys:
+            lines.append(f"Context keys: {context_keys}")
 
     lines.extend(["", feedback.feedback])
     return "\n".join(lines)

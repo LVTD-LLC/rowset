@@ -11,13 +11,22 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django_q.tasks import async_task
 
+from apps.api.services import (
+    DatasetServiceError,
+    create_profile_dataset,
+    create_profile_dataset_row,
+    create_profile_project,
+    create_profile_project_section,
+)
 from apps.core.analytics import (
     ROWSET_AGENT_API_KEY_CREATED,
     track_activation_event,
 )
 from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import AgentApiKey, Feedback, Profile
-from rowset.utils import get_rowset_logger
+from apps.datasets.choices import DatasetColumnType, DatasetStatus
+from apps.datasets.models import Dataset, DatasetRow, Project, ProjectSection
+from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 AGENT_API_KEY_PREFIX = "rsk_"
 AGENT_API_KEY_VISIBLE_PREFIX_LENGTH = 12
@@ -26,6 +35,37 @@ MAX_FEEDBACK_LENGTH = 2000
 MAX_FEEDBACK_PAGE_LENGTH = 255
 MAX_FEEDBACK_METADATA_BYTES = 8000
 logger = get_rowset_logger(__name__)
+FEEDBACK_PROJECT_NAME = "Rowset"
+FEEDBACK_SECTION_NAME = "CX"
+FEEDBACK_DATASET_NAME = "Feedback"
+FEEDBACK_DATASET_INDEX_COLUMN = "feedback_id"
+FEEDBACK_DATASET_HEADERS = [
+    FEEDBACK_DATASET_INDEX_COLUMN,
+    "submitted_at",
+    "submitted_via",
+    "user_email",
+    "profile_id",
+    "page",
+    "context",
+    "feedback",
+]
+FEEDBACK_DATASET_COLUMN_TYPES = {
+    "feedback_id": DatasetColumnType.INTEGER,
+    "submitted_at": DatasetColumnType.DATETIME,
+    "submitted_via": DatasetColumnType.TEXT,
+    "user_email": DatasetColumnType.EMAIL,
+    "profile_id": DatasetColumnType.INTEGER,
+    "page": DatasetColumnType.TEXT,
+    "context": DatasetColumnType.TEXT,
+    "feedback": DatasetColumnType.TEXT,
+}
+FEEDBACK_DATASET_METADATA = {
+    "system": {
+        "kind": "rowset_feedback",
+        "version": 1,
+    }
+}
+FEEDBACK_ROW_URL_METADATA_KEY = "rowset_row_url"
 AGENT_API_KEY_ACCESS_LEVEL_ORDER = {
     AgentApiKeyAccessLevel.READ: 0,
     AgentApiKeyAccessLevel.READ_WRITE: 1,
@@ -38,6 +78,178 @@ LEGACY_PROFILE_KEY_ACCESS_LEVEL = AgentApiKeyAccessLevel.READ
 class AgentApiKeyCredential:
     agent_api_key: AgentApiKey
     raw_key: str
+
+
+@dataclass(frozen=True)
+class FeedbackSubmissionResult:
+    feedback: Feedback
+    dataset: Dataset | None
+    row: DatasetRow | None
+    row_url: str
+
+
+def _active_project_by_name(profile: Profile, name: str) -> Project | None:
+    return (
+        Project.objects.filter(
+            profile=profile,
+            archived_at__isnull=True,
+            name__iexact=name,
+        )
+        .order_by("name", "id")
+        .first()
+    )
+
+
+def _get_or_create_feedback_project(profile: Profile) -> Project:
+    project = _active_project_by_name(profile, FEEDBACK_PROJECT_NAME)
+    if project is not None:
+        return project
+
+    try:
+        result = create_profile_project(
+            profile,
+            name=FEEDBACK_PROJECT_NAME,
+            description="Rowset product operations and customer experience datasets.",
+            metadata={"system": {"kind": "rowset_project", "version": 1}},
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code != 409:
+            raise
+    else:
+        return Project.objects.get(profile=profile, key=result["project"]["key"])
+
+    project = _active_project_by_name(profile, FEEDBACK_PROJECT_NAME)
+    if project is None:
+        raise DatasetServiceError(409, "Project name already exists.")
+    return project
+
+
+def _active_project_section_by_name(
+    profile: Profile,
+    project: Project,
+    name: str,
+) -> ProjectSection | None:
+    return (
+        ProjectSection.objects.filter(
+            profile=profile,
+            project=project,
+            project__archived_at__isnull=True,
+            archived_at__isnull=True,
+            name__iexact=name,
+        )
+        .order_by("name", "id")
+        .first()
+    )
+
+
+def _get_or_create_feedback_section(profile: Profile, project: Project) -> ProjectSection:
+    section = _active_project_section_by_name(profile, project, FEEDBACK_SECTION_NAME)
+    if section is not None:
+        return section
+
+    try:
+        result = create_profile_project_section(
+            profile,
+            str(project.key),
+            name=FEEDBACK_SECTION_NAME,
+            description="Customer experience feedback submitted through Rowset.",
+            metadata={"system": {"kind": "rowset_feedback_section", "version": 1}},
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code != 409:
+            raise
+    else:
+        return ProjectSection.objects.get(profile=profile, key=result["section"]["key"])
+
+    section = _active_project_section_by_name(profile, project, FEEDBACK_SECTION_NAME)
+    if section is None:
+        raise DatasetServiceError(409, "Project section name already exists.")
+    return section
+
+
+def _is_feedback_dataset_compatible(dataset: Dataset) -> bool:
+    return (
+        dataset.index_column == FEEDBACK_DATASET_INDEX_COLUMN
+        and dataset.status == DatasetStatus.READY
+        and all(header in dataset.headers for header in FEEDBACK_DATASET_HEADERS)
+    )
+
+
+def _active_feedback_dataset(
+    profile: Profile,
+    project: Project,
+    section: ProjectSection,
+) -> Dataset | None:
+    candidates = Dataset.objects.filter(
+        profile=profile,
+        project=project,
+        section=section,
+        archived_at__isnull=True,
+        name__iexact=FEEDBACK_DATASET_NAME,
+    ).order_by("-created_at", "-id")
+    for dataset in candidates:
+        if _is_feedback_dataset_compatible(dataset):
+            return dataset
+    return None
+
+
+def _get_or_create_feedback_dataset(
+    profile: Profile,
+    project: Project,
+    section: ProjectSection,
+    *,
+    agent_api_key: AgentApiKey | None = None,
+) -> Dataset:
+    dataset = _active_feedback_dataset(profile, project, section)
+    if dataset is not None:
+        return dataset
+
+    try:
+        result = create_profile_dataset(
+            profile,
+            name=FEEDBACK_DATASET_NAME,
+            description="Product feedback submitted through Rowset app and MCP surfaces.",
+            instructions=(
+                "Use feedback_id as the stable index. Treat rows as private product feedback "
+                "for triage, follow-up, and customer experience analysis."
+            ),
+            metadata=FEEDBACK_DATASET_METADATA,
+            headers=FEEDBACK_DATASET_HEADERS,
+            rows=[],
+            index_column=FEEDBACK_DATASET_INDEX_COLUMN,
+            column_types=FEEDBACK_DATASET_COLUMN_TYPES,
+            project_key=str(project.key),
+            section_key=str(section.key),
+            agent_api_key=agent_api_key,
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code != 409:
+            raise
+    else:
+        return Dataset.objects.get(profile=profile, key=result["dataset"]["key"])
+
+    dataset = _active_feedback_dataset(profile, project, section)
+    if dataset is None:
+        raise DatasetServiceError(409, "Dataset name already exists.")
+    return dataset
+
+
+def _feedback_dataset_row_data(
+    feedback: Feedback,
+    submitted_via: str,
+    context_text: str,
+) -> dict[str, str]:
+    profile = feedback.profile
+    return {
+        "feedback_id": str(feedback.id),
+        "submitted_at": feedback.created_at.isoformat(),
+        "submitted_via": submitted_via,
+        "user_email": profile.user.email if profile else "",
+        "profile_id": str(profile.id) if profile else "",
+        "page": feedback.page,
+        "context": context_text,
+        "feedback": feedback.feedback,
+    }
 
 
 def get_or_create_profile_for_user(user) -> Profile:
@@ -168,11 +380,40 @@ def _normalize_feedback_metadata(metadata: dict | None) -> dict:
     return json.loads(serialized)
 
 
+def _feedback_metadata_text(metadata: dict) -> str:
+    if not metadata:
+        return ""
+    return json.dumps(metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
 def serialize_feedback(feedback: Feedback) -> dict:
     return {
         "uuid": str(feedback.uuid),
         "source": feedback.source,
         "created_at": feedback.created_at.isoformat(),
+    }
+
+
+def serialize_feedback_submission_result(
+    result: FeedbackSubmissionResult,
+    *,
+    feedback_context: dict | None = None,
+    include_feedback_id: bool = False,
+) -> dict:
+    feedback_payload = serialize_feedback(result.feedback)
+    feedback_payload["page"] = result.feedback.page
+    if include_feedback_id:
+        feedback_payload["id"] = result.feedback.id
+    if feedback_context is not None:
+        feedback_payload["context"] = feedback_context
+
+    return {
+        "status": "success",
+        "message": "Feedback submitted successfully.",
+        "feedback": feedback_payload,
+        "dataset": str(result.dataset.key) if result.dataset else "",
+        "row": result.row.id if result.row else None,
+        "row_url": result.row_url,
     }
 
 
@@ -197,20 +438,64 @@ def submit_profile_feedback(
     source: str = FeedbackSource.BROWSER,
     metadata: dict | None = None,
     agent_api_key: AgentApiKey | None = None,
-) -> Feedback:
+) -> FeedbackSubmissionResult:
     if profile is not None and agent_api_key is not None and agent_api_key.profile_id != profile.id:
         raise ValueError("Agent API key does not belong to this profile.")
 
+    normalized_source = _normalize_feedback_source(source)
+    normalized_feedback = _normalize_feedback_text(feedback)
+    normalized_page = _normalize_feedback_page(page)
+    normalized_metadata = _normalize_feedback_metadata(metadata)
+    context_text = _feedback_metadata_text(normalized_metadata)
+
     feedback_record = Feedback.objects.create(
         profile=profile,
-        agent_api_key=agent_api_key,
-        source=_normalize_feedback_source(source),
-        feedback=_normalize_feedback_text(feedback),
-        page=_normalize_feedback_page(page),
-        metadata=_normalize_feedback_metadata(metadata),
+        agent_api_key=agent_api_key if profile is not None else None,
+        source=normalized_source,
+        feedback=normalized_feedback,
+        page=normalized_page,
+        metadata=normalized_metadata,
     )
-    queue_feedback_notification(feedback_record)
-    return feedback_record
+    if profile is None:
+        queue_feedback_notification(feedback_record)
+        return FeedbackSubmissionResult(
+            feedback=feedback_record,
+            dataset=None,
+            row=None,
+            row_url="",
+        )
+
+    with transaction.atomic():
+        Profile.objects.select_for_update().only("id").get(id=profile.id)
+        project = _get_or_create_feedback_project(profile)
+        section = _get_or_create_feedback_section(profile, project)
+        dataset = _get_or_create_feedback_dataset(
+            profile,
+            project,
+            section,
+            agent_api_key=agent_api_key,
+        )
+        row_result = create_profile_dataset_row(
+            profile,
+            str(dataset.key),
+            _feedback_dataset_row_data(feedback_record, normalized_source, context_text),
+            agent_api_key=agent_api_key,
+        )
+        row = DatasetRow.objects.select_related("dataset").get(id=row_result["row"]["id"])
+        row_url = build_absolute_public_url(row.get_absolute_url())
+        feedback_record.metadata = {
+            **normalized_metadata,
+            FEEDBACK_ROW_URL_METADATA_KEY: row_url,
+        }
+        feedback_record.save(update_fields=["metadata", "updated_at"])
+        queue_feedback_notification(feedback_record)
+
+    return FeedbackSubmissionResult(
+        feedback=feedback_record,
+        dataset=dataset,
+        row=row,
+        row_url=row_url,
+    )
 
 
 def hash_agent_api_key(token: str) -> str:

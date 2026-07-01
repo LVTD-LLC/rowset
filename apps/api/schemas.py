@@ -29,6 +29,7 @@ class SubmitFeedbackIn(Schema):
 class SubmitFeedbackOut(Schema):
     success: bool
     message: str
+    row_url: str = ""
 
 
 class FeedbackRecordOut(Schema):
@@ -41,6 +42,9 @@ class AgentFeedbackSubmitOut(Schema):
     status: str
     message: str
     feedback: FeedbackRecordOut
+    dataset: str = ""
+    row: int | None = None
+    row_url: str = ""
 
 
 class BlogPostIn(Schema):
