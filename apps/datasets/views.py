@@ -746,8 +746,7 @@ def _rowset_reference_columns(column_definition_list: list[dict], target: str) -
     return {
         column["name"]
         for column in column_definition_list
-        if column.get("type") == DatasetColumnType.REFERENCE
-        and column.get("target") == target
+        if column.get("type") == DatasetColumnType.REFERENCE and column.get("target") == target
     }
 
 
@@ -1012,7 +1011,6 @@ def _row_form_fields(
     return fields
 
 
-
 def _row_create_data(dataset: Dataset, post_data) -> dict[str, str]:
     return {
         header: post_data.get(header, "")
@@ -1025,8 +1023,7 @@ def _row_patch_data(dataset: Dataset, post_data) -> dict[str, str]:
     return {
         header: post_data.get(header, "")
         for header in dataset.headers
-        if header in post_data
-        and not (dataset.index_generated and header == dataset.index_column)
+        if header in post_data and not (dataset.index_generated and header == dataset.index_column)
     }
 
 
@@ -1075,9 +1072,7 @@ def _row_filter_fields(
                 "header": column["name"],
                 "type": column_type,
                 "type_label": column["type_label"],
-                "description": (
-                    column["description"] if include_column_descriptions else ""
-                ),
+                "description": (column["description"] if include_column_descriptions else ""),
                 "param_name": param_name,
                 "value": request.GET.get(param_name, "").strip(),
                 "operator": selected_operator,
@@ -1093,8 +1088,7 @@ def _row_filter_fields(
                 "input_type": _column_filter_input_type(column_type),
                 "is_boolean": column_type == DatasetColumnType.BOOLEAN,
                 "is_choice": column_type == DatasetColumnType.CHOICE,
-                "is_number": column_type
-                in {DatasetColumnType.INTEGER, DatasetColumnType.NUMBER},
+                "is_number": column_type in {DatasetColumnType.INTEGER, DatasetColumnType.NUMBER},
                 "is_currency": column_type == DatasetColumnType.CURRENCY,
                 "is_numeric_filter": column_type
                 in {
@@ -1105,11 +1099,7 @@ def _row_filter_fields(
                 "is_ordered_filter": _column_has_ordered_filter(column_type),
                 "filter_placeholder": _column_filter_placeholder(column_type),
                 "choices": column.get("choices", []),
-                "operator_label": (
-                    "Contains"
-                    if default_operator == ROW_FILTER_CONTAINS
-                    else "Is"
-                ),
+                "operator_label": ("Contains" if default_operator == ROW_FILTER_CONTAINS else "Is"),
             }
         )
     return fields
@@ -1516,12 +1506,7 @@ class ArchivedDatasetListView(DatasetListView):
     )
 
     def get_total_projects(self, base_queryset):
-        return (
-            base_queryset.filter(project__isnull=False)
-            .values("project_id")
-            .distinct()
-            .count()
-        )
+        return base_queryset.filter(project__isnull=False).values("project_id").distinct().count()
 
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):

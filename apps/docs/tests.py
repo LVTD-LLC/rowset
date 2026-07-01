@@ -111,8 +111,7 @@ class TestDocsView:
         assert "https://rowset.example/llms.txt" in content
         assert "npx skills add LVTD-LLC/rowset" in content
         assert (
-            "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
-            ".agents/skills/rowset/SKILL.md"
+            "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/.agents/skills/rowset/SKILL.md"
         ) in content
         assert "rowset-features" in content
         assert "rowset-use-cases" in content

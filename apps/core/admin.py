@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.core.models import AgentApiKey, EmailSent
+from apps.core.models import AgentApiKey, EmailSent, Feedback
 
 
 @admin.register(AgentApiKey)
@@ -25,3 +25,12 @@ class AgentApiKeyAdmin(admin.ModelAdmin):
 
 
 admin.site.register(EmailSent)
+
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "source", "profile", "agent_api_key", "page")
+    list_filter = ("source", "created_at")
+    search_fields = ("feedback", "page", "profile__user__email", "agent_api_key__name")
+    raw_id_fields = ("profile", "agent_api_key")
+    readonly_fields = ("created_at", "updated_at")

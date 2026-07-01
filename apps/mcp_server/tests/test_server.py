@@ -8,7 +8,7 @@ from fastmcp import Client
 
 from apps.api.services import DatasetServiceError
 from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
-from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import Feedback
 from apps.core.services import create_agent_api_key
 from apps.datasets.choices import DatasetStatus
@@ -345,7 +345,6 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(
-    DEFAULT_FROM_EMAIL="feedback@rowset.example",
     SITE_URL="https://rowset.example",
 )
 def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model, monkeypatch):
@@ -355,16 +354,14 @@ def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model
         password="password123",
     )
     profile = user.profile
-    sent_messages = []
     observed = {}
 
-    def fake_send_mail(subject, message, from_email, recipient_list, fail_silently=False):
-        sent_messages.append(message)
-        return 1
-
-    credential = create_agent_api_key(profile, "Feedback Agent")
+    credential = create_agent_api_key(
+        profile,
+        "Feedback Agent",
+        AgentApiKeyAccessLevel.READ_WRITE,
+    )
     setattr(profile, AGENT_API_KEY_PROFILE_ATTR, credential.agent_api_key)
-    monkeypatch.setattr("apps.core.models.send_mail", fake_send_mail)
 
     async def run():
         monkeypatch.setattr(
@@ -392,11 +389,22 @@ def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model
 
     assert payload["status"] == "success"
     assert payload["row_url"] == f"https://rowset.example/datasets/{dataset.key}/rows/{row.id}/"
-    assert payload["feedback"] == {
-        "id": feedback.id,
-        "page": "get_rowset_capabilities",
-        "submitted_via": "mcp",
-        "context": {"tool": "get_rowset_capabilities", "category": "docs"},
+    assert payload["feedback"]["id"] == feedback.id
+    assert payload["feedback"]["uuid"] == str(feedback.uuid)
+    assert payload["feedback"]["source"] == FeedbackSource.MCP
+    assert payload["feedback"]["page"] == "get_rowset_capabilities"
+    assert payload["feedback"]["context"] == {
+        "tool": "get_rowset_capabilities",
+        "category": "docs",
+    }
+    assert feedback.feedback == "MCP feedback should be saved."
+    assert feedback.page == "get_rowset_capabilities"
+    assert feedback.source == FeedbackSource.MCP
+    assert feedback.agent_api_key == credential.agent_api_key
+    assert feedback.metadata == {
+        "tool": "get_rowset_capabilities",
+        "category": "docs",
+        "rowset_row_url": payload["row_url"],
     }
     assert dataset.project.name == "Rowset"
     assert dataset.section.name == "CX"
@@ -405,17 +413,6 @@ def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model
     assert row.data["submitted_via"] == "mcp"
     assert row.data["context"] == '{"category":"docs","tool":"get_rowset_capabilities"}'
     assert row.data["feedback"] == "MCP feedback should be saved."
-    assert sent_messages == [
-        (
-            "New feedback was submitted:\n\n"
-            "User: feedback-mcp-user@example.com\n"
-            "Feedback: MCP feedback should be saved.\n"
-            "Page: get_rowset_capabilities\n"
-            "Submitted via: mcp\n"
-            'Context: {"category":"docs","tool":"get_rowset_capabilities"}\n'
-            f"Rowset row: {payload['row_url']}"
-        )
-    ]
 
 
 def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
@@ -750,7 +747,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
     anyio.run(run)
 
 
-def test_project_mcp_tools_call_project_services(monkeypatch):
+def test_project_mcp_tools_call_project_services(monkeypatch):  # noqa: C901
     calls = []
 
     def list_projects(authenticated_profile, limit=100, offset=0):

@@ -5,19 +5,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0004_mark_existing_google_sheets_connections'),
-        ('datasets', '0007_project_dataset_project_and_more'),
+        ("core", "0004_mark_existing_google_sheets_connections"),
+        ("datasets", "0007_project_dataset_project_and_more"),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='project',
-            name='unique_profile_project_name',
+            model_name="project",
+            name="unique_profile_project_name",
         ),
         migrations.AddConstraint(
-            model_name='project',
-            constraint=models.UniqueConstraint(models.F('profile'), django.db.models.functions.text.Lower('name'), name='unique_profile_project_name_ci'),
+            model_name="project",
+            constraint=models.UniqueConstraint(
+                models.F("profile"),
+                django.db.models.functions.text.Lower("name"),
+                name="unique_profile_project_name_ci",
+            ),
         ),
     ]

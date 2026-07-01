@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import time
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import requests
 from django.conf import settings
 from django.forms.utils import ErrorList
 
 from apps.core.choices import EmailType
-
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -35,11 +37,11 @@ class DivErrorList(ErrorList):
                   </svg>
                 </div>
                 <div class="ml-3 text-sm text-red-800 dark:text-red-200">
-                      {''.join([f'<p>{e}</p>' for e in self])}
+                      {"".join([f"<p>{e}</p>" for e in self])}
                 </div>
               </div>
             </div>
-         """ # noqa: E501
+         """  # noqa: E501
 
 
 def ping_healthchecks(ping_id):
@@ -47,7 +49,6 @@ def ping_healthchecks(ping_id):
         requests.get(f"https://healthchecks.cr.lvtd.dev/ping/{ping_id}", timeout=10)
     except requests.RequestException as e:
         logger.error("Ping failed", error=e, exc_info=True)
-
 
 
 def get_email_delivery_provider() -> str:
@@ -76,7 +77,6 @@ def is_transient_email_error(error: Exception) -> bool:
     return isinstance(error, transient_types)
 
 
-
 def bump_email_delivery_metric(*, email_type: EmailType, provider: str, outcome: str) -> None:
     metric_key = f"{email_type}:{provider}:{outcome}"
     EMAIL_DELIVERY_METRICS[metric_key] += 1
@@ -90,8 +90,7 @@ def bump_email_delivery_metric(*, email_type: EmailType, provider: str, outcome:
     )
 
 
-
-def track_email_sent(email_address: str, email_type: EmailType, profile: "Profile" = None):
+def track_email_sent(email_address: str, email_type: EmailType, profile: Profile = None):
     """
     Track sent emails by creating EmailSent records.
     """
@@ -120,13 +119,12 @@ def track_email_sent(email_address: str, email_type: EmailType, profile: "Profil
         return None
 
 
-
 def send_transactional_email(
     send_callable: Callable[[], Any],
     *,
     email_address: str,
     email_type: EmailType,
-    profile: "Profile" = None,
+    profile: Profile = None,
     context: dict[str, Any] | None = None,
     retry_backoff_seconds: tuple[float, ...] | None = None,
 ) -> bool:

@@ -7,6 +7,12 @@ class AgentApiKeyAccessLevel(models.TextChoices):
     ADMIN = "admin", "Admin"
 
 
+class FeedbackSource(models.TextChoices):
+    BROWSER = "browser", "Browser"
+    API = "api", "REST API"
+    MCP = "mcp", "MCP"
+
+
 class ProfileStates(models.TextChoices):
     STRANGER = "stranger"
     SIGNED_UP = "signed_up"

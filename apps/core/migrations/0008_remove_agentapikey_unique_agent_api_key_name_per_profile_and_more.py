@@ -4,18 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0007_agentapikey_access_level'),
+        ("core", "0007_agentapikey_access_level"),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='agentapikey',
-            name='unique_agent_api_key_name_per_profile',
+            model_name="agentapikey",
+            name="unique_agent_api_key_name_per_profile",
         ),
         migrations.AddConstraint(
-            model_name='agentapikey',
-            constraint=models.UniqueConstraint(condition=models.Q(('revoked_at__isnull', True)), fields=('profile', 'name'), name='unique_agent_api_key_name_per_profile'),
+            model_name="agentapikey",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("revoked_at__isnull", True)),
+                fields=("profile", "name"),
+                name="unique_agent_api_key_name_per_profile",
+            ),
         ),
     ]

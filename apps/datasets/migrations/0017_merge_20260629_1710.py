@@ -4,11 +4,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('datasets', '0016_datasetasset'),
-        ('datasets', '0016_remove_project_unique_profile_project_name_ci_and_more'),
+        ("datasets", "0016_datasetasset"),
+        ("datasets", "0016_remove_project_unique_profile_project_name_ci_and_more"),
     ]
 
-    operations = [
-    ]
+    operations = []

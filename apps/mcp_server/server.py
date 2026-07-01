@@ -60,7 +60,7 @@ from apps.core.analytics import (
     track_activation_event,
 )
 from apps.core.capabilities import rowset_capabilities_payload
-from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import (
     create_agent_api_key as create_agent_api_key_credential,
@@ -69,6 +69,7 @@ from apps.core.services import (
     require_agent_api_key_access,
     resolve_api_key_profile,
     serialize_agent_api_key,
+    serialize_feedback,
     submit_profile_feedback,
 )
 from apps.mcp_server.auth import mcp_auth
@@ -437,35 +438,38 @@ def get_rowset_capabilities() -> dict:
 @mcp.tool(
     name="submit_feedback",
     description=(
-        "Submit product feedback about Rowset from the authenticated agent. Rowset stores "
-        "the feedback in the private Rowset/CX Feedback dataset and sends the configured "
-        "feedback notification with a link to the created row."
+        "Submit concise product feedback about Rowset from the authenticated agent. "
+        "Use this for setup friction, confusing MCP/API behavior, missing docs, or "
+        "feature requests. Rowset stores it in the private Rowset/CX Feedback dataset. "
+        "Do not include API keys, secrets, or private dataset contents."
     ),
 )
-def submit_feedback_tool(
+def submit_feedback(
     feedback: Annotated[
         str,
         Field(
             min_length=1,
             max_length=2000,
-            description="Feedback text to send to the Rowset team.",
+            description="Concise feedback text. Do not include secrets or private row data.",
         ),
     ],
     page: Annotated[
         str | None,
         Field(
-            default="",
+            default=None,
             max_length=255,
-            description="Optional Rowset page, URL, MCP tool, or context for the feedback.",
+            description=(
+                "Optional Rowset page, API path, MCP tool, or workflow where this came up."
+            ),
         ),
-    ] = "",
+    ] = None,
     context: Annotated[
         dict[str, Any] | None,
         Field(
             default=None,
             description=(
                 "Optional small JSON object with non-sensitive context such as tool name, "
-                "category, or workflow. Do not include API keys, secrets, or private data."
+                "category, or workflow."
             ),
         ),
     ] = None,
@@ -475,11 +479,11 @@ def submit_feedback_tool(
         profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
         try:
             result = submit_profile_feedback(
-                profile,
-                feedback,
+                profile=profile,
+                feedback=feedback,
                 page=page,
-                submitted_via="mcp",
-                context=context,
+                source=FeedbackSource.MCP,
+                metadata=context,
                 **_agent_actor_kwargs(profile),
             )
         except DatasetServiceError as exc:
@@ -495,17 +499,20 @@ def submit_feedback_tool(
                 )
             ) from exc
 
+        feedback_payload = serialize_feedback(result.feedback)
+        feedback_payload.update(
+            {
+                "id": result.feedback.id,
+                "page": result.feedback.page,
+                "context": context or {},
+            }
+        )
         return {
             "status": "success",
             "message": "Feedback submitted successfully.",
-            "feedback": {
-                "id": result.feedback.id,
-                "page": result.feedback.page,
-                "submitted_via": "mcp",
-                "context": context or {},
-            },
-            "dataset": str(result.dataset.key),
-            "row": result.row.id,
+            "feedback": feedback_payload,
+            "dataset": str(result.dataset.key) if result.dataset else "",
+            "row": result.row.id if result.row else None,
             "row_url": result.row_url,
         }
     finally:
@@ -905,9 +912,7 @@ def update_project_section(
         str | None,
         Field(
             default=None,
-            description=(
-                "Optional new section name. Omit or pass null to keep the current name."
-            ),
+            description=("Optional new section name. Omit or pass null to keep the current name."),
         ),
     ] = None,
     description: Annotated[
@@ -1171,7 +1176,7 @@ def update_dataset_column_types(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
                 "include text, image, choice, integer, number, currency, boolean, "
-                'date, datetime, email, url, and reference. For choice columns, pass '
+                "date, datetime, email, url, and reference. For choice columns, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
                 'reference column, pass {"type": "reference", "target": "dataset"} or '
@@ -1218,7 +1223,7 @@ def add_column(
             description=(
                 "Optional semantic type or metadata for the new column. Supported types "
                 "include text, image, choice, integer, number, currency, boolean, "
-                'date, datetime, email, url, and reference. For a choice column, pass '
+                "date, datetime, email, url, and reference. For a choice column, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
                 'reference column, pass {"type": "reference", "target": "dataset"} or '

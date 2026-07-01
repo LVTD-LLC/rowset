@@ -11,6 +11,8 @@ fi
 
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$ROOT")}"
 COMPOSE_TEST=(docker compose -f docker-compose-local.yml -f docker-compose-test.yml)
+CHECK_PYTHON_RUN="${COMPOSE_TEST[*]} run --rm --no-deps backend python"
+PYTEST_RUN="${COMPOSE_TEST[*]} run --rm --no-deps backend pytest"
 
 run_step() {
   printf "\n==> %s\n" "$1"
@@ -56,10 +58,16 @@ SQL
 }
 
 run_step "Clean stale test containers" cleanup_backend_runs
+run_step "Ruff lint" make lint-python
+run_step "Ruff format check" make format-check
+run_step "Scoped type check" make type-check
+run_step "Install frontend dependencies" make frontend-install
+run_step "Frontend lint and build" make frontend-check
 run_step "Reset local test database" reset_test_database
-run_step "Migration check" make migrations-check
-run_step "Django system checks" make django-check
-run_step "Core, docs, pages, and blog tests" make test -- apps/core apps/docs apps/pages apps/blog -q
-run_step "Dataset tests" make test -- apps/datasets -q
-run_step "API tests" make test -- apps/api -q
-run_step "MCP tests" make test -- apps/mcp_server -q
+run_step "Start backend test dependencies" "${COMPOSE_TEST[@]}" up -d db redis
+run_step "Migration check" make migrations-check CHECK_PYTHON_RUN="$CHECK_PYTHON_RUN"
+run_step "Django system checks" make django-check CHECK_PYTHON_RUN="$CHECK_PYTHON_RUN"
+run_step "Core, docs, pages, and blog tests" make test PYTEST_RUN="$PYTEST_RUN" -- apps/core apps/docs apps/pages apps/blog -q
+run_step "Dataset tests" make test PYTEST_RUN="$PYTEST_RUN" -- apps/datasets -q
+run_step "API tests" make test PYTEST_RUN="$PYTEST_RUN" -- apps/api -q
+run_step "MCP tests" make test PYTEST_RUN="$PYTEST_RUN" -- apps/mcp_server -q

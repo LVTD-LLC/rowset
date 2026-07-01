@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('datasets', '0013_dataset_dataset_desc_trgm_idx_and_more'),
+        ("datasets", "0013_dataset_dataset_desc_trgm_idx_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='project',
-            name='metadata',
+            model_name="project",
+            name="metadata",
             field=models.JSONField(blank=True, default=dict),
         ),
     ]

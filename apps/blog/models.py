@@ -1,8 +1,8 @@
 from django.db import models
 from django.urls import reverse
 
-from apps.core.base_models import BaseModel
 from apps.blog.choices import BlogPostStatus
+from apps.core.base_models import BaseModel
 
 
 class BlogPost(BaseModel):

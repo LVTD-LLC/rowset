@@ -95,6 +95,7 @@ GENERATED_INDEX_BASENAME = "rowset_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
 MAX_PUBLIC_PAGE_SIZE = 100
 DATASET_ASSET_REF_PREFIX = "asset:"
+DATASET_ASSET_KEY_ERRORS = (AttributeError, TypeError, ValueError)
 DATASET_ASSET_CACHE_CONTROL = "private, max-age=86400, immutable"
 DATASET_IMAGE_THUMBNAIL_SIZE = (512, 512)
 DATASET_IMAGE_ALLOWED_FORMATS = {
@@ -191,9 +192,7 @@ ROW_NUMERIC_FILTER_PATTERN = r"-?\d+(\.\d+)?"
 ROW_YEAR_PATTERN = r"(000[1-9]|00[1-9][0-9]|0[1-9][0-9]{2}|[1-9][0-9]{3})"
 ROW_NON_CENTURY_LEAP_YEAR_PATTERN = r"[0-9]{2}(0[48]|[2468][048]|[13579][26])"
 ROW_CENTURY_LEAP_YEAR_PATTERN = r"(0[48]|[2468][048]|[13579][26])00"
-ROW_LEAP_YEAR_PATTERN = (
-    rf"({ROW_NON_CENTURY_LEAP_YEAR_PATTERN}|{ROW_CENTURY_LEAP_YEAR_PATTERN})"
-)
+ROW_LEAP_YEAR_PATTERN = rf"({ROW_NON_CENTURY_LEAP_YEAR_PATTERN}|{ROW_CENTURY_LEAP_YEAR_PATTERN})"
 ROW_MONTH_DAY_PATTERN = (
     r"((01|03|05|07|08|10|12)-(0[1-9]|[12][0-9]|3[01])"
     r"|(04|06|09|11)-(0[1-9]|[12][0-9]|30)"
@@ -223,12 +222,8 @@ ROW_SLASH_YMD_DATE_PATTERN = (
 ROW_SLASH_MDY_DATE_PATTERN = (
     rf"({ROW_SLASH_MONTH_DAY_PATTERN}/{ROW_YEAR_PATTERN}|0?2/0?29/{ROW_LEAP_YEAR_PATTERN})"
 )
-ROW_SLASH_YMD_DATETIME_SORT_PATTERN = (
-    rf"^{ROW_SLASH_YMD_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
-)
-ROW_SLASH_MDY_DATETIME_SORT_PATTERN = (
-    rf"^{ROW_SLASH_MDY_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
-)
+ROW_SLASH_YMD_DATETIME_SORT_PATTERN = rf"^{ROW_SLASH_YMD_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
+ROW_SLASH_MDY_DATETIME_SORT_PATTERN = rf"^{ROW_SLASH_MDY_DATE_PATTERN}{ROW_SPACE_TIME_PATTERN}$"
 ROW_FILTER_OPERATOR_ALIASES = {
     "eq": ROW_FILTER_IS,
     "equals": ROW_FILTER_IS,
@@ -818,9 +813,7 @@ def _normalize_choice_values(header: str, raw_choices) -> list[str]:
     for raw_choice in raw_choices:
         choice = str("" if raw_choice is None else raw_choice).strip()
         if not choice:
-            raise CSVParseError(
-                f"Choice column '{header}' choices must be non-empty strings."
-            )
+            raise CSVParseError(f"Choice column '{header}' choices must be non-empty strings.")
         if choice in seen:
             duplicates.add(choice)
         seen.add(choice)
@@ -868,9 +861,7 @@ def _normalize_reference_target(header: str, raw_target) -> str:
     allowed_targets = {DATASET_REFERENCE_TARGET, PROJECT_REFERENCE_TARGET}
     if normalized_target not in allowed_targets:
         allowed = ", ".join(sorted(allowed_targets))
-        raise CSVParseError(
-            f"Reference column '{header}' target must be one of: {allowed}."
-        )
+        raise CSVParseError(f"Reference column '{header}' target must be one of: {allowed}.")
     return normalized_target
 
 
@@ -908,7 +899,7 @@ def dataset_asset_key_from_ref(value: object) -> str:
     raw_key = text.removeprefix(DATASET_ASSET_REF_PREFIX).strip()
     try:
         return str(UUID(raw_key))
-    except (AttributeError, TypeError, ValueError):
+    except DATASET_ASSET_KEY_ERRORS:
         return ""
 
 
@@ -1495,10 +1486,10 @@ def _apply_row_field_filters(
             queryset = queryset.filter(boolean_query)
         elif column["type"] == DatasetColumnType.CHOICE:
             queryset = queryset.filter(**{f"{alias}__iexact": value})
-        elif (
-            column["type"] in ROW_NUMERIC_SORT_TYPES
-            and filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
-        ):
+        elif column["type"] in ROW_NUMERIC_SORT_TYPES and filter_operators.get(header) in {
+            ROW_FILTER_ABOVE,
+            ROW_FILTER_BELOW,
+        }:
             filter_value = _normalize_numeric_filter_value(value)
             if filter_value is None:
                 return queryset.none()
@@ -1521,10 +1512,10 @@ def _apply_row_field_filters(
             )
             lookup = "gt" if filter_operators[header] == ROW_FILTER_ABOVE else "lt"
             queryset = queryset.filter(**{f"{number_alias}__{lookup}": filter_value})
-        elif (
-            column["type"] in ROW_DATETIME_SORT_TYPES
-            and filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
-        ):
+        elif column["type"] in ROW_DATETIME_SORT_TYPES and filter_operators.get(header) in {
+            ROW_FILTER_ABOVE,
+            ROW_FILTER_BELOW,
+        }:
             filter_value = _normalize_datetime_filter_value(value)
             if filter_value is None:
                 return queryset.none()

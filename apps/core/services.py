@@ -10,6 +10,7 @@ from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django_q.tasks import async_task
 
 from apps.api.services import (
     DatasetServiceError,
@@ -22,7 +23,7 @@ from apps.core.analytics import (
     ROWSET_AGENT_API_KEY_CREATED,
     track_activation_event,
 )
-from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import AgentApiKey, Feedback, Profile
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow, Project, ProjectSection
@@ -31,6 +32,9 @@ from rowset.utils import build_absolute_public_url, get_rowset_logger
 AGENT_API_KEY_PREFIX = "rsk_"
 AGENT_API_KEY_VISIBLE_PREFIX_LENGTH = 12
 AGENT_API_KEY_LAST_USED_UPDATE_INTERVAL = timedelta(minutes=5)
+MAX_FEEDBACK_LENGTH = 2000
+MAX_FEEDBACK_PAGE_LENGTH = 255
+MAX_FEEDBACK_METADATA_BYTES = 8000
 logger = get_rowset_logger(__name__)
 FEEDBACK_PROJECT_NAME = "Rowset"
 FEEDBACK_SECTION_NAME = "CX"
@@ -62,7 +66,7 @@ FEEDBACK_DATASET_METADATA = {
         "version": 1,
     }
 }
-MAX_FEEDBACK_CONTEXT_CHARS = 2000
+FEEDBACK_ROW_URL_METADATA_KEY = "rowset_row_url"
 AGENT_API_KEY_ACCESS_LEVEL_ORDER = {
     AgentApiKeyAccessLevel.READ: 0,
     AgentApiKeyAccessLevel.READ_WRITE: 1,
@@ -80,50 +84,9 @@ class AgentApiKeyCredential:
 @dataclass(frozen=True)
 class FeedbackSubmissionResult:
     feedback: Feedback
-    dataset: Dataset
-    row: DatasetRow
+    dataset: Dataset | None
+    row: DatasetRow | None
     row_url: str
-
-
-def _normalize_feedback_text(feedback: str) -> str:
-    normalized = str(feedback or "").strip()
-    if not normalized:
-        raise ValueError("Feedback is required.")
-    if len(normalized) > 2000:
-        raise ValueError("Feedback must be 2,000 characters or fewer.")
-    return normalized
-
-
-def _normalize_feedback_page(page: str | None) -> str:
-    normalized = str(page or "").strip()
-    if len(normalized) > Feedback._meta.get_field("page").max_length:
-        raise ValueError("Page must be 255 characters or fewer.")
-    return normalized
-
-
-def _normalize_feedback_source(submitted_via: str | None) -> str:
-    normalized = str(submitted_via or "").strip().lower()
-    return normalized or "unknown"
-
-
-def _normalize_feedback_context(context: dict[str, Any] | None) -> dict[str, Any]:
-    if context is None:
-        return {}
-    if not isinstance(context, dict):
-        raise ValueError("Context must be a JSON object.")
-    context_text = _feedback_context_text(context)
-    if len(context_text) > MAX_FEEDBACK_CONTEXT_CHARS:
-        raise ValueError("Context must serialize to 2,000 characters or fewer.")
-    return context
-
-
-def _feedback_context_text(context: dict[str, Any]) -> str:
-    if not context:
-        return ""
-    try:
-        return json.dumps(context, sort_keys=True, separators=(",", ":"))
-    except TypeError as exc:
-        raise ValueError("Context must be JSON serializable.") from exc
 
 
 def _active_project_by_name(profile: Profile, name: str) -> Project | None:
@@ -280,60 +243,6 @@ def _feedback_dataset_row_data(
     }
 
 
-def submit_profile_feedback(
-    profile: Profile,
-    feedback: str,
-    *,
-    page: str | None = "",
-    submitted_via: str | None = "web",
-    context: dict[str, Any] | None = None,
-    agent_api_key: AgentApiKey | None = None,
-) -> FeedbackSubmissionResult:
-    normalized_feedback = _normalize_feedback_text(feedback)
-    normalized_page = _normalize_feedback_page(page)
-    normalized_source = _normalize_feedback_source(submitted_via)
-    normalized_context = _normalize_feedback_context(context)
-    context_text = _feedback_context_text(normalized_context)
-
-    project = _get_or_create_feedback_project(profile)
-    section = _get_or_create_feedback_section(profile, project)
-    dataset = _get_or_create_feedback_dataset(
-        profile,
-        project,
-        section,
-        agent_api_key=agent_api_key,
-    )
-
-    with transaction.atomic():
-        feedback_record = Feedback(
-            profile=profile,
-            feedback=normalized_feedback,
-            page=normalized_page,
-        )
-        feedback_record._skip_feedback_notification = True
-        feedback_record.save()
-        row_result = create_profile_dataset_row(
-            profile,
-            str(dataset.key),
-            _feedback_dataset_row_data(feedback_record, normalized_source, context_text),
-            agent_api_key=agent_api_key,
-        )
-        row = DatasetRow.objects.select_related("dataset").get(id=row_result["row"]["id"])
-        row_url = build_absolute_public_url(row.get_absolute_url())
-
-    feedback_record.send_notification(
-        dataset_row_url=row_url,
-        submitted_via=normalized_source,
-        feedback_context=context_text,
-    )
-    return FeedbackSubmissionResult(
-        feedback=feedback_record,
-        dataset=dataset,
-        row=row,
-        row_url=row_url,
-    )
-
-
 def get_or_create_profile_for_user(user) -> Profile:
     try:
         with transaction.atomic():
@@ -422,6 +331,149 @@ def serialize_agent_api_key(agent_api_key: AgentApiKey) -> dict:
         "last_used_at": agent_api_key.last_used_at,
         "revoked_at": agent_api_key.revoked_at,
     }
+
+
+def _normalize_feedback_text(feedback: str) -> str:
+    normalized = str(feedback or "").strip()
+    if not normalized:
+        raise ValueError("Feedback is required.")
+    if len(normalized) > MAX_FEEDBACK_LENGTH:
+        raise ValueError(f"Feedback must be {MAX_FEEDBACK_LENGTH} characters or fewer.")
+    return normalized
+
+
+def _normalize_feedback_page(page: str | None) -> str:
+    normalized = str(page or "").strip()
+    if len(normalized) > MAX_FEEDBACK_PAGE_LENGTH:
+        raise ValueError(f"Feedback page must be {MAX_FEEDBACK_PAGE_LENGTH} characters or fewer.")
+    return normalized
+
+
+def _normalize_feedback_source(source: str) -> str:
+    try:
+        return FeedbackSource(source).value
+    except ValueError as exc:
+        valid_sources = ", ".join(value for value, _label in FeedbackSource.choices)
+        raise ValueError(f"Feedback source must be one of: {valid_sources}.") from exc
+
+
+def _normalize_feedback_metadata(metadata: dict | None) -> dict:
+    if metadata is None:
+        return {}
+    if not isinstance(metadata, dict):
+        raise ValueError("Feedback context must be a JSON object.")
+    try:
+        serialized = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Feedback context must be JSON-serializable.") from exc
+    if len(serialized.encode("utf-8")) > MAX_FEEDBACK_METADATA_BYTES:
+        raise ValueError(f"Feedback context must be {MAX_FEEDBACK_METADATA_BYTES} bytes or fewer.")
+    return json.loads(serialized)
+
+
+def _feedback_metadata_text(metadata: dict) -> str:
+    if not metadata:
+        return ""
+    return json.dumps(metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def serialize_feedback(feedback: Feedback) -> dict:
+    return {
+        "uuid": str(feedback.uuid),
+        "source": feedback.source,
+        "created_at": feedback.created_at.isoformat(),
+    }
+
+
+def queue_feedback_notification(feedback: Feedback) -> None:
+    if not getattr(settings, "ROWSET_FEEDBACK_APPRISE_URLS", ()):
+        return
+
+    transaction.on_commit(
+        lambda: async_task(
+            "apps.core.tasks.notify_feedback_apprise",
+            feedback.id,
+            group="Feedback Notification",
+        )
+    )
+
+
+def submit_profile_feedback(
+    *,
+    profile: Profile | None,
+    feedback: str,
+    page: str | None = "",
+    source: str = FeedbackSource.BROWSER,
+    metadata: dict | None = None,
+    agent_api_key: AgentApiKey | None = None,
+) -> FeedbackSubmissionResult:
+    if profile is not None and agent_api_key is not None and agent_api_key.profile_id != profile.id:
+        raise ValueError("Agent API key does not belong to this profile.")
+
+    normalized_source = _normalize_feedback_source(source)
+    normalized_feedback = _normalize_feedback_text(feedback)
+    normalized_page = _normalize_feedback_page(page)
+    normalized_metadata = _normalize_feedback_metadata(metadata)
+    context_text = _feedback_metadata_text(normalized_metadata)
+
+    if profile is None:
+        feedback_record = Feedback.objects.create(
+            profile=None,
+            agent_api_key=None,
+            source=normalized_source,
+            feedback=normalized_feedback,
+            page=normalized_page,
+            metadata=normalized_metadata,
+        )
+        queue_feedback_notification(feedback_record)
+        return FeedbackSubmissionResult(
+            feedback=feedback_record,
+            dataset=None,
+            row=None,
+            row_url="",
+        )
+
+    project = _get_or_create_feedback_project(profile)
+    section = _get_or_create_feedback_section(profile, project)
+    dataset = _get_or_create_feedback_dataset(
+        profile,
+        project,
+        section,
+        agent_api_key=agent_api_key,
+    )
+
+    with transaction.atomic():
+        feedback_record = Feedback(
+            profile=profile,
+            agent_api_key=agent_api_key,
+            source=normalized_source,
+            feedback=normalized_feedback,
+            page=normalized_page,
+            metadata=normalized_metadata,
+        )
+        feedback_record._skip_feedback_notification = True
+        feedback_record.save()
+        row_result = create_profile_dataset_row(
+            profile,
+            str(dataset.key),
+            _feedback_dataset_row_data(feedback_record, normalized_source, context_text),
+            agent_api_key=agent_api_key,
+        )
+        row = DatasetRow.objects.select_related("dataset").get(id=row_result["row"]["id"])
+        row_url = build_absolute_public_url(row.get_absolute_url())
+        feedback_record.metadata = {
+            **normalized_metadata,
+            FEEDBACK_ROW_URL_METADATA_KEY: row_url,
+        }
+        feedback_record.save(update_fields=["metadata", "updated_at"])
+        queue_feedback_notification(feedback_record)
+
+    return FeedbackSubmissionResult(
+        feedback=feedback_record,
+        dataset=dataset,
+        row=row,
+        row_url=row_url,
+    )
 
 
 def hash_agent_api_key(token: str) -> str:

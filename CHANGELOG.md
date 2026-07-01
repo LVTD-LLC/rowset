@@ -17,6 +17,12 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- Added Rowset agent eval seeds, code tours, and task templates for common dataset, API, MCP, vector search, access, and public-preview work.
+- CI and `make ci-local` now run the scoped `ty` type-check baseline, with documented expansion guidance.
+- Added shared Rowset dataset test factories, split public-preview tests out of the large dataset test module, and added REST/MCP parity characterization tests for shared dataset behavior.
+- CI now prints a high-risk coverage report for API services, dataset services, vector search, and MCP server modules.
+- CI and `make ci-local` now enforce Ruff lint, Ruff format, and frontend lint/build checks.
+- Applied the Ruff formatting baseline so future style checks can run without format churn.
 - Added Rowset Pro billing copy/configuration for a single $50/month plan and enforced free-account dataset quotas through shared REST/MCP services.
 - Stripe checkout, customer, and billing portal requests can now include `STRIPE_CONTEXT` for Stripe Organization API keys.
 - Replaced inherited `AWS_*` media storage setup with explicit `ROWSET_ASSET_*` private dataset asset storage configuration for Cloudflare R2/S3-compatible storage.
@@ -39,6 +45,8 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 
 ### Fixed
 - Generated-index row patches now accept an unchanged generated index value, avoiding validation failures when agents send full-row update payloads.
+- Local CI backend checks now run with DB/Redis dependencies only, avoiding frontend container churn between backend test groups.
+- The Ruff lint baseline now passes by applying mechanical import and pyupgrade fixes and documenting two existing complexity exceptions.
 - Choice-column row writes now accept unambiguous case, whitespace, hyphen, or underscore variants and store the schema's canonical choice label.
 - Canonical legacy `/api/v1` REST requests now resolve to the current API surface, unknown or trailing-slash API paths return JSON 404s without rendering landing-page context, and referrer banner lookup failures no longer turn bad-path traffic into Sentry database errors.
 - Declared `boto3` as an explicit runtime dependency so the django-storages S3 backend imports reliably in clean production builds.
@@ -49,6 +57,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Added Docker health checks to the CapRover server and worker images so non-persistent app deploys can use health-gated rolling updates instead of routing to containers before they are ready.
 - Added Qdrant-backed dataset row vector search with PydanticAI/OpenRouter embedding generation, hybrid vector/lexical ranking, REST `POST /api/datasets/{dataset_key}/search`, and hosted MCP `search_dataset_rows`.
 - Added vector indexing and cleanup workers for API/MCP dataset creation, row create/update/delete, dataset archive, and an operator `backfill_dataset_vectors` management command.
 - ReviewGate now runs on pull requests in report mode when `OPENROUTER_API_KEY` is configured.

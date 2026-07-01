@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from apps.core.base_models import BaseModel
 
+
 class ReferrerBanner(BaseModel):
     referrer = models.CharField(
         max_length=100,

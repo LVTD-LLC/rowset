@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0005_agentapikey'),
+        ("core", "0005_agentapikey"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agentapikey',
-            name='token_ciphertext',
-            field=models.TextField(blank=True, default=''),
+            model_name="agentapikey",
+            name="token_ciphertext",
+            field=models.TextField(blank=True, default=""),
         ),
     ]

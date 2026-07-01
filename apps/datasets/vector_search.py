@@ -73,8 +73,7 @@ def qdrant_row_collection_name(
     )
     dimensions = embedding_dimensions or settings.ROWSET_EMBEDDING_DIMENSIONS
     return (
-        f"{normalized_prefix}_{QDRANT_COLLECTION_KIND}_"
-        f"{normalized_model}_d{dimensions}_v{version}"
+        f"{normalized_prefix}_{QDRANT_COLLECTION_KIND}_{normalized_model}_d{dimensions}_v{version}"
     )
 
 
