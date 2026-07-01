@@ -140,7 +140,7 @@ async function watchAssets() {
       } catch (error) {
         console.error(error);
       }
-    }, 120);
+    }, 250);
   };
 
   await Promise.all(

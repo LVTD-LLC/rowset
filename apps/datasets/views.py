@@ -2342,6 +2342,7 @@ def dataset_asset_content(request, dataset_key, asset_key):
 
 
 @login_required
+@require_http_methods(["GET", "HEAD"])
 @vary_on_headers("HX-Request")
 def dataset_status(request, dataset_key):
     dataset = get_object_or_404(
