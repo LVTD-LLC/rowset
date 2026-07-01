@@ -6808,6 +6808,26 @@ def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     assert by_index_response.status_code == 400
     assert "managed by Rowset" in by_index_response.json()["detail"]
 
+    idempotent_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"rowset_id": "1", "name": "Ada Updated"}},
+        content_type="application/json",
+    )
+
+    assert idempotent_response.status_code == 200
+    assert idempotent_response.json()["row"]["index_value"] == "1"
+    assert idempotent_response.json()["row"]["data"]["name"] == "Ada Updated"
+
+    idempotent_by_index_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?api_key={profile.key}&index_value=1",
+        data={"data": {"rowset_id": "1", "name": "Ada By Index"}},
+        content_type="application/json",
+    )
+
+    assert idempotent_by_index_response.status_code == 200
+    assert idempotent_by_index_response.json()["row"]["index_value"] == "1"
+    assert idempotent_by_index_response.json()["row"]["data"]["name"] == "Ada By Index"
+
 
 def test_dataset_api_rejects_other_users_dataset(client, django_user_model, profile):
     dataset = create_ready_dataset(profile)
