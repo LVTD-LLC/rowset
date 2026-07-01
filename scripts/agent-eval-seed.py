@@ -112,11 +112,36 @@ def _default_run_id(seed: Seed, now: datetime) -> str:
     return f"{timestamp}-{seed.seed_id.lower()}"
 
 
-def _build_artifact(args: argparse.Namespace, seed: Seed, root: Path) -> dict[str, object]:
-    now = datetime.now(UTC)
-    run_id = args.run_id or _default_run_id(seed, now)
-    base_sha = _git_output(root, "rev-parse", "HEAD")
-    head_sha = _git_output(root, "rev-parse", "HEAD")
+def _existing_result(run_dir: Path) -> dict[str, object] | None:
+    path = run_dir / "result.json"
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _preserved_base_sha(existing_result: dict[str, object] | None) -> str | None:
+    if not existing_result:
+        return None
+    base_sha = existing_result.get("base_sha")
+    return str(base_sha).strip() if base_sha else None
+
+
+def _build_artifact(
+    args: argparse.Namespace,
+    seed: Seed,
+    root: Path,
+    *,
+    run_id: str,
+    created_at: datetime,
+    existing_result: dict[str, object] | None,
+) -> dict[str, object]:
+    current_head_sha = _git_output(root, "rev-parse", "HEAD")
+    base_sha = args.base_sha or _preserved_base_sha(existing_result) or current_head_sha
+    head_sha = args.head_sha or current_head_sha
     changed_files = args.changed_file or ["TODO: record changed files after the run"]
     follow_up_notes = args.note or "Dry-run artifact created; no agent execution invoked."
 
@@ -125,7 +150,7 @@ def _build_artifact(args: argparse.Namespace, seed: Seed, root: Path) -> dict[st
         "run_id": run_id,
         "seed_id": seed.seed_id,
         "seed_title": seed.title,
-        "created_at": now.isoformat().replace("+00:00", "Z"),
+        "created_at": created_at.isoformat().replace("+00:00", "Z"),
         "status": args.status,
         "agent": args.agent,
         "model": args.model,
@@ -186,13 +211,23 @@ def create_run(args: argparse.Namespace, seeds: dict[str, Seed]) -> int:
         return 1
 
     root = args.root.resolve()
-    artifact = _build_artifact(args, seeds[seed_id], root)
+    seed = seeds[seed_id]
+    now = datetime.now(UTC)
+    run_id = args.run_id or _default_run_id(seed, now)
     runs_dir = (root / args.runs_dir).resolve()
-    run_dir = runs_dir / str(artifact["run_id"])
+    run_dir = runs_dir / run_id
     if run_dir.exists() and not args.force:
         print(f"Run directory already exists: {run_dir}", file=sys.stderr)
         return 1
 
+    artifact = _build_artifact(
+        args,
+        seed,
+        root,
+        run_id=run_id,
+        created_at=now,
+        existing_result=_existing_result(run_dir),
+    )
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "result.json").write_text(json.dumps(artifact, indent=2) + "\n")
     (run_dir / "result.md").write_text(_markdown_for_artifact(artifact))
@@ -218,6 +253,17 @@ def main() -> int:
     parser.add_argument("--seed-doc", type=Path, default=SEED_DOC)
     parser.add_argument("--runs-dir", type=Path, default=DEFAULT_RUNS_DIR)
     parser.add_argument("--run-id", help="Override the generated run id.")
+    parser.add_argument(
+        "--base-sha",
+        help=(
+            "Base commit for the run. Defaults to the existing artifact base_sha when "
+            "overwriting, otherwise current HEAD."
+        ),
+    )
+    parser.add_argument(
+        "--head-sha",
+        help="Head commit for the run. Defaults to current HEAD.",
+    )
     parser.add_argument(
         "--status",
         default="dry_run",

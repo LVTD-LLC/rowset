@@ -9,6 +9,11 @@ The first version is intentionally a human/agent-run wrapper. It does not invoke
 an agent automatically; it makes each run measurable and comparable after the
 agent or human has executed the seed task.
 
+When an existing run is overwritten with `--force`, the harness preserves the
+existing `base_sha` unless `--base-sha` is provided. This lets a runner create a
+dry-run artifact before an agent starts, then refresh `head_sha` after commits
+without losing the original comparison point.
+
 Example dry-run command:
 
 ```bash
