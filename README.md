@@ -726,6 +726,11 @@ CI (`.github/workflows/ci.yml`) runs on pull requests and performs:
 7. `uv run python manage.py check`.
 8. `uv run pytest -q`.
 
+CI tests against PostgreSQL 18 (`rasulkireev/custom-postgres:18`), while
+`docker-compose-prod.yml` currently uses PostgreSQL 17
+(`rasulkireev/custom-postgres:17`). Keep that version split in mind for
+database behavior until the stacks are aligned.
+
 ReviewGate also runs on pull requests in report mode when `OPENROUTER_API_KEY`
 is configured in GitHub secrets.
 
@@ -747,12 +752,13 @@ ghcr.io/rasulkireev/rowset:latest
 ghcr.io/rasulkireev/rowset-workers:latest
 ```
 
-On a server:
+On a server, fetch the repository files first so `docker-compose-prod.yml` and
+`.env.example` are present:
 
 ```bash
-mkdir rowset
+git clone https://github.com/LVTD-LLC/rowset.git
 cd rowset
-cp /path/to/.env.example .env
+cp .env.example .env
 ```
 
 Edit `.env` for production:
