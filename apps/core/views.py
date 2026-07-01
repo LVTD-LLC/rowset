@@ -37,6 +37,7 @@ from apps.core.models import AgentApiKey, Profile
 from apps.core.services import create_agent_api_key, get_agent_api_key_token
 from apps.core.stripe_webhooks import EVENT_HANDLERS
 from apps.datasets.choices import DatasetStatus
+from apps.datasets.views import DATASET_VIEW_MODE_GROUPED, DatasetListView
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -154,9 +155,38 @@ def build_agent_setup_prompt(
     )
 
 
-class HomeView(LoginRequiredMixin, TemplateView):
+class HomeView(DatasetListView):
     login_url = "account_login"
     template_name = "pages/home.html"
+    default_view_mode = DATASET_VIEW_MODE_GROUPED
+    dataset_list_url_name = "home"
+    dataset_list_eyebrow = "Home"
+    dataset_list_title = "Projects and datasets"
+    dataset_list_description = (
+        "Browse every active dataset your agents have created, grouped by project and section."
+    )
+    dataset_search_placeholder = "Name, source file, project, or section"
+
+    def get_profile(self):
+        if not hasattr(self, "_profile"):
+            self._profile, _created = Profile.objects.get_or_create(user=self.request.user)
+        return self._profile
+
+    def get_projects(self):
+        visible_dataset_filter = Q(datasets__archived_at__isnull=True) & ~Q(
+            datasets__status=DatasetStatus.PREVIEWED
+        )
+        return self.get_profile().projects.filter(archived_at__isnull=True).annotate(
+            dataset_count=Count("datasets", filter=visible_dataset_filter, distinct=True),
+            section_count=Count(
+                "sections",
+                filter=Q(sections__archived_at__isnull=True),
+                distinct=True,
+            ),
+        )
+
+    def get_total_projects(self, base_queryset):
+        return self.get_projects().count()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -167,28 +197,16 @@ class HomeView(LoginRequiredMixin, TemplateView):
         elif payment_status == "failed":
             messages.error(self.request, "Something went wrong with the payment.")
 
-        profile, _created = Profile.objects.get_or_create(user=self.request.user)
-        dashboard_datasets = profile.datasets.filter(archived_at__isnull=True).exclude(
-            status=DatasetStatus.PREVIEWED
+        profile = self.get_profile()
+        context["dashboard_stats"] = context["dataset_stats"]
+        context["projects"] = self.get_projects().order_by("name", "id")
+        context["ungrouped_dataset_count"] = self.get_base_queryset().filter(
+            project__isnull=True
+        ).count()
+        show_agent_setup_prompt = (
+            not profile.agent_setup_prompt_dismissed
+            and context["dashboard_stats"]["total_datasets"] == 0
         )
-        dashboard_summary = dashboard_datasets.aggregate(
-            total_datasets=Count("id"),
-            total_rows=Sum("row_count"),
-            public_preview_count=Count("id", filter=Q(public_enabled=True)),
-        )
-        recent_datasets = list(
-            dashboard_datasets.select_related("project", "updated_by_agent_api_key").order_by(
-                "-updated_at"
-            )[:5]
-        )
-        context["recent_datasets"] = recent_datasets
-        context["dashboard_stats"] = {
-            "total_datasets": dashboard_summary["total_datasets"] or 0,
-            "total_projects": profile.projects.filter(archived_at__isnull=True).count(),
-            "total_rows": dashboard_summary["total_rows"] or 0,
-            "public_preview_count": dashboard_summary["public_preview_count"] or 0,
-        }
-        show_agent_setup_prompt = not profile.agent_setup_prompt_dismissed and not recent_datasets
         context["show_agent_setup_prompt"] = show_agent_setup_prompt
         if show_agent_setup_prompt:
             active_agent_api_key = profile.agent_api_keys.filter(revoked_at__isnull=True).first()

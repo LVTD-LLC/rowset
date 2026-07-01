@@ -200,7 +200,7 @@ class TestHomeView:
         assert "Copy/paste prompt" not in content
         assert "Copy agent prompt" not in content
         assert "Rowset API key: ***" not in content
-        assert "Rowset control surface" in content
+        assert "Projects and datasets" in content
 
     def test_home_view_hides_agent_setup_prompt_after_dataset_exists(self, auth_client, profile):
         Dataset.objects.create(
@@ -222,6 +222,7 @@ class TestHomeView:
             "total_rows": 0,
             "public_preview_count": 0,
         }
+        assert response.context["selected_view_mode"] == "grouped"
         assert "Copy/paste prompt" not in content
         assert "Copy agent prompt" not in content
         assert "MCP endpoint" not in content
