@@ -96,7 +96,7 @@ def test_schema_add_column_records_column_metadata_without_row_values(profile):
     assert mutation.target_identifier == "status"
     assert mutation.metadata == {
         "column": "status",
-        "column_type": DatasetColumnType.TEXT,
+        "column_type": "text",
         "default_value_provided": True,
     }
     serialized_metadata = str(mutation.metadata)
@@ -215,3 +215,38 @@ def test_noop_dataset_metadata_update_does_not_record_mutation(profile):
         dataset=dataset,
         mutation_type=DatasetMutationType.DATASET_METADATA_UPDATED,
     ).exists()
+
+
+def test_noop_row_patch_records_empty_row_update_mutation(profile):
+    dataset = create_dataset(
+        profile,
+        headers=["email", "name"],
+        index_column="email",
+        rows=[
+            {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+            }
+        ],
+    )
+    row = dataset.rows.get()
+
+    patch_profile_dataset_row(
+        profile,
+        str(dataset.key),
+        row.id,
+        {
+            "email": "ada@example.com",
+            "name": "Ada Lovelace",
+        },
+    )
+
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.ROW_UPDATED)
+    assert mutation.metadata == {
+        "row_id": row.id,
+        "row_number": 1,
+        "changed_fields": [],
+        "field_changes": [],
+        "value_changes_recorded": True,
+        "index_changed": False,
+    }
