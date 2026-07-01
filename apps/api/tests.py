@@ -23,6 +23,7 @@ from apps.api.views import (
     update_internal_blog_post,
 )
 from apps.blog.choices import BlogPostStatus
+from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetStatus
@@ -235,7 +236,8 @@ class UserInfoApiUnitTests(SimpleTestCase):
         request = HttpRequest()
         request.auth = profile
 
-        response = get_user_info(request)
+        with patch("apps.api.views.track_activation_event") as track_activation_event:
+            response = get_user_info(request)
 
         assert response["email"] == "ada@example.com"
         assert response["full_name"] == "Ada Lovelace"
@@ -247,6 +249,17 @@ class UserInfoApiUnitTests(SimpleTestCase):
         assert "key" not in response
         assert "is_staff" not in response
         assert "is_superuser" not in response
+        track_activation_event.assert_called_once_with(
+            profile,
+            ROWSET_GET_USER_INFO_SUCCEEDED,
+            {
+                "interface": "rest",
+                "agent_api_key_present": False,
+                "agent_api_key_id": None,
+                "agent_api_key_access_level": "",
+            },
+            source_function="apps.api.views.get_user_info",
+        )
 
 
 class DatasetListApiUnitTests(SimpleTestCase):
@@ -1263,8 +1276,9 @@ def test_project_section_services_create_assign_and_group_datasets(django_user_m
     assert detail_response["sections"][0]["key"] == section_response["section"]["key"]
     assert detail_response["sections"][0]["dataset_count"] == 1
     assert detail_response["dataset_groups"][0]["label"] == "Blog"
-    assert detail_response["dataset_groups"][0]["section"]["key"] == (
-        section_response["section"]["key"]
+    assert (
+        detail_response["dataset_groups"][0]["section"]["key"]
+        == (section_response["section"]["key"])
     )
     assert detail_response["dataset_groups"][0]["datasets"]["count"] == 1
     assert detail_response["dataset_groups"][0]["datasets"]["total_count"] == 1
@@ -1760,9 +1774,7 @@ def test_search_quality_eval_fixtures_keep_expected_rows_on_top(django_user_mode
         )
         actual_top_by_query[case["query"]] = response["results"][0]["row"]["index_value"]
 
-    assert actual_top_by_query == {
-        case["query"]: case["expected_top"] for case in eval_cases
-    }
+    assert actual_top_by_query == {case["query"]: case["expected_top"] for case in eval_cases}
     assert provider.queries == [case["query"] for case in eval_cases]
     assert store.ensure_calls == 0
 

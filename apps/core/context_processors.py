@@ -27,7 +27,15 @@ def pro_subscription_status(request):
 
 
 def posthog_api_key(request):
-    return {"posthog_api_key": settings.POSTHOG_API_KEY}
+    context = {
+        "posthog_api_key": settings.POSTHOG_API_KEY,
+        "posthog_distinct_id": "",
+        "posthog_user_email": "",
+    }
+    if request.user.is_authenticated and hasattr(request.user, "profile"):
+        context["posthog_distinct_id"] = str(request.user.profile.id)
+        context["posthog_user_email"] = request.user.email
+    return context
 
 
 def chatwoot_config(request):

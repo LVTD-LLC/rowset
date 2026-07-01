@@ -153,10 +153,7 @@ class TestHomeView:
         assert reverse("agent_setup_prompt") not in content
         assert reverse("dismiss_agent_setup_prompt") in content
         assert "Skip setup for now" in content
-        assert (
-            "Only share this prompt with agents and people you trust."
-            not in content
-        )
+        assert "Only share this prompt with agents and people you trust." not in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_home_view_unlocks_agent_setup_prompt_after_agent_key_exists(
@@ -179,11 +176,11 @@ class TestHomeView:
         assert credential.raw_key not in content
         assert profile.key not in content
         assert (
-            reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid])
-            in content
+            reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid]) in content
         )
         assert reverse("agent_setup_prompt") not in content
         assert "Copy agent prompt" in content
+        assert 'data-copy-tracking-event-value="rowset_agent_setup_prompt_copied"' in content
         assert "Copy request" in content
         assert "Verify Rowset with get_user_info" in content
         assert "Hide setup guide" in content
@@ -260,8 +257,7 @@ class TestHomeView:
         assert "update_dataset_public_preview" in prompt
         assert (
             "codex mcp add rowset --url <Rowset MCP URL> "
-            "--bearer-token-env-var ROWSET_API_KEY"
-            in prompt
+            "--bearer-token-env-var ROWSET_API_KEY" in prompt
         )
         assert "screenshots, public chats, generated files, or final responses" in prompt
         assert "full key, not only its prefix" in prompt
@@ -288,12 +284,40 @@ class TestHomeView:
 
         assert response.status_code == 302
         assert response["Location"] == reverse("home")
-
         followup = auth_client.get(reverse("home"))
         content = followup.content.decode()
         assert followup.context["active_agent_api_key"].name == "Codex"
         assert "Copy agent prompt" in content
         assert "Created an API key for Codex." in content
+
+    @override_settings(POSTHOG_API_KEY="phc_test")
+    def test_posthog_snippet_tracks_activation_events_without_pageviews(
+        self,
+        auth_client,
+        profile,
+    ):
+        response = auth_client.get(reverse("home"))
+
+        content = response.content.decode()
+        assert 'posthog.init("phc_test"' in content
+        assert "autocapture: false" in content
+        assert "capture_pageview: false" in content
+        assert 'defaults: "2026-05-30"' in content
+        assert 'person_profiles: "identified_only"' in content
+        assert "window.posthog && window.posthog.__loaded" in content
+        assert f'posthog.identify("{profile.id}"' in content
+        assert f'email: "{profile.user.email}"' in content
+        assert "posthog.reset();" not in content
+
+    @override_settings(POSTHOG_API_KEY="phc_test")
+    def test_posthog_snippet_resets_anonymous_visitors(self, client):
+        response = client.get(reverse("landing"))
+
+        content = response.content.decode()
+        assert response.status_code == 200
+        assert 'posthog.init("phc_test"' in content
+        assert "posthog.identify(" not in content
+        assert "posthog.reset();" in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_settings_view_omits_prompt_panel_and_legacy_key(self, auth_client, profile):
@@ -443,8 +467,7 @@ class TestHomeView:
         assert "get_rowset_capabilities" in prompt
         assert (
             "codex mcp add rowset --url <Rowset MCP URL> "
-            "--bearer-token-env-var ROWSET_API_KEY"
-            in prompt
+            "--bearer-token-env-var ROWSET_API_KEY" in prompt
         )
         assert "update_dataset_public_preview" in prompt
 

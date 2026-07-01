@@ -5,6 +5,7 @@ from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.core.analytics import ROWSET_AGENT_API_KEY_CREATED
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey
 from apps.core.services import (
@@ -33,6 +34,30 @@ def test_create_agent_api_key_stores_hash_and_returns_raw_key(profile):
     assert credential.raw_key not in agent_api_key.token_hash
     assert credential.raw_key not in agent_api_key.token_ciphertext
     assert get_agent_api_key_token(agent_api_key) == credential.raw_key
+
+
+def test_create_agent_api_key_tracks_activation_without_raw_key(profile, monkeypatch):
+    calls = []
+
+    def track_activation_event(profile, event_name, properties, source_function=None):
+        calls.append((profile.id, event_name, properties, source_function))
+
+    monkeypatch.setattr("apps.core.services.track_activation_event", track_activation_event)
+
+    credential = create_agent_api_key(profile, "Codex", AgentApiKeyAccessLevel.READ)
+
+    assert calls == [
+        (
+            profile.id,
+            ROWSET_AGENT_API_KEY_CREATED,
+            {
+                "created_agent_api_key_id": credential.agent_api_key.id,
+                "created_agent_api_key_access_level": AgentApiKeyAccessLevel.READ,
+            },
+            "create_agent_api_key",
+        )
+    ]
+    assert credential.raw_key not in str(calls)
 
 
 def test_create_agent_api_key_stores_selected_access_level(profile):
@@ -135,6 +160,7 @@ def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
     assert reverse("agent_api_key_token", args=[agent_api_key.uuid]) in content
     assert "Copy setup prompt" in content
     assert reverse("agent_api_key_setup_prompt", args=[agent_api_key.uuid]) in content
+    assert 'data-copy-tracking-event-value="rowset_agent_setup_prompt_copied"' in content
 
     followup = auth_client.get(reverse("settings"))
     assert followup.context["created_agent_api_key"] is None
