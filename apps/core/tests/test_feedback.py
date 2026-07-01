@@ -1,13 +1,10 @@
-import sys
-from types import SimpleNamespace
-
 import pytest
 from django.test import override_settings
 
 from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import Feedback
 from apps.core.services import create_agent_api_key, submit_profile_feedback
-from apps.core.tasks import notify_feedback_apprise
+from apps.core.tasks import _format_feedback_apprise_body, notify_feedback_apprise
 
 
 @pytest.mark.django_db
@@ -88,7 +85,7 @@ def test_notify_feedback_apprise_sends_configured_notification(profile, monkeypa
             calls.append(("notify", title, body))
             return True
 
-    monkeypatch.setitem(sys.modules, "apprise", SimpleNamespace(Apprise=FakeApprise))
+    monkeypatch.setattr("apps.core.tasks.apprise.Apprise", FakeApprise)
 
     result = notify_feedback_apprise(feedback.id)
 
@@ -106,3 +103,15 @@ def test_notify_feedback_apprise_sends_configured_notification(profile, monkeypa
 @override_settings(ROWSET_FEEDBACK_APPRISE_URLS=())
 def test_notify_feedback_apprise_skips_when_unconfigured():
     assert notify_feedback_apprise(123) == "Apprise feedback notifications are not configured."
+
+
+@pytest.mark.django_db
+def test_feedback_apprise_body_uses_feedback_source_display_label(profile):
+    feedback = Feedback.objects.create(
+        profile=profile,
+        feedback="REST feedback should use the model source label.",
+        page="api:feedback",
+        source=FeedbackSource.API,
+    )
+
+    assert "Source: REST API" in _format_feedback_apprise_body(feedback)

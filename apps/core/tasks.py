@@ -1,6 +1,7 @@
 import json
 from urllib.parse import unquote
 
+import apprise
 import posthog
 import requests
 from django.conf import settings
@@ -11,18 +12,10 @@ from rowset.utils import get_rowset_logger
 logger = get_rowset_logger(__name__)
 
 
-def _feedback_source_label(feedback: Feedback) -> str:
-    if feedback.source == "mcp":
-        return "MCP"
-    if feedback.source == "api":
-        return "API"
-    return "Browser"
-
-
 def _format_feedback_apprise_body(feedback: Feedback) -> str:
     submitter = feedback.profile.user.email if feedback.profile else "Anonymous"
     lines = [
-        f"Source: {_feedback_source_label(feedback)}",
+        f"Source: {feedback.get_source_display()}",
         f"User: {submitter}",
     ]
 
@@ -57,8 +50,6 @@ def notify_feedback_apprise(feedback_id: int) -> str:
             feedback_id=feedback_id,
         )
         return f"Feedback {feedback_id} was not found."
-
-    import apprise
 
     apprise_client = apprise.Apprise()
     added_url_count = 0
