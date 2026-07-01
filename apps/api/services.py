@@ -59,6 +59,7 @@ from apps.datasets.services import (
     DatasetImageError,
     DatasetRowQueryError,
     apply_dataset_row_query,
+    apply_dataset_rows_query,
     choice_constraints_from_schema,
     dataset_asset_key_from_ref,
     dataset_asset_ref,
@@ -88,6 +89,14 @@ API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
 DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
+PROFILE_ROW_SEARCH_SORT_RANK = "rank"
+PROFILE_ROW_SEARCH_SORT_DATASET = "dataset"
+PROFILE_ROW_SEARCH_SORT_ROW_NUMBER = "row_number"
+PROFILE_ROW_SEARCH_SORTS = {
+    PROFILE_ROW_SEARCH_SORT_RANK,
+    PROFILE_ROW_SEARCH_SORT_DATASET,
+    PROFILE_ROW_SEARCH_SORT_ROW_NUMBER,
+}
 FREE_ACCOUNT_DATASET_LIMIT = 2
 FREE_ACCOUNT_ROW_LIMIT = 50
 ROW_MUTATION_TYPES = (
@@ -3691,6 +3700,454 @@ def _serialize_dataset_search_results(
             }
         )
     return results
+
+
+def _normalize_profile_row_search_limit(limit: int) -> int:
+    return max(1, min(int(limit or 10), DATASET_SEARCH_MAX_LIMIT))
+
+
+def _normalize_profile_row_search_sort(sort: str | None) -> str:
+    normalized_sort = str(sort or PROFILE_ROW_SEARCH_SORT_RANK).strip().lower()
+    if not normalized_sort:
+        return PROFILE_ROW_SEARCH_SORT_RANK
+    if normalized_sort not in PROFILE_ROW_SEARCH_SORTS:
+        allowed = ", ".join(sorted(PROFILE_ROW_SEARCH_SORTS))
+        raise DatasetServiceError(400, f"Search sort must be one of: {allowed}.")
+    return normalized_sort
+
+
+def _normalize_profile_row_search_direction(direction: str | None, sort: str) -> str:
+    default_direction = "desc" if sort == PROFILE_ROW_SEARCH_SORT_RANK else "asc"
+    normalized_direction = str(direction or default_direction).strip().lower()
+    if normalized_direction in {"", "asc"}:
+        return "asc"
+    if normalized_direction == "desc":
+        return "desc"
+    raise DatasetServiceError(400, "Search direction must be 'asc' or 'desc'.")
+
+
+def _normalize_profile_row_filters(filters: dict[str, Any] | None) -> dict[str, str]:
+    if filters is None:
+        return {}
+    if not isinstance(filters, dict):
+        raise DatasetServiceError(400, "Search filters must be a JSON object.")
+
+    normalized_filters = {}
+    for raw_header, raw_value in filters.items():
+        header = str(raw_header or "").strip()
+        if not header:
+            raise DatasetServiceError(400, "Search filter headers must be non-empty.")
+        value = "" if raw_value is None else str(raw_value).strip()
+        if value:
+            normalized_filters[header] = value
+    return normalized_filters
+
+
+def _normalize_profile_row_filter_operators(
+    filter_operators: dict[str, Any] | None,
+    filters: dict[str, str],
+) -> dict[str, str]:
+    if filter_operators is None:
+        return {}
+    if not isinstance(filter_operators, dict):
+        raise DatasetServiceError(400, "Search filter_operators must be a JSON object.")
+
+    normalized_operators = {}
+    for raw_header, raw_operator in filter_operators.items():
+        header = str(raw_header or "").strip()
+        if not header:
+            raise DatasetServiceError(400, "Search filter operator headers must be non-empty.")
+        if header not in filters:
+            continue
+        operator = str(raw_operator or "").strip().lower()
+        if operator:
+            normalized_operators[header] = operator
+    return normalized_operators
+
+
+def _profile_row_search_dataset_queryset(
+    profile: Profile,
+    *,
+    dataset_key: str | None,
+    project_key: str | None,
+    section_key: str | None,
+    status: str | None,
+    archived: bool | None,
+    filters: dict[str, str],
+):
+    normalized_dataset_key = str(dataset_key or "").strip()
+    normalized_project_key = str(project_key or "").strip()
+    normalized_section_key = str(section_key or "").strip()
+    normalized_status = _normalize_dataset_status(status or DatasetStatus.READY)
+
+    queryset = _dataset_summary_queryset(profile.datasets)
+    if normalized_dataset_key:
+        identifier = _dataset_identifier_uuid(normalized_dataset_key)
+        queryset = queryset.filter(Q(key=identifier) | Q(public_key=identifier))
+    if normalized_project_key:
+        try:
+            project_key_uuid = UUID(normalized_project_key)
+        except ValueError as exc:
+            raise DatasetServiceError(400, "project_key must be a valid UUID.") from exc
+        queryset = queryset.filter(project__key=project_key_uuid, project__archived_at__isnull=True)
+    if normalized_section_key:
+        try:
+            section_key_uuid = UUID(normalized_section_key)
+        except ValueError as exc:
+            raise DatasetServiceError(400, "section_key must be a valid UUID.") from exc
+        queryset = queryset.filter(
+            section__key=section_key_uuid,
+            section__archived_at__isnull=True,
+            section__project__archived_at__isnull=True,
+        )
+    if normalized_status:
+        queryset = queryset.filter(status=normalized_status)
+    if archived is not None:
+        queryset = queryset.filter(archived_at__isnull=not archived)
+    if filters:
+        queryset = queryset.filter(headers__contains=list(filters))
+    return queryset.order_by("id"), {
+        "dataset_key": normalized_dataset_key,
+        "project_key": normalized_project_key,
+        "section_key": normalized_section_key,
+        "status": normalized_status,
+        "archived": archived,
+    }
+
+
+def _profile_vector_search_hits(
+    profile: Profile,
+    *,
+    query: str,
+    dataset_ids: list[int],
+    dataset_status: str | None,
+    dataset_archived: bool | None,
+    limit: int,
+    embedding_provider: EmbeddingProvider | None,
+    vector_store: QdrantVectorStore | None,
+):
+    try:
+        provider = embedding_provider or get_embedding_provider()
+        store = vector_store or QdrantVectorStore(
+            embedding_model=provider.model,
+            embedding_dimensions=provider.dimensions,
+        )
+        embedding_started_at = perf_counter()
+        query_embedding = provider.embed_text(query)
+        embedding_latency_ms = (perf_counter() - embedding_started_at) * 1000
+        vector_started_at = perf_counter()
+        hits = store.search_profile_dataset_rows(
+            profile,
+            query_embedding.vector,
+            dataset_ids=dataset_ids,
+            dataset_status=dataset_status,
+            dataset_archived=dataset_archived,
+            limit=limit * 3,
+        )
+        vector_latency_ms = (perf_counter() - vector_started_at) * 1000
+        return _DatasetVectorSearchResult(
+            hits=hits,
+            embedding_model=query_embedding.model,
+            embedding_dimensions=query_embedding.dimensions,
+            embedding_latency_ms=embedding_latency_ms,
+            vector_latency_ms=vector_latency_ms,
+        )
+    except (EmbeddingProviderError, ImproperlyConfigured, VectorStoreError, ValueError) as exc:
+        raise DatasetServiceError(503, f"Profile row vector search failed: {exc}") from exc
+
+
+def _profile_lexical_rows(
+    datasets: list[Dataset],
+    *,
+    query: str,
+    filters: dict[str, str],
+    filter_operators: dict[str, str],
+    limit: int,
+) -> list[DatasetRow]:
+    try:
+        queryset = apply_dataset_rows_query(
+            DatasetRow.objects.all(),
+            datasets,
+            query=query,
+            filters=filters,
+            filter_operators=filter_operators,
+            strict=True,
+            skip_invalid_filter_operators=True,
+        )
+    except DatasetRowQueryError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+    return list(queryset.only("id", "dataset_id")[: limit * 3])
+
+
+def _profile_allowed_vector_row_ids(
+    datasets: list[Dataset],
+    vector_hits,
+    *,
+    filters: dict[str, str],
+    filter_operators: dict[str, str],
+) -> set[int]:
+    vector_row_ids = [
+        row_id
+        for row_id in (_safe_vector_row_id(hit.payload) for hit in vector_hits)
+        if row_id is not None
+    ]
+    if not vector_row_ids:
+        return set()
+
+    dataset_ids = [dataset.id for dataset in datasets]
+    if not filters:
+        return set(
+            DatasetRow.objects.filter(dataset_id__in=dataset_ids, id__in=vector_row_ids)
+            .order_by()
+            .values_list("id", flat=True)
+        )
+
+    try:
+        queryset = apply_dataset_rows_query(
+            DatasetRow.objects.filter(id__in=vector_row_ids),
+            datasets,
+            filters=filters,
+            filter_operators=filter_operators,
+            strict=True,
+            skip_invalid_filter_operators=True,
+        )
+    except DatasetRowQueryError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+    return set(queryset.order_by().values_list("id", flat=True))
+
+
+def _serialize_profile_row_search_results(
+    ranked_candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows_by_id = {
+        row.id: row
+        for row in DatasetRow.objects.select_related(
+            "dataset",
+            "dataset__project",
+            "dataset__section",
+        )
+        .prefetch_related("assets")
+        .filter(id__in=[candidate["row_id"] for candidate in ranked_candidates])
+    }
+    results = []
+    for rank, candidate in enumerate(ranked_candidates, start=1):
+        row = rows_by_id.get(candidate["row_id"])
+        if row is None:
+            continue
+        dataset = row.dataset
+        results.append(
+            {
+                "rank": rank,
+                "score": candidate["score"],
+                "dataset": serialize_dataset_reference(dataset),
+                "row": serialize_dataset_row(row, dataset=dataset),
+                "match": {
+                    "source": candidate["source"],
+                    "vector_score": candidate.get("vector_score"),
+                    "vector_rank": candidate.get("vector_rank"),
+                    "lexical_rank": candidate.get("lexical_rank"),
+                    "point_id": candidate.get("point_id"),
+                    "chunk_index": candidate.get("chunk_index"),
+                    "content_hash": candidate.get("content_hash"),
+                    "snippet": _search_result_snippet(dataset, row),
+                },
+            }
+        )
+    return results
+
+
+def _sort_profile_row_search_results(
+    results: list[dict[str, Any]],
+    *,
+    sort: str,
+    direction: str,
+) -> list[dict[str, Any]]:
+    if sort == PROFILE_ROW_SEARCH_SORT_RANK:
+        ordered = list(reversed(results)) if direction == "asc" else results
+    elif sort == PROFILE_ROW_SEARCH_SORT_DATASET:
+        ordered = sorted(
+            results,
+            key=lambda result: (
+                str(result["dataset"]["name"]).lower(),
+                int(result["row"]["row_number"]),
+                int(result["row"]["id"]),
+            ),
+            reverse=direction == "desc",
+        )
+    else:
+        ordered = sorted(
+            results,
+            key=lambda result: (
+                int(result["row"]["row_number"]),
+                str(result["dataset"]["name"]).lower(),
+                int(result["row"]["id"]),
+            ),
+            reverse=direction == "desc",
+        )
+
+    for rank, result in enumerate(ordered, start=1):
+        result["rank"] = rank
+    return ordered
+
+
+def search_profile_rows(
+    profile: Profile,
+    *,
+    query: str,
+    filters: dict[str, Any] | None = None,
+    filter_operators: dict[str, Any] | None = None,
+    dataset_key: str | None = None,
+    project_key: str | None = None,
+    section_key: str | None = None,
+    status: str | None = None,
+    archived: bool | None = False,
+    sort: str | None = None,
+    direction: str | None = None,
+    limit: int = 10,
+    embedding_provider: EmbeddingProvider | None = None,
+    vector_store: QdrantVectorStore | None = None,
+) -> dict:
+    query_id = uuid4().hex
+    search_started_at = perf_counter()
+    normalized_query = _normalize_search_query(query)
+    if not normalized_query:
+        raise DatasetServiceError(400, "Search query is required.")
+    normalized_limit = _normalize_profile_row_search_limit(limit)
+    normalized_sort = _normalize_profile_row_search_sort(sort)
+    normalized_direction = _normalize_profile_row_search_direction(direction, normalized_sort)
+    normalized_filters = _normalize_profile_row_filters(filters)
+    normalized_filter_operators = _normalize_profile_row_filter_operators(
+        filter_operators,
+        normalized_filters,
+    )
+    dataset_queryset, dataset_filters = _profile_row_search_dataset_queryset(
+        profile,
+        dataset_key=dataset_key,
+        project_key=project_key,
+        section_key=section_key,
+        status=status,
+        archived=archived,
+        filters=normalized_filters,
+    )
+    datasets = list(dataset_queryset)
+    if not datasets:
+        logger.info(
+            "Profile row hybrid search complete",
+            query_id=query_id,
+            profile_id=profile.id,
+            dataset_filters=dataset_filters,
+            dataset_filter_count=len(dataset_filters),
+            eligible_dataset_count=0,
+            filters_count=len(normalized_filters),
+            limit=normalized_limit,
+            sort=normalized_sort,
+            direction=normalized_direction,
+            vector_hit_count=0,
+            lexical_candidate_count=0,
+            fused_candidate_count=0,
+            result_count=0,
+            hydration_misses=0,
+            top_source="",
+            top_score=None,
+            top_vector_score=None,
+            embedding_model="",
+            embedding_dimensions=None,
+            embedding_latency_ms=0,
+            vector_latency_ms=0,
+            search_latency_ms=round((perf_counter() - search_started_at) * 1000, 2),
+        )
+        return {
+            "query": normalized_query,
+            "filters": normalized_filters,
+            "filter_operators": normalized_filter_operators,
+            "dataset_filters": dataset_filters,
+            "sort": normalized_sort,
+            "direction": normalized_direction,
+            "limit": normalized_limit,
+            "count": 0,
+            "results": [],
+        }
+
+    dataset_ids = [dataset.id for dataset in datasets]
+    vector_search = _profile_vector_search_hits(
+        profile,
+        query=normalized_query,
+        dataset_ids=dataset_ids,
+        dataset_status=dataset_filters["status"],
+        dataset_archived=dataset_filters["archived"],
+        limit=normalized_limit,
+        embedding_provider=embedding_provider,
+        vector_store=vector_store,
+    )
+    vector_hits = vector_search.hits
+    allowed_row_ids = _profile_allowed_vector_row_ids(
+        datasets,
+        vector_hits,
+        filters=normalized_filters,
+        filter_operators=normalized_filter_operators,
+    )
+    lexical_rows = _profile_lexical_rows(
+        datasets,
+        query=normalized_query,
+        filters=normalized_filters,
+        filter_operators=normalized_filter_operators,
+        limit=normalized_limit,
+    )
+    candidates = _dataset_search_candidates(
+        vector_hits=vector_hits,
+        lexical_rows=lexical_rows,
+        allowed_row_ids=allowed_row_ids,
+    )
+    ranked_candidates = _rank_dataset_search_candidates(candidates, limit=normalized_limit)
+    results = _serialize_profile_row_search_results(ranked_candidates)
+    results = _sort_profile_row_search_results(
+        results,
+        sort=normalized_sort,
+        direction=normalized_direction,
+    )
+    hydration_misses = len(ranked_candidates) - len(results)
+    top_result = results[0] if results else None
+    logger.info(
+        "Profile row hybrid search complete",
+        query_id=query_id,
+        profile_id=profile.id,
+        dataset_filters=dataset_filters,
+        dataset_filter_count=len(dataset_filters),
+        eligible_dataset_count=len(datasets),
+        filters_count=len(normalized_filters),
+        limit=normalized_limit,
+        sort=normalized_sort,
+        direction=normalized_direction,
+        vector_hit_count=len(vector_hits),
+        lexical_candidate_count=len(lexical_rows),
+        fused_candidate_count=len(ranked_candidates),
+        result_count=len(results),
+        hydration_misses=hydration_misses,
+        top_source=top_result["match"]["source"] if top_result else "",
+        top_score=round(top_result["score"], 6) if top_result else None,
+        top_vector_score=(
+            round(top_result["match"]["vector_score"], 6)
+            if top_result and top_result["match"]["vector_score"] is not None
+            else None
+        ),
+        embedding_model=vector_search.embedding_model,
+        embedding_dimensions=vector_search.embedding_dimensions,
+        embedding_latency_ms=round(vector_search.embedding_latency_ms, 2),
+        vector_latency_ms=round(vector_search.vector_latency_ms, 2),
+        search_latency_ms=round((perf_counter() - search_started_at) * 1000, 2),
+    )
+
+    return {
+        "query": normalized_query,
+        "filters": normalized_filters,
+        "filter_operators": normalized_filter_operators,
+        "dataset_filters": dataset_filters,
+        "sort": normalized_sort,
+        "direction": normalized_direction,
+        "limit": normalized_limit,
+        "count": len(results),
+        "results": results,
+    }
 
 
 def search_profile_dataset_rows(

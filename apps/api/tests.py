@@ -27,7 +27,7 @@ from apps.blog.choices import BlogPostStatus
 from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets import models as dataset_models
-from apps.datasets.choices import DatasetStatus
+from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.vector_search import DatasetRowVectorSearchHit
@@ -1695,6 +1695,268 @@ class FakeDatasetSearchEvalVectorStore:
         return self.hits_by_vector[tuple(vector)]
 
 
+class FakeProfileRowSearchVectorStore:
+    def __init__(self, hits):
+        self.hits = hits
+        self.searches = []
+
+    def search_profile_dataset_rows(
+        self,
+        profile,
+        vector,
+        *,
+        dataset_ids=None,
+        dataset_status="ready",
+        dataset_archived=False,
+        limit=10,
+    ):
+        self.searches.append(
+            (
+                profile.id,
+                vector,
+                tuple(dataset_ids or ()),
+                dataset_status,
+                dataset_archived,
+                limit,
+            )
+        )
+        return self.hits
+
+
+@pytest.mark.django_db
+def test_search_profile_rows_searches_ready_datasets_and_filters_vector_hits(django_user_model):
+    from apps.api.services import search_profile_rows
+
+    user = django_user_model.objects.create_user(
+        username="profilewidevectorowner",
+        email="profilewidevectorowner@example.com",
+        password="password123",
+    )
+    tasks = Dataset.objects.create(
+        profile=user.profile,
+        name="Launch tasks",
+        original_filename="tasks.csv",
+        status=DatasetStatus.READY,
+        headers=["task_id", "status", "title"],
+        index_column="task_id",
+    )
+    customers = Dataset.objects.create(
+        profile=user.profile,
+        name="Customer risks",
+        original_filename="customers.csv",
+        status=DatasetStatus.READY,
+        headers=["customer_id", "status", "notes"],
+        index_column="customer_id",
+    )
+    missing_filter_header = Dataset.objects.create(
+        profile=user.profile,
+        name="Research notes",
+        original_filename="notes.csv",
+        status=DatasetStatus.READY,
+        headers=["note_id", "body"],
+        index_column="note_id",
+    )
+    archived = Dataset.objects.create(
+        profile=user.profile,
+        name="Archived tasks",
+        original_filename="archived.csv",
+        status=DatasetStatus.READY,
+        headers=["task_id", "status", "title"],
+        index_column="task_id",
+        archived_at=timezone.now(),
+    )
+    task_row = DatasetRow.objects.create(
+        dataset=tasks,
+        row_number=1,
+        index_value="TASK-1",
+        data={"task_id": "TASK-1", "status": "Ready", "title": "Backfill hybrid row search"},
+    )
+    customer_row = DatasetRow.objects.create(
+        dataset=customers,
+        row_number=1,
+        index_value="CUST-1",
+        data={
+            "customer_id": "CUST-1",
+            "status": "Ready",
+            "notes": "Renewal risk from legal review",
+        },
+    )
+    missing_filter_row = DatasetRow.objects.create(
+        dataset=missing_filter_header,
+        row_number=1,
+        index_value="NOTE-1",
+        data={"note_id": "NOTE-1", "body": "Renewal risk but no status column"},
+    )
+    archived_row = DatasetRow.objects.create(
+        dataset=archived,
+        row_number=1,
+        index_value="ARCH-1",
+        data={"task_id": "ARCH-1", "status": "Ready", "title": "Archived renewal risk"},
+    )
+    provider = FakeDatasetSearchEmbeddingProvider()
+    store = FakeProfileRowSearchVectorStore(
+        [
+            DatasetRowVectorSearchHit(
+                point_id="archived-point",
+                score=0.99,
+                payload={"row_id": archived_row.id, "chunk_index": 0, "content_hash": "archived"},
+            ),
+            DatasetRowVectorSearchHit(
+                point_id="missing-filter-point",
+                score=0.98,
+                payload={
+                    "row_id": missing_filter_row.id,
+                    "chunk_index": 0,
+                    "content_hash": "missing-filter",
+                },
+            ),
+            DatasetRowVectorSearchHit(
+                point_id="customer-point",
+                score=0.95,
+                payload={"row_id": customer_row.id, "chunk_index": 0, "content_hash": "customer"},
+            ),
+            DatasetRowVectorSearchHit(
+                point_id="task-point",
+                score=0.9,
+                payload={"row_id": task_row.id, "chunk_index": 0, "content_hash": "task"},
+            ),
+        ]
+    )
+
+    response = search_profile_rows(
+        user.profile,
+        query="renewal risk",
+        filters={"status": "Ready"},
+        limit=5,
+        embedding_provider=provider,
+        vector_store=store,
+    )
+
+    assert provider.queries == ["renewal risk"]
+    assert store.searches == [
+        (
+            user.profile.id,
+            [0.1, 0.2, 0.3],
+            (tasks.id, customers.id),
+            DatasetStatus.READY,
+            False,
+            15,
+        )
+    ]
+    assert response["dataset_filters"]["archived"] is False
+    assert response["filters"] == {"status": "Ready"}
+    assert [result["row"]["id"] for result in response["results"]] == [
+        customer_row.id,
+        task_row.id,
+    ]
+    assert response["results"][0]["dataset"]["key"] == str(customers.key)
+    assert response["results"][0]["match"]["source"] == "hybrid"
+    assert response["results"][1]["match"]["source"] == "vector"
+
+
+@pytest.mark.django_db
+def test_search_profile_rows_logs_no_matches_without_query(django_user_model, monkeypatch):
+    from apps.api.services import search_profile_rows
+
+    user = django_user_model.objects.create_user(
+        username="profilewidenomatchowner",
+        email="profilewidenomatchowner@example.com",
+        password="password123",
+    )
+    log_events = []
+
+    class FakeLogger:
+        def info(self, message, **fields):
+            log_events.append((message, fields))
+
+    monkeypatch.setattr("apps.api.services.logger", FakeLogger())
+    response = search_profile_rows(
+        user.profile,
+        query="private customer phrase",
+        dataset_key="00000000-0000-0000-0000-000000000000",
+        embedding_provider=FakeDatasetSearchEmbeddingProvider(),
+        vector_store=FakeProfileRowSearchVectorStore([]),
+    )
+
+    assert response["count"] == 0
+    assert len(log_events) == 1
+    message, fields = log_events[0]
+    assert message == "Profile row hybrid search complete"
+    assert len(fields["query_id"]) == 32
+    assert fields["eligible_dataset_count"] == 0
+    assert fields["vector_hit_count"] == 0
+    assert fields["lexical_candidate_count"] == 0
+    assert fields["result_count"] == 0
+    assert fields["dataset_filters"]["dataset_key"] == "00000000-0000-0000-0000-000000000000"
+    assert "private customer phrase" not in str(fields)
+
+
+@pytest.mark.django_db
+def test_search_profile_rows_skips_incompatible_filter_operator_datasets(django_user_model):
+    from apps.api.services import search_profile_rows
+
+    user = django_user_model.objects.create_user(
+        username="profilewidefilterowner",
+        email="profilewidefilterowner@example.com",
+        password="password123",
+    )
+    scored = Dataset.objects.create(
+        profile=user.profile,
+        name="Scored accounts",
+        original_filename="scored.csv",
+        status=DatasetStatus.READY,
+        headers=["id", "score", "notes"],
+        column_schema={"score": {"type": DatasetColumnType.NUMBER}},
+        index_column="id",
+    )
+    tagged = Dataset.objects.create(
+        profile=user.profile,
+        name="Tagged accounts",
+        original_filename="tagged.csv",
+        status=DatasetStatus.READY,
+        headers=["id", "score", "notes"],
+        column_schema={"score": {"type": DatasetColumnType.TEXT}},
+        index_column="id",
+    )
+    scored_row = DatasetRow.objects.create(
+        dataset=scored,
+        row_number=1,
+        index_value="SCORED-1",
+        data={"id": "SCORED-1", "score": "12", "notes": "Target renewal account"},
+    )
+    tagged_row = DatasetRow.objects.create(
+        dataset=tagged,
+        row_number=1,
+        index_value="TAGGED-1",
+        data={"id": "TAGGED-1", "score": "high", "notes": "Target renewal account"},
+    )
+    response = search_profile_rows(
+        user.profile,
+        query="target renewal",
+        filters={"score": "10"},
+        filter_operators={"score": "above"},
+        limit=5,
+        embedding_provider=FakeDatasetSearchEmbeddingProvider(),
+        vector_store=FakeProfileRowSearchVectorStore(
+            [
+                DatasetRowVectorSearchHit(
+                    point_id="tagged-point",
+                    score=0.99,
+                    payload={"row_id": tagged_row.id, "chunk_index": 0, "content_hash": "tagged"},
+                ),
+                DatasetRowVectorSearchHit(
+                    point_id="scored-point",
+                    score=0.95,
+                    payload={"row_id": scored_row.id, "chunk_index": 0, "content_hash": "scored"},
+                ),
+            ]
+        ),
+    )
+
+    assert [result["row"]["id"] for result in response["results"]] == [scored_row.id]
+    assert response["results"][0]["match"]["source"] == "hybrid"
+
+
 @pytest.mark.django_db
 def test_search_profile_dataset_rows_fuses_exact_and_vector_matches(django_user_model):
     from apps.api.services import search_profile_dataset_rows
@@ -2053,3 +2315,132 @@ def test_dataset_search_endpoint_delegates_to_search_service(
     assert response.status_code == 200
     assert response.json()["results"][0]["match"]["source"] == "hybrid"
     assert calls == [(user.profile.id, "dataset-key", "TASK-1", {"status": "Ready"}, 5)]
+
+
+@pytest.mark.django_db
+def test_profile_search_endpoint_delegates_to_profile_row_search_service(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    user = django_user_model.objects.create_user(
+        username="profilesearchendpointowner",
+        email="profilesearchendpointowner@example.com",
+        password="password123",
+    )
+    calls = []
+
+    def search_rows(
+        profile,
+        *,
+        query,
+        filters=None,
+        filter_operators=None,
+        dataset_key=None,
+        project_key=None,
+        section_key=None,
+        status=None,
+        archived=False,
+        sort=None,
+        direction=None,
+        limit=10,
+    ):
+        calls.append(
+            (
+                profile.id,
+                query,
+                filters,
+                filter_operators,
+                dataset_key,
+                project_key,
+                section_key,
+                status,
+                archived,
+                sort,
+                direction,
+                limit,
+            )
+        )
+        return {
+            "query": query,
+            "filters": filters or {},
+            "filter_operators": filter_operators or {},
+            "dataset_filters": {
+                "dataset_key": dataset_key,
+                "project_key": project_key,
+                "section_key": section_key,
+                "status": status or "ready",
+                "archived": archived,
+            },
+            "sort": sort or "rank",
+            "direction": direction or "desc",
+            "limit": limit,
+            "count": 1,
+            "results": [
+                {
+                    "rank": 1,
+                    "score": 0.03,
+                    "dataset": {
+                        "key": "dataset-key",
+                        "name": "Tasks",
+                        "project": None,
+                        "section": None,
+                        "status": "ready",
+                        "headers": ["task_id"],
+                        "index_column": "task_id",
+                        "row_count": 1,
+                        "public_enabled": False,
+                        "created_at": None,
+                        "updated_at": None,
+                        "archived_at": None,
+                    },
+                    "row": {
+                        "id": 123,
+                        "row_number": 1,
+                        "index_value": "TASK-1",
+                        "data": {"task_id": "TASK-1"},
+                        "assets": [],
+                    },
+                    "match": {"source": "hybrid", "vector_rank": 1, "lexical_rank": 1},
+                }
+            ],
+        }
+
+    monkeypatch.setattr("apps.api.views.search_profile_rows", search_rows)
+
+    response = client.post(
+        f"/api/search?api_key={user.profile.key}",
+        data={
+            "query": "stale vectors",
+            "filters": {"status": "Ready"},
+            "filter_operators": {"status": "is"},
+            "dataset_key": "dataset-key",
+            "project_key": "project-key",
+            "section_key": "section-key",
+            "status": "ready",
+            "archived": False,
+            "sort": "rank",
+            "direction": "desc",
+            "limit": 5,
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["dataset"]["key"] == "dataset-key"
+    assert calls == [
+        (
+            user.profile.id,
+            "stale vectors",
+            {"status": "Ready"},
+            {"status": "is"},
+            "dataset-key",
+            "project-key",
+            "section-key",
+            "ready",
+            False,
+            "rank",
+            "desc",
+            5,
+        )
+    ]

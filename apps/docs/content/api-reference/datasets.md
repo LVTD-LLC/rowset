@@ -182,7 +182,33 @@ GET {{ api_base_url }}/datasets/{dataset_key}/rows
 
 Returns the dataset rows.
 
-## Search rows
+## Search rows across datasets
+
+```http
+POST {{ api_base_url }}/search
+Content-Type: application/json
+```
+
+Search rows across the authenticated profile with hybrid vector and lexical
+retrieval when vector search is enabled. Use this when the relevant dataset is
+unknown or when multiple datasets may contain the answer.
+
+```json
+{
+  "query": "which renewal risks need legal review?",
+  "filters": {"status": "Ready"},
+  "project_key": "3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
+  "archived": false,
+  "sort": "rank",
+  "limit": 10
+}
+```
+
+Row filters apply only to datasets that contain those headers. Dataset filters
+can restrict by `dataset_key`, `project_key`, `section_key`, `status`, and
+`archived`. Each result includes the dataset, canonical row, and match metadata.
+
+## Search rows in one dataset
 
 ```http
 POST {{ api_base_url }}/datasets/{dataset_key}/search
@@ -190,8 +216,9 @@ Content-Type: application/json
 ```
 
 Search one ready dataset with hybrid vector and lexical retrieval when vector
-search is enabled. Rowset returns ranked results hydrated from canonical rows;
-the vector database is only a retrieval index.
+search is enabled. Use this when you already know the dataset key. Rowset
+returns ranked results hydrated from canonical rows; the vector database is only
+a retrieval index.
 
 ```json
 {
