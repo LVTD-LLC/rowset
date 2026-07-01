@@ -3,7 +3,7 @@ import { copyTextToClipboard } from "../utils/clipboard";
 
 export default class extends Controller {
   static targets = ["source", "label"];
-  static values = { url: String, responseKey: String };
+  static values = { url: String, responseKey: String, trackingEvent: String };
 
   async copy(event) {
     event.preventDefault();
@@ -19,6 +19,9 @@ export default class extends Controller {
     const copied = await this.copyText(text);
     if (this.hasLabelTarget) {
       this.flashLabel(copied ? "Copied" : "Copy failed");
+    }
+    if (copied) {
+      this.trackCopy();
     }
   }
 
@@ -58,5 +61,20 @@ export default class extends Controller {
     window.setTimeout(() => {
       this.labelTarget.textContent = originalLabel;
     }, 1600);
+  }
+
+  trackCopy() {
+    if (!this.hasTrackingEventValue || !this.trackingEventValue) {
+      return;
+    }
+    if (!window.posthog || typeof window.posthog.capture !== "function") {
+      return;
+    }
+
+    window.posthog.capture(this.trackingEventValue, {
+      copy_source: this.hasUrlValue && this.urlValue ? "endpoint" : "inline",
+      path: window.location.pathname,
+      response_key: this.hasResponseKeyValue ? this.responseKeyValue : "",
+    });
   }
 }

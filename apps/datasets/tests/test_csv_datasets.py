@@ -28,6 +28,7 @@ from apps.api.services import (
     patch_profile_dataset_row,
     serialize_dataset_detail,
 )
+from apps.core.analytics import ROWSET_DATASET_CREATED, ROWSET_DATASET_ROW_MUTATED
 from apps.core.choices import AgentApiKeyAccessLevel, ProfileStates
 from apps.core.services import create_agent_api_key
 from apps.datasets import models as dataset_models
@@ -6352,6 +6353,83 @@ def test_create_profile_dataset_enforces_initial_row_limit(profile):
 
     assert exc_info.value.status_code == 400
     assert not Dataset.objects.filter(profile=profile, name="Too many rows").exists()
+
+
+def test_create_profile_dataset_tracks_activation_without_private_payload(profile, monkeypatch):
+    calls = []
+
+    def track_activation_event(profile, event_name, properties, source_function=None):
+        calls.append((profile.id, event_name, properties, source_function))
+
+    monkeypatch.setattr("apps.api.services.track_activation_event", track_activation_event)
+
+    result = create_profile_dataset(
+        profile,
+        name="Private leads",
+        headers=["email", "name"],
+        rows=[{"email": "ada@example.com", "name": "Ada"}],
+        index_column="email",
+    )
+
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert calls == [
+        (
+            profile.id,
+            ROWSET_DATASET_CREATED,
+            {
+                "dataset_id": dataset.id,
+                "is_first_dataset": True,
+                "initial_row_count": 1,
+                "column_count": 2,
+                "index_generated": False,
+                "has_project": False,
+                "has_section": False,
+                "agent_api_key_present": False,
+                "agent_api_key_id": None,
+                "agent_api_key_access_level": "",
+            },
+            "apps.api.services.create_profile_dataset",
+        )
+    ]
+    assert "Private leads" not in str(calls)
+    assert "ada@example.com" not in str(calls)
+    assert "email" not in calls[0][2]
+
+
+def test_create_profile_dataset_row_tracks_first_row_mutation(profile, monkeypatch):
+    calls = []
+
+    def track_activation_event(profile, event_name, properties, source_function=None):
+        calls.append((profile.id, event_name, properties, source_function))
+
+    monkeypatch.setattr("apps.api.services.track_activation_event", track_activation_event)
+    result = create_profile_dataset(profile, name="Tasks", headers=["task"])
+    calls.clear()
+
+    create_profile_dataset_row(profile, result["dataset"]["key"], {"task": "Ship"})
+
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert calls == [
+        (
+            profile.id,
+            ROWSET_DATASET_ROW_MUTATED,
+            {
+                "mutation_type": DatasetMutationType.ROW_CREATED,
+                "dataset_id": dataset.id,
+                "row_count_after": 1,
+                "changed_field_count": 2,
+                "deleted_count": 0,
+                "index_changed": False,
+                "image_asset_attached": False,
+                "is_first_row_mutation": True,
+                "agent_api_key_present": False,
+                "agent_api_key_id": None,
+                "agent_api_key_access_level": "",
+            },
+            "apps.api.services.dataset_row_mutation",
+        )
+    ]
+    assert "Ship" not in str(calls)
 
 
 def test_free_account_rejects_third_active_dataset(profile):

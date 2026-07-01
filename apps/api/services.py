@@ -19,6 +19,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
+from apps.core.analytics import (
+    ROWSET_DATASET_CREATED,
+    ROWSET_DATASET_ROW_MUTATED,
+    agent_api_key_tracking_properties,
+    track_activation_event,
+)
 from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
 from apps.datasets.constants import (
@@ -37,6 +43,7 @@ from apps.datasets.models import (
     DATASET_ASSET_STORAGE_ALIAS,
     Dataset,
     DatasetAsset,
+    DatasetMutation,
     DatasetRelationship,
     DatasetRow,
     Project,
@@ -83,6 +90,11 @@ DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
 FREE_ACCOUNT_DATASET_LIMIT = 2
 FREE_ACCOUNT_ROW_LIMIT = 50
+ROW_MUTATION_TYPES = (
+    DatasetMutationType.ROW_CREATED,
+    DatasetMutationType.ROW_UPDATED,
+    DatasetMutationType.ROW_DELETED,
+)
 logger = get_rowset_logger(__name__)
 
 
@@ -279,6 +291,43 @@ def _raise_if_archived(dataset: Dataset) -> None:
             409,
             "Dataset is archived. Restore it before making changes.",
         )
+
+
+def _profile_has_row_mutation(profile: Profile) -> bool:
+    return DatasetMutation.objects.filter(
+        profile=profile,
+        mutation_type__in=ROW_MUTATION_TYPES,
+    ).exists()
+
+
+def _track_dataset_row_mutation(
+    *,
+    profile: Profile,
+    dataset: Dataset,
+    mutation_type: str,
+    agent_api_key: AgentApiKey | None,
+    is_first_row_mutation: bool,
+    changed_field_count: int = 0,
+    deleted_count: int = 0,
+    index_changed: bool = False,
+    image_asset_attached: bool = False,
+) -> None:
+    track_activation_event(
+        profile,
+        ROWSET_DATASET_ROW_MUTATED,
+        {
+            "mutation_type": mutation_type,
+            "dataset_id": dataset.id,
+            "row_count_after": dataset.row_count,
+            "changed_field_count": changed_field_count,
+            "deleted_count": deleted_count,
+            "index_changed": index_changed,
+            "image_asset_attached": image_asset_attached,
+            "is_first_row_mutation": is_first_row_mutation,
+            **agent_api_key_tracking_properties(agent_api_key),
+        },
+        source_function="apps.api.services.dataset_row_mutation",
+    )
 
 
 def serialize_user_info(profile: Profile) -> dict:
@@ -2254,6 +2303,11 @@ def create_profile_dataset(
         column_schema,
         normalized_rows,
     )
+    api_dataset_count_before = Dataset.objects.filter(
+        profile=profile,
+        file_type=API_CREATED_FILE_TYPE,
+        status=DatasetStatus.READY,
+    ).count()
 
     seen_index_values = set()
     row_payloads = []
@@ -2337,6 +2391,22 @@ def create_profile_dataset(
         )
         if row_payloads:
             _enqueue_dataset_vector_backfill(dataset.id)
+
+    track_activation_event(
+        profile,
+        ROWSET_DATASET_CREATED,
+        {
+            "dataset_id": dataset.id,
+            "is_first_dataset": api_dataset_count_before == 0,
+            "initial_row_count": len(row_payloads),
+            "column_count": len(dataset_headers),
+            "index_generated": index_generated,
+            "has_project": project is not None,
+            "has_section": section is not None,
+            **agent_api_key_tracking_properties(agent_api_key),
+        },
+        source_function="apps.api.services.create_profile_dataset",
+    )
 
     return {
         "status": "success",
@@ -3371,6 +3441,7 @@ def attach_profile_dataset_image_asset(
             row.save(update_fields=["data", "updated_by_agent_api_key", "updated_at"])
             dataset.updated_by_agent_api_key = agent_api_key
             dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+            is_first_row_mutation = not _profile_has_row_mutation(profile)
             record_dataset_mutation(
                 dataset,
                 DatasetMutationType.ROW_UPDATED,
@@ -3398,6 +3469,15 @@ def attach_profile_dataset_image_asset(
                     "width": prepared_image.width,
                     "height": prepared_image.height,
                 },
+            )
+            _track_dataset_row_mutation(
+                profile=profile,
+                dataset=dataset,
+                mutation_type=DatasetMutationType.ROW_UPDATED,
+                agent_api_key=agent_api_key,
+                is_first_row_mutation=is_first_row_mutation,
+                changed_field_count=1,
+                image_asset_attached=True,
             )
             saved_file_name = asset.file.storage.save(
                 asset.file.name,
@@ -3797,6 +3877,7 @@ def create_profile_dataset_row(
         dataset.row_count = dataset.rows.count()
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
+        is_first_row_mutation = not _profile_has_row_mutation(profile)
         record_dataset_mutation(
             dataset,
             DatasetMutationType.ROW_CREATED,
@@ -3809,6 +3890,14 @@ def create_profile_dataset_row(
                 "row_number": row.row_number,
                 "changed_fields": sorted(row.data),
             },
+        )
+        _track_dataset_row_mutation(
+            profile=profile,
+            dataset=dataset,
+            mutation_type=DatasetMutationType.ROW_CREATED,
+            agent_api_key=agent_api_key,
+            is_first_row_mutation=is_first_row_mutation,
+            changed_field_count=len(row.data),
         )
         _enqueue_dataset_row_vector_index(row.id)
         row = dataset.rows.prefetch_related("assets").get(id=row.id)
@@ -3980,6 +4069,7 @@ def _patch_dataset_row(
     row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
     dataset.updated_by_agent_api_key = agent_api_key
     dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+    is_first_row_mutation = not _profile_has_row_mutation(profile)
     record_dataset_mutation(
         dataset,
         DatasetMutationType.ROW_UPDATED,
@@ -3997,6 +4087,15 @@ def _patch_dataset_row(
             "value_changes_recorded": True,
             "index_changed": index_changed,
         },
+    )
+    _track_dataset_row_mutation(
+        profile=profile,
+        dataset=dataset,
+        mutation_type=DatasetMutationType.ROW_UPDATED,
+        agent_api_key=agent_api_key,
+        is_first_row_mutation=is_first_row_mutation,
+        changed_field_count=len(changed_fields),
+        index_changed=index_changed,
     )
     _enqueue_dataset_row_vector_index(row.id)
     row = dataset.rows.prefetch_related("assets").get(id=row.id)
@@ -4026,6 +4125,7 @@ def delete_profile_dataset_row(
         dataset.row_count = dataset.rows.count()
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
+        is_first_row_mutation = not _profile_has_row_mutation(profile)
         record_dataset_mutation(
             dataset,
             DatasetMutationType.ROW_DELETED,
@@ -4037,6 +4137,14 @@ def delete_profile_dataset_row(
                 "row_id": row_id,
                 "row_number": row_number,
             },
+        )
+        _track_dataset_row_mutation(
+            profile=profile,
+            dataset=dataset,
+            mutation_type=DatasetMutationType.ROW_DELETED,
+            agent_api_key=agent_api_key,
+            is_first_row_mutation=is_first_row_mutation,
+            deleted_count=1,
         )
         _enqueue_dataset_row_vector_delete(dataset.id, [row_id])
     return {"status": "success", "message": "Row deleted.", "dataset": str(dataset.key)}
@@ -4081,6 +4189,7 @@ def delete_profile_dataset_rows(
         dataset.row_count = dataset.rows.count()
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(update_fields=["row_count", "updated_by_agent_api_key", "updated_at"])
+        is_first_row_mutation = not _profile_has_row_mutation(profile)
         for row_id, row_number in deleted_rows:
             record_dataset_mutation(
                 dataset,
@@ -4094,6 +4203,14 @@ def delete_profile_dataset_rows(
                     "row_number": row_number,
                 },
             )
+        _track_dataset_row_mutation(
+            profile=profile,
+            dataset=dataset,
+            mutation_type=DatasetMutationType.ROW_DELETED,
+            agent_api_key=agent_api_key,
+            is_first_row_mutation=is_first_row_mutation,
+            deleted_count=len(deleted_rows),
+        )
         _enqueue_dataset_row_vector_delete(dataset.id, [row_id for row_id, _ in deleted_rows])
 
     row_label = "row" if len(deleted_rows) == 1 else "rows"

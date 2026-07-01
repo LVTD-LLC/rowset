@@ -123,6 +123,11 @@ from apps.api.services import (
 )
 from apps.blog.choices import BlogPostStatus
 from apps.blog.models import BlogPost
+from apps.core.analytics import (
+    ROWSET_GET_USER_INFO_SUCCEEDED,
+    agent_api_key_tracking_properties,
+    track_activation_event,
+)
 from apps.core.models import Feedback
 from apps.core.services import (
     create_agent_api_key as create_agent_api_key_credential,
@@ -508,7 +513,17 @@ def publish_internal_blog_post(request: HttpRequest, blog_post_id: int):
 )
 def get_user_info(request: HttpRequest):
     """Return safe profile and account details for the authenticated API key."""
-    return serialize_user_info(request.auth)
+    payload = serialize_user_info(request.auth)
+    track_activation_event(
+        request.auth,
+        ROWSET_GET_USER_INFO_SUCCEEDED,
+        {
+            "interface": "rest",
+            **agent_api_key_tracking_properties(getattr(request, "agent_api_key", None)),
+        },
+        source_function="apps.api.views.get_user_info",
+    )
+    return payload
 
 
 @api.post(
