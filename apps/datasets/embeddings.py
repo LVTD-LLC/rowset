@@ -1,13 +1,14 @@
 import hashlib
 from dataclasses import dataclass
 from threading import Lock
-from typing import Any, Protocol
+from typing import Protocol
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from pydantic_ai import Embedder
 from pydantic_ai.embeddings import EmbeddingSettings
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from apps.datasets.vector_search import qdrant_is_enabled
@@ -40,7 +41,7 @@ class OpenRouterPydanticAIEmbeddingProvider:
     def __init__(
         self,
         *,
-        embedder: Any | None = None,
+        embedder: Embedder | None = None,
         api_key: str | None = None,
         model: str | None = None,
         dimensions: int | None = None,
@@ -73,14 +74,14 @@ class OpenRouterPydanticAIEmbeddingProvider:
     def _embed_query(self, text: str) -> list[EmbeddingResult]:
         try:
             response = self.embedder.embed_query_sync(text)
-        except Exception as exc:
+        except ModelHTTPError as exc:
             raise EmbeddingProviderError(f"OpenRouter embedding request failed: {exc}") from exc
         return self._embedding_results(response.embeddings)
 
     def _embed_documents(self, texts: list[str]) -> list[EmbeddingResult]:
         try:
             response = self.embedder.embed_documents_sync(texts)
-        except Exception as exc:
+        except ModelHTTPError as exc:
             raise EmbeddingProviderError(f"OpenRouter embedding request failed: {exc}") from exc
         return self._embedding_results(response.embeddings)
 

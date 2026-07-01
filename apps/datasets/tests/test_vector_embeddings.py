@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
+from pydantic_ai.exceptions import ModelHTTPError
 
 from apps.datasets.embeddings import (
     EmbeddingProviderError,
@@ -90,12 +91,26 @@ def test_openrouter_embedding_provider_embeds_texts_in_one_request():
 
 def test_openrouter_embedding_provider_wraps_provider_errors():
     provider = OpenRouterPydanticAIEmbeddingProvider(
-        embedder=FakePydanticAIEmbedder([], error=RuntimeError("network unavailable")),
+        embedder=FakePydanticAIEmbedder(
+            [],
+            error=ModelHTTPError(401, "openai/text-embedding-3-small", body="unauthorized"),
+        ),
         model="openai/text-embedding-3-small",
         dimensions=3,
     )
 
     with pytest.raises(EmbeddingProviderError, match="OpenRouter embedding request failed"):
+        provider.embed_text("short text")
+
+
+def test_openrouter_embedding_provider_does_not_wrap_internal_errors():
+    provider = OpenRouterPydanticAIEmbeddingProvider(
+        embedder=FakePydanticAIEmbedder([], error=TypeError("bad embedder call")),
+        model="openai/text-embedding-3-small",
+        dimensions=3,
+    )
+
+    with pytest.raises(TypeError, match="bad embedder call"):
         provider.embed_text("short text")
 
 
