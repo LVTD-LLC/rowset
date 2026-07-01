@@ -29,17 +29,17 @@ def check_server() -> None:
             },
         )
         response = connection.getresponse()
-        body = response.read(4096)
     finally:
         connection.close()
 
     if response.status < 200 or response.status >= 400:
-        raise RuntimeError(f"Server healthcheck returned HTTP {response.status}: {body!r}")
+        raise RuntimeError(f"Server healthcheck returned HTTP {response.status}")
 
     check_dependencies()
 
 
 def check_dependencies() -> None:
+    """Require the configured Django app, database, and cache to be ready."""
     if not os.environ.get("DJANGO_SETTINGS_MODULE"):
         raise RuntimeError("DJANGO_SETTINGS_MODULE must be configured for dependency checks")
 
