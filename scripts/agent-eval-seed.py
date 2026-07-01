@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib import parse, request
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED_DOC = Path("docs/agent-evals/seed-tasks.md")
@@ -290,6 +290,9 @@ def _rowset_api_request(
     except HTTPError as exc:
         detail = exc.read().decode(errors="replace").strip()
         raise RowsetApiError(exc.code, method, path, detail) from exc
+    except URLError as exc:
+        reason = getattr(exc, "reason", exc)
+        raise RowsetApiError(0, method, path, f"Unable to reach Rowset API: {reason}") from exc
     return json.loads(response_body or "{}")
 
 

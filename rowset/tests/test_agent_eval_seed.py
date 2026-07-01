@@ -3,7 +3,7 @@ import json
 import sys
 from io import BytesIO
 from pathlib import Path
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "agent-eval-seed.py"
 SPEC = importlib.util.spec_from_file_location("agent_eval_seed_script", SCRIPT_PATH)
@@ -121,3 +121,23 @@ def test_write_rowset_eval_result_row_patches_then_creates_when_missing(monkeypa
     assert requests[1].get_method() == "POST"
     assert requests[1].full_url == "https://rowset.example/api/datasets/dataset-key/rows"
     assert json.loads(requests[1].data) == {"data": row}
+
+
+def test_write_rowset_eval_result_row_reports_connection_failures_cleanly(monkeypatch):
+    def fake_urlopen(request, timeout):
+        raise URLError("connection refused")
+
+    monkeypatch.setattr(agent_eval_seed.request, "urlopen", fake_urlopen)
+
+    try:
+        agent_eval_seed.write_rowset_eval_result_row(
+            api_base="https://rowset.example/api/",
+            api_key="secret-token",
+            dataset_key="dataset-key",
+            row={"run_id": "run-1", "seed_id": "EVAL-001"},
+        )
+    except agent_eval_seed.RowsetApiError as exc:
+        assert exc.status_code == 0
+        assert "Unable to reach Rowset API: connection refused" in str(exc)
+    else:
+        raise AssertionError("Expected RowsetApiError")
