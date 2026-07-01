@@ -1,4 +1,4 @@
-{% load webpack_loader static %}
+{% load django_htmx static %}
 
 <!doctype html>
 <html lang="en">
@@ -153,10 +153,18 @@
       })();
     </script>
 
-    {% stylesheet_pack 'index' %} {% javascript_pack 'index' attrs='defer' %}
+    <link rel="stylesheet" href="{% static 'css/index.css' %}" />
+    {% htmx_script %}
+    <script defer src="{% static 'js/alpine-components.js' %}"></script>
+    <script defer src="{% static 'vendors/js/alpine.min.js' %}"></script>
+    <script defer src="{% static 'js/app.js' %}"></script>
   </head>
 
-  <body {% if request.user.is_authenticated %}data-controller="user-settings"{% endif %}>
+  <body
+    hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'
+    data-csrf-token="{{ csrf_token }}"
+    {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}
+  >
     {% include 'components/referrer_banner.html' %}
     {% block default_messages %}
       {% include 'components/messages.html' with messages=messages %}

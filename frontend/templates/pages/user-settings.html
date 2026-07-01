@@ -1,5 +1,5 @@
 {% extends 'base_app.html' %}
-{% load webpack_loader static %}
+{% load static %}
 {% load widget_tweaks %}
 
 {% block meta %}
@@ -108,14 +108,14 @@
           <span class="hidden whitespace-nowrap text-slate-600 dark:text-slate-300 sm:block">{{ agent_api_key.get_access_level_display }}</span>
           <span class="hidden whitespace-nowrap text-slate-600 dark:text-slate-300 sm:block">{% if agent_api_key.last_used_at %}{{ agent_api_key.last_used_at|date:"M j, Y" }}{% else %}Never{% endif %}</span>
           <span class="flex flex-wrap justify-start gap-2 sm:justify-end">
-            <span data-controller="copy" data-copy-url-value="{% url 'agent_api_key_token' agent_api_key.uuid %}" data-copy-response-key-value="api_key">
-              <button type="button" data-action="copy#copy" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs">
-                <span data-copy-target="label">Copy key</span>
+            <span x-data="copyPanel" data-copy-url="{% url 'agent_api_key_token' agent_api_key.uuid %}" data-copy-response-key="api_key" data-copy-label="Copy key">
+              <button type="button" @click="copy" :disabled="busy" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs">
+                <span x-ref="label" x-text="label">Copy key</span>
               </button>
             </span>
-            <span data-controller="copy" data-copy-url-value="{% url 'agent_api_key_setup_prompt' agent_api_key.uuid %}" data-copy-response-key-value="prompt">
-              <button type="button" data-action="copy#copy" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs">
-                <span data-copy-target="label">Copy setup prompt</span>
+            <span x-data="copyPanel" data-copy-url="{% url 'agent_api_key_setup_prompt' agent_api_key.uuid %}" data-copy-response-key="prompt" data-copy-label="Copy setup prompt">
+              <button type="button" @click="copy" :disabled="busy" class="fb-button-secondary min-h-9 px-3 py-1.5 text-xs">
+                <span x-ref="label" x-text="label">Copy setup prompt</span>
               </button>
             </span>
             <form method="post" action="{% url 'revoke_agent_api_key' agent_api_key.uuid %}">
@@ -173,38 +173,53 @@
       </form>
     </section>
 
-    <section class="rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/50 dark:bg-red-950/30" data-controller="delete-account" aria-labelledby="danger-zone-heading">
+    <section
+      class="rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/50 dark:bg-red-950/30"
+      x-data="deleteAccountDialog"
+      aria-labelledby="danger-zone-heading"
+      @keydown.escape.window="open && close()"
+    >
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="danger-zone-heading" class="text-lg font-semibold text-red-900 dark:text-red-200">Danger zone</h2>
           <p class="mt-1 text-sm leading-6 text-red-800/80 dark:text-red-200/80">Deleting your account is irreversible and permanently removes your user record and related data.</p>
         </div>
-        <button type="button" data-action="delete-account#open" class="fb-button-danger">Delete account</button>
+        <button type="button" @click="show($event)" class="fb-button-danger">Delete account</button>
       </div>
 
-      <div data-delete-account-target="modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="delete-account-heading" aria-describedby="delete-account-description">
-        <div class="absolute inset-0 bg-black/60" data-action="click->delete-account#close" aria-hidden="true"></div>
-        <div data-delete-account-target="panel" class="relative w-full max-w-lg rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+      <div
+        x-cloak
+        x-show="open"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        :aria-hidden="(!open).toString()"
+        aria-labelledby="delete-account-heading"
+        aria-describedby="delete-account-description"
+        @keydown.tab="trapFocus($event)"
+      >
+        <div class="absolute inset-0 bg-black/60" @click="close()" aria-hidden="true"></div>
+        <div x-ref="panel" class="relative w-full max-w-lg rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
           <div class="flex items-start justify-between gap-4">
             <div>
               <h3 id="delete-account-heading" class="text-lg font-bold text-slate-900 dark:text-slate-100">Delete account</h3>
               <p id="delete-account-description" class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">This action is irreversible. To confirm, type <span class="font-mono font-semibold">DELETE</span> below.</p>
             </div>
-            <button type="button" class="fb-focus inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100" data-action="delete-account#close" aria-label="Close delete account dialog">
+            <button type="button" class="fb-focus inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100" @click="close()" aria-label="Close delete account dialog">
               <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
 
-          <form method="post" action="{% url 'delete_account' %}" class="mt-6 space-y-4" data-action="submit->delete-account#submit">
+          <form method="post" action="{% url 'delete_account' %}" class="mt-6 space-y-4" @submit="submit($event)">
             {% csrf_token %}
             <div>
               <label for="delete-confirmation" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Confirmation</label>
-              <input id="delete-confirmation" name="confirmation" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" required maxlength="16" aria-describedby="delete-confirmation-help" data-delete-account-target="confirmation" data-action="input->delete-account#update" placeholder="Type DELETE" class="fb-input mt-2 block w-full px-3 py-2 text-sm" />
+              <input id="delete-confirmation" name="confirmation" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" required maxlength="16" aria-describedby="delete-confirmation-help" x-ref="confirmation" x-model="confirmation" placeholder="Type DELETE" class="fb-input mt-2 block w-full px-3 py-2 text-sm" />
               <p id="delete-confirmation-help" class="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">The delete button stays disabled until the confirmation matches exactly.</p>
             </div>
             <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button type="button" class="fb-button-secondary" data-action="delete-account#close">Cancel</button>
-              <button type="submit" data-delete-account-target="submit" disabled class="fb-button-danger">Yes, delete my account</button>
+              <button type="button" class="fb-button-secondary" @click="close()">Cancel</button>
+              <button type="submit" x-ref="submit" :disabled="!confirmed" :aria-disabled="(!confirmed).toString()" class="fb-button-danger">Yes, delete my account</button>
             </div>
           </form>
         </div>

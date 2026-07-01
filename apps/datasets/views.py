@@ -16,7 +16,9 @@ from django.urls import reverse
 from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.vary import vary_on_headers
 from django.views.generic import DetailView, ListView
+from django_htmx.http import HttpResponseClientRefresh
 
 from apps.api.services import (
     DatasetServiceError,
@@ -2340,12 +2342,22 @@ def dataset_asset_content(request, dataset_key, asset_key):
 
 
 @login_required
+@vary_on_headers("HX-Request")
 def dataset_status(request, dataset_key):
     dataset = get_object_or_404(
         Dataset,
         key=dataset_key,
         profile=request.user.profile,
     )
+    if request.htmx:
+        if dataset.status == DatasetStatus.READY:
+            return HttpResponseClientRefresh()
+        return render(
+            request,
+            "datasets/partials/dataset_status_panel.html",
+            {"dataset": dataset},
+        )
+
     return JsonResponse(
         {
             "status": dataset.status,

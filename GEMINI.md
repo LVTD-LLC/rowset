@@ -24,4 +24,5 @@ Start with the repo steering files before making code changes:
 Use `STRUCTURE.md` when deciding where new code belongs. Most dataset behavior
 belongs in `apps/datasets/services.py`; REST endpoints belong in `apps/api`;
 hosted MCP tools belong in `apps/mcp_server`; browser interactivity belongs in
-Stimulus controllers under `frontend/src/controllers`.
+Django templates with HTMX and Alpine.js, with reusable code in
+`frontend/src/js`.

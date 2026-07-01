@@ -100,7 +100,6 @@ DEFAULT_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
-    "webpack_boilerplate",
     "widget_tweaks",
     "anymail",
     "allauth",
@@ -109,6 +108,7 @@ THIRD_PARTY_APPS = [
     "allauth.socialaccount.providers.github",
     "allauth.socialaccount.providers.google",
     "allauth.mfa",
+    "django_htmx",
     "django_q",
     "django_extensions",
     "mjml",
@@ -132,6 +132,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -297,10 +298,6 @@ else:
             "file_overwrite": False,
         },
     }
-
-WEBPACK_LOADER = {
-    "MANIFEST_FILE": BASE_DIR.joinpath("frontend/build/manifest.json"),
-}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field

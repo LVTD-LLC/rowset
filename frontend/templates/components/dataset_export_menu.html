@@ -1,4 +1,9 @@
-<details data-controller="export-menu" class="relative inline-block text-left">
+<details
+  x-data
+  class="relative inline-block text-left"
+  @keydown.escape.window="$el.open = false"
+  @click.outside="$el.open = false"
+>
   <summary class="fb-button-secondary fb-menu-summary" aria-label="Export dataset">
     Export
     <span aria-hidden="true" class="ml-2 text-xs text-slate-500 dark:text-slate-400">&#9662;</span>

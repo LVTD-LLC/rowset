@@ -1,15 +1,14 @@
 {% if messages %}
 <div
   class="pointer-events-none fixed inset-x-4 top-4 z-50 max-h-[calc(100vh-2rem)] space-y-3 overflow-y-auto sm:left-auto sm:right-4 sm:w-full sm:max-w-sm"
-  data-controller="messages"
   data-messages-container="true"
   aria-label="Notifications"
 >
   {% for message in messages %}
     {% if "error" in message.tags %}
       <div
-        data-messages-target="item"
-        data-messages-auto-dismiss="false"
+        data-message-item="true"
+        data-message-auto-dismiss="false"
         role="alert"
         aria-live="assertive"
         aria-atomic="true"
@@ -22,7 +21,7 @@
             </svg>
           </div>
           <p class="min-w-0 flex-1 break-words text-sm leading-6">{{ message }}</p>
-          <button data-action="click->messages#dismiss" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-red-700 hover:bg-red-100 dark:text-red-200 dark:hover:bg-red-900/60">
+          <button data-message-dismiss="true" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-red-700 hover:bg-red-100 dark:text-red-200 dark:hover:bg-red-900/60">
             <span class="sr-only">Dismiss notification</span>
             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -32,8 +31,8 @@
       </div>
     {% elif "warning" in message.tags %}
       <div
-        data-messages-target="item"
-        data-messages-auto-dismiss="false"
+        data-message-item="true"
+        data-message-auto-dismiss="false"
         role="status"
         aria-live="polite"
         aria-atomic="true"
@@ -46,7 +45,7 @@
             </svg>
           </div>
           <p class="min-w-0 flex-1 break-words text-sm leading-6">{{ message }}</p>
-          <button data-action="click->messages#dismiss" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-amber-800 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/60">
+          <button data-message-dismiss="true" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-amber-800 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/60">
             <span class="sr-only">Dismiss notification</span>
             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -56,9 +55,9 @@
       </div>
     {% elif "info" in message.tags %}
       <div
-        data-messages-target="item"
-        data-messages-auto-dismiss="true"
-        data-messages-timeout="8000"
+        data-message-item="true"
+        data-message-auto-dismiss="true"
+        data-message-timeout="8000"
         role="status"
         aria-live="polite"
         aria-atomic="true"
@@ -71,7 +70,7 @@
             </svg>
           </div>
           <p class="min-w-0 flex-1 break-words text-sm leading-6">{{ message }}</p>
-          <button data-action="click->messages#dismiss" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-sky-700 hover:bg-sky-100 dark:text-sky-200 dark:hover:bg-sky-900/60">
+          <button data-message-dismiss="true" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-sky-700 hover:bg-sky-100 dark:text-sky-200 dark:hover:bg-sky-900/60">
             <span class="sr-only">Dismiss notification</span>
             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -81,9 +80,9 @@
       </div>
     {% else %}
       <div
-        data-messages-target="item"
-        data-messages-auto-dismiss="true"
-        data-messages-timeout="8000"
+        data-message-item="true"
+        data-message-auto-dismiss="true"
+        data-message-timeout="8000"
         role="status"
         aria-live="polite"
         aria-atomic="true"
@@ -96,7 +95,7 @@
             </svg>
           </div>
           <p class="min-w-0 flex-1 break-words text-sm leading-6">{{ message }}</p>
-          <button data-action="click->messages#dismiss" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-emerald-700 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/60">
+          <button data-message-dismiss="true" type="button" class="fb-focus inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-emerald-700 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/60">
             <span class="sr-only">Dismiss notification</span>
             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
