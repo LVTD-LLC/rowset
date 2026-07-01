@@ -5,12 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib import parse, request
+from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED_DOC = Path("docs/agent-evals/seed-tasks.md")
@@ -18,6 +21,70 @@ DEFAULT_RUNS_DIR = Path("docs/agent-evals/runs")
 HEADING_RE = re.compile(r"^### (?P<seed_id>EVAL-\d+): (?P<title>.+)$")
 FIELD_RE = re.compile(r"^- \*\*(?P<label>[^*]+):\*\*\s*(?P<value>.*)$")
 CODE_SPAN_RE = re.compile(r"`([^`]+)`")
+ROWSET_RESULT_CHOICES = ["dry_run", "pending", "pass", "fail", "blocked"]
+ROWSET_EVAL_RESULT_HEADERS = [
+    "run_id",
+    "seed_id",
+    "seed_title",
+    "created_at",
+    "agent",
+    "model",
+    "base_sha",
+    "head_sha",
+    "result",
+    "checks_passed",
+    "checks_failed",
+    "observed_checks",
+    "changed_files",
+    "duration_seconds",
+    "cost_usd",
+    "failure_mode",
+    "notes",
+    "artifact_url",
+]
+ROWSET_EVAL_RESULT_INSTRUCTIONS = "\n".join(
+    (
+        "Use this dataset for Rowset agent-eval run summaries created by the eval harness.",
+        "Keep run_id stable and unique; update the existing row when refreshing a run.",
+        "Store check lists and changed_files as JSON arrays in their text cells.",
+        "Do not store API keys, OAuth tokens, raw secrets, private dataset contents, or full logs.",
+        "Use artifact_url only for a private artifact location or leave it blank.",
+        "Use notes for concise follow-up context, not raw command output or private data.",
+    )
+)
+ROWSET_EVAL_RESULT_COLUMN_TYPES = {
+    "run_id": {"type": "text", "description": "Stable run id. Dataset index."},
+    "seed_id": {"type": "text", "description": "Eval seed id, such as EVAL-001."},
+    "seed_title": "text",
+    "created_at": "datetime",
+    "agent": "text",
+    "model": "text",
+    "base_sha": "text",
+    "head_sha": "text",
+    "result": {
+        "type": "choice",
+        "choices": ROWSET_RESULT_CHOICES,
+        "description": "Run outcome status.",
+    },
+    "checks_passed": {"type": "text", "description": "JSON array of checks that passed."},
+    "checks_failed": {"type": "text", "description": "JSON array of checks that failed."},
+    "observed_checks": {"type": "text", "description": "JSON array of checks observed."},
+    "changed_files": {"type": "text", "description": "JSON array of changed repo files."},
+    "duration_seconds": "number",
+    "cost_usd": "currency",
+    "failure_mode": "text",
+    "notes": "text",
+    "artifact_url": "url",
+}
+
+
+class RowsetApiError(RuntimeError):
+    def __init__(self, status_code: int, method: str, path: str, detail: str):
+        self.status_code = status_code
+        self.method = method
+        self.path = path
+        self.detail = detail
+        super().__init__(f"Rowset API request failed ({status_code}) {method} {path}: {detail}")
 
 
 @dataclass(frozen=True)
@@ -130,6 +197,152 @@ def _preserved_base_sha(existing_result: dict[str, object] | None) -> str | None
     return str(base_sha).strip() if base_sha else None
 
 
+def _json_cell(value: object) -> str:
+    if value is None or value == "":
+        return ""
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value)
+    return str(value)
+
+
+def rowset_eval_result_schema_payload(
+    *,
+    name: str = "Rowset Agent Eval Results",
+    project_key: str | None = None,
+    section_key: str | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "name": name,
+        "description": (
+            "Structured Rowset agent-eval run results for comparing agent behavior over time."
+        ),
+        "instructions": ROWSET_EVAL_RESULT_INSTRUCTIONS,
+        "metadata": {
+            "dataset_kind": "agent_eval_results",
+            "created_by": "scripts/agent-eval-seed.py",
+            "artifact_schema_version": 2,
+            "privacy": "Store summaries only; keep secrets and private data out of rows.",
+        },
+        "headers": ROWSET_EVAL_RESULT_HEADERS,
+        "index_column": "run_id",
+        "column_types": ROWSET_EVAL_RESULT_COLUMN_TYPES,
+    }
+    if project_key:
+        payload["project_key"] = project_key
+    if section_key:
+        payload["section_key"] = section_key
+    return payload
+
+
+def rowset_eval_result_row(artifact: dict[str, object]) -> dict[str, str]:
+    return {
+        "run_id": _json_cell(artifact.get("run_id")),
+        "seed_id": _json_cell(artifact.get("seed_id")),
+        "seed_title": _json_cell(artifact.get("seed_title")),
+        "created_at": _json_cell(artifact.get("created_at")),
+        "agent": _json_cell(artifact.get("agent")),
+        "model": _json_cell(artifact.get("model")),
+        "base_sha": _json_cell(artifact.get("base_sha")),
+        "head_sha": _json_cell(artifact.get("head_sha")),
+        "result": _json_cell(artifact.get("result_status") or artifact.get("status")),
+        "checks_passed": _json_cell(artifact.get("checks_passed") or []),
+        "checks_failed": _json_cell(artifact.get("checks_failed") or []),
+        "observed_checks": _json_cell(artifact.get("observed_checks") or []),
+        "changed_files": _json_cell(artifact.get("changed_files") or []),
+        "duration_seconds": _json_cell(artifact.get("duration_seconds")),
+        "cost_usd": _json_cell(artifact.get("cost_usd")),
+        "failure_mode": _json_cell(artifact.get("failure_mode")),
+        "notes": _json_cell(artifact.get("follow_up_notes")),
+        "artifact_url": _json_cell(artifact.get("artifact_url")),
+    }
+
+
+def _normalized_api_base(api_base: str) -> str:
+    normalized = api_base.strip()
+    if not normalized:
+        raise ValueError("Rowset REST API base is required for Rowset writeback.")
+    return normalized.rstrip("/") + "/"
+
+
+def _rowset_api_request(
+    *,
+    api_base: str,
+    api_key: str,
+    method: str,
+    path: str,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    url = parse.urljoin(_normalized_api_base(api_base), path)
+    body = json.dumps(payload).encode()
+    api_request = request.Request(
+        url,
+        data=body,
+        method=method,
+        headers={
+            "Accept": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with request.urlopen(api_request, timeout=30) as response:
+            response_body = response.read().decode()
+    except HTTPError as exc:
+        detail = exc.read().decode(errors="replace").strip()
+        raise RowsetApiError(exc.code, method, path, detail) from exc
+    return json.loads(response_body or "{}")
+
+
+def write_rowset_eval_result_row(
+    *,
+    api_base: str,
+    api_key: str,
+    dataset_key: str,
+    row: dict[str, str],
+) -> dict[str, object]:
+    run_id = row.get("run_id", "").strip()
+    if not run_id:
+        raise ValueError("Rowset eval result rows require a non-blank run_id.")
+
+    index_query = parse.urlencode({"index_value": run_id})
+    by_index_path = f"datasets/{parse.quote(dataset_key)}/rows/by-index?{index_query}"
+    row_path = f"datasets/{parse.quote(dataset_key)}/rows"
+    try:
+        return _rowset_api_request(
+            api_base=api_base,
+            api_key=api_key,
+            method="PATCH",
+            path=by_index_path,
+            payload={"data": row},
+        )
+    except RowsetApiError as exc:
+        if exc.status_code != 404:
+            raise
+
+    return _rowset_api_request(
+        api_base=api_base,
+        api_key=api_key,
+        method="POST",
+        path=row_path,
+        payload={"data": row},
+    )
+
+
+def _rowset_api_base_from_args(args: argparse.Namespace) -> str:
+    return (
+        args.rowset_api_base
+        or os.environ.get("ROWSET_REST_API_BASE", "")
+        or os.environ.get("ROWSET_API_BASE", "")
+    )
+
+
+def _rowset_api_key_from_env(env_name: str) -> str:
+    api_key = os.environ.get(env_name, "").strip()
+    if not api_key:
+        raise ValueError(f"{env_name} must contain a Rowset API key for Rowset writeback.")
+    return api_key
+
+
 def _build_artifact(
     args: argparse.Namespace,
     seed: Seed,
@@ -146,7 +359,7 @@ def _build_artifact(
     follow_up_notes = args.note or "Dry-run artifact created; no agent execution invoked."
 
     return {
-        "artifact_schema_version": 1,
+        "artifact_schema_version": 2,
         "run_id": run_id,
         "seed_id": seed.seed_id,
         "seed_title": seed.title,
@@ -166,6 +379,12 @@ def _build_artifact(
         },
         "required_checks": seed.pass_to_pass_checks,
         "observed_checks": args.observed_check,
+        "checks_passed": args.check_passed,
+        "checks_failed": args.check_failed,
+        "duration_seconds": args.duration_seconds,
+        "cost_usd": args.cost_usd,
+        "failure_mode": args.failure_mode,
+        "artifact_url": args.artifact_url,
         "result_status": args.status,
         "follow_up_notes": follow_up_notes,
     }
@@ -176,6 +395,8 @@ def _markdown_for_artifact(artifact: dict[str, object]) -> str:
     assert isinstance(seed, dict)
     required_checks = artifact["required_checks"]
     observed_checks = artifact["observed_checks"]
+    checks_passed = artifact["checks_passed"]
+    checks_failed = artifact["checks_failed"]
     changed_files = artifact["changed_files"]
 
     def bullet_list(values: object, fallback: str) -> str:
@@ -199,6 +420,10 @@ def _markdown_for_artifact(artifact: dict[str, object]) -> str:
         f"{bullet_list(required_checks, 'No required checks parsed')}\n\n"
         "## Observed Checks\n\n"
         f"{bullet_list(observed_checks, 'No observed checks recorded yet')}\n\n"
+        "## Checks Passed\n\n"
+        f"{bullet_list(checks_passed, 'No passed checks recorded yet')}\n\n"
+        "## Checks Failed\n\n"
+        f"{bullet_list(checks_failed, 'No failed checks recorded')}\n\n"
         "## Follow-Up Notes\n\n"
         f"{artifact['follow_up_notes']}\n"
     )
@@ -236,6 +461,20 @@ def create_run(args: argparse.Namespace, seeds: dict[str, Seed]) -> int:
     except ValueError:
         display_path = run_dir
     print(f"Created eval run artifact: {display_path}")
+    if args.rowset_dataset_key:
+        try:
+            response = write_rowset_eval_result_row(
+                api_base=_rowset_api_base_from_args(args),
+                api_key=_rowset_api_key_from_env(args.rowset_api_key_env),
+                dataset_key=args.rowset_dataset_key,
+                row=rowset_eval_result_row(artifact),
+            )
+        except (RowsetApiError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        row = response.get("row")
+        row_id = row.get("id") if isinstance(row, dict) else "unknown"
+        print(f"Recorded eval run in Rowset dataset {args.rowset_dataset_key} row {row_id}.")
     return 0
 
 
@@ -273,13 +512,42 @@ def main() -> int:
     parser.add_argument("--model", default="unknown")
     parser.add_argument("--changed-file", action="append", default=[])
     parser.add_argument("--observed-check", action="append", default=[])
+    parser.add_argument("--check-passed", action="append", default=[])
+    parser.add_argument("--check-failed", action="append", default=[])
+    parser.add_argument("--duration-seconds", default="")
+    parser.add_argument("--cost-usd", default="")
+    parser.add_argument("--failure-mode", default="")
+    parser.add_argument("--artifact-url", default="")
     parser.add_argument("--note", default="")
+    parser.add_argument(
+        "--print-rowset-schema",
+        action="store_true",
+        help="Print the create_dataset payload for the Rowset eval results dataset.",
+    )
+    parser.add_argument(
+        "--rowset-dataset-key",
+        help="Existing Rowset eval results dataset key to upsert the run row into.",
+    )
+    parser.add_argument(
+        "--rowset-api-base",
+        default="",
+        help="Rowset REST API base. Defaults to ROWSET_REST_API_BASE or ROWSET_API_BASE.",
+    )
+    parser.add_argument(
+        "--rowset-api-key-env",
+        default="ROWSET_API_KEY",
+        help="Environment variable containing the Rowset API key for writeback.",
+    )
     parser.add_argument(
         "--force",
         action="store_true",
         help="Overwrite files in an existing run directory.",
     )
     args = parser.parse_args()
+
+    if args.print_rowset_schema and not args.seed_id:
+        print(json.dumps(rowset_eval_result_schema_payload(), indent=2))
+        return 0
 
     seed_doc = args.seed_doc if args.seed_doc.is_absolute() else args.root / args.seed_doc
     seeds = parse_seeds(seed_doc)

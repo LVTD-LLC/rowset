@@ -25,6 +25,14 @@ and case variants for choice values while storing the canonical schema choice.
 
 - No observed checks recorded yet
 
+## Checks Passed
+
+- No passed checks recorded yet
+
+## Checks Failed
+
+- No failed checks recorded
+
 ## Follow-Up Notes
 
 Sample dry-run artifact showing the structure committed by the harness.

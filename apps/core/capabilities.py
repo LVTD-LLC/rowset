@@ -448,6 +448,20 @@ ROWSET_USE_CASES = (
         ),
         rowset_features=("relationships", "dataset_context", "rows", "projects"),
     ),
+    RowsetUseCase(
+        id="agent_eval_results",
+        title="Agent eval tracking",
+        summary=(
+            "Record repeatable agent-eval run summaries so teams can compare agent "
+            "behavior, failed checks, changed files, and follow-up patterns over time."
+        ),
+        starter_shape=(
+            "Eval results dataset indexed by run_id.",
+            "Choice column for result such as dry_run, pending, pass, fail, or blocked.",
+            "Dataset instructions forbidding API keys, raw secrets, private data, and full logs.",
+        ),
+        rowset_features=("dataset_context", "rows", "projects"),
+    ),
 )
 
 ROWSET_GUARDRAILS = (

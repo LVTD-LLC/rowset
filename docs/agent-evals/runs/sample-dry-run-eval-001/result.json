@@ -1,5 +1,5 @@
 {
-  "artifact_schema_version": 1,
+  "artifact_schema_version": 2,
   "run_id": "sample-dry-run-eval-001",
   "seed_id": "EVAL-001",
   "seed_title": "Choice Column Canonicalization",
@@ -33,6 +33,12 @@
     "make format-check"
   ],
   "observed_checks": [],
+  "checks_passed": [],
+  "checks_failed": [],
+  "duration_seconds": "",
+  "cost_usd": "",
+  "failure_mode": "",
+  "artifact_url": "",
   "result_status": "dry_run",
   "follow_up_notes": "Sample dry-run artifact showing the structure committed by the harness."
 }

@@ -25,3 +25,16 @@ When editing the harness itself, use a temporary run directory while testing:
 ```bash
 uv run python scripts/agent-eval-seed.py EVAL-001 --runs-dir /tmp/rowset-agent-evals
 ```
+
+## Rowset Writeback
+
+`uv run python scripts/agent-eval-seed.py --print-rowset-schema` prints the
+`create_dataset` payload for a private Rowset eval-results dataset. Create that
+dataset through Rowset MCP, then pass `--rowset-dataset-key <dataset-key>` when
+creating or refreshing a run artifact. The script upserts by `run_id`, so a
+rerun refreshes the same Rowset row.
+
+The API key must live in `ROWSET_API_KEY` by default. Use
+`--rowset-api-key-env` if a different private environment variable holds the
+key. Keep eval rows to summaries: no API keys, OAuth tokens, private dataset
+contents, or full command logs.

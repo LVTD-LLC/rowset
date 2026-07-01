@@ -45,6 +45,34 @@ result status, and follow-up notes. This first harness does not invoke an agent
 automatically; it gives humans and agents a consistent wrapper for measured
 runs.
 
+### Rowset result tracking
+
+Generate the Rowset dataset schema payload:
+
+```bash
+uv run python scripts/agent-eval-seed.py --print-rowset-schema
+```
+
+Create that dataset through Rowset MCP with `create_dataset`, or through REST
+with the printed payload. The schema is indexed by `run_id` and includes:
+`seed_id`, `agent`, `model`, `base_sha`, `head_sha`, `result`, `checks_passed`,
+`checks_failed`, `observed_checks`, `changed_files`, `duration_seconds`,
+`cost_usd`, `failure_mode`, `notes`, and `artifact_url`.
+
+Record or refresh a run row in an existing Rowset dataset:
+
+```bash
+uv run python scripts/agent-eval-seed.py EVAL-001 \
+  --rowset-dataset-key <dataset-key> \
+  --rowset-api-base https://rowset.lvtd.dev/api/ \
+  --check-passed "make test -- apps/datasets apps/mcp_server -q"
+```
+
+The API key must be in `ROWSET_API_KEY` or the environment variable named by
+`--rowset-api-key-env`. Do not store API keys, OAuth tokens, private dataset
+contents, or full logs in eval result rows. Keep `notes` concise and use
+`artifact_url` only for a private artifact location, or leave it blank.
+
 ## Seeds
 
 ### EVAL-001: Choice Column Canonicalization
