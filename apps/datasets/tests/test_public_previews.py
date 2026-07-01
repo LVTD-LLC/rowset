@@ -2,7 +2,10 @@ import pytest
 from django.urls import reverse
 
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType
-from apps.datasets.public_previews import update_public_preview_settings
+from apps.datasets.public_previews import (
+    PublicPreviewSettingsError,
+    update_public_preview_settings,
+)
 from apps.datasets.tests.factories import (
     configure_filterable_dataset,
     create_dataset,
@@ -80,6 +83,50 @@ def test_public_preview_settings_helper_records_mutation_metadata(profile):
         "password_protected": True,
         "password_changed": True,
     }
+
+
+def test_public_preview_settings_helper_rolls_back_save_when_mutation_recording_fails(
+    monkeypatch,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+
+    def fail_to_record_mutation(*args, **kwargs):
+        raise RuntimeError("mutation history unavailable")
+
+    monkeypatch.setattr(
+        "apps.datasets.public_previews.record_dataset_mutation",
+        fail_to_record_mutation,
+    )
+
+    with pytest.raises(RuntimeError, match="mutation history unavailable"):
+        update_public_preview_settings(
+            dataset,
+            public_enabled=True,
+            public_page_size=1,
+        )
+
+    dataset.refresh_from_db()
+    assert dataset.public_enabled is False
+    assert dataset.public_page_size == 10
+    assert dataset.mutations.count() == 0
+
+
+def test_public_preview_settings_helper_validates_blank_password_before_mutating(profile):
+    dataset = create_ready_dataset(profile)
+
+    with pytest.raises(PublicPreviewSettingsError, match="password cannot be blank"):
+        update_public_preview_settings(
+            dataset,
+            public_enabled=True,
+            public_page_size=50,
+            public_password="  ",
+        )
+
+    assert dataset.public_enabled is False
+    assert dataset.public_page_size == 10
+    assert dataset.public_password_hash == ""
+    assert dataset.mutations.count() == 0
 
 
 def test_public_dataset_view_paginates_rows(client, profile):

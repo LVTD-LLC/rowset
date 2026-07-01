@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.contrib.auth.hashers import make_password
+from django.db import transaction
 
 from apps.core.models import AgentApiKey
 from apps.datasets.choices import DatasetMutationType, DatasetStatus
@@ -86,6 +87,11 @@ def update_public_preview_settings(
     previous_public_page_size = dataset.public_page_size
     previous_password_protected = dataset.is_public_password_protected
     next_public_enabled = dataset.public_enabled if public_enabled is None else public_enabled
+    normalized_password = None
+    if public_password is not None:
+        normalized_password = public_password.strip()
+        if not normalized_password:
+            raise PublicPreviewSettingsError(400, "Public preview password cannot be blank.")
 
     if next_public_enabled and dataset.status != DatasetStatus.READY:
         raise PublicPreviewSettingsError(
@@ -102,10 +108,7 @@ def update_public_preview_settings(
         password_changed = bool(dataset.public_password_hash)
         if password_changed:
             dataset.public_password_hash = ""
-    elif public_password is not None:
-        normalized_password = public_password.strip()
-        if not normalized_password:
-            raise PublicPreviewSettingsError(400, "Public preview password cannot be blank.")
+    elif normalized_password is not None:
         dataset.public_password_hash = make_password(normalized_password)
         password_changed = True
 
@@ -125,23 +128,24 @@ def update_public_preview_settings(
     )
 
     if result.settings_changed:
-        dataset.updated_by_agent_api_key = agent_api_key
-        dataset.save(
-            update_fields=[
-                "public_enabled",
-                "public_page_size",
-                "public_password_hash",
-                "updated_by_agent_api_key",
-                "updated_at",
-            ]
-        )
-        record_dataset_mutation(
-            dataset,
-            DatasetMutationType.PUBLIC_PREVIEW_UPDATED,
-            PUBLIC_PREVIEW_SETTINGS_UPDATED_MESSAGE,
-            agent_api_key=agent_api_key,
-            target_type="public_preview",
-            metadata=result.mutation_metadata,
-        )
+        with transaction.atomic():
+            dataset.updated_by_agent_api_key = agent_api_key
+            dataset.save(
+                update_fields=[
+                    "public_enabled",
+                    "public_page_size",
+                    "public_password_hash",
+                    "updated_by_agent_api_key",
+                    "updated_at",
+                ]
+            )
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.PUBLIC_PREVIEW_UPDATED,
+                PUBLIC_PREVIEW_SETTINGS_UPDATED_MESSAGE,
+                agent_api_key=agent_api_key,
+                target_type="public_preview",
+                metadata=result.mutation_metadata,
+            )
 
     return result
