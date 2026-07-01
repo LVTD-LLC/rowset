@@ -11,6 +11,7 @@ In the project directory, you can run:
 `npm run start` runs the webpack watcher.
 
 If you change JS or CSS files, the watcher rebuilds the asset manifest that Django serves from `frontend/build`.
+This replaces the old webpack-dev-server hot-reload workflow; refresh the browser after the watcher rebuilds.
 
 ### `npm run watch`
 

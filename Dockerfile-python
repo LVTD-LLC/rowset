@@ -8,6 +8,8 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY pyproject.toml uv.lock ./
 RUN pip install --upgrade pip && pip install --no-cache-dir uv
+# This image is used by docker-compose-local.yml and docker-compose-test.yml.
+# Production images under deployment/ keep uv sync --no-dev.
 RUN uv sync --frozen --all-groups --no-install-project
 
 COPY . .
