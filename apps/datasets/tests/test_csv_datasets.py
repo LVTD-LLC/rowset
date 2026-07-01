@@ -5235,7 +5235,7 @@ def test_dataset_api_enforces_choice_values(client, profile):
         data={
             "data": {
                 "task_id": "T-2",
-                "status": "Doing",
+                "status": "doing",
                 "title": "Ship choice columns",
             }
         },
@@ -5243,6 +5243,7 @@ def test_dataset_api_enforces_choice_values(client, profile):
     )
 
     assert valid_create.status_code == 200
+    assert valid_create.json()["row"]["data"]["status"] == "Doing"
 
     row = dataset.rows.get(index_value="T-1")
     invalid_patch = client.patch(
@@ -5260,12 +5261,21 @@ def test_dataset_api_enforces_choice_values(client, profile):
 
     valid_patch = client.patch(
         f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
-        data={"data": {"status": "Done"}},
+        data={"data": {"status": " done "}},
         content_type="application/json",
     )
 
     assert valid_patch.status_code == 200
     assert valid_patch.json()["row"]["data"]["status"] == "Done"
+
+    enum_style_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"status": "_ready_to_do-"}},
+        content_type="application/json",
+    )
+
+    assert enum_style_patch.status_code == 200
+    assert enum_style_patch.json()["row"]["data"]["status"] == "Ready to do"
 
 
 def test_dataset_api_rejects_choice_column_without_choices(client, profile):
@@ -5349,7 +5359,7 @@ def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
         f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
         data={
             "name": "visibility_level",
-            "default_value": "internal",
+            "default_value": " shared ",
             "column_type": {
                 "type": "choice",
                 "choices": ["internal", "shared"],
@@ -5369,8 +5379,8 @@ def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
         "choices": ["internal", "shared"],
     }
     assert list(dataset.rows.values_list("data", flat=True)) == [
-        {"name": "Ada", "email": "ada@example.com", "visibility_level": "internal"},
-        {"name": "Grace", "email": "grace@example.com", "visibility_level": "internal"},
+        {"name": "Ada", "email": "ada@example.com", "visibility_level": "shared"},
+        {"name": "Grace", "email": "grace@example.com", "visibility_level": "shared"},
     ]
 
     invalid_response = client.post(

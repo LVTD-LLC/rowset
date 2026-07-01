@@ -39,6 +39,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 
 ### Fixed
 - Generated-index row patches now accept an unchanged generated index value, avoiding validation failures when agents send full-row update payloads.
+- Choice-column row writes now accept unambiguous case, whitespace, hyphen, or underscore variants and store the schema's canonical choice label.
 - Canonical legacy `/api/v1` REST requests now resolve to the current API surface, unknown or trailing-slash API paths return JSON 404s without rendering landing-page context, and referrer banner lookup failures no longer turn bad-path traffic into Sentry database errors.
 - Declared `boto3` as an explicit runtime dependency so the django-storages S3 backend imports reliably in clean production builds.
 - Sentry request metrics middleware now wraps the full Django middleware stack so request counts include earlier middleware handling and durations include framework overhead.

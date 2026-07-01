@@ -72,7 +72,7 @@ from apps.datasets.services import (
     normalize_public_page_size,
     prepare_dataset_image,
     project_section_dataset_groups,
-    validate_choice_row_values,
+    validate_and_canonicalize_choice_row_values,
     validate_headers,
     validate_image_row_values,
 )
@@ -1987,7 +1987,7 @@ def _validate_choice_row_data(
             normalized=True,
         )
     try:
-        validate_choice_row_values(
+        validate_and_canonicalize_choice_row_values(
             headers,
             column_schema,
             row_data,
@@ -2682,23 +2682,25 @@ def add_profile_dataset_column(
             )
         except CSVParseError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
+        default_row = {column_name: default_cell}
         _validate_choice_row_data(
             next_headers,
             dataset.column_schema,
-            {column_name: default_cell},
+            default_row,
             columns={column_name},
         )
+        default_cell = default_row[column_name]
         _validate_image_row_data(
             next_headers,
             dataset.column_schema,
-            {column_name: default_cell},
+            default_row,
             columns={column_name},
         )
         default_cell = _normalize_reference_row_data(
             profile,
             next_headers,
             dataset.column_schema,
-            {column_name: default_cell},
+            default_row,
             columns={column_name},
         )[column_name]
 
@@ -4029,15 +4031,15 @@ def _patch_dataset_row(
         row_patch,
         columns=patched_fields,
     )
-    field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
-    changed_fields = [str(change["field"]) for change in field_changes]
-    row.data = {**row.data, **row_patch}
     _validate_choice_row_data(
         dataset.headers,
         dataset.column_schema,
-        row.data,
+        row_patch,
         columns=patched_fields,
     )
+    field_changes = _row_field_changes(row.data or {}, row_patch, patched_fields)
+    changed_fields = [str(change["field"]) for change in field_changes]
+    row.data = {**row.data, **row_patch}
     index_changed = False
     if dataset.index_column in data:
         index_value = str(row_patch.get(dataset.index_column, "")).strip()
