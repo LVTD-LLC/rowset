@@ -13,6 +13,7 @@ Start with the repo steering files before making code changes:
 
 - Use Docker-backed commands from `AGENTS.md` and `TECH.md`.
 - Prefer `make test ...` for verification.
+- Use `docs/quality.md` for the local CI path and touched-area checks.
 - Do not run host `pytest` as the default path.
 - Do not create migrations manually; run `make makemigrations`.
 - Keep dataset, REST, and MCP behavior aligned through shared services.

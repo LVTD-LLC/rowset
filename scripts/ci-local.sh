@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+if [[ ! -f .env ]]; then
+  printf "Missing .env. Run: cp .env.example .env\n" >&2
+  exit 1
+fi
+
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$ROOT")}"
+COMPOSE_TEST=(docker compose -f docker-compose-local.yml -f docker-compose-test.yml)
+
+run_step() {
+  printf "\n==> %s\n" "$1"
+  shift
+  "$@"
+}
+
+cleanup_backend_runs() {
+  local containers
+  containers="$(
+    docker ps -aq \
+      --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}" \
+      --filter "label=com.docker.compose.service=backend" \
+      --filter "label=com.docker.compose.oneoff=True"
+  )"
+
+  if [[ -n "$containers" ]]; then
+    # Interrupted test runs can leave one-off backend containers holding DB connections.
+    docker rm -f $containers >/dev/null
+  fi
+}
+
+reset_test_database() {
+  "${COMPOSE_TEST[@]}" up -d db >/dev/null
+  "${COMPOSE_TEST[@]}" exec -T db psql -U rowset -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'test_rowset';
+DROP DATABASE IF EXISTS "test_rowset";
+SQL
+}
+
+run_step "Clean stale test containers" cleanup_backend_runs
+run_step "Reset local test database" reset_test_database
+run_step "Migration check" make migrations-check
+run_step "Django system checks" make django-check
+run_step "Core, docs, pages, and blog tests" make test -- apps/core apps/docs apps/pages apps/blog -q
+run_step "Dataset tests" make test -- apps/datasets -q
+run_step "API tests" make test -- apps/api -q
+run_step "MCP tests" make test -- apps/mcp_server -q

@@ -27,6 +27,8 @@
 - Run all tests in Docker: `make test`
 - Run focused tests: `make test apps/datasets/tests/test_csv_datasets.py`
 - Pass pytest flags: `make test -- -k dataset -q`
+- Run current local CI-equivalent checks: `make ci-local`
+- Use the touched-area quality matrix: `docs/quality.md`
 - Restart workers: `make restart-worker`
 - Build frontend assets: `npm run build`
 - Lint frontend JS: `npm run lint`
@@ -106,6 +108,8 @@ contents.
 ## Testing Notes
 
 - Prefer `make test` over host `pytest`.
+- Use `docs/quality.md` to choose the local CI path, focused backend checks,
+  Ruff, format, frontend, coverage, and scoped type-check commands.
 - Dataset parser, API, MCP auth, export, and public-preview changes need
   focused tests.
 - Template-only changes can be checked with Django template loading and

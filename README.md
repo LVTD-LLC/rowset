@@ -146,13 +146,32 @@ You'd still need to make sure .env has correct values.
    - The frontend dev container uses Node 24 and runs the PostCSS/static asset watcher before the backend boots, so the first page load should not race the asset pipeline.
 5. Run `make restart-worker` just in case, it sometimes has troubles connecting to REDIS on first deployment.
 
-### CI (optional)
+### Quality checks
 
-If you generated the project with `use_ci = y`, it includes a GitHub Actions workflow at `.github/workflows/ci.yml` that runs on pull requests.
+Use `docs/quality.md` as the source of truth for local verification.
 
-It boots Postgres + Redis, runs `python manage.py makemigrations --check --dry-run`, then `python manage.py check`, and then runs `pytest`.
+- Current local CI-equivalent path: `make ci-local`
+- Focused backend tests: `make test apps/datasets/tests/test_csv_datasets.py`
+- Focused pytest flags: `make test -- -k dataset -q`
+- Migration check: `make migrations-check`
+- Django system checks: `make django-check`
+- Python lint and format checks: `make lint-python` and `make format-check`
+- Frontend checks: `make frontend-install`, then `make frontend-check`
+- Scoped type check: `make type-check`
+- Coverage visibility: `make coverage -- <pytest args>`
 
-If you don’t want CI, set `use_ci = n` during Cookiecutter generation and the workflow will be removed.
+### CI
+
+GitHub Actions at `.github/workflows/ci.yml` runs on pull requests.
+
+It boots Postgres + Redis, creates the dummy frontend manifest needed by tests,
+then runs the same Makefile targets as local verification with host-runner
+overrides. CI keeps the backend test suite in one process; `make ci-local`
+splits the same suite by app to reduce Docker memory pressure:
+
+- `make migrations-check CHECK_PYTHON_RUN="uv run python"`
+- `make django-check CHECK_PYTHON_RUN="uv run python"`
+- `make test PYTEST_RUN="uv run pytest" -- -q`
 
 
 ## Stripe Setup
