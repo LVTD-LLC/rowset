@@ -67,14 +67,17 @@ def check_worker() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Container health checks for Rowset.")
-    parser.add_argument("target", choices=["server", "worker"])
+    parser.add_argument("target", nargs="?", choices=["server", "worker"])
     args = parser.parse_args()
+    target = args.target or os.environ.get("APP_PROCESS_TYPE", "server")
 
     try:
-        if args.target == "server":
+        if target == "server":
             check_server()
-        else:
+        elif target == "worker":
             check_worker()
+        else:
+            raise RuntimeError(f"Unsupported healthcheck target: {target!r}")
     except Exception as exc:
         print(f"Healthcheck failed: {exc}", file=sys.stderr)
         return 1

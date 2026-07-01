@@ -30,6 +30,6 @@ COPY --from=build /app/frontend/build/ ./frontend/build/
 EXPOSE 80
 
 HEALTHCHECK --interval=15s --timeout=10s --start-period=60s --retries=8 \
-    CMD python deployment/healthcheck.py "${APP_PROCESS_TYPE:-server}"
+    CMD ["python", "deployment/healthcheck.py"]
 
 CMD ["sh", "deployment/entrypoint.sh"]
