@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import http.client
-import json
 import os
 import sys
 from urllib.parse import urlparse
@@ -23,7 +22,7 @@ def check_server() -> None:
     try:
         connection.request(
             "GET",
-            "/api/healthcheck",
+            "/",
             headers={
                 "Host": _site_host_header(),
                 "User-Agent": "rowset-docker-healthcheck",
@@ -34,20 +33,15 @@ def check_server() -> None:
     finally:
         connection.close()
 
-    if response.status != 200:
+    if response.status < 200 or response.status >= 400:
         raise RuntimeError(f"Server healthcheck returned HTTP {response.status}: {body!r}")
 
-    try:
-        payload = json.loads(body)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Server healthcheck returned invalid JSON: {body!r}") from exc
-
-    if payload.get("healthy") is not True:
-        raise RuntimeError(f"Server healthcheck returned unhealthy payload: {payload!r}")
+    check_dependencies()
 
 
-def check_worker() -> None:
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "filebridge.settings")
+def check_dependencies() -> None:
+    if not os.environ.get("DJANGO_SETTINGS_MODULE"):
+        raise RuntimeError("DJANGO_SETTINGS_MODULE must be configured for dependency checks")
 
     import django
     from django.core.cache import cache
@@ -65,6 +59,10 @@ def check_worker() -> None:
     if cache.get(cache_key) != cache_value:
         raise RuntimeError("Redis cache healthcheck round trip failed")
     cache.delete(cache_key)
+
+
+def check_worker() -> None:
+    check_dependencies()
 
 
 def main() -> int:
