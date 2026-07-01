@@ -1559,6 +1559,7 @@ def _dataset_rows_query_contexts(
     filters: dict | None,
     filter_operators: dict | None,
     strict: bool,
+    skip_invalid_filter_operators: bool,
 ) -> list[_DatasetRowsQueryContext]:
     contexts = []
     for dataset in datasets:
@@ -1567,13 +1568,18 @@ def _dataset_rows_query_contexts(
             filters,
             strict=strict,
         )
-        normalized_filter_operators = normalize_dataset_row_filter_operators(
-            dataset.headers,
-            dataset.column_schema,
-            normalized_filters,
-            filter_operators,
-            strict=strict,
-        )
+        try:
+            normalized_filter_operators = normalize_dataset_row_filter_operators(
+                dataset.headers,
+                dataset.column_schema,
+                normalized_filters,
+                filter_operators,
+                strict=strict,
+            )
+        except DatasetRowQueryError:
+            if skip_invalid_filter_operators:
+                continue
+            raise
         contexts.append(
             _DatasetRowsQueryContext(
                 dataset_id=dataset.id,
@@ -1721,6 +1727,7 @@ def apply_dataset_rows_query(
     filters: dict | None = None,
     filter_operators: dict | None = None,
     strict: bool = False,
+    skip_invalid_filter_operators: bool = False,
 ):
     dataset_list = list(datasets)
     if not dataset_list:
@@ -1731,7 +1738,10 @@ def apply_dataset_rows_query(
         filters=filters,
         filter_operators=filter_operators,
         strict=strict,
+        skip_invalid_filter_operators=skip_invalid_filter_operators,
     )
+    if not contexts:
+        return queryset.none()
     queryset = queryset.filter(dataset_id__in=[context.dataset_id for context in contexts])
     queryset = _apply_dataset_rows_search(queryset, contexts, str(query or "").strip())
     queryset = _apply_dataset_rows_field_filters(queryset, contexts)

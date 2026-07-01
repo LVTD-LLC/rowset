@@ -3790,6 +3790,7 @@ def _profile_lexical_rows(
             filters=filters,
             filter_operators=filter_operators,
             strict=True,
+            skip_invalid_filter_operators=True,
         )
     except DatasetRowQueryError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
@@ -3826,6 +3827,7 @@ def _profile_allowed_vector_row_ids(
             filters=filters,
             filter_operators=filter_operators,
             strict=True,
+            skip_invalid_filter_operators=True,
         )
     except DatasetRowQueryError as exc:
         raise DatasetServiceError(400, str(exc)) from exc

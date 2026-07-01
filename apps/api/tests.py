@@ -25,7 +25,7 @@ from apps.api.views import (
 from apps.blog.choices import BlogPostStatus
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets import models as dataset_models
-from apps.datasets.choices import DatasetStatus
+from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.vector_search import DatasetRowVectorSearchHit
@@ -1781,6 +1781,72 @@ def test_search_profile_rows_logs_no_matches_without_query(django_user_model, mo
     assert fields["result_count"] == 0
     assert fields["dataset_filters"]["dataset_key"] == "00000000-0000-0000-0000-000000000000"
     assert "private customer phrase" not in str(fields)
+
+
+@pytest.mark.django_db
+def test_search_profile_rows_skips_incompatible_filter_operator_datasets(django_user_model):
+    from apps.api.services import search_profile_rows
+
+    user = django_user_model.objects.create_user(
+        username="profilewidefilterowner",
+        email="profilewidefilterowner@example.com",
+        password="password123",
+    )
+    scored = Dataset.objects.create(
+        profile=user.profile,
+        name="Scored accounts",
+        original_filename="scored.csv",
+        status=DatasetStatus.READY,
+        headers=["id", "score", "notes"],
+        column_schema={"score": {"type": DatasetColumnType.NUMBER}},
+        index_column="id",
+    )
+    tagged = Dataset.objects.create(
+        profile=user.profile,
+        name="Tagged accounts",
+        original_filename="tagged.csv",
+        status=DatasetStatus.READY,
+        headers=["id", "score", "notes"],
+        column_schema={"score": {"type": DatasetColumnType.TEXT}},
+        index_column="id",
+    )
+    scored_row = DatasetRow.objects.create(
+        dataset=scored,
+        row_number=1,
+        index_value="SCORED-1",
+        data={"id": "SCORED-1", "score": "12", "notes": "Target renewal account"},
+    )
+    tagged_row = DatasetRow.objects.create(
+        dataset=tagged,
+        row_number=1,
+        index_value="TAGGED-1",
+        data={"id": "TAGGED-1", "score": "high", "notes": "Target renewal account"},
+    )
+    response = search_profile_rows(
+        user.profile,
+        query="target renewal",
+        filters={"score": "10"},
+        filter_operators={"score": "above"},
+        limit=5,
+        embedding_provider=FakeDatasetSearchEmbeddingProvider(),
+        vector_store=FakeProfileRowSearchVectorStore(
+            [
+                DatasetRowVectorSearchHit(
+                    point_id="tagged-point",
+                    score=0.99,
+                    payload={"row_id": tagged_row.id, "chunk_index": 0, "content_hash": "tagged"},
+                ),
+                DatasetRowVectorSearchHit(
+                    point_id="scored-point",
+                    score=0.95,
+                    payload={"row_id": scored_row.id, "chunk_index": 0, "content_hash": "scored"},
+                ),
+            ]
+        ),
+    )
+
+    assert [result["row"]["id"] for result in response["results"]] == [scored_row.id]
+    assert response["results"][0]["match"]["source"] == "hybrid"
 
 
 @pytest.mark.django_db
