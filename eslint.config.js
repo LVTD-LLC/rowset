@@ -18,7 +18,6 @@ module.exports = [
         FormData: "readonly",
         localStorage: "readonly",
         navigator: "readonly",
-        require: "readonly",
         setTimeout: "readonly",
         URLSearchParams: "readonly",
         window: "readonly",

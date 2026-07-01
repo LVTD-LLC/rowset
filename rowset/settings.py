@@ -114,7 +114,7 @@ THIRD_PARTY_APPS = [
     "django_structlog",
 ]
 
-if ENVIRONMENT != "prod":
+if ENVIRONMENT == "dev":
     THIRD_PARTY_APPS.append("django_extensions")
 
 CUSTOM_APPS = [
