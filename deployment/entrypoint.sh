@@ -1,29 +1,35 @@
 #!/bin/sh
 set -eu
 
-# Default to server command if no arguments provided
-if [ $# -eq 0 ]; then
-    echo "No arguments provided. Defaulting to running the server."
-    server=true
-else
-    server=false
-fi
-
 export PROJECT_NAME=rowset
 export DJANGO_SETTINGS_MODULE="rowset.settings"
+APP_PORT="${PORT:-80}"
+process_type="${APP_PROCESS_TYPE:-}"
 
 while getopts ":sw" option; do
     case "${option}" in
-        s) server=true ;;
-        w) server=false ;;
-        *) echo "Invalid option: -$OPTARG" >&2 ;;
+        s) process_type="server" ;;
+        w) process_type="worker" ;;
+        *)
+            echo "Invalid option: -$OPTARG" >&2
+            exit 1
+            ;;
     esac
 done
 shift $((OPTIND - 1))
 
+if [ -z "$process_type" ]; then
+    if [ "${ENVIRONMENT:-}" = "prod" ]; then
+        echo "APP_PROCESS_TYPE must be set to 'server' or 'worker' when ENVIRONMENT=prod." >&2
+        exit 1
+    fi
+
+    process_type="server"
+fi
+
 wait_for_database() {
     echo "Waiting for database..."
-    python - <<'PY'
+    uv run --no-sync python - <<'PY'
 import os
 import sys
 import time
@@ -52,12 +58,22 @@ PY
 
 wait_for_database
 
-if [ "$server" = true ]; then
-    echo "Starting Rowset server..."
-    python manage.py collectstatic --noinput
-    python manage.py migrate --noinput
-    exec gunicorn ${PROJECT_NAME}.asgi:application --bind 0.0.0.0:80 --workers 3 --worker-class uvicorn_worker.UvicornWorker
-else
-    echo "Starting Rowset workers..."
-    exec python manage.py qcluster
-fi
+case "$process_type" in
+    server)
+        echo "Starting Rowset server..."
+        uv run --no-sync python manage.py collectstatic --noinput
+        uv run --no-sync python manage.py migrate --noinput
+        exec uv run --no-sync gunicorn "${PROJECT_NAME}.asgi:application" \
+            --bind "0.0.0.0:${APP_PORT}" \
+            --workers 3 \
+            --worker-class uvicorn_worker.UvicornWorker
+        ;;
+    worker)
+        echo "Starting Rowset workers..."
+        exec uv run --no-sync python manage.py qcluster
+        ;;
+    *)
+        echo "Invalid APP_PROCESS_TYPE: $process_type. Expected 'server' or 'worker'." >&2
+        exit 1
+        ;;
+esac

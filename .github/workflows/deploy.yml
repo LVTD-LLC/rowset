@@ -1,4 +1,4 @@
-name: Deploy Prod Server
+name: Deploy Prod
 
 on:
   push:
@@ -6,34 +6,68 @@ on:
       - main
 
 concurrency:
-  group: rowset-server-prod
-  cancel-in-progress: true
+  group: rowset-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
 
 env:
   PROJECT_NAME: rowset
+  CAPROVER_APP_NAME: rowset
 
 jobs:
-  deploy:
-    name: Deploy server
+  build-and-deploy:
+    name: Build and deploy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare CapRover deployment bundle
+      - name: Prepare image name and tags
+        id: image
+        shell: bash
         run: |
-          tmpdir="$(mktemp -d)"
-          rsync -a --exclude .git ./ "$tmpdir/"
-          printf '{"schemaVersion":2,"dockerfilePath":"./deployment/Dockerfile.server"}\n' > "$tmpdir/captain-definition"
-          tar -C "$tmpdir" -cf /tmp/rowset-server.tar .
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
+          echo "release_date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          echo "release_version=$(date -u +%F).${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy to CapRover
-        env:
-          CAPROVER_URL: ${{ secrets.CAPROVER_SERVER }}
-          CAPROVER_APP_TOKEN: ${{ secrets.APP_TOKEN }}
-        run: |
-          npx -y -p node@20 -p caprover caprover deploy \
-            --caproverUrl "$CAPROVER_URL" \
-            --appToken "$CAPROVER_APP_TOKEN" \
-            --caproverApp "${PROJECT_NAME}" \
-            --tarFile /tmp/rowset-server.tar
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployment/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image_name }}:latest
+            ${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_date }}
+            ${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_version }}
+            ${{ steps.image.outputs.image_name }}:${{ github.sha }}
+
+      - name: Deploy server to CapRover
+        uses: caprover/deploy-from-github@v1.2.0
+        with:
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app: ${{ env.CAPROVER_APP_NAME }}
+          token: ${{ secrets.APP_TOKEN }}
+          image: ${{ steps.image.outputs.image_name }}:${{ github.sha }}
+
+      - name: Deploy workers to CapRover
+        uses: caprover/deploy-from-github@v1.2.0
+        with:
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app: ${{ env.CAPROVER_APP_NAME }}-workers
+          token: ${{ secrets.WORKERS_APP_TOKEN }}
+          image: ${{ steps.image.outputs.image_name }}:${{ github.sha }}
