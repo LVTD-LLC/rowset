@@ -756,7 +756,7 @@ def test_dataset_list_hides_unconfirmed_preview_dataset(auth_client, profile):
         row_count=1,
     )
 
-    response = auth_client.get(reverse("dataset_list"))
+    response = auth_client.get(reverse("home"))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -764,13 +764,14 @@ def test_dataset_list_hides_unconfirmed_preview_dataset(auth_client, profile):
     assert "Preview Only" not in content
 
 
-def test_dataset_list_does_not_show_agent_prompt_cta(auth_client):
-    response = auth_client.get(reverse("dataset_list"))
+def test_dataset_and_project_index_pages_redirect_to_home(auth_client):
+    dataset_response = auth_client.get(reverse("dataset_list"))
+    project_response = auth_client.get(reverse("project_list"))
 
-    assert response.status_code == 200
-    content = response.content.decode()
-    assert "Copy agent prompt" not in content
-    assert "Copy the agent prompt" not in content
+    assert dataset_response.status_code == 302
+    assert dataset_response["Location"] == reverse("home")
+    assert project_response.status_code == 302
+    assert project_response["Location"] == reverse("home")
 
 
 def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, profile):
@@ -788,7 +789,7 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
         row_count=10,
     )
 
-    response = auth_client.get(reverse("dataset_list"), {"q": "people", "sort": "rows"})
+    response = auth_client.get(reverse("home"), {"q": "people", "sort": "rows"})
 
     content = response.content.decode()
     assert response.status_code == 200
@@ -811,7 +812,7 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     assert "Dataset status" not in content
 
 
-def test_dataset_list_defaults_to_raw_recent_order(auth_client, profile):
+def test_home_defaults_to_project_grouped_recent_order(auth_client, profile):
     older_dataset = Dataset.objects.create(
         profile=profile,
         name="Alpha",
@@ -838,12 +839,12 @@ def test_dataset_list_defaults_to_raw_recent_order(auth_client, profile):
         updated_at=now - timedelta(days=1),
     )
 
-    response = auth_client.get(reverse("dataset_list"))
+    response = auth_client.get(reverse("home"))
 
     assert response.status_code == 200
-    assert response.context["selected_view_mode"] == "raw"
+    assert response.context["selected_view_mode"] == "grouped"
     assert response.context["selected_sort"] == "recent"
-    assert response.context["dataset_groups"] == []
+    assert [group["label"] for group in response.context["dataset_groups"]] == ["No project"]
     assert [dataset.name for dataset in response.context["datasets"]] == ["Beta", "Alpha"]
 
 
@@ -874,7 +875,7 @@ def test_dataset_list_supports_created_sort(auth_client, profile):
         updated_at=now - timedelta(days=5),
     )
 
-    response = auth_client.get(reverse("dataset_list"), {"sort": "created"})
+    response = auth_client.get(reverse("home"), {"sort": "created"})
 
     assert response.status_code == 200
     assert response.context["selected_sort"] == "created"
@@ -905,7 +906,7 @@ def test_dataset_list_raw_project_sort_puts_unassigned_datasets_last(auth_client
         index_column="id",
     )
 
-    response = auth_client.get(reverse("dataset_list"), {"sort": "project", "view": "raw"})
+    response = auth_client.get(reverse("home"), {"sort": "project", "view": "raw"})
 
     assert response.status_code == 200
     assert response.context["selected_view_mode"] == "raw"
@@ -956,7 +957,7 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
         row_count=4,
     )
 
-    response = auth_client.get(reverse("dataset_list"), {"sort": "rows", "view": "grouped"})
+    response = auth_client.get(reverse("home"), {"sort": "rows", "view": "grouped"})
 
     content = response.content.decode()
     groups = response.context["dataset_groups"]
@@ -974,6 +975,49 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
     assert "Datasets that are not assigned to a project." in content
 
 
+def test_home_groups_project_datasets_by_section(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Content")
+    blog = dataset_models.ProjectSection.objects.create(
+        profile=profile,
+        project=project,
+        name="Blog",
+    )
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        section=blog,
+        name="Content ledger",
+        original_filename="content.csv",
+        status=DatasetStatus.READY,
+        headers=["slug"],
+        index_column="slug",
+    )
+    Dataset.objects.create(
+        profile=profile,
+        project=project,
+        name="Topic backlog",
+        original_filename="topics.csv",
+        status=DatasetStatus.READY,
+        headers=["topic"],
+        index_column="topic",
+    )
+
+    response = auth_client.get(reverse("home"))
+
+    content = response.content.decode()
+    group = response.context["dataset_groups"][0]
+    assert response.status_code == 200
+    assert group["label"] == "Content"
+    assert [section_group["label"] for section_group in group["section_groups"]] == [
+        "Blog",
+        "Unsectioned",
+    ]
+    assert group["section_groups"][0]["datasets"][0].name == "Content ledger"
+    assert group["section_groups"][1]["datasets"][0].name == "Topic backlog"
+    assert "Blog" in content
+    assert "Unsectioned" in content
+
+
 def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client, profile):
     project = Project.objects.create(profile=profile, name="Research")
     for index in range(101):
@@ -988,8 +1032,8 @@ def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client,
             row_count=1,
         )
 
-    page_one = auth_client.get(reverse("dataset_list"), {"sort": "name", "view": "grouped"})
-    page_two = auth_client.get(f"{reverse('dataset_list')}?sort=name&view=grouped&page=2")
+    page_one = auth_client.get(reverse("home"), {"sort": "name", "view": "grouped"})
+    page_two = auth_client.get(f"{reverse('home')}?sort=name&view=grouped&page=2")
 
     assert page_one.status_code == 200
     assert page_two.status_code == 200
@@ -1078,8 +1122,8 @@ def test_archived_dataset_list_shows_archived_datasets_only(
     assert "Archived active people" not in content
     assert "Archived draft" not in content
     assert "Archived other account dataset" not in content
-    assert reverse("dataset_list") in content
-    assert reverse("project_list") in content
+    assert reverse("home") in content
+    assert f'href="{reverse("project_list")}"' not in content
     assert reverse("dataset_export", args=[archived_dataset.key, "csv"]) not in content
     assert reverse("dataset_delete", args=[archived_dataset.key]) not in content
 
@@ -2690,10 +2734,10 @@ def test_project_detail_shows_delete_project_action(auth_client, profile):
     ) in content
 
 
-def test_project_list_shows_delete_project_action(auth_client, profile):
+def test_home_project_overview_shows_delete_project_action(auth_client, profile):
     project = Project.objects.create(profile=profile, name="Frontier")
 
-    response = auth_client.get(reverse("project_list"))
+    response = auth_client.get(reverse("home"))
     content = response.content.decode()
 
     assert response.status_code == 200
@@ -2713,7 +2757,7 @@ def test_project_delete_removes_owned_project_and_detaches_datasets(auth_client,
     response = auth_client.post(reverse("project_delete", args=[project.key]))
 
     assert response.status_code == 302
-    assert response.url == reverse("project_list")
+    assert response.url == reverse("home")
     assert not Project.objects.filter(id=project.id).exists()
     dataset.refresh_from_db()
     assert dataset.project is None
@@ -2771,7 +2815,7 @@ def test_dataset_archive_archives_owned_dataset(auth_client, profile):
     response = auth_client.post(reverse("dataset_archive", args=[dataset.key]))
 
     assert response.status_code == 302
-    assert response.url == reverse("dataset_list")
+    assert response.url == reverse("home")
     dataset.refresh_from_db()
     assert dataset.archived_at is not None
     assert dataset.public_enabled is False
@@ -2817,7 +2861,7 @@ def test_dataset_archive_uses_info_message_for_already_archived_dataset(auth_cli
     response = auth_client.post(reverse("dataset_archive", args=[dataset.key]))
 
     assert response.status_code == 302
-    assert response.url == reverse("dataset_list")
+    assert response.url == reverse("home")
     flash_messages = list(get_messages(response.wsgi_request))
     assert len(flash_messages) == 1
     assert flash_messages[0].level == message_constants.INFO
@@ -4242,7 +4286,7 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     assert [mutation.actor_label for mutation in mutations] == ["Codex", "OpenClaw"]
 
     client.force_login(profile.user)
-    list_content = client.get(reverse("dataset_list")).content.decode()
+    list_content = client.get(reverse("home")).content.decode()
     detail_content = client.get(dataset.get_absolute_url()).content.decode()
     changes_response = client.get(dataset.get_changes_url())
     changes_content = changes_response.content.decode()
@@ -4264,7 +4308,7 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     assert "Dataset created with 0 rows and 2 columns." in changes_content
     assert "Row 1 added." in changes_content
     assert "Created by Codex · Last updated by OpenClaw" in project_content
-    assert "Updated by OpenClaw" in home_content
+    assert "Last updated by OpenClaw" in home_content
 
 
 def test_row_update_mutation_records_field_diffs_and_renders_history(client, profile):
@@ -5235,7 +5279,7 @@ def test_dataset_api_enforces_choice_values(client, profile):
         data={
             "data": {
                 "task_id": "T-2",
-                "status": "Doing",
+                "status": "doing",
                 "title": "Ship choice columns",
             }
         },
@@ -5243,6 +5287,7 @@ def test_dataset_api_enforces_choice_values(client, profile):
     )
 
     assert valid_create.status_code == 200
+    assert valid_create.json()["row"]["data"]["status"] == "Doing"
 
     row = dataset.rows.get(index_value="T-1")
     invalid_patch = client.patch(
@@ -5260,12 +5305,21 @@ def test_dataset_api_enforces_choice_values(client, profile):
 
     valid_patch = client.patch(
         f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
-        data={"data": {"status": "Done"}},
+        data={"data": {"status": " done "}},
         content_type="application/json",
     )
 
     assert valid_patch.status_code == 200
     assert valid_patch.json()["row"]["data"]["status"] == "Done"
+
+    enum_style_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"status": "_ready_to_do-"}},
+        content_type="application/json",
+    )
+
+    assert enum_style_patch.status_code == 200
+    assert enum_style_patch.json()["row"]["data"]["status"] == "Ready to do"
 
 
 def test_dataset_api_rejects_choice_column_without_choices(client, profile):
@@ -5349,7 +5403,7 @@ def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
         f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
         data={
             "name": "visibility_level",
-            "default_value": "internal",
+            "default_value": " shared ",
             "column_type": {
                 "type": "choice",
                 "choices": ["internal", "shared"],
@@ -5369,8 +5423,8 @@ def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
         "choices": ["internal", "shared"],
     }
     assert list(dataset.rows.values_list("data", flat=True)) == [
-        {"name": "Ada", "email": "ada@example.com", "visibility_level": "internal"},
-        {"name": "Grace", "email": "grace@example.com", "visibility_level": "internal"},
+        {"name": "Ada", "email": "ada@example.com", "visibility_level": "shared"},
+        {"name": "Grace", "email": "grace@example.com", "visibility_level": "shared"},
     ]
 
     invalid_response = client.post(
@@ -6807,6 +6861,26 @@ def test_dataset_api_rejects_patch_to_generated_index(client, profile):
 
     assert by_index_response.status_code == 400
     assert "managed by Rowset" in by_index_response.json()["detail"]
+
+    idempotent_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+        data={"data": {"rowset_id": "1", "name": "Ada Updated"}},
+        content_type="application/json",
+    )
+
+    assert idempotent_response.status_code == 200
+    assert idempotent_response.json()["row"]["index_value"] == "1"
+    assert idempotent_response.json()["row"]["data"]["name"] == "Ada Updated"
+
+    idempotent_by_index_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?api_key={profile.key}&index_value=1",
+        data={"data": {"rowset_id": "1", "name": "Ada By Index"}},
+        content_type="application/json",
+    )
+
+    assert idempotent_by_index_response.status_code == 200
+    assert idempotent_by_index_response.json()["row"]["index_value"] == "1"
+    assert idempotent_by_index_response.json()["row"]["data"]["name"] == "Ada By Index"
 
 
 def test_dataset_api_rejects_other_users_dataset(client, django_user_model, profile):

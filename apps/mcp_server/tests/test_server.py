@@ -523,6 +523,56 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
             "results": [{"rank": 1, "row": {"id": 1}, "match": {"source": "hybrid"}}],
         }
 
+    def search_all_rows(
+        authenticated_profile,
+        *,
+        query,
+        filters=None,
+        filter_operators=None,
+        dataset_key=None,
+        project_key=None,
+        section_key=None,
+        status=None,
+        archived=False,
+        sort=None,
+        direction=None,
+        limit=10,
+    ):
+        calls.append(
+            (
+                "search_rows",
+                authenticated_profile.id,
+                query,
+                filters,
+                filter_operators,
+                dataset_key,
+                project_key,
+                section_key,
+                status,
+                archived,
+                sort,
+                direction,
+                limit,
+            )
+        )
+        return {
+            "query": query,
+            "filters": filters or {},
+            "filter_operators": filter_operators or {},
+            "dataset_filters": {
+                "dataset_key": dataset_key,
+                "project_key": project_key,
+                "section_key": section_key,
+                "status": status or "ready",
+                "archived": archived,
+            },
+            "sort": sort or "rank",
+            "direction": direction or "desc",
+            "limit": limit,
+            "count": 1,
+            "results": [{"rank": 1, "dataset": {"key": "dataset-key"}, "row": {"id": 1}}],
+        }
+
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -531,6 +581,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
         monkeypatch.setattr("apps.mcp_server.server.search_profile_datasets", search_datasets)
         monkeypatch.setattr("apps.mcp_server.server.search_profile_projects", search_projects)
         monkeypatch.setattr("apps.mcp_server.server.search_profile_dataset_rows", search_rows)
+        monkeypatch.setattr("apps.mcp_server.server.search_profile_rows", search_all_rows)
 
         async with Client(mcp) as client:
             dataset_result = await client.call_tool(
@@ -559,10 +610,27 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                     "limit": 4,
                 },
             )
+            all_rows_result = await client.call_tool(
+                "search_rows",
+                {
+                    "query": "renewal risk",
+                    "filters": {"status": "Ready"},
+                    "filter_operators": {"status": "is"},
+                    "dataset_key": "dataset-key",
+                    "project_key": "project-key",
+                    "section_key": "section-key",
+                    "status": "ready",
+                    "archived": False,
+                    "sort": "rank",
+                    "direction": "desc",
+                    "limit": 6,
+                },
+            )
 
         assert dataset_result.data["datasets"][0]["key"] == "dataset-key"
         assert project_result.data["projects"][0]["key"] == "project-key"
         assert row_result.data["results"][0]["match"]["source"] == "hybrid"
+        assert all_rows_result.data["results"][0]["dataset"]["key"] == "dataset-key"
         assert calls == [
             (
                 "search_datasets",
@@ -584,6 +652,21 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 "stale vectors",
                 {"status": "Ready"},
                 4,
+            ),
+            (
+                "search_rows",
+                11,
+                "renewal risk",
+                {"status": "Ready"},
+                {"status": "is"},
+                "dataset-key",
+                "project-key",
+                "section-key",
+                "ready",
+                False,
+                "rank",
+                "desc",
+                6,
             ),
         ]
 

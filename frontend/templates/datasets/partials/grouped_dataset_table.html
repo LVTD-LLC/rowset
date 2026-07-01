@@ -1,0 +1,37 @@
+<div class="overflow-x-auto">
+  <table class="fb-table">
+    <caption class="sr-only">{{ grouped_table_caption }}</caption>
+    <thead class="bg-white dark:bg-slate-950">
+      <tr>
+        <th scope="col">Dataset</th>
+        <th scope="col">Rows</th>
+        <th scope="col">Columns</th>
+        <th scope="col">{{ dataset_table_date_heading }}</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+      {% for dataset in grouped_datasets %}
+        <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+          <td class="max-w-md pl-8 sm:pl-10">
+            <div class="border-l-2 border-emerald-200 pl-4 dark:border-emerald-900">
+              <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+              <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
+              <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
+            </div>
+          </td>
+          <td>{{ dataset.row_count }}</td>
+          <td>{{ dataset.headers|length }}</td>
+          <td class="whitespace-nowrap">
+            {% if dataset_list_is_archived %}
+              {{ dataset.archived_at|date:"M d, Y" }}
+            {% elif selected_sort == "created" %}
+              {{ dataset.created_at|date:"M d, Y" }}
+            {% else %}
+              {{ dataset.updated_at|date:"M d, Y" }}
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

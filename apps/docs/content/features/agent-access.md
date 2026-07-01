@@ -104,8 +104,10 @@ Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 - Inspect one dataset with `get_dataset` before row operations. The response
   includes dataset context, semantic schema, and relationship summaries.
 - Read rows with `list_dataset_rows`, `get_dataset_row`, or `get_dataset_row_by_index`.
-- Search rows with `search_dataset_rows` when vector search is enabled and ranked
-  matches are more useful than a paginated row list.
+- Search across datasets with `search_rows` when the relevant dataset is unknown
+  or multiple datasets may contain the answer.
+- Search inside one dataset with `search_dataset_rows` when vector search is
+  enabled and ranked matches are more useful than a paginated row list.
 - Modify rows with `create_dataset_row`, `update_dataset_row`,
   `update_dataset_row_by_index`, and `delete_dataset_row` only when requested.
 - Enable or disable read-only public previews with `update_dataset_public_preview` only when the user asks to share a dataset.

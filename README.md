@@ -718,16 +718,32 @@ npm run build
 npm run lint
 ```
 
-CI (`.github/workflows/ci.yml`) runs on pull requests and performs:
+### Quality checks
 
-1. PostgreSQL 18 service setup.
-2. Redis 7 service setup.
-3. `uv python install 3.14`.
-4. `uv sync`.
-5. Dummy `frontend/build/manifest.json` creation for tests.
-6. `uv run python manage.py makemigrations --check --dry-run`.
-7. `uv run python manage.py check`.
-8. `uv run pytest -q`.
+Use `docs/quality.md` as the source of truth for local verification.
+
+- Current local CI-equivalent path: `make ci-local`
+- Focused backend tests: `make test apps/datasets/tests/test_csv_datasets.py`
+- Focused pytest flags: `make test -- -k dataset -q`
+- Migration check: `make migrations-check`
+- Django system checks: `make django-check`
+- Python lint and format checks: `make lint-python` and `make format-check`
+- Frontend checks: `make frontend-install`, then `make frontend-check`
+- Scoped type check: `make type-check`
+- Coverage visibility: `make coverage -- <pytest args>`
+
+### CI
+
+GitHub Actions at `.github/workflows/ci.yml` runs on pull requests.
+
+It boots Postgres + Redis, creates the dummy frontend manifest needed by tests,
+then runs the same Makefile targets as local verification with host-runner
+overrides. CI keeps the backend test suite in one process; `make ci-local`
+splits the same suite by app to reduce Docker memory pressure:
+
+- `make migrations-check CHECK_PYTHON_RUN="uv run python"`
+- `make django-check CHECK_PYTHON_RUN="uv run python"`
+- `make test PYTEST_RUN="uv run pytest" -- -q`
 
 CI tests against PostgreSQL 18 (`rasulkireev/custom-postgres:18`), while
 `docker-compose-prod.yml` currently uses PostgreSQL 17

@@ -37,6 +37,7 @@ from apps.api.services import (
     search_profile_dataset_rows,
     search_profile_datasets,
     search_profile_projects,
+    search_profile_rows,
     serialize_dataset_detail,
     serialize_profile_archived_datasets,
     serialize_profile_dataset_asset,
@@ -1537,6 +1538,99 @@ def list_dataset_rows(
             filters=filters,
             sort=sort,
             direction=direction,
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="search_rows",
+    description=(
+        "Search rows across the authenticated Rowset profile with hybrid vector and lexical "
+        "retrieval. Use this when the relevant dataset is unknown or when searching across "
+        "multiple datasets."
+    ),
+)
+def search_rows(
+    query: Annotated[str, Field(description="Natural language or keyword search text.")],
+    filters: Annotated[
+        dict[str, str] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional row field filters keyed by dataset header. Datasets missing these "
+                "headers are excluded."
+            ),
+        ),
+    ] = None,
+    filter_operators: Annotated[
+        dict[str, str] | None,
+        Field(
+            default=None,
+            description=(
+                "Optional row filter operators keyed by header, such as contains, is, above, "
+                "or below."
+            ),
+        ),
+    ] = None,
+    dataset_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional Rowset dataset key, public key, or URL."),
+    ] = None,
+    project_key: Annotated[
+        str | None,
+        Field(default=None, description="Optional project key to restrict searched datasets."),
+    ] = None,
+    section_key: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Optional project section key to restrict searched datasets.",
+        ),
+    ] = None,
+    status: Annotated[
+        str | None,
+        Field(default=None, description="Optional dataset status. Defaults to ready."),
+    ] = None,
+    archived: Annotated[
+        bool | None,
+        Field(
+            default=False,
+            description=(
+                "False searches active datasets, true searches archived datasets, "
+                "null searches both."
+            ),
+        ),
+    ] = False,
+    sort: Annotated[
+        str | None,
+        Field(default="rank", description="Optional result sort: rank, dataset, or row_number."),
+    ] = "rank",
+    direction: Annotated[
+        str | None,
+        Field(default=None, description="Optional sort direction: asc or desc."),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(default=10, ge=1, le=50, description="Maximum ranked results to return."),
+    ] = 10,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return search_profile_rows(
+            profile,
+            query=query,
+            filters=filters,
+            filter_operators=filter_operators,
+            dataset_key=dataset_key,
+            project_key=project_key,
+            section_key=section_key,
+            status=status,
+            archived=archived,
+            sort=sort,
+            direction=direction,
+            limit=limit,
         )
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc

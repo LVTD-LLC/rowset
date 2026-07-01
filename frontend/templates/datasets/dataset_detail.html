@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="fb-page">
-  <div class="space-y-6">
-    <a href="{% url 'dataset_list' %}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All datasets</a>
+  <div data-controller="dataset-status" data-dataset-status-url-value="{% url 'dataset_status' dataset.key %}" data-dataset-status-status-value="{{ dataset.status }}" class="space-y-6">
+    <a href="{% url 'home' %}#datasets-workspace" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All datasets</a>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0 space-y-3">

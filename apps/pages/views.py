@@ -2,6 +2,7 @@ from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
+from django.shortcuts import redirect
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
@@ -15,6 +16,11 @@ logger = get_rowset_logger(__name__)
 
 class LandingPageView(TemplateView):
     template_name = "pages/landing-page.html"
+
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect("home")
+        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

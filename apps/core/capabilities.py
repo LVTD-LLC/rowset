@@ -235,10 +235,11 @@ ROWSET_CAPABILITIES = (
         id="rows",
         title="Rows",
         summary=(
-            "Read, search, filter, sort, create, patch, and delete rows within ready "
-            "datasets while respecting the dataset index column."
+            "Read, search, filter, sort, create, patch, and delete rows across ready "
+            "datasets or within one dataset while respecting the dataset index column."
         ),
         mcp_tools=(
+            "search_rows",
             "list_dataset_rows",
             "search_dataset_rows",
             "get_dataset_row",
@@ -249,6 +250,7 @@ ROWSET_CAPABILITIES = (
             "delete_dataset_row",
         ),
         rest_paths=(
+            "/api/search",
             "/api/datasets/{dataset_key}/rows",
             "/api/datasets/{dataset_key}/search",
             "/api/datasets/{dataset_key}/rows/by-index",
@@ -256,7 +258,9 @@ ROWSET_CAPABILITIES = (
         ),
         notes=(
             "Use by-index tools when the workflow has a stable business key.",
-            "Use search_dataset_rows for ranked hybrid search when vector search is enabled.",
+            "Use search_rows or /api/search when the relevant dataset is unknown or "
+            "multiple datasets matter.",
+            "Use search_dataset_rows for ranked hybrid search within one known dataset.",
             "Ask the user before deleting rows unless the user explicitly requested deletion.",
         ),
     ),

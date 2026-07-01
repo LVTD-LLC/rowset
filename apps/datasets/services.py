@@ -66,6 +66,15 @@ class DatasetImageError(ValueError):
 
 
 @dataclass(frozen=True)
+class _DatasetRowsQueryContext:
+    dataset_id: int
+    headers: list[str]
+    column_map: dict[str, dict[str, Any]]
+    filters: dict[str, str]
+    filter_operators: dict[str, str]
+
+
+@dataclass(frozen=True)
 class VectorBackfillError:
     row_id: int
     message: str
@@ -1115,6 +1124,22 @@ def _choice_cell_value(value) -> str:
     return str(value)
 
 
+def _choice_value_match_key(value: str) -> str:
+    normalized = re.sub(r"[\s_-]+", " ", value.strip()).strip()
+    return normalized.casefold()
+
+
+def _canonical_choice_value(value: str, choices: list[str]) -> str | None:
+    if value in choices:
+        return value
+
+    match_key = _choice_value_match_key(value)
+    matches = [choice for choice in choices if _choice_value_match_key(choice) == match_key]
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
 def choice_constraints_from_schema(
     headers: list[str],
     column_schema: dict | None,
@@ -1135,7 +1160,7 @@ def choice_constraints_from_schema(
     return constraints
 
 
-def validate_choice_row_values(
+def validate_and_canonicalize_choice_row_values(
     headers: list[str],
     column_schema: dict | None,
     row_data: dict,
@@ -1143,6 +1168,7 @@ def validate_choice_row_values(
     columns: list[str] | set[str] | None = None,
     choice_constraints: dict[str, list[str]] | None = None,
 ) -> None:
+    """Validate choice values and mutate row_data to store canonical schema labels."""
     constraints = choice_constraints
     if constraints is None:
         constraints = choice_constraints_from_schema(headers, column_schema)
@@ -1153,9 +1179,29 @@ def validate_choice_row_values(
         value = _choice_cell_value(row_data.get(header, ""))
         if value == "":
             continue
-        if value not in choices:
+        canonical_value = _canonical_choice_value(value, choices)
+        if canonical_value is None:
             allowed = ", ".join(choices)
             raise CSVParseError(f"Column '{header}' must be blank or one of: {allowed}.")
+        row_data[header] = canonical_value
+
+
+def validate_choice_row_values(
+    headers: list[str],
+    column_schema: dict | None,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    choice_constraints: dict[str, list[str]] | None = None,
+) -> None:
+    """Backward-compatible alias for choice validation with canonicalization."""
+    validate_and_canonicalize_choice_row_values(
+        headers,
+        column_schema,
+        row_data,
+        columns=columns,
+        choice_constraints=choice_constraints,
+    )
 
 
 def invalid_choice_values_by_column(
@@ -1171,7 +1217,7 @@ def invalid_choice_values_by_column(
     for row_data in rows:
         for header, choices in choice_columns.items():
             value = _choice_cell_value((row_data or {}).get(header, ""))
-            if value and value not in choices:
+            if value and _canonical_choice_value(value, choices) is None:
                 invalid_values[header].add(value)
 
     return {header: values for header, values in invalid_values.items() if values}
@@ -1542,6 +1588,201 @@ def apply_dataset_row_query(
             or sort_direction == ROW_SORT_DESC
         ),
     }
+
+
+def _dataset_rows_query_contexts(
+    datasets,
+    *,
+    filters: dict | None,
+    filter_operators: dict | None,
+    strict: bool,
+    skip_invalid_filter_operators: bool,
+) -> list[_DatasetRowsQueryContext]:
+    contexts = []
+    for dataset in datasets:
+        normalized_filters = normalize_dataset_row_filters(
+            dataset.headers,
+            filters,
+            strict=strict,
+        )
+        try:
+            normalized_filter_operators = normalize_dataset_row_filter_operators(
+                dataset.headers,
+                dataset.column_schema,
+                normalized_filters,
+                filter_operators,
+                strict=strict,
+            )
+        except DatasetRowQueryError:
+            if skip_invalid_filter_operators:
+                continue
+            raise
+        contexts.append(
+            _DatasetRowsQueryContext(
+                dataset_id=dataset.id,
+                headers=dataset.headers,
+                column_map={
+                    column["name"]: column
+                    for column in column_definitions(dataset.headers, dataset.column_schema)
+                },
+                filters=normalized_filters,
+                filter_operators=normalized_filter_operators,
+            )
+        )
+    return contexts
+
+
+def _apply_dataset_rows_search(queryset, contexts: list[_DatasetRowsQueryContext], query: str):
+    search_query = str(query or "").strip()
+    if not search_query:
+        return queryset
+
+    annotations = {}
+    search_filter = Q()
+    alias_by_header: dict[str, str] = {}
+    for context in contexts:
+        for header in context.headers[:ROW_SEARCH_COLUMN_LIMIT]:
+            alias = alias_by_header.get(header)
+            if alias is None:
+                alias = f"rowset_multi_search_{len(alias_by_header)}"
+                alias_by_header[header] = alias
+                annotations[alias] = KeyTextTransform(header, "data")
+            search_filter |= Q(dataset_id=context.dataset_id) & Q(
+                **{f"{alias}__icontains": search_query}
+            )
+
+    if not search_filter:
+        return queryset.none()
+    return queryset.annotate(**annotations).filter(search_filter)
+
+
+def _dataset_rows_filter_condition(
+    context: _DatasetRowsQueryContext,
+    *,
+    header: str,
+    alias: str,
+    number_alias: str,
+    datetime_alias: str,
+) -> Q | None:
+    value = context.filters.get(header, "")
+    if not value:
+        return None
+
+    column = context.column_map[header]
+    column_type = column["type"]
+    operator = context.filter_operators.get(header)
+    dataset_scope = Q(dataset_id=context.dataset_id)
+    if column_type == DatasetColumnType.BOOLEAN:
+        boolean_query = _boolean_filter_query(alias, value)
+        if boolean_query is None:
+            return None
+        return dataset_scope & boolean_query
+    if column_type == DatasetColumnType.CHOICE:
+        return dataset_scope & Q(**{f"{alias}__iexact": value})
+    if column_type in ROW_NUMERIC_SORT_TYPES and operator in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}:
+        filter_value = _normalize_numeric_filter_value(value)
+        if filter_value is None:
+            return None
+        lookup = "gt" if operator == ROW_FILTER_ABOVE else "lt"
+        return dataset_scope & Q(**{f"{number_alias}__{lookup}": filter_value})
+    if column_type in ROW_DATETIME_SORT_TYPES and operator in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}:
+        filter_value = _normalize_datetime_filter_value(value)
+        if filter_value is None:
+            return None
+        lookup = "gt" if operator == ROW_FILTER_ABOVE else "lt"
+        return dataset_scope & Q(**{f"{datetime_alias}__{lookup}": filter_value})
+    return dataset_scope & Q(**{f"{alias}__icontains": value})
+
+
+def _apply_dataset_rows_field_filters(queryset, contexts: list[_DatasetRowsQueryContext]):
+    filter_headers: list[str] = []
+    for context in contexts:
+        for header in context.filters:
+            if header not in filter_headers:
+                filter_headers.append(header)
+
+    for index, header in enumerate(filter_headers):
+        alias = f"rowset_multi_filter_{index}"
+        number_alias = f"{alias}_number"
+        datetime_alias = f"{alias}_datetime"
+        queryset = queryset.annotate(**{alias: KeyTextTransform(header, "data")})
+
+        uses_numeric_filter = any(
+            context.column_map[header]["type"] in ROW_NUMERIC_SORT_TYPES
+            and context.filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
+            for context in contexts
+            if header in context.filters
+        )
+        uses_datetime_filter = any(
+            context.column_map[header]["type"] in ROW_DATETIME_SORT_TYPES
+            and context.filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
+            for context in contexts
+            if header in context.filters
+        )
+        if uses_numeric_filter:
+            numeric_text_alias = f"{alias}_numeric_text"
+            queryset = queryset.annotate(
+                **{
+                    numeric_text_alias: _normalized_numeric_text_expression(alias),
+                    number_alias: Case(
+                        When(
+                            **{
+                                f"{numeric_text_alias}__regex": ROW_NUMERIC_SORT_PATTERN,
+                                "then": Cast(numeric_text_alias, FloatField()),
+                            }
+                        ),
+                        default=Value(None),
+                        output_field=FloatField(),
+                    ),
+                }
+            )
+        if uses_datetime_filter:
+            queryset = queryset.annotate(**{datetime_alias: _datetime_expression(alias)})
+
+        filter_query = Q()
+        for context in contexts:
+            condition = _dataset_rows_filter_condition(
+                context,
+                header=header,
+                alias=alias,
+                number_alias=number_alias,
+                datetime_alias=datetime_alias,
+            )
+            if condition is not None:
+                filter_query |= condition
+        if not filter_query:
+            return queryset.none()
+        queryset = queryset.filter(filter_query)
+    return queryset
+
+
+def apply_dataset_rows_query(
+    queryset,
+    datasets,
+    *,
+    query: str | None = None,
+    filters: dict | None = None,
+    filter_operators: dict | None = None,
+    strict: bool = False,
+    skip_invalid_filter_operators: bool = False,
+):
+    dataset_list = list(datasets)
+    if not dataset_list:
+        return queryset.none()
+
+    contexts = _dataset_rows_query_contexts(
+        dataset_list,
+        filters=filters,
+        filter_operators=filter_operators,
+        strict=strict,
+        skip_invalid_filter_operators=skip_invalid_filter_operators,
+    )
+    if not contexts:
+        return queryset.none()
+    queryset = queryset.filter(dataset_id__in=[context.dataset_id for context in contexts])
+    queryset = _apply_dataset_rows_search(queryset, contexts, str(query or "").strip())
+    queryset = _apply_dataset_rows_field_filters(queryset, contexts)
+    return queryset.order_by("dataset_id", "row_number", "id")
 
 
 def apply_dataset_row_sort(queryset, dataset, selected_sort: str, sort_direction: str):
