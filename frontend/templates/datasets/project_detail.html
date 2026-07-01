@@ -9,7 +9,7 @@
     data-name="{{ project.name }}"
     data-description="{{ project.description }}"
   >
-    <a href="{% url 'home' %}#projects-overview" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All projects</a>
+    <a href="{% url 'home' %}#datasets-workspace" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All datasets</a>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div {% if project_edit_mode %}x-cloak{% endif %} x-show="!editing" class="min-w-0 flex-1 space-y-3">

@@ -127,7 +127,7 @@
       <div class="max-w-3xl">
         <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Home</p>
         <h1 id="dashboard-heading" class="fb-page-title mt-2">
-          Projects and datasets
+          Datasets by project
         </h1>
         <p class="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300">
           Every active dataset your agents have created, organized by project and section.
@@ -165,77 +165,13 @@
     </dl>
   </section>
 
-  <section id="projects-overview" class="mt-12" aria-labelledby="projects-overview-heading">
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h2 id="projects-overview-heading" class="fb-section-title">Projects</h2>
-        <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ ungrouped_dataset_count }} dataset{{ ungrouped_dataset_count|pluralize }} without a project.</p>
-      </div>
-    </div>
-
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-        {% if projects %}
-          <ul class="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950" aria-label="Projects">
-            {% for project in projects %}
-              <li>
-                <div class="flex flex-col gap-3 p-4 transition hover:bg-slate-50 dark:hover:bg-slate-900 sm:flex-row sm:items-start sm:justify-between">
-                  <a href="{{ project.get_absolute_url }}" class="fb-focus min-w-0 flex-1 rounded-md">
-                    <div class="min-w-0">
-                      <h3 class="break-words font-semibold text-slate-950 dark:text-slate-100">{{ project.name }}</h3>
-                      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ project.dataset_count }} dataset{{ project.dataset_count|pluralize }} · {{ project.section_count }} section{{ project.section_count|pluralize }}</p>
-                      {% if project.description %}
-                        <p class="mt-2 break-words text-sm leading-6 text-slate-600 dark:text-slate-300">{{ project.description }}</p>
-                      {% endif %}
-                    </div>
-                  </a>
-                  <form method="post" action="{% url 'project_delete' project.key %}" onsubmit="return confirm('Delete project {{ project.name|escapejs }}? Assigned datasets will stay in Rowset and become ungrouped. This cannot be undone.');" class="shrink-0">
-                    {% csrf_token %}
-                    <button type="submit" class="fb-button-danger min-h-8 px-2 py-1 text-xs">Delete</button>
-                  </form>
-                </div>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <div class="bg-white p-6 dark:bg-slate-950">
-            <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">No projects yet.</p>
-          </div>
-        {% endif %}
-      </div>
-
-      <div id="project-create" class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
-        <form method="post" action="{% url 'project_create' %}" class="space-y-4">
-          {% csrf_token %}
-          <div>
-            <h3 class="fb-section-title">New project</h3>
-          </div>
-          <div>
-            <label for="project_name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
-            <input id="project_name" name="name" type="text" maxlength="255" required class="fb-input mt-2 block w-full px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label for="project_description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
-            <textarea id="project_description" name="description" rows="4" class="fb-input mt-2 block w-full px-3 py-2 text-sm"></textarea>
-          </div>
-          <div>
-            <label for="project_metadata" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
-            <textarea id="project_metadata" name="metadata" rows="6" spellcheck="false" class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6" placeholder='{"github_repo":"https://github.com/acme/app"}'></textarea>
-          </div>
-          <button type="submit" class="fb-button-primary w-full">Create project</button>
-        </form>
-      </div>
-    </div>
-  </section>
-
   <section id="datasets-workspace" class="mt-12" aria-labelledby="datasets-workspace-heading">
     <div class="mb-4">
-      <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">{{ dataset_list_eyebrow }}</p>
-      <h2 id="datasets-workspace-heading" class="fb-section-title mt-2">{{ dataset_list_title }}</h2>
+      <h2 id="datasets-workspace-heading" class="fb-section-title">{{ dataset_list_title }}</h2>
       <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">{{ dataset_list_description }}</p>
     </div>
 
-    <form method="get" class="mb-6 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 md:grid-cols-[minmax(0,1fr)_14rem] lg:grid-cols-[minmax(0,1fr)_14rem_minmax(20rem,22rem)_auto_auto]" role="search">
+    <form method="get" class="mb-6 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 md:grid-cols-[minmax(0,1fr)_14rem] lg:grid-cols-[minmax(0,1fr)_14rem_auto_auto]" role="search">
       <div>
         <label for="dataset-search" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">{{ dataset_search_label }}</label>
         <input id="dataset-search" name="q" type="search" value="{{ search_query }}" placeholder="{{ dataset_search_placeholder }}" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
@@ -248,17 +184,6 @@
           {% endfor %}
         </select>
       </div>
-      <fieldset aria-label="Dataset view mode" class="min-w-0">
-        <legend class="block text-sm font-semibold text-slate-900 dark:text-slate-100">View</legend>
-        <div class="fb-segmented-control mt-2">
-          {% for value, label in view_mode_options %}
-            <label class="fb-segmented-option">
-              <input type="radio" name="view" value="{{ value }}" class="fb-segmented-option-input sr-only" {% if selected_view_mode == value %}checked{% endif %}>
-              <span class="fb-segmented-option-label">{{ label }}</span>
-            </label>
-          {% endfor %}
-        </div>
-      </fieldset>
       <div class="flex items-end">
         <button type="submit" class="fb-button-primary w-full">Apply</button>
       </div>
@@ -270,70 +195,58 @@
     </form>
 
     {% if datasets %}
-      <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-        {% if selected_view_mode == "grouped" %}
-          <div class="divide-y divide-slate-200 dark:divide-slate-800">
-            {% for group in dataset_groups %}
-              <section aria-labelledby="dataset-group-{{ forloop.counter }}-heading">
-                <div class="flex flex-col gap-3 bg-slate-50 p-4 dark:bg-slate-900 sm:flex-row sm:items-start sm:justify-between">
-                  <div class="min-w-0">
-                    <h3 id="dataset-group-{{ forloop.counter }}-heading" class="break-words text-base font-semibold text-slate-950 dark:text-slate-100">
-                      {% if group.project %}
-                        <a href="{{ group.project.get_absolute_url }}" class="fb-focus rounded-md text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ group.label }}</a>
-                      {% else %}
-                        {{ group.label }}
-                      {% endif %}
-                    </h3>
-                    {% if group.description %}
-                      <p class="mt-1 max-w-3xl break-words text-sm leading-6 text-slate-600 dark:text-slate-300">{{ group.description }}</p>
-                    {% elif not group.project %}
-                      <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Datasets that are not assigned to a project.</p>
+      <div class="space-y-5">
+        {% for group in dataset_groups %}
+          <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950" aria-labelledby="dataset-group-{{ forloop.counter }}-heading">
+            <div class="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                  <h3 id="dataset-group-{{ forloop.counter }}-heading" class="break-words text-base font-semibold text-slate-950 dark:text-slate-100">
+                    {% if group.project %}
+                      <a href="{{ group.project.get_absolute_url }}" class="fb-focus rounded-md text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ group.label }}</a>
+                    {% else %}
+                      {{ group.label }}
                     {% endif %}
-                  </div>
-                  <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">{{ group.dataset_count }} dataset{{ group.dataset_count|pluralize }} · {{ group.row_count }} row{{ group.row_count|pluralize }}</p>
+                  </h3>
+                  {% if group.description %}
+                    <p class="mt-1 max-w-3xl break-words text-sm leading-6 text-slate-600 dark:text-slate-300">{{ group.description }}</p>
+                  {% elif not group.project %}
+                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Datasets that are not assigned to a project.</p>
+                  {% endif %}
                 </div>
+                <div class="text-sm text-slate-600 dark:text-slate-300 sm:text-right">
+                  <p class="font-semibold text-slate-800 dark:text-slate-200">{{ group.dataset_count }} dataset{{ group.dataset_count|pluralize }} · {{ group.row_count }} row{{ group.row_count|pluralize }}</p>
+                  {% if group.project %}
+                    <p class="mt-1">{{ group.section_groups|length }} section{{ group.section_groups|length|pluralize }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
 
-                {% if group.project %}
-                  <div class="divide-y divide-slate-200 dark:divide-slate-800">
-                    {% for section_group in group.section_groups %}
-                      <div>
-                        <div class="bg-white px-5 py-3 dark:bg-slate-950">
-                          <h4 class="text-sm font-semibold text-slate-950 dark:text-slate-100">{{ section_group.label }}</h4>
-                          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ section_group.dataset_count }} dataset{{ section_group.dataset_count|pluralize }}</p>
-                        </div>
-                        {% if section_group.datasets %}
-                          {% include "datasets/partials/grouped_dataset_table.html" with grouped_datasets=section_group.datasets grouped_table_caption=section_group.label %}
-                        {% endif %}
-                      </div>
-                    {% endfor %}
-                  </div>
-                {% else %}
-                  {% include "datasets/partials/grouped_dataset_table.html" with grouped_datasets=group.datasets grouped_table_caption=group.label %}
-                {% endif %}
-              </section>
-            {% endfor %}
-          </div>
-        {% else %}
-          <table class="fb-table">
-            <caption class="sr-only">{{ dataset_table_caption }}</caption>
-            <thead class="bg-slate-50 dark:bg-slate-900">
-              <tr>
-                <th scope="col">Dataset</th>
-                <th scope="col">Project</th>
-                <th scope="col">Rows</th>
-                <th scope="col">Columns</th>
-                <th scope="col">{{ dataset_table_date_heading }}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
-              {% for dataset in datasets %}
-                {% include "datasets/partials/dataset_table_row.html" with dataset=dataset dataset_row_is_grouped=False %}
-              {% endfor %}
-            </tbody>
-          </table>
-        {% endif %}
+            {% if group.project %}
+              <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                {% for section_group in group.section_groups %}
+                  <section aria-labelledby="dataset-group-{{ forloop.parentloop.counter }}-section-{{ forloop.counter }}-heading">
+                    <div class="grid gap-1 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline">
+                      <h4 id="dataset-group-{{ forloop.parentloop.counter }}-section-{{ forloop.counter }}-heading" class="break-words text-sm font-semibold text-slate-950 dark:text-slate-100">{{ section_group.label }}</h4>
+                      <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">{{ section_group.dataset_count }} dataset{{ section_group.dataset_count|pluralize }}</p>
+                    </div>
+                    {% if section_group.datasets %}
+                      {% include "datasets/partials/grouped_dataset_table.html" with grouped_datasets=section_group.datasets grouped_table_caption=section_group.label %}
+                    {% else %}
+                      <p class="border-t border-slate-100 px-5 py-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">No datasets from this section on this page.</p>
+                    {% endif %}
+                  </section>
+                {% endfor %}
+              </div>
+            {% else %}
+              {% include "datasets/partials/grouped_dataset_table.html" with grouped_datasets=group.datasets grouped_table_caption=group.label %}
+            {% endif %}
+          </section>
+        {% endfor %}
+
         {% if page_obj.has_other_pages %}
-          <nav class="flex flex-col gap-3 border-t border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between" aria-label="Dataset pagination">
+          <nav class="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between" aria-label="Dataset pagination">
             <p class="text-slate-600 dark:text-slate-300">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>
             <div class="flex flex-wrap gap-2">
               {% if page_obj.has_previous %}

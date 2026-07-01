@@ -202,7 +202,7 @@ class TestHomeView:
         assert "Copy/paste prompt" not in content
         assert "Copy agent prompt" not in content
         assert "Rowset API key: ***" not in content
-        assert "Projects and datasets" in content
+        assert "Datasets by project" in content
 
     def test_home_view_hides_agent_setup_prompt_after_dataset_exists(self, auth_client, profile):
         Dataset.objects.create(
@@ -279,7 +279,7 @@ class TestHomeView:
         assert "agent_setup_prompt" not in response.context
         assert response.context["active_agent_api_key"] is None
         assert "Connect your AI agent to Rowset" in content
-        assert "Projects and datasets" in content
+        assert "Datasets by project" in content
         assert "Workspace summary" in content
         assert user.__class__.objects.get(pk=user.pk).profile
 

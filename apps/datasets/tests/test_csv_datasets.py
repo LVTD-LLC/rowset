@@ -886,7 +886,7 @@ def test_dataset_list_supports_created_sort(auth_client, profile):
     ]
 
 
-def test_dataset_list_raw_project_sort_puts_unassigned_datasets_last(auth_client, profile):
+def test_home_project_sort_puts_unassigned_dataset_group_last(auth_client, profile):
     project = Project.objects.create(profile=profile, name="Research")
     Dataset.objects.create(
         profile=profile,
@@ -909,7 +909,11 @@ def test_dataset_list_raw_project_sort_puts_unassigned_datasets_last(auth_client
     response = auth_client.get(reverse("home"), {"sort": "project", "view": "raw"})
 
     assert response.status_code == 200
-    assert response.context["selected_view_mode"] == "raw"
+    assert response.context["selected_view_mode"] == "grouped"
+    assert [group["label"] for group in response.context["dataset_groups"]] == [
+        "Research",
+        "No project",
+    ]
     assert [dataset.name for dataset in response.context["datasets"]] == [
         "Zulu project dataset",
         "Alpha loose dataset",
@@ -967,8 +971,8 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
     assert [dataset.name for dataset in groups[1]["datasets"]] == ["People", notes.name]
     assert groups[1]["dataset_count"] == 2
     assert groups[1]["row_count"] == 11
-    assert "Grouped by project" in content
-    assert "border-l-2 border-emerald-200" in content
+    assert "Datasets by project" in content
+    assert "border-l-2 border-emerald-200" not in content
     assert "Datasets for customer interviews." in content
     assert "2 datasets · 11 rows" in content
     assert "No project" in content
@@ -2734,18 +2738,20 @@ def test_project_detail_shows_delete_project_action(auth_client, profile):
     ) in content
 
 
-def test_home_project_overview_shows_delete_project_action(auth_client, profile):
+def test_home_omits_standalone_project_management(auth_client, profile):
     project = Project.objects.create(profile=profile, name="Frontier")
+    dataset = create_ready_dataset(profile)
+    dataset.project = project
+    dataset.save(update_fields=["project"])
 
     response = auth_client.get(reverse("home"))
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert reverse("project_delete", args=[project.key]) in content
-    assert (
-        "return confirm('Delete project Frontier? Assigned datasets will stay in Rowset "
-        "and become ungrouped. This cannot be undone.');"
-    ) in content
+    assert "Frontier" in content
+    assert "projects-overview" not in content
+    assert "New project" not in content
+    assert reverse("project_delete", args=[project.key]) not in content
 
 
 def test_project_delete_removes_owned_project_and_detaches_datasets(auth_client, profile):
