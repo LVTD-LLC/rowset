@@ -4432,15 +4432,15 @@ def test_row_update_mutation_omits_noop_fields(client, profile):
     }
 
 
-def test_row_update_service_null_patch_keeps_existing_stringification(profile):
+def test_row_update_service_null_patch_clears_cell(profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.get(row_number=1)
 
     result = patch_profile_dataset_row(profile, str(dataset.key), row.id, {"name": None})
 
-    assert result["row"]["data"]["name"] == "None"
+    assert result["row"]["data"]["name"] == ""
     row.refresh_from_db()
-    assert row.data["name"] == "None"
+    assert row.data["name"] == ""
 
     mutation = dataset.mutations.get(mutation_type=DatasetMutationType.ROW_UPDATED)
     assert mutation.metadata == {
@@ -4451,7 +4451,7 @@ def test_row_update_service_null_patch_keeps_existing_stringification(profile):
             {
                 "field": "name",
                 "before": "Ada",
-                "after": "None",
+                "after": "",
             }
         ],
         "value_changes_recorded": True,
