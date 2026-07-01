@@ -116,6 +116,20 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert reverse("use_cases") in content
 
 
+def test_landing_page_redirects_authenticated_users_to_home(client):
+    user = get_user_model().objects.create_user(
+        username="landing-auth",
+        email="landing-auth@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("home")
+
+
 def test_use_cases_index_lists_public_use_case_pages(client):
     response = client.get(reverse("use_cases"))
 

@@ -2,11 +2,13 @@ from types import SimpleNamespace
 
 import pytest
 from allauth.account.models import EmailAddress
+from django.db import IntegrityError, transaction
 from django.test import override_settings
 from django.urls import reverse
 
 from apps.core import agent_skill
-from apps.core.services import create_agent_api_key
+from apps.core.models import Profile
+from apps.core.services import create_agent_api_key, get_or_create_profile_for_user
 from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_customer
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project
@@ -200,7 +202,7 @@ class TestHomeView:
         assert "Copy/paste prompt" not in content
         assert "Copy agent prompt" not in content
         assert "Rowset API key: ***" not in content
-        assert "Rowset control surface" in content
+        assert "Projects and datasets" in content
 
     def test_home_view_hides_agent_setup_prompt_after_dataset_exists(self, auth_client, profile):
         Dataset.objects.create(
@@ -222,6 +224,7 @@ class TestHomeView:
             "total_rows": 0,
             "public_preview_count": 0,
         }
+        assert response.context["selected_view_mode"] == "grouped"
         assert "Copy/paste prompt" not in content
         assert "Copy agent prompt" not in content
         assert "MCP endpoint" not in content
@@ -271,10 +274,41 @@ class TestHomeView:
         response = auth_client.get(reverse("home"))
 
         assert response.status_code == 200
+        content = response.content.decode()
         assert "agent_setup_prompt_masked" not in response.context
         assert "agent_setup_prompt" not in response.context
         assert response.context["active_agent_api_key"] is None
+        assert "Connect your AI agent to Rowset" in content
+        assert "Projects and datasets" in content
+        assert "Workspace summary" in content
         assert user.__class__.objects.get(pk=user.pk).profile
+
+    def test_get_or_create_profile_for_user_recovers_from_create_race(
+        self,
+        user,
+        profile,
+        monkeypatch,
+    ):
+        def raise_integrity_error(*args, **kwargs):
+            raise IntegrityError("duplicate profile")
+
+        monkeypatch.setattr(Profile.objects, "get_or_create", raise_integrity_error)
+
+        assert get_or_create_profile_for_user(user) == profile
+
+    def test_get_or_create_profile_for_user_recovers_inside_transaction(
+        self,
+        user,
+        profile,
+        monkeypatch,
+    ):
+        def raise_integrity_error(*args, **kwargs):
+            raise IntegrityError("duplicate profile")
+
+        monkeypatch.setattr(Profile.objects, "get_or_create", raise_integrity_error)
+
+        with transaction.atomic():
+            assert get_or_create_profile_for_user(user) == profile
 
     def test_home_create_agent_api_key_redirects_back_to_onboarding(self, auth_client):
         response = auth_client.post(

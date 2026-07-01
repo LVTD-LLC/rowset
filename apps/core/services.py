@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.core.analytics import (
@@ -14,10 +15,12 @@ from apps.core.analytics import (
 )
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey, Profile
+from rowset.utils import get_rowset_logger
 
 AGENT_API_KEY_PREFIX = "rsk_"
 AGENT_API_KEY_VISIBLE_PREFIX_LENGTH = 12
 AGENT_API_KEY_LAST_USED_UPDATE_INTERVAL = timedelta(minutes=5)
+logger = get_rowset_logger(__name__)
 AGENT_API_KEY_ACCESS_LEVEL_ORDER = {
     AgentApiKeyAccessLevel.READ: 0,
     AgentApiKeyAccessLevel.READ_WRITE: 1,
@@ -30,6 +33,22 @@ LEGACY_PROFILE_KEY_ACCESS_LEVEL = AgentApiKeyAccessLevel.READ
 class AgentApiKeyCredential:
     agent_api_key: AgentApiKey
     raw_key: str
+
+
+def get_or_create_profile_for_user(user) -> Profile:
+    try:
+        with transaction.atomic():
+            profile, _created = Profile.objects.get_or_create(user=user)
+    except IntegrityError:
+        logger.warning(
+            "Recovering existing profile after concurrent profile creation",
+            user_id=user.id,
+            exc_info=True,
+        )
+        profile = Profile.objects.filter(user=user).first()
+        if profile is None:
+            raise
+    return profile
 
 
 def normalize_agent_api_key_name(name: str) -> str:

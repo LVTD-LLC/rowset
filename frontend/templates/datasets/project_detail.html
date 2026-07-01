@@ -9,7 +9,7 @@
     data-name="{{ project.name }}"
     data-description="{{ project.description }}"
   >
-    <a href="{% url 'project_list' %}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All projects</a>
+    <a href="{% url 'home' %}#projects-overview" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All projects</a>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div {% if project_edit_mode %}x-cloak{% endif %} x-show="!editing" class="min-w-0 flex-1 space-y-3">
@@ -40,7 +40,7 @@
         </div>
       </form>
       <div class="flex flex-wrap gap-2 sm:justify-end">
-        <a href="{% url 'dataset_list' %}" class="fb-button-secondary">View all datasets</a>
+        <a href="{% url 'home' %}#datasets-workspace" class="fb-button-secondary">View all datasets</a>
         <a href="?edit=1" x-ref="editButton" {% if project_edit_mode %}x-cloak{% endif %} x-show="!editing" @click="edit($event)" class="fb-button-secondary">Edit</a>
       </div>
     </div>
@@ -60,7 +60,7 @@
 
         <div class="flex flex-col gap-3 sm:flex-row">
           <button type="submit" class="fb-button-primary">Save metadata</button>
-          <a href="{% url 'project_list' %}" class="fb-button-secondary">Cancel</a>
+          <a href="{{ project.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
         </div>
       </form>
     </section>
@@ -183,7 +183,7 @@
       {% else %}
         <div class="bg-white p-6 dark:bg-slate-950">
           <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">No datasets are assigned to this project yet.</p>
-          <a href="{% url 'dataset_list' %}" class="fb-button-secondary mt-4">View datasets</a>
+          <a href="{% url 'home' %}#datasets-workspace" class="fb-button-secondary mt-4">View datasets</a>
         </div>
       {% endif %}
     </section>

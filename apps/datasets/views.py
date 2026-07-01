@@ -107,7 +107,7 @@ ARCHIVED_DATASET_SORT_ORDERING = {
 DATASET_LIST_PAGE_SIZE = 100
 DATASET_VIEW_MODE_OPTIONS = (
     ("raw", "Raw rows"),
-    ("grouped", "Grouped by project"),
+    ("grouped", "Grouped by project/section"),
 )
 DATASET_VIEW_MODE_GROUPED = "grouped"
 DATASET_VIEW_MODE_RAW = "raw"
@@ -130,6 +130,16 @@ DATASET_EXPORT_FORMATS = {
 }
 ROWSET_CANONICAL_HOST = "rowset.lvtd.dev"
 ROWSET_LINK_SCHEMES = {"http", "https"}
+
+
+@login_required
+def dataset_list_redirect(request):
+    return redirect("home")
+
+
+@login_required
+def project_list_redirect(request):
+    return redirect("home")
 
 
 def _host_without_port(host: str) -> str:
@@ -1246,6 +1256,9 @@ class DatasetListView(LoginRequiredMixin, ListView):
         "Adjust the search or sort controls to return to the full dataset list."
     )
 
+    def get_profile(self):
+        return self.request.user.profile
+
     def get_search_query(self) -> str:
         return self.request.GET.get("q", "").strip()
 
@@ -1267,7 +1280,12 @@ class DatasetListView(LoginRequiredMixin, ListView):
         dataset_ordering = self.sort_ordering[selected_sort]
         if selected_sort == "project":
             dataset_ordering = self.sort_ordering["name"]
-        return (*PROJECT_GROUP_ORDERING, *dataset_ordering)
+        return (
+            *PROJECT_GROUP_ORDERING,
+            F("section__name").asc(nulls_last=True),
+            "section_id",
+            *dataset_ordering,
+        )
 
     def get_dataset_date_heading(self) -> str:
         if self.get_selected_sort() == "created":
@@ -1277,11 +1295,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
     def get_base_queryset(self):
         if not hasattr(self, "_base_queryset"):
             self._base_queryset = (
-                self.request.user.profile.datasets.select_related(
-                    "project",
-                    "created_by_agent_api_key",
-                    "updated_by_agent_api_key",
-                )
+                _owned_dataset_queryset(self.get_profile())
                 .filter(archived_at__isnull=self.archived_at_isnull)
                 .exclude(status=DatasetStatus.PREVIEWED)
             )
@@ -1295,6 +1309,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
                 Q(name__icontains=search_query)
                 | Q(original_filename__icontains=search_query)
                 | Q(project__name__icontains=search_query)
+                | Q(section__name__icontains=search_query)
             )
 
         if self.get_selected_view_mode() == DATASET_VIEW_MODE_GROUPED:
@@ -1303,7 +1318,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
         return queryset.order_by(*self.sort_ordering[self.get_selected_sort()])
 
     def get_total_projects(self, base_queryset):
-        return self.request.user.profile.projects.filter(archived_at__isnull=True).count()
+        return self.get_profile().projects.filter(archived_at__isnull=True).count()
 
     def get_dataset_group_totals(self, groups_by_key):
         if not groups_by_key:
@@ -1325,6 +1340,47 @@ class DatasetListView(LoginRequiredMixin, ListView):
             .values("project_id")
             .annotate(dataset_count=Count("id"), row_count=Sum("row_count"))
         }
+
+    def get_project_section_groups_context(self, project_ids):
+        if not project_ids:
+            return {}, {}
+
+        sections_by_project_id = {}
+        active_section_ids_by_project_id = {}
+        sections = list(
+            ProjectSection.objects.filter(
+                profile=self.get_profile(),
+                project_id__in=project_ids,
+                archived_at__isnull=True,
+                project__archived_at__isnull=True,
+            ).order_by("project__name", "project_id", "name", "id")
+        )
+        for section in sections:
+            sections_by_project_id.setdefault(section.project_id, []).append(section)
+            active_section_ids_by_project_id.setdefault(section.project_id, set()).add(section.id)
+
+        section_dataset_counts = {}
+        unsectioned_counts_by_project_id = {}
+        for item in (
+            self.object_list.filter(project_id__in=project_ids)
+            .order_by()
+            .values("project_id", "section_id")
+            .annotate(dataset_count=Count("id"))
+        ):
+            project_id = item["project_id"]
+            section_id = item["section_id"]
+            dataset_count = item["dataset_count"] or 0
+            if section_id in active_section_ids_by_project_id.get(project_id, set()):
+                section_dataset_counts[(project_id, section_id)] = dataset_count
+            else:
+                unsectioned_counts_by_project_id[project_id] = (
+                    unsectioned_counts_by_project_id.get(project_id, 0) + dataset_count
+                )
+
+        for section in sections:
+            section.dataset_count = section_dataset_counts.get((section.project_id, section.id), 0)
+
+        return sections_by_project_id, unsectioned_counts_by_project_id
 
     def get_dataset_groups(self, datasets):
         groups_by_key = {}
@@ -1351,6 +1407,20 @@ class DatasetListView(LoginRequiredMixin, ListView):
             if totals:
                 group["dataset_count"] = totals["dataset_count"] or 0
                 group["row_count"] = totals["row_count"] or 0
+        project_ids = [group_key for group_key, group in groups_by_key.items() if group["project"]]
+        sections_by_project_id, unsectioned_counts_by_project_id = (
+            self.get_project_section_groups_context(project_ids)
+        )
+        for group_key, group in groups_by_key.items():
+            project = group["project"]
+            if project is None:
+                group["section_groups"] = []
+                continue
+            group["section_groups"] = project_section_dataset_groups(
+                sections_by_project_id.get(group_key, []),
+                group["datasets"],
+                unsectioned_dataset_count=unsectioned_counts_by_project_id.get(group_key, 0),
+            )
         return list(groups_by_key.values())
 
     def get_context_data(self, **kwargs):
@@ -1452,28 +1522,6 @@ class ArchivedDatasetListView(DatasetListView):
             .distinct()
             .count()
         )
-
-
-class ProjectListView(LoginRequiredMixin, ListView):
-    template_name = "datasets/project_list.html"
-    context_object_name = "projects"
-
-    def get_queryset(self):
-        return self.request.user.profile.projects.filter(archived_at__isnull=True).annotate(
-            dataset_count=_visible_project_dataset_count(),
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["ungrouped_dataset_count"] = (
-            self.request.user.profile.datasets.filter(
-                project__isnull=True,
-                archived_at__isnull=True,
-            )
-            .exclude(status=DatasetStatus.PREVIEWED)
-            .count()
-        )
-        return context
 
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):
@@ -1956,7 +2004,7 @@ def project_create(request):
             metadata = json.loads(raw_metadata)
         except json.JSONDecodeError:
             messages.error(request, "Project metadata must be valid JSON.")
-            return redirect("project_list")
+            return redirect("home")
     else:
         metadata = {}
 
@@ -1969,7 +2017,7 @@ def project_create(request):
         )
     except DatasetServiceError as exc:
         messages.error(request, exc.message)
-        return redirect("project_list")
+        return redirect("home")
 
     messages.success(request, "Project created.")
     return redirect("project_detail", project_key=result["project"]["key"])
@@ -2098,7 +2146,7 @@ def project_delete(request, project_key):
     project_name = project.name
     project.delete()
     messages.success(request, f"Deleted {project_name}. Assigned datasets are now ungrouped.")
-    return redirect("project_list")
+    return redirect("home")
 
 
 @login_required
@@ -2291,7 +2339,7 @@ def dataset_archive(request, dataset_key):
         messages.info(request, result["message"])
     else:
         messages.success(request, result["message"])
-    return redirect("dataset_list")
+    return redirect("home")
 
 
 @login_required
@@ -2309,7 +2357,7 @@ def dataset_delete(request, dataset_key):
     next_url = request.POST.get("next")
     if next_url in {"home", "settings"}:
         return redirect("home")
-    return redirect("dataset_list")
+    return redirect("home")
 
 
 @login_required
