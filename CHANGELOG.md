@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- Added shared Rowset dataset test factories, split public-preview tests out of the large dataset test module, and added REST/MCP parity characterization tests for shared dataset behavior.
 - CI now prints a high-risk coverage report for API services, dataset services, vector search, and MCP server modules.
 - CI and `make ci-local` now enforce Ruff lint, Ruff format, and frontend lint/build checks.
 - Applied the Ruff formatting baseline so future style checks can run without format churn.
