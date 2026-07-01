@@ -1465,6 +1465,7 @@ def test_dataset_detail_ignores_invalid_ipv6_rowset_url_candidates(
 
     assert response.status_code == 200
     assert raw_url in content
+    assert f'href="{raw_url}"' not in content
     assert "Rowset dataset" not in content
 
 
