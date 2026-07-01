@@ -139,15 +139,6 @@ def _enforce_dataset_create_quota(profile: Profile, initial_row_count: int) -> N
     if profile.has_active_subscription:
         return
 
-    if initial_row_count > FREE_ACCOUNT_ROW_LIMIT:
-        raise DatasetServiceError(
-            403,
-            (
-                "Free accounts can create datasets with at most "
-                f"{FREE_ACCOUNT_ROW_LIMIT} rows. Upgrade for unlimited rows."
-            ),
-        )
-
     active_dataset_count = _visible_profile_dataset_queryset(profile).count()
     if active_dataset_count >= FREE_ACCOUNT_DATASET_LIMIT:
         raise DatasetServiceError(
@@ -155,6 +146,15 @@ def _enforce_dataset_create_quota(profile: Profile, initial_row_count: int) -> N
             (
                 "Free accounts can have at most "
                 f"{FREE_ACCOUNT_DATASET_LIMIT} active datasets. Upgrade for unlimited datasets."
+            ),
+        )
+
+    if initial_row_count > FREE_ACCOUNT_ROW_LIMIT:
+        raise DatasetServiceError(
+            403,
+            (
+                "Free accounts can create datasets with at most "
+                f"{FREE_ACCOUNT_ROW_LIMIT} rows. Upgrade for unlimited rows."
             ),
         )
 
