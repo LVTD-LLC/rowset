@@ -1,8 +1,9 @@
 # Coverage Visibility
 
-Coverage is a map for agent attention, not a global score target. Use it to find
-high-risk code that has weak executable feedback, then add behavior tests for the
-specific risk before enforcing any broader gate.
+Coverage is a map for agent attention, not a global score target. The default
+report enforces the current 80% floor to prevent obvious regressions, but the
+priority is still to find high-risk code that has weak executable feedback and
+add behavior tests for the specific risk.
 
 ## Commands
 
@@ -24,6 +25,12 @@ GitHub Actions runs the same hotspot report with the host-runner override:
 make coverage-high-risk COVERAGE_RUN="bash -c" -- apps/api apps/datasets apps/mcp_server -q
 ```
 
+Override `COVERAGE_FAIL_UNDER` locally only when exploring a noisy area:
+
+```bash
+make coverage-high-risk COVERAGE_FAIL_UNDER=0 -- apps/api -q
+```
+
 ## High-Risk Modules
 
 The first hotspot report highlights the modules agents are most likely to touch
@@ -38,12 +45,13 @@ when changing Rowset behavior:
 
 ## Ratchet Proposal
 
-Start with visibility only. Do not add a global percentage threshold until the
-first CI reports have been reviewed and noisy gaps have been triaged.
+Start with the current 80% hotspot floor and raise it only when the missing
+branches are well understood. Do not add a whole-repo percentage target until
+the first CI reports have been reviewed and noisy gaps have been triaged.
 
 Use this ratchet instead:
 
-1. Keep the hotspot coverage report required in CI.
+1. Keep the hotspot coverage report required in CI with the current floor.
 2. For each high-risk module, convert uncovered risky branches into concrete
    test tasks.
 3. Add per-module thresholds only after a module has stable tests and low-noise

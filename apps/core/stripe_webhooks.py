@@ -9,6 +9,8 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 logger = get_rowset_logger(__name__)
 
+PROFILE_LOOKUP_ERRORS = (Profile.DoesNotExist, ValueError, TypeError)
+
 
 def get_profile_for_customer(customer_id, metadata=None):
     profile = None
@@ -20,7 +22,7 @@ def get_profile_for_customer(customer_id, metadata=None):
         if user_id:
             try:
                 profile = Profile.objects.get(user_id=int(user_id))
-            except Profile.DoesNotExist, ValueError, TypeError:
+            except PROFILE_LOOKUP_ERRORS:
                 profile = None
 
     return profile

@@ -95,6 +95,7 @@ GENERATED_INDEX_BASENAME = "rowset_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
 MAX_PUBLIC_PAGE_SIZE = 100
 DATASET_ASSET_REF_PREFIX = "asset:"
+DATASET_ASSET_KEY_ERRORS = (AttributeError, TypeError, ValueError)
 DATASET_ASSET_CACHE_CONTROL = "private, max-age=86400, immutable"
 DATASET_IMAGE_THUMBNAIL_SIZE = (512, 512)
 DATASET_IMAGE_ALLOWED_FORMATS = {
@@ -898,7 +899,7 @@ def dataset_asset_key_from_ref(value: object) -> str:
     raw_key = text.removeprefix(DATASET_ASSET_REF_PREFIX).strip()
     try:
         return str(UUID(raw_key))
-    except AttributeError, TypeError, ValueError:
+    except DATASET_ASSET_KEY_ERRORS:
         return ""
 
 

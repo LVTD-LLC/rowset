@@ -89,6 +89,7 @@ API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
 DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
+DATASET_SEARCH_LIMIT_ERRORS = (TypeError, ValueError)
 PROFILE_ROW_SEARCH_SORT_RANK = "rank"
 PROFILE_ROW_SEARCH_SORT_DATASET = "dataset"
 PROFILE_ROW_SEARCH_SORT_ROW_NUMBER = "row_number"
@@ -3527,7 +3528,7 @@ def attach_profile_dataset_image_asset(
 def _normalize_dataset_search_limit(limit: int) -> int:
     try:
         normalized_limit = int(limit)
-    except TypeError, ValueError:
+    except DATASET_SEARCH_LIMIT_ERRORS:
         normalized_limit = 10
     return max(1, min(normalized_limit, DATASET_SEARCH_MAX_LIMIT))
 
@@ -3541,7 +3542,7 @@ def _reciprocal_rank_score(rank: int | None) -> float:
 def _safe_vector_row_id(payload: dict[str, Any]) -> int | None:
     try:
         return int(payload.get("row_id"))
-    except TypeError, ValueError:
+    except DATASET_SEARCH_LIMIT_ERRORS:
         return None
 
 

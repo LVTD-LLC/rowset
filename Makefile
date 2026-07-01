@@ -7,7 +7,8 @@ UV_RUN ?= uv run
 NPM ?= npm
 COVERAGE_RUN ?= $(COMPOSE_TEST) run --rm backend sh -c
 COVERAGE_PYTEST ?= uv run --with coverage coverage run --source=apps,rowset -m pytest
-COVERAGE_REPORT ?= uv run --with coverage coverage report -m
+COVERAGE_FAIL_UNDER ?= 80
+COVERAGE_REPORT ?= uv run --with coverage coverage report -m --fail-under=$(COVERAGE_FAIL_UNDER)
 HIGH_RISK_COVERAGE_FILES = \
 	apps/api/services.py \
 	apps/datasets/services.py \
