@@ -52,6 +52,7 @@ from apps.datasets.services import (
     DatasetImageError,
     DatasetRowQueryError,
     apply_dataset_row_query,
+    apply_dataset_rows_query,
     choice_constraints_from_schema,
     dataset_asset_key_from_ref,
     dataset_asset_ref,
@@ -3781,21 +3782,18 @@ def _profile_lexical_rows(
     filter_operators: dict[str, str],
     limit: int,
 ) -> list[DatasetRow]:
-    lexical_rows = []
-    for dataset in datasets:
-        try:
-            queryset, _row_query = apply_dataset_row_query(
-                dataset.rows.all(),
-                dataset,
-                query=query,
-                filters=filters,
-                filter_operators=filter_operators,
-                strict=True,
-            )
-        except DatasetRowQueryError as exc:
-            raise DatasetServiceError(400, str(exc)) from exc
-        lexical_rows.extend(list(queryset.only("id", "dataset_id")[: limit * 3]))
-    return lexical_rows
+    try:
+        queryset = apply_dataset_rows_query(
+            DatasetRow.objects.all(),
+            datasets,
+            query=query,
+            filters=filters,
+            filter_operators=filter_operators,
+            strict=True,
+        )
+    except DatasetRowQueryError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+    return list(queryset.only("id", "dataset_id")[: limit * 3])
 
 
 def _profile_allowed_vector_row_ids(
@@ -3821,20 +3819,17 @@ def _profile_allowed_vector_row_ids(
             .values_list("id", flat=True)
         )
 
-    allowed_row_ids: set[int] = set()
-    for dataset in datasets:
-        try:
-            queryset, _row_query = apply_dataset_row_query(
-                dataset.rows.filter(id__in=vector_row_ids),
-                dataset,
-                filters=filters,
-                filter_operators=filter_operators,
-                strict=True,
-            )
-        except DatasetRowQueryError as exc:
-            raise DatasetServiceError(400, str(exc)) from exc
-        allowed_row_ids.update(queryset.order_by().values_list("id", flat=True))
-    return allowed_row_ids
+    try:
+        queryset = apply_dataset_rows_query(
+            DatasetRow.objects.filter(id__in=vector_row_ids),
+            datasets,
+            filters=filters,
+            filter_operators=filter_operators,
+            strict=True,
+        )
+    except DatasetRowQueryError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+    return set(queryset.order_by().values_list("id", flat=True))
 
 
 def _serialize_profile_row_search_results(
@@ -3952,6 +3947,31 @@ def search_profile_rows(
     )
     datasets = list(dataset_queryset)
     if not datasets:
+        logger.info(
+            "Profile row hybrid search complete",
+            query_id=query_id,
+            profile_id=profile.id,
+            dataset_filters=dataset_filters,
+            dataset_filter_count=len(dataset_filters),
+            eligible_dataset_count=0,
+            filters_count=len(normalized_filters),
+            limit=normalized_limit,
+            sort=normalized_sort,
+            direction=normalized_direction,
+            vector_hit_count=0,
+            lexical_candidate_count=0,
+            fused_candidate_count=0,
+            result_count=0,
+            hydration_misses=0,
+            top_source="",
+            top_score=None,
+            top_vector_score=None,
+            embedding_model="",
+            embedding_dimensions=None,
+            embedding_latency_ms=0,
+            vector_latency_ms=0,
+            search_latency_ms=round((perf_counter() - search_started_at) * 1000, 2),
+        )
         return {
             "query": normalized_query,
             "filters": normalized_filters,
@@ -4007,6 +4027,7 @@ def search_profile_rows(
         "Profile row hybrid search complete",
         query_id=query_id,
         profile_id=profile.id,
+        dataset_filters=dataset_filters,
         dataset_filter_count=len(dataset_filters),
         eligible_dataset_count=len(datasets),
         filters_count=len(normalized_filters),

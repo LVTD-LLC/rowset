@@ -577,8 +577,14 @@ class ProfileRowSearchIn(Schema):
         default=None,
         description="Optional dataset key/public key/URL.",
     )
-    project_key: str | None = None
-    section_key: str | None = None
+    project_key: str | None = Field(
+        default=None,
+        description="Optional project key to restrict searched datasets.",
+    )
+    section_key: str | None = Field(
+        default=None,
+        description="Optional project section key to restrict searched datasets.",
+    )
     status: str | None = Field(
         default=None,
         description="Optional dataset status. Defaults to ready.",
@@ -590,7 +596,10 @@ class ProfileRowSearchIn(Schema):
         ),
     )
     sort: str | None = Field(default="rank", description="rank, dataset, or row_number.")
-    direction: str | None = Field(default=None, description="asc or desc.")
+    direction: str | None = Field(
+        default=None,
+        description="asc or desc. Defaults to desc when sort is rank, asc otherwise.",
+    )
     limit: int = Field(default=10, ge=1, le=50)
 
 

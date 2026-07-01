@@ -1747,6 +1747,43 @@ def test_search_profile_rows_searches_ready_datasets_and_filters_vector_hits(dja
 
 
 @pytest.mark.django_db
+def test_search_profile_rows_logs_no_matches_without_query(django_user_model, monkeypatch):
+    from apps.api.services import search_profile_rows
+
+    user = django_user_model.objects.create_user(
+        username="profilewidenomatchowner",
+        email="profilewidenomatchowner@example.com",
+        password="password123",
+    )
+    log_events = []
+
+    class FakeLogger:
+        def info(self, message, **fields):
+            log_events.append((message, fields))
+
+    monkeypatch.setattr("apps.api.services.logger", FakeLogger())
+    response = search_profile_rows(
+        user.profile,
+        query="private customer phrase",
+        dataset_key="00000000-0000-0000-0000-000000000000",
+        embedding_provider=FakeDatasetSearchEmbeddingProvider(),
+        vector_store=FakeProfileRowSearchVectorStore([]),
+    )
+
+    assert response["count"] == 0
+    assert len(log_events) == 1
+    message, fields = log_events[0]
+    assert message == "Profile row hybrid search complete"
+    assert len(fields["query_id"]) == 32
+    assert fields["eligible_dataset_count"] == 0
+    assert fields["vector_hit_count"] == 0
+    assert fields["lexical_candidate_count"] == 0
+    assert fields["result_count"] == 0
+    assert fields["dataset_filters"]["dataset_key"] == "00000000-0000-0000-0000-000000000000"
+    assert "private customer phrase" not in str(fields)
+
+
+@pytest.mark.django_db
 def test_search_profile_dataset_rows_fuses_exact_and_vector_matches(django_user_model):
     from apps.api.services import search_profile_dataset_rows
 
