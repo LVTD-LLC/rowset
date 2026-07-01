@@ -4,7 +4,6 @@ import json
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
