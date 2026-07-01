@@ -204,24 +204,34 @@ def _get_or_create_feedback_dataset(
     if dataset is not None:
         return dataset
 
-    result = create_profile_dataset(
-        profile,
-        name=FEEDBACK_DATASET_NAME,
-        description="Product feedback submitted through Rowset app and MCP surfaces.",
-        instructions=(
-            "Use feedback_id as the stable index. Treat rows as private product feedback "
-            "for triage, follow-up, and customer experience analysis."
-        ),
-        metadata=FEEDBACK_DATASET_METADATA,
-        headers=FEEDBACK_DATASET_HEADERS,
-        rows=[],
-        index_column=FEEDBACK_DATASET_INDEX_COLUMN,
-        column_types=FEEDBACK_DATASET_COLUMN_TYPES,
-        project_key=str(project.key),
-        section_key=str(section.key),
-        agent_api_key=agent_api_key,
-    )
-    return Dataset.objects.get(profile=profile, key=result["dataset"]["key"])
+    try:
+        result = create_profile_dataset(
+            profile,
+            name=FEEDBACK_DATASET_NAME,
+            description="Product feedback submitted through Rowset app and MCP surfaces.",
+            instructions=(
+                "Use feedback_id as the stable index. Treat rows as private product feedback "
+                "for triage, follow-up, and customer experience analysis."
+            ),
+            metadata=FEEDBACK_DATASET_METADATA,
+            headers=FEEDBACK_DATASET_HEADERS,
+            rows=[],
+            index_column=FEEDBACK_DATASET_INDEX_COLUMN,
+            column_types=FEEDBACK_DATASET_COLUMN_TYPES,
+            project_key=str(project.key),
+            section_key=str(section.key),
+            agent_api_key=agent_api_key,
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code != 409:
+            raise
+    else:
+        return Dataset.objects.get(profile=profile, key=result["dataset"]["key"])
+
+    dataset = _active_feedback_dataset(profile, project, section)
+    if dataset is None:
+        raise DatasetServiceError(409, "Dataset name already exists.")
+    return dataset
 
 
 def _feedback_dataset_row_data(

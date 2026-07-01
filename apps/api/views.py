@@ -572,7 +572,7 @@ def get_user_info(request: HttpRequest):
 @api.post(
     "/feedback",
     response={201: AgentFeedbackSubmitOut},
-    auth=[api_key_auth],
+    auth=[api_key_write_auth],
     tags=["feedback"],
 )
 def submit_agent_feedback(request: HttpRequest, payload: SubmitFeedbackIn):

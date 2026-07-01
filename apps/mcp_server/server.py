@@ -474,7 +474,6 @@ def submit_feedback(
         ),
     ] = None,
 ) -> dict:
-    close_old_connections()
     try:
         profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
         try:

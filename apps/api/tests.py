@@ -699,10 +699,17 @@ def test_read_only_agent_api_key_can_read_but_cannot_write(client, django_user_m
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
     )
+    feedback_response = client.post(
+        "/api/feedback",
+        data=json.dumps({"feedback": "Read-only keys should not create feedback rows."}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
 
     assert read_response.status_code == 200
     assert read_response.json()["email"] == "readonlyapiuser@example.com"
     assert write_response.status_code == 401
+    assert feedback_response.status_code == 401
 
 
 @pytest.mark.django_db
@@ -717,7 +724,11 @@ def test_agent_api_key_can_submit_feedback_through_rest(client, django_user_mode
         email="feedbackapiuser@example.com",
         password="password123",
     )
-    credential = create_agent_api_key(user.profile, "Feedback Agent", AgentApiKeyAccessLevel.READ)
+    credential = create_agent_api_key(
+        user.profile,
+        "Feedback Agent",
+        AgentApiKeyAccessLevel.READ_WRITE,
+    )
 
     response = client.post(
         "/api/feedback",

@@ -23,6 +23,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - CI now prints a high-risk coverage report for API services, dataset services, vector search, and MCP server modules.
 - CI and `make ci-local` now enforce Ruff lint, Ruff format, and frontend lint/build checks.
 - Applied the Ruff formatting baseline so future style checks can run without format churn.
+- Agent feedback submissions through REST and MCP now require read/write API keys because feedback submissions create private Rowset/CX/Feedback dataset rows.
 - Added Rowset Pro billing copy/configuration for a single $50/month plan and enforced free-account dataset quotas through shared REST/MCP services.
 - Stripe checkout, customer, and billing portal requests can now include `STRIPE_CONTEXT` for Stripe Organization API keys.
 - Replaced inherited `AWS_*` media storage setup with explicit `ROWSET_ASSET_*` private dataset asset storage configuration for Cloudflare R2/S3-compatible storage.
