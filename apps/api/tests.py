@@ -48,9 +48,12 @@ def test_openapi_dataset_asset_thumbnail_url_is_required_string(client):
 def test_capabilities_endpoint_supports_current_and_legacy_api_prefixes(client):
     current_response = client.get("/api/capabilities")
     legacy_response = client.get("/api/v1/capabilities", follow=True)
+    legacy_root_response = client.get("/api/v1")
 
     assert current_response.status_code == 200
     assert legacy_response.status_code == 200
+    assert legacy_root_response.status_code == 308
+    assert legacy_root_response["Location"] == "/api/"
     assert current_response.json()["product"] == "Rowset"
     assert legacy_response.json()["product"] == "Rowset"
 
@@ -111,6 +114,24 @@ def test_referrer_banner_ignores_database_connection_errors(monkeypatch):
         raise OperationalError("the connection is closed")
 
     monkeypatch.setattr(ReferrerBanner.objects, "get", raise_database_error)
+
+    request = RequestFactory().get("/missing-page/")
+
+    assert referrer_banner(request) == {}
+
+
+def test_referrer_banner_ignores_database_errors_in_multiple_banner_fallback(monkeypatch):
+    from apps.pages.context_processors import referrer_banner
+    from apps.pages.models import ReferrerBanner
+
+    def raise_multiple_objects(*args, **kwargs):
+        raise ReferrerBanner.MultipleObjectsReturned
+
+    def raise_database_error(*args, **kwargs):
+        raise OperationalError("the connection is closed")
+
+    monkeypatch.setattr(ReferrerBanner.objects, "get", raise_multiple_objects)
+    monkeypatch.setattr(ReferrerBanner.objects, "filter", raise_database_error)
 
     request = RequestFactory().get("/missing-page/")
 
