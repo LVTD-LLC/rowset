@@ -268,8 +268,8 @@ def test_backfill_dataset_vectors_command_supports_dry_run(dataset, rows):
 
 
 def test_backfill_dataset_vectors_command_reports_missing_embedding_configuration(dataset, rows):
-    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True, OPENAI_API_KEY=""):
-        with pytest.raises(CommandError, match="OPENAI_API_KEY"):
+    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True, OPENROUTER_API_KEY=""):
+        with pytest.raises(CommandError, match="OPENROUTER_API_KEY"):
             call_command("backfill_dataset_vectors", str(dataset.key))
 
 
