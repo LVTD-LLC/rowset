@@ -1,9 +1,9 @@
 import stripe
 from django.conf import settings
 
-from rowset.utils import get_rowset_logger
 from apps.core.choices import ProfileStates
 from apps.core.models import Profile
+from rowset.utils import get_rowset_logger
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 

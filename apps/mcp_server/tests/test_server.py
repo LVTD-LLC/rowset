@@ -673,7 +673,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
     anyio.run(run)
 
 
-def test_project_mcp_tools_call_project_services(monkeypatch):
+def test_project_mcp_tools_call_project_services(monkeypatch):  # noqa: C901
     calls = []
 
     def list_projects(authenticated_profile, limit=100, offset=0):

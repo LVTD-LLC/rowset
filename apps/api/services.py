@@ -1314,7 +1314,7 @@ def _dataset_summary_queryset(queryset):
     return queryset.select_related("project", "section").only(*DATASET_SUMMARY_ONLY_FIELDS)
 
 
-def search_profile_datasets(
+def search_profile_datasets(  # noqa: C901
     profile: Profile,
     *,
     query: str | None = None,
