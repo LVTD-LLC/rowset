@@ -4042,9 +4042,7 @@ def _patch_dataset_row(
     if dataset.index_column in data:
         index_value = str(row_patch.get(dataset.index_column, "")).strip()
         if dataset.index_generated:
-            if index_value == row.index_value:
-                index_value = row.index_value
-            else:
+            if index_value != row.index_value:
                 raise DatasetServiceError(
                     400,
                     f"Index column '{dataset.index_column}' is managed by Rowset "
