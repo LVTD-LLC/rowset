@@ -95,8 +95,7 @@ def test_submit_profile_feedback_reuses_project_section_and_dataset(
         == "browser"
     )
     assert (
-        first.dataset.rows.get(index_value=str(second.feedback.id)).data["submitted_via"]
-        == "mcp"
+        first.dataset.rows.get(index_value=str(second.feedback.id)).data["submitted_via"] == "mcp"
     )
 
 

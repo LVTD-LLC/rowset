@@ -32,9 +32,7 @@ def _format_feedback_apprise_body(feedback: Feedback) -> str:
         lines.append(f"Rowset row: {rowset_row_url}")
 
     if metadata:
-        context_keys = ", ".join(
-            sorted(str(key) for key in metadata if key != "rowset_row_url")
-        )
+        context_keys = ", ".join(sorted(str(key) for key in metadata if key != "rowset_row_url"))
         if context_keys:
             lines.append(f"Context keys: {context_keys}")
 
