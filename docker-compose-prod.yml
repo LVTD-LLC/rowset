@@ -33,9 +33,11 @@ services:
         condition: service_started
     env_file:
       - .env
+    environment:
+      APP_PROCESS_TYPE: server
 
   workers:
-    image: ghcr.io/lvtd-llc/rowset-workers:latest
+    image: ghcr.io/lvtd-llc/rowset:latest
     working_dir: /app
     depends_on:
       db:
@@ -44,6 +46,8 @@ services:
         condition: service_started
     env_file:
       - .env
+    environment:
+      APP_PROCESS_TYPE: worker
 
 volumes:
   postgres_data:
