@@ -844,7 +844,8 @@ Required GitHub secrets:
 | Secret | Used by | Description |
 | --- | --- | --- |
 | `CAPROVER_SERVER` | server and workers | CapRover server URL. |
-| `CAPROVER_PASSWORD` | server and workers | CapRover password for deploying both apps through the API. |
+| `APP_TOKEN` | server | CapRover deploy token for the `rowset` app. |
+| `WORKERS_APP_TOKEN` | workers | CapRover deploy token for the `rowset-workers` app. |
 
 The workflow deploys on pushes to `main`.
 

@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: rowset-prod
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -57,49 +57,28 @@ jobs:
             ${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_version }}
             ${{ steps.image.outputs.image_name }}:sha-${{ steps.image.outputs.short_sha }}
 
-      - name: Install uv for deploy script
-        uses: astral-sh/setup-uv@v6
-        with:
-          version: "latest"
-
       - name: Deploy server and workers to CapRover
         shell: bash
         env:
           CAPROVER_SERVER: ${{ secrets.CAPROVER_SERVER }}
-          CAPROVER_PASSWORD: ${{ secrets.CAPROVER_PASSWORD }}
+          CAPROVER_APP_TOKEN: ${{ secrets.APP_TOKEN }}
+          CAPROVER_WORKERS_APP_TOKEN: ${{ secrets.WORKERS_APP_TOKEN }}
           IMAGE_NAME: ${{ steps.image.outputs.image_name }}:sha-${{ steps.image.outputs.short_sha }}
         run: |
           # CapRover pulls this prebuilt image at deploy time; GHCR packages must be public
           # or the CapRover host must have a ghcr.io registry credential configured.
-          uv run --with caprover-api==0.1.24 python - <<'PY'
-          import json
-          import os
-          from caprover_api.caprover_api import CaproverAPI
+          tmpdir="$(mktemp -d)"
+          printf '{"schemaVersion":2,"imageName":"%s"}\n' "$IMAGE_NAME" > "$tmpdir/captain-definition"
+          tar -C "$tmpdir" -cf /tmp/rowset-image.tar captain-definition
 
+          npx -y -p node@20 -p caprover caprover deploy \
+            --caproverUrl "$CAPROVER_SERVER" \
+            --appToken "$CAPROVER_APP_TOKEN" \
+            --caproverApp "$CAPROVER_APP_NAME" \
+            --tarFile /tmp/rowset-image.tar
 
-          def deploy_prebuilt_image(cap, app_name, image_name):
-              definition = {
-                  "schemaVersion": cap.schema_version,
-                  "imageName": image_name,
-              }
-              response = cap.session.post(
-                  cap._build_url(CaproverAPI.APP_DATA_PATH) + f"/{app_name}",
-                  headers=cap.headers,
-                  data=json.dumps(
-                      {
-                          "captainDefinitionContent": json.dumps(definition),
-                          "gitHash": "",
-                      }
-                  ),
-              )
-              CaproverAPI._check_errors(response.json())
-              cap._wait_until_app_ready(app_name=app_name)
-              cap._ensure_app_build_success(app_name=app_name)
-
-
-          cap = CaproverAPI(os.environ["CAPROVER_SERVER"], os.environ["CAPROVER_PASSWORD"])
-          image = os.environ["IMAGE_NAME"]
-          app = os.environ["CAPROVER_APP_NAME"]
-          deploy_prebuilt_image(cap, app, image)
-          deploy_prebuilt_image(cap, f"{app}-workers", image)
-          PY
+          npx -y -p node@20 -p caprover caprover deploy \
+            --caproverUrl "$CAPROVER_SERVER" \
+            --appToken "$CAPROVER_WORKERS_APP_TOKEN" \
+            --caproverApp "${CAPROVER_APP_NAME}-workers" \
+            --tarFile /tmp/rowset-image.tar
