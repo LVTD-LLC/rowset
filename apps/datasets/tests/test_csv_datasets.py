@@ -1176,6 +1176,52 @@ def test_dataset_detail_links_row_create_and_bulk_actions(auth_client, profile):
     assert 'x-data="rowBulkActions"' in content
 
 
+def test_dataset_detail_renders_choice_values_with_color_accents(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["task_id", "status"]
+    dataset.column_schema = {
+        "task_id": {"type": DatasetColumnType.TEXT},
+        "status": {
+            "type": DatasetColumnType.CHOICE,
+            "choices": ["todo", "doing", "blocked", "done"],
+        },
+    }
+    dataset.index_column = "task_id"
+    dataset.row_count = 2
+    dataset.rows.all().delete()
+    dataset.save(update_fields=["headers", "column_schema", "index_column", "row_count"])
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=1,
+                index_value="TASK-1",
+                data={"task_id": "TASK-1", "status": "todo"},
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=2,
+                index_value="TASK-2",
+                data={"task_id": "TASK-2", "status": "done"},
+            ),
+        ]
+    )
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    first_status_cell = response.context["rows_with_values"][0]["cells"][1]
+    second_status_cell = response.context["rows_with_values"][1]["cells"][1]
+    assert first_status_cell["is_choice"]
+    assert first_status_cell["choice_accent_class"] != second_status_cell["choice_accent_class"]
+    assert 'class="fb-focus fb-choice-pill' in content
+    assert '<span class="truncate">todo</span>' in content
+    assert '<span class="truncate">done</span>' in content
+    dataset.refresh_from_db()
+    assert dataset.rows.get(index_value="TASK-1").data["status"] == "todo"
+
+
 def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
     target = create_ready_dataset(profile)
     target.name = "Archived sprint tasks"
