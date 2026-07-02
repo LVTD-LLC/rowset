@@ -1546,6 +1546,16 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             .count()
         )
         datasets = list(page_obj.object_list)
+        archived_datasets = list(
+            self.object.datasets.select_related(
+                "section",
+                "created_by_agent_api_key",
+                "updated_by_agent_api_key",
+            )
+            .filter(archived_at__isnull=False)
+            .exclude(status=DatasetStatus.PREVIEWED)
+            .order_by("-archived_at", "-updated_at")
+        )
         context["page_obj"] = page_obj
         context["datasets"] = datasets
         context["sections"] = sections
@@ -1554,13 +1564,59 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             datasets,
             unsectioned_dataset_count=unsectioned_dataset_count,
         )
-        context.setdefault("project_edit_mode", self.request.GET.get("edit") == "1")
-        context.setdefault(
-            "project_form_values",
-            {
-                "name": self.object.name,
-                "description": self.object.description,
-            },
+        context["metadata_json"] = json.dumps(
+            self.object.metadata or {},
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        context["archived_datasets"] = archived_datasets
+        context["archived_section_groups"] = self.get_archived_section_groups(archived_datasets)
+        return context
+
+    def get_archived_section_groups(self, archived_datasets):
+        section_counts = {}
+        sections_by_id = {}
+        unsectioned_dataset_count = 0
+
+        for dataset in archived_datasets:
+            if dataset.section_id and dataset.section:
+                sections_by_id.setdefault(dataset.section_id, dataset.section)
+                section_counts[dataset.section_id] = section_counts.get(dataset.section_id, 0) + 1
+            else:
+                unsectioned_dataset_count += 1
+
+        sections = sorted(
+            sections_by_id.values(),
+            key=lambda section: (section.name.lower(), section.id),
+        )
+        for section in sections:
+            section.dataset_count = section_counts.get(section.id, 0)
+
+        return project_section_dataset_groups(
+            sections,
+            archived_datasets,
+            unsectioned_dataset_count=unsectioned_dataset_count,
+        )
+
+
+class ProjectSettingsView(LoginRequiredMixin, DetailView):
+    template_name = "datasets/project_settings.html"
+    context_object_name = "project"
+    slug_url_kwarg = "project_key"
+    slug_field = "key"
+
+    def get_queryset(self):
+        return self.request.user.profile.projects.filter(archived_at__isnull=True).annotate(
+            dataset_count=_visible_project_dataset_count(),
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["sections"] = list(
+            self.object.sections.filter(archived_at__isnull=True)
+            .annotate(dataset_count=_visible_project_section_dataset_count())
+            .order_by("name", "id")
         )
         context["metadata_json"] = json.dumps(
             self.object.metadata or {},
@@ -1569,33 +1625,6 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             sort_keys=True,
         )
         return context
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        form_values = {
-            "name": request.POST.get("name", ""),
-            "description": request.POST.get("description", ""),
-        }
-        try:
-            update_profile_project(
-                request.user.profile,
-                str(self.object.key),
-                name=form_values["name"],
-                description=form_values["description"],
-            )
-        except DatasetServiceError as exc:
-            if exc.status_code == 404:
-                raise Http404(exc.message) from exc
-            context = self.get_context_data(
-                object=self.object,
-                project_edit_mode=True,
-                project_form_values=form_values,
-                project_form_error=exc.message,
-            )
-            return self.render_to_response(context)
-
-        messages.success(request, "Project updated.")
-        return redirect(self.object.get_absolute_url())
 
 
 class DatasetDetailView(LoginRequiredMixin, DetailView):
@@ -2006,7 +2035,7 @@ def project_section_create(request, project_key):
             metadata = json.loads(raw_metadata)
         except json.JSONDecodeError:
             messages.error(request, "Project section metadata must be valid JSON.")
-            return redirect("project_detail", project_key=project_key)
+            return redirect("project_settings", project_key=project_key)
     else:
         metadata = {}
 
@@ -2025,7 +2054,7 @@ def project_section_create(request, project_key):
     else:
         messages.success(request, "Project section created.")
 
-    return redirect("project_detail", project_key=project_key)
+    return redirect("project_settings", project_key=project_key)
 
 
 @login_required
@@ -2044,7 +2073,7 @@ def project_section_delete(request, project_key, section_key):
     else:
         messages.success(request, result["message"])
 
-    return redirect("project_detail", project_key=project_key)
+    return redirect("project_settings", project_key=project_key)
 
 
 @login_required
@@ -2069,7 +2098,7 @@ def project_update(request, project_key):
     else:
         messages.success(request, "Project updated.")
 
-    return redirect("project_detail", project_key=project_key)
+    return redirect("project_settings", project_key=project_key)
 
 
 @login_required
@@ -2081,7 +2110,7 @@ def project_update_metadata(request, project_key):
             metadata = json.loads(raw_metadata)
         except json.JSONDecodeError:
             messages.error(request, "Project metadata must be valid JSON.")
-            return redirect("project_detail", project_key=project_key)
+            return redirect("project_settings", project_key=project_key)
     else:
         metadata = {}
 
@@ -2101,7 +2130,7 @@ def project_update_metadata(request, project_key):
         else:
             messages.success(request, result["message"])
 
-    return redirect("project_detail", project_key=project_key)
+    return redirect("project_settings", project_key=project_key)
 
 
 @login_required

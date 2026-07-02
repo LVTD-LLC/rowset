@@ -1,0 +1,231 @@
+{% extends "base_app.html" %}
+{% block content %}
+    <div class="fb-page">
+        <div class="space-y-8">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <a href="{{ project.get_absolute_url }}"
+                   class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← Back to project</a>
+                <a href="{% url 'home' %}#datasets-workspace"
+                   class="fb-button-secondary">View all datasets</a>
+            </div>
+            <div>
+                <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Project controls</p>
+                <h1 class="fb-page-title mt-2">Project settings</h1>
+                <p class="mt-2 break-words leading-6 text-slate-600 dark:text-slate-300">Control project context, metadata, and sections for {{ project.name }}.</p>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ project.dataset_count }} active datasets · {{ sections|length }} sections</p>
+            </div>
+            <div class="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+                <aside class="lg:sticky lg:top-24">
+                    <nav class="fb-card p-3" aria-labelledby="project-settings-nav-heading">
+                        <h2 id="project-settings-nav-heading"
+                            class="px-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Settings sections</h2>
+                        <ol class="mt-3 grid gap-1 text-sm">
+                            <li>
+                                <a href="#project-context"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Project context
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Title and description</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#project-metadata"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Metadata
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">REST and MCP JSON</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#project-sections"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Sections
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Dataset grouping</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#danger-zone"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-red-700 transition hover:bg-red-50 dark:text-red-200 dark:hover:bg-red-950/30">
+                                    Delete project
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-red-700/80 dark:text-red-200/80">Permanent removal</span>
+                                </a>
+                            </li>
+                        </ol>
+                    </nav>
+                </aside>
+                <div class="min-w-0 space-y-10">
+                    <section class="space-y-4" aria-labelledby="context-settings-group-heading">
+                        <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
+                            <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Context</p>
+                            <h2 id="context-settings-group-heading"
+                                class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Project details agents can discover</h2>
+                        </div>
+                        <section id="project-context"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="project-context-heading">
+                            <form method="post"
+                                  action="{% url 'project_update' project.key %}"
+                                  class="space-y-5">
+                                {% csrf_token %}
+                                <div>
+                                    <h3 id="project-context-heading" class="fb-section-title">Title and description</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">The project name groups related datasets across the dashboard, REST, and MCP.</p>
+                                </div>
+                                <div>
+                                    <label for="project-name"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
+                                    <input id="project-name"
+                                           name="name"
+                                           type="text"
+                                           maxlength="255"
+                                           required
+                                           value="{{ project.name }}"
+                                           class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label for="project-description"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
+                                    <textarea id="project-description"
+                                              name="description"
+                                              rows="4"
+                                              class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ project.description }}</textarea>
+                                </div>
+                                <div class="flex flex-col gap-3 sm:flex-row">
+                                    <button type="submit" class="fb-button-primary">Save project</button>
+                                    <a href="{{ project.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
+                                </div>
+                            </form>
+                        </section>
+                        <section id="project-metadata"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="project-metadata-settings-heading">
+                            <form method="post"
+                                  action="{% url 'project_update_metadata' project.key %}"
+                                  class="space-y-5">
+                                {% csrf_token %}
+                                <div>
+                                    <h3 id="project-metadata-settings-heading" class="fb-section-title">Project metadata</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Persistent JSON returned through REST and MCP project metadata.</p>
+                                </div>
+                                <div>
+                                    <label for="metadata"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
+                                    <textarea id="metadata"
+                                              name="metadata"
+                                              rows="8"
+                                              spellcheck="false"
+                                              class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6">{{ metadata_json }}</textarea>
+                                </div>
+                                <div class="flex flex-col gap-3 sm:flex-row">
+                                    <button type="submit" class="fb-button-primary">Save metadata</button>
+                                    <a href="{{ project.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
+                                </div>
+                            </form>
+                        </section>
+                    </section>
+                    <section class="space-y-4" aria-labelledby="section-settings-group-heading">
+                        <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
+                            <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Organization</p>
+                            <h2 id="section-settings-group-heading"
+                                class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Dataset sections</h2>
+                        </div>
+                        <section id="project-sections"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="project-sections-heading">
+                            <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                                <div>
+                                    <h3 id="project-sections-heading" class="fb-section-title">Sections</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Optional grouping for related datasets inside this project.</p>
+                                    {% if sections %}
+                                        <div class="mt-4 overflow-hidden rounded-md border border-slate-200 dark:border-slate-800">
+                                            <ul class="divide-y divide-slate-200 dark:divide-slate-800"
+                                                aria-label="Project sections">
+                                                {% for section in sections %}
+                                                    <li class="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                                                        <div class="min-w-0">
+                                                            <p class="break-words text-sm font-semibold text-slate-950 dark:text-slate-100">{{ section.name }}</p>
+                                                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ section.dataset_count }} datasets</p>
+                                                            {% if section.description %}
+                                                                <p class="mt-2 break-words text-sm leading-6 text-slate-600 dark:text-slate-300">{{ section.description }}</p>
+                                                            {% endif %}
+                                                        </div>
+                                                        <form method="post"
+                                                              action="{% url 'project_section_delete' project.key section.key %}"
+                                                              onsubmit="return confirm('Archive section {{ section.name|escapejs }}? Datasets will stay in this project and become unsectioned.');">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Archive</button>
+                                                        </form>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% else %}
+                                        <p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">No sections yet.</p>
+                                    {% endif %}
+                                </div>
+                                <form method="post"
+                                      action="{% url 'project_section_create' project.key %}"
+                                      class="space-y-4">
+                                    {% csrf_token %}
+                                    <div>
+                                        <label for="section_name"
+                                               class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
+                                        <input id="section_name"
+                                               name="name"
+                                               type="text"
+                                               maxlength="255"
+                                               required
+                                               placeholder="Blog"
+                                               class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="section_description"
+                                               class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
+                                        <textarea id="section_description"
+                                                  name="description"
+                                                  rows="3"
+                                                  class="fb-input mt-2 block w-full px-3 py-2 text-sm"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="section_metadata"
+                                               class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
+                                        <textarea id="section_metadata"
+                                                  name="metadata"
+                                                  rows="4"
+                                                  spellcheck="false"
+                                                  class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6"
+                                                  placeholder='{"goal":"content-led growth"}'></textarea>
+                                    </div>
+                                    <button type="submit" class="fb-button-primary w-full">Create section</button>
+                                </form>
+                            </div>
+                        </section>
+                    </section>
+                    <section class="space-y-4" aria-labelledby="danger-settings-group-heading">
+                        <div class="border-b border-red-200 pb-3 dark:border-red-900/60">
+                            <p class="text-sm font-semibold leading-6 text-red-700 dark:text-red-300">Danger zone</p>
+                            <h2 id="danger-settings-group-heading"
+                                class="mt-1 text-xl font-semibold text-red-900 dark:text-red-100">Irreversible actions</h2>
+                        </div>
+                        <section id="danger-zone"
+                                 class="scroll-mt-24 rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30"
+                                 aria-labelledby="delete-project-heading">
+                            <div role="alert"
+                                 class="rounded-md border border-red-300 bg-white/70 p-4 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                                <p class="font-semibold text-red-900 dark:text-red-100">Warning</p>
+                                <p class="mt-1">Deleting this project removes the project and its sections. Assigned datasets stay in Rowset and become ungrouped. This cannot be undone.</p>
+                            </div>
+                            <h3 id="delete-project-heading"
+                                class="mt-5 text-lg font-semibold text-red-900 dark:text-red-100">Delete project</h3>
+                            <form method="post"
+                                  action="{% url 'project_delete' project.key %}"
+                                  onsubmit="return confirm('Delete project {{ project.name|escapejs }}? Assigned datasets will stay in Rowset and become ungrouped. This cannot be undone.');"
+                                  class="mt-4">
+                                {% csrf_token %}
+                                <button type="submit" class="fb-button-danger">Delete project</button>
+                            </form>
+                        </section>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

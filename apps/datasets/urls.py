@@ -7,6 +7,11 @@ urlpatterns = [
     path("projects/", views.project_list_redirect, name="project_list"),
     path("projects/create/", views.project_create, name="project_create"),
     path("projects/<uuid:project_key>/", views.ProjectDetailView.as_view(), name="project_detail"),
+    path(
+        "projects/<uuid:project_key>/settings/",
+        views.ProjectSettingsView.as_view(),
+        name="project_settings",
+    ),
     path("projects/<uuid:project_key>/update/", views.project_update, name="project_update"),
     path(
         "projects/<uuid:project_key>/metadata/",

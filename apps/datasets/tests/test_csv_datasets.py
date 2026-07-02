@@ -2701,7 +2701,7 @@ def test_project_detail_dataset_rows_omit_status_and_actions(auth_client, profil
 
     content = response.content.decode()
     assert response.status_code == 200
-    assert "All datasets" in content
+    assert "Datasets by section" in content
     assert "People" in content
     assert reverse("dataset_export", args=[dataset.key, "csv"]) not in content
     assert reverse("dataset_export", args=[dataset.key, "parquet"]) not in content
@@ -2709,7 +2709,7 @@ def test_project_detail_dataset_rows_omit_status_and_actions(auth_client, profil
     assert "Dataset status" not in content
 
 
-def test_project_detail_shows_inline_project_summary_editor(auth_client, profile):
+def test_project_detail_links_to_settings_and_hides_project_edit_actions(auth_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Frontier",
@@ -2720,48 +2720,68 @@ def test_project_detail_shows_inline_project_summary_editor(auth_client, profile
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert "Project details" not in content
-    assert 'x-data="projectDetail"' in content
-    assert 'x-show="!editing"' in content
-    assert 'x-show="editing" class="min-w-0 flex-1 space-y-4"' in content
     assert ">Frontier</h1>" in content
+    assert "Project context" in content
     assert "Canonical Rowset project for Frontier." in content
+    assert project.get_settings_url() in content
     assert "View all datasets" in content
-    assert 'x-ref="editButton"' in content
+    assert 'x-data="projectDetail"' not in content
+    assert reverse("project_update", args=[project.key]) not in content
+    assert reverse("project_update_metadata", args=[project.key]) not in content
+    assert reverse("project_delete", args=[project.key]) not in content
 
 
-def test_project_detail_edit_query_shows_inline_project_form(auth_client, profile):
+def test_project_context_and_archived_datasets_are_collapsed_on_detail(auth_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Frontier",
         description="Canonical Rowset project for Frontier.",
+        metadata={"owner": "ops"},
     )
-
-    response = auth_client.get(project.get_absolute_url(), {"edit": "1"})
-    content = response.content.decode()
-
-    assert response.status_code == 200
-    assert response.context["project_edit_mode"] is True
-    assert 'x-cloak x-show="!editing" class="min-w-0 flex-1 space-y-3"' in content
-    assert 'x-show="editing" class="min-w-0 flex-1 space-y-4"' in content
-    assert 'value="Frontier"' in content
-    assert ">Canonical Rowset project for Frontier.</textarea>" in content
-    assert 'x-ref="editButton" x-cloak x-show="!editing" @click="edit($event)"' in content
-
-
-def test_project_detail_shows_delete_project_action(auth_client, profile):
-    project = Project.objects.create(profile=profile, name="Frontier")
 
     response = auth_client.get(project.get_absolute_url())
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert "<details open" not in content
+    assert "Project context" in content
+    assert "Archived datasets" in content
+    assert response.context["metadata_json"] == '{\n  "owner": "ops"\n}'
+
+
+def test_project_settings_shows_project_forms_sections_and_delete_warning(auth_client, profile):
+    project = Project.objects.create(
+        profile=profile,
+        name="Frontier",
+        description="Canonical Rowset project for Frontier.",
+        metadata={"github_repo": "https://github.com/acme/frontier"},
+    )
+    section = dataset_models.ProjectSection.objects.create(
+        profile=profile,
+        project=project,
+        name="Blog",
+        description="Editorial datasets",
+    )
+
+    response = auth_client.get(project.get_settings_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Project settings" in content
+    assert 'aria-labelledby="project-settings-nav-heading"' in content
+    assert reverse("project_update", args=[project.key]) in content
+    assert reverse("project_update_metadata", args=[project.key]) in content
+    assert reverse("project_section_create", args=[project.key]) in content
+    assert reverse("project_section_delete", args=[project.key, section.key]) in content
     assert reverse("project_delete", args=[project.key]) in content
-    assert "Delete project" in content
+    assert "Warning" in content
     assert (
         "return confirm('Delete project Frontier? Assigned datasets will stay in Rowset "
         "and become ungrouped. This cannot be undone.');"
     ) in content
+    assert "Canonical Rowset project for Frontier." in content
+    assert "https://github.com/acme/frontier" in content
+    assert "Blog" in content
 
 
 def test_home_omits_standalone_project_management(auth_client, profile):
@@ -6606,7 +6626,7 @@ def test_dataset_owner_can_create_project(auth_client, profile):
     assert project.metadata == {"github_repo": "https://github.com/acme/launch"}
 
 
-def test_project_owner_can_update_metadata_from_detail(auth_client, profile):
+def test_project_owner_can_update_metadata_from_settings(auth_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
@@ -6626,7 +6646,7 @@ def test_project_owner_can_update_metadata_from_detail(auth_client, profile):
     )
 
     assert response.status_code == 302
-    assert response.url == project.get_absolute_url()
+    assert response.url == project.get_settings_url()
     project.refresh_from_db()
     assert project.metadata == {
         "github_repo": "https://github.com/acme/launch",
@@ -6647,7 +6667,7 @@ def test_dataset_owner_can_update_project_details(auth_client, profile):
     )
 
     assert response.status_code == 302
-    assert response.url == project.get_absolute_url()
+    assert response.url == project.get_settings_url()
     project.refresh_from_db()
     assert project.name == "Launch operations"
     assert project.description == ""
@@ -6666,6 +6686,7 @@ def test_project_update_preserves_description_when_post_omits_field(auth_client,
     )
 
     assert response.status_code == 302
+    assert response.url == project.get_settings_url()
     project.refresh_from_db()
     assert project.name == "Launch operations"
     assert project.description == "Launch datasets"
@@ -6690,7 +6711,7 @@ def test_project_update_rejects_other_users_project(client, django_user_model, p
     assert project.name == "Other"
 
 
-def test_dataset_owner_can_update_project_from_detail(auth_client, profile):
+def test_project_detail_rejects_project_update_post(auth_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
@@ -6702,14 +6723,13 @@ def test_dataset_owner_can_update_project_from_detail(auth_client, profile):
         {"name": " Frontier ", "description": " Updated plan "},
     )
 
-    assert response.status_code == 302
-    assert response.url == project.get_absolute_url()
+    assert response.status_code == 405
     project.refresh_from_db()
-    assert project.name == "Frontier"
-    assert project.description == "Updated plan"
+    assert project.name == "Launch"
+    assert project.description == "Launch datasets"
 
 
-def test_project_detail_update_rejects_duplicate_project_name(auth_client, profile):
+def test_project_update_rejects_duplicate_project_name_from_settings(auth_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
@@ -6718,21 +6738,26 @@ def test_project_detail_update_rejects_duplicate_project_name(auth_client, profi
     Project.objects.create(profile=profile, name="Frontier")
 
     response = auth_client.post(
-        project.get_absolute_url(),
+        reverse("project_update", args=[project.key]),
         {"name": "frontier", "description": "Updated plan"},
     )
 
-    content = response.content.decode()
-    assert response.status_code == 200
-    assert response.context["project_edit_mode"] is True
-    assert "Project name already exists." in content
-    assert 'x-show="editing" class="min-w-0 flex-1 space-y-4"' in content
+    assert response.status_code == 302
+    assert response.url == project.get_settings_url()
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == "Project name already exists."
     project.refresh_from_db()
     assert project.name == "Launch"
     assert project.description == "Launch datasets"
 
 
-def test_project_detail_update_rejects_other_users_project(client, django_user_model, profile):
+def test_project_detail_update_post_does_not_expose_other_users_project(
+    client,
+    django_user_model,
+    profile,
+):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
@@ -6750,13 +6775,13 @@ def test_project_detail_update_rejects_other_users_project(client, django_user_m
         {"name": "Frontier", "description": "Updated plan"},
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 405
     project.refresh_from_db()
     assert project.name == "Launch"
     assert project.description == "Launch datasets"
 
 
-def test_project_detail_update_raises_not_found_for_service_404(
+def test_project_update_raises_not_found_for_service_404(
     auth_client,
     monkeypatch,
     profile,
@@ -6775,7 +6800,7 @@ def test_project_detail_update_raises_not_found_for_service_404(
     monkeypatch.setattr("apps.datasets.views.update_profile_project", raise_not_found)
 
     response = auth_client.post(
-        project.get_absolute_url(),
+        reverse("project_update", args=[project.key]),
         {"name": "Launch operations", "description": "Updated plan"},
     )
 
@@ -6874,6 +6899,44 @@ def test_project_detail_groups_datasets_by_section(auth_client, profile):
     assert response.context["section_groups"][1]["datasets"][0].name == "Signals"
     assert "Blog" in content
     assert "Unsectioned" in content
+
+
+def test_project_detail_groups_archived_datasets_by_section_in_collapsed_block(
+    auth_client,
+    profile,
+):
+    assert hasattr(dataset_models, "ProjectSection")
+    ProjectSection = dataset_models.ProjectSection
+    project = Project.objects.create(profile=profile, name="Rowset")
+    blog = ProjectSection.objects.create(profile=profile, project=project, name="Blog")
+    sectioned = create_ready_dataset(profile)
+    sectioned.name = "Archived content ledger"
+    sectioned.project = project
+    sectioned.section = blog
+    sectioned.archived_at = timezone.now()
+    sectioned.save(update_fields=["name", "project", "section", "archived_at"])
+    unsectioned = create_ready_dataset(profile)
+    unsectioned.name = "Archived backlog"
+    unsectioned.project = project
+    unsectioned.archived_at = timezone.now()
+    unsectioned.save(update_fields=["name", "project", "archived_at"])
+
+    response = auth_client.get(project.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "<details open" not in content
+    assert response.context["archived_section_groups"][0]["label"] == "Blog"
+    assert response.context["archived_section_groups"][0]["datasets"][0].name == (
+        "Archived content ledger"
+    )
+    assert response.context["archived_section_groups"][1]["label"] == "Unsectioned"
+    assert response.context["archived_section_groups"][1]["datasets"][0].name == (
+        "Archived backlog"
+    )
+    assert "Archived datasets" in content
+    assert "Archived content ledger" in content
+    assert "Archived backlog" in content
 
 
 def test_dataset_settings_page_has_section_navigation(auth_client, profile):

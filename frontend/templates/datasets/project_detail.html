@@ -1,192 +1,197 @@
 {% extends "base_app.html" %}
-
 {% block content %}
-<div class="fb-page">
-  <div
-    class="space-y-6"
-    x-data="projectDetail"
-    data-editing="{{ project_edit_mode|yesno:'true,false' }}"
-    data-name="{{ project.name }}"
-    data-description="{{ project.description }}"
-  >
-    <a href="{% url 'home' %}#datasets-workspace" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All datasets</a>
-
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div {% if project_edit_mode %}x-cloak{% endif %} x-show="!editing" class="min-w-0 flex-1 space-y-3">
-        <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Project</p>
-        <h1 class="break-words text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ project.name }}</h1>
-        {% if project.description %}
-          <p class="max-w-2xl break-words text-sm leading-6 text-slate-600 dark:text-slate-300">{{ project.description }}</p>
-        {% endif %}
-        <p class="text-sm text-slate-600 dark:text-slate-300">{{ project.dataset_count }} datasets</p>
-      </div>
-      <form method="post" action="{{ project.get_absolute_url }}" {% if not project_edit_mode %}x-cloak{% endif %} x-show="editing" class="min-w-0 flex-1 space-y-4">
-        {% csrf_token %}
-        <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Project</p>
-        {% if project_form_error %}
-          <div id="project-form-error" x-ref="error" role="alert" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">{{ project_form_error }}</div>
-        {% endif %}
-        <div>
-          <label for="project-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
-          <input id="project-name" x-ref="nameInput" name="name" type="text" maxlength="255" required value="{{ project_form_values.name }}" {% if project_form_error %}aria-describedby="project-form-error" aria-invalid="true"{% endif %} class="fb-input mt-2 block w-full px-3 py-2 text-sm">
-        </div>
-        <div>
-          <label for="project-description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
-          <textarea id="project-description" x-ref="descriptionInput" name="description" rows="4" class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ project_form_values.description }}</textarea>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <button type="submit" class="fb-button-primary">Save project</button>
-          <a href="{{ project.get_absolute_url }}" @click="cancel($event)" class="fb-button-secondary">Cancel</a>
-        </div>
-      </form>
-      <div class="flex flex-wrap gap-2 sm:justify-end">
-        <a href="{% url 'home' %}#datasets-workspace" class="fb-button-secondary">View all datasets</a>
-        <a href="?edit=1" x-ref="editButton" {% if project_edit_mode %}x-cloak{% endif %} x-show="!editing" @click="edit($event)" class="fb-button-secondary">Edit</a>
-      </div>
-    </div>
-
-    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-metadata-settings-heading">
-      <form method="post" action="{% url 'project_update_metadata' project.key %}" class="space-y-5">
-        {% csrf_token %}
-        <div>
-          <h2 id="project-metadata-settings-heading" class="fb-section-title">Project metadata</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Persistent JSON returned through REST and MCP project metadata.</p>
-        </div>
-
-        <div>
-          <label for="metadata" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
-          <textarea id="metadata" name="metadata" rows="8" spellcheck="false" class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6">{{ metadata_json }}</textarea>
-        </div>
-
-        <div class="flex flex-col gap-3 sm:flex-row">
-          <button type="submit" class="fb-button-primary">Save metadata</button>
-          <a href="{{ project.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
-        </div>
-      </form>
-    </section>
-
-    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-sections-heading">
-      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div>
-          <h2 id="project-sections-heading" class="fb-section-title">Project sections</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Optional grouping for related datasets inside this project.</p>
-
-          {% if sections %}
-            <div class="mt-4 overflow-hidden rounded-md border border-slate-200 dark:border-slate-800">
-              <ul class="divide-y divide-slate-200 dark:divide-slate-800" aria-label="Project sections">
-                {% for section in sections %}
-                  <li class="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                    <div class="min-w-0">
-                      <p class="break-words text-sm font-semibold text-slate-950 dark:text-slate-100">{{ section.name }}</p>
-                      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ section.dataset_count }} datasets</p>
-                      {% if section.description %}
-                        <p class="mt-2 break-words text-sm leading-6 text-slate-600 dark:text-slate-300">{{ section.description }}</p>
-                      {% endif %}
+    <div class="fb-page">
+        <div class="space-y-8">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <a href="{% url 'home' %}#datasets-workspace"
+                   class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All datasets</a>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ project.get_settings_url }}" class="fb-button-secondary">Settings</a>
+                    <a href="{% url 'home' %}#datasets-workspace"
+                       class="fb-button-secondary">View all datasets</a>
+                </div>
+            </div>
+            <div class="space-y-5">
+                <div class="min-w-0">
+                    <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Project</p>
+                    <h1 class="mt-2 break-words text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ project.name }}</h1>
+                </div>
+                <dl class="grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                        <dt class="text-sm font-semibold text-slate-600 dark:text-slate-300">Active datasets</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-100">
+                            {{ project.dataset_count }}
+                        </dd>
                     </div>
-                    <form method="post" action="{% url 'project_section_delete' project.key section.key %}" onsubmit="return confirm('Archive section {{ section.name|escapejs }}? Datasets will stay in this project and become unsectioned.');">
-                      {% csrf_token %}
-                      <button type="submit" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Archive</button>
-                    </form>
-                  </li>
-                {% endfor %}
-              </ul>
+                    <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                        <dt class="text-sm font-semibold text-slate-600 dark:text-slate-300">Sections</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-100">
+                            {{ sections|length }}
+                        </dd>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                        <dt class="text-sm font-semibold text-slate-600 dark:text-slate-300">Archived datasets</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-100">
+                            {{ archived_datasets|length }}
+                        </dd>
+                    </div>
+                </dl>
             </div>
-          {% else %}
-            <p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">No sections yet.</p>
-          {% endif %}
-        </div>
-
-        <form method="post" action="{% url 'project_section_create' project.key %}" class="space-y-4">
-          {% csrf_token %}
-          <div>
-            <label for="section_name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
-            <input id="section_name" name="name" type="text" maxlength="255" required placeholder="Blog" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label for="section_description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
-            <textarea id="section_description" name="description" rows="3" class="fb-input mt-2 block w-full px-3 py-2 text-sm"></textarea>
-          </div>
-          <div>
-            <label for="section_metadata" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
-            <textarea id="section_metadata" name="metadata" rows="4" spellcheck="false" class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6" placeholder='{"goal":"content-led growth"}'></textarea>
-          </div>
-          <button type="submit" class="fb-button-primary w-full">Create section</button>
-        </form>
-      </div>
-    </section>
-
-    <section class="rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30" aria-labelledby="delete-project-heading">
-      <h2 id="delete-project-heading" class="text-lg font-semibold text-red-900 dark:text-red-100">Delete project</h2>
-      <p class="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">Delete this project grouping. Assigned datasets stay in Rowset and become ungrouped. This cannot be undone.</p>
-      <form method="post" action="{% url 'project_delete' project.key %}" onsubmit="return confirm('Delete project {{ project.name|escapejs }}? Assigned datasets will stay in Rowset and become ungrouped. This cannot be undone.');" class="mt-4">
-        {% csrf_token %}
-        <button type="submit" class="fb-button-danger">Delete project</button>
-      </form>
-    </section>
-
-    <section class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800" aria-labelledby="project-datasets-heading">
-      <div class="border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
-        <h2 id="project-datasets-heading" class="fb-section-title">All datasets</h2>
-      </div>
-
-      {% if datasets %}
-        {% for group in section_groups %}
-          <div class="{% if not forloop.first %}border-t border-slate-200 dark:border-slate-800{% endif %}">
-            <div class="bg-slate-50 px-5 py-3 dark:bg-slate-900">
-              <h3 class="text-sm font-semibold text-slate-950 dark:text-slate-100">{{ group.label }}</h3>
-              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ group.dataset_count }} datasets</p>
-            </div>
-            {% if group.datasets %}
-              <div class="overflow-x-auto">
-                <table class="fb-table">
-                  <caption class="sr-only">{{ group.label }} datasets in {{ project.name }}</caption>
-                  <thead class="bg-white dark:bg-slate-950">
-                    <tr>
-                      <th scope="col">Dataset</th>
-                      <th scope="col">Rows</th>
-                      <th scope="col">Columns</th>
-                      <th scope="col">Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
-                    {% for dataset in group.datasets %}
-                      <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
-                        <td class="max-w-md">
-                          <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
-                          <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
-                          <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
-                        </td>
-                        <td>{{ dataset.row_count }}</td>
-                        <td>{{ dataset.headers|length }}</td>
-                        <td class="whitespace-nowrap">{{ dataset.updated_at|date:"M d, Y" }}</td>
-                      </tr>
+            <details class="group rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                <summary class="fb-focus flex cursor-pointer list-none items-center justify-between gap-4 rounded-lg p-5">
+                    <span>
+                        <span class="fb-section-title block">Project context</span>
+                        <span class="mt-1 block text-sm leading-6 text-slate-600 dark:text-slate-300">Description and JSON metadata for API and MCP consumers.</span>
+                    </span>
+                    <span class="text-sm font-semibold text-emerald-700 group-open:hidden dark:text-emerald-300">Show</span>
+                    <span class="hidden text-sm font-semibold text-emerald-700 group-open:inline dark:text-emerald-300">Hide</span>
+                </summary>
+                <div class="border-t border-slate-200 p-5 dark:border-slate-800">
+                    <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                        <section aria-labelledby="project-description-heading">
+                            <h2 id="project-description-heading"
+                                class="text-sm font-semibold text-slate-900 dark:text-slate-100">Description</h2>
+                            {% if project.description %}
+                                <p class="mt-2 break-words text-sm leading-6 text-slate-600 dark:text-slate-300">{{ project.description }}</p>
+                            {% else %}
+                                <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">No description saved.</p>
+                            {% endif %}
+                        </section>
+                        <section aria-labelledby="project-metadata-heading">
+                            <h2 id="project-metadata-heading"
+                                class="text-sm font-semibold text-slate-900 dark:text-slate-100">Metadata</h2>
+                            <pre class="mt-2 max-h-72 overflow-auto rounded-md bg-slate-950 p-3 text-xs leading-6 text-slate-100"><code>{{ metadata_json }}</code></pre>
+                        </section>
+                    </div>
+                    <div class="mt-5">
+                        <a href="{{ project.get_settings_url }}#project-context"
+                           class="fb-button-secondary">Edit context</a>
+                    </div>
+                </div>
+            </details>
+            <section class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800"
+                     aria-labelledby="project-datasets-heading">
+                <div class="border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+                    <h2 id="project-datasets-heading" class="fb-section-title">Datasets by section</h2>
+                </div>
+                {% if datasets %}
+                    {% for group in section_groups %}
+                        <div class="{% if not forloop.first %}border-t border-slate-200 dark:border-slate-800{% endif %}">
+                            <div class="bg-slate-50 px-5 py-3 dark:bg-slate-900">
+                                <h3 class="break-words text-sm font-semibold text-slate-950 dark:text-slate-100">{{ group.label }}</h3>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ group.dataset_count }} datasets</p>
+                            </div>
+                            {% if group.datasets %}
+                                <div class="overflow-x-auto">
+                                    <table class="fb-table">
+                                        <caption class="sr-only">{{ group.label }} datasets in {{ project.name }}</caption>
+                                        <thead class="bg-white dark:bg-slate-950">
+                                            <tr>
+                                                <th scope="col">Dataset</th>
+                                                <th scope="col">Rows</th>
+                                                <th scope="col">Columns</th>
+                                                <th scope="col">Updated</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+                                            {% for dataset in group.datasets %}
+                                                <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+                                                    <td class="max-w-md">
+                                                        <a href="{{ dataset.get_absolute_url }}"
+                                                           class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+                                                        <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
+                                                        <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
+                                                    </td>
+                                                    <td>{{ dataset.row_count }}</td>
+                                                    <td>{{ dataset.headers|length }}</td>
+                                                    <td class="whitespace-nowrap">{{ dataset.updated_at|date:"M d, Y" }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endif %}
+                        </div>
                     {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            {% endif %}
-          </div>
-        {% endfor %}
-        {% if page_obj.has_other_pages %}
-          <nav class="flex flex-col gap-3 border-t border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between" aria-label="Project dataset pagination">
-            <p class="text-slate-600 dark:text-slate-300">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>
-            <div class="flex flex-wrap gap-2">
-              {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Previous</a>
-              {% endif %}
-              {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Next</a>
-              {% endif %}
-            </div>
-          </nav>
-        {% endif %}
-      {% else %}
-        <div class="bg-white p-6 dark:bg-slate-950">
-          <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">No datasets are assigned to this project yet.</p>
-          <a href="{% url 'home' %}#datasets-workspace" class="fb-button-secondary mt-4">View datasets</a>
+                    {% if page_obj.has_other_pages %}
+                        <nav class="flex flex-col gap-3 border-t border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between"
+                             aria-label="Project dataset pagination">
+                            <p class="text-slate-600 dark:text-slate-300">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>
+                            <div class="flex flex-wrap gap-2">
+                                {% if page_obj.has_previous %}
+                                    <a href="?page={{ page_obj.previous_page_number }}"
+                                       class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Previous</a>
+                                {% endif %}
+                                {% if page_obj.has_next %}
+                                    <a href="?page={{ page_obj.next_page_number }}"
+                                       class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Next</a>
+                                {% endif %}
+                            </div>
+                        </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="bg-white p-6 dark:bg-slate-950">
+                        <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">No active datasets are assigned to this project.</p>
+                        <a href="{% url 'home' %}#datasets-workspace"
+                           class="fb-button-secondary mt-4">View datasets</a>
+                    </div>
+                {% endif %}
+            </section>
+            <details class="group rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                <summary class="fb-focus flex cursor-pointer list-none items-center justify-between gap-4 rounded-lg p-5">
+                    <span>
+                        <span class="fb-section-title block">Archived datasets</span>
+                        <span class="mt-1 block text-sm leading-6 text-slate-600 dark:text-slate-300">{{ archived_datasets|length }} archived datasets grouped by section.</span>
+                    </span>
+                    <span class="text-sm font-semibold text-emerald-700 group-open:hidden dark:text-emerald-300">Show</span>
+                    <span class="hidden text-sm font-semibold text-emerald-700 group-open:inline dark:text-emerald-300">Hide</span>
+                </summary>
+                <div class="border-t border-slate-200 dark:border-slate-800">
+                    {% if archived_datasets %}
+                        {% for group in archived_section_groups %}
+                            <div class="{% if not forloop.first %}border-t border-slate-200 dark:border-slate-800{% endif %}">
+                                <div class="bg-slate-50 px-5 py-3 dark:bg-slate-900">
+                                    <h3 class="break-words text-sm font-semibold text-slate-950 dark:text-slate-100">{{ group.label }}</h3>
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ group.dataset_count }} archived datasets</p>
+                                </div>
+                                {% if group.datasets %}
+                                    <div class="overflow-x-auto">
+                                        <table class="fb-table">
+                                            <caption class="sr-only">{{ group.label }} archived datasets in {{ project.name }}</caption>
+                                            <thead class="bg-white dark:bg-slate-950">
+                                                <tr>
+                                                    <th scope="col">Dataset</th>
+                                                    <th scope="col">Rows</th>
+                                                    <th scope="col">Columns</th>
+                                                    <th scope="col">Archived</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+                                                {% for dataset in group.datasets %}
+                                                    <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+                                                        <td class="max-w-md">
+                                                            <a href="{{ dataset.get_absolute_url }}"
+                                                               class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
+                                                            <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
+                                                        </td>
+                                                        <td>{{ dataset.row_count }}</td>
+                                                        <td>{{ dataset.headers|length }}</td>
+                                                        <td class="whitespace-nowrap">{{ dataset.archived_at|date:"M d, Y" }}</td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-5">
+                            <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">No archived datasets are assigned to this project.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </details>
         </div>
-      {% endif %}
-    </section>
-  </div>
-</div>
+    </div>
 {% endblock content %}
