@@ -149,7 +149,10 @@ def test_submit_feedback_api_creates_feedback_dataset_row(client, django_user_mo
     assert row.data["context"] == ""
     assert row.data["submitted_via"] == "browser"
     assert row.data["feedback"] == "API feedback"
-    assert feedback.metadata == {"rowset_row_url": expected_row_url}
+    assert feedback.metadata == {
+        "rowset_row_url": expected_row_url,
+        "feedback_owner_email": "feedback-api-user@example.com",
+    }
 
 
 def test_legacy_v1_api_prefix_serves_dataset_endpoints(client):
@@ -811,6 +814,7 @@ def test_agent_api_key_can_submit_feedback_through_rest(client, django_user_mode
     assert feedback.metadata == {
         "tool": "get_rowset_capabilities",
         "rowset_row_url": expected_row_url,
+        "feedback_owner_email": "feedbackapiuser@example.com",
     }
     assert feedback.agent_api_key == credential.agent_api_key
     payload = response.json()

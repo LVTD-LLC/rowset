@@ -46,6 +46,7 @@ def test_submit_profile_feedback_persists_agent_context_and_queues_notification(
         "tool": "create_dataset",
         "category": "docs",
         "rowset_row_url": result.row_url,
+        "feedback_owner_email": "testuser@example.com",
     }
     assert feedback.agent_api_key == credential.agent_api_key
     assert result.dataset.name == "Feedback"

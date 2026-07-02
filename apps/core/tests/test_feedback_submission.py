@@ -102,6 +102,47 @@ def test_submit_profile_feedback_reuses_project_section_and_dataset(
 
 
 @pytest.mark.django_db
+@override_settings(
+    ROWSET_FEEDBACK_OWNER_EMAIL="rasul@lvtd.dev",
+    SITE_URL="https://rowset.example",
+)
+def test_submit_profile_feedback_writes_to_configured_owner_dataset(django_user_model):
+    owner_user = django_user_model.objects.create_user(
+        username="rasul",
+        email="rasul@lvtd.dev",
+        password="password123",
+    )
+    submitter_user = django_user_model.objects.create_user(
+        username="external-agent-user",
+        email="external-agent@example.com",
+        password="password123",
+    )
+
+    result = submit_profile_feedback(
+        profile=submitter_user.profile,
+        feedback="Centralize this feedback.",
+        page="mcp:submit_feedback",
+        source=FeedbackSource.MCP,
+        metadata={"tool": "submit_feedback"},
+    )
+
+    dataset = Dataset.objects.get(name="Feedback")
+    row = dataset.rows.get(index_value=str(result.feedback.id))
+
+    assert result.dataset == dataset
+    assert dataset.profile == owner_user.profile
+    assert result.feedback.profile == submitter_user.profile
+    assert result.feedback.metadata == {
+        "tool": "submit_feedback",
+        "rowset_row_url": result.row_url,
+        "feedback_owner_email": "rasul@lvtd.dev",
+    }
+    assert row.data["user_email"] == "external-agent@example.com"
+    assert row.data["profile_id"] == str(submitter_user.profile.id)
+    assert row.data["feedback"] == "Centralize this feedback."
+
+
+@pytest.mark.django_db
 @override_settings(SITE_URL="https://rowset.example")
 def test_submit_profile_feedback_recovers_from_concurrent_dataset_create(
     profile,
