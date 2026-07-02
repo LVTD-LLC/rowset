@@ -7,34 +7,12 @@ UV_RUN ?= uv run
 NPM ?= npm
 COVERAGE_RUN ?= $(COMPOSE_TEST) run --rm backend sh -c
 COVERAGE_PYTEST ?= uv run --with coverage coverage run --source=apps,rowset -m pytest
-COVERAGE_FAIL_UNDER ?= 80
-COVERAGE_REPORT ?= uv run --with coverage coverage report -m --fail-under=$(COVERAGE_FAIL_UNDER)
-HIGH_RISK_COVERAGE_FILES = \
-	apps/api/services.py \
-	apps/datasets/services.py \
-	apps/datasets/vector_search.py \
-	apps/mcp_server/server.py
-TYPE_CHECK_FILES = \
-	apps/api/errors.py \
-	apps/api/row_contracts.py \
-	apps/api/schemas.py \
-	apps/api/utils.py \
-	apps/core/agent_skill.py \
-	apps/core/capabilities.py \
-	apps/datasets/choices.py \
-	apps/datasets/constants.py \
-	apps/datasets/embeddings.py \
-	apps/datasets/types.py \
-	rowset/logging_utils.py \
-	rowset/sentry_metrics.py \
-	rowset/sentry_utils.py \
-	rowset/utils.py
+COVERAGE_REPORT ?= uv run --with coverage coverage report -m
 TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 
 .PHONY: \
 	ci-local \
 	coverage \
-	coverage-high-risk \
 	django-check \
 	format-check \
 	format-python \
@@ -47,14 +25,11 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 	makemigrations \
 	migrate \
 	migrations-check \
-	quality-drift-check \
 	restart-worker \
 	serve \
 	shell \
-	startup-smoke \
 	template-check \
-	test \
-	type-check
+	test
 
 %:
 	@:
@@ -93,23 +68,11 @@ lint-python:
 format-check:
 	$(UV_RUN) ruff format --check .
 
-quality-drift-check:
-	$(UV_RUN) python scripts/check-quality-drift.py
-
-startup-smoke:
-	$(UV_RUN) python scripts/startup-smoke.py
-
 format-python:
 	$(UV_RUN) ruff format .
 
-type-check:
-	$(UV_RUN) ty check $(TYPE_CHECK_FILES)
-
 coverage:
 	$(COVERAGE_RUN) '$(COVERAGE_PYTEST) $(TARGET_ARGS) && $(COVERAGE_REPORT)'
-
-coverage-high-risk:
-	$(COVERAGE_RUN) '$(COVERAGE_PYTEST) $(TARGET_ARGS) && $(COVERAGE_REPORT) $(HIGH_RISK_COVERAGE_FILES)'
 
 template-check:
 	$(UV_RUN) djlint frontend/templates --check

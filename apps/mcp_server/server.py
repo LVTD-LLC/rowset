@@ -7,7 +7,6 @@ from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from pydantic import Field
 
-from apps.api.row_contracts import RowFilterOperators, RowFilters
 from apps.api.services import (
     MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
@@ -1578,7 +1577,7 @@ def list_dataset_rows(
         Field(default=None, description="Optional text to search across row values."),
     ] = None,
     filters: Annotated[
-        RowFilters | None,
+        dict[str, str] | None,
         Field(
             default=None,
             description=(
@@ -1628,7 +1627,7 @@ def list_dataset_rows(
 def search_rows(
     query: Annotated[str, Field(description="Natural language or keyword search text.")],
     filters: Annotated[
-        RowFilters | None,
+        dict[str, str] | None,
         Field(
             default=None,
             description=(
@@ -1638,7 +1637,7 @@ def search_rows(
         ),
     ] = None,
     filter_operators: Annotated[
-        RowFilterOperators | None,
+        dict[str, str] | None,
         Field(
             default=None,
             description=(
@@ -1721,7 +1720,7 @@ def search_dataset_rows(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     query: Annotated[str, Field(description="Search text to match semantically and exactly.")],
     filters: Annotated[
-        RowFilters | None,
+        dict[str, str] | None,
         Field(
             default=None,
             description="Optional mapping from dataset header to canonical row filter value.",

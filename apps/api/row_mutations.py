@@ -1,19 +1,10 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from django.db import connection
 
 from apps.api.errors import DatasetServiceError
-from apps.api.row_contracts import (
-    RowData,
-    RowWritePayload,
-    normalize_row_data_for_headers,
-    normalize_row_patch_for_headers,
-)
-from apps.api.row_contracts import (
-    stringify_row_cell as stringify_cell,
-)
 from apps.core.analytics import ROWSET_DATASET_ROW_MUTATED, agent_api_key_tracking_properties
 from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetMutationType
@@ -26,6 +17,25 @@ ROW_MUTATION_TYPES = (
     DatasetMutationType.ROW_UPDATED,
     DatasetMutationType.ROW_DELETED,
 )
+RowWritePayload = Mapping[str, object]
+RowData = dict[str, str]
+
+
+def stringify_cell(value: object) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def normalize_row_data_for_headers(data: RowWritePayload, headers: Iterable[str]) -> RowData:
+    return {header: stringify_cell(data.get(header, "")) for header in headers}
+
+
+def normalize_row_patch_for_headers(data: RowWritePayload, headers: Iterable[str]) -> RowData:
+    allowed_headers = set(headers)
+    return {
+        header: stringify_cell(value) for header, value in data.items() if header in allowed_headers
+    }
 
 
 @dataclass(frozen=True)

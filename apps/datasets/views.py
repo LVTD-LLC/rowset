@@ -1573,6 +1573,16 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["archived_page_obj"] = archived_page_obj
         context["archived_datasets"] = archived_datasets
         context["archived_section_groups"] = self.get_archived_section_groups(archived_datasets)
+        if page_obj.has_previous():
+            context["previous_dataset_page_url"] = _querystring_for_page(
+                self.request,
+                page_obj.previous_page_number(),
+            )
+        if page_obj.has_next():
+            context["next_dataset_page_url"] = _querystring_for_page(
+                self.request,
+                page_obj.next_page_number(),
+            )
         if archived_page_obj.has_previous():
             context["previous_archived_page_url"] = _querystring_for_page(
                 self.request,

@@ -224,6 +224,7 @@ class TestHomeView:
         response = auth_client.get(reverse("home"))
         content = response.content.decode()
 
+        assert "<title>Dashboard · Rowset</title>" in content
         assert "Connect your AI agent to Rowset" in content
         assert "Setup tasks" in content
         assert "Create an API key" in content
