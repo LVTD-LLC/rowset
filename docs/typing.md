@@ -17,6 +17,7 @@ uv run ty check \
   apps/api/utils.py \
   apps/core/agent_skill.py \
   apps/core/capabilities.py \
+  apps/core/model_typing.py \
   apps/datasets/choices.py \
   apps/datasets/constants.py \
   apps/datasets/embeddings.py \
@@ -36,10 +37,15 @@ boundary: it names shared row write payloads, normalized row data, row search
 filters, and row search candidate shapes without pulling the full Django service
 kernel into the scoped check.
 
+`apps/core/model_typing.py` centralizes the small amount of `Any` still needed
+for Django's dynamic model attributes, managers, and generated `DoesNotExist`
+exception classes. Prefer adding typed protocols or helper functions there over
+scattering `cast(Any, ...)` through API, MCP, or service modules.
+
 The shared dataset aliases in `apps/datasets/types.py` are the preferred names
 for metadata and schema shapes at REST/MCP boundaries:
 
-- `JsonObject` for arbitrary JSON metadata objects.
+- `JsonScalar`, `JsonValue`, and `JsonObject` for arbitrary JSON metadata.
 - `ColumnSchema`, `ColumnSchemaEntry`, and `ColumnTypeSpec` for semantic column metadata.
 - `DatasetRowInput` for API/MCP create-row payloads that may contain raw JSON values.
 

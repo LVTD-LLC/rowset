@@ -22,6 +22,7 @@ TYPE_CHECK_FILES = \
 	apps/api/utils.py \
 	apps/core/agent_skill.py \
 	apps/core/capabilities.py \
+	apps/core/model_typing.py \
 	apps/datasets/choices.py \
 	apps/datasets/constants.py \
 	apps/datasets/embeddings.py \

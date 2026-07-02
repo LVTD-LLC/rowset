@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, cast
-
 from asgiref.sync import sync_to_async
 from django.db import close_old_connections
 from fastmcp.server.auth import AccessToken, AuthProvider
 
+from apps.core.model_typing import agent_api_key_id, profile_id, profile_user
 from apps.core.services import resolve_api_key_profile
 from rowset.utils import build_absolute_public_url
 
@@ -46,16 +45,16 @@ class RowsetApiKeyAuthProvider(AuthProvider):
         client_id = (
             AGENT_API_KEY_CLIENT_ID if agent_api_key is not None else LEGACY_API_KEY_CLIENT_ID
         )
-        typed_profile = cast(Any, profile)
+        resolved_profile_id = profile_id(profile)
         claims = {
             "iss": build_mcp_base_url(),
-            "sub": str(typed_profile.id),
-            "profile_id": typed_profile.id,
-            "email": typed_profile.user.email,
+            "sub": str(resolved_profile_id),
+            "profile_id": resolved_profile_id,
+            "email": profile_user(profile).email,
             "legacy_api_key": agent_api_key is None,
         }
         if agent_api_key is not None:
-            claims["agent_api_key_id"] = cast(Any, agent_api_key).id
+            claims["agent_api_key_id"] = agent_api_key_id(agent_api_key)
             claims["agent_api_key_name"] = agent_api_key.name
             claims["agent_api_key_access_level"] = agent_api_key.access_level
 
@@ -64,7 +63,7 @@ class RowsetApiKeyAuthProvider(AuthProvider):
             client_id=client_id,
             scopes=[MCP_SCOPE],
             expires_at=None,
-            subject=str(typed_profile.id),
+            subject=str(resolved_profile_id),
             claims=claims,
         )
 

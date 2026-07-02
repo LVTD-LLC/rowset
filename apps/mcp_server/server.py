@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, Any, cast
+from typing import Annotated, TypedDict
 
 from django.db import IntegrityError, close_old_connections
 from fastmcp import FastMCP
@@ -62,6 +62,13 @@ from apps.core.analytics import (
 )
 from apps.core.capabilities import rowset_capabilities_payload
 from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
+from apps.core.model_typing import (
+    AgentApiKeyDoesNotExist,
+    ProfileDoesNotExist,
+    agent_api_key_objects,
+    profile_id,
+    profile_objects,
+)
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import (
     create_agent_api_key as create_agent_api_key_credential,
@@ -85,6 +92,17 @@ RETRYABLE_ERROR_CODES = {
     "RATE_LIMITED",
     "ROWSET_SERVICE_ERROR",
 }
+
+
+class AgentActorKwargs(TypedDict, total=False):
+    agent_api_key: AgentApiKey
+
+
+class DatasetMetadataUpdateKwargs(AgentActorKwargs, total=False):
+    description: str
+    instructions: str
+    metadata: JsonObject
+
 
 mcp = FastMCP(
     name="Rowset",
@@ -123,23 +141,11 @@ def _attach_agent_api_key(
     return profile
 
 
-def _agent_actor_kwargs(profile: Profile) -> dict:
+def _agent_actor_kwargs(profile: Profile) -> AgentActorKwargs:
     agent_api_key = getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None)
     if agent_api_key is None:
         return {}
     return {"agent_api_key": agent_api_key}
-
-
-def _profile_objects() -> Any:
-    return cast(Any, Profile).objects
-
-
-def _agent_api_key_objects() -> Any:
-    return cast(Any, AgentApiKey).objects
-
-
-ProfileDoesNotExist = cast(type[Exception], cast(Any, Profile).DoesNotExist)
-AgentApiKeyDoesNotExist = cast(type[Exception], cast(Any, AgentApiKey).DoesNotExist)
 
 
 def _authenticate_profile(api_key: str | None = None) -> Profile:
@@ -168,12 +174,12 @@ def _get_access_token_profile() -> Profile | None:
         return None
 
     claims = access_token.claims or {}
-    profile_id = access_token.subject or claims.get("profile_id")
-    if not profile_id:
+    profile_identifier = access_token.subject or claims.get("profile_id")
+    if not profile_identifier:
         return None
 
     try:
-        profile = _profile_objects().select_related("user").get(id=profile_id)
+        profile = profile_objects().select_related("user").get(id=profile_identifier)
     except (ProfileDoesNotExist, ValueError) as exc:
         logger.warning("[MCP] API-key token profile could not be resolved", error=str(exc))
         return None
@@ -182,7 +188,7 @@ def _get_access_token_profile() -> Profile | None:
     agent_api_key_id = claims.get("agent_api_key_id")
     if agent_api_key_id:
         try:
-            agent_api_key = _agent_api_key_objects().get(
+            agent_api_key = agent_api_key_objects().get(
                 id=agent_api_key_id,
                 profile=profile,
                 revoked_at__isnull=True,
@@ -192,7 +198,7 @@ def _get_access_token_profile() -> Profile | None:
                 "[MCP] OAuth token agent API key could not be resolved",
                 error=str(exc),
                 agent_api_key_id=agent_api_key_id,
-                profile_id=profile.id,
+                profile_id=profile_id(profile),
             )
             raise PermissionError(
                 "The Rowset agent API key for this token is no longer active."
@@ -214,8 +220,8 @@ def _mcp_error_payload(
     message: str,
     retryable: bool,
     suggested_action: str,
-    details: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    details: JsonObject | None = None,
+) -> JsonObject:
     return {
         "code": code,
         "message": _error_message_sentence(message),
@@ -225,7 +231,7 @@ def _mcp_error_payload(
     }
 
 
-def _mcp_tool_error(payload: dict[str, Any]) -> ToolError:
+def _mcp_tool_error(payload: JsonObject) -> ToolError:
     return ToolError(json.dumps(payload, sort_keys=True))
 
 
@@ -477,7 +483,7 @@ def submit_feedback(
         ),
     ] = None,
     context: Annotated[
-        dict[str, Any] | None,
+        JsonObject | None,
         Field(
             default=None,
             description=(
@@ -1147,19 +1153,19 @@ def update_dataset_metadata(
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
-    updates: dict[str, Any] = {}
+    updates: DatasetMetadataUpdateKwargs = {}
     if description is not None:
         updates["description"] = description
     if instructions is not None:
         updates["instructions"] = instructions
     if metadata is not None:
         updates["metadata"] = metadata
+    updates.update(_agent_actor_kwargs(profile))
     try:
         return update_profile_dataset_metadata(
             profile,
             dataset_key,
             **updates,
-            **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc

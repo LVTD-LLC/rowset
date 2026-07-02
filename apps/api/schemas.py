@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Any
 
 from ninja import Schema
 from pydantic import Field
@@ -373,7 +372,7 @@ class DatasetMetadataOut(Schema):
 
 class DatasetColumnAddIn(Schema):
     name: str
-    default_value: Any = ""
+    default_value: object = ""
     column_type: ColumnTypeIn | None = Field(
         default=None,
         description=COLUMN_TYPE_DESCRIPTION,
@@ -559,7 +558,7 @@ class DatasetRowsOut(Schema):
 
 class DatasetSearchIn(Schema):
     query: str = Field(..., min_length=1, max_length=1000)
-    filters: dict[str, Any] | None = None
+    filters: dict[str, object] | None = None
     limit: int = Field(default=10, ge=1, le=50)
 
 
@@ -567,7 +566,7 @@ class DatasetSearchResultOut(Schema):
     rank: int
     score: float
     row: DatasetRowOut
-    match: dict[str, Any]
+    match: dict[str, object]
 
 
 class DatasetSearchOut(Schema):
@@ -586,11 +585,11 @@ class ProfileRowSearchIn(Schema):
         max_length=1000,
         description="Natural language or keyword search text.",
     )
-    filters: dict[str, Any] | None = Field(
+    filters: dict[str, object] | None = Field(
         default=None,
         description="Optional row field filters. Datasets missing these headers are excluded.",
     )
-    filter_operators: dict[str, Any] | None = Field(
+    filter_operators: dict[str, object] | None = Field(
         default=None,
         description=(
             "Optional row filter operators keyed by header, such as contains, is, above, or below."
@@ -646,14 +645,14 @@ class ProfileRowSearchResultOut(Schema):
     score: float
     dataset: ProfileRowSearchDatasetOut
     row: DatasetRowOut
-    match: dict[str, Any]
+    match: dict[str, object]
 
 
 class ProfileRowSearchOut(Schema):
     query: str
     filters: RowFilters = Field(default_factory=dict)
     filter_operators: RowFilterOperators = Field(default_factory=dict)
-    dataset_filters: dict[str, Any] = Field(default_factory=dict)
+    dataset_filters: dict[str, object] = Field(default_factory=dict)
     sort: str
     direction: str
     limit: int
