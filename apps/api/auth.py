@@ -42,7 +42,11 @@ class APIKeyAuth(APIKeyQuery):
     def authenticate(self, request: HttpRequest, key: str | None) -> Profile | None:
         if not key:
             return None
-        logger.info("[Django Ninja Auth] API key request")
+        logger.info(
+            "[Django Ninja Auth] API key request",
+            api_key=key,
+            required_access_level=self.required_access_level,
+        )
         resolved = resolve_api_key_profile(key)
         if resolved is None:
             logger.warning("[Django Ninja Auth] Invalid API key")

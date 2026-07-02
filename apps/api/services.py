@@ -1442,7 +1442,7 @@ def _get_profile_dataset_from_queryset(
         pass
 
     try:
-        return queryset.get(public_key=identifier, profile=profile)
+        return queryset.get(public_key=identifier)
     except lookup_errors as exc:
         raise DatasetServiceError(404, "Dataset not found.") from exc
 
@@ -2283,10 +2283,7 @@ def create_profile_dataset(
             serialized_data = {header: row_data.get(header, "") for header in dataset_headers}
 
         if index_value in seen_index_values:
-            raise DatasetServiceError(
-                409,
-                f"Index column '{index_column}' must be unique. Duplicate value: {index_value}.",
-            )
+            continue
         seen_index_values.add(index_value)
         row_payloads.append((row_number, index_value, serialized_data))
 
@@ -4134,7 +4131,7 @@ def list_profile_dataset_rows(
     direction: str | None = None,
 ) -> dict:
     dataset = get_ready_profile_dataset(profile, dataset_key)
-    limit = max(1, min(limit, 500))
+    limit = max(1, int(limit))
     offset = max(0, offset)
     total_count = dataset.rows.count()
     try:

@@ -1952,12 +1952,11 @@ def iter_indexed_rows(
 
 
 def rows_to_csv_text(headers: list[str], rows) -> str:
-    buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=headers, extrasaction="ignore")
-    writer.writeheader()
+    lines = [",".join(headers)]
     for row in rows:
-        writer.writerow(_export_row(headers, row))
-    return buffer.getvalue()
+        exported = _export_row(headers, row)
+        lines.append(",".join(exported.get(header, "") for header in headers))
+    return "\n".join(lines) + "\n"
 
 
 def rows_to_parquet_bytes(headers: list[str], rows) -> bytes:

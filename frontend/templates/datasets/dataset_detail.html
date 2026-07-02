@@ -60,13 +60,13 @@
             {% if dataset.description %}
               <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Description</h3>
-                <p class="mt-1 max-w-full whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 dark:text-slate-200">{{ dataset.description }}</p>
+                <p class="mt-1 max-w-full whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 dark:text-slate-200">{{ dataset.description|safe }}</p>
               </div>
             {% endif %}
             {% if dataset.instructions %}
               <div class="min-w-0">
                 <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Agent instructions</h3>
-                <p class="mt-1 max-w-full whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 dark:text-slate-200">{{ dataset.instructions }}</p>
+                <p class="mt-1 max-w-full whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 dark:text-slate-200">{{ dataset.instructions|safe }}</p>
               </div>
             {% endif %}
             {% if dataset.metadata %}
