@@ -4,7 +4,13 @@ from apps.pages.models import ReferrerBanner
 
 
 def _django_attr(model: object, name: str) -> object:
-    return getattr(model, name)
+    try:
+        return getattr(model, name)
+    except AttributeError as exc:
+        model_name = getattr(model, "__name__", type(model).__name__)
+        raise AttributeError(
+            f"{model_name} is missing expected Django attribute {name!r}."
+        ) from exc
 
 
 class ReferrerBannerQuerySet(Protocol):

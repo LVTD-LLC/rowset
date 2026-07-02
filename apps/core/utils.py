@@ -22,7 +22,12 @@ EMAIL_DELIVERY_METRICS = Counter()
 
 
 class DivErrorList(ErrorList):
-    def __str__(self) -> str:  # ty: ignore[invalid-method-override]
+    def __str__(
+        self,
+        template_name: str | None = None,
+        context: dict[str, object] | None = None,
+        renderer: object = None,
+    ) -> str:
         return self.as_divs()
 
     def as_divs(self) -> str:
