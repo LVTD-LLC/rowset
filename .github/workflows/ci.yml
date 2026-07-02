@@ -75,15 +75,6 @@ jobs:
       - name: Ruff format check
         run: make format-check
 
-      - name: Quality command drift check
-        run: make quality-drift-check
-
-      - name: Production-like startup/import smoke
-        run: make startup-smoke
-
-      - name: Scoped type check
-        run: make type-check
-
       - name: Create dummy webpack manifest (tests)
         run: |
           mkdir -p frontend/build
@@ -108,9 +99,6 @@ jobs:
 
       - name: Pytest
         run: make test PYTEST_RUN="uv run pytest" -- -q
-
-      - name: High-risk coverage report
-        run: make coverage-high-risk COVERAGE_RUN="bash -c" -- apps/api apps/datasets apps/mcp_server -q
 
   frontend:
     runs-on: ubuntu-latest

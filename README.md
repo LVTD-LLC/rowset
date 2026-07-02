@@ -720,9 +720,7 @@ npm run build
 npm run lint
 ```
 
-### Quality checks
-
-Use `docs/quality.md` as the source of truth for local verification.
+### Verification
 
 - Current local CI-equivalent path: `make ci-local`
 - Focused backend tests: `make test apps/datasets/tests/test_csv_datasets.py`
@@ -731,8 +729,7 @@ Use `docs/quality.md` as the source of truth for local verification.
 - Django system checks: `make django-check`
 - Python lint and format checks: `make lint-python` and `make format-check`
 - Frontend checks: `make frontend-install`, then `make frontend-check`
-- Scoped type check: `make type-check`
-- Coverage visibility: `make coverage -- <pytest args>`
+- Optional coverage inspection: `make coverage -- <pytest args>`
 
 ### CI
 

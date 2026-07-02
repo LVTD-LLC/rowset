@@ -47,7 +47,6 @@ browser-friendly and read-only; REST and MCP are the private programmatic paths.
 - Run a focused test file: `make test apps/datasets/tests/test_csv_datasets.py`
 - Run focused pytest flags: `make test -- -k dataset -q`
 - Run the current local CI-equivalent path: `make ci-local`
-- See the full quality command matrix: `docs/quality.md`
 - Restart workers: `make restart-worker`
 - Build frontend assets locally: `npm run build`
 - Lint frontend JS locally: `npm run lint`
@@ -59,8 +58,8 @@ host environment. The supported path is the Docker-backed `make test`.
 
 - For backend behavior, run the smallest relevant `make test ...` target first,
   then broaden if the change touches shared services, auth, or data import.
-- For pre-PR verification and touched-area command choices, use
-  `docs/quality.md`.
+- For pre-PR verification, use `make ci-local` when the touched area warrants the
+  full local path, or run the smallest relevant focused commands first.
 - For model changes, run `make makemigrations` and include generated migrations
   only when they are the direct result of the model edit.
 - For API or MCP changes, verify ownership boundaries, invalid input handling,
