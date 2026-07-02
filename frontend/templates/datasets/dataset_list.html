@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% block title %}{{ dataset_list_title }} · Rowset{% endblock title %}
+{% block title %}{{ dataset_list_title|default:"Datasets" }} · Rowset{% endblock title %}
 
 {% block content %}
 <div class="fb-page">
