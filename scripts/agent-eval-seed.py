@@ -174,7 +174,12 @@ def _build_artifact(
 
 
 def _markdown_for_artifact(artifact: dict[str, object]) -> str:
-    seed = cast(Mapping[str, object], artifact["seed"])
+    seed_raw = artifact["seed"]
+    if not isinstance(seed_raw, Mapping):
+        raise TypeError(
+            f"Expected artifact['seed'] to be a Mapping, got {type(seed_raw).__name__!r}"
+        )
+    seed = cast(Mapping[str, object], seed_raw)
     required_checks = artifact["required_checks"]
     observed_checks = artifact["observed_checks"]
     changed_files = artifact["changed_files"]

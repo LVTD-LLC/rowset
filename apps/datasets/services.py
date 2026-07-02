@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 from urllib.parse import urlparse
 from uuid import UUID
 from xml.sax.saxutils import escape
@@ -126,12 +126,12 @@ def project_section_dataset_groups(
     unsectioned_dataset_count: int | None = None,
 ) -> list[dict[str, Any]]:
     """Group project datasets by active section, with unmatched datasets left unsectioned."""
-    section_ids = {getattr(section, "id", None) for section in sections}
-    datasets_by_section_id: dict[object, list[Any]] = {}
+    section_ids = {cast(int | None, getattr(section, "id", None)) for section in sections}
+    datasets_by_section_id: dict[int | None, list[Any]] = {}
     unsectioned_datasets = []
 
     for dataset in datasets:
-        section_id = getattr(dataset, "section_id", None)
+        section_id = cast(int | None, getattr(dataset, "section_id", None))
         if section_id in section_ids:
             datasets_by_section_id.setdefault(section_id, []).append(dataset)
         else:
