@@ -81,6 +81,9 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Added a Google DESIGN.md-style design system source of truth for Rowset colors, typography, layout, components, and usage guardrails.
 
 ### Removed
+- Removed deprecated coding-agent evaluation scaffolding, including
+  `docs/agent-evals/`, `docs/code-tours/`, `docs/agent-task-templates.md`,
+  `scripts/agent-eval-seed.py`, and the `agent-eval-seed` Makefile target.
 - Removed the dashboard CSV/Parquet upload and preview-confirm import wizard.
 - Removed Rowset-managed Google Sheets connection, import, and write-back code.
 - Chatwoot support chat can now be enabled with `CHATWOOT_BASE_URL` and `CHATWOOT_WEBSITE_TOKEN`.
