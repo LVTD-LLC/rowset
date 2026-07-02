@@ -758,6 +758,7 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
         "public_preview_count": 1,
         "total_projects": 1,
     }
+    assert "<title>Dashboard · Rowset</title>" in content
     assert "Search datasets" in content
     assert "People" in content
     assert "Research" in content
@@ -1072,6 +1073,7 @@ def test_archived_dataset_list_shows_archived_datasets_only(
         "public_preview_count": 0,
         "total_projects": 1,
     }
+    assert "<title>Archived datasets · Rowset</title>" in content
     assert "Archived datasets" in content
     assert "Archived rows" in content
     assert "Archived projects" in content
@@ -1140,6 +1142,7 @@ def test_dataset_detail_orders_row_cells_by_headers(auth_client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert "<title>Customers · Rowset</title>" in content
     customer_id_position = content.index("C-1001")
     name_position = content.index("Ada Lovelace")
     plan_position = content.index("Scale")
@@ -1978,6 +1981,7 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert "<title>People · ada@example.com · Rowset</title>" in content
     assert "Row 1" in content
     assert "notes" in content
     assert full_value in content
@@ -2036,6 +2040,7 @@ def test_dataset_row_create_view_renders_schema_specific_inputs(auth_client, pro
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert "<title>New row · Typed rows · Rowset</title>" in content
     fields = {field["header"]: field for field in response.context["row_form_fields"]}
     assert fields["row_id"]["input_type"] == "text"
     assert fields["row_id"]["is_textarea"] is False
@@ -2450,6 +2455,7 @@ def test_dataset_changes_paginates_mutation_history(auth_client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert "<title>People changes · Rowset</title>" in content
     assert f"Showing 1-{DATASET_CHANGES_PAGE_SIZE} of {total_changes} recorded changes." in content
     assert "Page 1 of 2" in content
     assert 'href="?page=2"' in content
@@ -2720,6 +2726,7 @@ def test_project_detail_shows_inline_project_summary_editor(auth_client, profile
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert "<title>Frontier · Rowset</title>" in content
     assert "Project details" not in content
     assert 'x-data="projectDetail"' in content
     assert 'x-show="!editing"' in content
@@ -6883,6 +6890,7 @@ def test_dataset_settings_page_has_section_navigation(auth_client, profile):
 
     assert response.status_code == 200
     content = response.content.decode()
+    assert "<title>People settings · Rowset</title>" in content
     assert 'aria-labelledby="dataset-settings-nav-heading"' in content
     for section_id in [
         "dataset-context",

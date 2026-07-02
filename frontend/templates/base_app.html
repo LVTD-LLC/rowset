@@ -32,7 +32,7 @@
     <link rel="shortcut icon" href="{% static 'vendors/images/favicon.ico' %}" />
 
     {% block meta %}
-    <title>Rowset</title>
+    <title>{% block title %}Rowset{% endblock title %}</title>
     <meta
       name="description"
       content="Give AI agents MCP and REST tools to manage API-backed datasets."

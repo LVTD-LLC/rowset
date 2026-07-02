@@ -1,4 +1,5 @@
 {% extends "base_app.html" %}
+{% block title %}{{ dataset.name }} · Rowset{% endblock title %}
 {% block content %}
 <div class="fb-page">
   <div data-controller="dataset-status" data-dataset-status-url-value="{% url 'dataset_status' dataset.key %}" data-dataset-status-status-value="{{ dataset.status }}" class="space-y-6">
