@@ -53,7 +53,7 @@ logger = get_rowset_logger(__name__)
 
 AGENT_API_KEY_MASK = "***"
 CREATED_AGENT_API_KEY_QUERY_PARAM = "created_agent_api_key"
-SERVER_ERROR_REDIRECT_MESSAGE = "Something went wrong. You have been redirected home."
+SERVER_ERROR_REDIRECT_MESSAGE = "Something went wrong. You have been redirected."
 PROGRAMMATIC_ERROR_PATH_PREFIXES = ("/api", "/mcp")
 
 
@@ -73,7 +73,8 @@ def server_error(request: HttpRequest):
     if _is_programmatic_error_request(request):
         return default_server_error(request)
 
-    target_url = reverse("home" if request.user.is_authenticated else "landing")
+    user = getattr(request, "user", None)
+    target_url = reverse("home" if user and user.is_authenticated else "landing")
     messages.error(request, SERVER_ERROR_REDIRECT_MESSAGE, fail_silently=True)
 
     if getattr(request, "htmx", False):
