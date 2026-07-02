@@ -3426,6 +3426,7 @@ def attach_profile_dataset_image_asset(
                 is_first_row_mutation=is_first_row_mutation,
                 changed_field_count=1,
                 image_asset_attached=True,
+                track_activation_event_func=track_activation_event,
             )
             saved_file_name = asset.file.storage.save(
                 asset.file.name,
@@ -4233,6 +4234,7 @@ def _row_mutation_hooks() -> RowMutationHooks:
         serialize_dataset_row=serialize_dataset_row,
         enqueue_dataset_row_vector_index=_enqueue_dataset_row_vector_index,
         enqueue_dataset_row_vector_delete=_enqueue_dataset_row_vector_delete,
+        track_activation_event=track_activation_event,
     )
 
 

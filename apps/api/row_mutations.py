@@ -29,6 +29,7 @@ class RowMutationHooks:
     serialize_dataset_row: Callable[..., dict]
     enqueue_dataset_row_vector_index: Callable[[int], None]
     enqueue_dataset_row_vector_delete: Callable[[int, list[int]], None]
+    track_activation_event: Callable[..., Any]
 
 
 def stringify_cell(value: Any) -> str:
@@ -110,6 +111,7 @@ def create_dataset_row(
         agent_api_key=agent_api_key,
         is_first_row_mutation=is_first_row_mutation,
         changed_field_count=len(row.data),
+        track_activation_event_func=hooks.track_activation_event,
     )
     hooks.enqueue_dataset_row_vector_index(row.id)
     row = dataset.rows.prefetch_related("assets").get(id=row.id)
@@ -195,6 +197,7 @@ def patch_dataset_row(
         is_first_row_mutation=is_first_row_mutation,
         changed_field_count=len(changed_fields),
         index_changed=index_changed,
+        track_activation_event_func=hooks.track_activation_event,
     )
     hooks.enqueue_dataset_row_vector_index(row.id)
     row = dataset.rows.prefetch_related("assets").get(id=row.id)
@@ -235,6 +238,7 @@ def delete_dataset_row(
         agent_api_key=agent_api_key,
         is_first_row_mutation=is_first_row_mutation,
         deleted_count=1,
+        track_activation_event_func=hooks.track_activation_event,
     )
     hooks.enqueue_dataset_row_vector_delete(dataset.id, [row_id])
     return {"status": "success", "message": "Row deleted.", "dataset": str(dataset.key)}
@@ -272,6 +276,7 @@ def delete_dataset_rows(
         agent_api_key=agent_api_key,
         is_first_row_mutation=is_first_row_mutation,
         deleted_count=len(deleted_rows),
+        track_activation_event_func=hooks.track_activation_event,
     )
     hooks.enqueue_dataset_row_vector_delete(dataset.id, [row_id for row_id, _ in deleted_rows])
 
@@ -463,10 +468,9 @@ def track_dataset_row_mutation(
     deleted_count: int = 0,
     index_changed: bool = False,
     image_asset_attached: bool = False,
+    track_activation_event_func: Callable[..., Any],
 ) -> None:
-    from apps.api import services as api_services
-
-    api_services.track_activation_event(
+    track_activation_event_func(
         profile,
         ROWSET_DATASET_ROW_MUTATED,
         {
