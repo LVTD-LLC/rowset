@@ -1462,9 +1462,9 @@ def test_dataset_detail_ignores_json_array_rowset_url_candidates(
     profile,
 ):
     dataset = create_ready_dataset(profile)
-    dataset.headers = ["run_id", "result", "checks_passed", "changed_files", "artifact_url"]
+    dataset.headers = ["report_id", "result", "checks_passed", "changed_files", "artifact_url"]
     dataset.column_schema = {
-        "run_id": {"type": DatasetColumnType.TEXT},
+        "report_id": {"type": DatasetColumnType.TEXT},
         "result": {
             "type": DatasetColumnType.CHOICE,
             "choices": ["dry_run", "pending", "pass", "fail", "blocked"],
@@ -1473,12 +1473,12 @@ def test_dataset_detail_ignores_json_array_rowset_url_candidates(
         "changed_files": {"type": DatasetColumnType.TEXT},
         "artifact_url": {"type": DatasetColumnType.URL},
     }
-    dataset.index_column = "run_id"
+    dataset.index_column = "report_id"
     dataset.save(update_fields=["headers", "column_schema", "index_column"])
     row = dataset.rows.first()
-    row.index_value = "sample-dry-run-eval-001"
+    row.index_value = "sample-dry-run-report-001"
     row.data = {
-        "run_id": "sample-dry-run-eval-001",
+        "report_id": "sample-dry-run-report-001",
         "result": "dry_run",
         "checks_passed": "[]",
         "changed_files": '["TODO: record changed files after the run"]',
@@ -1490,7 +1490,7 @@ def test_dataset_detail_ignores_json_array_rowset_url_candidates(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert "sample-dry-run-eval-001" in content
+    assert "sample-dry-run-report-001" in content
     assert "[]" in content
     assert "TODO: record changed files after the run" in content
     assert 'href="https://[]"' not in content

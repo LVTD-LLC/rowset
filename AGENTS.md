@@ -22,9 +22,6 @@ browser-friendly and read-only; REST and MCP are the private programmatic paths.
 - Start by reading the files you are changing and the steering files relevant to
   the task. For documentation work under `apps/docs`, also read
   `apps/docs/AGENTS.md`.
-- For agent-oriented repo work, use `docs/code-tours/README.md` for flow tours,
-  `docs/agent-task-templates.md` for task framing, and
-  `docs/agent-evals/seed-tasks.md` for repeatable evaluation seeds.
 - Prefer `rg` and `rg --files` for repo search.
 - Keep changes inside the existing app boundaries from `STRUCTURE.md`.
 - Put reusable dataset business logic in services, not directly in views,
