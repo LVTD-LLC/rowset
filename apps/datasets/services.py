@@ -376,26 +376,28 @@ def backfill_dataset_vectors(
     if limit is not None and limit < 1:
         raise ValueError("limit must be at least 1 when provided.")
 
-    if not dry_run:
-        provider = embedding_provider or get_embedding_provider()
-        store = vector_store or QdrantVectorStore(
-            embedding_model=provider.model,
-            embedding_dimensions=provider.dimensions,
-        )
-        store.ensure_collection()
-
     rows_seen = 0
     indexed = 0
-    would_index = 0
     errors: list[VectorBackfillError] = []
     batch = []
 
     rows = _dataset_rows_for_vector_backfill(dataset, limit=limit)
+    if dry_run:
+        would_index = 0
+        for _row in rows.iterator(chunk_size=batch_size):
+            rows_seen += 1
+            would_index += 1
+        return VectorBackfillResult(rows_seen=rows_seen, would_index=would_index)
+
+    provider = embedding_provider or get_embedding_provider()
+    store = vector_store or QdrantVectorStore(
+        embedding_model=provider.model,
+        embedding_dimensions=provider.dimensions,
+    )
+    store.ensure_collection()
+
     for row in rows.iterator(chunk_size=batch_size):
         rows_seen += 1
-        if dry_run:
-            would_index += 1
-            continue
 
         batch.append(row)
         if len(batch) < batch_size:
@@ -412,7 +414,7 @@ def backfill_dataset_vectors(
         errors.extend(batch_errors)
         batch = []
 
-    if not dry_run and batch:
+    if batch:
         indexed_count, batch_errors = _index_vector_backfill_batch(
             dataset=dataset,
             rows=batch,
@@ -426,7 +428,7 @@ def backfill_dataset_vectors(
     return VectorBackfillResult(
         rows_seen=rows_seen,
         indexed=indexed,
-        would_index=would_index,
+        would_index=0,
         failed=len(errors),
         errors=errors,
     )
