@@ -47,6 +47,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Google signup/login now asks only for basic profile/email access.
 
 ### Fixed
+- Agent feedback submissions now append to the configured Rowset feedback dataset instead of each submitter's own dataset.
 - Dataset detail pages now ignore non-URL JSON-array-looking cell values before Rowset link normalization, avoiding 500s for agent-eval result rows with values such as `[]`.
 - Production Docker healthchecks now run through the project virtualenv and allow enough startup time for GHCR image rollouts.
 - Dataset detail pages now ignore malformed Rowset-looking URL values that Python parses as invalid IPv6 URLs instead of failing the page render.

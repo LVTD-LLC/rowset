@@ -35,6 +35,7 @@ MAX_FEEDBACK_LENGTH = 2000
 MAX_FEEDBACK_PAGE_LENGTH = 255
 MAX_FEEDBACK_METADATA_BYTES = 8000
 logger = get_rowset_logger(__name__)
+FEEDBACK_DATASET_KEY = "021e385f-83e4-4e3a-a6e0-883530222f6d"
 FEEDBACK_PROJECT_NAME = "Rowset"
 FEEDBACK_SECTION_NAME = "CX"
 FEEDBACK_DATASET_NAME = "Feedback"
@@ -252,6 +253,22 @@ def _feedback_dataset_row_data(
     }
 
 
+def _configured_feedback_dataset() -> Dataset | None:
+    dataset = (
+        Dataset.objects.select_related("profile")
+        .filter(key=FEEDBACK_DATASET_KEY, archived_at__isnull=True)
+        .first()
+    )
+    if dataset is None:
+        if getattr(settings, "ENVIRONMENT", "") == "prod":
+            raise DatasetServiceError(503, "Feedback dataset is not configured.")
+        return None
+
+    if not _is_feedback_dataset_compatible(dataset):
+        raise DatasetServiceError(409, "Feedback dataset schema is incompatible.")
+    return dataset
+
+
 def get_or_create_profile_for_user(user) -> Profile:
     try:
         with transaction.atomic():
@@ -466,17 +483,24 @@ def submit_profile_feedback(
         )
 
     with transaction.atomic():
-        Profile.objects.select_for_update().only("id").get(id=profile.id)
-        project = _get_or_create_feedback_project(profile)
-        section = _get_or_create_feedback_section(profile, project)
-        dataset = _get_or_create_feedback_dataset(
-            profile,
-            project,
-            section,
-            agent_api_key=agent_api_key,
-        )
+        dataset = _configured_feedback_dataset()
+        if dataset is None:
+            target_profile = profile
+            Profile.objects.select_for_update().only("id").get(id=target_profile.id)
+            project = _get_or_create_feedback_project(target_profile)
+            section = _get_or_create_feedback_section(target_profile, project)
+            dataset = _get_or_create_feedback_dataset(
+                target_profile,
+                project,
+                section,
+                agent_api_key=agent_api_key,
+            )
+        else:
+            target_profile = dataset.profile
+            Profile.objects.select_for_update().only("id").get(id=target_profile.id)
+
         row_result = create_profile_dataset_row(
-            profile,
+            target_profile,
             str(dataset.key),
             _feedback_dataset_row_data(feedback_record, normalized_source, context_text),
             agent_api_key=agent_api_key,

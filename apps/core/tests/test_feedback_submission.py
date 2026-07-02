@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 from django.test import override_settings
 
@@ -5,7 +7,12 @@ from apps.api.services import DatasetServiceError
 from apps.core import services as core_services
 from apps.core.choices import FeedbackSource
 from apps.core.models import Feedback
-from apps.core.services import submit_profile_feedback
+from apps.core.services import (
+    FEEDBACK_DATASET_HEADERS,
+    FEEDBACK_DATASET_KEY,
+    submit_profile_feedback,
+)
+from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project, ProjectSection
 
 
@@ -99,6 +106,55 @@ def test_submit_profile_feedback_reuses_project_section_and_dataset(
     assert (
         first.dataset.rows.get(index_value=str(second.feedback.id)).data["submitted_via"] == "mcp"
     )
+
+
+@pytest.mark.django_db
+@override_settings(
+    SITE_URL="https://rowset.example",
+)
+def test_submit_profile_feedback_writes_to_configured_dataset(django_user_model):
+    owner_user = django_user_model.objects.create_user(
+        username="rasul",
+        email="rasul@lvtd.dev",
+        password="password123",
+    )
+    submitter_user = django_user_model.objects.create_user(
+        username="external-agent-user",
+        email="external-agent@example.com",
+        password="password123",
+    )
+    configured_dataset = Dataset.objects.create(
+        profile=owner_user.profile,
+        key=UUID(FEEDBACK_DATASET_KEY),
+        name="Feedback",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=FEEDBACK_DATASET_HEADERS,
+        index_column="feedback_id",
+        row_count=0,
+    )
+
+    result = submit_profile_feedback(
+        profile=submitter_user.profile,
+        feedback="Centralize this feedback.",
+        page="mcp:submit_feedback",
+        source=FeedbackSource.MCP,
+        metadata={"tool": "submit_feedback"},
+    )
+
+    row = configured_dataset.rows.get(index_value=str(result.feedback.id))
+
+    assert result.dataset == configured_dataset
+    assert configured_dataset.profile == owner_user.profile
+    assert result.feedback.profile == submitter_user.profile
+    assert result.feedback.metadata == {
+        "tool": "submit_feedback",
+        "rowset_row_url": result.row_url,
+    }
+    assert row.data["user_email"] == "external-agent@example.com"
+    assert row.data["profile_id"] == str(submitter_user.profile.id)
+    assert row.data["feedback"] == "Centralize this feedback."
 
 
 @pytest.mark.django_db
