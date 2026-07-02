@@ -3,12 +3,11 @@ from __future__ import annotations
 import time
 from collections import Counter
 from collections.abc import Callable
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import requests
 from django.conf import settings
 from django.forms.utils import ErrorList
-from django.utils.safestring import SafeString
 
 from apps.core.choices import EmailType
 from apps.core.model_typing import email_sent_objects, model_id, profile_id
@@ -23,13 +22,8 @@ EMAIL_DELIVERY_METRICS = Counter()
 
 
 class DivErrorList(ErrorList):
-    def __str__(
-        self,
-        template_name: object | None = None,
-        context: object | None = None,
-        renderer: object | None = None,
-    ) -> SafeString:
-        return cast(SafeString, self.as_divs())
+    def __str__(self) -> str:  # ty: ignore[invalid-method-override]
+        return self.as_divs()
 
     def as_divs(self) -> str:
         if not self:
