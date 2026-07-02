@@ -395,6 +395,7 @@ def test_reauthenticate_page_uses_rowset_styling(client):
 
     assert response.status_code == 200
     content = response.content.decode()
+    assert "<title>Confirm access · Rowset</title>" in content
     assert "Confirm access" in content
     assert "Rowset Logo" in content
     assert "Menu:" not in content
