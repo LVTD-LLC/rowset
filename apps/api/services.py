@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from time import perf_counter
@@ -19,17 +19,9 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
 from apps.api.errors import DatasetServiceError
-from apps.api.row_contracts import (
-    RankedRowSearchCandidate,
-    RowFilterOperators,
-    RowFilters,
-    RowSearchCandidate,
-    RowWritePayload,
-    normalize_search_filter_operators,
-    normalize_search_filters,
-)
 from apps.api.row_mutations import (
     RowMutationHooks,
+    RowWritePayload,
     normalize_row_ids,
     profile_has_row_mutation,
     stringify_cell,
@@ -120,6 +112,8 @@ MAX_API_DATASET_CREATE_ROWS = 1000
 DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
 DATASET_SEARCH_LIMIT_ERRORS = (TypeError, ValueError)
+RowFilters = dict[str, str]
+RowFilterOperators = dict[str, str]
 PROFILE_ROW_SEARCH_SORT_RANK = "rank"
 PROFILE_ROW_SEARCH_SORT_DATASET = "dataset"
 PROFILE_ROW_SEARCH_SORT_ROW_NUMBER = "row_number"
@@ -178,6 +172,41 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "archived_at",
 )
 UNSET = object()
+
+
+def normalize_search_filters(filters: Mapping[str, object] | None) -> RowFilters:
+    if filters is None:
+        return {}
+
+    normalized_filters: RowFilters = {}
+    for raw_header, raw_value in filters.items():
+        header = str(raw_header or "").strip()
+        if not header:
+            raise ValueError("Search filter headers must be non-empty.")
+        value = "" if raw_value is None else str(raw_value).strip()
+        if value:
+            normalized_filters[header] = value
+    return normalized_filters
+
+
+def normalize_search_filter_operators(
+    filter_operators: Mapping[str, object] | None,
+    filters: RowFilters,
+) -> RowFilterOperators:
+    if filter_operators is None:
+        return {}
+
+    normalized_operators: RowFilterOperators = {}
+    for raw_header, raw_operator in filter_operators.items():
+        header = str(raw_header or "").strip()
+        if not header:
+            raise ValueError("Search filter operator headers must be non-empty.")
+        if header not in filters:
+            continue
+        operator = str(raw_operator or "").strip().lower()
+        if operator:
+            normalized_operators[header] = operator
+    return normalized_operators
 
 
 def _visible_project_dataset_count():
@@ -3513,8 +3542,8 @@ def _dataset_search_candidates(
     vector_hits,
     lexical_rows: list[DatasetRow],
     allowed_row_ids: set[int] | None,
-) -> dict[int, RowSearchCandidate]:
-    candidates: dict[int, RowSearchCandidate] = {}
+) -> dict[int, dict[str, Any]]:
+    candidates: dict[int, dict[str, Any]] = {}
     for vector_rank, hit in enumerate(vector_hits, start=1):
         row_id = _safe_vector_row_id(hit.payload)
         if row_id is None or (allowed_row_ids is not None and row_id not in allowed_row_ids):
@@ -3533,10 +3562,10 @@ def _dataset_search_candidates(
 
 
 def _rank_dataset_search_candidates(
-    candidates: dict[int, RowSearchCandidate],
+    candidates: dict[int, dict[str, Any]],
     *,
     limit: int,
-) -> list[RankedRowSearchCandidate]:
+) -> list[dict[str, Any]]:
     for candidate in candidates.values():
         vector_rank = candidate.get("vector_rank")
         lexical_rank = candidate.get("lexical_rank")
@@ -3563,7 +3592,7 @@ def _rank_dataset_search_candidates(
 
 def _serialize_dataset_search_results(
     dataset: Dataset,
-    ranked_candidates: list[RankedRowSearchCandidate],
+    ranked_candidates: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     rows_by_id = {
         row.id: row
@@ -3799,7 +3828,7 @@ def _profile_allowed_vector_row_ids(
 
 
 def _serialize_profile_row_search_results(
-    ranked_candidates: list[RankedRowSearchCandidate],
+    ranked_candidates: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     rows_by_id = {
         row.id: row

@@ -5,7 +5,6 @@ Follow the repo steering files before suggesting or applying changes:
 - `AGENTS.md` for workflow, commands, guardrails, and code style.
 - `PRODUCT.md` for product scope and user workflows.
 - `TECH.md` for stack, runtime, API/MCP, and testing details.
-- `docs/quality.md` for the local CI path and touched-area quality matrix.
 - `STRUCTURE.md` for file placement.
 - `VISION.md` for long-term direction and non-goals.
 - `DESIGN.md` for UI work.

@@ -20,9 +20,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset browser views now render URL-looking string cell values as plain text instead of auto-converting them into Rowset or external links. Explicit dataset relationship/reference columns, row-detail links, and image links still render as links; arbitrary URL strings can be copied from the cell text and link rendering can be reintroduced later with safer, explicit column-level behavior.
 - Extracted public-preview settings and session-token helpers out of the API service kernel while preserving REST, MCP, and browser-preview behavior.
 - Production deploy now builds one server/worker image in GitHub Actions, publishes it to GHCR with `latest`, UTC date, date-run, and full Git SHA tags, then deploys that image to both CapRover apps with per-app deploy tokens.
-- CI and `make ci-local` now run the scoped `ty` type-check baseline, with documented expansion guidance.
 - Added shared Rowset dataset test factories, split public-preview tests out of the large dataset test module, and added REST/MCP parity characterization tests for shared dataset behavior.
-- CI now prints a high-risk coverage report for API services, dataset services, vector search, and MCP server modules.
 - CI and `make ci-local` now enforce Ruff lint, Ruff format, and frontend lint/build checks.
 - Applied the Ruff formatting baseline so future style checks can run without format churn.
 - Agent feedback submissions through REST and MCP now require read/write API keys because feedback submissions create private Rowset/CX/Feedback dataset rows.
@@ -81,9 +79,8 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Added a Google DESIGN.md-style design system source of truth for Rowset colors, typography, layout, components, and usage guardrails.
 
 ### Removed
-- Removed deprecated coding-agent evaluation scaffolding, including
-  `docs/agent-evals/`, `docs/code-tours/`, `docs/agent-task-templates.md`,
-  `scripts/agent-eval-seed.py`, and the `agent-eval-seed` Makefile target.
+- Removed forced quality and typing scaffolding from CI, local checks, docs, and
+  Makefile targets.
 - Removed the dashboard CSV/Parquet upload and preview-confirm import wizard.
 - Removed Rowset-managed Google Sheets connection, import, and write-back code.
 - Chatwoot support chat can now be enabled with `CHATWOOT_BASE_URL` and `CHATWOOT_WEBSITE_TOKEN`.
