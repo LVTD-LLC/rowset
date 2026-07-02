@@ -7,7 +7,6 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 from uuid import UUID, uuid4
 
-from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import storages
@@ -68,6 +67,11 @@ from apps.datasets.models import (
     ProjectSection,
     record_dataset_asset_file_deletion_failure,
 )
+from apps.datasets.public_previews import (
+    PUBLIC_PREVIEW_SETTINGS_UPDATED_MESSAGE,
+    PublicPreviewSettingsError,
+    update_public_preview_settings,
+)
 from apps.datasets.services import (
     COLUMN_SCHEMA_REFERENCE_TARGET_KEY,
     COLUMN_SCHEMA_TYPE_KEY,
@@ -88,7 +92,6 @@ from apps.datasets.services import (
     infer_column_schema,
     invalid_choice_values_by_column,
     normalize_column_schema,
-    normalize_public_page_size,
     prepare_dataset_image,
     project_section_dataset_groups,
     validate_and_canonicalize_choice_row_values,
@@ -2928,12 +2931,6 @@ def update_profile_dataset_public_preview(
     clear_public_password: bool = False,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
-    if clear_public_password and public_password is not None:
-        raise DatasetServiceError(
-            400,
-            "Use either public_password or clear_public_password, not both.",
-        )
-
     with transaction.atomic():
         dataset = _get_profile_dataset_from_queryset(
             Dataset.objects.select_for_update(),
@@ -2942,71 +2939,21 @@ def update_profile_dataset_public_preview(
         )
 
         _raise_if_archived(dataset)
-
-        previous_public_enabled = dataset.public_enabled
-        previous_public_page_size = dataset.public_page_size
-        previous_password_protected = dataset.is_public_password_protected
-        next_public_enabled = dataset.public_enabled if public_enabled is None else public_enabled
-
-        if next_public_enabled and dataset.status != DatasetStatus.READY:
-            raise DatasetServiceError(
-                409,
-                "Public previews can only be enabled for ready datasets.",
-            )
-
-        dataset.public_enabled = next_public_enabled
-        if public_page_size is not None:
-            dataset.public_page_size = normalize_public_page_size(public_page_size)
-
-        password_changed = False
-        if clear_public_password:
-            password_changed = bool(dataset.public_password_hash)
-            if password_changed:
-                dataset.public_password_hash = ""
-        elif public_password is not None:
-            normalized_password = public_password.strip()
-            if not normalized_password:
-                raise DatasetServiceError(400, "Public preview password cannot be blank.")
-            dataset.public_password_hash = make_password(normalized_password)
-            password_changed = True
-
-        settings_changed = (
-            dataset.public_enabled != previous_public_enabled
-            or dataset.public_page_size != previous_public_page_size
-            or password_changed
-        )
-
-        if settings_changed:
-            dataset.updated_by_agent_api_key = agent_api_key
-            dataset.save(
-                update_fields=[
-                    "public_enabled",
-                    "public_page_size",
-                    "public_password_hash",
-                    "updated_by_agent_api_key",
-                    "updated_at",
-                ]
-            )
-            record_dataset_mutation(
+        try:
+            update_public_preview_settings(
                 dataset,
-                DatasetMutationType.PUBLIC_PREVIEW_UPDATED,
-                "Public preview settings updated.",
+                public_enabled=public_enabled,
+                public_page_size=public_page_size,
+                public_password=public_password,
+                clear_public_password=clear_public_password,
                 agent_api_key=agent_api_key,
-                target_type="public_preview",
-                metadata={
-                    "previous_public_enabled": previous_public_enabled,
-                    "public_enabled": dataset.public_enabled,
-                    "previous_public_page_size": previous_public_page_size,
-                    "public_page_size": dataset.public_page_size,
-                    "previous_password_protected": previous_password_protected,
-                    "password_protected": dataset.is_public_password_protected,
-                    "password_changed": password_changed,
-                },
             )
+        except PublicPreviewSettingsError as exc:
+            raise DatasetServiceError(exc.status_code, exc.message) from exc
 
     return {
         "status": "success",
-        "message": "Public preview settings updated.",
+        "message": PUBLIC_PREVIEW_SETTINGS_UPDATED_MESSAGE,
         "dataset": serialize_dataset_summary(dataset),
     }
 

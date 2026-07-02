@@ -2,6 +2,10 @@ import pytest
 from django.urls import reverse
 
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType
+from apps.datasets.public_previews import (
+    PublicPreviewSettingsError,
+    update_public_preview_settings,
+)
 from apps.datasets.tests.factories import (
     configure_filterable_dataset,
     create_dataset,
@@ -52,6 +56,77 @@ def test_dataset_owner_can_enable_public_sharing(auth_client, profile):
         dataset.mutations.filter(mutation_type=DatasetMutationType.PUBLIC_PREVIEW_UPDATED).count()
         == 1
     )
+
+
+def test_public_preview_settings_helper_records_mutation_metadata(profile):
+    dataset = create_ready_dataset(profile)
+
+    result = update_public_preview_settings(
+        dataset,
+        public_enabled=True,
+        public_page_size=1,
+        public_password=" secret-table ",
+    )
+
+    dataset.refresh_from_db()
+    assert result.settings_changed is True
+    assert dataset.public_enabled is True
+    assert dataset.public_page_size == 1
+    assert dataset.is_public_password_protected is True
+    mutation = dataset.mutations.get(mutation_type=DatasetMutationType.PUBLIC_PREVIEW_UPDATED)
+    assert mutation.metadata == {
+        "previous_public_enabled": False,
+        "public_enabled": True,
+        "previous_public_page_size": 10,
+        "public_page_size": 1,
+        "previous_password_protected": False,
+        "password_protected": True,
+        "password_changed": True,
+    }
+
+
+def test_public_preview_settings_helper_rolls_back_save_when_mutation_recording_fails(
+    monkeypatch,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+
+    def fail_to_record_mutation(*args, **kwargs):
+        raise RuntimeError("mutation history unavailable")
+
+    monkeypatch.setattr(
+        "apps.datasets.public_previews.record_dataset_mutation",
+        fail_to_record_mutation,
+    )
+
+    with pytest.raises(RuntimeError, match="mutation history unavailable"):
+        update_public_preview_settings(
+            dataset,
+            public_enabled=True,
+            public_page_size=1,
+        )
+
+    dataset.refresh_from_db()
+    assert dataset.public_enabled is False
+    assert dataset.public_page_size == 10
+    assert dataset.mutations.count() == 0
+
+
+def test_public_preview_settings_helper_validates_blank_password_before_mutating(profile):
+    dataset = create_ready_dataset(profile)
+
+    with pytest.raises(PublicPreviewSettingsError, match="password cannot be blank"):
+        update_public_preview_settings(
+            dataset,
+            public_enabled=True,
+            public_page_size=50,
+            public_password="  ",
+        )
+
+    assert dataset.public_enabled is False
+    assert dataset.public_page_size == 10
+    assert dataset.public_password_hash == ""
+    assert dataset.mutations.count() == 0
 
 
 def test_public_dataset_view_paginates_rows(client, profile):
