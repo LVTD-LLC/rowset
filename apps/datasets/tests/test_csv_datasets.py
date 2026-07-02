@@ -60,7 +60,11 @@ from apps.datasets.services import (
     rows_to_sqlite_bytes,
 )
 from apps.datasets.tasks import import_dataset_rows
-from apps.datasets.views import DATASET_CHANGES_PAGE_SIZE, DATASET_DETAIL_ROW_PAGE_SIZE
+from apps.datasets.views import (
+    DATASET_CHANGES_PAGE_SIZE,
+    DATASET_DETAIL_ROW_PAGE_SIZE,
+    PROJECT_DETAIL_DATASET_PAGE_SIZE,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -6937,6 +6941,44 @@ def test_project_detail_groups_archived_datasets_by_section_in_collapsed_block(
     assert "Archived datasets" in content
     assert "Archived content ledger" in content
     assert "Archived backlog" in content
+
+
+def test_project_detail_paginates_archived_datasets(auth_client, profile):
+    project = Project.objects.create(profile=profile, name="Rowset")
+    archived_at = timezone.now()
+    total_archived = PROJECT_DETAIL_DATASET_PAGE_SIZE + 1
+    for index in range(total_archived):
+        Dataset.objects.create(
+            profile=profile,
+            project=project,
+            name=f"Archived dataset {index:03d}",
+            original_filename="Created via API",
+            file_type="api",
+            status=DatasetStatus.READY,
+            headers=["slug"],
+            index_column="slug",
+            archived_at=archived_at - timedelta(minutes=index),
+        )
+
+    response = auth_client.get(project.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["archived_page_obj"].paginator.count == total_archived
+    assert len(response.context["archived_datasets"]) == PROJECT_DETAIL_DATASET_PAGE_SIZE
+    assert "Archived dataset 000" in content
+    assert "Archived dataset 099" in content
+    assert "Archived dataset 100" not in content
+    assert "archived_page=2#archived-datasets" in content
+
+    second_page_response = auth_client.get(f"{project.get_absolute_url()}?archived_page=2")
+    second_page_content = second_page_response.content.decode()
+
+    assert second_page_response.status_code == 200
+    assert len(second_page_response.context["archived_datasets"]) == 1
+    assert "Archived dataset 100" in second_page_content
+    assert '<details id="archived-datasets"' in second_page_content
+    assert "open" in second_page_content
 
 
 def test_dataset_settings_page_has_section_navigation(auth_client, profile):

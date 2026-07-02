@@ -107,6 +107,7 @@ ARCHIVED_DATASET_SORT_ORDERING = {
     "project": (*PROJECT_GROUP_ORDERING, "name", "id"),
 }
 DATASET_LIST_PAGE_SIZE = 100
+PROJECT_DETAIL_DATASET_PAGE_SIZE = 100
 DATASET_VIEW_MODE_OPTIONS = (
     ("raw", "Raw rows"),
     ("grouped", "Grouped by project/section"),
@@ -855,9 +856,9 @@ def _rowset_reference_lookup(
     return lookup
 
 
-def _querystring_for_page(request, page_number: int) -> str:
+def _querystring_for_page(request, page_number: int, page_param: str = "page") -> str:
     query_params = request.GET.copy()
-    query_params["page"] = page_number
+    query_params[page_param] = page_number
     return f"?{query_params.urlencode()}"
 
 
@@ -1530,7 +1531,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             .filter(archived_at__isnull=True)
             .exclude(status=DatasetStatus.PREVIEWED)
             .order_by("-updated_at"),
-            100,
+            PROJECT_DETAIL_DATASET_PAGE_SIZE,
         )
         page_obj = paginator.get_page(self.request.GET.get("page"))
         sections = list(
@@ -1546,16 +1547,15 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             .count()
         )
         datasets = list(page_obj.object_list)
-        archived_datasets = list(
-            self.object.datasets.select_related(
-                "section",
-                "created_by_agent_api_key",
-                "updated_by_agent_api_key",
-            )
+        archived_paginator = Paginator(
+            self.object.datasets.select_related("section")
             .filter(archived_at__isnull=False)
             .exclude(status=DatasetStatus.PREVIEWED)
-            .order_by("-archived_at", "-updated_at")
+            .order_by("-archived_at", "-updated_at", "-id"),
+            PROJECT_DETAIL_DATASET_PAGE_SIZE,
         )
+        archived_page_obj = archived_paginator.get_page(self.request.GET.get("archived_page"))
+        archived_datasets = list(archived_page_obj.object_list)
         context["page_obj"] = page_obj
         context["datasets"] = datasets
         context["sections"] = sections
@@ -1570,8 +1570,21 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             indent=2,
             sort_keys=True,
         )
+        context["archived_page_obj"] = archived_page_obj
         context["archived_datasets"] = archived_datasets
         context["archived_section_groups"] = self.get_archived_section_groups(archived_datasets)
+        if archived_page_obj.has_previous():
+            context["previous_archived_page_url"] = _querystring_for_page(
+                self.request,
+                archived_page_obj.previous_page_number(),
+                page_param="archived_page",
+            )
+        if archived_page_obj.has_next():
+            context["next_archived_page_url"] = _querystring_for_page(
+                self.request,
+                archived_page_obj.next_page_number(),
+                page_param="archived_page",
+            )
         return context
 
     def get_archived_section_groups(self, archived_datasets):
