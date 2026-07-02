@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Changed
+- Extracted public-preview settings and session-token helpers out of the API service kernel while preserving REST, MCP, and browser-preview behavior.
 - Production deploy now builds one server/worker image in GitHub Actions, publishes it to GHCR with `latest`, UTC date, date-run, and full Git SHA tags, then deploys that image to both CapRover apps with per-app deploy tokens.
 - Added Rowset agent eval seeds, code tours, and task templates for common dataset, API, MCP, vector search, access, and public-preview work.
 - CI and `make ci-local` now run the scoped `ty` type-check baseline, with documented expansion guidance.
