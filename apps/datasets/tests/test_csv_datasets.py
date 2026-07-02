@@ -1321,7 +1321,7 @@ def test_dataset_detail_renders_archived_project_reference_cells_without_dead_li
     assert "Archived launch ops" in content
 
 
-def test_dataset_detail_renders_owned_rowset_dataset_urls_as_internal_links(
+def test_dataset_detail_renders_rowset_dataset_urls_as_text(
     auth_client,
     profile,
 ):
@@ -1350,11 +1350,11 @@ def test_dataset_detail_renders_owned_rowset_dataset_urls_as_internal_links(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{target_dataset.get_absolute_url()}"' in content
-    assert "Sprint task board" in content
-    assert "Ready" in content
-    assert "Open Rowset dataset Sprint task board" in content
-    assert re.search(rf">\s*{re.escape(raw_url)}\s*<", content) is None
+    assert raw_url in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
+    assert "Sprint task board" not in content
+    assert "Ready" not in content
+    assert "Open Rowset dataset Sprint task board" not in content
 
 
 def test_dataset_detail_keeps_row_detail_link_for_single_rowset_url_column(
@@ -1378,13 +1378,14 @@ def test_dataset_detail_keeps_row_detail_link_for_single_rowset_url_column(
 
     assert response.status_code == 200
     assert f'href="{row_url}"' in content
-    assert f'href="{target_dataset.get_absolute_url()}"' in content
+    assert raw_url in content
+    assert f'href="{target_dataset.get_absolute_url()}"' not in content
     assert 'aria-label="View row 1 details"' in content
     assert content.count('aria-label="View row 1 details"') == 1
     assert 'class="sr-only">View row 1 details' not in content
 
 
-def test_dataset_detail_falls_back_to_plain_links_for_unresolved_rowset_urls(
+def test_dataset_detail_renders_unresolved_rowset_urls_as_text(
     auth_client,
     profile,
 ):
@@ -1399,8 +1400,9 @@ def test_dataset_detail_falls_back_to_plain_links_for_unresolved_rowset_urls(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{raw_url}"' in content
-    assert "Open Rowset URL" in content
+    assert raw_url in content
+    assert f'href="{raw_url}"' not in content
+    assert "Open Rowset URL" not in content
     assert "Rowset dataset" not in content
 
 
@@ -1445,7 +1447,8 @@ def test_dataset_detail_falls_back_for_malformed_rowset_row_urls(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{raw_url}"' in content
+    assert raw_url in content
+    assert f'href="{raw_url}"' not in content
     assert f'href="{target_dataset.get_absolute_url()}"' not in content
     assert "Rowset row" not in content
 
@@ -1525,7 +1528,8 @@ def test_dataset_detail_falls_back_for_unsupported_rowset_row_subpaths(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{raw_url}"' in content
+    assert raw_url in content
+    assert f'href="{raw_url}"' not in content
     assert f'href="{target_row.get_absolute_url()}"' not in content
     assert f'href="{target_dataset.get_absolute_url()}"' not in content
     assert "Rowset row" not in content
@@ -1546,7 +1550,8 @@ def test_dataset_detail_falls_back_for_stale_rowset_row_urls(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{raw_url}"' in content
+    assert raw_url in content
+    assert f'href="{raw_url}"' not in content
     assert f'href="{target_dataset.get_absolute_url()}"' not in content
     assert "Rowset row" not in content
 
@@ -1566,7 +1571,8 @@ def test_dataset_detail_falls_back_for_root_relative_stale_rowset_row_urls(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{raw_url}"' in content
+    assert raw_url in content
+    assert f'href="{raw_url}"' not in content
     assert f'href="{target_dataset.get_absolute_url()}"' not in content
     assert "Rowset row" not in content
 
@@ -1589,10 +1595,11 @@ def test_dataset_detail_does_not_resolve_disabled_share_urls_to_private_links(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{raw_url}"' in content
+    assert raw_url in content
+    assert f'href="{raw_url}"' not in content
     assert target_dataset.get_absolute_url() not in content
     assert "Private Sprint Tasks" not in content
-    assert "Open Rowset URL" in content
+    assert "Open Rowset URL" not in content
 
 
 def test_dataset_detail_paginates_imported_rows_without_public_preview(auth_client, profile):
@@ -1832,7 +1839,7 @@ def test_dataset_detail_semantic_text_filters_accept_partial_values(auth_client,
     assert 'name="filter_1"' in content
 
 
-def test_dataset_detail_linkifies_external_url_cells_with_safe_rel(auth_client, profile):
+def test_dataset_detail_renders_url_cells_as_text(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.headers = ["name", "website", "unsafe"]
     dataset.column_schema = {
@@ -1853,13 +1860,14 @@ def test_dataset_detail_linkifies_external_url_cells_with_safe_rel(auth_client, 
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert 'href="https://example.com/ada?ref=rowset&amp;ok=1"' in content
-    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "https://example.com/ada?ref=rowset&amp;ok=1" in content
+    assert 'href="https://example.com/ada?ref=rowset&amp;ok=1"' not in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' not in content
     assert "javascript:alert(1)" in content
     assert 'href="javascript:alert(1)"' not in content
 
 
-def test_dataset_detail_keeps_row_detail_link_for_single_url_column(auth_client, profile):
+def test_dataset_detail_keeps_row_detail_link_for_single_text_url_column(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.headers = ["website"]
     dataset.column_schema = {"website": {"type": DatasetColumnType.URL}}
@@ -1873,11 +1881,12 @@ def test_dataset_detail_keeps_row_detail_link_for_single_url_column(auth_client,
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert 'href="https://example.com/ada"' in content
+    assert "https://example.com/ada" in content
+    assert 'href="https://example.com/ada"' not in content
     assert f'href="{row_url}"' in content
     assert 'aria-label="View row 1 details"' in content
-    assert 'aria-label="Open external link for row 1"' in content
-    assert ">Open</a>" in content
+    assert 'aria-label="Open external link for row 1"' not in content
+    assert ">Open</a>" not in content
 
 
 def test_dataset_detail_filtered_empty_state_does_not_show_preview_rows(auth_client, profile):
@@ -2317,7 +2326,7 @@ def test_dataset_row_detail_rejects_other_users_inline_update(
     assert row.index_value == "ada@example.com"
 
 
-def test_dataset_row_detail_linkifies_external_url_cells(auth_client, profile):
+def test_dataset_row_detail_renders_url_cells_as_text(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.headers = ["name", "website", "unsafe"]
     dataset.save(update_fields=["headers"])
@@ -2333,8 +2342,9 @@ def test_dataset_row_detail_linkifies_external_url_cells(auth_client, profile):
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert 'href="https://example.com/ada"' in content
-    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "https://example.com/ada" in content
+    assert 'href="https://example.com/ada"' not in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' not in content
     assert "https://example.com/&lt;script&gt;" in content
     assert 'href="https://example.com/&lt;script&gt;"' not in content
 
@@ -2363,7 +2373,7 @@ def test_dataset_row_detail_links_relationship_value_to_target_row(auth_client, 
     assert re.search(r"<a[^>]+>\s*P-1\s*</a>", content) is not None
 
 
-def test_dataset_row_detail_renders_owned_rowset_row_urls_as_internal_links(
+def test_dataset_row_detail_renders_rowset_row_urls_as_text(
     auth_client,
     profile,
 ):
@@ -2383,9 +2393,9 @@ def test_dataset_row_detail_renders_owned_rowset_row_urls_as_internal_links(
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{target_row.get_absolute_url()}"' in content
-    assert "Sprint task board row 1" in content
-    assert re.search(rf">\s*{re.escape(raw_url)}\s*<", content) is None
+    assert raw_url in content
+    assert f'href="{target_row.get_absolute_url()}"' not in content
+    assert "Sprint task board row 1" not in content
 
 
 def test_dataset_row_detail_leaves_unresolved_relationship_value_unlinked(auth_client, profile):

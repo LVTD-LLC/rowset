@@ -1,8 +1,5 @@
 import json
-import uuid
-from urllib.parse import ParseResult, urlparse
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -129,8 +126,6 @@ DATASET_EXPORT_FORMATS = {
         rows_to_xlsx_bytes,
     ),
 }
-ROWSET_CANONICAL_HOST = "rowset.lvtd.dev"
-ROWSET_LINK_SCHEMES = {"http", "https"}
 
 
 @login_required
@@ -141,217 +136,6 @@ def dataset_list_redirect(request):
 @login_required
 def project_list_redirect(request):
     return redirect("home")
-
-
-def _host_without_port(host: str) -> str:
-    return host.split(":", 1)[0].lower()
-
-
-def _rowset_link_hosts(request=None) -> set[str]:
-    hosts = {ROWSET_CANONICAL_HOST}
-    site_host = urlparse(settings.SITE_URL).hostname
-    if site_host:
-        hosts.add(site_host.lower())
-    if request is not None:
-        request_host = _host_without_port(request.get_host())
-        if request_host:
-            hosts.add(request_host)
-    return hosts
-
-
-def _raw_rowset_host_candidate(value: str) -> str:
-    return _host_without_port(value.split("/", 1)[0])
-
-
-def _normalized_rowset_href(value: str, request=None) -> tuple[str, ParseResult] | None:
-    raw_value = value.strip()
-    if not raw_value or raw_value.startswith("//"):
-        return None
-
-    if raw_value.startswith("/"):
-        try:
-            parsed = urlparse(raw_value)
-        except ValueError:
-            return None
-        if parsed.scheme or parsed.netloc:
-            return None
-        return raw_value, parsed
-
-    rowset_hosts = _rowset_link_hosts(request)
-    if "://" not in raw_value and _raw_rowset_host_candidate(raw_value) not in rowset_hosts:
-        return None
-
-    href = raw_value if "://" in raw_value else f"https://{raw_value}"
-    try:
-        parsed = urlparse(href)
-        hostname = parsed.hostname
-    except ValueError:
-        return None
-    if parsed.scheme not in ROWSET_LINK_SCHEMES or not hostname:
-        return None
-    if hostname.lower() not in rowset_hosts:
-        return None
-    return href, parsed
-
-
-def _rowset_dataset_path_match(path: str) -> tuple[str, bool, list[str]] | None:
-    path_parts = [part for part in path.split("/") if part]
-    if len(path_parts) >= 2 and path_parts[0] == "datasets":
-        return path_parts[1], False, path_parts[2:]
-    if len(path_parts) >= 3 and path_parts[0:2] == ["share", "datasets"]:
-        return path_parts[2], True, path_parts[3:]
-    return None
-
-
-def _rowset_link_row_id(remaining_parts: list[str]) -> tuple[bool, int | None]:
-    if not remaining_parts:
-        return True, None
-    if len(remaining_parts) != 2 or remaining_parts[0] != "rows":
-        return False, None
-    try:
-        return True, int(remaining_parts[1])
-    except ValueError:
-        return False, None
-
-
-def _parse_rowset_dataset_link(value: str, request=None) -> dict[str, object] | None:
-    normalized_href = _normalized_rowset_href(value, request)
-    if normalized_href is None:
-        return None
-    href, parsed = normalized_href
-
-    path_match = _rowset_dataset_path_match(parsed.path)
-    if path_match is None:
-        return None
-    dataset_key, is_public, remaining_parts = path_match
-
-    try:
-        uuid.UUID(dataset_key)
-    except ValueError:
-        return None
-
-    is_valid_row_path, row_id = _rowset_link_row_id(remaining_parts)
-    if not is_valid_row_path:
-        return None
-
-    return {
-        "href": href,
-        "dataset_key": dataset_key,
-        "is_public": is_public,
-        "row_id": row_id,
-    }
-
-
-def _generic_rowset_link(parsed_link: dict[str, object]) -> dict[str, str]:
-    is_row = parsed_link["row_id"] is not None
-    if is_row:
-        link_text = "Rowset row"
-        detail = "Shared row" if parsed_link["is_public"] else ""
-    else:
-        link_text = "Rowset dataset"
-        detail = "Shared dataset" if parsed_link["is_public"] else ""
-    return {
-        "rowset_link_url": str(parsed_link["href"]),
-        "rowset_link_text": link_text,
-        "rowset_link_detail": detail,
-        "rowset_link_label": f"Open {link_text.lower()}",
-    }
-
-
-def _plain_rowset_url_link(parsed_link: dict[str, object]) -> dict[str, str]:
-    return {
-        "plain_link_url": str(parsed_link["href"]),
-        "plain_link_label": "Open Rowset URL",
-    }
-
-
-def _owned_rowset_link(
-    parsed_link: dict[str, object],
-    profile,
-    link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None],
-) -> dict[str, str] | None:
-    cache_key = (
-        profile.pk,
-        bool(parsed_link["is_public"]),
-        str(parsed_link["dataset_key"]),
-        parsed_link["row_id"],
-    )
-    if cache_key in link_cache:
-        return link_cache[cache_key]
-
-    dataset_lookup = {"profile": profile}
-    if parsed_link["is_public"]:
-        dataset_lookup["public_key"] = parsed_link["dataset_key"]
-        dataset_lookup["public_enabled"] = True
-        dataset_lookup["status"] = DatasetStatus.READY
-        dataset_lookup["archived_at__isnull"] = True
-    else:
-        dataset_lookup["key"] = parsed_link["dataset_key"]
-
-    dataset = (
-        Dataset.objects.only(
-            "id",
-            "key",
-            "public_key",
-            "name",
-            "status",
-            "archived_at",
-            "public_enabled",
-        )
-        .filter(**dataset_lookup)
-        .first()
-    )
-    if dataset is None:
-        link_cache[cache_key] = None
-        return None
-
-    row_id = parsed_link["row_id"]
-    target_url = dataset.get_absolute_url()
-    target_label = dataset.name
-    target_detail = "Archived" if dataset.archived_at else dataset.get_status_display()
-    aria_label = f"Open Rowset dataset {dataset.name}"
-    if row_id is not None:
-        target_row = dataset.rows.only("id", "dataset_id", "row_number").filter(id=row_id).first()
-        if target_row is None:
-            link_cache[cache_key] = None
-            return None
-        target_url = target_row.get_absolute_url()
-        target_label = f"{dataset.name} row {target_row.row_number}"
-        target_detail = "Row"
-        aria_label = f"Open Rowset row {target_row.row_number} in {dataset.name}"
-
-    link = {
-        "rowset_link_url": target_url,
-        "rowset_link_text": target_label,
-        "rowset_link_detail": target_detail,
-        "rowset_link_label": aria_label,
-    }
-    link_cache[cache_key] = link
-    return link
-
-
-def _rowset_link_for_value(
-    value: str,
-    *,
-    request=None,
-    profile=None,
-    public_context: bool = False,
-    link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
-) -> dict[str, str]:
-    parsed_link = _parse_rowset_dataset_link(value, request)
-    if parsed_link is None:
-        return {}
-    if public_context:
-        return _generic_rowset_link(parsed_link)
-
-    if profile is not None:
-        if link_cache is None:
-            link_cache = {}
-        link = _owned_rowset_link(parsed_link, profile, link_cache)
-        if link is not None:
-            return link
-
-    return _plain_rowset_url_link(parsed_link)
 
 
 def _cell_value(value: object) -> str:
@@ -572,10 +356,7 @@ def _row_cells(
     *,
     row_id: int | None = None,
     image_assets: dict[tuple[int, str], DatasetAsset] | None = None,
-    request=None,
-    profile=None,
     public_context: bool = False,
-    link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
 ) -> list[dict[str, object]]:
     ordered_keys = [*headers, *[key for key in row_data if key not in headers]]
     descriptions = {
@@ -611,16 +392,6 @@ def _row_cells(
             reference_link := reference_lookup.get((header, cell["value"].strip()))
         ):
             cell.update(reference_link)
-        elif cell["value"]:
-            cell.update(
-                _rowset_link_for_value(
-                    cell["value"],
-                    request=request,
-                    profile=profile,
-                    public_context=public_context,
-                    link_cache=link_cache,
-                )
-            )
         cells.append(cell)
     return cells
 
@@ -635,10 +406,7 @@ def _row_table_cells(
     row_url: str = "",
     row_id: int | None = None,
     row_number: int | None = None,
-    request=None,
-    profile=None,
     public_context: bool = False,
-    link_cache: dict[tuple[object, bool, str, int | None], dict[str, str] | None] | None = None,
 ) -> list[dict[str, object]]:
     reference_lookup = reference_lookup or {}
     image_assets = image_assets or {}
@@ -662,21 +430,8 @@ def _row_table_cells(
             reference_link := reference_lookup.get((header, display_value.strip()))
         ):
             cell.update(reference_link)
-        elif display_value:
-            cell.update(
-                _rowset_link_for_value(
-                    display_value,
-                    request=request,
-                    profile=profile,
-                    public_context=public_context,
-                    link_cache=link_cache,
-                )
-            )
         is_cell_link = bool(
-            cell.get("rowset_link_url")
-            or cell.get("plain_link_url")
-            or cell.get("reference_url")
-            or cell.get("image_full_url")
+            cell.get("rowset_link_url") or cell.get("reference_url") or cell.get("image_full_url")
         )
         if row_url and (not is_cell_link or not row_detail_primary_assigned):
             cell["row_url"] = row_url
@@ -1641,7 +1396,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         )
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
-        rowset_link_cache = {}
         row_objects = list(row_page_obj.object_list)
         reference_lookup = _rowset_reference_lookup(
             self.request.user.profile,
@@ -1664,9 +1418,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 row_url=row_url,
                 row_id=row.id,
                 row_number=row.row_number,
-                request=self.request,
-                profile=self.request.user.profile,
-                link_cache=rowset_link_cache,
             )
             rows_with_values.append(
                 {
@@ -1698,9 +1449,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                     preview_row,
                     column_schema=dataset.column_schema,
                     reference_lookup=reference_lookup,
-                    request=self.request,
-                    profile=self.request.user.profile,
-                    link_cache=rowset_link_cache,
                 )
                 rows_with_values.append(
                     {
@@ -1880,9 +1628,6 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
                 reference_lookup=reference_lookup,
                 row_id=row.id,
                 image_assets=_image_asset_lookup(dataset, [row]),
-                request=self.request,
-                profile=self.request.user.profile,
-                link_cache={},
             ),
             form_values,
             allow_edit=row_is_editable,
@@ -2486,7 +2231,6 @@ def public_dataset(request, public_key):
                 row_url=row_url,
                 row_id=row.id,
                 row_number=row.row_number,
-                request=request,
                 public_context=True,
             )
             public_rows_with_values.append(
@@ -2581,7 +2325,6 @@ def public_dataset_row_detail(request, public_key, row_id):
             dataset.column_schema,
             row_id=dataset_row.id,
             image_assets=_image_asset_lookup(dataset, [dataset_row]),
-            request=request,
             public_context=True,
         )
 

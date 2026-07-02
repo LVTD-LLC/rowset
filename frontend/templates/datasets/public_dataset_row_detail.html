@@ -1,6 +1,4 @@
 {% extends "base_landing.html" %}
-{% load dataset_links %}
-
 {% block meta %}
   <title>{% if has_access and dataset_row %}Row {{ dataset_row.row_number }} - {{ dataset.name }} - {% endif %}Rowset public preview</title>
   <meta name="description" content="Read-only Rowset public dataset row preview." />
@@ -45,7 +43,6 @@
                     {{ cell.header }}
                   </th>
                   <td class="min-w-96 break-words">
-                    {% dataset_external_href cell.value as external_href %}
                     {% if cell.is_image %}
                       <div class="max-w-xl">
                         <a href="{{ cell.image_full_url }}" class="fb-focus inline-block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900" aria-label="Open image {{ cell.value }}">
@@ -60,10 +57,6 @@
                       <span class="text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
                     {% elif cell.rowset_link_url %}
                       {% include "datasets/partials/rowset_link_cell.html" %}
-                    {% elif cell.plain_link_url %}
-                      <a href="{{ cell.plain_link_url }}" class="fb-focus whitespace-pre-wrap break-words text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-700 dark:text-slate-200 dark:decoration-slate-700 dark:hover:text-emerald-300" aria-label="{{ cell.plain_link_label }}">{{ cell.value }}</a>
-                    {% elif external_href %}
-                      <a href="{{ external_href }}" target="_blank" rel="nofollow ugc noopener noreferrer" class="fb-focus whitespace-pre-wrap break-words font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">{{ cell.value }}</a>
                     {% elif cell.value %}
                       <span class="whitespace-pre-wrap break-words">{{ cell.value }}</span>
                     {% else %}
