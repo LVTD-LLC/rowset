@@ -159,6 +159,10 @@ def _rowset_link_hosts(request=None) -> set[str]:
     return hosts
 
 
+def _raw_rowset_host_candidate(value: str) -> str:
+    return _host_without_port(value.split("/", 1)[0])
+
+
 def _normalized_rowset_href(value: str, request=None) -> tuple[str, ParseResult] | None:
     raw_value = value.strip()
     if not raw_value or raw_value.startswith("//"):
@@ -173,6 +177,10 @@ def _normalized_rowset_href(value: str, request=None) -> tuple[str, ParseResult]
             return None
         return raw_value, parsed
 
+    rowset_hosts = _rowset_link_hosts(request)
+    if "://" not in raw_value and _raw_rowset_host_candidate(raw_value) not in rowset_hosts:
+        return None
+
     href = raw_value if "://" in raw_value else f"https://{raw_value}"
     try:
         parsed = urlparse(href)
@@ -181,7 +189,7 @@ def _normalized_rowset_href(value: str, request=None) -> tuple[str, ParseResult]
         return None
     if parsed.scheme not in ROWSET_LINK_SCHEMES or not hostname:
         return None
-    if hostname.lower() not in _rowset_link_hosts(request):
+    if hostname.lower() not in rowset_hosts:
         return None
     return href, parsed
 
