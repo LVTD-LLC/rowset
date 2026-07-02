@@ -1469,6 +1469,46 @@ def test_dataset_detail_ignores_invalid_ipv6_rowset_url_candidates(
     assert "Rowset dataset" not in content
 
 
+def test_dataset_detail_ignores_json_array_rowset_url_candidates(
+    auth_client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    dataset.headers = ["run_id", "result", "checks_passed", "changed_files", "artifact_url"]
+    dataset.column_schema = {
+        "run_id": {"type": DatasetColumnType.TEXT},
+        "result": {
+            "type": DatasetColumnType.CHOICE,
+            "choices": ["dry_run", "pending", "pass", "fail", "blocked"],
+        },
+        "checks_passed": {"type": DatasetColumnType.TEXT},
+        "changed_files": {"type": DatasetColumnType.TEXT},
+        "artifact_url": {"type": DatasetColumnType.URL},
+    }
+    dataset.index_column = "run_id"
+    dataset.save(update_fields=["headers", "column_schema", "index_column"])
+    row = dataset.rows.first()
+    row.index_value = "sample-dry-run-eval-001"
+    row.data = {
+        "run_id": "sample-dry-run-eval-001",
+        "result": "dry_run",
+        "checks_passed": "[]",
+        "changed_files": '["TODO: record changed files after the run"]',
+        "artifact_url": "",
+    }
+    row.save(update_fields=["index_value", "data"])
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "sample-dry-run-eval-001" in content
+    assert "[]" in content
+    assert "TODO: record changed files after the run" in content
+    assert 'href="https://[]"' not in content
+    assert "Rowset dataset" not in content
+
+
 def test_dataset_detail_falls_back_for_unsupported_rowset_row_subpaths(
     auth_client,
     profile,
