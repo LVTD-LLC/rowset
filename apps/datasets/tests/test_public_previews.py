@@ -250,7 +250,7 @@ def test_public_dataset_links_rows_and_truncates_cells(client, profile):
     assert 'title=""' in content
 
 
-def test_public_dataset_linkifies_external_url_cells_with_safe_rel(client, profile):
+def test_public_dataset_renders_url_cells_as_text(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
     dataset.headers = ["name", "website", "unsafe"]
@@ -272,13 +272,14 @@ def test_public_dataset_linkifies_external_url_cells_with_safe_rel(client, profi
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert 'href="https://example.com/ada"' in content
-    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "https://example.com/ada" in content
+    assert 'href="https://example.com/ada"' not in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' not in content
     assert "javascript:alert(1)" in content
     assert 'href="javascript:alert(1)"' not in content
 
 
-def test_public_dataset_keeps_row_detail_link_for_single_url_column(client, profile):
+def test_public_dataset_keeps_row_detail_link_for_single_text_url_column(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
     dataset.headers = ["website"]
@@ -293,11 +294,12 @@ def test_public_dataset_keeps_row_detail_link_for_single_url_column(client, prof
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert 'href="https://example.com/ada"' in content
+    assert "https://example.com/ada" in content
+    assert 'href="https://example.com/ada"' not in content
     assert f'href="{row_url}"' in content
     assert 'aria-label="View row 1 details"' in content
-    assert 'aria-label="Open external link for row 1"' in content
-    assert ">Open</a>" in content
+    assert 'aria-label="Open external link for row 1"' not in content
+    assert ">Open</a>" not in content
 
 
 def test_public_dataset_keeps_row_detail_link_for_single_rowset_url_column(client, profile):
@@ -317,13 +319,17 @@ def test_public_dataset_keeps_row_detail_link_for_single_rowset_url_column(clien
 
     assert response.status_code == 200
     assert f'href="{row_url}"' in content
-    assert f'href="{public_target_url}"' in content
+    assert public_target_url in content
+    assert f'href="{public_target_url}"' not in content
     assert 'aria-label="View row 1 details"' in content
     assert content.count('aria-label="View row 1 details"') == 1
     assert 'class="sr-only">View row 1 details' not in content
 
 
-def test_public_dataset_renders_rowset_links_without_private_target_metadata(client, profile):
+def test_public_dataset_renders_rowset_urls_as_text_without_private_target_metadata(
+    client,
+    profile,
+):
     source_dataset = create_ready_dataset(profile)
     source_dataset.public_enabled = True
     source_dataset.headers = ["name", "task_dataset_url", "private_path"]
@@ -348,10 +354,11 @@ def test_public_dataset_renders_rowset_links_without_private_target_metadata(cli
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert f'href="{public_target_url}"' in content
-    assert f'href="{private_target_path}"' in content
-    assert "Rowset dataset" in content
-    assert "Shared dataset" in content
+    assert public_target_url in content
+    assert private_target_path in content
+    assert f'href="{public_target_url}"' not in content
+    assert f'href="{private_target_path}"' not in content
+    assert "Shared dataset" not in content
     assert "Internal dataset" not in content
     assert "Private Sprint Tasks" not in content
     assert reverse("public_dataset_row_detail", args=[source_dataset.public_key, row.id]) in content
@@ -388,7 +395,7 @@ def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     assert "Created by" not in content
 
 
-def test_public_dataset_row_detail_linkifies_external_url_cells(client, profile):
+def test_public_dataset_row_detail_renders_url_cells_as_text(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
     dataset.headers = ["name", "website", "unsafe"]
@@ -405,8 +412,9 @@ def test_public_dataset_row_detail_linkifies_external_url_cells(client, profile)
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert 'href="https://example.com/ada?ref=rowset&amp;ok=1"' in content
-    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' in content
+    assert "https://example.com/ada?ref=rowset&amp;ok=1" in content
+    assert 'href="https://example.com/ada?ref=rowset&amp;ok=1"' not in content
+    assert 'target="_blank" rel="nofollow ugc noopener noreferrer"' not in content
     assert "https://example.com/&lt;script&gt;" in content
     assert 'href="https://example.com/&lt;script&gt;"' not in content
 

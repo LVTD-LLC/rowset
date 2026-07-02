@@ -52,3 +52,5 @@ urlpatterns = [
         name="django.contrib.sitemaps.views.sitemap",
     ),
 ]
+
+handler500 = "apps.core.views.server_error"
