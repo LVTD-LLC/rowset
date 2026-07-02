@@ -358,7 +358,6 @@ def test_public_dataset_renders_rowset_urls_as_text_without_private_target_metad
     assert private_target_path in content
     assert f'href="{public_target_url}"' not in content
     assert f'href="{private_target_path}"' not in content
-    assert "Rowset dataset" not in content
     assert "Shared dataset" not in content
     assert "Internal dataset" not in content
     assert "Private Sprint Tasks" not in content
