@@ -6,27 +6,43 @@ import posthog
 import requests
 from django.conf import settings
 
-from apps.core.models import Feedback, Profile
+from apps.core.model_typing import (
+    FeedbackDoesNotExist,
+    ProfileDoesNotExist,
+    agent_api_key_task_fields,
+    feedback_objects,
+    feedback_task_fields,
+    model_id,
+    profile_objects,
+    profile_state_fields,
+    profile_state_transition_objects,
+    profile_user,
+)
+from apps.core.models import Feedback
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
 
 
 def _format_feedback_apprise_body(feedback: Feedback) -> str:
-    submitter = feedback.profile.user.email if feedback.profile else "Anonymous"
+    feedback_fields = feedback_task_fields(feedback)
+    submitter = (
+        profile_user(feedback_fields.profile).email if feedback_fields.profile else "Anonymous"
+    )
     lines = [
-        f"Source: {feedback.get_source_display()}",
+        f"Source: {feedback_fields.get_source_display()}",
         f"User: {submitter}",
     ]
 
-    if feedback.agent_api_key:
+    if feedback_fields.agent_api_key:
+        agent_api_key_fields = agent_api_key_task_fields(feedback_fields.agent_api_key)
         lines.append(
-            f"Agent API key: {feedback.agent_api_key.name} ({feedback.agent_api_key.key_prefix})"
+            f"Agent API key: {agent_api_key_fields.name} ({agent_api_key_fields.key_prefix})"
         )
-    if feedback.page:
-        lines.append(f"Page: {feedback.page}")
+    if feedback_fields.page:
+        lines.append(f"Page: {feedback_fields.page}")
 
-    metadata = feedback.metadata if isinstance(feedback.metadata, dict) else {}
+    metadata = feedback_fields.metadata if isinstance(feedback_fields.metadata, dict) else {}
     rowset_row_url = metadata.get("rowset_row_url")
     if rowset_row_url:
         lines.append(f"Rowset row: {rowset_row_url}")
@@ -36,7 +52,7 @@ def _format_feedback_apprise_body(feedback: Feedback) -> str:
         if context_keys:
             lines.append(f"Context keys: {context_keys}")
 
-    lines.extend(["", feedback.feedback])
+    lines.extend(["", feedback_fields.feedback])
     return "\n".join(lines)
 
 
@@ -46,10 +62,10 @@ def notify_feedback_apprise(feedback_id: int) -> str:
         return "Apprise feedback notifications are not configured."
 
     try:
-        feedback = Feedback.objects.select_related("profile__user", "agent_api_key").get(
-            id=feedback_id
+        feedback = (
+            feedback_objects().select_related("profile__user", "agent_api_key").get(id=feedback_id)
         )
-    except Feedback.DoesNotExist:
+    except FeedbackDoesNotExist:
         logger.warning(
             "Feedback notification skipped because feedback was not found",
             feedback_id=feedback_id,
@@ -116,7 +132,11 @@ def add_email_to_buttondown(email, tag):
     return r.json()
 
 
-def try_create_posthog_alias(profile_id: int, cookies: dict, source_function: str = None) -> str:
+def try_create_posthog_alias(
+    profile_id: int,
+    cookies: dict[str, object],
+    source_function: str | None = None,
+) -> str | None:
     if not settings.POSTHOG_API_KEY:
         return "PostHog API key not found."
 
@@ -126,14 +146,14 @@ def try_create_posthog_alias(profile_id: int, cookies: dict, source_function: st
         "source_function": source_function,
     }
 
-    profile = Profile.objects.get(id=profile_id)
-    email = profile.user.email
+    profile = profile_objects().get(id=profile_id)
+    email = profile_user(profile).email
 
     base_log_data["email"] = email
     base_log_data["profile_id"] = profile_id
 
     posthog_cookie = cookies.get(f"ph_{settings.POSTHOG_API_KEY}_posthog")
-    if not posthog_cookie:
+    if not isinstance(posthog_cookie, str) or not posthog_cookie:
         logger.warning("[Try Create Posthog Alias] No PostHog cookie found.", **base_log_data)
         return f"No PostHog cookie found for profile {profile_id}."
     base_log_data["posthog_cookie"] = posthog_cookie
@@ -151,7 +171,10 @@ def try_create_posthog_alias(profile_id: int, cookies: dict, source_function: st
 
 
 def track_event(
-    profile_id: int, event_name: str, properties: dict, source_function: str = None
+    profile_id: int,
+    event_name: str,
+    properties: dict[str, object],
+    source_function: str | None = None,
 ) -> str:
     if not settings.POSTHOG_API_KEY:
         return "PostHog API key not found."
@@ -164,18 +187,20 @@ def track_event(
     }
 
     try:
-        profile = Profile.objects.get(id=profile_id)
-    except Profile.DoesNotExist:
+        profile = profile_objects().get(id=profile_id)
+    except ProfileDoesNotExist:
         logger.error("[TrackEvent] Profile not found.", **base_log_data)
         return f"Profile with id {profile_id} not found."
 
+    profile_state = profile_state_fields(profile)
+    user = profile_user(profile)
     posthog.capture(
-        str(profile.id),
-        event=event_name,
+        event_name,
+        distinct_id=str(model_id(profile)),
         properties={
-            "profile_id": profile.id,
-            "email": profile.user.email,
-            "current_state": profile.state,
+            "profile_id": model_id(profile),
+            "email": user.email,
+            "current_state": profile_state.state,
             **properties,
         },
     )
@@ -188,8 +213,8 @@ def track_event(
 def track_activation_event(
     profile_id: int,
     event_name: str,
-    properties: dict | None = None,
-    source_function: str = None,
+    properties: dict[str, object] | None = None,
+    source_function: str | None = None,
 ) -> str:
     if not settings.POSTHOG_API_KEY:
         return "PostHog API key not found."
@@ -202,20 +227,22 @@ def track_activation_event(
     }
 
     try:
-        profile = Profile.objects.select_related("user").get(id=profile_id)
-    except Profile.DoesNotExist:
+        profile = profile_objects().select_related("user").get(id=profile_id)
+    except ProfileDoesNotExist:
         logger.error("[ActivationTracking] Profile not found.", **base_log_data)
         return f"Profile with id {profile_id} not found."
 
+    profile_state = profile_state_fields(profile)
+    user = profile_user(profile)
     posthog.capture(
-        str(profile.id),
-        event=event_name,
+        event_name,
+        distinct_id=str(model_id(profile)),
         properties={
-            "profile_id": profile.id,
-            "current_state": profile.state,
+            "profile_id": model_id(profile),
+            "current_state": profile_state.state,
             "$set": {
-                "email": profile.user.email,
-                "username": profile.user.username,
+                "email": user.email,
+                "username": user.username,
             },
             **(properties or {}),
         },
@@ -229,11 +256,9 @@ def track_state_change(
     profile_id: int,
     from_state: str,
     to_state: str,
-    metadata: dict = None,
-    source_function: str = None,
-) -> None:
-    from apps.core.models import Profile, ProfileStateTransition
-
+    metadata: dict[str, object] | None = None,
+    source_function: str | None = None,
+) -> str:
     base_log_data = {
         "profile_id": profile_id,
         "from_state": from_state,
@@ -243,21 +268,21 @@ def track_state_change(
     }
 
     try:
-        profile = Profile.objects.get(id=profile_id)
-    except Profile.DoesNotExist:
+        profile = profile_objects().get(id=profile_id)
+    except ProfileDoesNotExist:
         logger.error("[TrackStateChange] Profile not found.", **base_log_data)
         return f"Profile with id {profile_id} not found."
 
     if from_state != to_state:
         logger.info("[TrackStateChange] Tracking state change", **base_log_data)
-        ProfileStateTransition.objects.create(
+        profile_state_transition_objects().create(
             profile=profile,
             from_state=from_state,
             to_state=to_state,
             backup_profile_id=profile_id,
             metadata=metadata,
         )
-        profile.state = to_state
+        profile_state_fields(profile).state = to_state
         profile.save(update_fields=["state"])
 
     return f"Tracked state change from {from_state} to {to_state} for profile {profile_id}"

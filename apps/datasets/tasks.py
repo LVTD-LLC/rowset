@@ -4,6 +4,14 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.datasets.choices import DatasetStatus
+from apps.datasets.model_typing import (
+    DatasetDoesNotExist,
+    DatasetRowDoesNotExist,
+    dataset_import_task_fields,
+    dataset_objects,
+    dataset_row_objects,
+    dataset_row_task_fields,
+)
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
     backfill_dataset_vectors,
@@ -49,36 +57,44 @@ def _enqueue_stale_row_vector_deletes(dataset_id: int, row_ids: Iterable[int]) -
 
 
 def _ensure_index_config(dataset: Dataset) -> None:
-    if dataset.index_column:
+    dataset_fields = dataset_import_task_fields(dataset)
+    if dataset_fields.index_column:
         return
 
-    dataset.index_column = generated_index_column_name(dataset.headers)
-    dataset.index_generated = True
-    existing_headers = [header for header in dataset.headers if header != dataset.index_column]
-    if dataset.index_column not in dataset.headers:
-        dataset.headers = [dataset.index_column, *dataset.headers]
-    dataset.column_schema = {
-        dataset.index_column: generated_index_column_schema(),
-        **normalize_column_schema(existing_headers, dataset.column_schema),
+    dataset_fields.index_column = generated_index_column_name(dataset_fields.headers)
+    dataset_fields.index_generated = True
+    existing_headers = [
+        header for header in dataset_fields.headers if header != dataset_fields.index_column
+    ]
+    if dataset_fields.index_column not in dataset_fields.headers:
+        dataset_fields.headers = [dataset_fields.index_column, *dataset_fields.headers]
+    dataset_fields.column_schema = {
+        dataset_fields.index_column: generated_index_column_schema(),
+        **normalize_column_schema(existing_headers, dataset_fields.column_schema),
     }
 
 
 def import_dataset_rows(dataset_id: int) -> None:
-    dataset = Dataset.objects.get(id=dataset_id)
-    logger.info("Starting CSV dataset import", dataset_id=dataset.id, dataset_key=str(dataset.key))
+    dataset = dataset_objects().get(id=dataset_id)
+    dataset_fields = dataset_import_task_fields(dataset)
+    logger.info(
+        "Starting CSV dataset import",
+        dataset_id=dataset_fields.id,
+        dataset_key=str(dataset_fields.key),
+    )
 
     try:
-        source_text = dataset.source_text or source_text_from_file(
-            dataset.source_file,
-            dataset.file_type,
+        source_text = dataset_fields.source_text or source_text_from_file(
+            dataset_fields.source_file,
+            dataset_fields.file_type,
         )
         _ensure_index_config(dataset)
         row_iterator = iter_indexed_rows(
-            file_type=dataset.file_type,
+            file_type=dataset_fields.file_type,
             source_text=source_text,
-            headers=dataset.headers,
-            index_column=dataset.index_column,
-            index_generated=dataset.index_generated,
+            headers=dataset_fields.headers,
+            index_column=dataset_fields.index_column,
+            index_generated=dataset_fields.index_generated,
         )
         rows = [
             DatasetRow(
@@ -92,17 +108,17 @@ def import_dataset_rows(dataset_id: int) -> None:
 
         with transaction.atomic():
             stale_row_count = _enqueue_stale_row_vector_deletes(
-                dataset.id,
-                dataset.rows.values_list("id", flat=True).iterator(
+                dataset_fields.id,
+                dataset_fields.rows.values_list("id", flat=True).iterator(
                     chunk_size=VECTOR_ROW_DELETE_TASK_BATCH_SIZE
                 ),
             )
-            dataset.rows.all().delete()
-            DatasetRow.objects.bulk_create(rows, batch_size=1000)
-            dataset.row_count = len(rows)
-            dataset.status = DatasetStatus.READY
-            dataset.parse_error = ""
-            dataset.processed_at = timezone.now()
+            dataset_fields.rows.all().delete()
+            dataset_row_objects().bulk_create(rows, batch_size=1000)
+            dataset_fields.row_count = len(rows)
+            dataset_fields.status = DatasetStatus.READY
+            dataset_fields.parse_error = ""
+            dataset_fields.processed_at = timezone.now()
             dataset.save(
                 update_fields=[
                     "headers",
@@ -118,19 +134,19 @@ def import_dataset_rows(dataset_id: int) -> None:
             )
             enqueue_vector_task(
                 "apps.datasets.tasks.reindex_dataset_vectors_task",
-                dataset.id,
+                dataset_fields.id,
             )
         logger.info(
             "Finished CSV dataset import",
-            dataset_id=dataset.id,
+            dataset_id=dataset_fields.id,
             row_count=len(rows),
             stale_row_count=stale_row_count,
         )
     except Exception as exc:
-        dataset.status = DatasetStatus.FAILED
-        dataset.parse_error = str(exc)
+        dataset_fields.status = DatasetStatus.FAILED
+        dataset_fields.parse_error = str(exc)
         dataset.save(update_fields=["status", "parse_error", "updated_at"])
-        logger.exception("CSV dataset import failed", dataset_id=dataset.id)
+        logger.exception("CSV dataset import failed", dataset_id=dataset_fields.id)
         raise
 
 
@@ -138,8 +154,8 @@ def index_dataset_row_vector(row_id: int) -> None:
     if not qdrant_is_enabled():
         return
     try:
-        row = DatasetRow.objects.select_related("dataset").get(id=row_id)
-    except DatasetRow.DoesNotExist:
+        row = dataset_row_objects().select_related("dataset").get(id=row_id)
+    except DatasetRowDoesNotExist:
         logger.info("Skipping vector row indexing for missing row", row_id=row_id)
         return
 
@@ -148,10 +164,12 @@ def index_dataset_row_vector(row_id: int) -> None:
     except Exception:
         logger.exception("Vector row indexing failed", row_id=row_id)
     else:
+        row_fields = dataset_row_task_fields(row)
+        dataset_fields = dataset_import_task_fields(row_fields.dataset)
         logger.info(
             "Vector row indexing complete",
-            dataset_id=row.dataset_id,
-            dataset_key=str(row.dataset.key),
+            dataset_id=row_fields.dataset_id,
+            dataset_key=str(dataset_fields.key),
             row_id=row_id,
         )
 
@@ -160,8 +178,8 @@ def backfill_dataset_vectors_task(dataset_id: int) -> None:
     if not qdrant_is_enabled():
         return
     try:
-        dataset = Dataset.objects.get(id=dataset_id)
-    except Dataset.DoesNotExist:
+        dataset = dataset_objects().get(id=dataset_id)
+    except DatasetDoesNotExist:
         logger.info("Skipping vector backfill for missing dataset", dataset_id=dataset_id)
         return
 
@@ -170,10 +188,11 @@ def backfill_dataset_vectors_task(dataset_id: int) -> None:
     except Exception:
         logger.exception("Vector dataset backfill failed", dataset_id=dataset_id)
     else:
+        dataset_fields = dataset_import_task_fields(dataset)
         logger.info(
             "Vector dataset backfill complete",
             dataset_id=dataset_id,
-            dataset_key=str(dataset.key),
+            dataset_key=str(dataset_fields.key),
             rows_seen=result.rows_seen,
             indexed=result.indexed,
             failed=result.failed,
@@ -184,8 +203,8 @@ def reindex_dataset_vectors_task(dataset_id: int) -> None:
     if not qdrant_is_enabled():
         return
     try:
-        dataset = Dataset.objects.get(id=dataset_id)
-    except Dataset.DoesNotExist:
+        dataset = dataset_objects().get(id=dataset_id)
+    except DatasetDoesNotExist:
         logger.info("Skipping vector reindex for missing dataset", dataset_id=dataset_id)
         return
 
@@ -195,10 +214,11 @@ def reindex_dataset_vectors_task(dataset_id: int) -> None:
         logger.exception("Vector dataset reindex failed", dataset_id=dataset_id)
         return
 
+    dataset_fields = dataset_import_task_fields(dataset)
     logger.info(
         "Vector dataset reindex complete",
         dataset_id=dataset_id,
-        dataset_key=str(dataset.key),
+        dataset_key=str(dataset_fields.key),
         rows_seen=result.rows_seen,
         indexed=result.indexed,
         failed=result.failed,
@@ -209,8 +229,8 @@ def delete_dataset_row_vectors(dataset_id: int, row_ids: list[int]) -> None:
     if not qdrant_is_enabled():
         return
     try:
-        dataset = Dataset.objects.get(id=dataset_id)
-    except Dataset.DoesNotExist:
+        dataset = dataset_objects().get(id=dataset_id)
+    except DatasetDoesNotExist:
         logger.info(
             "Skipping vector row deletion for missing dataset",
             dataset_id=dataset_id,
@@ -227,10 +247,11 @@ def delete_dataset_row_vectors(dataset_id: int, row_ids: list[int]) -> None:
             row_ids=row_ids,
         )
     else:
+        dataset_fields = dataset_import_task_fields(dataset)
         logger.info(
             "Vector row deletion complete",
             dataset_id=dataset_id,
-            dataset_key=str(dataset.key),
+            dataset_key=str(dataset_fields.key),
             row_count=len(row_ids),
         )
 
@@ -239,8 +260,8 @@ def delete_dataset_vectors(dataset_id: int) -> None:
     if not qdrant_is_enabled():
         return
     try:
-        dataset = Dataset.objects.get(id=dataset_id)
-    except Dataset.DoesNotExist:
+        dataset = dataset_objects().get(id=dataset_id)
+    except DatasetDoesNotExist:
         logger.info("Skipping vector dataset deletion for missing dataset", dataset_id=dataset_id)
         return
 
@@ -249,8 +270,9 @@ def delete_dataset_vectors(dataset_id: int) -> None:
     except Exception:
         logger.exception("Vector dataset deletion failed", dataset_id=dataset_id)
     else:
+        dataset_fields = dataset_import_task_fields(dataset)
         logger.info(
             "Vector dataset deletion complete",
             dataset_id=dataset_id,
-            dataset_key=str(dataset.key),
+            dataset_key=str(dataset_fields.key),
         )

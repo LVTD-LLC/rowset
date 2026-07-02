@@ -1,5 +1,6 @@
 import uuid
 from pathlib import Path
+from typing import Protocol, cast
 
 from django.contrib.auth.hashers import check_password
 from django.contrib.postgres.indexes import GinIndex
@@ -22,6 +23,117 @@ from apps.datasets.constants import (
 )
 
 DATASET_ASSET_STORAGE_ALIAS = "dataset_assets"
+
+
+class _ModelIdentity(Protocol):
+    id: int
+    pk: int
+
+
+class _AgentApiKeyFields(Protocol):
+    name: str
+
+
+class _DatasetAgentFields(Protocol):
+    created_by_agent_api_key: AgentApiKey | None
+    updated_by_agent_api_key: AgentApiKey | None
+
+
+class _DatasetRowFields(Protocol):
+    id: int
+    dataset_id: int
+    dataset: Dataset
+    row_number: int
+    created_by_agent_api_key: AgentApiKey | None
+    updated_by_agent_api_key: AgentApiKey | None
+
+
+class _DatasetAssetFields(Protocol):
+    dataset_id: int
+    row_id: int
+    column_name: str
+
+
+class _DatasetAssetFileDeletionFields(Protocol):
+    attempts: int
+    deleted_at: object | None
+    file_name: str
+    last_attempted_at: object | None
+    last_error: str
+    storage_alias: str
+
+
+class _DatasetAssetFileDeletionQuerySet(Protocol):
+    def __getitem__(self, key: slice) -> list[DatasetAssetFileDeletion]: ...
+
+    def order_by(self, *fields: str) -> _DatasetAssetFileDeletionQuerySet: ...
+
+    def update(self, **fields: object) -> int: ...
+
+
+class _DatasetAssetFileDeletionManager(Protocol):
+    def filter(self, **filters: object) -> _DatasetAssetFileDeletionQuerySet: ...
+
+    def get_or_create(
+        self,
+        **filters: object,
+    ) -> tuple[DatasetAssetFileDeletion, bool]: ...
+
+
+class _DatasetRelationshipFields(Protocol):
+    source_column: str
+    source_dataset_id: int
+    target_dataset_id: int
+
+
+class _DatasetMutationFields(Protocol):
+    dataset_id: int
+    mutation_type: str
+
+
+def _django_attr(model: object, name: str) -> object:
+    return getattr(model, name)
+
+
+def _model_identity(model: object) -> _ModelIdentity:
+    return cast(_ModelIdentity, model)
+
+
+def _agent_api_key_fields(agent_api_key: AgentApiKey) -> _AgentApiKeyFields:
+    return cast(_AgentApiKeyFields, agent_api_key)
+
+
+def _dataset_agent_fields(dataset: Dataset) -> _DatasetAgentFields:
+    return cast(_DatasetAgentFields, dataset)
+
+
+def _dataset_row_fields(row: DatasetRow) -> _DatasetRowFields:
+    return cast(_DatasetRowFields, row)
+
+
+def _dataset_asset_fields(asset: DatasetAsset) -> _DatasetAssetFields:
+    return cast(_DatasetAssetFields, asset)
+
+
+def _dataset_asset_file_deletion_fields(
+    deletion: DatasetAssetFileDeletion,
+) -> _DatasetAssetFileDeletionFields:
+    return cast(_DatasetAssetFileDeletionFields, deletion)
+
+
+def _dataset_asset_file_deletion_objects() -> _DatasetAssetFileDeletionManager:
+    return cast(
+        _DatasetAssetFileDeletionManager,
+        _django_attr(DatasetAssetFileDeletion, "objects"),
+    )
+
+
+def _dataset_relationship_fields(relationship: DatasetRelationship) -> _DatasetRelationshipFields:
+    return cast(_DatasetRelationshipFields, relationship)
+
+
+def _dataset_mutation_fields(mutation: DatasetMutation) -> _DatasetMutationFields:
+    return cast(_DatasetMutationFields, mutation)
 
 
 def dataset_asset_storage():
@@ -219,11 +331,11 @@ class Dataset(BaseModel):
 
     @property
     def created_by_actor_label(self) -> str:
-        return agent_actor_label(self.created_by_agent_api_key)
+        return agent_actor_label(_dataset_agent_fields(self).created_by_agent_api_key)
 
     @property
     def updated_by_actor_label(self) -> str:
-        return agent_actor_label(self.updated_by_agent_api_key)
+        return agent_actor_label(_dataset_agent_fields(self).updated_by_agent_api_key)
 
 
 class DatasetRow(BaseModel):
@@ -260,21 +372,23 @@ class DatasetRow(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.dataset_id} row {self.row_number}"
+        fields = _dataset_row_fields(self)
+        return f"{fields.dataset_id} row {fields.row_number}"
 
     def get_absolute_url(self):
+        fields = _dataset_row_fields(self)
         return reverse(
             "dataset_row_detail",
-            kwargs={"dataset_key": self.dataset.key, "row_id": self.id},
+            kwargs={"dataset_key": fields.dataset.key, "row_id": fields.id},
         )
 
     @property
     def created_by_actor_label(self) -> str:
-        return agent_actor_label(self.created_by_agent_api_key)
+        return agent_actor_label(_dataset_row_fields(self).created_by_agent_api_key)
 
     @property
     def updated_by_actor_label(self) -> str:
-        return agent_actor_label(self.updated_by_agent_api_key)
+        return agent_actor_label(_dataset_row_fields(self).updated_by_agent_api_key)
 
 
 class DatasetAsset(BaseModel):
@@ -327,7 +441,8 @@ class DatasetAsset(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.dataset_id} row {self.row_id} {self.column_name}"
+        fields = _dataset_asset_fields(self)
+        return f"{fields.dataset_id} row {fields.row_id} {fields.column_name}"
 
     @property
     def asset_ref(self) -> str:
@@ -368,7 +483,7 @@ def record_dataset_asset_file_deletion_failure(
 ) -> None:
     now = timezone.now()
     message = str(exc)[:1000]
-    deletion, created = DatasetAssetFileDeletion.objects.get_or_create(
+    deletion, created = _dataset_asset_file_deletion_objects().get_or_create(
         storage_alias=storage_alias,
         file_name=file_name,
         defaults={
@@ -379,7 +494,7 @@ def record_dataset_asset_file_deletion_failure(
     )
     if created:
         return
-    DatasetAssetFileDeletion.objects.filter(pk=deletion.pk).update(
+    _dataset_asset_file_deletion_objects().filter(pk=_model_identity(deletion).pk).update(
         attempts=models.F("attempts") + 1,
         last_error=message,
         last_attempted_at=now,
@@ -390,19 +505,20 @@ def record_dataset_asset_file_deletion_failure(
 
 def retry_dataset_asset_file_deletions(limit: int = 100) -> dict[str, int]:
     pending = list(
-        DatasetAssetFileDeletion.objects.filter(deleted_at__isnull=True).order_by(
-            "created_at", "id"
-        )[:limit]
+        _dataset_asset_file_deletion_objects()
+        .filter(deleted_at__isnull=True)
+        .order_by("created_at", "id")[:limit]
     )
     result = {"attempted": len(pending), "deleted": 0, "failed": 0}
     for deletion in pending:
+        deletion_fields = _dataset_asset_file_deletion_fields(deletion)
         now = timezone.now()
         try:
-            storages[deletion.storage_alias].delete(deletion.file_name)
+            storages[deletion_fields.storage_alias].delete(deletion_fields.file_name)
         except Exception as exc:
-            deletion.attempts += 1
-            deletion.last_error = str(exc)[:1000]
-            deletion.last_attempted_at = now
+            deletion_fields.attempts += 1
+            deletion_fields.last_error = str(exc)[:1000]
+            deletion_fields.last_attempted_at = now
             deletion.save(
                 update_fields=[
                     "attempts",
@@ -413,9 +529,9 @@ def retry_dataset_asset_file_deletions(limit: int = 100) -> dict[str, int]:
             )
             result["failed"] += 1
         else:
-            deletion.deleted_at = now
-            deletion.last_error = ""
-            deletion.last_attempted_at = now
+            deletion_fields.deleted_at = now
+            deletion_fields.last_error = ""
+            deletion_fields.last_attempted_at = now
             deletion.save(
                 update_fields=[
                     "deleted_at",
@@ -502,7 +618,8 @@ class DatasetRelationship(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.source_dataset_id}.{self.source_column} -> {self.target_dataset_id}"
+        fields = _dataset_relationship_fields(self)
+        return f"{fields.source_dataset_id}.{fields.source_column} -> {fields.target_dataset_id}"
 
 
 class DatasetMutation(BaseModel):
@@ -532,10 +649,11 @@ class DatasetMutation(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.dataset_id} {self.mutation_type}"
+        fields = _dataset_mutation_fields(self)
+        return f"{fields.dataset_id} {fields.mutation_type}"
 
 
 def agent_actor_label(agent_api_key: AgentApiKey | None) -> str:
     if agent_api_key is None:
         return "Account"
-    return agent_api_key.name
+    return _agent_api_key_fields(agent_api_key).name

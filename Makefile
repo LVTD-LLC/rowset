@@ -15,22 +15,27 @@ HIGH_RISK_COVERAGE_FILES = \
 	apps/datasets/vector_search.py \
 	apps/mcp_server/server.py
 TYPE_CHECK_FILES = \
+	apps/api/__init__.py \
 	apps/api/admin.py \
 	apps/api/auth.py \
 	apps/api/errors.py \
 	apps/api/models.py \
 	apps/api/row_contracts.py \
+	apps/api/row_mutations.py \
 	apps/api/schemas.py \
 	apps/api/urls.py \
 	apps/api/utils.py \
+	apps/blog/__init__.py \
 	apps/blog/admin.py \
 	apps/blog/choices.py \
 	apps/blog/model_typing.py \
 	apps/blog/models.py \
 	apps/blog/urls.py \
 	apps/blog/views.py \
+	apps/core/__init__.py \
 	apps/core/admin.py \
 	apps/core/agent_skill.py \
+	apps/core/agents/__init__.py \
 	apps/core/agents/base.py \
 	apps/core/analytics.py \
 	apps/core/base_models.py \
@@ -43,32 +48,45 @@ TYPE_CHECK_FILES = \
 	apps/core/models.py \
 	apps/core/signals.py \
 	apps/core/stripe_webhooks.py \
+	apps/core/tasks.py \
+	apps/core/templatetags/__init__.py \
 	apps/core/templatetags/markdown_extras.py \
 	apps/core/urls.py \
 	apps/core/utils.py \
+	apps/datasets/__init__.py \
 	apps/datasets/admin.py \
 	apps/datasets/apps.py \
 	apps/datasets/choices.py \
 	apps/datasets/constants.py \
 	apps/datasets/embeddings.py \
 	apps/datasets/history.py \
+	apps/datasets/management/__init__.py \
+	apps/datasets/management/commands/__init__.py \
 	apps/datasets/management/commands/backfill_dataset_vectors.py \
 	apps/datasets/management/commands/retry_dataset_asset_file_deletions.py \
 	apps/datasets/model_typing.py \
+	apps/datasets/models.py \
 	apps/datasets/public_previews.py \
 	apps/datasets/services.py \
+	apps/datasets/tasks.py \
+	apps/datasets/templatetags/__init__.py \
 	apps/datasets/types.py \
 	apps/datasets/urls.py \
 	apps/datasets/vector_search.py \
 	apps/datasets/vector_tasks.py \
+	apps/docs/__init__.py \
 	apps/docs/admin.py \
 	apps/docs/models.py \
 	apps/docs/urls.py \
 	apps/docs/views.py \
+	apps/mcp_server/__init__.py \
 	apps/mcp_server/apps.py \
 	apps/mcp_server/auth.py \
+	apps/mcp_server/management/__init__.py \
+	apps/mcp_server/management/commands/__init__.py \
 	apps/mcp_server/models.py \
 	apps/mcp_server/server.py \
+	apps/pages/__init__.py \
 	apps/pages/admin.py \
 	apps/pages/checks.py \
 	apps/pages/context_processors.py \
@@ -77,6 +95,7 @@ TYPE_CHECK_FILES = \
 	apps/pages/urls.py \
 	apps/pages/use_cases.py \
 	apps/pages/views.py \
+	rowset/__init__.py \
 	rowset/adapters.py \
 	rowset/asgi.py \
 	rowset/logging_utils.py \
