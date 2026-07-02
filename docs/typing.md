@@ -52,7 +52,6 @@ uv run ty check \
   apps/datasets/model_typing.py \
   apps/datasets/public_previews.py \
   apps/datasets/services.py \
-  apps/datasets/templatetags/dataset_links.py \
   apps/datasets/types.py \
   apps/datasets/urls.py \
   apps/datasets/vector_search.py \
@@ -89,7 +88,7 @@ uv run ty check \
   scripts/startup-smoke.py
 ```
 
-These 77 files are low-noise because they are pure helpers, API schemas, auth
+These 76 files are low-noise because they are pure helpers, API schemas, auth
 boundaries, MCP tool boundaries, app support modules, docs/blog/page views, or
 dataset service code that has explicit local typing. They should stay clean in
 CI. The scope still excludes the largest dynamic surfaces, such as broad API and

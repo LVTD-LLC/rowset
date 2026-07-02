@@ -57,7 +57,6 @@ TYPE_CHECK_FILES = \
 	apps/datasets/model_typing.py \
 	apps/datasets/public_previews.py \
 	apps/datasets/services.py \
-	apps/datasets/templatetags/dataset_links.py \
 	apps/datasets/types.py \
 	apps/datasets/urls.py \
 	apps/datasets/vector_search.py \
