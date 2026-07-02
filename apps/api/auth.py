@@ -99,7 +99,7 @@ class SuperuserAPIKeyAuth(APIKeyQuery):
                 logger.warning(
                     "[Django Ninja Auth] Superuser API key lacks admin access",
                     reason=str(exc),
-                    profile_id=profile.user.id,
+                    profile_id=profile.id,
                     agent_api_key_id=getattr(agent_api_key, "id", None),
                 )
                 return None
@@ -107,7 +107,7 @@ class SuperuserAPIKeyAuth(APIKeyQuery):
             return profile
         logger.warning(
             "[Django Ninja Auth] Non-superuser attempted admin access",
-            profile_id=profile.user.id,
+            profile_id=profile.id,
         )
         return None
 
