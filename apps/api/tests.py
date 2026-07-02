@@ -116,6 +116,15 @@ def test_row_contracts_reject_blank_search_filter_operator_headers():
         normalize_search_filter_operators({" ": "is"}, {"status": "Ready"})
 
 
+def test_dataset_row_write_schemas_accept_json_cell_values():
+    from apps.api.schemas import DatasetRowIn, DatasetRowPatchIn
+
+    payload = {"data": {"name": "Ada", "score": 42, "empty": None, "active": True}}
+
+    assert DatasetRowIn.model_validate(payload).model_dump() == payload
+    assert DatasetRowPatchIn.model_validate(payload).model_dump() == payload
+
+
 @pytest.mark.django_db
 @override_settings(
     DEFAULT_FROM_EMAIL="feedback@rowset.example",

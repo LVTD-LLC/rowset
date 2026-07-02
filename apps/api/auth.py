@@ -2,13 +2,6 @@ from django.http import HttpRequest
 from ninja.security import APIKeyQuery
 
 from apps.core.choices import AgentApiKeyAccessLevel
-from apps.core.model_typing import (
-    ProfileDoesNotExist,
-    attach_agent_api_key_to_request,
-    profile_id,
-    profile_user,
-    request_user,
-)
 from apps.core.models import Profile
 from apps.core.services import require_agent_api_key_access, resolve_api_key_profile
 from rowset.utils import get_rowset_logger
@@ -54,11 +47,11 @@ class APIKeyAuth(APIKeyQuery):
             logger.warning(
                 "[Django Ninja Auth] API key permission denied",
                 reason=str(exc),
-                profile_id=profile_id(profile),
+                profile_id=profile.id,
                 agent_api_key_id=getattr(agent_api_key, "id", None),
             )
             return None
-        attach_agent_api_key_to_request(request, agent_api_key)
+        request.agent_api_key = agent_api_key
         return profile
 
 
@@ -66,18 +59,17 @@ class SessionAuth:
     """Authentication via Django session"""
 
     def authenticate(self, request: HttpRequest) -> Profile | None:
-        user = request_user(request)
-        if user is not None and user.is_authenticated:
+        if hasattr(request, "user") and request.user.is_authenticated:
             logger.info(
                 "[Django Ninja Auth] API Request with authenticated user",
-                user_id=user.id,
+                user_id=request.user.id,
             )
             try:
-                return user.profile
-            except ProfileDoesNotExist:
+                return request.user.profile
+            except Profile.DoesNotExist:
                 logger.warning(
                     "[Django Ninja Auth] No profile for user",
-                    user_id=user.id,
+                    user_id=request.user.id,
                 )
                 return None
         return None
@@ -100,23 +92,22 @@ class SuperuserAPIKeyAuth(APIKeyQuery):
             logger.warning("[Django Ninja Auth] Profile does not exist")
             return None
         profile, agent_api_key = resolved
-        user = profile_user(profile)
-        if user.is_superuser:
+        if profile.user.is_superuser:
             try:
                 require_agent_api_key_access(agent_api_key, AgentApiKeyAccessLevel.ADMIN)
             except PermissionError as exc:
                 logger.warning(
                     "[Django Ninja Auth] Superuser API key lacks admin access",
                     reason=str(exc),
-                    profile_id=user.id,
+                    profile_id=profile.user.id,
                     agent_api_key_id=getattr(agent_api_key, "id", None),
                 )
                 return None
-            attach_agent_api_key_to_request(request, agent_api_key)
+            request.agent_api_key = agent_api_key
             return profile
         logger.warning(
             "[Django Ninja Auth] Non-superuser attempted admin access",
-            profile_id=user.id,
+            profile_id=profile.user.id,
         )
         return None
 

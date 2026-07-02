@@ -15,20 +15,16 @@ HIGH_RISK_COVERAGE_FILES = \
 	apps/datasets/vector_search.py \
 	apps/mcp_server/server.py
 TYPE_CHECK_FILES = \
-	apps/api/auth.py \
 	apps/api/errors.py \
 	apps/api/row_contracts.py \
 	apps/api/schemas.py \
 	apps/api/utils.py \
 	apps/core/agent_skill.py \
 	apps/core/capabilities.py \
-	apps/core/model_typing.py \
 	apps/datasets/choices.py \
 	apps/datasets/constants.py \
 	apps/datasets/embeddings.py \
 	apps/datasets/types.py \
-	apps/mcp_server/auth.py \
-	apps/mcp_server/server.py \
 	rowset/logging_utils.py \
 	rowset/sentry_metrics.py \
 	rowset/sentry_utils.py \

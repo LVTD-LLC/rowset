@@ -1388,11 +1388,18 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             )
             create_result = await client.call_tool(
                 "create_dataset_row",
-                {"dataset_key": "ds", "data": {"email": "b@example.com"}},
+                {
+                    "dataset_key": "ds",
+                    "data": {"email": "b@example.com", "score": 42},
+                },
             )
             update_result = await client.call_tool(
                 "update_dataset_row",
-                {"dataset_key": "ds", "row_id": 7, "data": {"email": "c@example.com"}},
+                {
+                    "dataset_key": "ds",
+                    "row_id": 7,
+                    "data": {"email": "c@example.com", "empty": None},
+                },
             )
             update_by_index_result = await client.call_tool(
                 "update_dataset_row_by_index",
@@ -1411,7 +1418,9 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
         assert get_result.data["row"]["id"] == 7
         assert get_by_index_result.data["row"]["index_value"] == "a@example.com"
         assert create_result.data["row"]["data"]["email"] == "b@example.com"
+        assert create_result.data["row"]["data"]["score"] == 42
         assert update_result.data["row"]["data"]["email"] == "c@example.com"
+        assert update_result.data["row"]["data"]["empty"] is None
         assert update_by_index_result.data["row"]["data"]["name"] == "Ada"
         assert delete_result.data["message"] == "Row deleted."
 
@@ -1422,8 +1431,8 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             ("list", "ds", 5, 0, "ada", {"active": "true"}, "email", "desc"),
             ("get", "ds", 7),
             ("get_by_index", "ds", "a@example.com"),
-            ("create", "ds", {"email": "b@example.com"}),
-            ("update", "ds", 7, {"email": "c@example.com"}),
+            ("create", "ds", {"email": "b@example.com", "score": 42}),
+            ("update", "ds", 7, {"email": "c@example.com", "empty": None}),
             ("update_by_index", "ds", "c@example.com", {"name": "Ada"}),
             ("delete", "ds", 7),
         ]
