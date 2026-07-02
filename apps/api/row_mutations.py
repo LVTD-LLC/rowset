@@ -483,11 +483,12 @@ def _apply_index_patch(
 ) -> bool:
     dataset_fields = dataset_row_mutation_dataset_fields(dataset)
     row_fields = dataset_row_mutation_fields(row)
+    current_index_value = row_fields.index_value
     if dataset_fields.index_column not in raw_patch:
         return False
 
     index_value = str(row_patch.get(dataset_fields.index_column, "")).strip()
-    if dataset_fields.index_generated and index_value != row_fields.index_value:
+    if dataset_fields.index_generated and index_value != current_index_value:
         raise DatasetServiceError(
             400,
             f"Index column '{dataset_fields.index_column}' is managed by Rowset and "
@@ -501,9 +502,9 @@ def _apply_index_patch(
     if dataset_fields.rows.exclude(id=row_fields.id).filter(index_value=index_value).exists():
         raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
 
-    index_changed = row_fields.index_value != index_value
+    index_changed = current_index_value != index_value
     if index_changed:
-        hooks.raise_if_target_row_is_referenced(dataset, row_fields.index_value)
+        hooks.raise_if_target_row_is_referenced(dataset, current_index_value)
     row_fields.index_value = index_value
     return index_changed
 
