@@ -201,11 +201,21 @@ def test_command_palette_search_keeps_row_results_when_metadata_search_fails(
 def test_command_palette_search_skips_malformed_service_results(auth_client, monkeypatch):
     monkeypatch.setattr(
         "apps.datasets.views.search_profile_datasets",
-        lambda *args, **kwargs: {"datasets": [{"name": "Missing key"}]},
+        lambda *args, **kwargs: {
+            "datasets": [
+                {"name": "Missing key"},
+                {"key": "not-a-valid-dataset", "name": "Invalid Dataset Key"},
+            ]
+        },
     )
     monkeypatch.setattr(
         "apps.datasets.views.search_profile_projects",
-        lambda *args, **kwargs: {"projects": [{"key": "not-a-valid-project"}]},
+        lambda *args, **kwargs: {
+            "projects": [
+                {"key": "not-a-valid-project"},
+                {"key": "not-a-valid-project", "name": "Invalid Project Key"},
+            ]
+        },
     )
     monkeypatch.setattr(
         "apps.datasets.views.search_profile_rows",
@@ -215,7 +225,12 @@ def test_command_palette_search_skips_malformed_service_results(auth_client, mon
                     "dataset": {"name": "Missing row dataset key"},
                     "row": {"row_number": "not-a-number"},
                     "match": {"snippet": "Malformed row result"},
-                }
+                },
+                {
+                    "dataset": {"key": "not-a-valid-dataset", "name": "Invalid Row Dataset"},
+                    "row": {"id": 42, "row_number": 7},
+                    "match": {"snippet": "Invalid row link"},
+                },
             ]
         },
     )
@@ -227,6 +242,9 @@ def test_command_palette_search_skips_malformed_service_results(auth_client, mon
     assert "No matches" in content
     assert "Missing key" not in content
     assert "Malformed row result" not in content
+    assert "Invalid Dataset Key" not in content
+    assert "Invalid Project Key" not in content
+    assert "Invalid row link" not in content
 
 
 def test_command_palette_search_uses_safe_dataset_row_count(auth_client, monkeypatch):

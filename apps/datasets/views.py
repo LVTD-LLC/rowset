@@ -11,7 +11,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, F, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
@@ -175,10 +175,20 @@ def _safe_int(value: object, *, default: int = 0) -> int:
         return default
 
 
+def _command_palette_url(viewname: str, *args: object) -> str:
+    try:
+        return reverse(viewname, args=args)
+    except NoReverseMatch:
+        return ""
+
+
 def _command_palette_dataset_result(dataset: dict) -> dict[str, object] | None:
     dataset_key = str(dataset.get("key") or "").strip()
     dataset_name = str(dataset.get("name") or "").strip()
     if not dataset_key or not dataset_name:
+        return None
+    url = _command_palette_url("dataset_detail", dataset_key)
+    if not url:
         return None
 
     project = dataset.get("project") or {}
@@ -200,7 +210,7 @@ def _command_palette_dataset_result(dataset: dict) -> dict[str, object] | None:
         "label": dataset_name,
         "description": description,
         "meta": " - ".join(meta_parts),
-        "url": reverse("dataset_detail", args=[dataset_key]),
+        "url": url,
     }
 
 
@@ -209,6 +219,9 @@ def _command_palette_project_result(project: dict) -> dict[str, object] | None:
     project_name = str(project.get("name") or "").strip()
     if not project_key or not project_name:
         return None
+    url = _command_palette_url("project_detail", project_key)
+    if not url:
+        return None
 
     description = _compact_text(project.get("description"))
     return {
@@ -216,7 +229,7 @@ def _command_palette_project_result(project: dict) -> dict[str, object] | None:
         "label": project_name,
         "description": description,
         "meta": _pluralized_count(_safe_int(project.get("dataset_count")), "dataset"),
-        "url": reverse("project_detail", args=[project_key]),
+        "url": url,
     }
 
 
@@ -235,6 +248,9 @@ def _command_palette_row_result(result: dict) -> dict[str, object] | None:
     row_id = _safe_int(row.get("id"))
     if not dataset_key or row_id <= 0:
         return None
+    url = _command_palette_url("dataset_row_detail", dataset_key, row_id)
+    if not url:
+        return None
 
     dataset_name = str(dataset.get("name") or "Dataset").strip()
     source = str(match.get("source") or "match").replace("_", " ")
@@ -245,7 +261,7 @@ def _command_palette_row_result(result: dict) -> dict[str, object] | None:
         "label": _command_palette_row_label(row),
         "description": _compact_text(match.get("snippet"), max_length=260),
         "meta": f"{dataset_name} - row {row_number} - {source}",
-        "url": reverse("dataset_row_detail", args=[dataset_key, row_id]),
+        "url": url,
     }
 
 
