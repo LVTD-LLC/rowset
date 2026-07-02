@@ -3,28 +3,35 @@ from __future__ import annotations
 import time
 from collections import Counter
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, cast
 
 import requests
 from django.conf import settings
 from django.forms.utils import ErrorList
+from django.utils.safestring import SafeString
 
 from apps.core.choices import EmailType
+from apps.core.model_typing import email_sent_objects, model_id, profile_id
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
 
 if TYPE_CHECKING:
-    from apps.core.models import Profile
+    from apps.core.models import EmailSent, Profile
 
 EMAIL_DELIVERY_METRICS = Counter()
 
 
 class DivErrorList(ErrorList):
-    def __str__(self):
-        return self.as_divs()
+    def __str__(
+        self,
+        template_name: object | None = None,
+        context: object | None = None,
+        renderer: object | None = None,
+    ) -> SafeString:
+        return cast(SafeString, self.as_divs())
 
-    def as_divs(self):
+    def as_divs(self) -> str:
         if not self:
             return ""
         return f"""
@@ -90,22 +97,24 @@ def bump_email_delivery_metric(*, email_type: EmailType, provider: str, outcome:
     )
 
 
-def track_email_sent(email_address: str, email_type: EmailType, profile: Profile = None):
+def track_email_sent(
+    email_address: str,
+    email_type: EmailType,
+    profile: Profile | None = None,
+) -> EmailSent | None:
     """
     Track sent emails by creating EmailSent records.
     """
-    from apps.core.models import EmailSent
-
     try:
-        email_sent = EmailSent.objects.create(
+        email_sent = email_sent_objects().create(
             email_address=email_address, email_type=email_type, profile=profile
         )
         logger.info(
             "[Track Email Sent] Email tracked successfully",
             email_address=email_address,
             email_type=email_type,
-            profile_id=profile.id if profile else None,
-            email_sent_id=email_sent.id,
+            profile_id=profile_id(profile) if profile else None,
+            email_sent_id=model_id(email_sent),
         )
         return email_sent
     except Exception as e:
@@ -120,12 +129,12 @@ def track_email_sent(email_address: str, email_type: EmailType, profile: Profile
 
 
 def send_transactional_email(
-    send_callable: Callable[[], Any],
+    send_callable: Callable[[], object],
     *,
     email_address: str,
     email_type: EmailType,
-    profile: Profile = None,
-    context: dict[str, Any] | None = None,
+    profile: Profile | None = None,
+    context: dict[str, object] | None = None,
     retry_backoff_seconds: tuple[float, ...] | None = None,
 ) -> bool:
     provider = get_email_delivery_provider()
@@ -154,7 +163,7 @@ def send_transactional_email(
                 outcome="success",
                 attempt=attempt,
                 max_attempts=max_attempts,
-                profile_id=profile.id if profile else None,
+                profile_id=profile_id(profile) if profile else None,
                 context=context,
             )
             return True
@@ -180,7 +189,7 @@ def send_transactional_email(
                 error_class=error.__class__.__name__,
                 error=str(error),
                 transient=transient,
-                profile_id=profile.id if profile else None,
+                profile_id=profile_id(profile) if profile else None,
                 context=context,
                 exc_info=not should_retry,
             )

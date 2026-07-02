@@ -48,7 +48,7 @@ focused follow-up tasks.
 | Python imports, lint, or style | `make lint-python` | `make format-check`; use `make format-python` only for intentional formatting work |
 | Quality command contract | `make quality-drift-check` | When editing the checker, also run `uv run python scripts/check-quality-drift.py --self-test` |
 | Production startup imports | `make startup-smoke` | Docker build checks when runtime dependencies, Dockerfiles, or entrypoints change |
-| Scoped low-noise typing for helpers, row contracts, schemas, and API/MCP boundaries | `make type-check` | Expand the typed scope only in focused type-checking work; see [typing.md](typing.md) |
+| Scoped low-noise typing for helpers, row contracts, schemas, service code, and app support modules | `make type-check` | Expand the typed scope only in focused type-checking work; see [typing.md](typing.md) |
 | Coverage visibility | `make coverage -- <pytest args>` | Use `make coverage-high-risk -- <pytest args>` for the CI hotspot report; see [coverage.md](coverage.md) |
 | Templates | `make template-check` | Run focused Django template-loading tests if rendering behavior changed |
 | Frontend JavaScript or assets | `make frontend-install`, then `make frontend-check` | Run `make frontend-lint` or `make frontend-build` separately while iterating |

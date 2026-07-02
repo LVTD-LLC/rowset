@@ -8,9 +8,11 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED_DOC = Path("docs/agent-evals/seed-tasks.md")
@@ -172,8 +174,7 @@ def _build_artifact(
 
 
 def _markdown_for_artifact(artifact: dict[str, object]) -> str:
-    seed = artifact["seed"]
-    assert isinstance(seed, dict)
+    seed = cast(Mapping[str, object], artifact["seed"])
     required_checks = artifact["required_checks"]
     observed_checks = artifact["observed_checks"]
     changed_files = artifact["changed_files"]

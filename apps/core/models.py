@@ -1,3 +1,5 @@
+from typing import Protocol, cast
+
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
@@ -9,6 +11,44 @@ from apps.core.model_utils import generate_random_key
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+
+
+class _ModelIdentity(Protocol):
+    id: int
+
+
+class _ProfileUser(Protocol):
+    email: str
+    username: str
+    is_superuser: bool
+
+
+class _ProfileWithUser(Protocol):
+    user: _ProfileUser
+
+
+class _StateTransition(Protocol):
+    to_state: str
+
+
+class _StateTransitionManager(Protocol):
+    def all(self) -> _StateTransitionManager: ...
+
+    def exists(self) -> bool: ...
+
+    def latest(self, *fields: str) -> _StateTransition: ...
+
+
+class _ProfileStateTransitions(Protocol):
+    state_transitions: _StateTransitionManager
+
+
+def _model_id(model: object) -> int:
+    return cast(_ModelIdentity, model).id
+
+
+def _profile_user(profile: object) -> _ProfileUser:
+    return cast(_ProfileWithUser, profile).user
 
 
 class Profile(BaseModel):
@@ -39,7 +79,7 @@ class Profile(BaseModel):
     def track_state_change(self, to_state, metadata=None, source_function=None):
         async_task(
             "apps.core.tasks.track_state_change",
-            profile_id=self.id,
+            profile_id=_model_id(self),
             from_state=self.current_state,
             to_state=to_state,
             metadata=metadata,
@@ -49,9 +89,10 @@ class Profile(BaseModel):
 
     @property
     def current_state(self):
-        if not self.state_transitions.all().exists():
+        state_transitions = cast(_ProfileStateTransitions, self).state_transitions
+        if not state_transitions.all().exists():
             return ProfileStates.STRANGER
-        latest_transition = self.state_transitions.latest("created_at")
+        latest_transition = state_transitions.latest("created_at")
         return latest_transition.to_state
 
     @property
@@ -59,7 +100,7 @@ class Profile(BaseModel):
         return self.state in [
             ProfileStates.SUBSCRIBED,
             ProfileStates.CANCELLED,
-        ] or (self.user.is_superuser and settings.ENVIRONMENT == "prod")
+        ] or (_profile_user(self).is_superuser and settings.ENVIRONMENT == "prod")
 
 
 class AgentApiKey(BaseModel):
@@ -114,7 +155,7 @@ class AgentApiKey(BaseModel):
         return self.access_level == AgentApiKeyAccessLevel.ADMIN
 
     def __str__(self):
-        return f"{self.name} ({self.profile.user.email})"
+        return f"{self.name} ({_profile_user(self.profile).email})"
 
 
 class ProfileStateTransition(BaseModel):
@@ -173,7 +214,7 @@ class Feedback(BaseModel):
         return f"{self._submitter_label()}: {self.feedback}"
 
     def _submitter_label(self) -> str:
-        return self.profile.user.email if self.profile else "Anonymous"
+        return _profile_user(self.profile).email if self.profile else "Anonymous"
 
 
 class EmailSent(BaseModel):

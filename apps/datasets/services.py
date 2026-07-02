@@ -45,6 +45,7 @@ from apps.datasets.embeddings import (
     EmbeddingProviderError,
     get_embedding_provider,
 )
+from apps.datasets.model_typing import dataset_row_id
 from apps.datasets.vector_search import (
     DatasetRowVector,
     QdrantVectorStore,
@@ -126,7 +127,7 @@ def project_section_dataset_groups(
 ) -> list[dict[str, Any]]:
     """Group project datasets by active section, with unmatched datasets left unsectioned."""
     section_ids = {getattr(section, "id", None) for section in sections}
-    datasets_by_section_id: dict[int, list[Any]] = {}
+    datasets_by_section_id: dict[object, list[Any]] = {}
     unsectioned_datasets = []
 
     for dataset in datasets:
@@ -329,7 +330,10 @@ def _index_vector_backfill_batch(
     except (EmbeddingProviderError, ValueError) as exc:
         if stop_on_error:
             raise
-        return 0, [VectorBackfillError(row_id=row.id, message=str(exc)) for row in rows]
+        return (
+            0,
+            [VectorBackfillError(row_id=dataset_row_id(row), message=str(exc)) for row in rows],
+        )
 
     row_vectors = [
         DatasetRowVector(
@@ -348,7 +352,7 @@ def _index_vector_backfill_batch(
         return (
             0,
             [
-                VectorBackfillError(row_id=row_vector.row.id, message=str(exc))
+                VectorBackfillError(row_id=dataset_row_id(row_vector.row), message=str(exc))
                 for row_vector in row_vectors
             ],
         )
@@ -372,9 +376,8 @@ def backfill_dataset_vectors(
     if limit is not None and limit < 1:
         raise ValueError("limit must be at least 1 when provided.")
 
-    provider = None if dry_run else embedding_provider or get_embedding_provider()
-    store = None
     if not dry_run:
+        provider = embedding_provider or get_embedding_provider()
         store = vector_store or QdrantVectorStore(
             embedding_model=provider.model,
             embedding_dimensions=provider.dimensions,
@@ -409,7 +412,7 @@ def backfill_dataset_vectors(
         errors.extend(batch_errors)
         batch = []
 
-    if batch:
+    if not dry_run and batch:
         indexed_count, batch_errors = _index_vector_backfill_batch(
             dataset=dataset,
             rows=batch,

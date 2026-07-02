@@ -1,7 +1,7 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.datasets.models import Dataset
+from apps.datasets.model_typing import DatasetDoesNotExist, dataset_objects
 from apps.datasets.services import DEFAULT_VECTOR_BACKFILL_BATCH_SIZE, backfill_dataset_vectors
 
 
@@ -18,8 +18,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dataset_key = options["dataset_key"]
         try:
-            dataset = Dataset.objects.get(key=dataset_key)
-        except Dataset.DoesNotExist as exc:
+            dataset = dataset_objects().get(key=dataset_key)
+        except DatasetDoesNotExist as exc:
             raise CommandError(f"Dataset {dataset_key!r} was not found.") from exc
 
         try:

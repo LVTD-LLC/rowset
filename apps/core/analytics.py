@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db import transaction
 from django_q.tasks import async_task
 
+from apps.core.model_typing import agent_api_key_id, profile_id
 from apps.core.models import AgentApiKey, Profile
 
 ROWSET_SIGNUP_COMPLETED = "rowset_signup_completed"
@@ -23,7 +24,7 @@ def agent_api_key_tracking_properties(agent_api_key: AgentApiKey | None) -> dict
         }
     return {
         "agent_api_key_present": True,
-        "agent_api_key_id": agent_api_key.id,
+        "agent_api_key_id": agent_api_key_id(agent_api_key),
         "agent_api_key_access_level": agent_api_key.access_level,
     }
 
@@ -38,13 +39,13 @@ def track_activation_event(
     if not settings.POSTHOG_API_KEY:
         return "PostHog API key not found."
 
-    profile_id = profile.id
+    resolved_profile_id = profile_id(profile)
     event_properties = properties or {}
 
     def enqueue_event() -> None:
         async_task(
             "core.tasks.track_activation_event",
-            profile_id=profile_id,
+            profile_id=resolved_profile_id,
             event_name=event_name,
             properties=event_properties,
             source_function=source_function,
@@ -57,4 +58,4 @@ def track_activation_event(
     else:
         enqueue_event()
 
-    return f"Queued activation event {event_name} for profile {profile_id}"
+    return f"Queued activation event {event_name} for profile {resolved_profile_id}"

@@ -16,6 +16,10 @@ from qdrant_client.http.exceptions import (
 )
 
 from apps.datasets.choices import DatasetStatus
+from apps.datasets.model_typing import (
+    dataset_row_vector_search_fields,
+    dataset_vector_search_fields,
+)
 from apps.datasets.models import Dataset, DatasetRow
 
 QDRANT_CONTENT_TYPE_DATASET_ROW = "dataset_row"
@@ -119,12 +123,14 @@ def _dataset_row_filter(
     dataset: Dataset,
     *,
     row_ids: Sequence[int] | None = None,
+    extra_must: Sequence[qdrant_models.FieldCondition] = (),
 ) -> qdrant_models.Filter:
+    dataset_fields = dataset_vector_search_fields(dataset)
     must = [
         _payload_match("app", QDRANT_APP_PAYLOAD_VALUE),
         _payload_match("content_type", QDRANT_CONTENT_TYPE_DATASET_ROW),
-        _payload_match("profile_id", dataset.profile_id),
-        _payload_match("dataset_id", dataset.id),
+        _payload_match("profile_id", dataset_fields.profile_id),
+        _payload_match("dataset_id", dataset_fields.id),
     ]
     if row_ids:
         must.append(
@@ -133,18 +139,18 @@ def _dataset_row_filter(
                 match=qdrant_models.MatchAny(any=list(row_ids)),
             )
         )
+    must.extend(extra_must)
     return qdrant_models.Filter(must=must)
 
 
 def dataset_row_search_filter(dataset: Dataset) -> qdrant_models.Filter:
-    vector_filter = _dataset_row_filter(dataset)
-    vector_filter.must.extend(
-        [
+    return _dataset_row_filter(
+        dataset,
+        extra_must=[
             _payload_match("dataset_status", DatasetStatus.READY),
             _payload_match("dataset_archived", False),
-        ]
+        ],
     )
-    return vector_filter
 
 
 def profile_dataset_row_search_filter(
@@ -174,19 +180,22 @@ def profile_dataset_row_search_filter(
 
 
 def dataset_row_point_id(dataset: Dataset, row: DatasetRow, *, chunk_index: int = 0) -> str:
-    raw_id = f"rowset:dataset:{dataset.key}:row:{row.id}:chunk:{chunk_index}"
+    row_fields = dataset_row_vector_search_fields(row)
+    raw_id = f"rowset:dataset:{dataset.key}:row:{row_fields.id}:chunk:{chunk_index}"
     return str(uuid.uuid5(QDRANT_POINT_NAMESPACE, raw_id))
 
 
 def dataset_row_search_text(dataset: Dataset, row: DatasetRow) -> str:
     """Return deterministic text used to embed a dataset row."""
-    column_schema = dataset.column_schema or {}
-    lines = [f"Dataset: {dataset.name}"]
-    if dataset.index_column:
-        lines.append(f"Index column: {dataset.index_column}")
+    dataset_fields = dataset_vector_search_fields(dataset)
+    row_fields = dataset_row_vector_search_fields(row)
+    column_schema = dataset_fields.column_schema or {}
+    lines = [f"Dataset: {dataset_fields.name}"]
+    if dataset_fields.index_column:
+        lines.append(f"Index column: {dataset_fields.index_column}")
 
-    for header in dataset.headers:
-        value = str((row.data or {}).get(header, "") or "").strip()
+    for header in dataset_fields.headers:
+        value = str((row_fields.data or {}).get(header, "") or "").strip()
         if not value:
             continue
 
@@ -212,6 +221,8 @@ def build_dataset_row_search_document(
     embedding_dimensions: int | None = None,
     chunk_index: int = 0,
 ) -> DatasetRowSearchDocument:
+    dataset_fields = dataset_vector_search_fields(dataset)
+    row_fields = dataset_row_vector_search_fields(row)
     text = dataset_row_search_text(dataset, row)
     content_hash = dataset_row_content_hash(text)
     model = embedding_model or settings.ROWSET_EMBEDDING_MODEL
@@ -220,15 +231,15 @@ def build_dataset_row_search_document(
     payload = {
         "app": QDRANT_APP_PAYLOAD_VALUE,
         "content_type": QDRANT_CONTENT_TYPE_DATASET_ROW,
-        "profile_id": dataset.profile_id,
-        "dataset_id": dataset.id,
-        "dataset_key": str(dataset.key),
-        "dataset_status": dataset.status,
-        "dataset_archived": dataset.archived_at is not None,
-        "row_id": row.id,
-        "row_number": row.row_number,
-        "index_column": dataset.index_column,
-        "index_value": row.index_value,
+        "profile_id": dataset_fields.profile_id,
+        "dataset_id": dataset_fields.id,
+        "dataset_key": str(dataset_fields.key),
+        "dataset_status": dataset_fields.status,
+        "dataset_archived": dataset_fields.archived_at is not None,
+        "row_id": row_fields.id,
+        "row_number": row_fields.row_number,
+        "index_column": dataset_fields.index_column,
+        "index_value": row_fields.index_value,
         "chunk_index": chunk_index,
         "content_hash": content_hash,
         "embedding_model": model,

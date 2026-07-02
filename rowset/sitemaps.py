@@ -1,13 +1,13 @@
-from django.contrib import sitemaps
+from django.contrib import sitemaps as django_sitemaps
 from django.contrib.sitemaps import GenericSitemap
 from django.urls import reverse
 
-from apps.blog.models import BlogPost
+from apps.blog.model_typing import blog_post_objects
 from apps.docs.views import get_docs_navigation
 from apps.pages.use_cases import get_use_case_pages
 
 
-class StaticViewSitemap(sitemaps.Sitemap):
+class StaticViewSitemap(django_sitemaps.Sitemap):
     """Generate Sitemap for the site"""
 
     priority = 0.9
@@ -39,7 +39,7 @@ class StaticViewSitemap(sitemaps.Sitemap):
         return reverse(item)
 
 
-class UseCaseSitemap(sitemaps.Sitemap):
+class UseCaseSitemap(django_sitemaps.Sitemap):
     """Generate sitemap entries for marketing use-case pages."""
 
     priority = 0.85
@@ -53,7 +53,7 @@ class UseCaseSitemap(sitemaps.Sitemap):
         return reverse("use_case_detail", kwargs={"slug": item["slug"]})
 
 
-class DocsSitemap(sitemaps.Sitemap):
+class DocsSitemap(django_sitemaps.Sitemap):
     """Generate Sitemap for documentation pages"""
 
     priority = 0.8
@@ -98,7 +98,7 @@ sitemaps = {
     "static": StaticViewSitemap,
     "use_cases": UseCaseSitemap,
     "blog": GenericSitemap(
-        {"queryset": BlogPost.objects.all(), "date_field": "created_at"},
+        {"queryset": blog_post_objects().all(), "date_field": "created_at"},
         priority=0.85,
         protocol="https",
     ),

@@ -10,37 +10,100 @@ have local cleanup tasks.
 
 ```bash
 uv run ty check \
+  apps/api/admin.py \
   apps/api/auth.py \
   apps/api/errors.py \
+  apps/api/models.py \
   apps/api/row_contracts.py \
   apps/api/schemas.py \
+  apps/api/urls.py \
   apps/api/utils.py \
+  apps/blog/admin.py \
+  apps/blog/choices.py \
+  apps/blog/model_typing.py \
+  apps/blog/models.py \
+  apps/blog/urls.py \
+  apps/blog/views.py \
+  apps/core/admin.py \
   apps/core/agent_skill.py \
+  apps/core/agents/base.py \
+  apps/core/analytics.py \
+  apps/core/base_models.py \
   apps/core/capabilities.py \
+  apps/core/choices.py \
+  apps/core/context_processors.py \
+  apps/core/forms.py \
   apps/core/model_typing.py \
+  apps/core/model_utils.py \
+  apps/core/models.py \
+  apps/core/signals.py \
+  apps/core/stripe_webhooks.py \
+  apps/core/templatetags/markdown_extras.py \
+  apps/core/urls.py \
+  apps/core/utils.py \
+  apps/datasets/admin.py \
+  apps/datasets/apps.py \
   apps/datasets/choices.py \
   apps/datasets/constants.py \
   apps/datasets/embeddings.py \
+  apps/datasets/history.py \
+  apps/datasets/management/commands/backfill_dataset_vectors.py \
+  apps/datasets/management/commands/retry_dataset_asset_file_deletions.py \
+  apps/datasets/model_typing.py \
+  apps/datasets/public_previews.py \
+  apps/datasets/services.py \
+  apps/datasets/templatetags/dataset_links.py \
   apps/datasets/types.py \
+  apps/datasets/urls.py \
+  apps/datasets/vector_search.py \
+  apps/datasets/vector_tasks.py \
+  apps/docs/admin.py \
+  apps/docs/models.py \
+  apps/docs/urls.py \
+  apps/docs/views.py \
+  apps/mcp_server/apps.py \
   apps/mcp_server/auth.py \
+  apps/mcp_server/models.py \
   apps/mcp_server/server.py \
+  apps/pages/admin.py \
+  apps/pages/checks.py \
+  apps/pages/context_processors.py \
+  apps/pages/model_typing.py \
+  apps/pages/models.py \
+  apps/pages/urls.py \
+  apps/pages/use_cases.py \
+  apps/pages/views.py \
+  rowset/adapters.py \
+  rowset/asgi.py \
   rowset/logging_utils.py \
   rowset/sentry_metrics.py \
   rowset/sentry_utils.py \
-  rowset/utils.py
+  rowset/settings.py \
+  rowset/sitemaps.py \
+  rowset/storages.py \
+  rowset/urls.py \
+  rowset/utils.py \
+  rowset/wsgi.py \
+  scripts/agent-eval-seed.py \
+  scripts/check-quality-drift.py \
+  scripts/startup-smoke.py
 ```
 
-These modules are low-noise because they are pure helpers, API schemas, auth
-boundaries, MCP tool boundaries, or structured agent-facing output code. They
-should stay clean in CI. `apps/api/row_contracts.py` is the typed API row
-boundary: it names shared row write payloads, normalized row data, row search
-filters, and row search candidate shapes without pulling the full Django service
-kernel into the scoped check.
+These 77 files are low-noise because they are pure helpers, API schemas, auth
+boundaries, MCP tool boundaries, app support modules, docs/blog/page views, or
+dataset service code that has explicit local typing. They should stay clean in
+CI. The scope still excludes the largest dynamic surfaces, such as broad API and
+dataset views, until those modules get focused cleanup.
 
-`apps/core/model_typing.py` centralizes the small amount of `Any` still needed
-for Django's dynamic model attributes, managers, and generated `DoesNotExist`
-exception classes. Prefer adding typed protocols or helper functions there over
-scattering `cast(Any, ...)` through API, MCP, or service modules.
+`apps/api/row_contracts.py` is the typed API row boundary: it names shared row
+write payloads, normalized row data, row search filters, and row search candidate
+shapes without pulling the full Django view layer into the scoped check.
+
+Model typing helpers centralize Django's dynamic model attributes, managers, and
+generated exception classes. Prefer adding typed protocols or helper functions to
+`apps/core/model_typing.py`, `apps/datasets/model_typing.py`,
+`apps/pages/model_typing.py`, or a similarly local helper over scattering
+`cast(Any, ...)` through API, MCP, service, or view modules.
 
 The shared dataset aliases in `apps/datasets/types.py` are the preferred names
 for metadata and schema shapes at REST/MCP boundaries:

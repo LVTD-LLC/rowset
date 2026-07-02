@@ -1,17 +1,22 @@
 from django.db import DatabaseError
 
-from apps.pages.models import ReferrerBanner
+from apps.pages.model_typing import (
+    ReferrerBannerDoesNotExist,
+    ReferrerBannerMultipleObjectsReturned,
+    referrer_banner_objects,
+)
 
 
 def _get_active_black_friday_banner():
     try:
-        banner = ReferrerBanner.objects.get(referrer_printable_name__icontains="Black Friday")
-    except ReferrerBanner.DoesNotExist:
+        banner = referrer_banner_objects().get(referrer_printable_name__icontains="Black Friday")
+    except ReferrerBannerDoesNotExist:
         return None
-    except ReferrerBanner.MultipleObjectsReturned:
+    except ReferrerBannerMultipleObjectsReturned:
         try:
             banner = (
-                ReferrerBanner.objects.filter(referrer_printable_name__icontains="Black Friday")
+                referrer_banner_objects()
+                .filter(referrer_printable_name__icontains="Black Friday")
                 .filter(is_active=True)
                 .first()
             )
@@ -36,10 +41,10 @@ def referrer_banner(request):
 
     try:
         if referrer_code:
-            banner = ReferrerBanner.objects.get(referrer=referrer_code)
+            banner = referrer_banner_objects().get(referrer=referrer_code)
             if banner.should_display:
                 return {"referrer_banner": banner}
-    except ReferrerBanner.DoesNotExist:
+    except ReferrerBannerDoesNotExist:
         pass
     except DatabaseError:
         return {}
