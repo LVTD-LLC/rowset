@@ -36,7 +36,6 @@ TYPE_CHECK_FILES = \
 TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 
 .PHONY: \
-	agent-eval-seed \
 	ci-local \
 	coverage \
 	coverage-high-risk \
@@ -67,9 +66,6 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 serve:
 	$(COMPOSE_LOCAL) up -d --build
 	$(COMPOSE_LOCAL) logs -f backend
-
-agent-eval-seed:
-	$(UV_RUN) python scripts/agent-eval-seed.py $(TARGET_ARGS)
 
 shell:
 	$(PYTHON_RUN) ./manage.py shell_plus --ipython

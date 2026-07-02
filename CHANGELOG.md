@@ -20,7 +20,6 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset browser views now render URL-looking string cell values as plain text instead of auto-converting them into Rowset or external links. Explicit dataset relationship/reference columns, row-detail links, and image links still render as links; arbitrary URL strings can be copied from the cell text and link rendering can be reintroduced later with safer, explicit column-level behavior.
 - Extracted public-preview settings and session-token helpers out of the API service kernel while preserving REST, MCP, and browser-preview behavior.
 - Production deploy now builds one server/worker image in GitHub Actions, publishes it to GHCR with `latest`, UTC date, date-run, and full Git SHA tags, then deploys that image to both CapRover apps with per-app deploy tokens.
-- Added Rowset agent eval seeds, code tours, and task templates for common dataset, API, MCP, vector search, access, and public-preview work.
 - CI and `make ci-local` now run the scoped `ty` type-check baseline, with documented expansion guidance.
 - Added shared Rowset dataset test factories, split public-preview tests out of the large dataset test module, and added REST/MCP parity characterization tests for shared dataset behavior.
 - CI now prints a high-risk coverage report for API services, dataset services, vector search, and MCP server modules.
@@ -49,7 +48,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 
 ### Fixed
 - Agent feedback submissions now append to the configured Rowset feedback dataset instead of each submitter's own dataset.
-- Dataset detail pages now ignore non-URL JSON-array-looking cell values before Rowset link normalization, avoiding 500s for agent-eval result rows with values such as `[]`.
+- Dataset detail pages now ignore non-URL JSON-array-looking cell values before Rowset link normalization, avoiding 500s for result rows with values such as `[]`.
 - Production Docker healthchecks now run through the project virtualenv and allow enough startup time for GHCR image rollouts.
 - Dataset detail pages now ignore malformed Rowset-looking URL values that Python parses as invalid IPv6 URLs instead of failing the page render.
 - Generated-index row patches now accept an unchanged generated index value, avoiding validation failures when agents send full-row update payloads.
