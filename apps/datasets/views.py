@@ -190,7 +190,7 @@ def _command_palette_dataset_result(dataset: dict) -> dict[str, object] | None:
     ]
     meta_parts = [
         " / ".join(location_parts) if location_parts else "No project",
-        _pluralized_count(int(dataset.get("row_count") or 0), "row"),
+        _pluralized_count(_safe_int(dataset.get("row_count")), "row"),
         _pluralized_count(len(dataset.get("headers") or []), "column"),
     ]
     description = _compact_text(dataset.get("description") or dataset.get("original_filename"))

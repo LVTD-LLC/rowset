@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.urls import reverse
 
 from apps.api.services import DatasetServiceError
@@ -225,3 +227,35 @@ def test_command_palette_search_skips_malformed_service_results(auth_client, mon
     assert "No matches" in content
     assert "Missing key" not in content
     assert "Malformed row result" not in content
+
+
+def test_command_palette_search_uses_safe_dataset_row_count(auth_client, monkeypatch):
+    dataset_key = uuid4()
+    monkeypatch.setattr(
+        "apps.datasets.views.search_profile_datasets",
+        lambda *args, **kwargs: {
+            "datasets": [
+                {
+                    "key": str(dataset_key),
+                    "name": "Malformed Count Dataset",
+                    "row_count": "123.0",
+                    "headers": ["name"],
+                }
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        "apps.datasets.views.search_profile_projects",
+        lambda *args, **kwargs: {"projects": []},
+    )
+    monkeypatch.setattr(
+        "apps.datasets.views.search_profile_rows",
+        lambda *args, **kwargs: {"results": []},
+    )
+
+    response = auth_client.get(reverse("command_palette_search"), {"q": "count"})
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Malformed Count Dataset" in content
+    assert "0 rows" in content
