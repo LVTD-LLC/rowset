@@ -405,8 +405,10 @@ def _choice_value_accent_class(value: str, used_indices: set[int] | None = None)
 
 def _choice_value_accent_classes_from_columns(
     columns: list[dict],
+    row_data_items: list[dict[str, object]] | None = None,
 ) -> dict[str, dict[str, str]]:
     accent_classes = {}
+    used_indices_by_column = {}
     for column in columns:
         if column.get("type") != DatasetColumnType.CHOICE:
             continue
@@ -419,16 +421,33 @@ def _choice_value_accent_classes_from_columns(
             if not value_key or value_key in value_classes:
                 continue
             value_classes[value_key] = _choice_value_accent_class(value, used_indices)
-        accent_classes[column["name"]] = value_classes
+        column_name = column["name"]
+        accent_classes[column_name] = value_classes
+        used_indices_by_column[column_name] = used_indices
+
+    for row_data in row_data_items or []:
+        if not row_data:
+            continue
+        for column_name, value_classes in accent_classes.items():
+            value = _cell_value(row_data.get(column_name, ""))
+            value_key = _choice_value_key(value)
+            if not value_key or value_key in value_classes:
+                continue
+            value_classes[value_key] = _choice_value_accent_class(
+                value,
+                used_indices_by_column[column_name],
+            )
     return accent_classes
 
 
 def _choice_value_accent_classes(
     headers: list[str],
     column_schema: dict | None,
+    row_data_items: list[dict[str, object]] | None = None,
 ) -> dict[str, dict[str, str]]:
     return _choice_value_accent_classes_from_columns(
-        column_definitions(headers, column_schema or {})
+        column_definitions(headers, column_schema or {}),
+        row_data_items,
     )
 
 
@@ -443,7 +462,14 @@ def _choice_cell_accent_class(
     header_value_classes = choice_value_accent_classes.get(header)
     if header_value_classes is None:
         return ""
-    return header_value_classes.get(value_key, _choice_value_accent_class(value))
+    if value_key in header_value_classes:
+        return header_value_classes[value_key]
+    used_indices = {
+        index
+        for index, class_name in enumerate(CHOICE_VALUE_ACCENT_CLASS_NAMES)
+        if class_name in header_value_classes.values()
+    }
+    return _choice_value_accent_class(value, used_indices)
 
 
 def _mutation_change_display(value, *, values_recorded: bool, legacy_placeholder: str) -> dict:
@@ -1703,9 +1729,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             dataset.headers,
             dataset.column_schema,
         )
-        choice_value_accent_classes = _choice_value_accent_classes_from_columns(
-            column_definition_list
-        )
         row_queryset, row_query_context = _dataset_row_query_context(
             self.request,
             dataset,
@@ -1715,10 +1738,15 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
         row_objects = list(row_page_obj.object_list)
+        row_data_items = [row.data for row in row_objects]
+        choice_value_accent_classes = _choice_value_accent_classes_from_columns(
+            column_definition_list,
+            row_data_items,
+        )
         reference_lookup = _rowset_reference_lookup(
             self.request.user.profile,
             column_definition_list,
-            [row.data for row in row_objects],
+            row_data_items,
         )
         image_asset_lookup = _image_asset_lookup(dataset, row_objects)
         rows_with_values = []
@@ -1754,6 +1782,10 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         if not has_imported_rows:
             rows_with_values = []
             preview_rows = dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE]
+            choice_value_accent_classes = _choice_value_accent_classes_from_columns(
+                column_definition_list,
+                preview_rows,
+            )
             reference_lookup = _rowset_reference_lookup(
                 self.request.user.profile,
                 column_definition_list,

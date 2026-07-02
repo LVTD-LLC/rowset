@@ -1187,7 +1187,7 @@ def test_dataset_detail_renders_choice_values_with_color_accents(auth_client, pr
         },
     }
     dataset.index_column = "task_id"
-    dataset.row_count = 2
+    dataset.row_count = 3
     dataset.rows.all().delete()
     dataset.save(update_fields=["headers", "column_schema", "index_column", "row_count"])
     DatasetRow.objects.bulk_create(
@@ -1204,6 +1204,12 @@ def test_dataset_detail_renders_choice_values_with_color_accents(auth_client, pr
                 index_value="TASK-2",
                 data={"task_id": "TASK-2", "status": "done"},
             ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=3,
+                index_value="TASK-3",
+                data={"task_id": "TASK-3", "status": "paused"},
+            ),
         ]
     )
 
@@ -1213,11 +1219,15 @@ def test_dataset_detail_renders_choice_values_with_color_accents(auth_client, pr
     assert response.status_code == 200
     first_status_cell = response.context["rows_with_values"][0]["cells"][1]
     second_status_cell = response.context["rows_with_values"][1]["cells"][1]
+    ad_hoc_status_cell = response.context["rows_with_values"][2]["cells"][1]
     assert first_status_cell["is_choice"]
     assert first_status_cell["choice_accent_class"] != second_status_cell["choice_accent_class"]
+    assert ad_hoc_status_cell["is_choice"]
+    assert ad_hoc_status_cell["choice_accent_class"] != second_status_cell["choice_accent_class"]
     assert 'class="fb-focus fb-choice-pill' in content
     assert '<span class="truncate">todo</span>' in content
     assert '<span class="truncate">done</span>' in content
+    assert '<span class="truncate">paused</span>' in content
     dataset.refresh_from_db()
     assert dataset.rows.get(index_value="TASK-1").data["status"] == "todo"
 
