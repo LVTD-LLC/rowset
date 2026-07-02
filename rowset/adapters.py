@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import re
 import uuid
+from typing import TYPE_CHECKING, cast
 
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
@@ -13,6 +16,9 @@ from rowset.utils import get_rowset_logger
 logger = get_rowset_logger(__name__)
 
 User = get_user_model()
+
+if TYPE_CHECKING:
+    from apps.core.models import Profile
 
 
 class CustomAccountAdapter(DefaultAccountAdapter):
@@ -33,11 +39,10 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             emailconfirmation: The email confirmation object
             signup: Boolean indicating if this is during signup (True) or resend (False)
         """
-        profile = (
-            emailconfirmation.email_address.user.profile
-            if hasattr(emailconfirmation.email_address.user, "profile")
-            else None
-        )
+        email_user = emailconfirmation.email_address.user
+        profile: Profile | None = None
+        if hasattr(email_user, "profile"):
+            profile = cast("Profile", email_user.profile)
 
         # Track as welcome email during signup, confirmation email on resend
         email_type = EmailType.WELCOME if signup else EmailType.EMAIL_CONFIRMATION

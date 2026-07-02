@@ -9,6 +9,7 @@ from django.db import transaction
 from apps.core.models import AgentApiKey
 from apps.datasets.choices import DatasetMutationType, DatasetStatus
 from apps.datasets.history import record_dataset_mutation
+from apps.datasets.model_typing import dataset_public_preview_fields
 from apps.datasets.models import Dataset
 from apps.datasets.services import normalize_public_page_size
 
@@ -53,7 +54,8 @@ def public_preview_access_session_key(dataset: Dataset) -> str:
 
 
 def public_preview_access_session_value(dataset: Dataset) -> str:
-    return hashlib.sha256(dataset.public_password_hash.encode()).hexdigest()
+    public_preview = dataset_public_preview_fields(dataset)
+    return hashlib.sha256(public_preview.public_password_hash.encode()).hexdigest()
 
 
 def has_public_preview_access(session: MutableMapping[str, Any], dataset: Dataset) -> bool:
@@ -77,59 +79,62 @@ def update_public_preview_settings(
     clear_public_password: bool = False,
     agent_api_key: AgentApiKey | None = None,
 ) -> PublicPreviewSettingsUpdate:
+    public_preview = dataset_public_preview_fields(dataset)
     if clear_public_password and public_password is not None:
         raise PublicPreviewSettingsError(
             400,
             "Use either public_password or clear_public_password, not both.",
         )
 
-    previous_public_enabled = dataset.public_enabled
-    previous_public_page_size = dataset.public_page_size
-    previous_password_protected = dataset.is_public_password_protected
-    next_public_enabled = dataset.public_enabled if public_enabled is None else public_enabled
+    previous_public_enabled = public_preview.public_enabled
+    previous_public_page_size = public_preview.public_page_size
+    previous_password_protected = public_preview.is_public_password_protected
+    next_public_enabled = (
+        public_preview.public_enabled if public_enabled is None else public_enabled
+    )
     normalized_password = None
     if public_password is not None:
         normalized_password = public_password.strip()
         if not normalized_password:
             raise PublicPreviewSettingsError(400, "Public preview password cannot be blank.")
 
-    if next_public_enabled and dataset.status != DatasetStatus.READY:
+    if next_public_enabled and public_preview.status != DatasetStatus.READY:
         raise PublicPreviewSettingsError(
             409,
             "Public previews can only be enabled for ready datasets.",
         )
 
-    dataset.public_enabled = next_public_enabled
+    public_preview.public_enabled = next_public_enabled
     if public_page_size is not None:
-        dataset.public_page_size = normalize_public_page_size(public_page_size)
+        public_preview.public_page_size = normalize_public_page_size(public_page_size)
 
     password_changed = False
     if clear_public_password:
-        password_changed = bool(dataset.public_password_hash)
+        password_changed = bool(public_preview.public_password_hash)
         if password_changed:
-            dataset.public_password_hash = ""
+            public_preview.public_password_hash = ""
     elif normalized_password is not None:
-        dataset.public_password_hash = make_password(normalized_password)
+        public_preview.public_password_hash = make_password(normalized_password)
         password_changed = True
 
     result = PublicPreviewSettingsUpdate(
         settings_changed=(
-            dataset.public_enabled != previous_public_enabled
-            or dataset.public_page_size != previous_public_page_size
+            public_preview.public_enabled != previous_public_enabled
+            or public_preview.public_page_size != previous_public_page_size
             or password_changed
         ),
         previous_public_enabled=previous_public_enabled,
-        public_enabled=dataset.public_enabled,
+        public_enabled=public_preview.public_enabled,
         previous_public_page_size=previous_public_page_size,
-        public_page_size=dataset.public_page_size,
+        public_page_size=public_preview.public_page_size,
         previous_password_protected=previous_password_protected,
-        password_protected=dataset.is_public_password_protected,
+        password_protected=public_preview.is_public_password_protected,
         password_changed=password_changed,
     )
 
     if result.settings_changed:
         with transaction.atomic():
-            dataset.updated_by_agent_api_key = agent_api_key
+            public_preview.updated_by_agent_api_key = agent_api_key
             dataset.save(
                 update_fields=[
                     "public_enabled",

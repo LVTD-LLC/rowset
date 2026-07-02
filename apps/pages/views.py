@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Protocol, cast
+
 from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
@@ -7,11 +10,24 @@ from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
 from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
-from apps.core.models import Profile
+from apps.core.model_typing import ProfileDoesNotExist, ProfileUser, profile_id, profile_user
 from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+
+
+class SignupTrackingRequest(Protocol):
+    COOKIES: Mapping[str, str]
+
+
+class SignupTrackingView(Protocol):
+    request: SignupTrackingRequest
+    user: ProfileUser
+
+
+class FormValidParent(Protocol):
+    def form_valid(self, form: object) -> object: ...
 
 
 class LandingPageView(TemplateView):
@@ -55,25 +71,28 @@ class SignupTrackingMixin:
     tracking_source_name = "signup"
 
     def _track_signup(self):
-        user = self.user
+        view = cast(SignupTrackingView, self)
+        user = view.user
         profile = user.profile
+        profile_account = profile_user(profile)
+        resolved_profile_id = profile_id(profile)
 
         async_task(
             "core.tasks.try_create_posthog_alias",
-            profile_id=profile.id,
-            cookies=self.request.COOKIES,
+            profile_id=resolved_profile_id,
+            cookies=view.request.COOKIES,
             source_function=f"{self.tracking_source_name} - form_valid",
             group="Create Posthog Alias",
         )
 
         async_task(
             "core.tasks.track_event",
-            profile_id=profile.id,
+            profile_id=resolved_profile_id,
             event_name="user_signed_up",
             properties={
                 "$set": {
-                    "email": profile.user.email,
-                    "username": profile.user.username,
+                    "email": profile_account.email,
+                    "username": profile_account.username,
                 },
             },
             source_function=f"{self.tracking_source_name} - form_valid",
@@ -87,7 +106,7 @@ class SignupTrackingMixin:
         )
 
     def form_valid(self, form):
-        response = super().form_valid(form)
+        response = cast(FormValidParent, super()).form_valid(form)
         self._track_signup()
         return response
 
@@ -112,7 +131,7 @@ class PricingView(TemplateView):
             try:
                 profile = self.request.user.profile
                 context["has_pro_subscription"] = profile.has_active_subscription
-            except Profile.DoesNotExist:
+            except ProfileDoesNotExist:
                 context["has_pro_subscription"] = False
         else:
             context["has_pro_subscription"] = False
