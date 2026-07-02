@@ -27,6 +27,7 @@ urlpatterns = [
     path("home", TemplateView.as_view(), name="home"),
     path("broken/", _broken_view, name="broken"),
     path("api/broken/", _broken_view, name="api_broken"),
+    path("mcp/broken/", _broken_view, name="mcp_broken"),
 ]
 
 handler500 = "apps.core.views.server_error"
@@ -99,10 +100,26 @@ def test_server_error_redirects_anonymous_browser_requests_to_landing(client):
 
 @pytest.mark.django_db
 @override_settings(ROOT_URLCONF=__name__, DEBUG=False)
-def test_server_error_preserves_api_500_responses(auth_client):
+def test_server_error_redirects_htmx_browser_requests_with_header(auth_client):
     auth_client.raise_request_exception = False
 
-    response = auth_client.get("/api/broken/")
+    response = auth_client.get("/broken/", HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 200
+    assert response["HX-Redirect"] == reverse("home")
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == "Something went wrong. You have been redirected home."
+
+
+@pytest.mark.django_db
+@override_settings(ROOT_URLCONF=__name__, DEBUG=False)
+@pytest.mark.parametrize("path", ["/api/broken/", "/mcp/broken/"])
+def test_server_error_preserves_programmatic_500_responses(auth_client, path):
+    auth_client.raise_request_exception = False
+
+    response = auth_client.get(path)
 
     assert response.status_code == 500
     assert response["Content-Type"].startswith("text/html")

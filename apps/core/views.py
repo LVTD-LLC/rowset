@@ -12,7 +12,6 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.contrib.messages.api import MessageFailure
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
@@ -75,10 +74,7 @@ def server_error(request: HttpRequest):
         return default_server_error(request)
 
     target_url = reverse("home" if request.user.is_authenticated else "landing")
-    try:
-        messages.error(request, SERVER_ERROR_REDIRECT_MESSAGE)
-    except MessageFailure:
-        pass
+    messages.error(request, SERVER_ERROR_REDIRECT_MESSAGE, fail_silently=True)
 
     if getattr(request, "htmx", False):
         return HttpResponseClientRedirect(target_url)
