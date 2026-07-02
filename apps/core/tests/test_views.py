@@ -123,6 +123,25 @@ def test_server_error_redirects_to_landing_when_request_has_no_user():
     assert response["Location"] == reverse("landing")
 
 
+@override_settings(ROOT_URLCONF="rowset.urls", DEBUG=False)
+def test_server_error_redirect_works_with_project_urlconf(client, monkeypatch):
+    client.raise_request_exception = False
+
+    def raise_error(self, request, *args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("apps.pages.views.LandingPageView.get", raise_error)
+
+    response = client.get("/")
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("landing")
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == "Something went wrong. You have been redirected."
+
+
 @pytest.mark.django_db
 @override_settings(ROOT_URLCONF=__name__, DEBUG=False)
 @pytest.mark.parametrize("path", ["/api/broken/", "/mcp/broken/"])

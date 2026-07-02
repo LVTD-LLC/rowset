@@ -59,14 +59,10 @@ PROGRAMMATIC_ERROR_PATH_PREFIXES = ("/api", "/mcp")
 
 def _is_programmatic_error_request(request: HttpRequest) -> bool:
     path = request.path_info or request.path
-    if any(
+    return any(
         path == prefix or path.startswith(f"{prefix}/")
         for prefix in PROGRAMMATIC_ERROR_PATH_PREFIXES
-    ):
-        return True
-
-    accept = request.headers.get("Accept", "")
-    return bool(accept and "text/html" not in accept and "*/*" not in accept)
+    )
 
 
 def server_error(request: HttpRequest):
