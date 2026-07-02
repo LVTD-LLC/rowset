@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 from urllib.parse import urlparse
 from uuid import UUID
 from xml.sax.saxutils import escape
@@ -45,6 +45,7 @@ from apps.datasets.embeddings import (
     EmbeddingProviderError,
     get_embedding_provider,
 )
+from apps.datasets.model_typing import dataset_row_id
 from apps.datasets.vector_search import (
     DatasetRowVector,
     QdrantVectorStore,
@@ -125,12 +126,12 @@ def project_section_dataset_groups(
     unsectioned_dataset_count: int | None = None,
 ) -> list[dict[str, Any]]:
     """Group project datasets by active section, with unmatched datasets left unsectioned."""
-    section_ids = {getattr(section, "id", None) for section in sections}
-    datasets_by_section_id: dict[int, list[Any]] = {}
+    section_ids = {cast(int | None, getattr(section, "id", None)) for section in sections}
+    datasets_by_section_id: dict[int | None, list[Any]] = {}
     unsectioned_datasets = []
 
     for dataset in datasets:
-        section_id = getattr(dataset, "section_id", None)
+        section_id = cast(int | None, getattr(dataset, "section_id", None))
         if section_id in section_ids:
             datasets_by_section_id.setdefault(section_id, []).append(dataset)
         else:
@@ -329,7 +330,10 @@ def _index_vector_backfill_batch(
     except (EmbeddingProviderError, ValueError) as exc:
         if stop_on_error:
             raise
-        return 0, [VectorBackfillError(row_id=row.id, message=str(exc)) for row in rows]
+        return (
+            0,
+            [VectorBackfillError(row_id=dataset_row_id(row), message=str(exc)) for row in rows],
+        )
 
     row_vectors = [
         DatasetRowVector(
@@ -348,7 +352,7 @@ def _index_vector_backfill_batch(
         return (
             0,
             [
-                VectorBackfillError(row_id=row_vector.row.id, message=str(exc))
+                VectorBackfillError(row_id=dataset_row_id(row_vector.row), message=str(exc))
                 for row_vector in row_vectors
             ],
         )
@@ -372,27 +376,28 @@ def backfill_dataset_vectors(
     if limit is not None and limit < 1:
         raise ValueError("limit must be at least 1 when provided.")
 
-    provider = None if dry_run else embedding_provider or get_embedding_provider()
-    store = None
-    if not dry_run:
-        store = vector_store or QdrantVectorStore(
-            embedding_model=provider.model,
-            embedding_dimensions=provider.dimensions,
-        )
-        store.ensure_collection()
-
     rows_seen = 0
     indexed = 0
-    would_index = 0
     errors: list[VectorBackfillError] = []
     batch = []
 
     rows = _dataset_rows_for_vector_backfill(dataset, limit=limit)
+    if dry_run:
+        would_index = 0
+        for _row in rows.iterator(chunk_size=batch_size):
+            rows_seen += 1
+            would_index += 1
+        return VectorBackfillResult(rows_seen=rows_seen, would_index=would_index)
+
+    provider = embedding_provider or get_embedding_provider()
+    store = vector_store or QdrantVectorStore(
+        embedding_model=provider.model,
+        embedding_dimensions=provider.dimensions,
+    )
+    store.ensure_collection()
+
     for row in rows.iterator(chunk_size=batch_size):
         rows_seen += 1
-        if dry_run:
-            would_index += 1
-            continue
 
         batch.append(row)
         if len(batch) < batch_size:
@@ -423,7 +428,7 @@ def backfill_dataset_vectors(
     return VectorBackfillResult(
         rows_seen=rows_seen,
         indexed=indexed,
-        would_index=would_index,
+        would_index=0,
         failed=len(errors),
         errors=errors,
     )
