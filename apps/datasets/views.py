@@ -271,17 +271,14 @@ def _command_palette_context(request) -> dict[str, object]:
         row_search_error = "Row search is unavailable right now."
     else:
         row_results = [
-            _command_palette_row_result(result)
-            for result in row_payload.get("results", [])[:COMMAND_PALETTE_ROW_LIMIT]
+            _command_palette_row_result(result) for result in row_payload.get("results", [])
         ]
 
     dataset_results = [
-        _command_palette_dataset_result(dataset)
-        for dataset in dataset_payload.get("datasets", [])[:COMMAND_PALETTE_DATASET_LIMIT]
+        _command_palette_dataset_result(dataset) for dataset in dataset_payload.get("datasets", [])
     ]
     project_results = [
-        _command_palette_project_result(project)
-        for project in project_payload.get("projects", [])[:COMMAND_PALETTE_PROJECT_LIMIT]
+        _command_palette_project_result(project) for project in project_payload.get("projects", [])
     ]
     context.update(
         {

@@ -228,9 +228,8 @@
       },
 
       syncShortcutLabels() {
-        const isApplePlatform = /Mac|iPhone|iPad|iPod/.test(
-          navigator.userAgentData?.platform || navigator.platform || "",
-        );
+        const shortcutPlatform = navigator.userAgentData?.platform || navigator.userAgent || "";
+        const isApplePlatform = /Mac|iPhone|iPad|iPod/i.test(shortcutPlatform);
         const label = isApplePlatform ? "Cmd K" : "Ctrl K";
         document
           .querySelectorAll("[data-command-palette-shortcut]")
