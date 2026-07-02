@@ -313,6 +313,13 @@ def _dataset_rows_for_vector_backfill(dataset, *, limit: int | None = None):
     return rows
 
 
+def _iter_vector_backfill_rows(rows, *, batch_size: int):
+    iterator = getattr(rows, "iterator", None)
+    if callable(iterator):
+        return iterator(chunk_size=batch_size)
+    return iter(rows)
+
+
 def _index_vector_backfill_batch(
     *,
     dataset,
@@ -393,7 +400,7 @@ def backfill_dataset_vectors(
     rows = _dataset_rows_for_vector_backfill(dataset, limit=limit)
     if dry_run:
         would_index = 0
-        for _row in rows.iterator(chunk_size=batch_size):
+        for _row in _iter_vector_backfill_rows(rows, batch_size=batch_size):
             rows_seen += 1
             would_index += 1
         return VectorBackfillResult(rows_seen=rows_seen, would_index=would_index)
@@ -405,7 +412,7 @@ def backfill_dataset_vectors(
     )
     store.ensure_collection()
 
-    for row in rows.iterator(chunk_size=batch_size):
+    for row in _iter_vector_backfill_rows(rows, batch_size=batch_size):
         rows_seen += 1
 
         batch.append(row)

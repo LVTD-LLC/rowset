@@ -69,9 +69,11 @@ class AgentApiKeyCreateForm(forms.Form):
 
     def clean_name(self):
         name = normalize_agent_api_key_name(self.cleaned_data["name"])
+        if self.profile is None:
+            return name
+
         if (
-            self.profile
-            and agent_api_key_objects()
+            agent_api_key_objects()
             .filter(
                 profile=self.profile,
                 name=name,
