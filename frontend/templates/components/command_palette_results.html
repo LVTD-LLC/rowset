@@ -1,0 +1,105 @@
+{% if not query %}
+    <div class="px-3 py-10 text-center">
+        <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">Search your Rowset workspace</p>
+        <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Type a dataset name, project, row value, or natural language description.
+        </p>
+    </div>
+{% elif query_too_short %}
+    <div class="px-3 py-10 text-center">
+        <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">Keep typing</p>
+        <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Search starts after {{ min_query_length }} characters so row search stays responsive.
+        </p>
+    </div>
+{% else %}
+    {% if has_results %}
+        <div class="space-y-3">
+            {% if row_results %}
+                <section aria-labelledby="command-palette-rows-heading">
+                    <h3 id="command-palette-rows-heading"
+                        class="px-2 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400">Rows</h3>
+                    <div class="space-y-1">
+                        {% for result in row_results %}
+                            <a id="command-palette-result-row-{{ forloop.counter }}"
+                               href="{{ result.url }}"
+                               role="option"
+                               aria-selected="false"
+                               data-command-palette-result
+                               class="command-palette-result fb-focus grid gap-1 rounded-md px-3 py-2.5 transition hover:bg-slate-100 dark:hover:bg-slate-900">
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <span class="flex h-6 min-w-6 items-center justify-center rounded-md bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">R</span>
+                                    <span class="min-w-0 truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{{ result.label }}</span>
+                                </span>
+                                <span class="line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ result.description }}</span>
+                                <span class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ result.meta }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+            {% if dataset_results %}
+                <section aria-labelledby="command-palette-datasets-heading">
+                    <h3 id="command-palette-datasets-heading"
+                        class="px-2 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400">Datasets</h3>
+                    <div class="space-y-1">
+                        {% for result in dataset_results %}
+                            <a id="command-palette-result-dataset-{{ forloop.counter }}"
+                               href="{{ result.url }}"
+                               role="option"
+                               aria-selected="false"
+                               data-command-palette-result
+                               class="command-palette-result fb-focus grid gap-1 rounded-md px-3 py-2.5 transition hover:bg-slate-100 dark:hover:bg-slate-900">
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <span class="flex h-6 min-w-6 items-center justify-center rounded-md bg-emerald-50 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">D</span>
+                                    <span class="min-w-0 truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{{ result.label }}</span>
+                                </span>
+                                {% if result.description %}
+                                    <span class="line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ result.description }}</span>
+                                {% endif %}
+                                <span class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ result.meta }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+            {% if project_results %}
+                <section aria-labelledby="command-palette-projects-heading">
+                    <h3 id="command-palette-projects-heading"
+                        class="px-2 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400">Projects</h3>
+                    <div class="space-y-1">
+                        {% for result in project_results %}
+                            <a id="command-palette-result-project-{{ forloop.counter }}"
+                               href="{{ result.url }}"
+                               role="option"
+                               aria-selected="false"
+                               data-command-palette-result
+                               class="command-palette-result fb-focus grid gap-1 rounded-md px-3 py-2.5 transition hover:bg-slate-100 dark:hover:bg-slate-900">
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <span class="flex h-6 min-w-6 items-center justify-center rounded-md bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">P</span>
+                                    <span class="min-w-0 truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{{ result.label }}</span>
+                                </span>
+                                {% if result.description %}
+                                    <span class="line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ result.description }}</span>
+                                {% endif %}
+                                <span class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ result.meta }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="px-3 py-10 text-center">
+            <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">No matches</p>
+            <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Try a dataset name, project label, row value, or a more specific natural language query.
+            </p>
+        </div>
+    {% endif %}
+    {% if row_search_error %}
+        <div class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+            {{ row_search_error }}
+        </div>
+    {% endif %}
+{% endif %}

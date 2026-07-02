@@ -33,6 +33,9 @@ from apps.api.services import (
     get_profile_dataset,
     get_profile_project_reference,
     patch_profile_dataset_row,
+    search_profile_datasets,
+    search_profile_projects,
+    search_profile_rows,
     update_profile_dataset_column_types,
     update_profile_dataset_metadata,
     update_profile_dataset_project,
@@ -40,6 +43,7 @@ from apps.api.services import (
     update_profile_project,
     update_profile_project_metadata,
 )
+from apps.core.services import get_or_create_profile_for_user
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project, ProjectSection
 from apps.datasets.public_previews import (
@@ -114,6 +118,11 @@ DATASET_VIEW_MODE_GROUPED = "grouped"
 DATASET_VIEW_MODE_RAW = "raw"
 DATASET_DETAIL_ROW_PAGE_SIZE = 100
 DATASET_CHANGES_PAGE_SIZE = 25
+COMMAND_PALETTE_MIN_QUERY_LENGTH = 2
+COMMAND_PALETTE_MAX_QUERY_LENGTH = 1000
+COMMAND_PALETTE_DATASET_LIMIT = 4
+COMMAND_PALETTE_PROJECT_LIMIT = 3
+COMMAND_PALETTE_ROW_LIMIT = 5
 ROW_SEARCH_PARAM = "row_q"
 ROW_SORT_PARAM = "row_sort"
 ROW_SORT_DIRECTION_PARAM = "row_dir"
@@ -141,6 +150,160 @@ def dataset_list_redirect(request):
 @login_required
 def project_list_redirect(request):
     return redirect("home")
+
+
+def _command_palette_query(request) -> str:
+    return request.GET.get("q", "").strip()[:COMMAND_PALETTE_MAX_QUERY_LENGTH]
+
+
+def _pluralized_count(count: int, singular: str) -> str:
+    suffix = "" if count == 1 else "s"
+    return f"{count} {singular}{suffix}"
+
+
+def _compact_text(value: object, *, max_length: int = 180) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= max_length:
+        return text
+    return f"{text[: max_length - 3].rstrip()}..."
+
+
+def _command_palette_dataset_result(dataset: dict) -> dict[str, object]:
+    project = dataset.get("project") or {}
+    section = dataset.get("section") or {}
+    location_parts = [
+        str(item.get("name", "")).strip()
+        for item in (project, section)
+        if isinstance(item, dict) and str(item.get("name", "")).strip()
+    ]
+    meta_parts = [
+        " / ".join(location_parts) if location_parts else "No project",
+        _pluralized_count(int(dataset.get("row_count") or 0), "row"),
+        _pluralized_count(len(dataset.get("headers") or []), "column"),
+    ]
+    description = _compact_text(dataset.get("description") or dataset.get("original_filename"))
+
+    return {
+        "type": "dataset",
+        "label": dataset["name"],
+        "description": description,
+        "meta": " - ".join(meta_parts),
+        "url": reverse("dataset_detail", args=[dataset["key"]]),
+    }
+
+
+def _command_palette_project_result(project: dict) -> dict[str, object]:
+    description = _compact_text(project.get("description"))
+    return {
+        "type": "project",
+        "label": project["name"],
+        "description": description,
+        "meta": _pluralized_count(int(project.get("dataset_count") or 0), "dataset"),
+        "url": reverse("project_detail", args=[project["key"]]),
+    }
+
+
+def _command_palette_row_label(row: dict) -> str:
+    index_value = str(row.get("index_value") or "").strip()
+    if index_value:
+        return index_value
+    return f"Row {row.get('row_number') or row.get('id')}"
+
+
+def _command_palette_row_result(result: dict) -> dict[str, object]:
+    dataset = result.get("dataset") or {}
+    row = result.get("row") or {}
+    match = result.get("match") or {}
+    dataset_name = str(dataset.get("name") or "Dataset").strip()
+    source = str(match.get("source") or "match").replace("_", " ")
+    row_number = int(row.get("row_number") or 0)
+
+    return {
+        "type": "row",
+        "label": _command_palette_row_label(row),
+        "description": _compact_text(match.get("snippet"), max_length=260),
+        "meta": f"{dataset_name} - row {row_number} - {source}",
+        "url": reverse("dataset_row_detail", args=[dataset["key"], row["id"]]),
+    }
+
+
+def _command_palette_context(request) -> dict[str, object]:
+    query = _command_palette_query(request)
+    context = {
+        "query": query,
+        "min_query_length": COMMAND_PALETTE_MIN_QUERY_LENGTH,
+        "query_too_short": False,
+        "dataset_results": [],
+        "project_results": [],
+        "row_results": [],
+        "row_search_error": "",
+        "has_results": False,
+    }
+    if not query:
+        return context
+    if len(query) < COMMAND_PALETTE_MIN_QUERY_LENGTH:
+        context["query_too_short"] = True
+        return context
+
+    profile = get_or_create_profile_for_user(request.user)
+    dataset_payload = search_profile_datasets(
+        profile,
+        query=query,
+        status=DatasetStatus.READY,
+        limit=COMMAND_PALETTE_DATASET_LIMIT,
+    )
+    project_payload = search_profile_projects(
+        profile,
+        query=query,
+        limit=COMMAND_PALETTE_PROJECT_LIMIT,
+    )
+    row_results = []
+    row_search_error = ""
+    try:
+        row_payload = search_profile_rows(
+            profile,
+            query=query,
+            status=DatasetStatus.READY,
+            archived=False,
+            limit=COMMAND_PALETTE_ROW_LIMIT,
+        )
+    except DatasetServiceError:
+        row_search_error = "Row search is unavailable right now."
+    else:
+        row_results = [
+            _command_palette_row_result(result)
+            for result in row_payload.get("results", [])[:COMMAND_PALETTE_ROW_LIMIT]
+        ]
+
+    dataset_results = [
+        _command_palette_dataset_result(dataset)
+        for dataset in dataset_payload.get("datasets", [])[:COMMAND_PALETTE_DATASET_LIMIT]
+    ]
+    project_results = [
+        _command_palette_project_result(project)
+        for project in project_payload.get("projects", [])[:COMMAND_PALETTE_PROJECT_LIMIT]
+    ]
+    context.update(
+        {
+            "dataset_results": dataset_results,
+            "project_results": project_results,
+            "row_results": row_results,
+            "row_search_error": row_search_error,
+            "has_results": bool(dataset_results or project_results or row_results),
+        }
+    )
+    return context
+
+
+@login_required
+@require_http_methods(["GET"])
+@vary_on_headers("HX-Request")
+def command_palette_search(request):
+    return render(
+        request,
+        "components/command_palette_results.html",
+        _command_palette_context(request),
+    )
 
 
 def _host_without_port(host: str) -> str:

@@ -187,6 +187,185 @@
       },
     }));
 
+    Alpine.data("commandPalette", () => ({
+      activeIndex: -1,
+      activeResultId: "",
+      afterSwapHandler: null,
+      open: false,
+      previousBodyOverflow: "",
+      returnFocusElement: null,
+      triggerHandler: null,
+
+      init() {
+        this.afterSwapHandler = (event) => {
+          if (event.target?.id === "command-palette-results") {
+            this.$nextTick(() => this.syncResults());
+          }
+        };
+        this.triggerHandler = (event) => {
+          const trigger = event.target?.closest?.("[data-command-palette-trigger]");
+          if (!trigger) {
+            return;
+          }
+
+          event.preventDefault();
+          this.openPalette({ detail: { source: trigger } });
+        };
+
+        document.body?.addEventListener("htmx:afterSwap", this.afterSwapHandler);
+        document.addEventListener("click", this.triggerHandler);
+        this.syncShortcutLabels();
+        this.$nextTick(() => this.syncResults());
+      },
+
+      destroy() {
+        document.body?.removeEventListener("htmx:afterSwap", this.afterSwapHandler);
+        document.removeEventListener("click", this.triggerHandler);
+      },
+
+      get resultElements() {
+        return Array.from(this.$root.querySelectorAll("[data-command-palette-result]"));
+      },
+
+      syncShortcutLabels() {
+        const isApplePlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform || "");
+        const label = isApplePlatform ? "Cmd K" : "Ctrl K";
+        document
+          .querySelectorAll("[data-command-palette-shortcut]")
+          .forEach((element) => {
+            element.textContent = label;
+          });
+      },
+
+      handleGlobalKeydown(event) {
+        const key = String(event.key || "").toLowerCase();
+        const isPaletteShortcut =
+          key === "k" && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
+
+        if (isPaletteShortcut) {
+          event.preventDefault();
+          if (this.open) {
+            this.$refs.input?.focus();
+            this.$refs.input?.select();
+          } else {
+            this.openPalette({ detail: { source: document.activeElement } });
+          }
+          return;
+        }
+
+        if (!this.open || event.key !== "Escape") {
+          return;
+        }
+
+        event.preventDefault();
+        this.closePalette();
+      },
+
+      openPalette(event) {
+        if (!this.open) {
+          this.returnFocusElement = event?.detail?.source || document.activeElement;
+          this.previousBodyOverflow = document.body.style.overflow;
+          document.body.style.overflow = "hidden";
+        }
+
+        this.open = true;
+        this.$nextTick(() => {
+          this.$refs.input?.focus();
+          this.$refs.input?.select();
+          this.syncResults();
+        });
+      },
+
+      closePalette() {
+        if (!this.open) {
+          return;
+        }
+
+        this.open = false;
+        document.body.style.overflow = this.previousBodyOverflow;
+        this.activeIndex = -1;
+        this.activeResultId = "";
+
+        if (
+          this.returnFocusElement &&
+          document.contains(this.returnFocusElement) &&
+          typeof this.returnFocusElement.focus === "function"
+        ) {
+          this.returnFocusElement.focus();
+        }
+        this.returnFocusElement = null;
+      },
+
+      syncResults() {
+        const results = this.resultElements;
+        this.activeIndex = results.length > 0 ? 0 : -1;
+        this.applyActiveResult();
+      },
+
+      moveSelection(delta) {
+        const results = this.resultElements;
+        if (results.length === 0) {
+          this.activeIndex = -1;
+          this.activeResultId = "";
+          return;
+        }
+
+        const currentIndex = this.activeIndex < 0 ? 0 : this.activeIndex;
+        this.activeIndex = (currentIndex + delta + results.length) % results.length;
+        this.applyActiveResult();
+        results[this.activeIndex]?.scrollIntoView({ block: "nearest" });
+      },
+
+      applyActiveResult() {
+        const results = this.resultElements;
+        let activeElement = null;
+        results.forEach((element, index) => {
+          const selected = index === this.activeIndex;
+          element.setAttribute("aria-selected", selected.toString());
+          element.classList.toggle("is-active", selected);
+          if (selected) {
+            activeElement = element;
+          }
+        });
+        this.activeResultId = activeElement?.id || "";
+      },
+
+      openActiveResult() {
+        const results = this.resultElements;
+        const result = results[this.activeIndex] || results[0];
+        if (!result?.href) {
+          return;
+        }
+
+        window.location.assign(result.href);
+      },
+
+      trapFocus(event) {
+        if (!this.open) {
+          return;
+        }
+
+        const elements = focusableElements(this.$refs.panel);
+        if (elements.length === 0) {
+          event.preventDefault();
+          return;
+        }
+
+        const firstElement = elements[0];
+        const lastElement = elements[elements.length - 1];
+        if (!this.$refs.panel.contains(document.activeElement)) {
+          event.preventDefault();
+          firstElement.focus();
+        } else if (event.shiftKey && document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (!event.shiftKey && document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement.focus();
+        }
+      },
+    }));
+
     Alpine.data("deleteAccountDialog", () => ({
       confirmation: "",
       open: false,
