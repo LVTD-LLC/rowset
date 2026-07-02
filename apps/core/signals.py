@@ -4,7 +4,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django_q.tasks import async_task
 
-from apps.core.models import Profile, ProfileStates
+from apps.core.model_typing import profile_objects
+from apps.core.models import ProfileStates
 from apps.core.tasks import add_email_to_buttondown
 from rowset.utils import get_rowset_logger
 
@@ -14,7 +15,7 @@ logger = get_rowset_logger(__name__)
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        profile = Profile.objects.create(user=instance)
+        profile = profile_objects().create(user=instance)
         profile.track_state_change(
             to_state=ProfileStates.SIGNED_UP,
             source_function="create_user_profile signal",

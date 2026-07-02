@@ -1,3 +1,6 @@
+from decimal import Decimal
+from typing import cast
+
 from django.db import models
 from django.utils import timezone
 
@@ -55,4 +58,4 @@ class ReferrerBanner(BaseModel):
 
     @property
     def discount_percentage(self):
-        return int(self.discount_amount * 100)
+        return int(cast(Decimal, self.discount_amount) * 100)

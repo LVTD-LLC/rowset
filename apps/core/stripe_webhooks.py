@@ -2,26 +2,26 @@ import stripe
 from django.conf import settings
 
 from apps.core.choices import ProfileStates
-from apps.core.models import Profile
+from apps.core.model_typing import ProfileDoesNotExist, profile_objects
 from rowset.utils import get_rowset_logger
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 logger = get_rowset_logger(__name__)
 
-PROFILE_LOOKUP_ERRORS = (Profile.DoesNotExist, ValueError, TypeError)
+PROFILE_LOOKUP_ERRORS = (ProfileDoesNotExist, ValueError, TypeError)
 
 
 def get_profile_for_customer(customer_id, metadata=None):
     profile = None
     if customer_id:
-        profile = Profile.objects.filter(stripe_customer_id=customer_id).first()
+        profile = profile_objects().filter(stripe_customer_id=customer_id).first()
 
     if not profile and metadata:
         user_id = metadata.get("user_id") or metadata.get("pk")
         if user_id:
             try:
-                profile = Profile.objects.get(user_id=int(user_id))
+                profile = profile_objects().get(user_id=int(user_id))
             except PROFILE_LOOKUP_ERRORS:
                 profile = None
 

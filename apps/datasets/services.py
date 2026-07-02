@@ -7,6 +7,7 @@ import json
 import re
 import sqlite3
 import zipfile
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -45,6 +46,7 @@ from apps.datasets.embeddings import (
     EmbeddingProviderError,
     get_embedding_provider,
 )
+from apps.datasets.model_typing import dataset_row_id
 from apps.datasets.vector_search import (
     DatasetRowVector,
     QdrantVectorStore,
@@ -65,11 +67,20 @@ class DatasetImageError(ValueError):
     pass
 
 
+class ProjectSectionGroupItem(Protocol):
+    id: int
+    name: str
+
+
+class ProjectDatasetGroupItem(Protocol):
+    section_id: int | None
+
+
 @dataclass(frozen=True)
 class _DatasetRowsQueryContext:
     dataset_id: int
     headers: list[str]
-    column_map: dict[str, dict[str, Any]]
+    column_map: dict[str, dict[str, object]]
     filters: dict[str, str]
     filter_operators: dict[str, str]
 
@@ -119,28 +130,27 @@ ROW_SEARCH_COLUMN_LIMIT = 20
 
 
 def project_section_dataset_groups(
-    sections: list[Any],
-    datasets: list[Any],
+    sections: Sequence[ProjectSectionGroupItem],
+    datasets: Sequence[ProjectDatasetGroupItem],
     *,
     unsectioned_dataset_count: int | None = None,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Group project datasets by active section, with unmatched datasets left unsectioned."""
-    section_ids = {getattr(section, "id", None) for section in sections}
-    datasets_by_section_id: dict[int, list[Any]] = {}
-    unsectioned_datasets = []
+    section_ids = {section.id for section in sections}
+    datasets_by_section_id: dict[int | None, list[ProjectDatasetGroupItem]] = {}
+    unsectioned_datasets: list[ProjectDatasetGroupItem] = []
 
     for dataset in datasets:
-        section_id = getattr(dataset, "section_id", None)
-        if section_id in section_ids:
-            datasets_by_section_id.setdefault(section_id, []).append(dataset)
+        if dataset.section_id in section_ids:
+            datasets_by_section_id.setdefault(dataset.section_id, []).append(dataset)
         else:
             unsectioned_datasets.append(dataset)
 
-    groups = []
+    groups: list[dict[str, object]] = []
     for section in sections:
         section_datasets = datasets_by_section_id.get(section.id, [])
         dataset_count = getattr(section, "dataset_count", None)
-        if dataset_count is None:
+        if not isinstance(dataset_count, int):
             dataset_count = len(section_datasets)
         if not section_datasets and not dataset_count:
             continue
@@ -303,6 +313,13 @@ def _dataset_rows_for_vector_backfill(dataset, *, limit: int | None = None):
     return rows
 
 
+def _iter_vector_backfill_rows(rows, *, batch_size: int):
+    iterator = getattr(rows, "iterator", None)
+    if callable(iterator):
+        return iterator(chunk_size=batch_size)
+    return iter(rows)
+
+
 def _index_vector_backfill_batch(
     *,
     dataset,
@@ -329,7 +346,10 @@ def _index_vector_backfill_batch(
     except (EmbeddingProviderError, ValueError) as exc:
         if stop_on_error:
             raise
-        return 0, [VectorBackfillError(row_id=row.id, message=str(exc)) for row in rows]
+        return (
+            0,
+            [VectorBackfillError(row_id=dataset_row_id(row), message=str(exc)) for row in rows],
+        )
 
     row_vectors = [
         DatasetRowVector(
@@ -348,7 +368,7 @@ def _index_vector_backfill_batch(
         return (
             0,
             [
-                VectorBackfillError(row_id=row_vector.row.id, message=str(exc))
+                VectorBackfillError(row_id=dataset_row_id(row_vector.row), message=str(exc))
                 for row_vector in row_vectors
             ],
         )
@@ -372,9 +392,10 @@ def backfill_dataset_vectors(
     if limit is not None and limit < 1:
         raise ValueError("limit must be at least 1 when provided.")
 
-    provider = None if dry_run else embedding_provider or get_embedding_provider()
+    provider = None
     store = None
     if not dry_run:
+        provider = embedding_provider or get_embedding_provider()
         store = vector_store or QdrantVectorStore(
             embedding_model=provider.model,
             embedding_dimensions=provider.dimensions,
@@ -388,7 +409,7 @@ def backfill_dataset_vectors(
     batch = []
 
     rows = _dataset_rows_for_vector_backfill(dataset, limit=limit)
-    for row in rows.iterator(chunk_size=batch_size):
+    for row in _iter_vector_backfill_rows(rows, batch_size=batch_size):
         rows_seen += 1
         if dry_run:
             would_index += 1
@@ -398,6 +419,8 @@ def backfill_dataset_vectors(
         if len(batch) < batch_size:
             continue
 
+        if provider is None or store is None:
+            raise AssertionError("Vector backfill provider and store are required outside dry-run.")
         indexed_count, batch_errors = _index_vector_backfill_batch(
             dataset=dataset,
             rows=batch,
@@ -410,6 +433,8 @@ def backfill_dataset_vectors(
         batch = []
 
     if batch:
+        if provider is None or store is None:
+            raise AssertionError("Vector backfill provider and store are required outside dry-run.")
         indexed_count, batch_errors = _index_vector_backfill_batch(
             dataset=dataset,
             rows=batch,
@@ -487,7 +512,7 @@ class TabularPreview:
     row_count: int
     source_text: str
     file_type: str
-    column_schema: dict[str, dict[str, Any]] = field(default_factory=dict)
+    column_schema: dict[str, dict[str, object]] = field(default_factory=dict)
 
     @property
     def text(self) -> str:
@@ -745,7 +770,7 @@ def infer_column_type(header: str, values: list[str]) -> str:
 def _infer_column_schema_from_samples(
     headers: list[str],
     column_samples: dict[str, list[str]],
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, dict[str, object]]:
     return {
         header: {COLUMN_SCHEMA_TYPE_KEY: infer_column_type(header, column_samples.get(header, []))}
         for header in headers
@@ -755,7 +780,7 @@ def _infer_column_schema_from_samples(
 def infer_column_schema(
     headers: list[str],
     rows: list[dict[str, str]],
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, dict[str, object]]:
     column_samples: dict[str, list[str]] = {header: [] for header in headers}
     for row in rows:
         _collect_column_samples(column_samples, row)
@@ -865,12 +890,12 @@ def _normalize_reference_target(header: str, raw_target) -> str:
     return normalized_target
 
 
-def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[str, Any]:
+def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[str, object]:
     raw_type = _column_type_from_schema_entry(entry, fallback_entry)
     if raw_type is None:
         raw_type = DatasetColumnType.TEXT
     column_type = normalize_column_type(raw_type)
-    normalized_entry: dict[str, Any] = {COLUMN_SCHEMA_TYPE_KEY: column_type}
+    normalized_entry: dict[str, object] = {COLUMN_SCHEMA_TYPE_KEY: column_type}
     description = _column_description_from_schema_entry(header, entry, fallback_entry)
     if description:
         normalized_entry[COLUMN_SCHEMA_DESCRIPTION_KEY] = description
@@ -944,7 +969,7 @@ def normalize_column_schema(
     *,
     fallback_schema: dict | None = None,
     reject_unknown: bool = False,
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, dict[str, object]]:
     raw_schema = column_schema or {}
     fallback = fallback_schema or {}
     if reject_unknown:
@@ -972,7 +997,7 @@ def normalize_column_schema(
 def column_definitions(
     headers: list[str],
     column_schema: dict | None,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     normalized_schema = normalize_column_schema(headers, column_schema)
     labels = dict(DatasetColumnType.choices)
     definitions = []
@@ -1141,13 +1166,19 @@ def choice_constraints_from_schema(
         normalized_schema = column_schema or {}
     else:
         normalized_schema = normalize_column_schema(headers, column_schema)
-    constraints = {}
+    constraints: dict[str, list[str]] = {}
     for header in headers:
         schema_entry = normalized_schema.get(header, {})
         if not isinstance(schema_entry, dict):
             continue
         if schema_entry.get(COLUMN_SCHEMA_TYPE_KEY) == DatasetColumnType.CHOICE:
-            constraints[header] = schema_entry[COLUMN_SCHEMA_CHOICES_KEY]
+            choices = schema_entry.get(COLUMN_SCHEMA_CHOICES_KEY)
+            if not isinstance(choices, list):
+                raise CSVParseError(f"Choice column '{header}' choices must be a list.")
+            string_choices = [choice for choice in choices if isinstance(choice, str)]
+            if len(string_choices) != len(choices):
+                raise CSVParseError(f"Choice column '{header}' choices must be non-empty strings.")
+            constraints[header] = string_choices
     return constraints
 
 
@@ -1198,7 +1229,7 @@ def validate_choice_row_values(
 def invalid_choice_values_by_column(
     headers: list[str],
     column_schema: dict | None,
-    rows: list[dict] | Any,
+    rows: Iterable[Mapping[str, object] | None],
 ) -> dict[str, set[str]]:
     choice_columns = choice_constraints_from_schema(headers, column_schema)
     if not choice_columns:
@@ -1613,7 +1644,7 @@ def _dataset_rows_query_contexts(
                 dataset_id=dataset.id,
                 headers=dataset.headers,
                 column_map={
-                    column["name"]: column
+                    str(column["name"]): column
                     for column in column_definitions(dataset.headers, dataset.column_schema)
                 },
                 filters=normalized_filters,

@@ -9,7 +9,7 @@ from apps.core import tasks
 def test_track_event_uses_profile_id_distinct_id(profile, monkeypatch):
     captures = []
 
-    def capture(distinct_id, *, event, properties):
+    def capture(*, event, distinct_id, properties):
         captures.append(
             {
                 "distinct_id": distinct_id,
