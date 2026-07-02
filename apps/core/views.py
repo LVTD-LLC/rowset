@@ -22,7 +22,9 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
+from django.views.defaults import server_error as default_server_error
 from django.views.generic import TemplateView, UpdateView
+from django_htmx.http import HttpResponseClientRedirect
 
 from apps.core.agent_skill import (
     ROWSET_AGENT_SETUP_INSTRUCTIONS,
@@ -51,6 +53,29 @@ logger = get_rowset_logger(__name__)
 
 AGENT_API_KEY_MASK = "***"
 CREATED_AGENT_API_KEY_QUERY_PARAM = "created_agent_api_key"
+SERVER_ERROR_REDIRECT_MESSAGE = "Something went wrong. You have been redirected."
+PROGRAMMATIC_ERROR_PATH_PREFIXES = ("/api", "/mcp")
+
+
+def _is_programmatic_error_request(request: HttpRequest) -> bool:
+    path = request.path_info or request.path
+    return any(
+        path == prefix or path.startswith(f"{prefix}/")
+        for prefix in PROGRAMMATIC_ERROR_PATH_PREFIXES
+    )
+
+
+def server_error(request: HttpRequest):
+    if _is_programmatic_error_request(request):
+        return default_server_error(request)
+
+    user = getattr(request, "user", None)
+    target_url = reverse("home" if user and user.is_authenticated else "landing")
+    messages.error(request, SERVER_ERROR_REDIRECT_MESSAGE, fail_silently=True)
+
+    if getattr(request, "htmx", False):
+        return HttpResponseClientRedirect(target_url)
+    return redirect(target_url)
 
 
 def stripe_request_options():
