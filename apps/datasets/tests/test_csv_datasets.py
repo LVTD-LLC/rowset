@@ -2779,6 +2779,7 @@ def test_project_settings_shows_project_forms_sections_and_delete_warning(auth_c
     content = response.content.decode()
 
     assert response.status_code == 200
+    assert "<title>Frontier settings · Rowset</title>" in content
     assert "Project settings" in content
     assert 'aria-labelledby="project-settings-nav-heading"' in content
     assert reverse("project_update", args=[project.key]) in content
