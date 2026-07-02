@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 from urllib.parse import urlparse
 from uuid import UUID
 from xml.sax.saxutils import escape
@@ -392,33 +392,35 @@ def backfill_dataset_vectors(
     if limit is not None and limit < 1:
         raise ValueError("limit must be at least 1 when provided.")
 
+    provider = None
+    store = None
+    if not dry_run:
+        provider = embedding_provider or get_embedding_provider()
+        store = vector_store or QdrantVectorStore(
+            embedding_model=provider.model,
+            embedding_dimensions=provider.dimensions,
+        )
+        store.ensure_collection()
+
     rows_seen = 0
     indexed = 0
+    would_index = 0
     errors: list[VectorBackfillError] = []
     batch = []
 
     rows = _dataset_rows_for_vector_backfill(dataset, limit=limit)
-    if dry_run:
-        would_index = 0
-        for _row in _iter_vector_backfill_rows(rows, batch_size=batch_size):
-            rows_seen += 1
-            would_index += 1
-        return VectorBackfillResult(rows_seen=rows_seen, would_index=would_index)
-
-    provider = embedding_provider or get_embedding_provider()
-    store = vector_store or QdrantVectorStore(
-        embedding_model=provider.model,
-        embedding_dimensions=provider.dimensions,
-    )
-    store.ensure_collection()
-
     for row in _iter_vector_backfill_rows(rows, batch_size=batch_size):
         rows_seen += 1
+        if dry_run:
+            would_index += 1
+            continue
 
         batch.append(row)
         if len(batch) < batch_size:
             continue
 
+        if provider is None or store is None:
+            raise AssertionError("Vector backfill provider and store are required outside dry-run.")
         indexed_count, batch_errors = _index_vector_backfill_batch(
             dataset=dataset,
             rows=batch,
@@ -431,6 +433,8 @@ def backfill_dataset_vectors(
         batch = []
 
     if batch:
+        if provider is None or store is None:
+            raise AssertionError("Vector backfill provider and store are required outside dry-run.")
         indexed_count, batch_errors = _index_vector_backfill_batch(
             dataset=dataset,
             rows=batch,
@@ -444,7 +448,7 @@ def backfill_dataset_vectors(
     return VectorBackfillResult(
         rows_seen=rows_seen,
         indexed=indexed,
-        would_index=0,
+        would_index=would_index,
         failed=len(errors),
         errors=errors,
     )
@@ -1040,6 +1044,14 @@ def _safe_image_filename(filename: str | None, content_type: str) -> str:
     return original[:255]
 
 
+def _image_save_kwargs(image_format: str) -> dict[str, Any]:
+    if image_format == "JPEG":
+        return {"format": image_format, "quality": 90, "optimize": True}
+    if image_format == "WEBP":
+        return {"format": image_format, "quality": 90, "method": 4}
+    return {"format": image_format, "optimize": True}
+
+
 def _rgb_image(image: Image.Image) -> Image.Image:
     if image.mode in {"RGBA", "LA"}:
         background = Image.new("RGB", image.size, (255, 255, 255))
@@ -1055,11 +1067,7 @@ def _encoded_image_bytes(image: Image.Image, image_format: str) -> bytes:
     output = io.BytesIO()
     if image_format == "JPEG":
         image = _rgb_image(image)
-        image.save(output, format=image_format, quality=90, optimize=True)
-    elif image_format == "WEBP":
-        image.save(output, format=image_format, quality=90, method=4)
-    else:
-        image.save(output, format=image_format, optimize=True)
+    image.save(output, **_image_save_kwargs(image_format))
     return output.getvalue()
 
 
@@ -1165,10 +1173,12 @@ def choice_constraints_from_schema(
             continue
         if schema_entry.get(COLUMN_SCHEMA_TYPE_KEY) == DatasetColumnType.CHOICE:
             choices = schema_entry.get(COLUMN_SCHEMA_CHOICES_KEY)
-            if isinstance(choices, list):
-                string_choices = [choice for choice in choices if isinstance(choice, str)]
-                if len(string_choices) == len(choices):
-                    constraints[header] = string_choices
+            if not isinstance(choices, list):
+                raise CSVParseError(f"Choice column '{header}' choices must be a list.")
+            string_choices = [choice for choice in choices if isinstance(choice, str)]
+            if len(string_choices) != len(choices):
+                raise CSVParseError(f"Choice column '{header}' choices must be non-empty strings.")
+            constraints[header] = string_choices
     return constraints
 
 

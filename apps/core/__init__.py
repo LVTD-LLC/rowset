@@ -1,5 +1,3 @@
-from typing import Protocol, cast
-
 import posthog
 from django.apps import AppConfig
 from django.conf import settings
@@ -7,16 +5,6 @@ from django.conf import settings
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
-
-
-class _PostHogConfig(Protocol):
-    api_key: str
-    debug: bool
-    host: str
-
-
-def _posthog_config() -> _PostHogConfig:
-    return cast(_PostHogConfig, posthog)
 
 
 class CoreConfig(AppConfig):
@@ -30,8 +18,8 @@ class CoreConfig(AppConfig):
         import apps.core.stripe_webhooks  # noqa
 
         if settings.POSTHOG_API_KEY:
-            _posthog_config().api_key = settings.POSTHOG_API_KEY
-            _posthog_config().host = "https://us.i.posthog.com"
+            posthog.api_key = settings.POSTHOG_API_KEY
+            posthog.host = "https://us.i.posthog.com"  # ty: ignore[invalid-assignment]
 
         if settings.ENVIRONMENT == "dev":
-            _posthog_config().debug = True
+            posthog.debug = True  # ty: ignore[invalid-assignment]
