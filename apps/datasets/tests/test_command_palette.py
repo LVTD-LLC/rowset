@@ -135,3 +135,62 @@ def test_command_palette_search_keeps_metadata_results_when_row_search_fails(
     content = response.content.decode()
     assert "Vector Backlog" in content
     assert "Row search is unavailable right now." in content
+
+
+def test_command_palette_search_keeps_row_results_when_metadata_search_fails(
+    auth_client,
+    monkeypatch,
+    profile,
+):
+    dataset = create_dataset(
+        profile,
+        name="Fallback Rows",
+        headers=["person_id", "name"],
+        index_column="person_id",
+        rows=[{"person_id": "P-2", "name": "Grace Hopper"}],
+    )
+    row = dataset.rows.get(index_value="P-2")
+
+    def fail_dataset_search(*args, **kwargs):
+        raise DatasetServiceError(503, "Dataset search failed.")
+
+    def fail_project_search(*args, **kwargs):
+        raise DatasetServiceError(503, "Project search failed.")
+
+    def fake_search_profile_rows(search_profile, **kwargs):
+        assert search_profile == profile
+        return {
+            "count": 1,
+            "results": [
+                {
+                    "rank": 1,
+                    "score": 0.91,
+                    "dataset": {
+                        "key": str(dataset.key),
+                        "name": dataset.name,
+                    },
+                    "row": {
+                        "id": row.id,
+                        "row_number": row.row_number,
+                        "index_value": row.index_value,
+                        "data": row.data,
+                    },
+                    "match": {
+                        "source": "hybrid",
+                        "snippet": "person_id: P-2 name: Grace Hopper",
+                    },
+                }
+            ],
+        }
+
+    monkeypatch.setattr("apps.datasets.views.search_profile_datasets", fail_dataset_search)
+    monkeypatch.setattr("apps.datasets.views.search_profile_projects", fail_project_search)
+    monkeypatch.setattr("apps.datasets.views.search_profile_rows", fake_search_profile_rows)
+
+    response = auth_client.get(reverse("command_palette_search"), {"q": "Grace"})
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "P-2" in content
+    assert "Dataset search is unavailable right now." in content
+    assert "Project search is unavailable right now." in content

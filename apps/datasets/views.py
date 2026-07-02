@@ -236,6 +236,7 @@ def _command_palette_context(request) -> dict[str, object]:
         "dataset_results": [],
         "project_results": [],
         "row_results": [],
+        "metadata_search_error": "",
         "row_search_error": "",
         "has_results": False,
     }
@@ -246,17 +247,38 @@ def _command_palette_context(request) -> dict[str, object]:
         return context
 
     profile = get_or_create_profile_for_user(request.user)
-    dataset_payload = search_profile_datasets(
-        profile,
-        query=query,
-        status=DatasetStatus.READY,
-        limit=COMMAND_PALETTE_DATASET_LIMIT,
-    )
-    project_payload = search_profile_projects(
-        profile,
-        query=query,
-        limit=COMMAND_PALETTE_PROJECT_LIMIT,
-    )
+    dataset_results = []
+    project_results = []
+    metadata_search_errors = []
+    try:
+        dataset_payload = search_profile_datasets(
+            profile,
+            query=query,
+            status=DatasetStatus.READY,
+            limit=COMMAND_PALETTE_DATASET_LIMIT,
+        )
+    except DatasetServiceError:
+        metadata_search_errors.append("Dataset search is unavailable right now.")
+    else:
+        dataset_results = [
+            _command_palette_dataset_result(dataset)
+            for dataset in dataset_payload.get("datasets", [])
+        ]
+
+    try:
+        project_payload = search_profile_projects(
+            profile,
+            query=query,
+            limit=COMMAND_PALETTE_PROJECT_LIMIT,
+        )
+    except DatasetServiceError:
+        metadata_search_errors.append("Project search is unavailable right now.")
+    else:
+        project_results = [
+            _command_palette_project_result(project)
+            for project in project_payload.get("projects", [])
+        ]
+
     row_results = []
     row_search_error = ""
     try:
@@ -274,17 +296,12 @@ def _command_palette_context(request) -> dict[str, object]:
             _command_palette_row_result(result) for result in row_payload.get("results", [])
         ]
 
-    dataset_results = [
-        _command_palette_dataset_result(dataset) for dataset in dataset_payload.get("datasets", [])
-    ]
-    project_results = [
-        _command_palette_project_result(project) for project in project_payload.get("projects", [])
-    ]
     context.update(
         {
             "dataset_results": dataset_results,
             "project_results": project_results,
             "row_results": row_results,
+            "metadata_search_error": " ".join(metadata_search_errors),
             "row_search_error": row_search_error,
             "has_results": bool(dataset_results or project_results or row_results),
         }
