@@ -741,6 +741,38 @@ def _row_relationship_links(
     return links
 
 
+def _dataset_row_navigation_context(
+    row: DatasetRow,
+    *,
+    view_name: str,
+    dataset_url_kwarg: str,
+    dataset_url_value: object,
+) -> dict[str, object]:
+    row_queryset = DatasetRow.objects.only("id", "dataset_id", "row_number").filter(
+        dataset_id=row.dataset_id
+    )
+    previous_row = (
+        row_queryset.filter(row_number__lt=row.row_number).order_by("-row_number").first()
+    )
+    next_row = row_queryset.filter(row_number__gt=row.row_number).order_by("row_number").first()
+
+    def row_url(neighbor: DatasetRow | None) -> str:
+        if neighbor is None:
+            return ""
+        return reverse(
+            view_name,
+            kwargs={dataset_url_kwarg: dataset_url_value, "row_id": neighbor.id},
+        )
+
+    return {
+        "has_dataset_row_navigation": bool(previous_row or next_row),
+        "previous_dataset_row": previous_row,
+        "previous_dataset_row_url": row_url(previous_row),
+        "next_dataset_row": next_row,
+        "next_dataset_row_url": row_url(next_row),
+    }
+
+
 def _rowset_reference_columns(column_definition_list: list[dict], target: str) -> set[str]:
     return {
         column["name"]
@@ -1860,6 +1892,14 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
             form_values,
             allow_edit=row_is_editable,
         )
+        context.update(
+            _dataset_row_navigation_context(
+                row,
+                view_name="dataset_row_detail",
+                dataset_url_kwarg="dataset_key",
+                dataset_url_value=dataset.key,
+            )
+        )
         context["row_is_editable"] = row_is_editable
         context["row_form_error"] = row_form_error
         return context
@@ -2541,6 +2581,7 @@ def public_dataset_row_detail(request, public_key, row_id):
 
     dataset_row = None
     row_cells = []
+    row_navigation_context = {}
     if has_access:
         dataset_row = get_object_or_404(
             DatasetRow,
@@ -2555,6 +2596,12 @@ def public_dataset_row_detail(request, public_key, row_id):
             image_assets=_image_asset_lookup(dataset, [dataset_row]),
             public_context=True,
         )
+        row_navigation_context = _dataset_row_navigation_context(
+            dataset_row,
+            view_name="public_dataset_row_detail",
+            dataset_url_kwarg="public_key",
+            dataset_url_value=dataset.public_key,
+        )
 
     response = render(
         request,
@@ -2566,6 +2613,7 @@ def public_dataset_row_detail(request, public_key, row_id):
             "password_error": password_error,
             "public_preview_robots_policy": PUBLIC_PREVIEW_ROBOTS_POLICY,
             "row_cells": row_cells,
+            **row_navigation_context,
         },
     )
     response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY

@@ -395,6 +395,35 @@ def test_public_dataset_row_detail_displays_full_row_data(client, profile):
     assert "Created by" not in content
 
 
+def test_public_dataset_row_detail_links_previous_and_next_rows(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+    previous_row = dataset.rows.get(row_number=1)
+    current_row = dataset.rows.get(row_number=2)
+    next_row = dataset.rows.create(
+        row_number=3,
+        index_value="katherine@example.com",
+        data={"name": "Katherine", "email": "katherine@example.com"},
+    )
+
+    response = client.get(
+        reverse("public_dataset_row_detail", args=[dataset.public_key, current_row.id])
+    )
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["has_dataset_row_navigation"] is True
+    assert response.context["previous_dataset_row"] == previous_row
+    assert response.context["next_dataset_row"] == next_row
+    previous_url = reverse("public_dataset_row_detail", args=[dataset.public_key, previous_row.id])
+    next_url = reverse("public_dataset_row_detail", args=[dataset.public_key, next_row.id])
+    assert f'href="{previous_url}"' in content
+    assert f'href="{next_url}"' in content
+    assert ">Previous Row</a>" in content
+    assert ">Next Row</a>" in content
+
+
 def test_public_dataset_row_detail_renders_url_cells_as_text(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
