@@ -59,6 +59,63 @@ def test_capabilities_endpoint_supports_current_and_legacy_api_prefixes(client):
     assert legacy_response.json()["product"] == "Rowset"
 
 
+def test_row_contracts_normalize_row_data_for_declared_headers():
+    from apps.api.row_contracts import normalize_row_data_for_headers
+
+    payload = normalize_row_data_for_headers(
+        {"name": "Ada", "score": 42, "empty": None, "ignored": "value"},
+        ["name", "score", "empty", "missing"],
+    )
+
+    assert payload == {
+        "name": "Ada",
+        "score": "42",
+        "empty": "",
+        "missing": "",
+    }
+
+
+def test_row_contracts_normalize_row_patch_ignores_unknown_headers():
+    from apps.api.row_contracts import normalize_row_patch_for_headers
+
+    payload = normalize_row_patch_for_headers(
+        {"name": "Ada", "score": 42, "unknown": "value"},
+        ["name", "score"],
+    )
+
+    assert payload == {"name": "Ada", "score": "42"}
+
+
+def test_row_contracts_normalize_search_filters_and_operators():
+    from apps.api.row_contracts import (
+        normalize_search_filter_operators,
+        normalize_search_filters,
+    )
+
+    filters = normalize_search_filters({" status ": " Ready ", "blank": " ", "none": None})
+    operators = normalize_search_filter_operators(
+        {"status": " IS ", "missing": "contains"},
+        filters,
+    )
+
+    assert filters == {"status": "Ready"}
+    assert operators == {"status": "is"}
+
+
+def test_row_contracts_reject_blank_search_filter_headers():
+    from apps.api.row_contracts import normalize_search_filters
+
+    with pytest.raises(ValueError, match="Search filter headers must be non-empty"):
+        normalize_search_filters({" ": "Ready"})
+
+
+def test_row_contracts_reject_blank_search_filter_operator_headers():
+    from apps.api.row_contracts import normalize_search_filter_operators
+
+    with pytest.raises(ValueError, match="Search filter operator headers must be non-empty"):
+        normalize_search_filter_operators({" ": "is"}, {"status": "Ready"})
+
+
 @pytest.mark.django_db
 @override_settings(
     DEFAULT_FROM_EMAIL="feedback@rowset.example",

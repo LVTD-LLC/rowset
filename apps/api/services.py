@@ -19,6 +19,15 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
 from apps.api.errors import DatasetServiceError
+from apps.api.row_contracts import (
+    RankedRowSearchCandidate,
+    RowFilterOperators,
+    RowFilters,
+    RowSearchCandidate,
+    RowWritePayload,
+    normalize_search_filter_operators,
+    normalize_search_filters,
+)
 from apps.api.row_mutations import (
     RowMutationHooks,
     normalize_row_ids,
@@ -3504,8 +3513,8 @@ def _dataset_search_candidates(
     vector_hits,
     lexical_rows: list[DatasetRow],
     allowed_row_ids: set[int] | None,
-) -> dict[int, dict[str, Any]]:
-    candidates: dict[int, dict[str, Any]] = {}
+) -> dict[int, RowSearchCandidate]:
+    candidates: dict[int, RowSearchCandidate] = {}
     for vector_rank, hit in enumerate(vector_hits, start=1):
         row_id = _safe_vector_row_id(hit.payload)
         if row_id is None or (allowed_row_ids is not None and row_id not in allowed_row_ids):
@@ -3524,10 +3533,10 @@ def _dataset_search_candidates(
 
 
 def _rank_dataset_search_candidates(
-    candidates: dict[int, dict[str, Any]],
+    candidates: dict[int, RowSearchCandidate],
     *,
     limit: int,
-) -> list[dict[str, Any]]:
+) -> list[RankedRowSearchCandidate]:
     for candidate in candidates.values():
         vector_rank = candidate.get("vector_rank")
         lexical_rank = candidate.get("lexical_rank")
@@ -3554,7 +3563,7 @@ def _rank_dataset_search_candidates(
 
 def _serialize_dataset_search_results(
     dataset: Dataset,
-    ranked_candidates: list[dict[str, Any]],
+    ranked_candidates: list[RankedRowSearchCandidate],
 ) -> list[dict[str, Any]]:
     rows_by_id = {
         row.id: row
@@ -3611,43 +3620,31 @@ def _normalize_profile_row_search_direction(direction: str | None, sort: str) ->
     raise DatasetServiceError(400, "Search direction must be 'asc' or 'desc'.")
 
 
-def _normalize_profile_row_filters(filters: dict[str, Any] | None) -> dict[str, str]:
+def _normalize_profile_row_filters(filters: dict[str, Any] | None) -> RowFilters:
     if filters is None:
         return {}
     if not isinstance(filters, dict):
         raise DatasetServiceError(400, "Search filters must be a JSON object.")
 
-    normalized_filters = {}
-    for raw_header, raw_value in filters.items():
-        header = str(raw_header or "").strip()
-        if not header:
-            raise DatasetServiceError(400, "Search filter headers must be non-empty.")
-        value = "" if raw_value is None else str(raw_value).strip()
-        if value:
-            normalized_filters[header] = value
-    return normalized_filters
+    try:
+        return normalize_search_filters(filters)
+    except ValueError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
 
 
 def _normalize_profile_row_filter_operators(
     filter_operators: dict[str, Any] | None,
-    filters: dict[str, str],
-) -> dict[str, str]:
+    filters: RowFilters,
+) -> RowFilterOperators:
     if filter_operators is None:
         return {}
     if not isinstance(filter_operators, dict):
         raise DatasetServiceError(400, "Search filter_operators must be a JSON object.")
 
-    normalized_operators = {}
-    for raw_header, raw_operator in filter_operators.items():
-        header = str(raw_header or "").strip()
-        if not header:
-            raise DatasetServiceError(400, "Search filter operator headers must be non-empty.")
-        if header not in filters:
-            continue
-        operator = str(raw_operator or "").strip().lower()
-        if operator:
-            normalized_operators[header] = operator
-    return normalized_operators
+    try:
+        return normalize_search_filter_operators(filter_operators, filters)
+    except ValueError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
 
 
 def _profile_row_search_dataset_queryset(
@@ -3802,7 +3799,7 @@ def _profile_allowed_vector_row_ids(
 
 
 def _serialize_profile_row_search_results(
-    ranked_candidates: list[dict[str, Any]],
+    ranked_candidates: list[RankedRowSearchCandidate],
 ) -> list[dict[str, Any]]:
     rows_by_id = {
         row.id: row
@@ -4188,7 +4185,7 @@ def _row_mutation_hooks() -> RowMutationHooks:
 def create_profile_dataset_row(
     profile: Profile,
     dataset_key: str,
-    data: dict,
+    data: RowWritePayload,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
@@ -4236,7 +4233,7 @@ def patch_profile_dataset_row(
     profile: Profile,
     dataset_key: str,
     row_id: int,
-    data: dict,
+    data: RowWritePayload,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
@@ -4259,7 +4256,7 @@ def patch_profile_dataset_row_by_index(
     profile: Profile,
     dataset_key: str,
     index_value: str,
-    data: dict,
+    data: RowWritePayload,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():

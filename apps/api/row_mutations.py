@@ -5,6 +5,15 @@ from typing import Any
 from django.db import connection
 
 from apps.api.errors import DatasetServiceError
+from apps.api.row_contracts import (
+    RowData,
+    RowWritePayload,
+    normalize_row_data_for_headers,
+    normalize_row_patch_for_headers,
+)
+from apps.api.row_contracts import (
+    stringify_row_cell as stringify_cell,
+)
 from apps.core.analytics import ROWSET_DATASET_ROW_MUTATED, agent_api_key_tracking_properties
 from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetMutationType
@@ -32,12 +41,6 @@ class RowMutationHooks:
     track_activation_event: Callable[..., Any]
 
 
-def stringify_cell(value: Any) -> str:
-    if value is None:
-        return ""
-    return str(value)
-
-
 def normalize_row_ids(row_ids: Iterable[int | str]) -> list[int]:
     ordered_row_ids: list[int] = []
     seen_row_ids: set[int] = set()
@@ -59,14 +62,14 @@ def normalize_row_ids(row_ids: Iterable[int | str]) -> list[int]:
 def create_dataset_row(
     profile: Profile,
     dataset: Dataset,
-    data: dict,
+    data: RowWritePayload,
     *,
     agent_api_key: AgentApiKey | None = None,
     hooks: RowMutationHooks,
 ) -> dict:
     row_number = _next_row_number(dataset)
     row_data = _create_row_data(dataset, data, row_number)
-    serialized_data = {header: str(row_data.get(header, "")) for header in dataset.headers}
+    serialized_data = normalize_row_data_for_headers(row_data, dataset.headers)
     hooks.validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
     hooks.validate_image_row_data(dataset.headers, dataset.column_schema, serialized_data)
     serialized_data = hooks.normalize_reference_row_data(
@@ -127,7 +130,7 @@ def patch_dataset_row(
     profile: Profile,
     dataset: Dataset,
     row: DatasetRow,
-    data: dict,
+    data: RowWritePayload,
     *,
     agent_api_key: AgentApiKey | None = None,
     hooks: RowMutationHooks,
@@ -135,7 +138,7 @@ def patch_dataset_row(
     if not connection.in_atomic_block:
         raise AssertionError("patch_dataset_row must be called inside transaction.atomic().")
 
-    row_patch = {key: str(value) for key, value in data.items() if key in dataset.headers}
+    row_patch = normalize_row_patch_for_headers(data, dataset.headers)
     patched_fields = sorted(row_patch)
     changed_image_columns = _changed_image_columns(dataset, row, row_patch, patched_fields)
     _raise_if_patch_references_image_asset(row_patch, changed_image_columns)
@@ -296,13 +299,13 @@ def _next_row_number(dataset: Dataset) -> int:
     return last_row_number + 1
 
 
-def _create_row_data(dataset: Dataset, data: dict, row_number: int) -> dict:
+def _create_row_data(dataset: Dataset, data: RowWritePayload, row_number: int) -> RowWritePayload:
     if dataset.index_generated:
         return {**data, dataset.index_column: str(row_number)}
     return data
 
 
-def _required_create_index_value(dataset: Dataset, serialized_data: dict) -> str:
+def _required_create_index_value(dataset: Dataset, serialized_data: RowData) -> str:
     index_value = str(serialized_data.get(dataset.index_column, "")).strip()
     if not index_value:
         raise DatasetServiceError(
@@ -320,7 +323,7 @@ def _raise_if_duplicate_index(dataset: Dataset, index_value: str) -> None:
 def _changed_image_columns(
     dataset: Dataset,
     row: DatasetRow,
-    row_patch: dict[str, str],
+    row_patch: RowData,
     patched_fields: list[str],
 ) -> list[str]:
     image_columns = set(image_columns_from_schema(dataset.headers, dataset.column_schema))
@@ -333,7 +336,7 @@ def _changed_image_columns(
 
 
 def _raise_if_patch_references_image_asset(
-    row_patch: dict[str, str],
+    row_patch: RowData,
     changed_image_columns: list[str],
 ) -> None:
     for column in changed_image_columns:
@@ -345,7 +348,7 @@ def _raise_if_patch_references_image_asset(
 
 
 def _cleared_image_columns(
-    row_patch: dict[str, str],
+    row_patch: RowData,
     changed_image_columns: list[str],
 ) -> list[str]:
     return [field for field in changed_image_columns if row_patch.get(field, "") == ""]
@@ -368,8 +371,8 @@ def _delete_cleared_image_assets(
 def _apply_index_patch(
     dataset: Dataset,
     row: DatasetRow,
-    row_patch: dict[str, str],
-    raw_patch: dict,
+    row_patch: RowData,
+    raw_patch: RowWritePayload,
     hooks: RowMutationHooks,
 ) -> bool:
     if dataset.index_column not in raw_patch:
@@ -398,7 +401,7 @@ def _apply_index_patch(
 
 def _row_field_changes(
     current_data: dict,
-    patch_data: dict,
+    patch_data: RowData,
     candidate_fields: list[str],
 ) -> list[dict[str, str]]:
     field_changes = []

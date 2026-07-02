@@ -92,7 +92,7 @@ format-python:
 	$(UV_RUN) ruff format .
 
 type-check:
-	$(UV_RUN) ty check apps/core/capabilities.py apps/core/agent_skill.py rowset/utils.py rowset/logging_utils.py
+	$(UV_RUN) ty check apps/core/capabilities.py apps/core/agent_skill.py rowset/utils.py rowset/logging_utils.py apps/api/row_contracts.py
 
 coverage:
 	$(COVERAGE_RUN) '$(COVERAGE_PYTEST) $(TARGET_ARGS) && $(COVERAGE_REPORT)'
