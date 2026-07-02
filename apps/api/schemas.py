@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Any
 
 from ninja import Schema
 from pydantic import Field
@@ -12,8 +11,14 @@ from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
 )
+from apps.datasets.types import (
+    ColumnSchema,
+    ColumnTypeSpec,
+    DatasetRowInput,
+    JsonObject,
+)
 
-ColumnTypeIn = str | dict[str, Any]
+ColumnTypeIn = ColumnTypeSpec
 COLUMN_TYPE_DESCRIPTION = (
     "Semantic column type string or metadata object. Metadata supports type, "
     "description, image columns, choice columns with choices, and reference columns with "
@@ -24,7 +29,7 @@ COLUMN_TYPE_DESCRIPTION = (
 class SubmitFeedbackIn(Schema):
     feedback: str = Field(..., min_length=1, max_length=2000)
     page: str = Field("", max_length=255)
-    context: dict[str, Any] | None = None
+    context: JsonObject | None = None
 
 
 class SubmitFeedbackOut(Schema):
@@ -148,7 +153,7 @@ class ProjectReferenceOut(Schema):
 
 
 class ProjectSummaryOut(ProjectReferenceOut):
-    metadata: dict[str, Any]
+    metadata: JsonObject
     dataset_count: int
     created_at: datetime
     updated_at: datetime
@@ -163,7 +168,7 @@ class ProjectSectionReferenceOut(Schema):
 
 class ProjectSectionSummaryOut(ProjectSectionReferenceOut):
     project: ProjectReferenceOut | None = None
-    metadata: dict[str, Any]
+    metadata: JsonObject
     dataset_count: int
     created_at: datetime
     updated_at: datetime
@@ -182,7 +187,7 @@ class ProjectSectionListOut(Schema):
 class ProjectSectionCreateIn(Schema):
     name: str
     description: str | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: JsonObject | None = None
 
 
 class ProjectSectionUpdateIn(Schema):
@@ -220,7 +225,7 @@ class ProjectListOut(Schema):
 class ProjectCreateIn(Schema):
     name: str
     description: str | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: JsonObject | None = None
 
 
 class ProjectUpdateIn(Schema):
@@ -247,7 +252,7 @@ class ProjectArchiveOut(Schema):
 
 
 class ProjectMetadataPatchIn(Schema):
-    metadata: dict[str, Any]
+    metadata: JsonObject
 
 
 class ProjectMetadataOut(Schema):
@@ -261,14 +266,14 @@ class DatasetSummaryOut(Schema):
     name: str
     description: str
     instructions: str
-    metadata: dict[str, Any]
+    metadata: JsonObject
     project: ProjectReferenceOut | None = None
     section: ProjectSectionReferenceOut | None = None
     original_filename: str
     file_type: str
     status: str
     headers: list[str]
-    column_schema: dict[str, dict[str, Any]]
+    column_schema: ColumnSchema
     index_column: str
     index_generated: bool
     row_count: int
@@ -319,9 +324,9 @@ class DatasetCreateIn(Schema):
     name: str
     description: str | None = Field(default=None, max_length=MAX_DATASET_DESCRIPTION_LENGTH)
     instructions: str | None = Field(default=None, max_length=MAX_DATASET_INSTRUCTIONS_LENGTH)
-    metadata: dict[str, Any] | None = None
+    metadata: JsonObject | None = None
     headers: list[str] | None = None
-    rows: list[dict[str, Any]] = Field(
+    rows: list[DatasetRowInput] = Field(
         default_factory=list,
         max_length=MAX_API_DATASET_CREATE_ROWS,
     )
@@ -356,7 +361,7 @@ class DatasetColumnTypesOut(Schema):
 class DatasetMetadataPatchIn(Schema):
     description: str | None = Field(default=None, max_length=MAX_DATASET_DESCRIPTION_LENGTH)
     instructions: str | None = Field(default=None, max_length=MAX_DATASET_INSTRUCTIONS_LENGTH)
-    metadata: dict[str, Any] | None = None
+    metadata: JsonObject | None = None
 
 
 class DatasetMetadataOut(Schema):
@@ -367,7 +372,7 @@ class DatasetMetadataOut(Schema):
 
 class DatasetColumnAddIn(Schema):
     name: str
-    default_value: Any = ""
+    default_value: object = ""
     column_type: ColumnTypeIn | None = Field(
         default=None,
         description=COLUMN_TYPE_DESCRIPTION,
@@ -553,7 +558,7 @@ class DatasetRowsOut(Schema):
 
 class DatasetSearchIn(Schema):
     query: str = Field(..., min_length=1, max_length=1000)
-    filters: dict[str, Any] | None = None
+    filters: dict[str, object] | None = None
     limit: int = Field(default=10, ge=1, le=50)
 
 
@@ -561,7 +566,7 @@ class DatasetSearchResultOut(Schema):
     rank: int
     score: float
     row: DatasetRowOut
-    match: dict[str, Any]
+    match: dict[str, object]
 
 
 class DatasetSearchOut(Schema):
@@ -580,11 +585,11 @@ class ProfileRowSearchIn(Schema):
         max_length=1000,
         description="Natural language or keyword search text.",
     )
-    filters: dict[str, Any] | None = Field(
+    filters: dict[str, object] | None = Field(
         default=None,
         description="Optional row field filters. Datasets missing these headers are excluded.",
     )
-    filter_operators: dict[str, Any] | None = Field(
+    filter_operators: dict[str, object] | None = Field(
         default=None,
         description=(
             "Optional row filter operators keyed by header, such as contains, is, above, or below."
@@ -640,14 +645,14 @@ class ProfileRowSearchResultOut(Schema):
     score: float
     dataset: ProfileRowSearchDatasetOut
     row: DatasetRowOut
-    match: dict[str, Any]
+    match: dict[str, object]
 
 
 class ProfileRowSearchOut(Schema):
     query: str
     filters: RowFilters = Field(default_factory=dict)
     filter_operators: RowFilterOperators = Field(default_factory=dict)
-    dataset_filters: dict[str, Any] = Field(default_factory=dict)
+    dataset_filters: dict[str, object] = Field(default_factory=dict)
     sort: str
     direction: str
     limit: int
