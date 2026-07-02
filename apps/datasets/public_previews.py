@@ -1,7 +1,6 @@
 import hashlib
 from collections.abc import MutableMapping
 from dataclasses import dataclass
-from typing import Any
 
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
@@ -37,7 +36,7 @@ class PublicPreviewSettingsUpdate:
     password_changed: bool
 
     @property
-    def mutation_metadata(self) -> dict[str, Any]:
+    def mutation_metadata(self) -> dict[str, object]:
         return {
             "previous_public_enabled": self.previous_public_enabled,
             "public_enabled": self.public_enabled,
@@ -58,13 +57,13 @@ def public_preview_access_session_value(dataset: Dataset) -> str:
     return hashlib.sha256(public_preview.public_password_hash.encode()).hexdigest()
 
 
-def has_public_preview_access(session: MutableMapping[str, Any], dataset: Dataset) -> bool:
+def has_public_preview_access(session: MutableMapping[str, object], dataset: Dataset) -> bool:
     return not dataset.is_public_password_protected or session.get(
         public_preview_access_session_key(dataset)
     ) == public_preview_access_session_value(dataset)
 
 
-def grant_public_preview_access(session: MutableMapping[str, Any], dataset: Dataset) -> None:
+def grant_public_preview_access(session: MutableMapping[str, object], dataset: Dataset) -> None:
     session[public_preview_access_session_key(dataset)] = public_preview_access_session_value(
         dataset
     )

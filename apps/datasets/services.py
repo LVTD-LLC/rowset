@@ -7,11 +7,12 @@ import json
 import re
 import sqlite3
 import zipfile
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Protocol
 from urllib.parse import urlparse
 from uuid import UUID
 from xml.sax.saxutils import escape
@@ -66,11 +67,20 @@ class DatasetImageError(ValueError):
     pass
 
 
+class ProjectSectionGroupItem(Protocol):
+    id: int
+    name: str
+
+
+class ProjectDatasetGroupItem(Protocol):
+    section_id: int | None
+
+
 @dataclass(frozen=True)
 class _DatasetRowsQueryContext:
     dataset_id: int
     headers: list[str]
-    column_map: dict[str, dict[str, Any]]
+    column_map: dict[str, dict[str, object]]
     filters: dict[str, str]
     filter_operators: dict[str, str]
 
@@ -120,28 +130,27 @@ ROW_SEARCH_COLUMN_LIMIT = 20
 
 
 def project_section_dataset_groups(
-    sections: list[Any],
-    datasets: list[Any],
+    sections: Sequence[ProjectSectionGroupItem],
+    datasets: Sequence[ProjectDatasetGroupItem],
     *,
     unsectioned_dataset_count: int | None = None,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Group project datasets by active section, with unmatched datasets left unsectioned."""
-    section_ids = {cast(int | None, getattr(section, "id", None)) for section in sections}
-    datasets_by_section_id: dict[int | None, list[Any]] = {}
-    unsectioned_datasets = []
+    section_ids = {section.id for section in sections}
+    datasets_by_section_id: dict[int | None, list[ProjectDatasetGroupItem]] = {}
+    unsectioned_datasets: list[ProjectDatasetGroupItem] = []
 
     for dataset in datasets:
-        section_id = cast(int | None, getattr(dataset, "section_id", None))
-        if section_id in section_ids:
-            datasets_by_section_id.setdefault(section_id, []).append(dataset)
+        if dataset.section_id in section_ids:
+            datasets_by_section_id.setdefault(dataset.section_id, []).append(dataset)
         else:
             unsectioned_datasets.append(dataset)
 
-    groups = []
+    groups: list[dict[str, object]] = []
     for section in sections:
         section_datasets = datasets_by_section_id.get(section.id, [])
         dataset_count = getattr(section, "dataset_count", None)
-        if dataset_count is None:
+        if not isinstance(dataset_count, int):
             dataset_count = len(section_datasets)
         if not section_datasets and not dataset_count:
             continue
@@ -492,7 +501,7 @@ class TabularPreview:
     row_count: int
     source_text: str
     file_type: str
-    column_schema: dict[str, dict[str, Any]] = field(default_factory=dict)
+    column_schema: dict[str, dict[str, object]] = field(default_factory=dict)
 
     @property
     def text(self) -> str:
@@ -750,7 +759,7 @@ def infer_column_type(header: str, values: list[str]) -> str:
 def _infer_column_schema_from_samples(
     headers: list[str],
     column_samples: dict[str, list[str]],
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, dict[str, object]]:
     return {
         header: {COLUMN_SCHEMA_TYPE_KEY: infer_column_type(header, column_samples.get(header, []))}
         for header in headers
@@ -760,7 +769,7 @@ def _infer_column_schema_from_samples(
 def infer_column_schema(
     headers: list[str],
     rows: list[dict[str, str]],
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, dict[str, object]]:
     column_samples: dict[str, list[str]] = {header: [] for header in headers}
     for row in rows:
         _collect_column_samples(column_samples, row)
@@ -870,12 +879,12 @@ def _normalize_reference_target(header: str, raw_target) -> str:
     return normalized_target
 
 
-def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[str, Any]:
+def _normalize_column_schema_entry(header: str, entry, fallback_entry) -> dict[str, object]:
     raw_type = _column_type_from_schema_entry(entry, fallback_entry)
     if raw_type is None:
         raw_type = DatasetColumnType.TEXT
     column_type = normalize_column_type(raw_type)
-    normalized_entry: dict[str, Any] = {COLUMN_SCHEMA_TYPE_KEY: column_type}
+    normalized_entry: dict[str, object] = {COLUMN_SCHEMA_TYPE_KEY: column_type}
     description = _column_description_from_schema_entry(header, entry, fallback_entry)
     if description:
         normalized_entry[COLUMN_SCHEMA_DESCRIPTION_KEY] = description
@@ -949,7 +958,7 @@ def normalize_column_schema(
     *,
     fallback_schema: dict | None = None,
     reject_unknown: bool = False,
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, dict[str, object]]:
     raw_schema = column_schema or {}
     fallback = fallback_schema or {}
     if reject_unknown:
@@ -977,7 +986,7 @@ def normalize_column_schema(
 def column_definitions(
     headers: list[str],
     column_schema: dict | None,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     normalized_schema = normalize_column_schema(headers, column_schema)
     labels = dict(DatasetColumnType.choices)
     definitions = []
@@ -1024,14 +1033,6 @@ def _safe_image_filename(filename: str | None, content_type: str) -> str:
     return original[:255]
 
 
-def _image_save_kwargs(image_format: str) -> dict[str, Any]:
-    if image_format == "JPEG":
-        return {"format": image_format, "quality": 90, "optimize": True}
-    if image_format == "WEBP":
-        return {"format": image_format, "quality": 90, "method": 4}
-    return {"format": image_format, "optimize": True}
-
-
 def _rgb_image(image: Image.Image) -> Image.Image:
     if image.mode in {"RGBA", "LA"}:
         background = Image.new("RGB", image.size, (255, 255, 255))
@@ -1047,7 +1048,11 @@ def _encoded_image_bytes(image: Image.Image, image_format: str) -> bytes:
     output = io.BytesIO()
     if image_format == "JPEG":
         image = _rgb_image(image)
-    image.save(output, **_image_save_kwargs(image_format))
+        image.save(output, format=image_format, quality=90, optimize=True)
+    elif image_format == "WEBP":
+        image.save(output, format=image_format, quality=90, method=4)
+    else:
+        image.save(output, format=image_format, optimize=True)
     return output.getvalue()
 
 
@@ -1146,13 +1151,17 @@ def choice_constraints_from_schema(
         normalized_schema = column_schema or {}
     else:
         normalized_schema = normalize_column_schema(headers, column_schema)
-    constraints = {}
+    constraints: dict[str, list[str]] = {}
     for header in headers:
         schema_entry = normalized_schema.get(header, {})
         if not isinstance(schema_entry, dict):
             continue
         if schema_entry.get(COLUMN_SCHEMA_TYPE_KEY) == DatasetColumnType.CHOICE:
-            constraints[header] = schema_entry[COLUMN_SCHEMA_CHOICES_KEY]
+            choices = schema_entry.get(COLUMN_SCHEMA_CHOICES_KEY)
+            if isinstance(choices, list):
+                string_choices = [choice for choice in choices if isinstance(choice, str)]
+                if len(string_choices) == len(choices):
+                    constraints[header] = string_choices
     return constraints
 
 
@@ -1203,7 +1212,7 @@ def validate_choice_row_values(
 def invalid_choice_values_by_column(
     headers: list[str],
     column_schema: dict | None,
-    rows: list[dict] | Any,
+    rows: Iterable[Mapping[str, object] | None],
 ) -> dict[str, set[str]]:
     choice_columns = choice_constraints_from_schema(headers, column_schema)
     if not choice_columns:
@@ -1618,7 +1627,7 @@ def _dataset_rows_query_contexts(
                 dataset_id=dataset.id,
                 headers=dataset.headers,
                 column_map={
-                    column["name"]: column
+                    str(column["name"]): column
                     for column in column_definitions(dataset.headers, dataset.column_schema)
                 },
                 filters=normalized_filters,

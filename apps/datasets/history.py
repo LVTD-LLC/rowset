@@ -1,5 +1,3 @@
-from typing import Any
-
 from apps.core.models import AgentApiKey
 from apps.datasets.choices import DatasetMutationType
 from apps.datasets.model_typing import dataset_mutation_objects
@@ -14,7 +12,7 @@ def record_dataset_mutation(
     agent_api_key: AgentApiKey | None = None,
     target_type: str = "",
     target_identifier: str | int | None = "",
-    metadata: dict[str, Any] | None = None,
+    metadata: dict[str, object] | None = None,
 ) -> DatasetMutation:
     return dataset_mutation_objects().create(
         dataset=dataset,

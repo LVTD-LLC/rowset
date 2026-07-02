@@ -1,5 +1,3 @@
-from typing import Any
-
 from django.conf import settings
 from django.db import transaction
 from django_q.tasks import async_task
@@ -15,7 +13,7 @@ ROWSET_DATASET_CREATED = "rowset_dataset_created"
 ROWSET_DATASET_ROW_MUTATED = "rowset_dataset_row_mutated"
 
 
-def agent_api_key_tracking_properties(agent_api_key: AgentApiKey | None) -> dict[str, Any]:
+def agent_api_key_tracking_properties(agent_api_key: AgentApiKey | None) -> dict[str, object]:
     if agent_api_key is None:
         return {
             "agent_api_key_present": False,
@@ -32,7 +30,7 @@ def agent_api_key_tracking_properties(agent_api_key: AgentApiKey | None) -> dict
 def track_activation_event(
     profile: Profile,
     event_name: str,
-    properties: dict[str, Any] | None = None,
+    properties: dict[str, object] | None = None,
     *,
     source_function: str | None = None,
 ) -> str:

@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any
+from typing import Protocol
 
 from django.db import connection
 
@@ -34,18 +34,86 @@ ROW_MUTATION_TYPES = (
     DatasetMutationType.ROW_DELETED,
 )
 
+ColumnSchema = dict[str, object]
+ColumnSelection = list[str] | set[str] | None
+
+
+class RowDataValidator(Protocol):
+    def __call__(
+        self,
+        headers: list[str],
+        column_schema: ColumnSchema,
+        row_data: RowData,
+        *,
+        columns: ColumnSelection = None,
+    ) -> None: ...
+
+
+class ImageRowDataValidator(Protocol):
+    def __call__(
+        self,
+        headers: list[str],
+        column_schema: ColumnSchema,
+        row_data: RowData,
+        *,
+        columns: ColumnSelection = None,
+        allow_asset_refs: bool = False,
+    ) -> None: ...
+
+
+class ReferenceRowDataNormalizer(Protocol):
+    def __call__(
+        self,
+        profile: Profile,
+        headers: list[str],
+        column_schema: ColumnSchema,
+        row_data: RowData,
+        *,
+        columns: ColumnSelection = None,
+    ) -> RowData: ...
+
+
+class RelationshipRowDataValidator(Protocol):
+    def __call__(
+        self,
+        dataset: Dataset,
+        row_data: RowData,
+        *,
+        columns: ColumnSelection = None,
+    ) -> None: ...
+
+
+class DatasetRowSerializer(Protocol):
+    def __call__(
+        self,
+        row: DatasetRow,
+        *,
+        dataset: Dataset | None = None,
+    ) -> dict[str, object]: ...
+
+
+class TrackActivationEvent(Protocol):
+    def __call__(
+        self,
+        profile: Profile,
+        event_name: str,
+        properties: dict[str, object] | None = None,
+        *,
+        source_function: str | None = None,
+    ) -> str: ...
+
 
 @dataclass(frozen=True)
 class RowMutationHooks:
-    validate_choice_row_data: Callable[..., Any]
-    validate_image_row_data: Callable[..., Any]
-    normalize_reference_row_data: Callable[..., dict[str, str]]
-    validate_relationship_row_data: Callable[..., Any]
+    validate_choice_row_data: RowDataValidator
+    validate_image_row_data: ImageRowDataValidator
+    normalize_reference_row_data: ReferenceRowDataNormalizer
+    validate_relationship_row_data: RelationshipRowDataValidator
     raise_if_target_row_is_referenced: Callable[[Dataset, str], None]
-    serialize_dataset_row: Callable[..., dict]
+    serialize_dataset_row: DatasetRowSerializer
     enqueue_dataset_row_vector_index: Callable[[int], None]
     enqueue_dataset_row_vector_delete: Callable[[int, list[int]], None]
-    track_activation_event: Callable[..., Any]
+    track_activation_event: TrackActivationEvent
 
 
 def normalize_row_ids(row_ids: Iterable[int | str]) -> list[int]:
@@ -520,7 +588,7 @@ def track_dataset_row_mutation(
     deleted_count: int = 0,
     index_changed: bool = False,
     image_asset_attached: bool = False,
-    track_activation_event_func: Callable[..., Any],
+    track_activation_event_func: TrackActivationEvent,
 ) -> None:
     dataset_fields = dataset_row_mutation_dataset_fields(dataset)
     track_activation_event_func(

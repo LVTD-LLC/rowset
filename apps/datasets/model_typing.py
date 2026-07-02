@@ -84,7 +84,7 @@ class DatasetRowIdentity(Protocol):
 class DatasetRowMutationDatasetFields(Protocol):
     id: int
     headers: list[str]
-    column_schema: dict[str, object] | None
+    column_schema: dict[str, object]
     index_column: str
     index_generated: bool
     row_count: int
@@ -95,7 +95,7 @@ class DatasetRowMutationDatasetFields(Protocol):
 class DatasetImportTaskFields(Protocol):
     id: int
     key: object
-    column_schema: dict[str, object] | None
+    column_schema: dict[str, object]
     file_type: str
     headers: list[str]
     index_column: str

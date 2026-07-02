@@ -195,7 +195,7 @@ def track_event(
     profile_state = profile_state_fields(profile)
     user = profile_user(profile)
     posthog.capture(
-        event_name,
+        event=event_name,
         distinct_id=str(model_id(profile)),
         properties={
             "profile_id": model_id(profile),
@@ -235,7 +235,7 @@ def track_activation_event(
     profile_state = profile_state_fields(profile)
     user = profile_user(profile)
     posthog.capture(
-        event_name,
+        event=event_name,
         distinct_id=str(model_id(profile)),
         properties={
             "profile_id": model_id(profile),

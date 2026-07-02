@@ -3,7 +3,6 @@ import re
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -39,7 +38,7 @@ class DatasetRowSearchDocument:
     point_id: str
     text: str
     content_hash: str
-    payload: dict[str, Any]
+    payload: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -54,7 +53,7 @@ class DatasetRowVector:
 class DatasetRowVectorSearchHit:
     point_id: str
     score: float
-    payload: dict[str, Any]
+    payload: dict[str, object]
 
 
 def _slug(value: str, *, fallback: str) -> str:
@@ -97,13 +96,13 @@ def get_qdrant_client() -> QdrantClient:
     if not qdrant_is_configured():
         raise ImproperlyConfigured("QDRANT_URL must be configured before using vector search.")
 
-    kwargs: dict[str, Any] = {
-        "url": settings.QDRANT_URL,
-        "timeout": settings.QDRANT_TIMEOUT_SECONDS,
-    }
     if settings.QDRANT_API_KEY:
-        kwargs["api_key"] = settings.QDRANT_API_KEY
-    return QdrantClient(**kwargs)
+        return QdrantClient(
+            url=settings.QDRANT_URL,
+            timeout=settings.QDRANT_TIMEOUT_SECONDS,
+            api_key=settings.QDRANT_API_KEY,
+        )
+    return QdrantClient(url=settings.QDRANT_URL, timeout=settings.QDRANT_TIMEOUT_SECONDS)
 
 
 def _is_qdrant_collection_exists_error(exc: UnexpectedResponse) -> bool:
@@ -112,7 +111,7 @@ def _is_qdrant_collection_exists_error(exc: UnexpectedResponse) -> bool:
     return "already exists" in str(exc).lower()
 
 
-def _payload_match(key: str, value: Any) -> qdrant_models.FieldCondition:
+def _payload_match(key: str, value: int | str) -> qdrant_models.FieldCondition:
     return qdrant_models.FieldCondition(
         key=key,
         match=qdrant_models.MatchValue(value=value),
