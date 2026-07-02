@@ -486,15 +486,6 @@ def submit_profile_feedback(
         dataset = _configured_feedback_dataset()
         if dataset is None:
             target_profile = profile
-            if target_profile is None:
-                queue_feedback_notification(feedback_record)
-                return FeedbackSubmissionResult(
-                    feedback=feedback_record,
-                    dataset=None,
-                    row=None,
-                    row_url="",
-                )
-
             Profile.objects.select_for_update().only("id").get(id=target_profile.id)
             project = _get_or_create_feedback_project(target_profile)
             section = _get_or_create_feedback_section(target_profile, project)
