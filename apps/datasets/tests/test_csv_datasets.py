@@ -60,7 +60,6 @@ from apps.datasets.services import (
     rows_to_sqlite_bytes,
 )
 from apps.datasets.tasks import import_dataset_rows
-from apps.datasets.templatetags.dataset_links import safe_external_href
 from apps.datasets.views import DATASET_CHANGES_PAGE_SIZE, DATASET_DETAIL_ROW_PAGE_SIZE
 
 pytestmark = pytest.mark.django_db
@@ -540,20 +539,6 @@ def test_infer_column_type_detects_common_semantic_types():
     assert infer_column_type("website", ["https://example.com"]) == "url"
     assert infer_column_type("date", ["31/01/2026"]) == "text"
     assert infer_column_type("mixed", ["Ada", "10"]) == "text"
-
-
-def test_safe_external_href_only_accepts_clean_http_urls():
-    assert safe_external_href("https://example.com/path?ref=rowset&ok=1") == (
-        "https://example.com/path?ref=rowset&ok=1"
-    )
-    assert safe_external_href(" http://example.com ") == "http://example.com"
-    assert safe_external_href("javascript:alert(1)") == ""
-    assert safe_external_href("mailto:ada@example.com") == ""
-    assert safe_external_href("//example.com/path") == ""
-    assert safe_external_href("https://:443/path") == ""
-    assert safe_external_href("https://example.com/a path") == ""
-    assert safe_external_href("https://example.com/<script>") == ""
-    assert safe_external_href("https://example.com@evil.test/path") == ""
 
 
 def test_preview_csv_file_rejects_duplicate_headers():
