@@ -40,6 +40,7 @@ def test_submit_profile_feedback_creates_feedback_dataset_row(
         "tool": "submit_feedback",
         "category": "exports",
         "rowset_row_url": result.row_url,
+        "feedback_owner_email": "testuser@example.com",
     }
     assert result.dataset == dataset
     assert result.row == row
