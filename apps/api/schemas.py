@@ -12,8 +12,14 @@ from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
 )
+from apps.datasets.types import (
+    ColumnSchema,
+    ColumnTypeSpec,
+    DatasetRowInput,
+    JsonObject,
+)
 
-ColumnTypeIn = str | dict[str, Any]
+ColumnTypeIn = ColumnTypeSpec
 COLUMN_TYPE_DESCRIPTION = (
     "Semantic column type string or metadata object. Metadata supports type, "
     "description, image columns, choice columns with choices, and reference columns with "
@@ -24,7 +30,7 @@ COLUMN_TYPE_DESCRIPTION = (
 class SubmitFeedbackIn(Schema):
     feedback: str = Field(..., min_length=1, max_length=2000)
     page: str = Field("", max_length=255)
-    context: dict[str, Any] | None = None
+    context: JsonObject | None = None
 
 
 class SubmitFeedbackOut(Schema):
@@ -148,7 +154,7 @@ class ProjectReferenceOut(Schema):
 
 
 class ProjectSummaryOut(ProjectReferenceOut):
-    metadata: dict[str, Any]
+    metadata: JsonObject
     dataset_count: int
     created_at: datetime
     updated_at: datetime
@@ -163,7 +169,7 @@ class ProjectSectionReferenceOut(Schema):
 
 class ProjectSectionSummaryOut(ProjectSectionReferenceOut):
     project: ProjectReferenceOut | None = None
-    metadata: dict[str, Any]
+    metadata: JsonObject
     dataset_count: int
     created_at: datetime
     updated_at: datetime
@@ -182,7 +188,7 @@ class ProjectSectionListOut(Schema):
 class ProjectSectionCreateIn(Schema):
     name: str
     description: str | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: JsonObject | None = None
 
 
 class ProjectSectionUpdateIn(Schema):
@@ -220,7 +226,7 @@ class ProjectListOut(Schema):
 class ProjectCreateIn(Schema):
     name: str
     description: str | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: JsonObject | None = None
 
 
 class ProjectUpdateIn(Schema):
@@ -247,7 +253,7 @@ class ProjectArchiveOut(Schema):
 
 
 class ProjectMetadataPatchIn(Schema):
-    metadata: dict[str, Any]
+    metadata: JsonObject
 
 
 class ProjectMetadataOut(Schema):
@@ -261,14 +267,14 @@ class DatasetSummaryOut(Schema):
     name: str
     description: str
     instructions: str
-    metadata: dict[str, Any]
+    metadata: JsonObject
     project: ProjectReferenceOut | None = None
     section: ProjectSectionReferenceOut | None = None
     original_filename: str
     file_type: str
     status: str
     headers: list[str]
-    column_schema: dict[str, dict[str, Any]]
+    column_schema: ColumnSchema
     index_column: str
     index_generated: bool
     row_count: int
@@ -319,9 +325,9 @@ class DatasetCreateIn(Schema):
     name: str
     description: str | None = Field(default=None, max_length=MAX_DATASET_DESCRIPTION_LENGTH)
     instructions: str | None = Field(default=None, max_length=MAX_DATASET_INSTRUCTIONS_LENGTH)
-    metadata: dict[str, Any] | None = None
+    metadata: JsonObject | None = None
     headers: list[str] | None = None
-    rows: list[dict[str, Any]] = Field(
+    rows: list[DatasetRowInput] = Field(
         default_factory=list,
         max_length=MAX_API_DATASET_CREATE_ROWS,
     )
@@ -356,7 +362,7 @@ class DatasetColumnTypesOut(Schema):
 class DatasetMetadataPatchIn(Schema):
     description: str | None = Field(default=None, max_length=MAX_DATASET_DESCRIPTION_LENGTH)
     instructions: str | None = Field(default=None, max_length=MAX_DATASET_INSTRUCTIONS_LENGTH)
-    metadata: dict[str, Any] | None = None
+    metadata: JsonObject | None = None
 
 
 class DatasetMetadataOut(Schema):

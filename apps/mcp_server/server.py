@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from django.db import IntegrityError, close_old_connections
 from fastmcp import FastMCP
@@ -73,13 +73,13 @@ from apps.core.services import (
     serialize_feedback_submission_result,
     submit_profile_feedback,
 )
+from apps.datasets.types import ColumnTypeSpec, DatasetRowInput, JsonObject
 from apps.mcp_server.auth import mcp_auth
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
 AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
-ColumnTypeSpec = str | dict[str, Any]
 RETRYABLE_ERROR_CODES = {
     "DATASET_NOT_READY",
     "RATE_LIMITED",
@@ -130,6 +130,18 @@ def _agent_actor_kwargs(profile: Profile) -> dict:
     return {"agent_api_key": agent_api_key}
 
 
+def _profile_objects() -> Any:
+    return cast(Any, Profile).objects
+
+
+def _agent_api_key_objects() -> Any:
+    return cast(Any, AgentApiKey).objects
+
+
+ProfileDoesNotExist = cast(type[Exception], cast(Any, Profile).DoesNotExist)
+AgentApiKeyDoesNotExist = cast(type[Exception], cast(Any, AgentApiKey).DoesNotExist)
+
+
 def _authenticate_profile(api_key: str | None = None) -> Profile:
     token_profile = _get_access_token_profile()
     if token_profile is not None:
@@ -161,8 +173,8 @@ def _get_access_token_profile() -> Profile | None:
         return None
 
     try:
-        profile = Profile.objects.select_related("user").get(id=profile_id)
-    except (Profile.DoesNotExist, ValueError) as exc:
+        profile = _profile_objects().select_related("user").get(id=profile_id)
+    except (ProfileDoesNotExist, ValueError) as exc:
         logger.warning("[MCP] API-key token profile could not be resolved", error=str(exc))
         return None
 
@@ -170,12 +182,12 @@ def _get_access_token_profile() -> Profile | None:
     agent_api_key_id = claims.get("agent_api_key_id")
     if agent_api_key_id:
         try:
-            agent_api_key = AgentApiKey.objects.get(
+            agent_api_key = _agent_api_key_objects().get(
                 id=agent_api_key_id,
                 profile=profile,
                 revoked_at__isnull=True,
             )
-        except (AgentApiKey.DoesNotExist, ValueError) as exc:
+        except (AgentApiKeyDoesNotExist, ValueError) as exc:
             logger.warning(
                 "[MCP] OAuth token agent API key could not be resolved",
                 error=str(exc),
@@ -711,7 +723,7 @@ def create_project(
         Field(default=None, description="Optional project description."),
     ] = None,
     metadata: Annotated[
-        dict[str, Any] | None,
+        JsonObject | None,
         Field(
             default=None,
             description=(
@@ -777,7 +789,7 @@ def create_project_section(
         Field(default=None, description="Optional section description."),
     ] = None,
     metadata: Annotated[
-        dict[str, Any] | None,
+        JsonObject | None,
         Field(
             default=None,
             description="Optional JSON object for arbitrary section metadata.",
@@ -874,7 +886,7 @@ def update_project(
 def update_project_metadata(
     project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
     metadata: Annotated[
-        dict[str, Any],
+        JsonObject,
         Field(
             description=(
                 "Replacement JSON object for arbitrary project metadata. Pass {} to clear it."
@@ -995,7 +1007,7 @@ def create_dataset(
         ),
     ] = None,
     metadata: Annotated[
-        dict[str, Any] | None,
+        JsonObject | None,
         Field(
             default=None,
             description=(
@@ -1014,7 +1026,7 @@ def create_dataset(
         ),
     ] = None,
     rows: Annotated[
-        list[dict[str, Any]] | None,
+        list[DatasetRowInput] | None,
         Field(
             default=None,
             max_length=MAX_API_DATASET_CREATE_ROWS,
@@ -1123,7 +1135,7 @@ def update_dataset_metadata(
         ),
     ] = None,
     metadata: Annotated[
-        dict[str, Any] | None,
+        JsonObject | None,
         Field(
             default=None,
             description=(
@@ -1135,7 +1147,7 @@ def update_dataset_metadata(
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
-    updates = {}
+    updates: dict[str, Any] = {}
     if description is not None:
         updates["description"] = description
     if instructions is not None:
