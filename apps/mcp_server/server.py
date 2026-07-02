@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, TypedDict
+from typing import Annotated
 
 from django.db import IntegrityError, close_old_connections
 from fastmcp import FastMCP
@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from pydantic import Field
 
-from apps.api.row_contracts import RowData, RowFilterOperators, RowFilters
+from apps.api.row_contracts import RowFilterOperators, RowFilters
 from apps.api.services import (
     MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
@@ -62,13 +62,6 @@ from apps.core.analytics import (
 )
 from apps.core.capabilities import rowset_capabilities_payload
 from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
-from apps.core.model_typing import (
-    AgentApiKeyDoesNotExist,
-    ProfileDoesNotExist,
-    agent_api_key_objects,
-    profile_id,
-    profile_objects,
-)
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import (
     create_agent_api_key as create_agent_api_key_credential,
@@ -92,16 +85,6 @@ RETRYABLE_ERROR_CODES = {
     "RATE_LIMITED",
     "ROWSET_SERVICE_ERROR",
 }
-
-
-class AgentActorKwargs(TypedDict, total=False):
-    agent_api_key: AgentApiKey
-
-
-class DatasetMetadataUpdateKwargs(AgentActorKwargs, total=False):
-    description: str
-    instructions: str
-    metadata: JsonObject
 
 
 mcp = FastMCP(
@@ -141,7 +124,7 @@ def _attach_agent_api_key(
     return profile
 
 
-def _agent_actor_kwargs(profile: Profile) -> AgentActorKwargs:
+def _agent_actor_kwargs(profile: Profile) -> dict[str, AgentApiKey]:
     agent_api_key = getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None)
     if agent_api_key is None:
         return {}
@@ -179,8 +162,8 @@ def _get_access_token_profile() -> Profile | None:
         return None
 
     try:
-        profile = profile_objects().select_related("user").get(id=profile_identifier)
-    except (ProfileDoesNotExist, ValueError) as exc:
+        profile = Profile.objects.select_related("user").get(id=profile_identifier)
+    except (Profile.DoesNotExist, ValueError) as exc:
         logger.warning("[MCP] API-key token profile could not be resolved", error=str(exc))
         return None
 
@@ -188,17 +171,17 @@ def _get_access_token_profile() -> Profile | None:
     agent_api_key_id = claims.get("agent_api_key_id")
     if agent_api_key_id:
         try:
-            agent_api_key = agent_api_key_objects().get(
+            agent_api_key = AgentApiKey.objects.get(
                 id=agent_api_key_id,
                 profile=profile,
                 revoked_at__isnull=True,
             )
-        except (AgentApiKeyDoesNotExist, ValueError) as exc:
+        except (AgentApiKey.DoesNotExist, ValueError) as exc:
             logger.warning(
                 "[MCP] OAuth token agent API key could not be resolved",
                 error=str(exc),
                 agent_api_key_id=agent_api_key_id,
-                profile_id=profile_id(profile),
+                profile_id=profile.id,
             )
             raise PermissionError(
                 "The Rowset agent API key for this token is no longer active."
@@ -1153,7 +1136,7 @@ def update_dataset_metadata(
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
-    updates: DatasetMetadataUpdateKwargs = {}
+    updates = {}
     if description is not None:
         updates["description"] = description
     if instructions is not None:
@@ -1801,7 +1784,7 @@ def get_dataset_row_by_index(
 )
 def create_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
-    data: Annotated[RowData, Field(description="Row values keyed by dataset header.")],
+    data: Annotated[DatasetRowInput, Field(description="Row values keyed by dataset header.")],
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
@@ -1904,7 +1887,7 @@ def get_dataset_image_asset(
 def update_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     row_id: Annotated[int, Field(ge=1, description="Internal Rowset row id.")],
-    data: Annotated[RowData, Field(description="Header values to update on the row.")],
+    data: Annotated[DatasetRowInput, Field(description="Header values to update on the row.")],
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
@@ -1927,7 +1910,7 @@ def update_dataset_row(
 def update_dataset_row_by_index(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     index_value: Annotated[str, Field(description="Value from the dataset index column.")],
-    data: Annotated[RowData, Field(description="Header values to update on the row.")],
+    data: Annotated[DatasetRowInput, Field(description="Header values to update on the row.")],
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)

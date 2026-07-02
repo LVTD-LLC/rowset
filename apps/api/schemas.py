@@ -471,11 +471,11 @@ class DatasetArchiveOut(Schema):
 
 
 class DatasetRowIn(Schema):
-    data: RowData
+    data: DatasetRowInput
 
 
 class DatasetRowPatchIn(Schema):
-    data: RowData
+    data: DatasetRowInput
 
 
 class DatasetAssetOut(Schema):

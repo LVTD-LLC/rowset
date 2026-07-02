@@ -4,7 +4,6 @@ from asgiref.sync import sync_to_async
 from django.db import close_old_connections
 from fastmcp.server.auth import AccessToken, AuthProvider
 
-from apps.core.model_typing import agent_api_key_id, profile_id, profile_user
 from apps.core.services import resolve_api_key_profile
 from rowset.utils import build_absolute_public_url
 
@@ -45,16 +44,16 @@ class RowsetApiKeyAuthProvider(AuthProvider):
         client_id = (
             AGENT_API_KEY_CLIENT_ID if agent_api_key is not None else LEGACY_API_KEY_CLIENT_ID
         )
-        resolved_profile_id = profile_id(profile)
+        resolved_profile_id = profile.id
         claims = {
             "iss": build_mcp_base_url(),
             "sub": str(resolved_profile_id),
             "profile_id": resolved_profile_id,
-            "email": profile_user(profile).email,
+            "email": profile.user.email,
             "legacy_api_key": agent_api_key is None,
         }
         if agent_api_key is not None:
-            claims["agent_api_key_id"] = agent_api_key_id(agent_api_key)
+            claims["agent_api_key_id"] = agent_api_key.id
             claims["agent_api_key_name"] = agent_api_key.name
             claims["agent_api_key_access_level"] = agent_api_key.access_level
 
