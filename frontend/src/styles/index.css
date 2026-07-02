@@ -85,6 +85,20 @@
     @apply rounded-md border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:border-emerald-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus-visible:ring-offset-slate-950;
   }
 
+  .htmx-indicator {
+    @apply opacity-0 transition-opacity duration-150 ease-out;
+  }
+
+  .htmx-request .htmx-indicator,
+  .htmx-request.htmx-indicator {
+    @apply opacity-100;
+  }
+
+  .command-palette-result.is-active,
+  .command-palette-result[aria-selected="true"] {
+    @apply bg-slate-100 dark:bg-slate-900;
+  }
+
   .fb-segmented-control {
     @apply flex w-full rounded-lg border border-slate-300 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-900;
   }

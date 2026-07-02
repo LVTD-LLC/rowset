@@ -29,6 +29,22 @@
     <div class="ml-auto hidden items-center gap-2 md:flex">
       {% if user.is_authenticated %}
         {% if nav_variant == 'app' %}
+          <button
+            type="button"
+            data-command-palette-trigger
+            class="fb-focus flex h-10 w-64 items-center justify-between gap-3 rounded-md border border-slate-300 bg-white px-3 text-left text-sm text-slate-500 transition hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+            aria-label="Search rows, datasets, and projects"
+            aria-keyshortcuts="Meta+K Control+K"
+          >
+            <span class="flex min-w-0 items-center gap-2">
+              <svg class="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35" />
+                <circle cx="11" cy="11" r="7" />
+              </svg>
+              <span class="truncate">Search data</span>
+            </span>
+            <kbd class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400" data-command-palette-shortcut>Cmd K</kbd>
+          </button>
           <form method="post" action="{% url 'account_logout' %}">
             {% csrf_token %}
             <button type="submit" class="fb-button-secondary">Sign out</button>
@@ -42,8 +58,23 @@
       {% endif %}
     </div>
 
+    {% if nav_variant == 'app' and user.is_authenticated %}
+      <button
+        type="button"
+        data-command-palette-trigger
+        class="fb-focus ml-auto inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 md:hidden"
+        aria-label="Search rows, datasets, and projects"
+        aria-keyshortcuts="Meta+K Control+K"
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35" />
+          <circle cx="11" cy="11" r="7" />
+        </svg>
+      </button>
+    {% endif %}
+
     <div
-      class="ml-auto md:hidden"
+      class="{% if nav_variant == 'app' and user.is_authenticated %}md:hidden{% else %}ml-auto md:hidden{% endif %}"
       x-data="{ open: false }"
       @keydown.escape.window="open = false"
       @click.outside="open = false"

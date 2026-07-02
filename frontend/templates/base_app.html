@@ -121,6 +121,10 @@
       </main>
 
       {% include 'components/site_footer.html' with nav_variant='app' %}
+
+      {% if request.user.is_authenticated %}
+        {% include 'components/command_palette.html' %}
+      {% endif %}
     </div>
 
     {% include 'components/chatwoot.html' %} {% block schema %}
