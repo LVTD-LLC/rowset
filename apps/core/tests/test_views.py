@@ -2,9 +2,12 @@ from types import SimpleNamespace
 
 import pytest
 from allauth.account.models import EmailAddress
+from django.contrib import messages as message_constants
+from django.contrib.messages import get_messages
 from django.db import IntegrityError, transaction
 from django.test import override_settings
-from django.urls import reverse
+from django.urls import path, reverse
+from django.views.generic import TemplateView
 
 from apps.core import agent_skill
 from apps.core.models import Profile
@@ -13,6 +16,20 @@ from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_custo
 from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project
 from rowset.utils import build_absolute_public_url
+
+
+def _broken_view(_request):
+    raise RuntimeError("boom")
+
+
+urlpatterns = [
+    path("", TemplateView.as_view(), name="landing"),
+    path("home", TemplateView.as_view(), name="home"),
+    path("broken/", _broken_view, name="broken"),
+    path("api/broken/", _broken_view, name="api_broken"),
+]
+
+handler500 = "apps.core.views.server_error"
 
 
 @pytest.mark.django_db
@@ -49,6 +66,46 @@ def test_get_or_create_stripe_customer_retrieve_passes_stripe_context(profile, m
 
     assert customer.id == "cus_existing"
     assert calls == [("cus_existing", {"stripe_context": "acct_test"})]
+
+
+@pytest.mark.django_db
+@override_settings(ROOT_URLCONF=__name__, DEBUG=False)
+def test_server_error_redirects_authenticated_browser_requests_to_home(auth_client):
+    auth_client.raise_request_exception = False
+
+    response = auth_client.get("/broken/")
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("home")
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == "Something went wrong. You have been redirected home."
+
+
+@override_settings(ROOT_URLCONF=__name__, DEBUG=False)
+def test_server_error_redirects_anonymous_browser_requests_to_landing(client):
+    client.raise_request_exception = False
+
+    response = client.get("/broken/")
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("landing")
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == "Something went wrong. You have been redirected home."
+
+
+@pytest.mark.django_db
+@override_settings(ROOT_URLCONF=__name__, DEBUG=False)
+def test_server_error_preserves_api_500_responses(auth_client):
+    auth_client.raise_request_exception = False
+
+    response = auth_client.get("/api/broken/")
+
+    assert response.status_code == 500
+    assert response["Content-Type"].startswith("text/html")
 
 
 @pytest.mark.django_db

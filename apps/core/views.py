@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.messages.api import MessageFailure
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
@@ -22,7 +23,9 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
+from django.views.defaults import server_error as default_server_error
 from django.views.generic import TemplateView, UpdateView
+from django_htmx.http import HttpResponseClientRedirect
 
 from apps.core.agent_skill import (
     ROWSET_AGENT_SETUP_INSTRUCTIONS,
@@ -51,6 +54,35 @@ logger = get_rowset_logger(__name__)
 
 AGENT_API_KEY_MASK = "***"
 CREATED_AGENT_API_KEY_QUERY_PARAM = "created_agent_api_key"
+SERVER_ERROR_REDIRECT_MESSAGE = "Something went wrong. You have been redirected home."
+PROGRAMMATIC_ERROR_PATH_PREFIXES = ("/api", "/mcp")
+
+
+def _is_programmatic_error_request(request: HttpRequest) -> bool:
+    path = request.path_info or request.path
+    if any(
+        path == prefix or path.startswith(f"{prefix}/")
+        for prefix in PROGRAMMATIC_ERROR_PATH_PREFIXES
+    ):
+        return True
+
+    accept = request.headers.get("Accept", "")
+    return bool(accept and "text/html" not in accept and "*/*" not in accept)
+
+
+def server_error(request: HttpRequest):
+    if _is_programmatic_error_request(request):
+        return default_server_error(request)
+
+    target_url = reverse("home" if request.user.is_authenticated else "landing")
+    try:
+        messages.error(request, SERVER_ERROR_REDIRECT_MESSAGE)
+    except MessageFailure:
+        pass
+
+    if getattr(request, "htmx", False):
+        return HttpResponseClientRedirect(target_url)
+    return redirect(target_url)
 
 
 def stripe_request_options():
