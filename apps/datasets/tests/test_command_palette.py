@@ -17,7 +17,7 @@ def test_authenticated_app_shell_includes_command_palette(auth_client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert 'data-command-palette-trigger' in content
+    assert "data-command-palette-trigger" in content
     assert 'id="command-palette-query"' in content
     assert reverse("command_palette_search") in content
 
