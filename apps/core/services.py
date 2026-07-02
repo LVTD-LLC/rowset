@@ -35,6 +35,7 @@ MAX_FEEDBACK_LENGTH = 2000
 MAX_FEEDBACK_PAGE_LENGTH = 255
 MAX_FEEDBACK_METADATA_BYTES = 8000
 logger = get_rowset_logger(__name__)
+FEEDBACK_DATASET_KEY = "021e385f-83e4-4e3a-a6e0-883530222f6d"
 FEEDBACK_PROJECT_NAME = "Rowset"
 FEEDBACK_SECTION_NAME = "CX"
 FEEDBACK_DATASET_NAME = "Feedback"
@@ -66,7 +67,6 @@ FEEDBACK_DATASET_METADATA = {
     }
 }
 FEEDBACK_ROW_URL_METADATA_KEY = "rowset_row_url"
-FEEDBACK_OWNER_EMAIL_METADATA_KEY = "feedback_owner_email"
 AGENT_API_KEY_ACCESS_LEVEL_ORDER = {
     AgentApiKeyAccessLevel.READ: 0,
     AgentApiKeyAccessLevel.READ_WRITE: 1,
@@ -253,29 +253,20 @@ def _feedback_dataset_row_data(
     }
 
 
-def _feedback_owner_profile(submitter_profile: Profile | None) -> Profile | None:
-    owner_email = str(getattr(settings, "ROWSET_FEEDBACK_OWNER_EMAIL", "") or "").strip()
-    if not owner_email:
-        return submitter_profile
-
-    owner_profile = (
-        Profile.objects.select_related("user")
-        .filter(user__email__iexact=owner_email)
-        .order_by("id")
+def _configured_feedback_dataset() -> Dataset | None:
+    dataset = (
+        Dataset.objects.select_related("profile")
+        .filter(key=FEEDBACK_DATASET_KEY, archived_at__isnull=True)
         .first()
     )
-    if owner_profile is not None:
-        return owner_profile
+    if dataset is None:
+        if getattr(settings, "ENVIRONMENT", "") == "prod":
+            raise DatasetServiceError(503, "Feedback dataset is not configured.")
+        return None
 
-    if getattr(settings, "ENVIRONMENT", "") == "prod":
-        raise DatasetServiceError(503, "Feedback dataset owner is not configured.")
-
-    logger.warning(
-        "Falling back to submitter profile for feedback dataset because owner was not found",
-        owner_email=owner_email,
-        submitter_profile_id=submitter_profile.id if submitter_profile else None,
-    )
-    return submitter_profile
+    if not _is_feedback_dataset_compatible(dataset):
+        raise DatasetServiceError(409, "Feedback dataset schema is incompatible.")
+    return dataset
 
 
 def get_or_create_profile_for_user(user) -> Profile:
@@ -492,27 +483,33 @@ def submit_profile_feedback(
         )
 
     with transaction.atomic():
-        owner_profile = _feedback_owner_profile(profile)
-        if owner_profile is None:
-            queue_feedback_notification(feedback_record)
-            return FeedbackSubmissionResult(
-                feedback=feedback_record,
-                dataset=None,
-                row=None,
-                row_url="",
-            )
+        dataset = _configured_feedback_dataset()
+        if dataset is None:
+            target_profile = profile
+            if target_profile is None:
+                queue_feedback_notification(feedback_record)
+                return FeedbackSubmissionResult(
+                    feedback=feedback_record,
+                    dataset=None,
+                    row=None,
+                    row_url="",
+                )
 
-        Profile.objects.select_for_update().only("id").get(id=owner_profile.id)
-        project = _get_or_create_feedback_project(owner_profile)
-        section = _get_or_create_feedback_section(owner_profile, project)
-        dataset = _get_or_create_feedback_dataset(
-            owner_profile,
-            project,
-            section,
-            agent_api_key=agent_api_key,
-        )
+            Profile.objects.select_for_update().only("id").get(id=target_profile.id)
+            project = _get_or_create_feedback_project(target_profile)
+            section = _get_or_create_feedback_section(target_profile, project)
+            dataset = _get_or_create_feedback_dataset(
+                target_profile,
+                project,
+                section,
+                agent_api_key=agent_api_key,
+            )
+        else:
+            target_profile = dataset.profile
+            Profile.objects.select_for_update().only("id").get(id=target_profile.id)
+
         row_result = create_profile_dataset_row(
-            owner_profile,
+            target_profile,
             str(dataset.key),
             _feedback_dataset_row_data(feedback_record, normalized_source, context_text),
             agent_api_key=agent_api_key,
@@ -522,7 +519,6 @@ def submit_profile_feedback(
         feedback_record.metadata = {
             **normalized_metadata,
             FEEDBACK_ROW_URL_METADATA_KEY: row_url,
-            FEEDBACK_OWNER_EMAIL_METADATA_KEY: owner_profile.user.email,
         }
         feedback_record.save(update_fields=["metadata", "updated_at"])
         queue_feedback_notification(feedback_record)

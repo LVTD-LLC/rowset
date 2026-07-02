@@ -405,7 +405,6 @@ def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model
         "tool": "get_rowset_capabilities",
         "category": "docs",
         "rowset_row_url": payload["row_url"],
-        "feedback_owner_email": "feedback-mcp-user@example.com",
     }
     assert dataset.project.name == "Rowset"
     assert dataset.section.name == "CX"

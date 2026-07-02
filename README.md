@@ -598,7 +598,6 @@ on local disk.
 | `MAILGUN_API_KEY` | Enables Mailgun transactional email. Empty uses console email fallback outside local SMTP. |
 | `MAILGUN_SENDER_DOMAIN` | Optional Mailgun sender domain. Defaults to `mg.lvtd.dev` in settings. |
 | `BUTTONDOWN_API_KEY` | Optional Buttondown integration. |
-| `ROWSET_FEEDBACK_OWNER_EMAIL` | Email address whose Rowset/CX/Feedback dataset receives product feedback submitted by browser, REST, and MCP clients. Defaults to `rasul@lvtd.dev`. |
 | `ROWSET_FEEDBACK_APPRISE_URLS` | Optional comma-separated Apprise URLs for feedback notifications. |
 | `ROWSET_FEEDBACK_APPRISE_TITLE` | Optional Apprise notification title for feedback submissions. |
 | `CHATWOOT_BASE_URL` | Optional Chatwoot support widget base URL. |

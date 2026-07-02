@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 from django.test import override_settings
 
@@ -5,7 +7,12 @@ from apps.api.services import DatasetServiceError
 from apps.core import services as core_services
 from apps.core.choices import FeedbackSource
 from apps.core.models import Feedback
-from apps.core.services import submit_profile_feedback
+from apps.core.services import (
+    FEEDBACK_DATASET_HEADERS,
+    FEEDBACK_DATASET_KEY,
+    submit_profile_feedback,
+)
+from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project, ProjectSection
 
 
@@ -40,7 +47,6 @@ def test_submit_profile_feedback_creates_feedback_dataset_row(
         "tool": "submit_feedback",
         "category": "exports",
         "rowset_row_url": result.row_url,
-        "feedback_owner_email": "testuser@example.com",
     }
     assert result.dataset == dataset
     assert result.row == row
@@ -104,10 +110,9 @@ def test_submit_profile_feedback_reuses_project_section_and_dataset(
 
 @pytest.mark.django_db
 @override_settings(
-    ROWSET_FEEDBACK_OWNER_EMAIL="rasul@lvtd.dev",
     SITE_URL="https://rowset.example",
 )
-def test_submit_profile_feedback_writes_to_configured_owner_dataset(django_user_model):
+def test_submit_profile_feedback_writes_to_configured_dataset(django_user_model):
     owner_user = django_user_model.objects.create_user(
         username="rasul",
         email="rasul@lvtd.dev",
@@ -118,6 +123,17 @@ def test_submit_profile_feedback_writes_to_configured_owner_dataset(django_user_
         email="external-agent@example.com",
         password="password123",
     )
+    configured_dataset = Dataset.objects.create(
+        profile=owner_user.profile,
+        key=UUID(FEEDBACK_DATASET_KEY),
+        name="Feedback",
+        original_filename="Created via API",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=FEEDBACK_DATASET_HEADERS,
+        index_column="feedback_id",
+        row_count=0,
+    )
 
     result = submit_profile_feedback(
         profile=submitter_user.profile,
@@ -127,16 +143,14 @@ def test_submit_profile_feedback_writes_to_configured_owner_dataset(django_user_
         metadata={"tool": "submit_feedback"},
     )
 
-    dataset = Dataset.objects.get(name="Feedback")
-    row = dataset.rows.get(index_value=str(result.feedback.id))
+    row = configured_dataset.rows.get(index_value=str(result.feedback.id))
 
-    assert result.dataset == dataset
-    assert dataset.profile == owner_user.profile
+    assert result.dataset == configured_dataset
+    assert configured_dataset.profile == owner_user.profile
     assert result.feedback.profile == submitter_user.profile
     assert result.feedback.metadata == {
         "tool": "submit_feedback",
         "rowset_row_url": result.row_url,
-        "feedback_owner_email": "rasul@lvtd.dev",
     }
     assert row.data["user_email"] == "external-agent@example.com"
     assert row.data["profile_id"] == str(submitter_user.profile.id)
