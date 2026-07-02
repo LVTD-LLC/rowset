@@ -29,7 +29,7 @@ COPY --from=build /app/frontend/build/ ./frontend/build/
 
 EXPOSE 80
 
-HEALTHCHECK --interval=15s --timeout=10s --start-period=60s --retries=8 \
-    CMD ["python", "deployment/healthcheck.py"]
+HEALTHCHECK --interval=15s --timeout=10s --start-period=180s --retries=8 \
+    CMD ["/opt/venv/bin/python", "deployment/healthcheck.py"]
 
 CMD ["sh", "deployment/entrypoint.sh"]
