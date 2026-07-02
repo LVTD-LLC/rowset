@@ -168,7 +168,19 @@ def _compact_text(value: object, *, max_length: int = 180) -> str:
     return f"{text[: max_length - 3].rstrip()}..."
 
 
-def _command_palette_dataset_result(dataset: dict) -> dict[str, object]:
+def _safe_int(value: object, *, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError) as _error:
+        return default
+
+
+def _command_palette_dataset_result(dataset: dict) -> dict[str, object] | None:
+    dataset_key = str(dataset.get("key") or "").strip()
+    dataset_name = str(dataset.get("name") or "").strip()
+    if not dataset_key or not dataset_name:
+        return None
+
     project = dataset.get("project") or {}
     section = dataset.get("section") or {}
     location_parts = [
@@ -185,21 +197,26 @@ def _command_palette_dataset_result(dataset: dict) -> dict[str, object]:
 
     return {
         "type": "dataset",
-        "label": dataset["name"],
+        "label": dataset_name,
         "description": description,
         "meta": " - ".join(meta_parts),
-        "url": reverse("dataset_detail", args=[dataset["key"]]),
+        "url": reverse("dataset_detail", args=[dataset_key]),
     }
 
 
-def _command_palette_project_result(project: dict) -> dict[str, object]:
+def _command_palette_project_result(project: dict) -> dict[str, object] | None:
+    project_key = str(project.get("key") or "").strip()
+    project_name = str(project.get("name") or "").strip()
+    if not project_key or not project_name:
+        return None
+
     description = _compact_text(project.get("description"))
     return {
         "type": "project",
-        "label": project["name"],
+        "label": project_name,
         "description": description,
-        "meta": _pluralized_count(int(project.get("dataset_count") or 0), "dataset"),
-        "url": reverse("project_detail", args=[project["key"]]),
+        "meta": _pluralized_count(_safe_int(project.get("dataset_count")), "dataset"),
+        "url": reverse("project_detail", args=[project_key]),
     }
 
 
@@ -210,20 +227,25 @@ def _command_palette_row_label(row: dict) -> str:
     return f"Row {row.get('row_number') or row.get('id')}"
 
 
-def _command_palette_row_result(result: dict) -> dict[str, object]:
+def _command_palette_row_result(result: dict) -> dict[str, object] | None:
     dataset = result.get("dataset") or {}
     row = result.get("row") or {}
     match = result.get("match") or {}
+    dataset_key = str(dataset.get("key") or "").strip()
+    row_id = _safe_int(row.get("id"))
+    if not dataset_key or row_id <= 0:
+        return None
+
     dataset_name = str(dataset.get("name") or "Dataset").strip()
     source = str(match.get("source") or "match").replace("_", " ")
-    row_number = int(row.get("row_number") or 0)
+    row_number = _safe_int(row.get("row_number"))
 
     return {
         "type": "row",
         "label": _command_palette_row_label(row),
         "description": _compact_text(match.get("snippet"), max_length=260),
         "meta": f"{dataset_name} - row {row_number} - {source}",
-        "url": reverse("dataset_row_detail", args=[dataset["key"], row["id"]]),
+        "url": reverse("dataset_row_detail", args=[dataset_key, row_id]),
     }
 
 
@@ -260,10 +282,15 @@ def _command_palette_context(request) -> dict[str, object]:
     except DatasetServiceError:
         metadata_search_errors.append("Dataset search is unavailable right now.")
     else:
-        dataset_results = [
-            _command_palette_dataset_result(dataset)
-            for dataset in dataset_payload.get("datasets", [])
-        ]
+        dataset_results = list(
+            filter(
+                None,
+                (
+                    _command_palette_dataset_result(dataset)
+                    for dataset in dataset_payload.get("datasets", [])
+                ),
+            )
+        )
 
     try:
         project_payload = search_profile_projects(
@@ -274,10 +301,15 @@ def _command_palette_context(request) -> dict[str, object]:
     except DatasetServiceError:
         metadata_search_errors.append("Project search is unavailable right now.")
     else:
-        project_results = [
-            _command_palette_project_result(project)
-            for project in project_payload.get("projects", [])
-        ]
+        project_results = list(
+            filter(
+                None,
+                (
+                    _command_palette_project_result(project)
+                    for project in project_payload.get("projects", [])
+                ),
+            )
+        )
 
     row_results = []
     row_search_error = ""
@@ -292,9 +324,12 @@ def _command_palette_context(request) -> dict[str, object]:
     except DatasetServiceError:
         row_search_error = "Row search is unavailable right now."
     else:
-        row_results = [
-            _command_palette_row_result(result) for result in row_payload.get("results", [])
-        ]
+        row_results = list(
+            filter(
+                None,
+                (_command_palette_row_result(result) for result in row_payload.get("results", [])),
+            )
+        )
 
     context.update(
         {

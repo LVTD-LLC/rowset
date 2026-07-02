@@ -194,3 +194,34 @@ def test_command_palette_search_keeps_row_results_when_metadata_search_fails(
     assert "P-2" in content
     assert "Dataset search is unavailable right now." in content
     assert "Project search is unavailable right now." in content
+
+
+def test_command_palette_search_skips_malformed_service_results(auth_client, monkeypatch):
+    monkeypatch.setattr(
+        "apps.datasets.views.search_profile_datasets",
+        lambda *args, **kwargs: {"datasets": [{"name": "Missing key"}]},
+    )
+    monkeypatch.setattr(
+        "apps.datasets.views.search_profile_projects",
+        lambda *args, **kwargs: {"projects": [{"key": "not-a-valid-project"}]},
+    )
+    monkeypatch.setattr(
+        "apps.datasets.views.search_profile_rows",
+        lambda *args, **kwargs: {
+            "results": [
+                {
+                    "dataset": {"name": "Missing row dataset key"},
+                    "row": {"row_number": "not-a-number"},
+                    "match": {"snippet": "Malformed row result"},
+                }
+            ]
+        },
+    )
+
+    response = auth_client.get(reverse("command_palette_search"), {"q": "broken"})
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "No matches" in content
+    assert "Missing key" not in content
+    assert "Malformed row result" not in content
