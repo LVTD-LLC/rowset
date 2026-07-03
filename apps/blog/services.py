@@ -10,6 +10,8 @@ from django.urls import reverse
 
 BLOG_POST_CONTENT_DIR = Path(settings.BASE_DIR) / "apps" / "blog" / "content"
 PUBLISHED_STATUS = "published"
+DRAFT_STATUS = "draft"
+VALID_STATUSES = {DRAFT_STATUS, PUBLISHED_STATUS}
 
 
 class BlogPostSourceError(ValueError):
@@ -26,10 +28,8 @@ class BlogPost:
     title: str
     description: str
     slug: str
-    tags: str
     content: str
     status: str
-    icon: str
     image: str
     published_at: date | datetime | None
     updated_at: date | datetime | None
@@ -39,6 +39,10 @@ class BlogPost:
 
     @property
     def lastmod(self):
+        return self.modified_at
+
+    @property
+    def modified_at(self):
         return self.updated_at or self.published_at
 
 
@@ -97,17 +101,26 @@ def load_blog_post_source(path, content_path):
         raise BlogPostSourceError(f"{path.relative_to(content_path)} must include Markdown content")
 
     title = required_string(metadata, "title", path, content_path)
+    description = required_string(metadata, "description", path, content_path)
+    slug = coerce_slug(required_string(metadata, "slug", path, content_path), path, content_path)
+    status = coerce_status(
+        required_string(metadata, "status", path, content_path), path, content_path
+    )
+    published_at = coerce_date(metadata.get("published_at"))
+    if status == PUBLISHED_STATUS and not published_at:
+        raise BlogPostSourceError(
+            f"{path.relative_to(content_path)} must include published_at when status is published"
+        )
+
     return BlogPost(
         path=path,
         title=title,
-        description=optional_string(metadata, "description"),
-        slug=coerce_slug(metadata.get("slug") or path.stem, path, content_path),
-        tags=coerce_tags(metadata.get("tags", "")),
+        description=description,
+        slug=slug,
         content=content,
-        status=optional_string(metadata, "status") or "draft",
-        icon=optional_string(metadata, "icon"),
+        status=status,
         image=optional_string(metadata, "image"),
-        published_at=coerce_date(metadata.get("published_at")),
+        published_at=published_at,
         updated_at=coerce_date(metadata.get("updated_at")),
     )
 
@@ -157,14 +170,11 @@ def coerce_slug(value, path, content_path):
     return slug
 
 
-def coerce_tags(value):
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, (list, tuple)):
-        return ", ".join(str(tag).strip() for tag in value if str(tag).strip())
-    return str(value).strip()
+def coerce_status(value, path, content_path):
+    status = str(value).strip()
+    if status not in VALID_STATUSES:
+        raise BlogPostSourceError(f"{path.relative_to(content_path)} has invalid status {status!r}")
+    return status
 
 
 def coerce_date(value):

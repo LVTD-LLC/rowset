@@ -20,9 +20,6 @@ def published_frontmatter(slug="agent-managed-datasets", title="Agent-managed da
         f"title: {title}\n"
         "description: A practical note for AI agents.\n"
         f"slug: {slug}\n"
-        "tags:\n"
-        "  - agents\n"
-        "  - datasets\n"
         "status: published\n"
         "published_at: 2026-06-01\n"
         "updated_at: 2026-06-02\n"
@@ -43,7 +40,6 @@ def test_get_blog_posts_reads_published_markdown_files(tmp_path):
     assert post.title == "Agent-managed datasets"
     assert post.slug == "agent-managed-datasets"
     assert post.description == "A practical note for AI agents."
-    assert post.tags == "agents, datasets"
     assert post.content == "Agents need **stable** row APIs."
     assert post.get_absolute_url() == reverse("blog_post", kwargs={"slug": post.slug})
     assert post.published_at.isoformat() == "2026-06-01"
@@ -99,6 +95,46 @@ def test_get_blog_post_rejects_missing_draft_and_duplicate_slugs(tmp_path):
         get_blog_post("missing-post", tmp_path)
 
 
+def test_published_blog_posts_require_seo_frontmatter(tmp_path):
+    write_markdown_post(
+        tmp_path,
+        "missing-description.md",
+        frontmatter=published_frontmatter("missing-description", "Missing description").replace(
+            "description: A practical note for AI agents.\n", ""
+        ),
+        content="Content.\n",
+    )
+
+    with pytest.raises(BlogPostSourceError, match="description"):
+        get_blog_posts(tmp_path)
+
+    (tmp_path / "missing-description.md").unlink()
+    write_markdown_post(
+        tmp_path,
+        "missing-slug.md",
+        frontmatter=published_frontmatter("missing-slug", "Missing slug").replace(
+            "slug: missing-slug\n", ""
+        ),
+        content="Content.\n",
+    )
+
+    with pytest.raises(BlogPostSourceError, match="slug"):
+        get_blog_posts(tmp_path)
+
+    (tmp_path / "missing-slug.md").unlink()
+    write_markdown_post(
+        tmp_path,
+        "missing-published-at.md",
+        frontmatter=published_frontmatter("missing-published-at", "Missing publish date").replace(
+            "published_at: 2026-06-01\n", ""
+        ),
+        content="Content.\n",
+    )
+
+    with pytest.raises(BlogPostSourceError, match="published_at"):
+        get_blog_posts(tmp_path)
+
+
 @pytest.mark.django_db
 def test_blog_views_skip_invalid_markdown_files(client, tmp_path, monkeypatch):
     monkeypatch.setattr(blog_services, "BLOG_POST_CONTENT_DIR", tmp_path)
@@ -140,7 +176,9 @@ def test_blog_index_and_detail_render_from_markdown(client, tmp_path, monkeypatc
     write_markdown_post(
         tmp_path,
         "published.md",
-        frontmatter=published_frontmatter("published-post", "Published post"),
+        frontmatter=published_frontmatter("published-post", "Published post").replace(
+            "updated_at: 2026-06-02\n", ""
+        ),
         content="Published **content**.\n",
     )
     write_markdown_post(
@@ -164,6 +202,8 @@ def test_blog_index_and_detail_render_from_markdown(client, tmp_path, monkeypatc
     detail_content = detail_response.content.decode()
     assert "Published post" in detail_content
     assert "<strong>content</strong>" in detail_content
+    assert '"datePublished":"2026-06-01' in detail_content
+    assert '"dateModified":"2026-06-01' in detail_content
 
     assert client.get(reverse("blog_post", kwargs={"slug": "draft-post"})).status_code == 404
 
