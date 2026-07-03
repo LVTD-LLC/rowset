@@ -1,0 +1,16 @@
+{
+  "stack": "django-templates",
+  "adapter": "markdown-fallback",
+  "language": "python-django-templates",
+  "marketing_route_prefix": "apps/pages",
+  "marketing_templates_dir": "frontend/templates/pages",
+  "docs_content_dir": "apps/docs/content",
+  "sitemap_path": "rowset/sitemaps.py",
+  "robots_path": "static/robots.txt",
+  "tailwind_config": "tailwind.config.js",
+  "domain": "https://rowset.lvtd.dev",
+  "ahrefs_project_id": null,
+  "research_mode": "manual",
+  "roadmap_path": "docs/seo-sprint.md",
+  "created_at": "2026-07-03"
+}
