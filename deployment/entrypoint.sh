@@ -63,6 +63,7 @@ case "$process_type" in
         echo "Starting Rowset server..."
         uv run --no-sync python manage.py collectstatic --noinput
         uv run --no-sync python manage.py migrate --noinput
+        uv run --no-sync python manage.py sync_blog_posts
         exec uv run --no-sync gunicorn "${PROJECT_NAME}.asgi:application" \
             --bind "0.0.0.0:${APP_PORT}" \
             --workers 3 \
