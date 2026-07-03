@@ -3,7 +3,7 @@
 {% block content %}
 <div class="fb-page">
   <div class="space-y-6">
-    <a href="{{ dataset.get_absolute_url }}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← {{ dataset.name }}</a>
+    <a href="{{ dataset.get_absolute_url }}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← back to {{ dataset.name }}.</a>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0 space-y-3">
@@ -13,23 +13,6 @@
           {{ dataset.name }} · {{ dataset.headers|length }} columns{% if dataset.index_column %} · {{ dataset.index_column }}: <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset_row.index_value }}</span>{% endif %}
         </p>
         <p class="break-words text-sm text-slate-600 dark:text-slate-300">Created by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset_row.created_by_actor_label }}</span> · Last updated by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset_row.updated_by_actor_label }}</span></p>
-      </div>
-      <div class="flex flex-col gap-2 sm:items-end">
-        <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Back to dataset</a>
-        {% if has_dataset_row_navigation %}
-          <nav class="flex flex-wrap gap-2 sm:justify-end" aria-label="Row navigation">
-            {% if previous_dataset_row_url %}
-              <a href="{{ previous_dataset_row_url }}" class="fb-button-secondary min-h-9 px-3 py-1.5 text-sm">Previous Row</a>
-            {% else %}
-              <button type="button" class="fb-button-secondary min-h-9 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50" disabled aria-disabled="true">Previous Row</button>
-            {% endif %}
-            {% if next_dataset_row_url %}
-              <a href="{{ next_dataset_row_url }}" class="fb-button-secondary min-h-9 px-3 py-1.5 text-sm">Next Row</a>
-            {% else %}
-              <button type="button" class="fb-button-secondary min-h-9 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50" disabled aria-disabled="true">Next Row</button>
-            {% endif %}
-          </nav>
-        {% endif %}
       </div>
     </div>
 
@@ -153,6 +136,21 @@
         </div>
       {% endif %}
     </section>
+
+    {% if has_dataset_row_navigation %}
+      <nav class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" aria-label="Row navigation">
+        {% if previous_dataset_row_url %}
+          <a href="{{ previous_dataset_row_url }}" class="fb-button-secondary w-full justify-center sm:w-auto">Previous Row</a>
+        {% else %}
+          <button type="button" class="fb-button-secondary w-full justify-center disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto" disabled aria-disabled="true">Previous Row</button>
+        {% endif %}
+        {% if next_dataset_row_url %}
+          <a href="{{ next_dataset_row_url }}" class="fb-button-secondary w-full justify-center sm:w-auto">Next Row</a>
+        {% else %}
+          <button type="button" class="fb-button-secondary w-full justify-center disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto" disabled aria-disabled="true">Next Row</button>
+        {% endif %}
+      </nav>
+    {% endif %}
   </div>
 </div>
 {% endblock content %}

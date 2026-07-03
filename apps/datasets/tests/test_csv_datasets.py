@@ -2080,7 +2080,8 @@ def test_dataset_row_detail_displays_full_row_data(auth_client, profile):
     assert full_value in content
     assert "extra_field" in content
     assert "Stored outside declared headers" in content
-    assert "Back to dataset" in content
+    assert "← back to People." in content
+    assert "Back to dataset" not in content
     assert 'td class="min-w-96 whitespace-pre-wrap break-words"' not in content
     assert '<span class="whitespace-pre-wrap break-words">Ada</span>' in content
     assert 'x-data="rowInlineEdit"' in content
@@ -2116,6 +2117,10 @@ def test_dataset_row_detail_links_previous_and_next_rows(auth_client, profile):
     assert f'href="{next_url}"' in content
     assert ">Previous Row</a>" in content
     assert ">Next Row</a>" in content
+    row_data_section_start = content.index('aria-labelledby="row-data-heading"')
+    row_data_section_end = content.index("</section>", row_data_section_start)
+    assert content.index("Previous Row") > row_data_section_end
+    assert content.index("Next Row") > row_data_section_end
 
 
 def test_dataset_row_detail_disables_missing_row_navigation_edges(auth_client, profile):
