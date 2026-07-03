@@ -1,4 +1,7 @@
+import re
 from pathlib import Path
+
+from django.core.management import call_command
 
 _REPO_ROOT = Path(__file__).parents[2]
 
@@ -36,7 +39,24 @@ def test_docker_healthcheck_allows_server_startup_window():
     assert any("--start-period=180s" in line for line in healthcheck_lines)
 
 
-def test_server_startup_does_not_sync_blog_posts():
-    lines = _entrypoint_lines()
+def test_entrypoint_only_runs_expected_management_commands():
+    entrypoint = "\n".join(_entrypoint_lines())
+    commands = re.findall(r"python manage\.py ([\w-]+)", entrypoint)
 
-    assert all("manage.py sync_blog_posts" not in line for line in lines)
+    assert commands == ["collectstatic", "migrate", "qcluster"]
+    assert "sync_blog_posts" not in commands
+
+
+def test_django_startup_check_does_not_parse_blog_markdown(settings, tmp_path):
+    settings.BLOG_POST_CONTENT_DIR = tmp_path
+    (tmp_path / "invalid.md").write_text(
+        "---\n"
+        "title: Invalid post\n"
+        "slug: invalid-post\n"
+        "status: published\n"
+        "---\n"
+        "Missing required SEO description and publish date.\n",
+        encoding="utf-8",
+    )
+
+    call_command("check")

@@ -298,3 +298,16 @@ def test_blog_sitemap_reads_published_markdown(monkeypatch, tmp_path):
 
     assert [item.slug for item in items] == ["published-post"]
     assert sitemap.location(items[0]) == "/blog/published-post"
+
+
+def test_blog_sitemap_logs_and_returns_empty_list_when_blog_loading_fails(monkeypatch, caplog):
+    def raise_error(*args, **kwargs):
+        raise RuntimeError("blog source exploded")
+
+    monkeypatch.setattr(blog_services, "get_blog_posts", raise_error)
+    caplog.set_level(logging.ERROR, logger="rowset.sitemaps")
+
+    assert list(sitemaps["blog"]().items()) == []
+    assert any(
+        "Unable to build blog sitemap entries" in record.message for record in caplog.records
+    )

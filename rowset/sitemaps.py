@@ -1,9 +1,13 @@
+import logging
+
 from django.contrib import sitemaps
 from django.urls import reverse
 
 from apps.blog import services as blog_services
 from apps.docs.views import get_docs_navigation
 from apps.pages.use_cases import get_use_case_pages
+
+logger = logging.getLogger(__name__)
 
 
 class StaticViewSitemap(sitemaps.Sitemap):
@@ -101,7 +105,11 @@ class BlogSitemap(sitemaps.Sitemap):
     changefreq = "monthly"
 
     def items(self):
-        return blog_services.get_blog_posts(strict=False)
+        try:
+            return blog_services.get_blog_posts(strict=False)
+        except Exception:
+            logger.exception("Unable to build blog sitemap entries")
+            return []
 
     def location(self, item):
         return item.get_absolute_url()
