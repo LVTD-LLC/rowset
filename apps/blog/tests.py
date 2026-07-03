@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from django.urls import reverse
 
@@ -133,6 +135,66 @@ def test_published_blog_posts_require_seo_frontmatter(tmp_path):
 
     with pytest.raises(BlogPostSourceError, match="published_at"):
         get_blog_posts(tmp_path)
+
+
+def test_non_strict_blog_loading_logs_skipped_invalid_files(tmp_path, caplog):
+    caplog.set_level(logging.WARNING, logger="apps.blog.services")
+    write_markdown_post(
+        tmp_path,
+        "valid.md",
+        frontmatter=published_frontmatter("valid-post", "Valid post"),
+        content="Content.\n",
+    )
+    write_markdown_post(
+        tmp_path,
+        "missing-title.md",
+        frontmatter=published_frontmatter("missing-title", "Missing title").replace(
+            "title: Missing title\n", ""
+        ),
+        content="Content.\n",
+    )
+    write_markdown_post(
+        tmp_path,
+        "z-duplicate.md",
+        frontmatter=published_frontmatter("valid-post", "Duplicate post"),
+        content="Duplicate.\n",
+    )
+
+    assert [post.slug for post in get_blog_posts(tmp_path, strict=False)] == ["valid-post"]
+    assert any(
+        getattr(record, "blog_post_path", "") == "missing-title.md"
+        and "Skipping invalid blog post Markdown file" in record.message
+        for record in caplog.records
+    )
+    assert any(
+        getattr(record, "blog_post_path", "") == "z-duplicate.md"
+        and getattr(record, "blog_post_slug", "") == "valid-post"
+        and "Skipping duplicate blog post slug" in record.message
+        for record in caplog.records
+    )
+
+
+def test_blog_post_cache_refreshes_when_markdown_files_change(tmp_path):
+    write_markdown_post(
+        tmp_path,
+        "first.md",
+        frontmatter=published_frontmatter("first-post", "First post"),
+        content="First.\n",
+    )
+
+    assert [post.slug for post in get_blog_posts(tmp_path)] == ["first-post"]
+
+    write_markdown_post(
+        tmp_path,
+        "second.md",
+        frontmatter=published_frontmatter("second-post", "Second post").replace(
+            "published_at: 2026-06-01\n", "published_at: 2026-06-03\n"
+        ),
+        content="Second.\n",
+    )
+
+    assert [post.slug for post in get_blog_posts(tmp_path)] == ["second-post", "first-post"]
+    assert get_blog_post("second-post", tmp_path).title == "Second post"
 
 
 @pytest.mark.django_db

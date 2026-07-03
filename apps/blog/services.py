@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -12,6 +13,8 @@ BLOG_POST_CONTENT_DIR = Path(settings.BLOG_POST_CONTENT_DIR)
 PUBLISHED_STATUS = "published"
 DRAFT_STATUS = "draft"
 VALID_STATUSES = {DRAFT_STATUS, PUBLISHED_STATUS}
+logger = logging.getLogger(__name__)
+_SOURCE_CACHE = {}
 
 
 class BlogPostSourceError(ValueError):
@@ -46,21 +49,58 @@ class BlogPost:
         return self.updated_at or self.published_at
 
 
+@dataclass(frozen=True)
+class BlogPostCollection:
+    signature: tuple[tuple[str, int, int], ...]
+    published_posts: tuple[BlogPost, ...]
+    published_posts_by_slug: dict[str, BlogPost]
+
+
 def get_blog_posts(content_dir=None, *, strict=True):
-    posts = load_blog_post_sources(content_dir, strict=strict)
-    published_posts = [post for post in posts if post.status == PUBLISHED_STATUS]
-    return sorted(
-        published_posts,
-        key=lambda post: post.published_at or date.min,
-        reverse=True,
-    )
+    collection = get_blog_post_collection(content_dir, strict=strict)
+    return list(collection.published_posts)
 
 
 def get_blog_post(slug, content_dir=None, *, strict=True):
-    for post in get_blog_posts(content_dir, strict=strict):
-        if post.slug == slug:
-            return post
+    collection = get_blog_post_collection(content_dir, strict=strict)
+    if post := collection.published_posts_by_slug.get(slug):
+        return post
     raise BlogPostNotFound(f"Blog post {slug!r} was not found.")
+
+
+def get_blog_post_collection(content_dir=None, *, strict=True):
+    content_path = Path(content_dir or BLOG_POST_CONTENT_DIR).resolve()
+    signature = get_blog_post_source_signature(content_path)
+    cache_key = (str(content_path), strict)
+    cached_collection = _SOURCE_CACHE.get(cache_key)
+    if cached_collection and cached_collection.signature == signature:
+        return cached_collection
+
+    posts = load_blog_post_sources(content_path, strict=strict)
+    published_posts = tuple(
+        sorted(
+            (post for post in posts if post.status == PUBLISHED_STATUS),
+            key=lambda post: post.published_at or date.min,
+            reverse=True,
+        )
+    )
+    collection = BlogPostCollection(
+        signature=signature,
+        published_posts=published_posts,
+        published_posts_by_slug={post.slug: post for post in published_posts},
+    )
+    _SOURCE_CACHE[cache_key] = collection
+    return collection
+
+
+def get_blog_post_source_signature(content_path):
+    if not content_path.exists():
+        return ()
+    signature = []
+    for path in iter_blog_post_files(content_path):
+        stat = path.stat()
+        signature.append((str(path.relative_to(content_path)), stat.st_mtime_ns, stat.st_size))
+    return tuple(signature)
 
 
 def load_blog_post_sources(content_dir=None, *, strict=True):
@@ -72,9 +112,16 @@ def load_blog_post_sources(content_dir=None, *, strict=True):
     for path in iter_blog_post_files(content_path):
         try:
             posts.append(load_blog_post_source(path, content_path))
-        except BlogPostSourceError:
+        except BlogPostSourceError as exc:
             if strict:
                 raise
+            logger.warning(
+                "Skipping invalid blog post Markdown file",
+                extra={
+                    "blog_post_path": str(path.relative_to(content_path)),
+                    "error": str(exc),
+                },
+            )
 
     return validate_source_slugs(posts, content_path, strict=strict)
 
@@ -135,6 +182,14 @@ def validate_source_slugs(posts, content_path, *, strict=True):
             continue
 
         if not strict:
+            logger.warning(
+                "Skipping duplicate blog post slug",
+                extra={
+                    "blog_post_slug": post.slug,
+                    "blog_post_path": str(post.path.relative_to(content_path)),
+                    "first_blog_post_path": str(seen[post.slug].relative_to(content_path)),
+                },
+            )
             continue
 
         first_path = seen[post.slug].relative_to(content_path)
