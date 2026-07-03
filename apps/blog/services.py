@@ -52,7 +52,7 @@ class BlogPost:
 
 @dataclass(frozen=True)
 class BlogPostCollection:
-    signature: tuple[tuple[str, int, int], ...]
+    signature: tuple[tuple[str, str], ...]
     published_posts: tuple[BlogPost, ...]
     published_posts_by_slug: dict[str, BlogPost]
 
@@ -104,9 +104,25 @@ def get_blog_post_source_signature(content_path):
     if not content_path.exists():
         return ()
     signature = []
-    for path in iter_blog_post_files(content_path):
-        stat = path.stat()
-        signature.append((str(path.relative_to(content_path)), stat.st_mtime_ns, stat.st_size))
+    try:
+        paths = iter_blog_post_files(content_path)
+    except OSError as exc:
+        logger.warning(
+            "Unable to list blog post Markdown files",
+            extra={"blog_post_content_dir": str(content_path), "error": str(exc)},
+        )
+        return ()
+
+    for path in paths:
+        try:
+            digest = sha256(path.read_bytes()).hexdigest()
+        except OSError as exc:
+            logger.warning(
+                "Skipping blog post Markdown file while building cache signature",
+                extra={"blog_post_path": str(path.relative_to(content_path)), "error": str(exc)},
+            )
+            continue
+        signature.append((str(path.relative_to(content_path)), digest))
     return tuple(signature)
 
 
@@ -116,7 +132,19 @@ def load_blog_post_sources(content_dir=None, *, strict=True):
         return []
 
     posts = []
-    for path in iter_blog_post_files(content_path):
+    try:
+        paths = iter_blog_post_files(content_path)
+    except OSError as exc:
+        error = BlogPostSourceError(f"{content_path} could not be listed: {exc}")
+        if strict:
+            raise error from exc
+        logger.warning(
+            "Unable to list blog post Markdown files",
+            extra={"blog_post_content_dir": str(content_path), "error": str(exc)},
+        )
+        return []
+
+    for path in paths:
         try:
             posts.append(load_blog_post_source(path, content_path))
         except BlogPostSourceError as exc:
