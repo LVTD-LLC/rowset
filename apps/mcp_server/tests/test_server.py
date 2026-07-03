@@ -1378,6 +1378,15 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
                     "direction": "desc",
                 },
             )
+            tolerant_list_result = await client.call_tool(
+                "list_dataset_rows",
+                {
+                    "dataset_key": "ds",
+                    "limit": None,
+                    "offset": None,
+                    "filters": '{"active": true, "score": 7, "empty": null}',
+                },
+            )
             get_result = await client.call_tool(
                 "get_dataset_row",
                 {"dataset_key": "ds", "row_id": 7},
@@ -1415,6 +1424,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             )
 
         assert list_result.data["count"] == 1
+        assert tolerant_list_result.data["count"] == 1
         assert get_result.data["row"]["id"] == 7
         assert get_by_index_result.data["row"]["index_value"] == "a@example.com"
         assert create_result.data["row"]["data"]["email"] == "b@example.com"
@@ -1426,9 +1436,24 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
 
         assert list_result.data["filters"] == {"active": "true"}
         assert list_result.data["sort"] == "email"
+        assert tolerant_list_result.data["filters"] == {
+            "active": "True",
+            "score": "7",
+            "empty": "",
+        }
 
         assert calls == [
             ("list", "ds", 5, 0, "ada", {"active": "true"}, "email", "desc"),
+            (
+                "list",
+                "ds",
+                100,
+                0,
+                None,
+                {"active": "True", "score": "7", "empty": ""},
+                None,
+                None,
+            ),
             ("get", "ds", 7),
             ("get_by_index", "ds", "a@example.com"),
             ("create", "ds", {"email": "b@example.com", "score": 42}),

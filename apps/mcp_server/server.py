@@ -1,5 +1,5 @@
 import json
-from typing import Annotated
+from typing import Annotated, Any
 
 from django.db import IntegrityError, close_old_connections
 from fastmcp import FastMCP
@@ -297,6 +297,22 @@ def _service_error_to_tool_error(exc: DatasetServiceError) -> ToolError:
             details={"http_status": exc.status_code},
         )
     )
+
+
+def _normalize_mcp_row_filters(filters: dict[str, Any] | str | None) -> dict[str, str]:
+    if not filters:
+        return {}
+    if isinstance(filters, str):
+        try:
+            filters = json.loads(filters)
+        except json.JSONDecodeError as exc:
+            raise DatasetServiceError(
+                400,
+                "filters must be a JSON object keyed by dataset header.",
+            ) from exc
+    if not isinstance(filters, dict):
+        raise DatasetServiceError(400, "filters must be a JSON object keyed by dataset header.")
+    return {str(header): "" if value is None else str(value) for header, value in filters.items()}
 
 
 def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
@@ -1570,18 +1586,19 @@ def restore_dataset(
 )
 def list_dataset_rows(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
-    limit: Annotated[int, Field(default=100, ge=1, le=500)] = 100,
-    offset: Annotated[int, Field(default=0, ge=0)] = 0,
+    limit: Annotated[int | None, Field(default=100, ge=1, le=500)] = 100,
+    offset: Annotated[int | None, Field(default=0, ge=0)] = 0,
     query: Annotated[
         str | None,
         Field(default=None, description="Optional text to search across row values."),
     ] = None,
     filters: Annotated[
-        dict[str, str] | None,
+        dict[str, Any] | str | None,
         Field(
             default=None,
             description=(
-                "Optional mapping from dataset header to a value to filter by. "
+                "Optional mapping, or JSON object string, from dataset header to a value "
+                "to filter by. "
                 "Text-like filters use case-insensitive contains matching; boolean "
                 "filters accept true/false, yes/no, y/n, or 1/0."
             ),
@@ -1605,10 +1622,10 @@ def list_dataset_rows(
         return list_profile_dataset_rows(
             profile,
             dataset_key,
-            limit=limit,
-            offset=offset,
+            limit=limit or 100,
+            offset=offset or 0,
             query=query,
-            filters=filters,
+            filters=_normalize_mcp_row_filters(filters),
             sort=sort,
             direction=direction,
         )

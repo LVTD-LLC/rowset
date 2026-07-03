@@ -16,6 +16,9 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 
 ## [Unreleased]
 
+### Fixed
+- MCP `list_dataset_rows` now tolerates agent-supplied `null` pagination values and JSON-string row filters, avoiding Pydantic validation failures before the request reaches Rowset's structured service errors.
+
 ### Changed
 - Dataset browser views now render URL-looking string cell values as plain text instead of auto-converting them into Rowset or external links. Explicit dataset relationship/reference columns, row-detail links, and image links still render as links; arbitrary URL strings can be copied from the cell text and link rendering can be reintroduced later with safer, explicit column-level behavior.
 - Extracted public-preview settings and session-token helpers out of the API service kernel while preserving REST, MCP, and browser-preview behavior.
