@@ -1632,8 +1632,8 @@ def list_dataset_rows(
         return list_profile_dataset_rows(
             profile,
             dataset_key,
-            limit=limit or 100,
-            offset=offset or 0,
+            limit=100 if limit is None else limit,
+            offset=0 if offset is None else offset,
             query=query,
             filters=_normalize_mcp_row_filters(filters),
             sort=sort,

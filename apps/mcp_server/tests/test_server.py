@@ -1387,6 +1387,11 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
                     "filters": '{"active": true, "score": 7, "empty": null}',
                 },
             )
+            with pytest.raises(Exception) as invalid_filters:
+                await client.call_tool(
+                    "list_dataset_rows",
+                    {"dataset_key": "ds", "filters": "active=true"},
+                )
             get_result = await client.call_tool(
                 "get_dataset_row",
                 {"dataset_key": "ds", "row_id": 7},
@@ -1441,6 +1446,12 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             "score": "7",
             "empty": "",
         }
+        assert _extract_mcp_error_payload(invalid_filters.value) == _expected_mcp_error(
+            code="VALIDATION_ERROR",
+            message="filters must be a JSON object keyed by dataset header.",
+            suggested_action="Check the tool arguments against the dataset schema and try again.",
+            http_status=400,
+        )
 
         assert calls == [
             ("list", "ds", 5, 0, "ada", {"active": "true"}, "email", "desc"),
