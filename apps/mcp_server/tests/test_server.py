@@ -680,15 +680,15 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 {
                     "dataset_key": "dataset-key",
                     "query": "stale vectors",
-                    "filters": {"status": "Ready"},
-                    "limit": 4,
+                    "filters": '{"status": "Ready", "active": true}',
+                    "limit": None,
                 },
             )
             all_rows_result = await client.call_tool(
                 "search_rows",
                 {
                     "query": "renewal risk",
-                    "filters": {"status": "Ready"},
+                    "filters": '{"status": "Ready", "active": true}',
                     "filter_operators": {"status": "is"},
                     "dataset_key": "dataset-key",
                     "project_key": "project-key",
@@ -697,7 +697,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                     "archived": False,
                     "sort": "rank",
                     "direction": "desc",
-                    "limit": 6,
+                    "limit": None,
                 },
             )
 
@@ -724,14 +724,14 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 11,
                 "dataset-key",
                 "stale vectors",
-                {"status": "Ready"},
-                4,
+                {"status": "Ready", "active": "true"},
+                10,
             ),
             (
                 "search_rows",
                 11,
                 "renewal risk",
-                {"status": "Ready"},
+                {"status": "Ready", "active": "true"},
                 {"status": "is"},
                 "dataset-key",
                 "project-key",
@@ -740,7 +740,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 False,
                 "rank",
                 "desc",
-                6,
+                10,
             ),
         ]
 
@@ -1378,6 +1378,20 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
                     "direction": "desc",
                 },
             )
+            tolerant_list_result = await client.call_tool(
+                "list_dataset_rows",
+                {
+                    "dataset_key": "ds",
+                    "limit": None,
+                    "offset": None,
+                    "filters": '{"active": true, "score": 7, "empty": null}',
+                },
+            )
+            with pytest.raises(Exception) as invalid_filters:
+                await client.call_tool(
+                    "list_dataset_rows",
+                    {"dataset_key": "ds", "filters": "active=true"},
+                )
             get_result = await client.call_tool(
                 "get_dataset_row",
                 {"dataset_key": "ds", "row_id": 7},
@@ -1415,6 +1429,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             )
 
         assert list_result.data["count"] == 1
+        assert tolerant_list_result.data["count"] == 1
         assert get_result.data["row"]["id"] == 7
         assert get_by_index_result.data["row"]["index_value"] == "a@example.com"
         assert create_result.data["row"]["data"]["email"] == "b@example.com"
@@ -1426,9 +1441,30 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
 
         assert list_result.data["filters"] == {"active": "true"}
         assert list_result.data["sort"] == "email"
+        assert tolerant_list_result.data["filters"] == {
+            "active": "true",
+            "score": "7",
+            "empty": "",
+        }
+        assert _extract_mcp_error_payload(invalid_filters.value) == _expected_mcp_error(
+            code="VALIDATION_ERROR",
+            message="filters must be a JSON object keyed by dataset header.",
+            suggested_action="Check the tool arguments against the dataset schema and try again.",
+            http_status=400,
+        )
 
         assert calls == [
             ("list", "ds", 5, 0, "ada", {"active": "true"}, "email", "desc"),
+            (
+                "list",
+                "ds",
+                100,
+                0,
+                None,
+                {"active": "true", "score": "7", "empty": ""},
+                None,
+                None,
+            ),
             ("get", "ds", 7),
             ("get_by_index", "ds", "a@example.com"),
             ("create", "ds", {"email": "b@example.com", "score": 42}),
