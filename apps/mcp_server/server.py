@@ -1654,12 +1654,13 @@ def list_dataset_rows(
 def search_rows(
     query: Annotated[str, Field(description="Natural language or keyword search text.")],
     filters: Annotated[
-        dict[str, str] | None,
+        dict[str, Any] | str | None,
         Field(
             default=None,
             description=(
-                "Optional row field filters keyed by dataset header. Datasets missing these "
-                "headers are excluded."
+                "Optional JSON object string or mapping from dataset header to a row "
+                "filter value. Non-string JSON values are converted to strings. "
+                "Datasets missing these headers are excluded."
             ),
         ),
     ] = None,
@@ -1711,7 +1712,7 @@ def search_rows(
         Field(default=None, description="Optional sort direction: asc or desc."),
     ] = None,
     limit: Annotated[
-        int,
+        int | None,
         Field(default=10, ge=1, le=50, description="Maximum ranked results to return."),
     ] = 10,
 ) -> dict:
@@ -1721,7 +1722,7 @@ def search_rows(
         return search_profile_rows(
             profile,
             query=query,
-            filters=filters,
+            filters=_normalize_mcp_row_filters(filters),
             filter_operators=filter_operators,
             dataset_key=dataset_key,
             project_key=project_key,
@@ -1730,7 +1731,7 @@ def search_rows(
             archived=archived,
             sort=sort,
             direction=direction,
-            limit=limit,
+            limit=10 if limit is None else limit,
         )
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc
@@ -1747,14 +1748,17 @@ def search_dataset_rows(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     query: Annotated[str, Field(description="Search text to match semantically and exactly.")],
     filters: Annotated[
-        dict[str, str] | None,
+        dict[str, Any] | str | None,
         Field(
             default=None,
-            description="Optional mapping from dataset header to canonical row filter value.",
+            description=(
+                "Optional JSON object string or mapping from dataset header to canonical "
+                "row filter value. Non-string JSON values are converted to strings."
+            ),
         ),
     ] = None,
     limit: Annotated[
-        int,
+        int | None,
         Field(default=10, ge=1, le=50, description="Maximum ranked results to return."),
     ] = 10,
 ) -> dict:
@@ -1765,8 +1769,8 @@ def search_dataset_rows(
             profile,
             dataset_key,
             query=query,
-            filters=filters,
-            limit=limit,
+            filters=_normalize_mcp_row_filters(filters),
+            limit=10 if limit is None else limit,
         )
     except DatasetServiceError as exc:
         raise _service_error_to_tool_error(exc) from exc

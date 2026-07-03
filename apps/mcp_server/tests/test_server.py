@@ -680,15 +680,15 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 {
                     "dataset_key": "dataset-key",
                     "query": "stale vectors",
-                    "filters": {"status": "Ready"},
-                    "limit": 4,
+                    "filters": '{"status": "Ready", "active": true}',
+                    "limit": None,
                 },
             )
             all_rows_result = await client.call_tool(
                 "search_rows",
                 {
                     "query": "renewal risk",
-                    "filters": {"status": "Ready"},
+                    "filters": '{"status": "Ready", "active": true}',
                     "filter_operators": {"status": "is"},
                     "dataset_key": "dataset-key",
                     "project_key": "project-key",
@@ -697,7 +697,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                     "archived": False,
                     "sort": "rank",
                     "direction": "desc",
-                    "limit": 6,
+                    "limit": None,
                 },
             )
 
@@ -724,14 +724,14 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 11,
                 "dataset-key",
                 "stale vectors",
-                {"status": "Ready"},
-                4,
+                {"status": "Ready", "active": "true"},
+                10,
             ),
             (
                 "search_rows",
                 11,
                 "renewal risk",
-                {"status": "Ready"},
+                {"status": "Ready", "active": "true"},
                 {"status": "is"},
                 "dataset-key",
                 "project-key",
@@ -740,7 +740,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 False,
                 "rank",
                 "desc",
-                6,
+                10,
             ),
         ]
 
