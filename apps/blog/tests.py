@@ -100,6 +100,41 @@ def test_get_blog_post_rejects_missing_draft_and_duplicate_slugs(tmp_path):
 
 
 @pytest.mark.django_db
+def test_blog_views_skip_invalid_markdown_files(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(blog_services, "BLOG_POST_CONTENT_DIR", tmp_path)
+    write_markdown_post(
+        tmp_path,
+        "published.md",
+        frontmatter=published_frontmatter("published-post", "Published post"),
+        content="Published content.\n",
+    )
+    write_markdown_post(
+        tmp_path,
+        "missing-title.md",
+        frontmatter=published_frontmatter("missing-title", "Missing title").replace(
+            "title: Missing title\n", ""
+        ),
+        content="Bad file should not take the blog down.\n",
+    )
+    write_markdown_post(
+        tmp_path,
+        "z-duplicate.md",
+        frontmatter=published_frontmatter("published-post", "Duplicate post"),
+        content="Duplicate content.\n",
+    )
+
+    index_response = client.get(reverse("blog_posts"))
+    detail_response = client.get(reverse("blog_post", kwargs={"slug": "published-post"}))
+
+    assert index_response.status_code == 200
+    index_content = index_response.content.decode()
+    assert "Published post" in index_content
+    assert "Duplicate post" not in index_content
+    assert detail_response.status_code == 200
+    assert "Published content" in detail_response.content.decode()
+
+
+@pytest.mark.django_db
 def test_blog_index_and_detail_render_from_markdown(client, tmp_path, monkeypatch):
     monkeypatch.setattr(blog_services, "BLOG_POST_CONTENT_DIR", tmp_path)
     write_markdown_post(
@@ -140,6 +175,20 @@ def test_blog_sitemap_reads_published_markdown(monkeypatch, tmp_path):
         "published.md",
         frontmatter=published_frontmatter("published-post", "Published post"),
         content="Visible.\n",
+    )
+    write_markdown_post(
+        tmp_path,
+        "missing-title.md",
+        frontmatter=published_frontmatter("missing-title", "Missing title").replace(
+            "title: Missing title\n", ""
+        ),
+        content="Invalid.\n",
+    )
+    write_markdown_post(
+        tmp_path,
+        "z-duplicate.md",
+        frontmatter=published_frontmatter("published-post", "Duplicate post"),
+        content="Duplicate.\n",
     )
 
     sitemap = sitemaps["blog"]()

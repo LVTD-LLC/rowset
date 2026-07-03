@@ -42,8 +42,8 @@ class BlogPost:
         return self.updated_at or self.published_at
 
 
-def get_blog_posts(content_dir=None):
-    posts = load_blog_post_sources(content_dir)
+def get_blog_posts(content_dir=None, *, strict=True):
+    posts = load_blog_post_sources(content_dir, strict=strict)
     published_posts = [post for post in posts if post.status == PUBLISHED_STATUS]
     return sorted(
         published_posts,
@@ -52,23 +52,27 @@ def get_blog_posts(content_dir=None):
     )
 
 
-def get_blog_post(slug, content_dir=None):
-    for post in get_blog_posts(content_dir):
+def get_blog_post(slug, content_dir=None, *, strict=True):
+    for post in get_blog_posts(content_dir, strict=strict):
         if post.slug == slug:
             return post
     raise BlogPostNotFound(f"Blog post {slug!r} was not found.")
 
 
-def load_blog_post_sources(content_dir=None):
+def load_blog_post_sources(content_dir=None, *, strict=True):
     content_path = Path(content_dir or BLOG_POST_CONTENT_DIR)
     if not content_path.exists():
         return []
 
-    posts = [
-        load_blog_post_source(path, content_path) for path in iter_blog_post_files(content_path)
-    ]
-    validate_unique_source_slugs(posts, content_path)
-    return posts
+    posts = []
+    for path in iter_blog_post_files(content_path):
+        try:
+            posts.append(load_blog_post_source(path, content_path))
+        except BlogPostSourceError:
+            if strict:
+                raise
+
+    return validate_source_slugs(posts, content_path, strict=strict)
 
 
 def iter_blog_post_files(content_path):
@@ -108,11 +112,16 @@ def load_blog_post_source(path, content_path):
     )
 
 
-def validate_unique_source_slugs(posts, content_path):
+def validate_source_slugs(posts, content_path, *, strict=True):
     seen = {}
+    unique_posts = []
     for post in posts:
         if post.slug not in seen:
             seen[post.slug] = post.path
+            unique_posts.append(post)
+            continue
+
+        if not strict:
             continue
 
         first_path = seen[post.slug].relative_to(content_path)
@@ -120,6 +129,7 @@ def validate_unique_source_slugs(posts, content_path):
         raise BlogPostSourceError(
             f"Duplicate blog post slug {post.slug!r} in {first_path} and {second_path}"
         )
+    return unique_posts
 
 
 def required_string(metadata, field_name, path, content_path):

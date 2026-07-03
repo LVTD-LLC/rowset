@@ -101,7 +101,7 @@ class BlogSitemap(sitemaps.Sitemap):
     changefreq = "monthly"
 
     def items(self):
-        return blog_services.get_blog_posts()
+        return blog_services.get_blog_posts(strict=False)
 
     def location(self, item):
         return item.get_absolute_url()

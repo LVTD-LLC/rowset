@@ -9,7 +9,7 @@ class BlogView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["blog_posts"] = services.get_blog_posts()
+        context["blog_posts"] = services.get_blog_posts(strict=False)
         return context
 
 
@@ -19,7 +19,7 @@ class BlogPostView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         try:
-            context["blog_post"] = services.get_blog_post(self.kwargs["slug"])
+            context["blog_post"] = services.get_blog_post(self.kwargs["slug"], strict=False)
         except services.BlogPostNotFound as exc:
             raise Http404("Blog post not found") from exc
         return context
