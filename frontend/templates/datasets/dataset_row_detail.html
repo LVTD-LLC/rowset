@@ -14,7 +14,23 @@
         </p>
         <p class="break-words text-sm text-slate-600 dark:text-slate-300">Created by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset_row.created_by_actor_label }}</span> · Last updated by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset_row.updated_by_actor_label }}</span></p>
       </div>
-      <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Back to dataset</a>
+      <div class="flex flex-col gap-2 sm:items-end">
+        <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Back to dataset</a>
+        {% if has_dataset_row_navigation %}
+          <nav class="flex flex-wrap gap-2 sm:justify-end" aria-label="Row navigation">
+            {% if previous_dataset_row_url %}
+              <a href="{{ previous_dataset_row_url }}" class="fb-button-secondary min-h-9 px-3 py-1.5 text-sm">Previous Row</a>
+            {% else %}
+              <button type="button" class="fb-button-secondary min-h-9 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50" disabled aria-disabled="true">Previous Row</button>
+            {% endif %}
+            {% if next_dataset_row_url %}
+              <a href="{{ next_dataset_row_url }}" class="fb-button-secondary min-h-9 px-3 py-1.5 text-sm">Next Row</a>
+            {% else %}
+              <button type="button" class="fb-button-secondary min-h-9 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50" disabled aria-disabled="true">Next Row</button>
+            {% endif %}
+          </nav>
+        {% endif %}
+      </div>
     </div>
 
     <section class="fb-card p-5" aria-labelledby="row-data-heading">
