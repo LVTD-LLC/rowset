@@ -207,63 +207,60 @@
                 {% endif %}
             </div>
             <div class="mt-8 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
-                <div class="grid grid-cols-[1.05fr_0.8fr_0.8fr] border-b border-slate-200 bg-slate-50 text-sm font-semibold text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                    <div class="px-4 py-3">Capability</div>
-                    <div class="px-4 py-3">Free</div>
-                    <div class="px-4 py-3">Pro</div>
-                </div>
-                <dl class="divide-y divide-slate-200 text-sm dark:divide-slate-800">
-                    <div class="grid grid-cols-[1.05fr_0.8fr_0.8fr]">
-                        <dt class="px-4 py-3 font-medium text-slate-950 dark:text-white">Hosted datasets</dt>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            2
-                        </dd>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            Unlimited
-                        </dd>
-                    </div>
-                    <div class="grid grid-cols-[1.05fr_0.8fr_0.8fr]">
-                        <dt class="px-4 py-3 font-medium text-slate-950 dark:text-white">Rows per dataset</dt>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            50
-                        </dd>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            Unlimited
-                        </dd>
-                    </div>
-                    <div class="grid grid-cols-[1.05fr_0.8fr_0.8fr]">
-                        <dt class="px-4 py-3 font-medium text-slate-950 dark:text-white">Hosted MCP tools</dt>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            Included
-                        </dd>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            Included
-                        </dd>
-                    </div>
-                    <div class="grid grid-cols-[1.05fr_0.8fr_0.8fr]">
-                        <dt class="px-4 py-3 font-medium text-slate-950 dark:text-white">REST API access</dt>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            Included
-                        </dd>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            Included
-                        </dd>
-                    </div>
-                    <div class="grid grid-cols-[1.05fr_0.8fr_0.8fr]">
-                        <dt class="px-4 py-3 font-medium text-slate-950 dark:text-white">Exports and read-only previews</dt>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            Included
-                        </dd>
-                        <dd class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                            Included
-                        </dd>
-                    </div>
-                </dl>
+                <table class="w-full table-fixed text-left text-sm">
+                    <caption class="sr-only">
+                        Rowset Free and Pro plan capability comparison
+                    </caption>
+                    <colgroup>
+                        <col class="w-[42%]">
+                        <col class="w-[29%]">
+                        <col class="w-[29%]">
+                    </colgroup>
+                    <thead class="bg-slate-50 text-slate-950 dark:bg-slate-900 dark:text-white">
+                        <tr class="border-b border-slate-200 dark:border-slate-800">
+                            <th scope="col" class="px-4 py-3 font-semibold">Capability</th>
+                            <th scope="col" class="px-4 py-3 font-semibold">Free</th>
+                            <th scope="col" class="px-4 py-3 font-semibold">Pro</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        <tr>
+                            <th scope="row"
+                                class="px-4 py-3 font-medium text-slate-950 dark:text-white">Hosted datasets</th>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">2</td>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Unlimited</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"
+                                class="px-4 py-3 font-medium text-slate-950 dark:text-white">Rows per dataset</th>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">50</td>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Unlimited</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"
+                                class="px-4 py-3 font-medium text-slate-950 dark:text-white">Hosted MCP tools</th>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Included</td>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Included</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"
+                                class="px-4 py-3 font-medium text-slate-950 dark:text-white">REST API access</th>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Included</td>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Included</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"
+                                class="px-4 py-3 font-medium text-slate-950 dark:text-white">Exports and read-only previews</th>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Included</td>
+                            <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Included</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
             <div class="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/60">
                 <div class="grid gap-5 md:grid-cols-[0.7fr_1.3fr] md:items-center">
                     <div>
-                        <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Need self-hosting?</h2>
+                        <h3 class="text-xl font-semibold text-slate-950 dark:text-white">Need self-hosting?</h3>
                         <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Rowset can be deployed from the repository. The hosted Pro plan is for users who want Rowset managed for them.</p>
                     </div>
                     <div class="flex flex-col gap-3 sm:flex-row md:justify-end">
@@ -293,7 +290,13 @@
         "@type": "Offer",
         "name": "Rowset Free",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "USD",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": "0",
+          "priceCurrency": "USD",
+          "billingDuration": "P1M"
+        }
       },
       {
         "@type": "Offer",
