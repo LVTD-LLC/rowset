@@ -74,6 +74,9 @@ class Project(BaseModel):
     def get_absolute_url(self):
         return reverse("project_detail", kwargs={"project_key": self.key})
 
+    def get_settings_url(self):
+        return reverse("project_settings", kwargs={"project_key": self.key})
+
 
 class ProjectSection(BaseModel):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="project_sections")

@@ -516,42 +516,6 @@
       },
     }));
 
-    Alpine.data("projectDetail", () => ({
-      description: "",
-      editing: false,
-      name: "",
-
-      init() {
-        this.editing = this.$el.dataset.editing === "true";
-        this.name = this.$el.dataset.name || "";
-        this.description = this.$el.dataset.description || "";
-      },
-
-      edit(event) {
-        event.preventDefault();
-        this.editing = true;
-        this.$nextTick(() => {
-          this.$refs.nameInput?.focus();
-          this.$refs.nameInput?.select();
-        });
-      },
-
-      cancel(event) {
-        event.preventDefault();
-        if (this.$refs.nameInput) {
-          this.$refs.nameInput.value = this.name;
-          this.$refs.nameInput.removeAttribute("aria-describedby");
-          this.$refs.nameInput.removeAttribute("aria-invalid");
-        }
-        if (this.$refs.descriptionInput) {
-          this.$refs.descriptionInput.value = this.description;
-        }
-        this.$refs.error?.remove();
-        this.editing = false;
-        this.$nextTick(() => this.$refs.editButton?.focus());
-      },
-    }));
-
     Alpine.data("datasetProject", () => ({
       init() {
         this.$nextTick(() => this.syncSections());
