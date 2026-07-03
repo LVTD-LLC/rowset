@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_slug
 from django.urls import reverse
 
-BLOG_POST_CONTENT_DIR = Path(settings.BASE_DIR) / "apps" / "blog" / "content"
+BLOG_POST_CONTENT_DIR = Path(settings.BLOG_POST_CONTENT_DIR)
 PUBLISHED_STATUS = "published"
 DRAFT_STATUS = "draft"
 VALID_STATUSES = {DRAFT_STATUS, PUBLISHED_STATUS}

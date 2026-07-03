@@ -3,12 +3,22 @@
 from django.db import migrations
 
 
+def assert_no_legacy_blog_posts(apps, schema_editor):
+    blog_post = apps.get_model("blog", "BlogPost")
+    if blog_post.objects.exists():
+        raise RuntimeError(
+            "Legacy BlogPost rows exist. Export or delete them before applying the "
+            "Markdown-only blog migration."
+        )
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("blog", "0001_initial"),
     ]
 
     operations = [
+        migrations.RunPython(assert_no_legacy_blog_posts, migrations.RunPython.noop),
         migrations.DeleteModel(
             name="BlogPost",
         ),

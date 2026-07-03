@@ -78,6 +78,9 @@ DEBUG = env("DEBUG")
 
 SITE_URL = env("SITE_URL")
 SITE_HOST = SITE_URL.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
+BLOG_POST_CONTENT_DIR = Path(
+    env("BLOG_POST_CONTENT_DIR", default=str(BASE_DIR / "apps" / "blog" / "content"))
+)
 
 # Keep production locked to the configured site hostname.
 ALLOWED_HOSTS = [SITE_HOST]
