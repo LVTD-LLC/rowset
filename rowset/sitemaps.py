@@ -1,8 +1,7 @@
 from django.contrib import sitemaps
-from django.contrib.sitemaps import GenericSitemap
 from django.urls import reverse
 
-from apps.blog.models import BlogPost
+from apps.blog.services import list_blog_posts
 from apps.docs.views import get_docs_navigation
 from apps.pages.use_cases import get_use_case_pages
 
@@ -94,13 +93,26 @@ class DocsSitemap(sitemaps.Sitemap):
         return f"/docs/{item['category']}/{item['page']}/"
 
 
+class BlogSitemap(sitemaps.Sitemap):
+    """Generate sitemap entries for checked-in Markdown blog posts."""
+
+    priority = 0.85
+    protocol = "https"
+    changefreq = "monthly"
+
+    def items(self):
+        return list_blog_posts()
+
+    def location(self, item):
+        return item.get_absolute_url()
+
+    def lastmod(self, item):
+        return item.updated_at
+
+
 sitemaps = {
     "static": StaticViewSitemap,
     "use_cases": UseCaseSitemap,
-    "blog": GenericSitemap(
-        {"queryset": BlogPost.objects.all(), "date_field": "created_at"},
-        priority=0.85,
-        protocol="https",
-    ),
+    "blog": BlogSitemap,
     "docs": DocsSitemap,
 }

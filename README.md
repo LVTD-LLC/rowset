@@ -439,7 +439,7 @@ through the REST API endpoints above.
 |   |-- datasets/              # Dataset models, services, views, exports, assets, vector search
 |   |-- docs/                  # In-app Markdown docs and navigation
 |   |-- pages/                 # Landing, pricing, legal, use-case pages
-|   `-- blog/                  # Blog models, views, choices, and admin endpoints
+|   `-- blog/                  # Markdown-backed blog posts, services, views, and checks
 |-- frontend/
 |   |-- templates/             # Django templates for public and authenticated pages
 |   |-- src/js/                # Alpine component registration and browser enhancements

@@ -14,7 +14,8 @@
 - `apps/docs/` - in-app documentation renderer, Markdown content, navigation,
   and docs-specific agent guidance.
 - `apps/pages/` - marketing/static pages and page context processors.
-- `apps/blog/` - blog models, views, choices, and admin endpoints.
+- `apps/blog/` - Markdown-backed blog posts, validation checks, services,
+  views, and public templates.
 - `frontend/templates/` - Django templates for public pages, authenticated app,
   account flows, datasets, docs, MCP auth, components, and email.
 - `frontend/src/js/` - Alpine component registration and small global browser

@@ -17,18 +17,11 @@ from apps.api.auth import (
     api_key_auth,
     api_key_write_auth,
     session_auth,
-    superuser_api_auth,
 )
 from apps.api.schemas import (
     AgentApiKeyCreateIn,
     AgentApiKeyCreateOut,
     AgentFeedbackSubmitOut,
-    BlogPostDetailOut,
-    BlogPostIn,
-    BlogPostItemOut,
-    BlogPostListOut,
-    BlogPostOut,
-    BlogPostUpdateIn,
     DatasetApiOut,
     DatasetArchiveOut,
     DatasetAssetApiOut,
@@ -127,8 +120,6 @@ from apps.api.services import (
     update_profile_project_metadata,
     update_profile_project_section,
 )
-from apps.blog.choices import BlogPostStatus
-from apps.blog.models import BlogPost
 from apps.core.analytics import (
     ROWSET_GET_USER_INFO_SUCCEEDED,
     agent_api_key_tracking_properties,
@@ -355,197 +346,6 @@ def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
     except Exception as e:
         logger.error("Failed to submit feedback", error=str(e), profile_id=profile.id)
         return {"success": False, "message": "Failed to submit feedback. Please try again."}
-
-
-def _serialize_blog_post(blog_post: BlogPost) -> BlogPostItemOut:
-    return {
-        "id": blog_post.id,
-        "title": blog_post.title,
-        "description": blog_post.description,
-        "slug": blog_post.slug,
-        "tags": blog_post.tags,
-        "content": blog_post.content,
-        "status": blog_post.status,
-    }
-
-
-@api.post(
-    "/blog-posts/submit",
-    response={200: BlogPostOut, 403: BlogPostOut},
-    auth=[superuser_api_auth],
-    include_in_schema=False,
-    tags=["admin"],
-)
-def submit_blog_post(request: HttpRequest, data: BlogPostIn):
-    profile = request.auth
-
-    if not profile or not getattr(profile.user, "is_superuser", False):
-        return 403, {"status": "error", "message": "Forbidden: superuser access required."}
-
-    try:
-        BlogPost.objects.create(
-            title=data.title,
-            description=data.description,
-            slug=data.slug,
-            tags=data.tags,
-            content=data.content,
-            status=data.status,
-            # icon and image are ignored for now (file upload not handled)
-        )
-        return BlogPostOut(status="success", message="Blog post submitted successfully.")
-    except Exception as e:
-        return BlogPostOut(status="failure", message=f"Failed to submit blog post: {str(e)}")
-
-
-@api.get(
-    "/internal/blog-posts",
-    response=BlogPostListOut,
-    auth=[superuser_api_auth],
-    include_in_schema=False,
-    tags=["admin"],
-)
-def list_internal_blog_posts(request: HttpRequest):
-    blog_posts = BlogPost.objects.order_by("-created_at")
-    return {"blog_posts": [_serialize_blog_post(blog_post) for blog_post in blog_posts]}
-
-
-@api.get(
-    "/internal/blog-posts/{blog_post_id}",
-    response={200: BlogPostDetailOut, 404: BlogPostOut},
-    auth=[superuser_api_auth],
-    include_in_schema=False,
-    tags=["admin"],
-)
-def get_internal_blog_post(request: HttpRequest, blog_post_id: int):
-    try:
-        blog_post = BlogPost.objects.get(id=blog_post_id)
-    except BlogPost.DoesNotExist:
-        return 404, {"status": "error", "message": "Blog post not found."}
-
-    return {
-        "status": "success",
-        "message": "Blog post retrieved successfully.",
-        "blog_post": _serialize_blog_post(blog_post),
-    }
-
-
-@api.put(
-    "/internal/blog-posts/{blog_post_id}",
-    response={200: BlogPostDetailOut, 404: BlogPostOut},
-    auth=[superuser_api_auth],
-    include_in_schema=False,
-    tags=["admin"],
-)
-def update_internal_blog_post(request: HttpRequest, blog_post_id: int, data: BlogPostIn):
-    try:
-        blog_post = BlogPost.objects.get(id=blog_post_id)
-    except BlogPost.DoesNotExist:
-        return 404, {"status": "error", "message": "Blog post not found."}
-
-    blog_post.title = data.title
-    blog_post.description = data.description
-    blog_post.slug = data.slug
-    blog_post.tags = data.tags
-    blog_post.content = data.content
-    blog_post.status = data.status
-    blog_post.save(
-        update_fields=["title", "description", "slug", "tags", "content", "status", "updated_at"]
-    )
-
-    return {
-        "status": "success",
-        "message": "Blog post updated successfully.",
-        "blog_post": _serialize_blog_post(blog_post),
-    }
-
-
-@api.patch(
-    "/internal/blog-posts/{blog_post_id}",
-    response={200: BlogPostDetailOut, 404: BlogPostOut},
-    auth=[superuser_api_auth],
-    include_in_schema=False,
-    tags=["admin"],
-)
-def patch_internal_blog_post(request: HttpRequest, blog_post_id: int, data: BlogPostUpdateIn):
-    try:
-        blog_post = BlogPost.objects.get(id=blog_post_id)
-    except BlogPost.DoesNotExist:
-        return 404, {"status": "error", "message": "Blog post not found."}
-
-    fields_to_update = []
-    for field in ["title", "description", "slug", "tags", "content", "status"]:
-        value = getattr(data, field)
-        if value is not None:
-            setattr(blog_post, field, value)
-            fields_to_update.append(field)
-
-    if fields_to_update:
-        blog_post.save(update_fields=[*fields_to_update, "updated_at"])
-
-    return {
-        "status": "success",
-        "message": "Blog post updated successfully.",
-        "blog_post": _serialize_blog_post(blog_post),
-    }
-
-
-@api.delete(
-    "/internal/blog-posts/{blog_post_id}",
-    response={200: BlogPostOut, 404: BlogPostOut},
-    auth=[superuser_api_auth],
-    include_in_schema=False,
-    tags=["admin"],
-)
-def delete_internal_blog_post(request: HttpRequest, blog_post_id: int):
-    deleted_count, _ = BlogPost.objects.filter(id=blog_post_id).delete()
-    if deleted_count == 0:
-        return 404, {"status": "error", "message": "Blog post not found."}
-
-    return {"status": "success", "message": "Blog post deleted successfully."}
-
-
-@api.post(
-    "/internal/blog-posts/{blog_post_id}/review",
-    response={200: BlogPostDetailOut, 404: BlogPostOut},
-    auth=[superuser_api_auth],
-    include_in_schema=False,
-    tags=["admin"],
-)
-def review_internal_blog_post(request: HttpRequest, blog_post_id: int):
-    try:
-        blog_post = BlogPost.objects.get(id=blog_post_id)
-    except BlogPost.DoesNotExist:
-        return 404, {"status": "error", "message": "Blog post not found."}
-
-    blog_post.status = BlogPostStatus.DRAFT
-    blog_post.save(update_fields=["status", "updated_at"])
-    return {
-        "status": "success",
-        "message": "Blog post moved to draft for review.",
-        "blog_post": _serialize_blog_post(blog_post),
-    }
-
-
-@api.post(
-    "/internal/blog-posts/{blog_post_id}/publish",
-    response={200: BlogPostDetailOut, 404: BlogPostOut},
-    auth=[superuser_api_auth],
-    include_in_schema=False,
-    tags=["admin"],
-)
-def publish_internal_blog_post(request: HttpRequest, blog_post_id: int):
-    try:
-        blog_post = BlogPost.objects.get(id=blog_post_id)
-    except BlogPost.DoesNotExist:
-        return 404, {"status": "error", "message": "Blog post not found."}
-
-    blog_post.status = BlogPostStatus.PUBLISHED
-    blog_post.save(update_fields=["status", "updated_at"])
-    return {
-        "status": "success",
-        "message": "Blog post published successfully.",
-        "blog_post": _serialize_blog_post(blog_post),
-    }
 
 
 @api.get(
