@@ -1,4 +1,5 @@
 import json
+import zlib
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -126,6 +127,20 @@ ROW_SORT_PARAM = "row_sort"
 ROW_SORT_DIRECTION_PARAM = "row_dir"
 ROW_FILTER_PARAM_PREFIX = "filter_"
 ROW_FILTER_OPERATOR_PARAM_PREFIX = "filter_op_"
+CHOICE_VALUE_ACCENT_CLASS_NAMES = (
+    "fb-choice-pill-emerald",
+    "fb-choice-pill-sky",
+    "fb-choice-pill-amber",
+    "fb-choice-pill-rose",
+    "fb-choice-pill-violet",
+    "fb-choice-pill-cyan",
+    "fb-choice-pill-lime",
+    "fb-choice-pill-fuchsia",
+    "fb-choice-pill-teal",
+    "fb-choice-pill-indigo",
+    "fb-choice-pill-orange",
+    "fb-choice-pill-pink",
+)
 DATASET_EXPORT_FORMATS = {
     "csv": ("text/csv; charset=utf-8", rows_to_csv_text),
     "jsonl": ("application/x-ndjson; charset=utf-8", rows_to_jsonl_text),
@@ -369,6 +384,118 @@ def command_palette_search(request):
 
 def _cell_value(value: object) -> str:
     return "" if value is None else str(value)
+
+
+def _choice_value_key(value: str) -> str:
+    return value.strip().casefold()
+
+
+def _choice_value_accent_class(value: str, used_indices: set[int] | None = None) -> str:
+    accent_count = len(CHOICE_VALUE_ACCENT_CLASS_NAMES)
+    accent_index = zlib.crc32(_choice_value_key(value).encode("utf-8")) % accent_count
+    if used_indices is None:
+        return CHOICE_VALUE_ACCENT_CLASS_NAMES[accent_index]
+
+    for offset in range(accent_count):
+        candidate_index = (accent_index + offset) % accent_count
+        if candidate_index not in used_indices:
+            used_indices.add(candidate_index)
+            return CHOICE_VALUE_ACCENT_CLASS_NAMES[candidate_index]
+    return CHOICE_VALUE_ACCENT_CLASS_NAMES[accent_index]
+
+
+def _choice_value_accent_classes_from_columns(
+    columns: list[dict],
+    row_data_items: list[dict[str, object]] | None = None,
+) -> dict[str, dict[str, str]]:
+    accent_classes = {}
+    used_indices_by_column = {}
+    for column in columns:
+        if column.get("type") != DatasetColumnType.CHOICE:
+            continue
+
+        used_indices: set[int] = set()
+        value_classes = {}
+        for choice in column.get("choices", []):
+            value = _cell_value(choice)
+            value_key = _choice_value_key(value)
+            if not value_key or value_key in value_classes:
+                continue
+            value_classes[value_key] = _choice_value_accent_class(value, used_indices)
+        column_name = column["name"]
+        accent_classes[column_name] = value_classes
+        used_indices_by_column[column_name] = used_indices
+
+    for row_data in row_data_items or []:
+        if not row_data:
+            continue
+        for column_name, value_classes in accent_classes.items():
+            value = _cell_value(row_data.get(column_name, ""))
+            value_key = _choice_value_key(value)
+            if not value_key or value_key in value_classes:
+                continue
+            value_classes[value_key] = _choice_value_accent_class(
+                value,
+                used_indices_by_column[column_name],
+            )
+    return accent_classes
+
+
+def _choice_value_accent_classes(
+    headers: list[str],
+    column_schema: dict | None,
+    row_data_items: list[dict[str, object]] | None = None,
+) -> dict[str, dict[str, str]]:
+    return _choice_value_accent_classes_from_columns(
+        column_definitions(headers, column_schema or {}),
+        row_data_items,
+    )
+
+
+def _choice_cell_accent_class(
+    header: str,
+    value: str,
+    choice_value_accent_classes: dict[str, dict[str, str]],
+) -> str:
+    value_key = _choice_value_key(value)
+    if not value_key:
+        return ""
+    header_value_classes = choice_value_accent_classes.get(header)
+    if header_value_classes is None:
+        return ""
+    if value_key in header_value_classes:
+        return header_value_classes[value_key]
+    used_indices = {
+        index
+        for index, class_name in enumerate(CHOICE_VALUE_ACCENT_CLASS_NAMES)
+        if class_name in header_value_classes.values()
+    }
+    return _choice_value_accent_class(value, used_indices)
+
+
+def _column_definitions_with_choice_display(
+    headers: list[str],
+    column_schema: dict | None,
+) -> list[dict]:
+    columns = column_definitions(headers, column_schema or {})
+    choice_value_accent_classes = _choice_value_accent_classes_from_columns(columns)
+    for column in columns:
+        if column.get("type") != DatasetColumnType.CHOICE:
+            continue
+
+        column["choice_values"] = [
+            {
+                "value": _cell_value(choice),
+                "accent_class": _choice_cell_accent_class(
+                    column["name"],
+                    _cell_value(choice),
+                    choice_value_accent_classes,
+                ),
+            }
+            for choice in column.get("choices", [])
+            if _choice_value_key(_cell_value(choice))
+        ]
+    return columns
 
 
 def _mutation_change_display(value, *, values_recorded: bool, legacy_placeholder: str) -> dict:
@@ -636,10 +763,13 @@ def _row_table_cells(
     row_id: int | None = None,
     row_number: int | None = None,
     public_context: bool = False,
+    choice_value_accent_classes: dict[str, dict[str, str]] | None = None,
 ) -> list[dict[str, object]]:
     reference_lookup = reference_lookup or {}
     image_assets = image_assets or {}
     image_columns = set(image_columns_from_schema(headers, column_schema))
+    if choice_value_accent_classes is None:
+        choice_value_accent_classes = {}
     cells = []
     row_detail_primary_assigned = False
     for index, header in enumerate(headers):
@@ -648,6 +778,14 @@ def _row_table_cells(
             "value": display_value,
             "is_first": index == 0,
         }
+        choice_accent_class = _choice_cell_accent_class(
+            header,
+            display_value,
+            choice_value_accent_classes,
+        )
+        if choice_accent_class:
+            cell["is_choice"] = True
+            cell["choice_accent_class"] = choice_accent_class
         asset_key = dataset_asset_key_from_ref(display_value) if header in image_columns else ""
         asset = image_assets.get((row_id, header)) if row_id is not None and asset_key else None
         if asset and str(asset.key) == asset_key:
@@ -1700,6 +1838,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             dataset.headers,
             dataset.column_schema,
         )
+        colorize_choice_values = self.request.user.profile.choice_colorization_enabled
         row_queryset, row_query_context = _dataset_row_query_context(
             self.request,
             dataset,
@@ -1709,10 +1848,19 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
         row_objects = list(row_page_obj.object_list)
+        row_data_items = [row.data for row in row_objects]
+        choice_value_accent_classes = (
+            _choice_value_accent_classes_from_columns(
+                column_definition_list,
+                row_data_items,
+            )
+            if colorize_choice_values
+            else {}
+        )
         reference_lookup = _rowset_reference_lookup(
             self.request.user.profile,
             column_definition_list,
-            [row.data for row in row_objects],
+            row_data_items,
         )
         image_asset_lookup = _image_asset_lookup(dataset, row_objects)
         rows_with_values = []
@@ -1730,6 +1878,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 row_url=row_url,
                 row_id=row.id,
                 row_number=row.row_number,
+                choice_value_accent_classes=choice_value_accent_classes,
             )
             rows_with_values.append(
                 {
@@ -1747,6 +1896,14 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         if not has_imported_rows:
             rows_with_values = []
             preview_rows = dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE]
+            choice_value_accent_classes = (
+                _choice_value_accent_classes_from_columns(
+                    column_definition_list,
+                    preview_rows,
+                )
+                if colorize_choice_values
+                else {}
+            )
             reference_lookup = _rowset_reference_lookup(
                 self.request.user.profile,
                 column_definition_list,
@@ -1761,6 +1918,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                     preview_row,
                     column_schema=dataset.column_schema,
                     reference_lookup=reference_lookup,
+                    choice_value_accent_classes=choice_value_accent_classes,
                 )
                 rows_with_values.append(
                     {
@@ -2046,7 +2204,7 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
             .exclude(pk=self.object.pk)
             .order_by("name", "-created_at")
         )
-        context["column_definitions"] = column_definitions(
+        context["column_definitions"] = _column_definitions_with_choice_display(
             self.object.headers,
             self.object.column_schema,
         )

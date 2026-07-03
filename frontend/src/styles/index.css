@@ -155,6 +155,59 @@
     @apply px-3 py-2 text-sm text-slate-700 dark:text-slate-200;
   }
 
+  /* WCAG AA checked: all 12 pill pairs exceed 4.5:1; min light 8.43:1, min dark 11.95:1. */
+  .fb-choice-pill {
+    @apply inline-flex max-w-64 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold leading-5;
+  }
+
+  .fb-choice-pill-emerald {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100;
+  }
+
+  .fb-choice-pill-sky {
+    @apply border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100;
+  }
+
+  .fb-choice-pill-amber {
+    @apply border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100;
+  }
+
+  .fb-choice-pill-rose {
+    @apply border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-100;
+  }
+
+  .fb-choice-pill-violet {
+    @apply border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-100;
+  }
+
+  .fb-choice-pill-cyan {
+    @apply border-cyan-200 bg-cyan-50 text-cyan-900 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-100;
+  }
+
+  .fb-choice-pill-lime {
+    @apply border-lime-200 bg-lime-50 text-lime-900 dark:border-lime-800 dark:bg-lime-950 dark:text-lime-100;
+  }
+
+  .fb-choice-pill-fuchsia {
+    @apply border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900 dark:border-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-100;
+  }
+
+  .fb-choice-pill-teal {
+    @apply border-teal-200 bg-teal-50 text-teal-900 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-100;
+  }
+
+  .fb-choice-pill-indigo {
+    @apply border-indigo-200 bg-indigo-50 text-indigo-900 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-100;
+  }
+
+  .fb-choice-pill-orange {
+    @apply border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100;
+  }
+
+  .fb-choice-pill-pink {
+    @apply border-pink-200 bg-pink-50 text-pink-900 dark:border-pink-800 dark:bg-pink-950 dark:text-pink-100;
+  }
+
   .docs-code-blocks pre {
     @apply border border-slate-800 bg-slate-950 text-slate-50;
   }

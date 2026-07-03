@@ -249,8 +249,20 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["profile"] = self.request.user.profile
         context.update(user_settings_context(self.request, self.request.user.profile))
         return context
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get("settings_section") == "design":
+            profile = self.get_object()
+            profile.choice_colorization_enabled = (
+                request.POST.get("choice_colorization_enabled") == "on"
+            )
+            profile.save(update_fields=["choice_colorization_enabled", "updated_at"])
+            messages.success(request, "Design settings updated")
+            return redirect("settings")
+        return super().post(request, *args, **kwargs)
 
 
 def agent_instructions_rowset_mcp(request):

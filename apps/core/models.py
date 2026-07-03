@@ -15,6 +15,10 @@ class Profile(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     key = models.CharField(max_length=30, unique=True, default=generate_random_key)
     agent_setup_prompt_dismissed = models.BooleanField(default=False)
+    choice_colorization_enabled = models.BooleanField(
+        default=False,
+        help_text="Render choice values with color accents in the dataset UI.",
+    )
 
     stripe_subscription_id = models.CharField(
         max_length=255,

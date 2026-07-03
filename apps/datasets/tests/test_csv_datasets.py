@@ -166,6 +166,50 @@ def create_ready_dataset(profile):
     return dataset
 
 
+def create_choice_status_dataset(profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Tasks",
+        original_filename="tasks.csv",
+        source_file=csv_upload("task_id,status\nTASK-1,todo\nTASK-2,done\nTASK-3,paused\n"),
+        status=DatasetStatus.READY,
+        headers=["task_id", "status"],
+        column_schema={
+            "task_id": {"type": DatasetColumnType.TEXT},
+            "status": {
+                "type": DatasetColumnType.CHOICE,
+                "choices": ["todo", "doing", "blocked", "done"],
+            },
+        },
+        index_column="task_id",
+        preview_rows=[{"task_id": "TASK-1", "status": "todo"}],
+        row_count=3,
+    )
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=dataset,
+                row_number=1,
+                index_value="TASK-1",
+                data={"task_id": "TASK-1", "status": "todo"},
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=2,
+                index_value="TASK-2",
+                data={"task_id": "TASK-2", "status": "done"},
+            ),
+            DatasetRow(
+                dataset=dataset,
+                row_number=3,
+                index_value="TASK-3",
+                data={"task_id": "TASK-3", "status": "paused"},
+            ),
+        ]
+    )
+    return dataset
+
+
 def create_crm_datasets(profile):
     people = Dataset.objects.create(
         profile=profile,
@@ -1181,6 +1225,51 @@ def test_dataset_detail_links_row_create_and_bulk_actions(auth_client, profile):
     assert "Delete selected rows" in content
     assert f'value="{row.id}"' in content
     assert 'x-data="rowBulkActions"' in content
+
+
+def test_dataset_detail_keeps_choice_values_plain_when_colorize_is_disabled(
+    auth_client,
+    profile,
+):
+    dataset = create_choice_status_dataset(profile)
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    first_status_cell = response.context["rows_with_values"][0]["cells"][1]
+    assert "is_choice" not in first_status_cell
+    assert "choice_accent_class" not in first_status_cell
+    assert "fb-choice-pill" not in content
+    assert '<a href="/datasets/' in content
+    assert re.search(r">\s*todo\s*</a>", content)
+
+
+def test_dataset_detail_renders_choice_values_with_color_accents_when_enabled(
+    auth_client,
+    profile,
+):
+    profile.choice_colorization_enabled = True
+    profile.save(update_fields=["choice_colorization_enabled"])
+    dataset = create_choice_status_dataset(profile)
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    first_status_cell = response.context["rows_with_values"][0]["cells"][1]
+    second_status_cell = response.context["rows_with_values"][1]["cells"][1]
+    ad_hoc_status_cell = response.context["rows_with_values"][2]["cells"][1]
+    assert first_status_cell["is_choice"]
+    assert first_status_cell["choice_accent_class"] != second_status_cell["choice_accent_class"]
+    assert ad_hoc_status_cell["is_choice"]
+    assert ad_hoc_status_cell["choice_accent_class"] != second_status_cell["choice_accent_class"]
+    assert 'class="fb-focus fb-choice-pill' in content
+    assert '<span class="truncate">todo</span>' in content
+    assert '<span class="truncate">done</span>' in content
+    assert '<span class="truncate">paused</span>' in content
+    dataset.refresh_from_db()
+    assert dataset.rows.get(index_value="TASK-1").data["status"] == "todo"
 
 
 def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
@@ -7069,6 +7158,21 @@ def test_dataset_settings_page_has_section_navigation(auth_client, profile):
     ]:
         assert f'href="#{section_id}"' in content
         assert f'id="{section_id}"' in content
+
+
+def test_dataset_settings_shows_choice_values_with_color_accents(auth_client, profile):
+    dataset = create_choice_status_dataset(profile)
+
+    response = auth_client.get(dataset.get_settings_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Choice values" in content
+    assert 'class="fb-choice-pill fb-choice-pill-' in content
+    assert '<span class="truncate">todo</span>' in content
+    assert '<span class="truncate">doing</span>' in content
+    assert '<span class="truncate">blocked</span>' in content
+    assert '<span class="truncate">done</span>' in content
 
 
 def test_dataset_owner_can_assign_project_from_settings(auth_client, profile):
