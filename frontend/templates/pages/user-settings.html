@@ -136,6 +136,29 @@
       </div>
     </section>
 
+    <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="design-heading">
+      <form method="post" action="{% url 'settings' %}" class="space-y-5">
+        {% csrf_token %}
+        <input type="hidden" name="settings_section" value="design">
+        <div>
+          <h2 id="design-heading" class="fb-section-title">Design</h2>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Tune how dataset values appear in your workspace.</p>
+        </div>
+
+        <label class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200" for="choice-colorization-enabled">
+          <input id="choice-colorization-enabled" name="choice_colorization_enabled" type="checkbox" {% if profile.choice_colorization_enabled %}checked{% endif %} class="fb-focus mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 dark:border-slate-700">
+          <span>
+            <span class="font-semibold text-slate-900 dark:text-slate-100">Colorize</span>
+            <span class="mt-1 block leading-6 text-slate-600 dark:text-slate-300">Show choice values as color-accented pills in dataset tables.</span>
+          </span>
+        </label>
+
+        <div>
+          <button type="submit" class="fb-button-primary">Save design</button>
+        </div>
+      </form>
+    </section>
+
     <section class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="profile-heading">
       <form id="settings-form" action="" method="post" class="space-y-6">
         {% csrf_token %}

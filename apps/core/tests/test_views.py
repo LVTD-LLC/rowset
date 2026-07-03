@@ -476,6 +476,39 @@ class TestHomeView:
         assert f"Rowset API key: {profile.key}" not in content
         assert reverse("agent_setup_prompt") not in content
 
+    def test_settings_view_includes_design_colorize_toggle(self, auth_client):
+        response = auth_client.get(reverse("settings"))
+
+        content = response.content.decode()
+        assert response.status_code == 200
+        assert "Design" in content
+        assert "Colorize" in content
+        assert 'name="choice_colorization_enabled"' in content
+
+    def test_settings_view_updates_choice_colorization_preference(self, auth_client, profile):
+        response = auth_client.post(
+            reverse("settings"),
+            {
+                "settings_section": "design",
+                "choice_colorization_enabled": "on",
+            },
+        )
+
+        assert response.status_code == 302
+        profile.refresh_from_db()
+        assert profile.choice_colorization_enabled is True
+
+        response = auth_client.post(
+            reverse("settings"),
+            {
+                "settings_section": "design",
+            },
+        )
+
+        assert response.status_code == 302
+        profile.refresh_from_db()
+        assert profile.choice_colorization_enabled is False
+
     def test_app_header_omits_dataset_and_project_nav_links(self, auth_client):
         response = auth_client.get(reverse("settings"))
 

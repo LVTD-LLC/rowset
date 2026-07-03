@@ -472,6 +472,31 @@ def _choice_cell_accent_class(
     return _choice_value_accent_class(value, used_indices)
 
 
+def _column_definitions_with_choice_display(
+    headers: list[str],
+    column_schema: dict | None,
+) -> list[dict]:
+    columns = column_definitions(headers, column_schema or {})
+    choice_value_accent_classes = _choice_value_accent_classes_from_columns(columns)
+    for column in columns:
+        if column.get("type") != DatasetColumnType.CHOICE:
+            continue
+
+        column["choice_values"] = [
+            {
+                "value": _cell_value(choice),
+                "accent_class": _choice_cell_accent_class(
+                    column["name"],
+                    _cell_value(choice),
+                    choice_value_accent_classes,
+                ),
+            }
+            for choice in column.get("choices", [])
+            if _choice_value_key(_cell_value(choice))
+        ]
+    return columns
+
+
 def _mutation_change_display(value, *, values_recorded: bool, legacy_placeholder: str) -> dict:
     value = "" if value is None else str(value)
     if values_recorded:
@@ -743,7 +768,7 @@ def _row_table_cells(
     image_assets = image_assets or {}
     image_columns = set(image_columns_from_schema(headers, column_schema))
     if choice_value_accent_classes is None:
-        choice_value_accent_classes = _choice_value_accent_classes(headers, column_schema)
+        choice_value_accent_classes = {}
     cells = []
     row_detail_primary_assigned = False
     for index, header in enumerate(headers):
@@ -1729,6 +1754,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             dataset.headers,
             dataset.column_schema,
         )
+        colorize_choice_values = self.request.user.profile.choice_colorization_enabled
         row_queryset, row_query_context = _dataset_row_query_context(
             self.request,
             dataset,
@@ -1739,9 +1765,13 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
         row_objects = list(row_page_obj.object_list)
         row_data_items = [row.data for row in row_objects]
-        choice_value_accent_classes = _choice_value_accent_classes_from_columns(
-            column_definition_list,
-            row_data_items,
+        choice_value_accent_classes = (
+            _choice_value_accent_classes_from_columns(
+                column_definition_list,
+                row_data_items,
+            )
+            if colorize_choice_values
+            else {}
         )
         reference_lookup = _rowset_reference_lookup(
             self.request.user.profile,
@@ -1782,9 +1812,13 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         if not has_imported_rows:
             rows_with_values = []
             preview_rows = dataset.preview_rows[:DATASET_DETAIL_ROW_PAGE_SIZE]
-            choice_value_accent_classes = _choice_value_accent_classes_from_columns(
-                column_definition_list,
-                preview_rows,
+            choice_value_accent_classes = (
+                _choice_value_accent_classes_from_columns(
+                    column_definition_list,
+                    preview_rows,
+                )
+                if colorize_choice_values
+                else {}
             )
             reference_lookup = _rowset_reference_lookup(
                 self.request.user.profile,
@@ -2078,7 +2112,7 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
             .exclude(pk=self.object.pk)
             .order_by("name", "-created_at")
         )
-        context["column_definitions"] = column_definitions(
+        context["column_definitions"] = _column_definitions_with_choice_display(
             self.object.headers,
             self.object.column_schema,
         )
