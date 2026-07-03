@@ -1,10 +1,12 @@
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime
+from hashlib import sha256
 from pathlib import Path
 
 import frontmatter
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_slug
 from django.urls import reverse
@@ -14,7 +16,6 @@ PUBLISHED_STATUS = "published"
 DRAFT_STATUS = "draft"
 VALID_STATUSES = {DRAFT_STATUS, PUBLISHED_STATUS}
 logger = logging.getLogger(__name__)
-_SOURCE_CACHE = {}
 
 
 class BlogPostSourceError(ValueError):
@@ -71,9 +72,10 @@ def get_blog_post(slug, content_dir=None, *, strict=True):
 def get_blog_post_collection(content_dir=None, *, strict=True):
     content_path = Path(content_dir or BLOG_POST_CONTENT_DIR).resolve()
     signature = get_blog_post_source_signature(content_path)
-    cache_key = (str(content_path), strict)
-    cached_collection = _SOURCE_CACHE.get(cache_key)
-    if cached_collection and cached_collection.signature == signature:
+    # The signature keeps cached collections fresh when repo-tracked Markdown changes.
+    cache_key = get_blog_post_cache_key(content_path, signature, strict)
+    cached_collection = cache.get(cache_key)
+    if cached_collection is not None:
         return cached_collection
 
     posts = load_blog_post_sources(content_path, strict=strict)
@@ -89,8 +91,13 @@ def get_blog_post_collection(content_dir=None, *, strict=True):
         published_posts=published_posts,
         published_posts_by_slug={post.slug: post for post in published_posts},
     )
-    _SOURCE_CACHE[cache_key] = collection
+    cache.set(cache_key, collection, timeout=settings.BLOG_POST_CACHE_TIMEOUT)
     return collection
+
+
+def get_blog_post_cache_key(content_path, signature, strict):
+    payload = repr((str(content_path), signature, strict)).encode()
+    return f"blog_posts:{sha256(payload).hexdigest()}"
 
 
 def get_blog_post_source_signature(content_path):

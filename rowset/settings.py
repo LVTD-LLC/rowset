@@ -81,6 +81,7 @@ SITE_HOST = SITE_URL.replace("http://", "").replace("https://", "").split("/")[0
 BLOG_POST_CONTENT_DIR = Path(
     env("BLOG_POST_CONTENT_DIR", default=str(BASE_DIR / "apps" / "blog" / "content"))
 )
+BLOG_POST_CACHE_TIMEOUT = env.int("BLOG_POST_CACHE_TIMEOUT", default=300)
 
 # Keep production locked to the configured site hostname.
 ALLOWED_HOSTS = [SITE_HOST]
