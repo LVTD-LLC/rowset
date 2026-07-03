@@ -1,15 +1,9 @@
-from io import StringIO
-
 import pytest
-from django.core.management import call_command
 from django.urls import reverse
 
-from apps.blog.choices import BlogPostStatus
-from apps.blog.models import BlogPost
-from apps.blog.services import BlogPostSourceError, sync_blog_posts_from_markdown
+from apps.blog import services as blog_services
+from apps.blog.services import BlogPostSourceError, get_blog_post, get_blog_posts
 from rowset.sitemaps import sitemaps
-
-pytestmark = pytest.mark.django_db
 
 
 def write_markdown_post(directory, filename="agent-datasets.md", frontmatter="", content=""):
@@ -21,184 +15,135 @@ def write_markdown_post(directory, filename="agent-datasets.md", frontmatter="",
     return path
 
 
-def test_sync_blog_posts_creates_post_from_markdown_file(tmp_path):
+def published_frontmatter(slug="agent-managed-datasets", title="Agent-managed datasets"):
+    return (
+        f"title: {title}\n"
+        "description: A practical note for AI agents.\n"
+        f"slug: {slug}\n"
+        "tags:\n"
+        "  - agents\n"
+        "  - datasets\n"
+        "status: published\n"
+        "published_at: 2026-06-01\n"
+        "updated_at: 2026-06-02\n"
+    )
+
+
+def test_get_blog_posts_reads_published_markdown_files(tmp_path):
     write_markdown_post(
         tmp_path,
-        frontmatter=(
-            "title: Agent-managed datasets\n"
-            "description: A practical note for AI agents.\n"
-            "slug: agent-managed-datasets\n"
-            "tags:\n"
-            "  - agents\n"
-            "  - datasets\n"
-            "status: published\n"
-        ),
+        frontmatter=published_frontmatter(),
         content="Agents need **stable** row APIs.\n",
     )
 
-    result = sync_blog_posts_from_markdown(tmp_path)
+    posts = get_blog_posts(tmp_path)
 
-    assert result.created == 1
-    assert result.updated == 0
-
-    post = BlogPost.objects.get(slug="agent-managed-datasets")
+    assert len(posts) == 1
+    post = posts[0]
     assert post.title == "Agent-managed datasets"
+    assert post.slug == "agent-managed-datasets"
     assert post.description == "A practical note for AI agents."
     assert post.tags == "agents, datasets"
-    assert post.status == BlogPostStatus.PUBLISHED
     assert post.content == "Agents need **stable** row APIs."
+    assert post.get_absolute_url() == reverse("blog_post", kwargs={"slug": post.slug})
+    assert post.published_at.isoformat() == "2026-06-01"
+    assert post.updated_at.isoformat() == "2026-06-02"
 
 
-def test_sync_blog_posts_updates_existing_post_by_slug(tmp_path):
-    post = BlogPost.objects.create(
-        title="Old title",
-        description="Old description",
-        slug="agent-managed-datasets",
-        tags="old",
-        content="Old content",
-        status=BlogPostStatus.DRAFT,
+def test_get_blog_posts_excludes_drafts_and_template_files(tmp_path):
+    write_markdown_post(
+        tmp_path,
+        "published.md",
+        frontmatter=published_frontmatter("published-post", "Published post"),
+        content="Visible.\n",
     )
     write_markdown_post(
         tmp_path,
-        frontmatter=(
-            "title: New title\n"
-            "description: New description.\n"
-            "slug: agent-managed-datasets\n"
-            "tags: agents, datasets\n"
-            "status: published\n"
+        "draft.md",
+        frontmatter=published_frontmatter("draft-post", "Draft post").replace(
+            "status: published", "status: draft"
         ),
-        content="New content.\n",
+        content="Hidden.\n",
     )
-
-    result = sync_blog_posts_from_markdown(tmp_path)
-
-    assert result.created == 0
-    assert result.updated == 1
-    post.refresh_from_db()
-    assert post.title == "New title"
-    assert post.description == "New description."
-    assert post.tags == "agents, datasets"
-    assert post.content == "New content."
-    assert post.status == BlogPostStatus.PUBLISHED
-
-
-def test_sync_blog_posts_does_not_update_unchanged_post(tmp_path):
     write_markdown_post(
         tmp_path,
-        frontmatter=(
-            "title: Agent-managed datasets\n"
-            "description: A practical note for AI agents.\n"
-            "slug: agent-managed-datasets\n"
-            "tags: agents, datasets\n"
-            "status: published\n"
-        ),
-        content="Agents need stable row APIs.\n",
+        "_template.md",
+        frontmatter=published_frontmatter("template-post", "Template post"),
+        content="Hidden template.\n",
     )
 
-    first_result = sync_blog_posts_from_markdown(tmp_path)
-    second_result = sync_blog_posts_from_markdown(tmp_path)
-
-    assert first_result.created == 1
-    assert second_result.created == 0
-    assert second_result.updated == 0
+    assert [post.slug for post in get_blog_posts(tmp_path)] == ["published-post"]
 
 
-def test_sync_blog_posts_requires_title_and_content(tmp_path):
+def test_get_blog_post_rejects_missing_draft_and_duplicate_slugs(tmp_path):
     write_markdown_post(
         tmp_path,
-        frontmatter=(
-            "description: Missing title should fail.\n"
-            "slug: missing-title\n"
-            "tags: agents\n"
-            "status: published\n"
-        ),
-        content="Body.\n",
+        "published.md",
+        frontmatter=published_frontmatter("published-post", "Published post"),
+        content="Visible.\n",
     )
-
-    with pytest.raises(BlogPostSourceError, match="title"):
-        sync_blog_posts_from_markdown(tmp_path)
-
-
-def test_sync_blog_posts_rejects_duplicate_source_slugs(tmp_path):
-    frontmatter = (
-        "title: Duplicate post\n"
-        "description: Duplicate slugs should fail.\n"
-        "slug: duplicate-post\n"
-        "tags: agents\n"
-        "status: published\n"
-    )
-    write_markdown_post(tmp_path, "first.md", frontmatter=frontmatter, content="First post.\n")
-    write_markdown_post(tmp_path, "second.md", frontmatter=frontmatter, content="Second post.\n")
-
-    with pytest.raises(BlogPostSourceError, match="duplicate-post"):
-        sync_blog_posts_from_markdown(tmp_path)
-
-
-def test_sync_blog_posts_command_uses_content_dir(tmp_path):
     write_markdown_post(
         tmp_path,
-        frontmatter=(
-            "title: Deployment publishing\n"
-            "description: Deployments sync Markdown posts.\n"
-            "slug: deployment-publishing\n"
-            "tags: deployment\n"
-            "status: published\n"
+        "duplicate.md",
+        frontmatter=published_frontmatter("published-post", "Duplicate post"),
+        content="Duplicate.\n",
+    )
+
+    with pytest.raises(BlogPostSourceError, match="published-post"):
+        get_blog_posts(tmp_path)
+
+    (tmp_path / "duplicate.md").unlink()
+    assert get_blog_post("published-post", tmp_path).title == "Published post"
+
+    with pytest.raises(BlogPostSourceError, match="missing-post"):
+        get_blog_post("missing-post", tmp_path)
+
+
+@pytest.mark.django_db
+def test_blog_index_and_detail_render_from_markdown(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(blog_services, "BLOG_POST_CONTENT_DIR", tmp_path)
+    write_markdown_post(
+        tmp_path,
+        "published.md",
+        frontmatter=published_frontmatter("published-post", "Published post"),
+        content="Published **content**.\n",
+    )
+    write_markdown_post(
+        tmp_path,
+        "draft.md",
+        frontmatter=published_frontmatter("draft-post", "Draft post").replace(
+            "status: published", "status: draft"
         ),
-        content="Deployment loads this post.\n",
-    )
-    stdout = StringIO()
-
-    call_command("sync_blog_posts", "--content-dir", str(tmp_path), stdout=stdout)
-
-    assert BlogPost.objects.filter(slug="deployment-publishing").exists()
-    assert "created 1" in stdout.getvalue()
-
-
-def test_blog_index_and_detail_only_expose_published_posts(client):
-    published = BlogPost.objects.create(
-        title="Published post",
-        description="Visible.",
-        slug="published-post",
-        tags="agents",
-        content="Published content.",
-        status=BlogPostStatus.PUBLISHED,
-    )
-    draft = BlogPost.objects.create(
-        title="Draft post",
-        description="Hidden.",
-        slug="draft-post",
-        tags="agents",
-        content="Draft content.",
-        status=BlogPostStatus.DRAFT,
+        content="Draft content.\n",
     )
 
-    response = client.get(reverse("blog_posts"))
+    index_response = client.get(reverse("blog_posts"))
 
-    assert response.status_code == 200
-    content = response.content.decode()
-    assert published.title in content
-    assert draft.title not in content
+    assert index_response.status_code == 200
+    index_content = index_response.content.decode()
+    assert "Published post" in index_content
+    assert "Draft post" not in index_content
 
-    assert client.get(published.get_absolute_url()).status_code == 200
-    assert client.get(draft.get_absolute_url()).status_code == 404
+    detail_response = client.get(reverse("blog_post", kwargs={"slug": "published-post"}))
+    assert detail_response.status_code == 200
+    detail_content = detail_response.content.decode()
+    assert "Published post" in detail_content
+    assert "<strong>content</strong>" in detail_content
+
+    assert client.get(reverse("blog_post", kwargs={"slug": "draft-post"})).status_code == 404
 
 
-def test_blog_sitemap_only_includes_published_posts():
-    published = BlogPost.objects.create(
-        title="Published post",
-        description="Visible.",
-        slug="published-post",
-        tags="agents",
-        content="Published content.",
-        status=BlogPostStatus.PUBLISHED,
-    )
-    BlogPost.objects.create(
-        title="Draft post",
-        description="Hidden.",
-        slug="draft-post",
-        tags="agents",
-        content="Draft content.",
-        status=BlogPostStatus.DRAFT,
+def test_blog_sitemap_reads_published_markdown(monkeypatch, tmp_path):
+    monkeypatch.setattr(blog_services, "BLOG_POST_CONTENT_DIR", tmp_path)
+    write_markdown_post(
+        tmp_path,
+        "published.md",
+        frontmatter=published_frontmatter("published-post", "Published post"),
+        content="Visible.\n",
     )
 
-    assert list(sitemaps["blog"].items()) == [published]
+    sitemap = sitemaps["blog"]()
+    items = list(sitemap.items())
+
+    assert [item.slug for item in items] == ["published-post"]
+    assert sitemap.location(items[0]) == "/blog/published-post"

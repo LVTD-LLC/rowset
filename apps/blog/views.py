@@ -1,22 +1,25 @@
-from django.views.generic import DetailView, ListView
+from django.http import Http404
+from django.views.generic import TemplateView
 
-from apps.blog.choices import BlogPostStatus
-from apps.blog.models import BlogPost
+from apps.blog import services
 
 
-class BlogView(ListView):
-    model = BlogPost
+class BlogView(TemplateView):
     template_name = "blog/blog_posts.html"
-    context_object_name = "blog_posts"
 
-    def get_queryset(self):
-        return BlogPost.objects.filter(status=BlogPostStatus.PUBLISHED).order_by("-created_at")
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["blog_posts"] = services.get_blog_posts()
+        return context
 
 
-class BlogPostView(DetailView):
-    model = BlogPost
+class BlogPostView(TemplateView):
     template_name = "blog/blog_post.html"
-    context_object_name = "blog_post"
 
-    def get_queryset(self):
-        return BlogPost.objects.filter(status=BlogPostStatus.PUBLISHED)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context["blog_post"] = services.get_blog_post(self.kwargs["slug"])
+        except services.BlogPostNotFound as exc:
+            raise Http404("Blog post not found") from exc
+        return context

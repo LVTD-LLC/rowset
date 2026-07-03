@@ -36,13 +36,7 @@ def test_docker_healthcheck_allows_server_startup_window():
     assert any("--start-period=180s" in line for line in healthcheck_lines)
 
 
-def test_server_startup_syncs_blog_posts_after_migrations():
+def test_server_startup_does_not_sync_blog_posts():
     lines = _entrypoint_lines()
 
-    migrate_index = next(index for index, line in enumerate(lines) if "manage.py migrate" in line)
-    sync_index = next(
-        index for index, line in enumerate(lines) if "manage.py sync_blog_posts" in line
-    )
-    gunicorn_index = next(index for index, line in enumerate(lines) if "gunicorn" in line)
-
-    assert migrate_index < sync_index < gunicorn_index
+    assert all("manage.py sync_blog_posts" not in line for line in lines)

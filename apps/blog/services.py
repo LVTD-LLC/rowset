@@ -1,30 +1,27 @@
 from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
 
 import frontmatter
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_slug
-
-from apps.blog.choices import BlogPostStatus
-from apps.blog.models import BlogPost
+from django.urls import reverse
 
 BLOG_POST_CONTENT_DIR = Path(settings.BASE_DIR) / "apps" / "blog" / "content"
+PUBLISHED_STATUS = "published"
 
 
 class BlogPostSourceError(ValueError):
     pass
 
 
-@dataclass
-class BlogPostSyncResult:
-    scanned: int = 0
-    created: int = 0
-    updated: int = 0
+class BlogPostNotFound(BlogPostSourceError):
+    pass
 
 
 @dataclass(frozen=True)
-class BlogPostSource:
+class BlogPost:
     path: Path
     title: str
     description: str
@@ -34,51 +31,32 @@ class BlogPostSource:
     status: str
     icon: str
     image: str
+    published_at: date | datetime | None
+    updated_at: date | datetime | None
+
+    def get_absolute_url(self):
+        return reverse("blog_post", kwargs={"slug": self.slug})
+
+    @property
+    def lastmod(self):
+        return self.updated_at or self.published_at
 
 
-def sync_blog_posts_from_markdown(content_dir=None):
-    result = BlogPostSyncResult()
-
-    for source in load_blog_post_sources(content_dir):
-        result.scanned += 1
-        post = BlogPost.objects.filter(slug=source.slug).order_by("id").first()
-        defaults = {
-            "title": source.title,
-            "description": source.description,
-            "tags": source.tags,
-            "content": source.content,
-            "status": source.status,
-            "icon": source.icon,
-            "image": source.image,
-        }
-
-        if post is None:
-            BlogPost.objects.create(slug=source.slug, **defaults)
-            result.created += 1
-            continue
-
-        changed_fields = [
-            field_name
-            for field_name, value in defaults.items()
-            if current_post_value(post, field_name) != value
-        ]
-        if not changed_fields:
-            continue
-
-        for field_name in changed_fields:
-            value = defaults[field_name]
-            setattr(post, field_name, value)
-        post.save(update_fields=[*changed_fields, "updated_at"])
-        result.updated += 1
-
-    return result
+def get_blog_posts(content_dir=None):
+    posts = load_blog_post_sources(content_dir)
+    published_posts = [post for post in posts if post.status == PUBLISHED_STATUS]
+    return sorted(
+        published_posts,
+        key=lambda post: post.published_at or date.min,
+        reverse=True,
+    )
 
 
-def current_post_value(post, field_name):
-    value = getattr(post, field_name)
-    if field_name in {"icon", "image"}:
-        return value.name
-    return value
+def get_blog_post(slug, content_dir=None):
+    for post in get_blog_posts(content_dir):
+        if post.slug == slug:
+            return post
+    raise BlogPostNotFound(f"Blog post {slug!r} was not found.")
 
 
 def load_blog_post_sources(content_dir=None):
@@ -86,25 +64,11 @@ def load_blog_post_sources(content_dir=None):
     if not content_path.exists():
         return []
 
-    sources = [
+    posts = [
         load_blog_post_source(path, content_path) for path in iter_blog_post_files(content_path)
     ]
-    validate_unique_source_slugs(sources, content_path)
-    return sources
-
-
-def validate_unique_source_slugs(sources, content_path):
-    seen = {}
-    for source in sources:
-        if source.slug not in seen:
-            seen[source.slug] = source.path
-            continue
-
-        first_path = seen[source.slug].relative_to(content_path)
-        second_path = source.path.relative_to(content_path)
-        raise BlogPostSourceError(
-            f"Duplicate blog post slug {source.slug!r} in {first_path} and {second_path}"
-        )
+    validate_unique_source_slugs(posts, content_path)
+    return posts
 
 
 def iter_blog_post_files(content_path):
@@ -129,17 +93,33 @@ def load_blog_post_source(path, content_path):
         raise BlogPostSourceError(f"{path.relative_to(content_path)} must include Markdown content")
 
     title = required_string(metadata, "title", path, content_path)
-    return BlogPostSource(
+    return BlogPost(
         path=path,
         title=title,
         description=optional_string(metadata, "description"),
         slug=coerce_slug(metadata.get("slug") or path.stem, path, content_path),
         tags=coerce_tags(metadata.get("tags", "")),
         content=content,
-        status=coerce_status(metadata.get("status", BlogPostStatus.DRAFT), path, content_path),
+        status=optional_string(metadata, "status") or "draft",
         icon=optional_string(metadata, "icon"),
         image=optional_string(metadata, "image"),
+        published_at=coerce_date(metadata.get("published_at")),
+        updated_at=coerce_date(metadata.get("updated_at")),
     )
+
+
+def validate_unique_source_slugs(posts, content_path):
+    seen = {}
+    for post in posts:
+        if post.slug not in seen:
+            seen[post.slug] = post.path
+            continue
+
+        first_path = seen[post.slug].relative_to(content_path)
+        second_path = post.path.relative_to(content_path)
+        raise BlogPostSourceError(
+            f"Duplicate blog post slug {post.slug!r} in {first_path} and {second_path}"
+        )
 
 
 def required_string(metadata, field_name, path, content_path):
@@ -177,12 +157,17 @@ def coerce_tags(value):
     return str(value).strip()
 
 
-def coerce_status(value, path, content_path):
-    status = str(value).strip().lower()
-    valid_statuses = {choice.value for choice in BlogPostStatus}
-    if status not in valid_statuses:
-        choices = ", ".join(sorted(valid_statuses))
-        raise BlogPostSourceError(
-            f"{path.relative_to(content_path)} has invalid status {status!r}; use {choices}"
-        )
-    return status
+def coerce_date(value):
+    if isinstance(value, datetime | date):
+        return value
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    try:
+        return date.fromisoformat(text)
+    except ValueError as exc:
+        raise BlogPostSourceError(f"Invalid blog post date {text!r}; use YYYY-MM-DD") from exc

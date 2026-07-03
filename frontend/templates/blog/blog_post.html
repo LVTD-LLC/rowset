@@ -12,12 +12,12 @@
 <meta property="og:title" content="{{ blog_post.title }}" />
 <meta property="og:url" content="https://{{ request.get_host }}{{ blog_post.get_absolute_url }}" />
 <meta property="og:description" content="{{ blog_post.description }}" />
-<meta property="og:image" content="https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }} | Rowset Blog&subtitle={{ blog_post.description }}&image_url={% if blog_post.image %}{{ blog_post.image.url }}{% else %}https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}{% endif %}" />
+<meta property="og:image" content="https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }} | Rowset Blog&subtitle={{ blog_post.description }}&image_url={% if blog_post.image %}{{ blog_post.image }}{% else %}https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}{% endif %}" />
 <meta property="og:locale" content="en_US" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="{{ blog_post.title }}" />
 <meta name="twitter:description" content="{{ blog_post.description }}" />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }} | Rowset Blog&subtitle={{ blog_post.description }}&image_url={% if blog_post.image %}{{ blog_post.image.url }}{% else %}https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}{% endif %}" />
+<meta name="twitter:image" content="https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }} | Rowset Blog&subtitle={{ blog_post.description }}&image_url={% if blog_post.image %}{{ blog_post.image }}{% else %}https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}{% endif %}" />
 {% endblock meta %}
 
 {% block content %}
@@ -36,6 +36,6 @@
 
 {% block schema %}
 <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"BlogPosting","headline":"{{ blog_post.title }}","description":"{{ blog_post.description }}","image":"https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }} | Rowset Blog&subtitle={{ blog_post.description }}&image_url={% if blog_post.image %}{{ blog_post.image.url }}{% else %}https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}{% endif %}","url":"https://{{ request.get_host }}{{ blog_post.get_absolute_url }}","datePublished":"{{ blog_post.created_at|date:'c' }}","dateModified":"{{ blog_post.updated_at|date:'c' }}","author":{"@type":"Person","name":"Rasul Kireev"},"publisher":{"@type":"Organization","name":"Rowset","logo":{"@type":"ImageObject","url":"https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}"}},"articleBody":"{{ blog_post.content|safe|replace_quotes }}","mainEntityOfPage":{"@type":"WebPage","@id":"https://{{ request.get_host }}{{ blog_post.get_absolute_url }}"}}
+  {"@context":"https://schema.org","@type":"BlogPosting","headline":"{{ blog_post.title }}","description":"{{ blog_post.description }}","image":"https://osig.app/g?site=x&style=base&font=markerfelt&title={{ blog_post.title }} | Rowset Blog&subtitle={{ blog_post.description }}&image_url={% if blog_post.image %}{{ blog_post.image }}{% else %}https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}{% endif %}","url":"https://{{ request.get_host }}{{ blog_post.get_absolute_url }}","datePublished":"{{ blog_post.published_at|date:'c' }}","dateModified":"{{ blog_post.updated_at|date:'c' }}","author":{"@type":"Person","name":"Rasul Kireev"},"publisher":{"@type":"Organization","name":"Rowset","logo":{"@type":"ImageObject","url":"https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}"}},"articleBody":"{{ blog_post.content|safe|replace_quotes }}","mainEntityOfPage":{"@type":"WebPage","@id":"https://{{ request.get_host }}{{ blog_post.get_absolute_url }}"}}
 </script>
 {% endblock schema %}
