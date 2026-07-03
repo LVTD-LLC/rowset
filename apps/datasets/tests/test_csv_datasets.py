@@ -2117,7 +2117,8 @@ def test_dataset_row_detail_links_previous_and_next_rows(auth_client, profile):
     assert f'href="{next_url}"' in content
     assert ">Previous Row</a>" in content
     assert ">Next Row</a>" in content
-    row_data_section_end = content.index("</section>")
+    row_data_section_start = content.index('aria-labelledby="row-data-heading"')
+    row_data_section_end = content.index("</section>", row_data_section_start)
     assert content.index("Previous Row") > row_data_section_end
     assert content.index("Next Row") > row_data_section_end
 
