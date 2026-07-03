@@ -1437,7 +1437,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
         assert list_result.data["filters"] == {"active": "true"}
         assert list_result.data["sort"] == "email"
         assert tolerant_list_result.data["filters"] == {
-            "active": "True",
+            "active": "true",
             "score": "7",
             "empty": "",
         }
@@ -1450,7 +1450,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
                 100,
                 0,
                 None,
-                {"active": "True", "score": "7", "empty": ""},
+                {"active": "true", "score": "7", "empty": ""},
                 None,
                 None,
             ),

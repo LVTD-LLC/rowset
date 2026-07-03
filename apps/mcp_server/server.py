@@ -312,7 +312,17 @@ def _normalize_mcp_row_filters(filters: dict[str, Any] | str | None) -> dict[str
             ) from exc
     if not isinstance(filters, dict):
         raise DatasetServiceError(400, "filters must be a JSON object keyed by dataset header.")
-    return {str(header): "" if value is None else str(value) for header, value in filters.items()}
+    return {
+        str(header): _stringify_mcp_row_filter_value(value) for header, value in filters.items()
+    }
+
+
+def _stringify_mcp_row_filter_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(value).lower()
+    return str(value)
 
 
 def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
