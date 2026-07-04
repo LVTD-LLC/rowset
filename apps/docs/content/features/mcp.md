@@ -8,6 +8,11 @@ keywords: Rowset MCP, Streamable HTTP MCP, AI agents
 
 Rowset includes a hosted MCP endpoint so compatible AI agents can discover and use datasets without browser automation.
 
+If you are deciding what kind of data should sit behind an agent, start with
+[What is an agent-managed dataset?](/blog/agent-managed-datasets). It explains
+where MCP fits alongside row identity, schema, dataset instructions, and human
+review.
+
 ## MCP URL
 
 ```text

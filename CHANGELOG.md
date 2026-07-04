@@ -65,6 +65,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 - Dataset detail pages now stack API and status sections vertically, wrap long names/errors/endpoints, and avoid duplicate static header status/row-count state during imports.
 
 ### Added
+- Added the first SEO content article, defining agent-managed datasets and linking it into the MCP and Dataset API docs.
 - Added the Rowset SEO sprint foundation with a measured GSC/Plausible/PostHog/DataForSEO-backed roadmap, brand context, keyword research cache, and internal-link inventory for phased organic-search work.
 - Added Docker health checks for the CapRover server and worker process types so non-persistent app deploys can use health-gated rolling updates instead of routing to containers before they are ready.
 - Added Qdrant-backed dataset row vector search with PydanticAI/OpenRouter embedding generation, hybrid vector/lexical ranking, REST `POST /api/datasets/{dataset_key}/search`, and hosted MCP `search_dataset_rows`.
