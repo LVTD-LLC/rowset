@@ -8,6 +8,11 @@ keywords: Rowset API, dataset API, CSV API, JSONL API, XLSX API, SQLite API, RES
 
 Every dataset gets a small REST API. Use these endpoints when your app, script, or agent needs to create datasets, read/update rows, export rows, archive datasets, or configure public preview sharing.
 
+For the product-level concept behind these endpoints, read [What is an
+agent-managed dataset?](/blog/agent-managed-datasets). It explains why stable
+row identity, schema context, instructions, and authenticated writes matter for
+AI-agent workflows.
+
 ## Authentication
 
 Prefer the `Authorization` header for private API requests:

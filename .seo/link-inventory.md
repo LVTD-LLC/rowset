@@ -46,7 +46,7 @@
 
 | Slug | URL | Title | Topic | Linked by |
 |---|---|---|---|---|
-| - | - | No checked-in blog posts yet on latest main | - | - |
+| `/blog/agent-managed-datasets` | https://rowset.lvtd.dev/blog/agent-managed-datasets | What is an agent-managed dataset? | agent workflows, datasets, MCP | Dataset API docs, MCP docs |
 
 ## SEO-Sprint-Generated Pages
 
@@ -90,6 +90,10 @@
 - hosted MCP access
 - Rowset Dataset API
 - API-backed datasets
+- agent-managed dataset
+- structured rows for agents
+- private dataset layer for AI agents
+- agent-operated row store
 - agent-managed personal CRM
 - agent task board
 - feedback triage workflow
