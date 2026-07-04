@@ -23,7 +23,7 @@ def public_sitemap(request, **kwargs):
     return response
 
 
-def redirect_without_trailing_slash(request, path):
+def redirect_without_trailing_slash(request, path, **kwargs):
     target = request.path_info.rstrip("/") or "/"
     if request.META.get("QUERY_STRING"):
         target = f"{target}?{request.META['QUERY_STRING']}"

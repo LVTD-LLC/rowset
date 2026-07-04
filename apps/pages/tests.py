@@ -134,17 +134,17 @@ def test_landing_page_redirects_authenticated_users_to_home(client):
 
 
 def test_robots_txt_allows_crawling_and_links_sitemap(client):
-    response = client.get(reverse("robots_txt"), secure=True, HTTP_HOST="rowset.example")
+    response = client.get(reverse("robots_txt"), secure=True, HTTP_HOST="testserver")
 
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
     assert response.content.decode() == (
-        "User-agent: *\nAllow: /\nSitemap: https://rowset.example/sitemap.xml\n\n"
+        "User-agent: *\nAllow: /\nSitemap: https://testserver/sitemap.xml\n\n"
     )
 
 
 def test_sitemap_response_does_not_set_noindex_header(client):
-    response = client.get("/sitemap.xml", secure=True, HTTP_HOST="rowset.example")
+    response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
 
     assert response.status_code == 200
     assert "X-Robots-Tag" not in response.headers
