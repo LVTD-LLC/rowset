@@ -243,18 +243,6 @@
 
 {% block schema %}
 <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Rowset",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Web",
-    "description": "Rowset gives trusted AI agents a private MCP and REST backend for structured datasets.",
-    "url": "https://{{ request.get_host }}/",
-    "author": {
-      "@type": "Person",
-      "name": "Rasul Kireev"
-    }
-  }
+  {{ schema_json|safe }}
 </script>
 {% endblock schema %}

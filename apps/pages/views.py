@@ -8,6 +8,12 @@ from django_q.tasks import async_task
 
 from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
 from apps.core.models import Profile
+from apps.pages.schema import (
+    json_ld,
+    organization_schema,
+    software_application_schema,
+    use_case_article_schema,
+)
 from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import get_rowset_logger
 
@@ -47,6 +53,12 @@ class LandingPageView(TemplateView):
             messages.error(self.request, "Something went wrong with the payment.")
 
         context["use_case_pages"] = get_use_case_pages()
+        context["schema_json"] = json_ld(
+            [
+                software_application_schema(),
+                organization_schema(),
+            ]
+        )
 
         return context
 
@@ -142,6 +154,7 @@ class UseCaseDetailView(TemplateView):
         context["related_use_cases"] = tuple(
             page for page in get_use_case_pages() if page["slug"] != use_case["slug"]
         )[:3]
+        context["schema_json"] = json_ld(use_case_article_schema(use_case))
         return context
 
 

@@ -17,6 +17,7 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased]
 
 ### Fixed
+- Added crawlability foundations for SEO: `robots.txt`, canonical redirects for trailing-slashed marketing URLs, sitemap responses without app-level `X-Robots-Tag`, and reusable JSON-LD schema helpers.
 - MCP row listing and row search tools now tolerate agent-supplied `null` pagination values and JSON-string row filters, avoiding Pydantic validation failures before the request reaches Rowset's structured service errors.
 
 ### Changed

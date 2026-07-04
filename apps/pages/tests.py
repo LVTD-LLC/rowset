@@ -1,3 +1,4 @@
+import json
 import time
 from dataclasses import replace
 
@@ -114,6 +115,8 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Content pipeline" in content
     assert "Bug and QA tracker" in content
     assert reverse("use_cases") in content
+    assert '"@type": "SoftwareApplication"' in content
+    assert '"@type": "Organization"' in content
 
 
 def test_landing_page_redirects_authenticated_users_to_home(client):
@@ -128,6 +131,40 @@ def test_landing_page_redirects_authenticated_users_to_home(client):
 
     assert response.status_code == 302
     assert response["Location"] == reverse("home")
+
+
+def test_robots_txt_allows_crawling_and_links_sitemap(client):
+    response = client.get(reverse("robots_txt"), secure=True, HTTP_HOST="rowset.example")
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
+    assert response.content.decode() == (
+        "User-agent: *\nAllow: /\nSitemap: https://rowset.example/sitemap.xml\n\n"
+    )
+
+
+def test_sitemap_response_does_not_set_noindex_header(client):
+    response = client.get("/sitemap.xml", secure=True, HTTP_HOST="rowset.example")
+
+    assert response.status_code == 200
+    assert "X-Robots-Tag" not in response.headers
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    (
+        ("/pricing/", "/pricing"),
+        ("/privacy-policy/", "/privacy-policy"),
+        ("/terms-of-service/", "/terms-of-service"),
+        ("/use-cases/", "/use-cases"),
+        ("/use-cases/personal-crm/", "/use-cases/personal-crm"),
+    ),
+)
+def test_marketing_trailing_slash_routes_redirect_to_canonical_paths(client, path, expected):
+    response = client.get(f"{path}?utm_source=test")
+
+    assert response.status_code == 301
+    assert response["Location"] == f"{expected}?utm_source=test"
 
 
 def test_use_cases_index_lists_public_use_case_pages(client):
@@ -151,12 +188,26 @@ def test_use_case_detail_page_shows_structured_example(client):
     assert "People dataset indexed by email or person_id." in content
     assert "Dataset context and semantic schema" in content
     assert "alex@example.com" in content
+    assert '"@type": "Article"' in content
 
 
 def test_unknown_use_case_returns_404(client):
     response = client.get(reverse("use_case_detail", kwargs={"slug": "missing"}))
 
     assert response.status_code == 404
+
+
+def test_schema_helpers_render_valid_homepage_json_ld(client):
+    response = client.get(reverse("landing"))
+
+    content = response.content.decode()
+    start = content.index('<script type="application/ld+json">')
+    end = content.index("</script>", start)
+    payload = content[start:end].split(">", 1)[1].strip()
+    schema = json.loads(payload)
+
+    assert [entry["@type"] for entry in schema] == ["SoftwareApplication", "Organization"]
+    assert schema[1]["url"].endswith("/")
 
 
 def test_use_case_pages_reject_missing_page_copy(monkeypatch):
