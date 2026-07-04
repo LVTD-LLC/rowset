@@ -14,7 +14,14 @@ ROWSET_AUTHOR = "Rasul Kireev"
 
 
 def json_ld(payload: dict | list[dict]) -> str:
-    return json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
+    text = json.dumps(payload, ensure_ascii=False)
+    return (
+        text.replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
 
 
 def public_url(path: str) -> str:

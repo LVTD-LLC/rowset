@@ -14,6 +14,7 @@ from django.urls import reverse
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
+from apps.pages.schema import json_ld
 
 pytestmark = pytest.mark.django_db
 
@@ -207,8 +208,17 @@ def test_schema_helpers_render_valid_homepage_json_ld(client):
     payload = content[start:end].split(">", 1)[1].strip()
     schema = json.loads(payload)
 
-    assert [entry["@type"] for entry in schema] == ["SoftwareApplication", "Organization"]
-    assert schema[1]["url"].endswith("/")
+    assert {entry["@type"] for entry in schema} == {"SoftwareApplication", "Organization"}
+    organization = next(entry for entry in schema if entry["@type"] == "Organization")
+    assert organization["url"].endswith("/")
+
+
+def test_json_ld_escapes_script_breakout_sequences():
+    payload = json_ld({"name": "</script><script>alert(1)</script>", "ampersand": "&"})
+
+    assert "</script>" not in payload
+    assert "\\u003c/script\\u003e" in payload
+    assert "\\u0026" in payload
 
 
 def test_use_case_article_schema_includes_main_entity(client):
