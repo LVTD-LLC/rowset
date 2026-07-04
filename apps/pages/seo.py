@@ -6,6 +6,7 @@ from rowset.sitemaps import sitemaps
 from rowset.utils import build_absolute_public_url
 
 
+@cache_control(public=True, max_age=86400)
 def robots_txt(request):
     sitemap_url = build_absolute_public_url("/sitemap.xml")
     content = "\n".join(

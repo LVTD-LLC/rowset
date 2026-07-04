@@ -14,7 +14,7 @@ from django.urls import reverse
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
-from apps.pages.schema import json_ld
+from apps.pages.schema import article_schema, breadcrumb_list_schema, faq_page_schema, json_ld
 
 pytestmark = pytest.mark.django_db
 
@@ -219,6 +219,26 @@ def test_json_ld_escapes_script_breakout_sequences():
     assert "</script>" not in payload
     assert "\\u003c/script\\u003e" in payload
     assert "\\u0026" in payload
+
+
+def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
+    assert breadcrumb_list_schema(())["itemListElement"] == []
+    assert faq_page_schema(())["mainEntity"] == []
+
+    faq_schema = faq_page_schema((("Can agents use Rowset?", "Yes, through MCP or REST."),))
+    assert faq_schema["mainEntity"][0]["acceptedAnswer"]["text"] == "Yes, through MCP or REST."
+
+    schema = article_schema(
+        headline='Agent "CRM" <guide>',
+        description="Use <structured> rows safely.",
+        path="/use-cases/personal-crm",
+    )
+    rendered = json_ld(schema)
+
+    assert "datePublished" not in schema
+    assert "dateModified" not in schema
+    assert "\\u003cguide\\u003e" in rendered
+    assert "\\u003cstructured\\u003e" in rendered
 
 
 def test_use_case_article_schema_includes_main_entity(client):
