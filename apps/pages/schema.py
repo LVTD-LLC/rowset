@@ -110,6 +110,7 @@ def article_schema(
         "headline": headline,
         "description": description,
         "url": public_url(path),
+        "mainEntityOfPage": {"@type": "WebPage", "@id": public_url(path)},
         "author": {"@type": "Person", "name": ROWSET_AUTHOR},
         "publisher": {
             "@type": "Organization",

@@ -158,6 +158,7 @@ def test_sitemap_response_does_not_set_noindex_header(client):
         ("/terms-of-service/", "/terms-of-service"),
         ("/use-cases/", "/use-cases"),
         ("/use-cases/personal-crm/", "/use-cases/personal-crm"),
+        ("/uses/", "/uses"),
     ),
 )
 def test_marketing_trailing_slash_routes_redirect_to_canonical_paths(client, path, expected):
@@ -208,6 +209,18 @@ def test_schema_helpers_render_valid_homepage_json_ld(client):
 
     assert [entry["@type"] for entry in schema] == ["SoftwareApplication", "Organization"]
     assert schema[1]["url"].endswith("/")
+
+
+def test_use_case_article_schema_includes_main_entity(client):
+    response = client.get(reverse("use_case_detail", kwargs={"slug": "personal-crm"}))
+
+    content = response.content.decode()
+    start = content.index('<script type="application/ld+json">')
+    end = content.index("</script>", start)
+    payload = content[start:end].split(">", 1)[1].strip()
+    schema = json.loads(payload)
+
+    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm")
 
 
 def test_use_case_pages_reject_missing_page_copy(monkeypatch):

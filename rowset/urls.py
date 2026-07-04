@@ -19,7 +19,7 @@ from django.urls import include, path
 from django.views.generic import TemplateView
 
 from apps.api.views import api_not_found, api_v1_redirect
-from apps.pages.seo import public_sitemap, robots_txt
+from apps.pages.seo import public_sitemap, redirect_without_trailing_slash, robots_txt
 from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView
 
 urlpatterns = [
@@ -34,6 +34,7 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("anymail/", include("anymail.urls")),
     path("uses", TemplateView.as_view(template_name="pages/uses.html"), name="uses"),
+    path("uses/", redirect_without_trailing_slash, name="uses_slash_redirect"),
     path("blog/", include("apps.blog.urls")),
     path("robots.txt", robots_txt, name="robots_txt"),
     path("api/v1", api_v1_redirect, name="api_v1_redirect_root"),
