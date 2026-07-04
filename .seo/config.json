@@ -1,0 +1,36 @@
+{
+  "product": "Rowset",
+  "domain": "https://rowset.lvtd.dev",
+  "stack": "django-templates",
+  "adapter": "markdown-fallback",
+  "language": "python-django-templates",
+  "marketing_route_prefix": "apps/pages",
+  "marketing_templates_dir": "frontend/templates/pages",
+  "docs_content_dir": "apps/docs/content",
+  "blog_content_dir": "apps/blog/posts",
+  "sitemap_path": "rowset/sitemaps.py",
+  "robots_path": "static/robots.txt",
+  "tailwind_config": "tailwind.config.js",
+  "roadmap_path": "docs/seo-sprint.md",
+  "research_mode": "manual",
+  "keyword_data_source": "manual",
+  "connected_signal_sources": {
+    "gsc": "missing",
+    "ahrefs": "missing",
+    "dataforseo": "credentials unavailable in shell or unauthorized",
+    "plausible": "detected on site, API not configured in repo shell",
+    "posthog": "detected on site, API not configured in repo shell",
+    "web_search": "available",
+    "web_fetch": "available"
+  },
+  "gsc_property": null,
+  "ahrefs_project_id": null,
+  "plausible_site_id": "rowset.lvtd.dev",
+  "posthog_project_id": null,
+  "created_at": "2026-07-04",
+  "notes": [
+    "Initialized from latest origin/main after fast-forwarding from c11f1de to 2d9389b.",
+    "Use manual/estimated keyword data until GSC, Ahrefs, DataForSEO, or an analytics API is connected.",
+    "Production domain, sitemap, metadata, and page inventory were checked on 2026-07-04."
+  ]
+}

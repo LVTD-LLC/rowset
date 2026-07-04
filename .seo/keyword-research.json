@@ -1,0 +1,194 @@
+{
+  "product": "Rowset",
+  "domain": "https://rowset.lvtd.dev",
+  "created_at": "2026-07-04",
+  "mode": "manual",
+  "source": "blended",
+  "sources": ["repo", "production_site", "web_search", "manual"],
+  "as_of": "2026-07-04",
+  "confidence": "estimated",
+  "notes": [
+    "GSC, Ahrefs, and working DataForSEO credentials were not available from this repo shell.",
+    "Plausible and PostHog scripts are present on the production site, but API IDs were not available from this repo shell.",
+    "Volume and KD values are ranges or prioritization estimates. Refresh with GSC, Ahrefs, DataForSEO, Semrush, or Google Keyword Planner before deep investment in competitive pages."
+  ],
+  "competitors": [
+    {
+      "brand": "Airtable",
+      "slug": "airtable",
+      "url": "https://airtable.com/",
+      "confidence": "high",
+      "why": "Default spreadsheet-database competitor and strongest alternatives/search-intent anchor; current public positioning includes data, workflows, and agents."
+    },
+    {
+      "brand": "Google Sheets",
+      "slug": "google-sheets",
+      "url": "https://www.google.com/sheets/about/",
+      "confidence": "high",
+      "why": "Default lightweight structured data tool users try before a purpose-built backend."
+    },
+    {
+      "brand": "Baserow",
+      "slug": "baserow",
+      "url": "https://baserow.io/",
+      "confidence": "medium",
+      "why": "API-first open-source Airtable alternative; adjacent when buyers care about database-backed workflows."
+    },
+    {
+      "brand": "NocoDB",
+      "slug": "nocodb",
+      "url": "https://nocodb.com/",
+      "confidence": "medium",
+      "why": "Open-source Airtable alternative over SQL backends; appears in comparison/alternative SERPs."
+    }
+  ],
+  "alternatives": [
+    {
+      "keyword": "airtable alternatives",
+      "page_slug": "airtable",
+      "target_url": "/alternatives/airtable",
+      "estimated_monthly_volume": "1000+",
+      "estimated_difficulty": "high",
+      "confidence": "high",
+      "intent": "Broad alternatives research; Rowset should narrow the angle to AI-agent-managed datasets."
+    },
+    {
+      "keyword": "google sheets alternatives",
+      "page_slug": "google-sheets",
+      "target_url": "/alternatives/google-sheets",
+      "estimated_monthly_volume": "1000+",
+      "estimated_difficulty": "high",
+      "confidence": "high",
+      "intent": "Broad alternatives research; Rowset should target the subset needing MCP/REST row workflows."
+    },
+    {
+      "keyword": "baserow alternatives",
+      "page_slug": "baserow",
+      "target_url": "/alternatives/baserow",
+      "estimated_monthly_volume": "100-500",
+      "estimated_difficulty": "medium",
+      "confidence": "medium",
+      "intent": "Users comparing open-source/no-code database tools; Rowset can contrast agent-native MCP setup."
+    },
+    {
+      "keyword": "nocodb alternatives",
+      "page_slug": "nocodb",
+      "target_url": "/alternatives/nocodb",
+      "estimated_monthly_volume": "100-500",
+      "estimated_difficulty": "medium",
+      "confidence": "medium",
+      "intent": "Users comparing no-code database tools; Rowset should be honest that it is not a SQL UI."
+    }
+  ],
+  "use_cases": [
+    {
+      "keyword": "ai agent crm",
+      "page_slug": "personal-crm",
+      "existing_url": "/use-cases/personal-crm",
+      "estimated_monthly_volume": "30-200",
+      "estimated_difficulty": "medium",
+      "confidence": "estimated"
+    },
+    {
+      "keyword": "agent task board",
+      "page_slug": "agent-task-board",
+      "existing_url": "/use-cases/agent-task-board",
+      "estimated_monthly_volume": "30-200",
+      "estimated_difficulty": "low-medium",
+      "confidence": "estimated"
+    },
+    {
+      "keyword": "feedback triage ai agent",
+      "page_slug": "feedback-triage",
+      "existing_url": "/use-cases/feedback-triage",
+      "estimated_monthly_volume": "10-100",
+      "estimated_difficulty": "low",
+      "confidence": "estimated"
+    },
+    {
+      "keyword": "mcp dataset api",
+      "page_slug": "mcp-dataset-api",
+      "existing_url": "/docs/features/mcp/",
+      "estimated_monthly_volume": "30-200",
+      "estimated_difficulty": "low-medium",
+      "confidence": "estimated"
+    },
+    {
+      "keyword": "dataset api for ai agents",
+      "page_slug": "dataset-api-for-ai-agents",
+      "existing_url": "/docs/api-reference/datasets/",
+      "estimated_monthly_volume": "30-200",
+      "estimated_difficulty": "low-medium",
+      "confidence": "estimated"
+    }
+  ],
+  "compare": [
+    {
+      "keyword": "rowset vs airtable",
+      "page_slug": "rowset-vs-airtable",
+      "target_url": "/compare/rowset-vs-airtable",
+      "estimated_monthly_volume": "0-30 now; branded capture later",
+      "estimated_difficulty": "low",
+      "confidence": "estimated"
+    },
+    {
+      "keyword": "rowset vs google sheets",
+      "page_slug": "rowset-vs-google-sheets",
+      "target_url": "/compare/rowset-vs-google-sheets",
+      "estimated_monthly_volume": "0-30 now; branded capture later",
+      "estimated_difficulty": "low",
+      "confidence": "estimated"
+    },
+    {
+      "keyword": "airtable vs baserow",
+      "page_slug": "airtable-vs-baserow",
+      "target_url": "/compare/airtable-vs-baserow",
+      "estimated_monthly_volume": "100-500",
+      "estimated_difficulty": "medium-high",
+      "confidence": "medium",
+      "note": "High intent, but Rowset is third-party commentary unless framed carefully."
+    }
+  ],
+  "playbooks": [
+    {
+      "keyword": "connect ai agent to dataset api",
+      "page_slug": "connect-ai-agent-to-dataset-api",
+      "target_url": "/playbooks/connect-ai-agent-to-dataset-api",
+      "estimated_monthly_volume": "30-200",
+      "estimated_difficulty": "low-medium",
+      "confidence": "estimated"
+    },
+    {
+      "keyword": "mcp server for database",
+      "page_slug": "mcp-server-for-database",
+      "target_url": "/playbooks/mcp-server-for-database",
+      "estimated_monthly_volume": "100-500",
+      "estimated_difficulty": "medium",
+      "confidence": "estimated"
+    },
+    {
+      "keyword": "agent managed feedback board",
+      "page_slug": "agent-managed-feedback-board",
+      "target_url": "/playbooks/agent-managed-feedback-board",
+      "estimated_monthly_volume": "10-100",
+      "estimated_difficulty": "low",
+      "confidence": "estimated"
+    }
+  ],
+  "striking_distance": [],
+  "conversion_weighted": [],
+  "saturated_or_deferred": [
+    {
+      "keyword": "database",
+      "reason": "Too broad and too competitive for current authority."
+    },
+    {
+      "keyword": "spreadsheet",
+      "reason": "Too broad; Rowset should not position as a generic spreadsheet replacement."
+    },
+    {
+      "keyword": "airtable alternative",
+      "reason": "Singular variant is viable, but plural alternatives pages usually capture broader demand. Validate exact SERP before writing."
+    }
+  ]
+}
