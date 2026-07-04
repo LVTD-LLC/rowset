@@ -4,7 +4,6 @@ from ninja import Schema
 from pydantic import Field
 
 from apps.api.services import MAX_API_DATASET_CREATE_ROWS
-from apps.blog.choices import BlogPostStatus
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
@@ -50,51 +49,6 @@ class AgentFeedbackSubmitOut(Schema):
     dataset: str = ""
     row: int | None = None
     row_url: str = ""
-
-
-class BlogPostIn(Schema):
-    title: str
-    description: str = ""
-    slug: str
-    tags: str = ""
-    content: str
-    icon: str | None = None  # URL or base64 string
-    image: str | None = None  # URL or base64 string
-    status: BlogPostStatus = BlogPostStatus.DRAFT
-
-
-class BlogPostUpdateIn(Schema):
-    title: str | None = None
-    description: str | None = None
-    slug: str | None = None
-    tags: str | None = None
-    content: str | None = None
-    status: BlogPostStatus | None = None
-
-
-class BlogPostItemOut(Schema):
-    id: int
-    title: str
-    description: str
-    slug: str
-    tags: str
-    content: str
-    status: BlogPostStatus
-
-
-class BlogPostListOut(Schema):
-    blog_posts: list[BlogPostItemOut]
-
-
-class BlogPostOut(Schema):
-    status: str  # API response status: 'success' or 'failure'
-    message: str
-
-
-class BlogPostDetailOut(Schema):
-    status: str
-    message: str
-    blog_post: BlogPostItemOut | None = None
 
 
 class ProfileSettingsOut(Schema):
