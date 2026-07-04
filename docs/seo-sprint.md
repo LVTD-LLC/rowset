@@ -20,7 +20,7 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 
 | # | Phase | Pattern | Status | PR |
 |---|---|---|---|---|
-| 0 | Technical foundations: robots, sitemap headers, schema helpers | Setup | pending | - |
+| 0 | Technical foundations: robots, sitemap headers, schema helpers | Setup | completed | #190 |
 | 1 | Strengthen Dataset API, MCP docs, and use-case pages as the internal-link spine | Use-case/docs | pending | - |
 | 2 | Ship `/playbooks/database-mcp-server` from measured MCP/database demand | Playbook | pending | - |
 | 3 | Ship `/alternatives/airtable` with an AI-agent dataset angle | Alternatives | pending | - |

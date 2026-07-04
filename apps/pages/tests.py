@@ -1,3 +1,4 @@
+import json
 import time
 from dataclasses import replace
 
@@ -13,6 +14,7 @@ from django.urls import reverse
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
+from apps.pages.schema import article_schema, breadcrumb_list_schema, faq_page_schema, json_ld
 
 pytestmark = pytest.mark.django_db
 
@@ -114,6 +116,8 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Content pipeline" in content
     assert "Bug and QA tracker" in content
     assert reverse("use_cases") in content
+    assert '"@type": "SoftwareApplication"' in content
+    assert '"@type": "Organization"' in content
 
 
 def test_landing_page_redirects_authenticated_users_to_home(client):
@@ -128,6 +132,41 @@ def test_landing_page_redirects_authenticated_users_to_home(client):
 
     assert response.status_code == 302
     assert response["Location"] == reverse("home")
+
+
+def test_robots_txt_allows_crawling_and_links_sitemap(client):
+    response = client.get(reverse("robots_txt"), secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
+    assert response.content.decode() == (
+        "User-agent: *\nAllow: /\nSitemap: https://testserver/sitemap.xml\n\n"
+    )
+
+
+def test_sitemap_response_does_not_set_noindex_header(client):
+    response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    assert "X-Robots-Tag" not in response.headers
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    (
+        ("/pricing/", "/pricing"),
+        ("/privacy-policy/", "/privacy-policy"),
+        ("/terms-of-service/", "/terms-of-service"),
+        ("/use-cases/", "/use-cases"),
+        ("/use-cases/personal-crm/", "/use-cases/personal-crm"),
+        ("/uses/", "/uses"),
+    ),
+)
+def test_marketing_trailing_slash_routes_redirect_to_canonical_paths(client, path, expected):
+    response = client.get(f"{path}?utm_source=test")
+
+    assert response.status_code == 301
+    assert response["Location"] == f"{expected}?utm_source=test"
 
 
 def test_use_cases_index_lists_public_use_case_pages(client):
@@ -151,12 +190,67 @@ def test_use_case_detail_page_shows_structured_example(client):
     assert "People dataset indexed by email or person_id." in content
     assert "Dataset context and semantic schema" in content
     assert "alex@example.com" in content
+    assert '"@type": "Article"' in content
 
 
 def test_unknown_use_case_returns_404(client):
     response = client.get(reverse("use_case_detail", kwargs={"slug": "missing"}))
 
     assert response.status_code == 404
+
+
+def test_schema_helpers_render_valid_homepage_json_ld(client):
+    response = client.get(reverse("landing"))
+
+    content = response.content.decode()
+    start = content.index('<script type="application/ld+json">')
+    end = content.index("</script>", start)
+    payload = content[start:end].split(">", 1)[1].strip()
+    schema = json.loads(payload)
+
+    assert {entry["@type"] for entry in schema} == {"SoftwareApplication", "Organization"}
+    organization = next(entry for entry in schema if entry["@type"] == "Organization")
+    assert organization["url"].endswith("/")
+
+
+def test_json_ld_escapes_script_breakout_sequences():
+    payload = json_ld({"name": "</script><script>alert(1)</script>", "ampersand": "&"})
+
+    assert "</script>" not in payload
+    assert "\\u003c/script\\u003e" in payload
+    assert "\\u0026" in payload
+
+
+def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
+    assert breadcrumb_list_schema(())["itemListElement"] == []
+    assert faq_page_schema(())["mainEntity"] == []
+
+    faq_schema = faq_page_schema((("Can agents use Rowset?", "Yes, through MCP or REST."),))
+    assert faq_schema["mainEntity"][0]["acceptedAnswer"]["text"] == "Yes, through MCP or REST."
+
+    schema = article_schema(
+        headline='Agent "CRM" <guide>',
+        description="Use <structured> rows safely.",
+        path="/use-cases/personal-crm",
+    )
+    rendered = json_ld(schema)
+
+    assert "datePublished" not in schema
+    assert "dateModified" not in schema
+    assert "\\u003cguide\\u003e" in rendered
+    assert "\\u003cstructured\\u003e" in rendered
+
+
+def test_use_case_article_schema_includes_main_entity(client):
+    response = client.get(reverse("use_case_detail", kwargs={"slug": "personal-crm"}))
+
+    content = response.content.decode()
+    start = content.index('<script type="application/ld+json">')
+    end = content.index("</script>", start)
+    payload = content[start:end].split(">", 1)[1].strip()
+    schema = json.loads(payload)
+
+    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm")
 
 
 def test_use_case_pages_reject_missing_page_copy(monkeypatch):

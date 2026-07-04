@@ -141,17 +141,8 @@
 {% endblock content %}
 
 {% block schema %}
+{# JSON-LD payloads are escaped by apps.pages.schema.json_ld; add a nonce here when CSP is enforced. #}
 <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    "headline": "{{ use_case.title|escapejs }} - Rowset use case",
-    "description": "{{ use_case.meta_description|escapejs }}",
-    "url": "https://{{ request.get_host }}{% url 'use_case_detail' slug=use_case.slug %}",
-    "author": {
-      "@type": "Person",
-      "name": "Rasul Kireev"
-    }
-  }
+  {{ schema_json|safe }}
 </script>
 {% endblock schema %}
