@@ -54,10 +54,10 @@
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `airtable` | Phase 2 | `/alternatives/airtable` | TBD | homepage, pricing, MCP docs, Dataset API |
-| `google-sheets` | Phase 3 | `/alternatives/google-sheets` | TBD | homepage, pricing, use cases, Dataset API |
-| `baserow` | Phase 4 | `/alternatives/baserow` | TBD | homepage, MCP docs, Dataset API |
-| `nocodb` | Phase 5 | `/alternatives/nocodb` | TBD | homepage, MCP docs, Dataset API |
+| `airtable` | Phase 3 | `/alternatives/airtable` | TBD | homepage, pricing, MCP docs, Dataset API |
+| `google-sheets` | Phase 4 | `/alternatives/google-sheets` | TBD | homepage, pricing, use cases, Dataset API |
+| `baserow` | Phase 6 | `/alternatives/baserow` | TBD | homepage, MCP docs, Dataset API |
+| `nocodb` | Phase 7 | `/alternatives/nocodb` | TBD | homepage, MCP docs, Dataset API |
 
 ### `/use-cases/[slug]` or Future `/for/[slug]`
 
@@ -72,15 +72,15 @@
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `rowset-vs-airtable` | Phase 6 | `/compare/rowset-vs-airtable` | TBD | `/alternatives/airtable`, pricing, MCP docs |
-| `rowset-vs-google-sheets` | Phase 7 | `/compare/rowset-vs-google-sheets` | TBD | `/alternatives/google-sheets`, pricing, Dataset API |
+| `rowset-vs-airtable` | Phase 9 | `/compare/rowset-vs-airtable` | TBD | `/alternatives/airtable`, pricing, MCP docs |
 
 ### `/playbooks/[slug]`
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
+| `database-mcp-server` | Phase 2 | `/playbooks/database-mcp-server` | TBD | MCP docs, Dataset API, Agent access |
+| `spreadsheet-database-for-ai-agents` | Phase 5 | `/playbooks/spreadsheet-database-for-ai-agents` | TBD | Google Sheets alternatives, Dataset API, MCP docs |
 | `connect-ai-agent-to-dataset-api` | Phase 8 | `/playbooks/connect-ai-agent-to-dataset-api` | TBD | MCP docs, Dataset API, Agent access |
-| `agent-managed-feedback-board` | Phase 9 | `/playbooks/agent-managed-feedback-board` | TBD | feedback use case, public previews, Dataset API |
 
 ## Anchor-Text Variations
 

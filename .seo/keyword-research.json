@@ -2,44 +2,395 @@
   "product": "Rowset",
   "domain": "https://rowset.lvtd.dev",
   "created_at": "2026-07-04",
-  "mode": "manual",
+  "updated_at": "2026-07-04",
+  "mode": "measured_refresh",
   "source": "blended",
-  "sources": ["repo", "production_site", "web_search", "manual"],
-  "as_of": "2026-07-04",
-  "confidence": "estimated",
-  "notes": [
-    "GSC, Ahrefs, and working DataForSEO credentials were not available from this repo shell.",
-    "Plausible and PostHog scripts are present on the production site, but API IDs were not available from this repo shell.",
-    "Volume and KD values are ranges or prioritization estimates. Refresh with GSC, Ahrefs, DataForSEO, Semrush, or Google Keyword Planner before deep investment in competitive pages."
+  "sources": [
+    "gsc",
+    "plausible",
+    "posthog",
+    "dataforseo",
+    "exa",
+    "firecrawl",
+    "jina",
+    "webfetch",
+    "repo",
+    "production_site"
   ],
+  "as_of": "2026-07-04",
+  "confidence": "measured",
+  "notes": [
+    "GSC has very little owned search data: one Rowset impression in the last 90 days, so there are no meaningful striking-distance opportunities yet.",
+    "Plausible shows mostly direct/referral traffic and no Organic Search channel traffic in the last 90 days.",
+    "PostHog project 493217 has ingestion, but only identify/set events in the last 90 days; no pageview/signup/dataset conversion events were available for SEO weighting.",
+    "DataForSEO provides the market keyword, KD, CPC, SERP, and backlink-strength signals used for phase prioritization.",
+    "Exa, Firecrawl, Jina, and live HTTP checks were used for competitor/source discovery and extraction."
+  ],
+  "baseline": {
+    "gsc": {
+      "source": "gsc",
+      "as_of": "2026-07-04",
+      "property": "https://rowset.lvtd.dev/",
+      "date_range": {
+        "from": "2026-04-05",
+        "to": "2026-07-04"
+      },
+      "rows_count": 1,
+      "top_rows": [
+        {
+          "query": "rowset",
+          "page": "https://rowset.lvtd.dev/",
+          "clicks": 0,
+          "impressions": 1,
+          "ctr": 0,
+          "position": 9
+        }
+      ],
+      "striking_distance": [],
+      "notes": "The only GSC query/page row had 1 impression, so it is not enough to justify a boost phase."
+    },
+    "plausible": {
+      "source": "plausible",
+      "as_of": "2026-07-04",
+      "site_id": "rowset.lvtd.dev",
+      "date_range": "last 90 days",
+      "top_pages": [
+        {
+          "path": "/",
+          "visitors": 34,
+          "visits": 64,
+          "pageviews": 119,
+          "bounce_rate": 41,
+          "visit_duration": 1334
+        },
+        {
+          "path": "/home",
+          "visitors": 15,
+          "visits": 53,
+          "pageviews": 316,
+          "bounce_rate": 0,
+          "visit_duration": 1934
+        },
+        {
+          "path": "/docs/getting-started/introduction/",
+          "visitors": 9,
+          "visits": 12,
+          "pageviews": 26,
+          "bounce_rate": 0,
+          "visit_duration": 0
+        },
+        {
+          "path": "/datasets/",
+          "visitors": 8,
+          "visits": 29,
+          "pageviews": 119,
+          "bounce_rate": 0,
+          "visit_duration": 4810
+        },
+        {
+          "path": "/use-cases",
+          "visitors": 7,
+          "visits": 7,
+          "pageviews": 18,
+          "bounce_rate": 100,
+          "visit_duration": 0
+        },
+        {
+          "path": "/docs/features/mcp/",
+          "visitors": 4,
+          "visits": 4,
+          "pageviews": 4,
+          "bounce_rate": 0,
+          "visit_duration": 0
+        },
+        {
+          "path": "/accounts/signup/",
+          "visitors": 4,
+          "visits": 4,
+          "pageviews": 5,
+          "bounce_rate": 0,
+          "visit_duration": 0
+        },
+        {
+          "path": "/docs/features/public-previews/",
+          "visitors": 4,
+          "visits": 5,
+          "pageviews": 5,
+          "bounce_rate": 0,
+          "visit_duration": 0
+        }
+      ],
+      "channels": [
+        {
+          "channel": "Direct",
+          "visitors": 42,
+          "visits": 87,
+          "pageviews": 1582
+        },
+        {
+          "channel": "Referral",
+          "visitors": 7,
+          "visits": 7,
+          "pageviews": 28
+        },
+        {
+          "channel": "Organic Social",
+          "visitors": 2,
+          "visits": 2,
+          "pageviews": 3
+        }
+      ],
+      "sources": [
+        {
+          "source": "Direct / None",
+          "visitors": 42,
+          "visits": 87,
+          "pageviews": 1582
+        },
+        {
+          "source": "builtwithdjango.com/projects/filebridge",
+          "visitors": 3,
+          "visits": 3,
+          "pageviews": 22
+        },
+        {
+          "source": "Slack",
+          "visitors": 2,
+          "visits": 2,
+          "pageviews": 3
+        },
+        {
+          "source": "lvtd.dev",
+          "visitors": 2,
+          "visits": 2,
+          "pageviews": 4
+        }
+      ],
+      "goals": [
+        {
+          "goal": "Outbound Link: Click",
+          "visitors": 1,
+          "events": 1
+        }
+      ],
+      "notes": "Organic Search filter returned no rows for the last 90 days."
+    },
+    "posthog": {
+      "source": "posthog",
+      "as_of": "2026-07-04",
+      "project_id": 493217,
+      "project_name": "rowset",
+      "date_range": "last 90 days",
+      "top_events": [
+        {
+          "event": "$set",
+          "events": 220
+        },
+        {
+          "event": "$identify",
+          "events": 2
+        }
+      ],
+      "pageviews": [],
+      "conversion_events": [],
+      "notes": "PostHog is connected, but current project data has no usable pageview/signup/dataset conversion events for SEO prioritization."
+    }
+  },
   "competitors": [
     {
       "brand": "Airtable",
       "slug": "airtable",
       "url": "https://airtable.com/",
       "confidence": "high",
-      "why": "Default spreadsheet-database competitor and strongest alternatives/search-intent anchor; current public positioning includes data, workflows, and agents."
+      "why": "Measured alternatives demand and broad spreadsheet-database category leadership."
     },
     {
       "brand": "Google Sheets",
       "slug": "google-sheets",
       "url": "https://www.google.com/sheets/about/",
       "confidence": "high",
-      "why": "Default lightweight structured data tool users try before a purpose-built backend."
+      "why": "Measured alternatives demand and common starting point for agent-managed lists."
     },
     {
       "brand": "Baserow",
       "slug": "baserow",
       "url": "https://baserow.io/",
-      "confidence": "medium",
-      "why": "API-first open-source Airtable alternative; adjacent when buyers care about database-backed workflows."
+      "confidence": "high",
+      "why": "Measured alternatives demand, DataForSEO related keyword evidence, and extracted Airtable competitor page."
     },
     {
       "brand": "NocoDB",
       "slug": "nocodb",
       "url": "https://nocodb.com/",
       "confidence": "medium",
-      "why": "Open-source Airtable alternative over SQL backends; appears in comparison/alternative SERPs."
+      "why": "Measured alternatives demand and clear SQL/no-code contrast."
+    },
+    {
+      "brand": "Grist",
+      "slug": "grist",
+      "url": "https://www.getgrist.com/",
+      "confidence": "low",
+      "why": "Low measured alternatives demand; keep as source/competitor context rather than early page."
+    },
+    {
+      "brand": "Chrysai",
+      "slug": "chrysai",
+      "url": "https://www.chrysai.com/",
+      "confidence": "derived",
+      "why": "Exa surfaced it as MCP/database creation adjacency; validate before page work."
+    },
+    {
+      "brand": "ShipMCP",
+      "slug": "shipmcp",
+      "url": "https://shipmcp.io/",
+      "confidence": "derived",
+      "why": "Exa surfaced it as managed MCP endpoint adjacency; validate before page work."
+    }
+  ],
+  "keywords": [
+    {
+      "keyword": "airtable alternatives",
+      "source": "dataforseo",
+      "search_volume": 720,
+      "keyword_difficulty": 0,
+      "competition_level": "MEDIUM",
+      "competition": 0.52,
+      "cpc": 15.5,
+      "intent": "commercial",
+      "avg_backlinks": 25.3,
+      "last_updated": "2026-06-14 07:03:29 +00:00"
+    },
+    {
+      "keyword": "google sheets alternatives",
+      "source": "dataforseo",
+      "search_volume": 480,
+      "keyword_difficulty": 0,
+      "competition_level": "LOW",
+      "competition": 0.24,
+      "cpc": 16.63,
+      "intent": "informational",
+      "avg_backlinks": 25,
+      "last_updated": "2026-06-18 11:46:23 +00:00"
+    },
+    {
+      "keyword": "baserow alternatives",
+      "source": "dataforseo",
+      "search_volume": 70,
+      "keyword_difficulty": 0,
+      "competition_level": "MEDIUM",
+      "competition": 0.39,
+      "cpc": 5.41,
+      "intent": "informational",
+      "avg_backlinks": 7.2,
+      "last_updated": "2026-06-15 20:08:46 +00:00"
+    },
+    {
+      "keyword": "nocodb alternatives",
+      "source": "dataforseo",
+      "search_volume": 50,
+      "keyword_difficulty": 14,
+      "competition_level": "MEDIUM",
+      "competition": 0.49,
+      "cpc": 5.61,
+      "intent": "informational",
+      "avg_backlinks": 9041.7,
+      "last_updated": "2026-06-16 12:32:12 +00:00"
+    },
+    {
+      "keyword": "grist alternatives",
+      "source": "dataforseo",
+      "search_volume": 10,
+      "keyword_difficulty": null,
+      "competition_level": "MEDIUM",
+      "competition": 0.4,
+      "cpc": null,
+      "intent": "informational",
+      "avg_backlinks": null,
+      "last_updated": "2026-06-16 12:17:46 +00:00"
+    },
+    {
+      "keyword": "dataset api",
+      "source": "dataforseo",
+      "search_volume": 480,
+      "keyword_difficulty": 43,
+      "competition_level": "LOW",
+      "competition": 0.18,
+      "cpc": 24.07,
+      "intent": "informational",
+      "avg_backlinks": 2119.2,
+      "last_updated": "2026-06-13 16:00:44 +00:00"
+    },
+    {
+      "keyword": "spreadsheet database",
+      "source": "dataforseo",
+      "search_volume": 170,
+      "keyword_difficulty": 20,
+      "competition_level": "LOW",
+      "competition": 0.16,
+      "cpc": 55.7,
+      "intent": "transactional",
+      "avg_backlinks": 3021.6,
+      "last_updated": "2026-06-17 02:16:46 +00:00"
+    },
+    {
+      "keyword": "database mcp server",
+      "source": "dataforseo",
+      "search_volume": 70,
+      "keyword_difficulty": 16,
+      "competition_level": "MEDIUM",
+      "competition": 0.45,
+      "cpc": 14.92,
+      "intent": "navigational",
+      "avg_backlinks": 232.4,
+      "last_updated": "2026-06-13 18:51:00 +00:00"
+    },
+    {
+      "keyword": "mcp server for database",
+      "source": "dataforseo",
+      "search_volume": 20,
+      "keyword_difficulty": 16,
+      "competition_level": "LOW",
+      "competition": 0.17,
+      "cpc": null,
+      "intent": "navigational",
+      "avg_backlinks": null,
+      "last_updated": "2026-06-15 07:21:46 +00:00"
+    },
+    {
+      "keyword": "ai agent crm",
+      "source": "dataforseo",
+      "search_volume": 30,
+      "keyword_difficulty": 3,
+      "competition_level": "HIGH",
+      "competition": 0.7,
+      "cpc": 22.77,
+      "intent": "navigational",
+      "avg_backlinks": null,
+      "last_updated": "2026-06-17 07:42:16 +00:00"
+    },
+    {
+      "keyword": "airtable vs google sheets",
+      "source": "dataforseo",
+      "search_volume": 320,
+      "keyword_difficulty": 0,
+      "competition_level": "LOW",
+      "competition": 0.26,
+      "cpc": 7.75,
+      "intent": "informational",
+      "avg_backlinks": 0.9,
+      "last_updated": "2026-06-16 20:18:42 +00:00"
+    },
+    {
+      "keyword": "airtable vs baserow",
+      "source": "dataforseo",
+      "search_volume": 20,
+      "keyword_difficulty": 0,
+      "competition_level": "LOW",
+      "competition": 0.23,
+      "cpc": 2.95,
+      "intent": "informational",
+      "avg_backlinks": null,
+      "last_updated": "2026-06-18 05:44:04 +00:00"
     }
   ],
   "alternatives": [
@@ -47,148 +398,273 @@
       "keyword": "airtable alternatives",
       "page_slug": "airtable",
       "target_url": "/alternatives/airtable",
-      "estimated_monthly_volume": "1000+",
-      "estimated_difficulty": "high",
-      "confidence": "high",
-      "intent": "Broad alternatives research; Rowset should narrow the angle to AI-agent-managed datasets."
+      "search_volume": 720,
+      "keyword_difficulty": 0,
+      "cpc": 15.5,
+      "confidence": "measured",
+      "priority": "high",
+      "intent": "Commercial alternatives research; Rowset should narrow to AI-agent-managed datasets to avoid generic Airtable-alternative competition."
     },
     {
       "keyword": "google sheets alternatives",
       "page_slug": "google-sheets",
       "target_url": "/alternatives/google-sheets",
-      "estimated_monthly_volume": "1000+",
-      "estimated_difficulty": "high",
-      "confidence": "high",
-      "intent": "Broad alternatives research; Rowset should target the subset needing MCP/REST row workflows."
+      "search_volume": 480,
+      "keyword_difficulty": 0,
+      "cpc": 16.63,
+      "confidence": "measured",
+      "priority": "high",
+      "intent": "Broad alternatives research; target the subset needing MCP/REST, stable row identity, and private agent workflows."
     },
     {
       "keyword": "baserow alternatives",
       "page_slug": "baserow",
       "target_url": "/alternatives/baserow",
-      "estimated_monthly_volume": "100-500",
-      "estimated_difficulty": "medium",
-      "confidence": "medium",
-      "intent": "Users comparing open-source/no-code database tools; Rowset can contrast agent-native MCP setup."
+      "search_volume": 70,
+      "keyword_difficulty": 0,
+      "cpc": 5.41,
+      "confidence": "measured",
+      "priority": "medium",
+      "intent": "Open-source/no-code database comparison; useful after core internal-link and head alternatives pages."
     },
     {
       "keyword": "nocodb alternatives",
       "page_slug": "nocodb",
       "target_url": "/alternatives/nocodb",
-      "estimated_monthly_volume": "100-500",
-      "estimated_difficulty": "medium",
-      "confidence": "medium",
-      "intent": "Users comparing no-code database tools; Rowset should be honest that it is not a SQL UI."
+      "search_volume": 50,
+      "keyword_difficulty": 14,
+      "cpc": 5.61,
+      "confidence": "measured",
+      "priority": "medium",
+      "intent": "No-code SQL UI comparison; include honest contrast that Rowset is not a SQL spreadsheet UI."
     }
   ],
   "use_cases": [
     {
+      "keyword": "dataset api",
+      "page_slug": "dataset-api",
+      "existing_url": "/docs/api-reference/datasets/",
+      "search_volume": 480,
+      "keyword_difficulty": 43,
+      "cpc": 24.07,
+      "confidence": "measured",
+      "priority": "medium",
+      "note": "High commercial CPC, but SERP backlink strength is high. Strengthen docs/internal links before writing broad pages."
+    },
+    {
+      "keyword": "spreadsheet database",
+      "page_slug": "spreadsheet-database",
+      "target_url": "/playbooks/spreadsheet-database-for-ai-agents",
+      "search_volume": 170,
+      "keyword_difficulty": 20,
+      "cpc": 55.7,
+      "confidence": "measured",
+      "priority": "medium",
+      "note": "Transactional and expensive, but positioning risk is high; frame as when to graduate from spreadsheets to an agent dataset backend."
+    },
+    {
+      "keyword": "database mcp server",
+      "page_slug": "database-mcp-server",
+      "target_url": "/playbooks/database-mcp-server",
+      "search_volume": 70,
+      "keyword_difficulty": 16,
+      "cpc": 14.92,
+      "confidence": "measured",
+      "priority": "high",
+      "note": "More concrete measured variant than the original mcp server for database seed."
+    },
+    {
       "keyword": "ai agent crm",
       "page_slug": "personal-crm",
       "existing_url": "/use-cases/personal-crm",
-      "estimated_monthly_volume": "30-200",
-      "estimated_difficulty": "medium",
-      "confidence": "estimated"
-    },
-    {
-      "keyword": "agent task board",
-      "page_slug": "agent-task-board",
-      "existing_url": "/use-cases/agent-task-board",
-      "estimated_monthly_volume": "30-200",
-      "estimated_difficulty": "low-medium",
-      "confidence": "estimated"
-    },
-    {
-      "keyword": "feedback triage ai agent",
-      "page_slug": "feedback-triage",
-      "existing_url": "/use-cases/feedback-triage",
-      "estimated_monthly_volume": "10-100",
-      "estimated_difficulty": "low",
-      "confidence": "estimated"
-    },
-    {
-      "keyword": "mcp dataset api",
-      "page_slug": "mcp-dataset-api",
-      "existing_url": "/docs/features/mcp/",
-      "estimated_monthly_volume": "30-200",
-      "estimated_difficulty": "low-medium",
-      "confidence": "estimated"
-    },
-    {
-      "keyword": "dataset api for ai agents",
-      "page_slug": "dataset-api-for-ai-agents",
-      "existing_url": "/docs/api-reference/datasets/",
-      "estimated_monthly_volume": "30-200",
-      "estimated_difficulty": "low-medium",
-      "confidence": "estimated"
+      "search_volume": 30,
+      "keyword_difficulty": 3,
+      "cpc": 22.77,
+      "confidence": "measured",
+      "priority": "medium",
+      "note": "Low volume but strong CPC; good use-case-page expansion candidate."
     }
   ],
   "compare": [
     {
-      "keyword": "rowset vs airtable",
-      "page_slug": "rowset-vs-airtable",
-      "target_url": "/compare/rowset-vs-airtable",
-      "estimated_monthly_volume": "0-30 now; branded capture later",
-      "estimated_difficulty": "low",
-      "confidence": "estimated"
-    },
-    {
-      "keyword": "rowset vs google sheets",
-      "page_slug": "rowset-vs-google-sheets",
-      "target_url": "/compare/rowset-vs-google-sheets",
-      "estimated_monthly_volume": "0-30 now; branded capture later",
-      "estimated_difficulty": "low",
-      "confidence": "estimated"
+      "keyword": "airtable vs google sheets",
+      "page_slug": "airtable-vs-google-sheets",
+      "target_url": "/compare/airtable-vs-google-sheets",
+      "search_volume": 320,
+      "keyword_difficulty": 0,
+      "cpc": 7.75,
+      "confidence": "measured",
+      "priority": "defer",
+      "note": "Good demand but Rowset is not one of the compared brands; use as SERP/positioning research, not an early Rowset page."
     },
     {
       "keyword": "airtable vs baserow",
       "page_slug": "airtable-vs-baserow",
       "target_url": "/compare/airtable-vs-baserow",
-      "estimated_monthly_volume": "100-500",
-      "estimated_difficulty": "medium-high",
-      "confidence": "medium",
-      "note": "High intent, but Rowset is third-party commentary unless framed carefully."
+      "search_volume": 20,
+      "keyword_difficulty": 0,
+      "cpc": 2.95,
+      "confidence": "measured",
+      "priority": "defer",
+      "note": "Low volume and third-party framing; not an early Rowset priority."
+    },
+    {
+      "keyword": "rowset vs airtable",
+      "page_slug": "rowset-vs-airtable",
+      "target_url": "/compare/rowset-vs-airtable",
+      "search_volume": 0,
+      "keyword_difficulty": null,
+      "confidence": "measured_absent",
+      "priority": "later",
+      "note": "No measured demand yet; useful as sales enablement after alternatives pages exist."
     }
   ],
   "playbooks": [
     {
+      "keyword": "database mcp server",
+      "page_slug": "database-mcp-server",
+      "target_url": "/playbooks/database-mcp-server",
+      "search_volume": 70,
+      "keyword_difficulty": 16,
+      "cpc": 14.92,
+      "confidence": "measured",
+      "priority": "high"
+    },
+    {
       "keyword": "connect ai agent to dataset api",
       "page_slug": "connect-ai-agent-to-dataset-api",
       "target_url": "/playbooks/connect-ai-agent-to-dataset-api",
-      "estimated_monthly_volume": "30-200",
-      "estimated_difficulty": "low-medium",
-      "confidence": "estimated"
-    },
-    {
-      "keyword": "mcp server for database",
-      "page_slug": "mcp-server-for-database",
-      "target_url": "/playbooks/mcp-server-for-database",
-      "estimated_monthly_volume": "100-500",
-      "estimated_difficulty": "medium",
-      "confidence": "estimated"
+      "search_volume": 0,
+      "keyword_difficulty": null,
+      "confidence": "measured_absent",
+      "priority": "strategic",
+      "note": "Product-native topic despite sparse exact-match demand; support docs and sales conversations."
     },
     {
       "keyword": "agent managed feedback board",
       "page_slug": "agent-managed-feedback-board",
       "target_url": "/playbooks/agent-managed-feedback-board",
-      "estimated_monthly_volume": "10-100",
-      "estimated_difficulty": "low",
-      "confidence": "estimated"
+      "search_volume": 0,
+      "keyword_difficulty": null,
+      "confidence": "measured_absent",
+      "priority": "later"
     }
   ],
+  "serp_snapshots": {
+    "airtable alternatives": {
+      "source": "dataforseo",
+      "as_of": "2026-07-04",
+      "top_results": [
+        {
+          "rank": 1,
+          "domain": "www.reddit.com",
+          "title": "Looking for Airtable alternatives for small business use"
+        },
+        {
+          "rank": 2,
+          "domain": "www.zite.com",
+          "title": "The 8 Best Airtable Alternatives in 2026 [Tested & Reviewed]"
+        },
+        {
+          "rank": 3,
+          "domain": "stackby.com",
+          "title": "True no-code Airtable Alternative"
+        },
+        {
+          "rank": 4,
+          "domain": "www.smartsuite.com",
+          "title": "Airtable Alternatives: 10 Amazing Tools for Managing ..."
+        },
+        {
+          "rank": 5,
+          "domain": "www.getgrist.com",
+          "title": "Sick of Airtable? Here are the 8 Best Airtable Alternatives"
+        },
+        {
+          "rank": 6,
+          "domain": "baserow.io",
+          "title": "Top Airtable Competitors (2025)"
+        },
+        {
+          "rank": 8,
+          "domain": "zapier.com",
+          "title": "The 6 best Airtable alternatives in 2026"
+        }
+      ],
+      "notes": "SERP is broad and listicle-heavy; Rowset should avoid generic listicle parity and focus on the AI-agent dataset backend sub-intent."
+    }
+  },
+  "discovery": {
+    "exa": [
+      {
+        "query": "airtable alternatives AI agents dataset API",
+        "result": "Chrysai",
+        "url": "https://www.chrysai.com/",
+        "note": "MCP-powered AI database creation adjacency."
+      },
+      {
+        "query": "airtable alternatives AI agents dataset API",
+        "result": "ShipMCP",
+        "url": "https://shipmcp.io/",
+        "note": "Managed MCP endpoint adjacency."
+      },
+      {
+        "query": "private dataset API for AI agents competitors",
+        "result": "OnDB",
+        "url": "https://ondb.ai/",
+        "note": "API/data endpoint monetization for AI-agent users."
+      }
+    ],
+    "extraction": [
+      {
+        "source": "firecrawl",
+        "url": "https://baserow.io/blog/top-airtable-competitors",
+        "title": "Top Airtable Competitors (2025)",
+        "markdown_length": 20188
+      },
+      {
+        "source": "jina",
+        "url": "https://baserow.io/blog/top-airtable-competitors",
+        "title": "Top Airtable Competitors (2025)",
+        "markdown_length": 17650
+      },
+      {
+        "source": "jina",
+        "url": "https://zapier.com/blog/airtable-alternatives/",
+        "title": "The 6 best Airtable alternatives in 2026",
+        "markdown_length": 30111
+      },
+      {
+        "source": "webfetch",
+        "url": "https://rowset.lvtd.dev/sitemap.xml",
+        "status": 200,
+        "x_robots_tag": "noindex, noodp, noarchive"
+      },
+      {
+        "source": "webfetch",
+        "url": "https://rowset.lvtd.dev/robots.txt",
+        "status": 404
+      }
+    ]
+  },
   "striking_distance": [],
   "conversion_weighted": [],
   "saturated_or_deferred": [
     {
       "keyword": "database",
-      "reason": "Too broad and too competitive for current authority."
+      "reason": "Too broad and competitive."
     },
     {
       "keyword": "spreadsheet",
-      "reason": "Too broad; Rowset should not position as a generic spreadsheet replacement."
+      "reason": "Too broad and a positioning trap; use narrower spreadsheet-database/agent-backend language."
     },
     {
-      "keyword": "airtable alternative",
-      "reason": "Singular variant is viable, but plural alternatives pages usually capture broader demand. Validate exact SERP before writing."
+      "keyword": "dataset api",
+      "reason": "Measured volume/CPC are attractive, but KD 43 and backlink-heavy SERP make it a docs-strengthening target before new broad landing pages."
+    },
+    {
+      "keyword": "airtable vs google sheets",
+      "reason": "Measured 320 searches/month, but Rowset is not part of the comparison; defer until Rowset has stronger topical authority."
     }
   ]
 }

@@ -4,7 +4,7 @@
 
 ## Mode
 
-This initialize run was refreshed on 2026-07-04 from latest `origin/main` (`2d9389b`) in **manual research mode**. GSC, Ahrefs, and working DataForSEO credentials were not available from the repo shell, so volume, difficulty, traffic potential, and conversion values are estimates or validation prompts. Re-run with GSC, Ahrefs, DataForSEO, Semrush, Google Keyword Planner, Plausible API, or PostHog API before investing deeply in competitive pages.
+This initialize run was refreshed on 2026-07-04 from latest `origin/main` (`2d9389b`), then re-run with connected measurement tools after PR review feedback. This roadmap now uses Google Search Console, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina Reader, and live HTTP checks where available. Ahrefs is still not connected.
 
 ## How to Use This Document
 
@@ -21,15 +21,15 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 | # | Phase | Pattern | Status | PR |
 |---|---|---|---|---|
 | 0 | Technical foundations: robots, sitemap headers, schema helpers | Setup | pending | - |
-| 1 | Strengthen existing use-case pages as the internal-link spine | Use-case | pending | - |
-| 2 | Ship `/alternatives/airtable` with an AI-agent dataset angle | Alternatives | pending | - |
-| 3 | Ship `/alternatives/google-sheets` with an MCP/REST backend angle | Alternatives | pending | - |
-| 4 | Ship `/alternatives/baserow` with honest open-source/no-code positioning | Alternatives | pending | - |
-| 5 | Ship `/alternatives/nocodb` with SQL UI vs agent backend positioning | Alternatives | pending | - |
-| 6 | Ship `/compare/rowset-vs-airtable` | Compare | pending | - |
-| 7 | Ship `/compare/rowset-vs-google-sheets` | Compare | pending | - |
-| 8 | Ship `/playbooks/connect-ai-agent-to-dataset-api` | Playbook | pending | - |
-| 9 | Ship `/playbooks/agent-managed-feedback-board` | Playbook | pending | - |
+| 1 | Strengthen Dataset API, MCP docs, and use-case pages as the internal-link spine | Use-case/docs | pending | - |
+| 2 | Ship `/playbooks/database-mcp-server` from measured MCP/database demand | Playbook | pending | - |
+| 3 | Ship `/alternatives/airtable` with an AI-agent dataset angle | Alternatives | pending | - |
+| 4 | Ship `/alternatives/google-sheets` with an MCP/REST backend angle | Alternatives | pending | - |
+| 5 | Ship `/playbooks/spreadsheet-database-for-ai-agents` | Playbook | pending | - |
+| 6 | Ship `/alternatives/baserow` with honest open-source/no-code positioning | Alternatives | pending | - |
+| 7 | Ship `/alternatives/nocodb` with SQL UI vs agent backend positioning | Alternatives | pending | - |
+| 8 | Ship `/playbooks/connect-ai-agent-to-dataset-api` as a strategic product-native guide | Playbook | pending | - |
+| 9 | Ship `/compare/rowset-vs-airtable` after alternatives pages exist | Compare | pending | - |
 | 10 | Off-page starter submissions and backlink target list | Off-page | pending | - |
 
 **Conventions:**
@@ -42,13 +42,13 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 ### Site Facts
 
 - **Domain:** https://rowset.lvtd.dev
-- **Keyword data source:** manual estimates until measured tools are connected.
-- **Connected signal sources:** production site, repo, web search, and live HTTP checks. Plausible/PostHog scripts are present on production, but API access was not available in the repo shell.
-- **GSC property:** not configured.
+- **Keyword data source:** DataForSEO measured US keyword volume, KD, CPC, SERP, and backlink-strength signals; GSC/Plausible/PostHog for owned baseline.
+- **Connected signal sources:** GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina Reader, live HTTP checks, production site, and repo.
+- **GSC property:** `https://rowset.lvtd.dev/`.
 - **Ahrefs project_id:** not configured.
-- **Plausible site_id:** `rowset.lvtd.dev` inferred from script tag.
-- **PostHog project_id:** not configured in repo shell.
-- **Domain Rating:** unknown in manual mode.
+- **Plausible site_id:** `rowset.lvtd.dev`.
+- **PostHog project_id:** `493217` (`rowset`).
+- **Domain Rating:** unknown; use DataForSEO KD/backlink signals until Ahrefs is connected.
 - **Stack:** Django 6, Django templates, HTMX, Alpine.js, Tailwind/PostCSS.
 - **Marketing pages root:** `apps/pages`, `frontend/templates/pages`.
 - **Docs content root:** `apps/docs/content`.
@@ -60,12 +60,14 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 
 | Source | Status | Used for | Config saved |
 |---|---|---|---|
-| GSC | missing | owned queries + indexing | `gsc_property: null` |
+| GSC | connected | owned queries + indexing | `gsc_property: https://rowset.lvtd.dev/` |
 | Ahrefs | missing | DR, KD, volume, SERP, backlinks | `ahrefs_project_id: null` |
-| DataForSEO | unavailable/unauthorized from shell | KD, volume, SERP | note in `.seo/config.json` |
-| Plausible | detected on production, API not configured | conversion weighting later | `plausible_site_id: rowset.lvtd.dev` |
-| PostHog | detected on production, API not configured | funnel/event weighting later | `posthog_project_id: null` |
-| Web search | available | discovery | none |
+| DataForSEO | connected | US volume, KD, CPC, SERP, backlink strength | `dataforseo_location: United States`, `dataforseo_language: English` |
+| Plausible | connected | landing pages, channels, goals | `plausible_site_id: rowset.lvtd.dev` |
+| PostHog | connected | product events/funnel availability | `posthog_project_id: 493217` |
+| Exa | connected | competitor and adjacent-tool discovery | none |
+| Firecrawl | connected | competitor page extraction | none |
+| Jina Reader | connected | competitor/listicle extraction | none |
 | Web fetch/live HTTP | available | production verification | none |
 
 ### Existing Programmatic Surface
@@ -143,56 +145,68 @@ Findings:
 
 ## Keyword Research Appendix
 
-All values are manual estimates. See `.seo/keyword-research.json` for machine-readable detail.
+Values below are measured unless explicitly labeled otherwise. See `.seo/keyword-research.json` for machine-readable detail.
+
+### Owned Search and Analytics Baseline
+
+- **GSC, last 90 days:** one query/page row: `rowset` -> homepage, 1 impression, 0 clicks, average position 9. There are no meaningful striking-distance opportunities yet.
+- **Plausible, last 90 days:** 42 direct visitors, 7 referral visitors, 2 organic-social visitors, and no Organic Search rows. Top public pages include `/` (34 visitors), `/home` (15), `/docs/getting-started/introduction/` (9), `/use-cases` (7), `/docs/features/mcp/` (4), and `/accounts/signup/` (4).
+- **Plausible goals:** one `Outbound Link: Click`; no signup/activation goal data available.
+- **PostHog, last 90 days:** project `rowset` is connected, but only `$set` (220) and `$identify` (2) events were present. No pageview, signup, dataset, project, checkout, or subscription events were available for conversion weighting.
+- **Implication:** market demand should come from DataForSEO for now, but Phase 0/1 should improve crawlability, internal links, and measurement before relying on conversion-weighted SEO decisions.
 
 ### A.1 - `/alternatives/[brand]` Candidates
 
-| Keyword | Page | Est. volume | Est. difficulty | Confidence | Notes |
+| Keyword | Page | US volume | KD | CPC | Notes |
 |---|---|---:|---|---|---|
-| airtable alternatives | `/alternatives/airtable` | 1000+ | high | high | Broad SERP; Rowset must narrow to AI-agent-managed datasets. Airtable now also positions around data, workflows, and agents, so the page needs a clear "agent backend vs work platform" distinction. |
-| google sheets alternatives | `/alternatives/google-sheets` | 1000+ | high | high | Broad SERP; target users who need MCP/REST and private agent workflows. |
-| baserow alternatives | `/alternatives/baserow` | 100-500 | medium | medium | Strong open-source/no-code database adjacency. |
-| nocodb alternatives | `/alternatives/nocodb` | 100-500 | medium | medium | Good comparison angle: SQL UI vs agent backend. |
+| airtable alternatives | `/alternatives/airtable` | 720 | 0 | $15.50 | Commercial intent. SERP is broad/listicle-heavy; Rowset needs a narrow "AI-agent dataset backend" angle. |
+| google sheets alternatives | `/alternatives/google-sheets` | 480 | 0 | $16.63 | Broad informational intent. Target the subset that needs MCP/REST, private keys, and stable row identity. |
+| baserow alternatives | `/alternatives/baserow` | 70 | 0 | $5.41 | Smaller but relevant open-source/no-code database adjacency. |
+| nocodb alternatives | `/alternatives/nocodb` | 50 | 14 | $5.61 | Smaller and harder; useful after the first alternatives pages. |
+| grist alternatives | deferred | 10 | n/a | n/a | Too small for an early standalone page. |
 
 ### A.2 - Existing Use-Case Candidates
 
-| Keyword | Existing URL | Est. volume | Est. difficulty | Confidence |
+| Keyword | Existing URL / Target | US volume | KD | CPC |
 |---|---|---:|---|---|
-| ai agent crm | `/use-cases/personal-crm` | 30-200 | medium | estimated |
-| agent task board | `/use-cases/agent-task-board` | 30-200 | low-medium | estimated |
-| feedback triage ai agent | `/use-cases/feedback-triage` | 10-100 | low | estimated |
-| mcp dataset api | `/docs/features/mcp/` | 30-200 | low-medium | estimated |
-| dataset api for ai agents | `/docs/api-reference/datasets/` | 30-200 | low-medium | estimated |
+| dataset api | `/docs/api-reference/datasets/` | 480 | 43 | $24.07 |
+| spreadsheet database | `/playbooks/spreadsheet-database-for-ai-agents` | 170 | 20 | $55.70 |
+| database mcp server | `/playbooks/database-mcp-server` | 70 | 16 | $14.92 |
+| mcp server for database | `/playbooks/database-mcp-server` | 20 | 16 | n/a |
+| ai agent crm | `/use-cases/personal-crm` | 30 | 3 | $22.77 |
+| agent task board | `/use-cases/agent-task-board` | no measured row | n/a | n/a |
+| feedback triage ai agent | `/use-cases/feedback-triage` | no measured row | n/a | n/a |
 
 ### A.3 - Compare Candidates
 
-| Keyword | Page | Est. volume | Est. difficulty | Confidence | Notes |
+| Keyword | Page | US volume | KD | CPC | Notes |
 |---|---|---:|---|---|---|
-| rowset vs airtable | `/compare/rowset-vs-airtable` | 0-30 now | low | estimated | Branded capture for later; useful sales asset. |
-| rowset vs google sheets | `/compare/rowset-vs-google-sheets` | 0-30 now | low | estimated | Useful decision page for setup conversations. |
-| airtable vs baserow | `/compare/airtable-vs-baserow` | 100-500 | medium-high | medium | High intent, but third-party commentary unless Rowset is clearly included as a different category. |
+| airtable vs google sheets | deferred research input | 320 | 0 | $7.75 | Good demand, but Rowset is not one of the compared brands; use for positioning research, not an early page. |
+| airtable vs baserow | deferred research input | 20 | 0 | $2.95 | Low measured volume and third-party framing. |
+| rowset vs airtable | `/compare/rowset-vs-airtable` | no measured row | n/a | n/a | Useful later as sales enablement after alternatives pages exist. |
 
 ### A.4 - Playbook Candidates
 
-| Keyword | Page | Est. volume | Est. difficulty | Confidence |
+| Keyword | Page | US volume | KD | Notes |
 |---|---|---:|---|---|
-| connect ai agent to dataset api | `/playbooks/connect-ai-agent-to-dataset-api` | 30-200 | low-medium | estimated |
-| mcp server for database | `/playbooks/mcp-server-for-database` | 100-500 | medium | estimated |
-| agent managed feedback board | `/playbooks/agent-managed-feedback-board` | 10-100 | low | estimated |
+| database mcp server | `/playbooks/database-mcp-server` | 70 | 16 | Measured query variant from DataForSEO suggestions. |
+| connect ai agent to dataset api | `/playbooks/connect-ai-agent-to-dataset-api` | no measured row | n/a | Still strategic/product-native, but not a demand-led first page. |
+| agent managed feedback board | `/playbooks/agent-managed-feedback-board` | no measured row | n/a | Keep later unless product/content strategy overrides search demand. |
 
 ### A.5 - Striking Distance
 
-Not available in manual mode. Add Google Search Console queries ranking positions 5-20 when GSC access is available.
+No meaningful opportunities yet. GSC has one Rowset impression in the last 90 days; the homepage averaged position 9 for `rowset`, but with only 1 impression and 0 clicks.
 
 ### A.6 - Conversion-Weighted Opportunities
 
-Not available yet. Plausible and PostHog are present on the production site, but API IDs/access were not available from the repo shell. When connected, bias toward pages that lead to signup, agent API key creation, prompt copy, dataset creation, or Pro checkout.
+Not available yet despite connected tools. Plausible has no Organic Search channel rows and no signup/activation goals; PostHog has no pageview or conversion events in the Rowset project. Add/verify signup, API-key creation, dataset creation, prompt-copy, checkout, and subscription events before using analytics to rank SEO pages by revenue value.
 
 ### A.7 - Already-Saturated Head Terms to Avoid
 
 - `database` - too broad and too competitive.
 - `spreadsheet` - too broad and product positioning drift.
-- `airtable alternative` - viable, but validate before targeting the singular variant; plural alternatives pages often capture broader demand.
+- `dataset api` - attractive volume/CPC, but KD 43 with a backlink-heavy SERP; strengthen docs/internal links before chasing it directly.
+- `airtable vs google sheets` - measured 320 searches/month, but Rowset is not a named side of the comparison.
 
 ## Phases
 
@@ -226,22 +240,31 @@ curl -s https://rowset.lvtd.dev/robots.txt
 curl -sI https://rowset.lvtd.dev/sitemap.xml
 ```
 
-### Phase 1 - Strengthen Existing Use-Case Pages as the Internal-Link Spine
+### Phase 1 - Strengthen Dataset API, MCP Docs, and Use-Case Pages as the Internal-Link Spine
 
-**Why:** Rowset already has use-case pages; improve them before adding isolated programmatic pages.
+**Why:** DataForSEO shows real demand for `dataset api` (480 US searches/month, KD 43, $24.07 CPC), but the SERP is backlink-heavy. Rowset should strengthen the pages it already owns before adding isolated programmatic pages.
 
 **Scope:**
 
-1. Add stronger internal links from homepage/use-case index into the most commercially useful pages.
+1. Add stronger internal links from homepage/use-case index into Dataset API docs, MCP docs, and the most commercially useful use cases.
 2. Add links from each use-case page to MCP docs, Dataset API, pricing/signup, and 1-2 sibling use cases.
-3. Consider adding concise FAQ sections to the use-case template and `FAQPage` JSON-LD where the questions are real.
-4. Preserve product guardrails: public previews are read-only; MCP/REST remain the private paths.
+3. Expand the Dataset API and MCP docs where they can clearly answer `dataset api`, `database mcp server`, and agent-setup questions.
+4. Consider concise FAQ sections and `FAQPage` JSON-LD where questions are real and not keyword stuffing.
+5. Preserve product guardrails: public previews are read-only; MCP/REST remain the private paths.
 
 **Verification:** page source has canonical, one H1, JSON-LD, and at least 3 relevant internal links per use-case page.
 
-### Phase 2 - Ship `/alternatives/airtable`
+### Phase 2 - Ship `/playbooks/database-mcp-server`
 
-**Why:** `airtable alternatives` is the largest obvious alternatives market. Rowset should target the specific sub-intent: "I need agents to maintain structured rows through an API/MCP backend."
+**Why:** `database mcp server` has measured demand (70 US searches/month, KD 16, $14.92 CPC), and Exa surfaced adjacent MCP/database tools. This is more concrete than the original unmeasured "connect agent to dataset API" seed.
+
+**Scope:** explain when to use a hosted agent dataset backend instead of connecting an agent directly to a database, how Rowset's hosted MCP setup works, where a direct database MCP is better, and how to keep credentials/private data out of prompts.
+
+**Quality gate:** at least 2,500 words, Article schema, code/setup examples, links to MCP docs, Dataset API, Agent access, pricing, and relevant use cases.
+
+### Phase 3 - Ship `/alternatives/airtable`
+
+**Why:** `airtable alternatives` has measured demand (720 US searches/month, KD 0, $15.50 CPC), but the SERP is broad and listicle-heavy. Rowset should target the specific sub-intent: "I need agents to maintain structured rows through an API/MCP backend."
 
 **Required sections:**
 
@@ -253,61 +276,53 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 **Quality gate:** at least 600 words, honesty section, FAQ schema, links to pricing, MCP docs, Dataset API, and at least 2 sibling alternatives once available.
 
-### Phase 3 - Ship `/alternatives/google-sheets`
+### Phase 4 - Ship `/alternatives/google-sheets`
 
-**Why:** many users start with Sheets for agent-managed lists, then hit authentication, schema, row lookup, and automation reliability limits.
+**Why:** `google sheets alternatives` has measured demand (480 US searches/month, KD 0, $16.63 CPC). Many users start with Sheets for agent-managed lists, then hit authentication, schema, row lookup, and automation reliability limits.
 
 **Angle:** not "Sheets is bad"; Rowset is for private agent workflows where MCP/REST, stable keys, and ownership boundaries matter.
 
 **Quality gate:** at least 600 words, honesty section, FAQ schema, links to use cases and Dataset API.
 
-### Phase 4 - Ship `/alternatives/baserow`
+### Phase 5 - Ship `/playbooks/spreadsheet-database-for-ai-agents`
 
-**Why:** Baserow owns "open-source Airtable alternative" positioning. Rowset should explain the narrower agent-native backend angle.
+**Why:** `spreadsheet database` has measured demand (170 US searches/month, KD 20, $55.70 CPC). The CPC is strong, but this can become a positioning trap unless the page is explicit that Rowset is not a spreadsheet replacement.
+
+**Scope:** show when a spreadsheet-database tool is the right answer, when an AI-agent dataset backend is the better fit, and how Rowset fits private MCP/REST workflows.
+
+**Quality gate:** at least 2,500 words, Article schema, honest "use a spreadsheet database if..." section, links to Dataset API, MCP docs, Google Sheets alternatives, and relevant use cases.
+
+### Phase 6 - Ship `/alternatives/baserow`
+
+**Why:** `baserow alternatives` has measured demand (70 US searches/month, KD 0, $5.41 CPC). Baserow owns "open-source Airtable alternative" positioning; Rowset should explain the narrower agent-native backend angle.
 
 **Angle:** Baserow is stronger for no-code database UI and self-hosted app building; Rowset is stronger for trusted agents managing private datasets through MCP/REST.
 
 **Quality gate:** at least 600 words, honesty section, FAQ schema, current Baserow feature/pricing review before writing.
 
-### Phase 5 - Ship `/alternatives/nocodb`
+### Phase 7 - Ship `/alternatives/nocodb`
 
-**Why:** NocoDB appears in open-source no-code database comparisons and has a clear contrast with Rowset.
+**Why:** `nocodb alternatives` has measured demand (50 US searches/month, KD 14, $5.61 CPC). NocoDB appears in open-source no-code database comparisons and has a clear contrast with Rowset.
 
 **Angle:** NocoDB is for exposing SQL databases through a spreadsheet-like UI; Rowset is for agent-owned structured datasets with MCP/REST access.
 
 **Quality gate:** at least 600 words, honesty section, FAQ schema, current NocoDB feature/pricing review before writing.
 
-### Phase 6 - Ship `/compare/rowset-vs-airtable`
-
-**Why:** low-volume branded capture and a useful sales/decision page.
-
-**Scope:** compare Rowset against Airtable for users deciding where trusted agents should keep structured work. Include "choose Airtable if" and "choose Rowset if" sections.
-
-**Quality gate:** at least 700 words, comparison table, links to Airtable alternatives page, pricing, MCP docs, and Dataset API.
-
-### Phase 7 - Ship `/compare/rowset-vs-google-sheets`
-
-**Why:** users understand Sheets; this page frames when a spreadsheet stops being enough for agent-run data work.
-
-**Scope:** compare permissions, private API access, row identity, schema metadata, exports, public previews, and agent setup.
-
-**Quality gate:** at least 700 words, comparison table, links to Google Sheets alternatives page, pricing, use cases, and Dataset API.
-
 ### Phase 8 - Ship `/playbooks/connect-ai-agent-to-dataset-api`
 
-**Why:** this is the most product-native educational topic: concrete setup, clear payoff, and good internal links to docs.
+**Why:** exact-match demand was not measured, but this remains the most product-native educational topic: concrete setup, clear payoff, and good internal links to docs.
 
 **Scope:** long-form guide showing when to use Rowset, how to create an API key, how to configure MCP, how to verify with user info/capabilities, how to create a dataset, and how to avoid leaking keys.
 
 **Quality gate:** at least 2,500 words, code examples, Article schema, links to MCP docs, Dataset API, Agent access, and at least 2 use cases.
 
-### Phase 9 - Ship `/playbooks/agent-managed-feedback-board`
+### Phase 9 - Ship `/compare/rowset-vs-airtable`
 
-**Why:** feedback triage is a concrete workflow with clear buyer pain and a strong demo path.
+**Why:** no measured demand exists yet for `rowset vs airtable`, but it becomes useful sales enablement after `/alternatives/airtable` exists.
 
-**Scope:** show how an agent turns scattered feedback into a structured dataset, dedupes themes, updates status, links customers, exports, and shares public previews when useful.
+**Scope:** compare Rowset against Airtable for users deciding where trusted agents should keep structured work. Include "choose Airtable if" and "choose Rowset if" sections.
 
-**Quality gate:** at least 2,500 words, concrete dataset schema, example rows, Article schema, links to feedback use case, public previews, Dataset API, and projects docs.
+**Quality gate:** at least 700 words, comparison table, links to Airtable alternatives page, pricing, MCP docs, and Dataset API.
 
 ### Phase 10 - Off-Page Starter Submissions and Backlink Target List
 

@@ -12,25 +12,30 @@
   "robots_path": "static/robots.txt",
   "tailwind_config": "tailwind.config.js",
   "roadmap_path": "docs/seo-sprint.md",
-  "research_mode": "manual",
-  "keyword_data_source": "manual",
+  "research_mode": "measured_refresh",
+  "keyword_data_source": "gsc+dataforseo+plausible+posthog+exa+firecrawl+jina+webfetch",
   "connected_signal_sources": {
-    "gsc": "missing",
+    "gsc": "connected via Infisical service account",
     "ahrefs": "missing",
-    "dataforseo": "credentials unavailable in shell or unauthorized",
-    "plausible": "detected on site, API not configured in repo shell",
-    "posthog": "detected on site, API not configured in repo shell",
-    "web_search": "available",
-    "web_fetch": "available"
+    "dataforseo": "connected via Infisical",
+    "plausible": "connected via runtime credential",
+    "posthog": "connected via runtime credential; rowset project selected",
+    "exa": "connected via runtime credential",
+    "firecrawl": "connected via runtime credential",
+    "jina": "connected via runtime credential",
+    "web_fetch": "available via HTTP checks"
   },
-  "gsc_property": null,
+  "gsc_property": "https://rowset.lvtd.dev/",
   "ahrefs_project_id": null,
+  "dataforseo_location": "United States",
+  "dataforseo_language": "English",
   "plausible_site_id": "rowset.lvtd.dev",
-  "posthog_project_id": null,
+  "posthog_project_id": 493217,
   "created_at": "2026-07-04",
+  "updated_at": "2026-07-04",
   "notes": [
     "Initialized from latest origin/main after fast-forwarding from c11f1de to 2d9389b.",
-    "Use manual/estimated keyword data until GSC, Ahrefs, DataForSEO, or an analytics API is connected.",
-    "Production domain, sitemap, metadata, and page inventory were checked on 2026-07-04."
+    "Refreshed with GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina, and live HTTP checks on 2026-07-04.",
+    "No Ahrefs project was available; use DataForSEO KD/backlink/SERP metrics until Ahrefs is connected."
   ]
 }
