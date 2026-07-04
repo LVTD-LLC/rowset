@@ -2,15 +2,17 @@ from django.contrib.sitemaps.views import sitemap
 from django.http import HttpResponse, HttpResponsePermanentRedirect
 
 from rowset.sitemaps import sitemaps
+from rowset.utils import build_absolute_public_url
 
 
 def robots_txt(request):
-    sitemap_url = request.build_absolute_uri("/sitemap.xml").replace("http://", "https://", 1)
+    sitemap_url = build_absolute_public_url("/sitemap.xml")
     content = "\n".join(
         [
             "User-agent: *",
             "Allow: /",
             f"Sitemap: {sitemap_url}",
+            "",
             "",
         ]
     )
@@ -23,7 +25,7 @@ def public_sitemap(request, **kwargs):
     return response
 
 
-def redirect_without_trailing_slash(request, path, **kwargs):
+def redirect_without_trailing_slash(request, **kwargs):
     target = request.path_info.rstrip("/") or "/"
     if request.META.get("QUERY_STRING"):
         target = f"{target}?{request.META['QUERY_STRING']}"
