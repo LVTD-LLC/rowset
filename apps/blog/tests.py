@@ -66,14 +66,14 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
     )
     assert "<h2>Why agents need it</h2>" in content
     assert "<strong>stable APIs</strong>" in content
-    assert 'property="article:published_time" content="2026-07-03T00:00:00"' in content
+    assert 'property="article:published_time" content="2026-07-03T00:00:00+00:00"' in content
     assert (
         'property="og:image" content="https://rowset.example/static/blog/agent-managed-datasets.png"'
         in content
     )
     assert "Rowset dataset workflow" in content
     assert '"@type": "BlogPosting"' in content
-    assert '"datePublished": "2026-07-03T00:00:00"' in content
+    assert '"datePublished": "2026-07-03T00:00:00+00:00"' in content
 
 
 def test_blog_posts_are_sorted_by_publication_date(blog_posts_dir):
@@ -101,8 +101,48 @@ def test_blog_posts_are_sorted_by_publication_date(blog_posts_dir):
     assert [post.slug for post in list_blog_posts()] == ["newer-post", "older-post"]
 
 
+def test_blog_index_skips_invalid_markdown_files(client, blog_posts_dir):
+    write_post(
+        blog_posts_dir,
+        "valid-post",
+        {
+            "title": "Valid post",
+            "description": "Valid description.",
+            "published_at": "2026-07-03",
+        },
+        "Valid body.",
+    )
+    (blog_posts_dir / "invalid-post.md").write_text(
+        "---\ntitle: Missing description\npublished_at: 2026-07-03\n---\n\nInvalid body.\n",
+        encoding="utf-8",
+    )
+
+    response = client.get(reverse("blog_posts"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Valid post" in content
+    assert "Invalid body" not in content
+
+
 def test_blog_post_404s_when_markdown_file_is_missing(client, blog_posts_dir):
     response = client.get(reverse("blog_post", kwargs={"slug": "missing-post"}))
+
+    assert response.status_code == 404
+
+
+def test_blog_post_404s_when_frontmatter_is_invalid(client, blog_posts_dir):
+    (blog_posts_dir / "invalid-post.md").write_text(
+        "---\n"
+        "title: Invalid post\n"
+        "description: Invalid description.\n"
+        "published_at: not-a-date\n"
+        "---\n\n"
+        "Body.\n",
+        encoding="utf-8",
+    )
+
+    response = client.get(reverse("blog_post", kwargs={"slug": "invalid-post"}))
 
     assert response.status_code == 404
 
@@ -137,7 +177,7 @@ def test_blog_sitemap_uses_markdown_posts(blog_posts_dir):
     post = sitemap.items()[0]
 
     assert sitemap.location(post) == "/blog/sitemap-post"
-    assert sitemap.lastmod(post).isoformat() == "2026-07-04T00:00:00"
+    assert sitemap.lastmod(post).isoformat() == "2026-07-04T00:00:00+00:00"
 
 
 def test_blog_post_schema_uses_checked_in_markdown_content(blog_posts_dir):

@@ -12,6 +12,7 @@ import markdown
 from django.conf import settings
 from django.templatetags.static import static
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
 from rowset.utils import build_absolute_public_url
@@ -77,18 +78,24 @@ def _coerce_string(value) -> str:
     return str(value).strip()
 
 
+def _ensure_aware_datetime(value: datetime) -> datetime:
+    if timezone.is_naive(value):
+        return timezone.make_aware(value, timezone.get_default_timezone())
+    return value
+
+
 def _coerce_datetime(value, field_name: str, source_path: Path) -> datetime:
     if isinstance(value, datetime):
-        return value
+        return _ensure_aware_datetime(value)
     if isinstance(value, date):
-        return datetime.combine(value, time.min)
+        return _ensure_aware_datetime(datetime.combine(value, time.min))
     if isinstance(value, str):
         parsed_datetime = parse_datetime(value)
         if parsed_datetime:
-            return parsed_datetime
+            return _ensure_aware_datetime(parsed_datetime)
         parsed_date = parse_date(value)
         if parsed_date:
-            return datetime.combine(parsed_date, time.min)
+            return _ensure_aware_datetime(datetime.combine(parsed_date, time.min))
     raise BlogPostValidationError(
         f"{source_path}: frontmatter field '{field_name}' must be a date or datetime."
     )
@@ -185,7 +192,13 @@ def list_blog_posts() -> list[BlogPost]:
     if not content_dir.exists():
         return []
 
-    posts = [load_blog_post(path, content_dir=content_dir) for path in content_dir.glob("*.md")]
+    posts = []
+    for path in content_dir.glob("*.md"):
+        try:
+            posts.append(load_blog_post(path, content_dir=content_dir))
+        except BlogPostValidationError:
+            # The blog.E001 system check reports invalid posts before deploy.
+            pass
     return sorted(posts, key=lambda post: (post.published_at, post.slug), reverse=True)
 
 

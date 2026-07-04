@@ -5,6 +5,7 @@ from apps.blog.services import (
     BLOG_DESCRIPTION,
     BLOG_TITLE,
     BlogPostNotFound,
+    BlogPostValidationError,
     blog_index_schema,
     blog_index_url,
     blog_post_schema,
@@ -34,7 +35,7 @@ def blog_posts_view(request):
 def blog_post_view(request, slug):
     try:
         blog_post = get_blog_post(slug)
-    except BlogPostNotFound as exc:
+    except (BlogPostNotFound, BlogPostValidationError) as exc:
         raise Http404("Blog post not found") from exc
 
     return render(
