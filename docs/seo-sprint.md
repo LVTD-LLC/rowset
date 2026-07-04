@@ -105,7 +105,9 @@ Run date: 2026-07-04.
 Command:
 
 ```text
-uv run python /home/node/.openclaw/workspace/agent-control-plane-config/skills/seo-sprint/scripts/tech_audit.py --domain https://rowset.lvtd.dev
+curl -sI https://rowset.lvtd.dev/robots.txt
+curl -s https://rowset.lvtd.dev/robots.txt
+curl -sI https://rowset.lvtd.dev/sitemap.xml
 ```
 
 Findings:
@@ -234,7 +236,6 @@ Not available yet despite connected tools. Plausible has no Organic Search chann
 **Verification:**
 
 ```text
-uv run python /home/node/.openclaw/workspace/agent-control-plane-config/skills/seo-sprint/scripts/tech_audit.py --domain https://rowset.lvtd.dev
 curl -sI https://rowset.lvtd.dev/robots.txt
 curl -s https://rowset.lvtd.dev/robots.txt
 curl -sI https://rowset.lvtd.dev/sitemap.xml
