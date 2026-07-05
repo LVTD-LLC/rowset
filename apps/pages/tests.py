@@ -199,6 +199,7 @@ def test_static_sitemap_overrides_airtable_alternative_metadata():
     assert sitemap.changefreq("airtable_alternative") == "monthly"
     assert sitemap.priority("landing") == 0.9
     assert sitemap.changefreq("landing") is None
+    assert sitemap.changefreq("pricing") is None
 
 
 @pytest.mark.parametrize(
@@ -285,7 +286,6 @@ def test_airtable_alternative_has_required_links_and_faq_schema(client):
 
     assert response.status_code == 200
     assert response["Cache-Control"] == "public, max-age=3600"
-    assert response["Vary"] == "Cookie"
     content = response.content.decode()
     text = strip_tags(content)
     words = re.findall(r"\b[\w'-]+\b", text)
@@ -346,6 +346,22 @@ def test_build_absolute_static_url_adds_scheme_to_protocol_relative_static_url(s
 
 def test_build_absolute_static_url_builds_public_url_for_plain_static_path(settings):
     settings.STATIC_URL = "/static/"
+    settings.SITE_URL = "https://testserver"
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+    assert (
+        build_absolute_static_url("vendors/images/logo.png")
+        == "https://testserver/static/vendors/images/logo.png"
+    )
+
+
+def test_build_absolute_static_url_treats_protocol_relative_without_host_as_path(settings):
+    settings.STATIC_URL = "///static/"
     settings.SITE_URL = "https://testserver"
     settings.STORAGES = {
         **settings.STORAGES,

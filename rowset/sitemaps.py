@@ -1,3 +1,5 @@
+from types import MappingProxyType
+
 from django.contrib import sitemaps
 from django.urls import reverse
 
@@ -5,18 +7,23 @@ from apps.blog.services import list_blog_posts
 from apps.docs.views import get_docs_navigation
 from apps.pages.use_cases import get_use_case_pages
 
+STATIC_SITEMAP_PRIORITY_OVERRIDES = MappingProxyType(
+    {
+        "airtable_alternative": 0.7,
+    }
+)
+STATIC_SITEMAP_CHANGEFREQ_OVERRIDES = MappingProxyType(
+    {
+        "airtable_alternative": "monthly",
+    }
+)
+
 
 class StaticViewSitemap(sitemaps.Sitemap):
     """Generate Sitemap for the site"""
 
     _default_priority = 0.9
     protocol = "https"
-    _priority_overrides = {
-        "airtable_alternative": 0.7,
-    }
-    _changefreq_overrides = {
-        "airtable_alternative": "monthly",
-    }
 
     def items(self):
         """Identify items that will be in the Sitemap
@@ -46,10 +53,10 @@ class StaticViewSitemap(sitemaps.Sitemap):
         return reverse(item)
 
     def priority(self, item):
-        return self._priority_overrides.get(item, self._default_priority)
+        return STATIC_SITEMAP_PRIORITY_OVERRIDES.get(item, self._default_priority)
 
     def changefreq(self, item):
-        return self._changefreq_overrides.get(item)
+        return STATIC_SITEMAP_CHANGEFREQ_OVERRIDES.get(item)
 
 
 class UseCaseSitemap(sitemaps.Sitemap):
