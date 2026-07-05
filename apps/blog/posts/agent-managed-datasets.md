@@ -84,6 +84,9 @@ the dataset is still ready for safe row lookup.
 
 Stable indexes are not cosmetic. They are the difference between "update the
 customer with this email address" and "find something that looks close enough."
+If you are designing a new workflow, use the guide to
+[choosing an index column for agent-managed rows](/blog/choose-index-column-agent-rows)
+before the agent creates production data.
 
 ### 2. Machine-readable schema
 

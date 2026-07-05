@@ -48,6 +48,7 @@
 |---|---|---|---|---|
 | `/blog/agent-managed-datasets` | https://rowset.lvtd.dev/blog/agent-managed-datasets | What is an agent-managed dataset? | agent workflows, datasets, MCP | Dataset API docs, MCP docs |
 | `/blog/mcp-vs-rest-ai-agents` | https://rowset.lvtd.dev/blog/mcp-vs-rest-ai-agents | When should an AI agent use MCP instead of REST? | MCP, REST, agent workflows | MCP docs, Agent access docs, agent-managed datasets blog |
+| `/blog/choose-index-column-agent-rows` | https://rowset.lvtd.dev/blog/choose-index-column-agent-rows | How to choose an index column for agent-managed rows | index columns, stable row identity, agent workflows | Dataset API docs, MCP docs, agent-managed datasets blog |
 
 ## SEO-Sprint-Generated Pages
 
@@ -105,3 +106,8 @@
 - when to use MCP instead of REST
 - Rowset MCP and REST access
 - agent API decision guide
+- choose an index column for agent-managed rows
+- stable row identity for agents
+- Rowset index column guide
+- generated rowset_id fallback
+- by-index row operations

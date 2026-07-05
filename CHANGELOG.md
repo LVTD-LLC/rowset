@@ -22,6 +22,7 @@ cut date.
 
 ### Added
 - Added the `/alternatives/airtable` SEO page with FAQ/Breadcrumb schema, sitemap coverage, and internal links from the homepage, MCP docs, and Dataset API docs.
+- Added a Rowset blog post on choosing stable index columns for agent-managed rows, with inbound links from dataset docs, MCP docs, and existing agent workflow posts.
 - Added a Rowset blog post explaining when AI-agent workflows should use MCP versus REST, with inbound links from MCP, Agent access, and the agent-managed-datasets article.
 
 ## 2026-07-04

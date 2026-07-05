@@ -106,7 +106,10 @@ The response includes `dataset.key`; use that key with the row endpoints below. 
 For agent-managed workflows, prefer a real business key for `index_column` when
 one exists: `email` for a personal CRM, `task_id` for an agent task board,
 `feedback_id` for feedback triage, or `sku` for a catalog. Stable index values
-let agents patch rows by meaning instead of depending on opaque row ids.
+let agents patch rows by meaning instead of depending on opaque row ids. If you
+are choosing this field for the first time, use the
+[index-column decision guide](/blog/choose-index-column-agent-rows) before
+creating production rows.
 
 Choice columns are experimental. Use them when an agent should keep a text value
 inside a fixed set:
