@@ -307,13 +307,8 @@ def test_database_mcp_server_playbook_has_required_links_and_schema(client):
     assert '"@type": "BreadcrumbList"' in content
 
 
-@override_settings(SITE_URL="https://rowset.example")
 def test_airtable_alternatives_page_has_required_links_schema_and_content(client):
-    response = client.get(
-        reverse("airtable_alternatives"),
-        secure=True,
-        HTTP_HOST="rowset.example",
-    )
+    response = client.get(reverse("airtable_alternatives"))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -338,7 +333,7 @@ def test_airtable_alternatives_page_has_required_links_schema_and_content(client
 
     breadcrumb_schema = next(entry for entry in schema if entry["@type"] == "BreadcrumbList")
     assert breadcrumb_schema["itemListElement"][-1]["item"] == (
-        "https://rowset.example/alternatives/airtable/"
+        "https://testserver/alternatives/airtable/"
     )
 
 
