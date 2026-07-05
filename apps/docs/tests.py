@@ -138,6 +138,12 @@ class TestDocsView:
         assert response.status_code == 301
         assert response["Location"] == reverse("docs_home")
 
+    def test_unknown_docs_category_returns_noindex_404(self, client):
+        response = client.get("/docs/unknown-category/")
+
+        assert response.status_code == 404
+        assert response.headers["X-Robots-Tag"] == "noindex"
+
     @pytest.mark.parametrize(
         ("legacy_path", "target_path"),
         sorted(EXPECTED_LEGACY_DOCS_REDIRECTS.items()),

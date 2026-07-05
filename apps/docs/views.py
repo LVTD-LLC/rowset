@@ -5,7 +5,7 @@ import frontmatter
 import markdown
 import yaml
 from django.conf import settings
-from django.http import Http404
+from django.http import Http404, HttpResponseNotFound
 from django.shortcuts import redirect, render
 from django.template import Context, Template
 from django.urls import reverse
@@ -345,6 +345,11 @@ def build_configured_links(link_configs, navigation=None):
         link = build_configured_link(link_config, navigation)
         if link is not None:
             links.append(link)
+        else:
+            logger.warning(
+                "Configured docs link omitted from rendered links: "
+                f"{link_config.get('title', 'Untitled')}"
+            )
     return links
 
 
@@ -392,12 +397,18 @@ def docs_home_view(request):
 
 def docs_category_view(request, category):
     if not is_docs_slug(category):
-        raise Http404("Documentation category not found")
+        return docs_noindex_not_found("Documentation category not found")
 
     if category in LEGACY_DOCS_CATEGORY_REDIRECTS:
         return redirect(reverse("docs_home"), permanent=True)
 
-    raise Http404("Documentation category not found")
+    return docs_noindex_not_found("Documentation category not found")
+
+
+def docs_noindex_not_found(message):
+    response = HttpResponseNotFound(message)
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
 
 
 def build_docs_agent_setup_prompt():
