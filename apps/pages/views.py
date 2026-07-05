@@ -15,6 +15,7 @@ from apps.pages.schema import (
     item_list_schema,
     json_ld,
     organization_schema,
+    public_url,
     software_application_schema,
     use_case_article_schema,
 )
@@ -143,6 +144,7 @@ class UseCasesIndexView(TemplateView):
         context = super().get_context_data(**kwargs)
         use_case_pages = get_use_case_pages()
         context["use_case_pages"] = use_case_pages
+        context["canonical_url"] = public_url(reverse("use_cases"))
         context["schema_json"] = json_ld(
             item_list_schema(
                 name="Rowset use cases",

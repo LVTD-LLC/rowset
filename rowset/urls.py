@@ -15,11 +15,11 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import include, path, re_path
+from django.urls import include, path
 from django.views.generic import TemplateView
 
 from apps.api.views import api_not_found, api_v1_redirect
-from apps.pages.seo import public_sitemap, redirect_to_canonical_no_slash, robots_txt
+from apps.pages.seo import canonical_no_slash_path, public_sitemap, robots_txt
 from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView
 
 urlpatterns = [
@@ -33,7 +33,11 @@ urlpatterns = [
     path("accounts/signup/", AccountSignupView.as_view(), name="account_signup"),
     path("accounts/", include("allauth.urls")),
     path("anymail/", include("anymail.urls")),
-    path("uses", TemplateView.as_view(template_name="pages/uses.html"), name="uses"),
+    *canonical_no_slash_path(
+        "uses",
+        TemplateView.as_view(template_name="pages/uses.html"),
+        name="uses",
+    ),
     path("blog/", include("apps.blog.urls")),
     path("robots.txt", robots_txt, name="robots_txt"),
     path("api/v1", api_v1_redirect, name="api_v1_redirect_root"),
@@ -49,11 +53,6 @@ urlpatterns = [
         "sitemap.xml",
         public_sitemap,
         name="django.contrib.sitemaps.views.sitemap",
-    ),
-    re_path(
-        r"^(?P<_path>.+)/$",
-        redirect_to_canonical_no_slash,
-        name="canonical_no_slash_redirect",
     ),
 ]
 

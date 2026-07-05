@@ -25,6 +25,8 @@ def json_ld(payload: dict | list[dict]) -> str:
 
 
 def public_url(path: str) -> str:
+    if not path.startswith("/"):
+        raise ValueError("Public schema paths must start with '/'.")
     return build_absolute_public_url(path)
 
 

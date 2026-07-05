@@ -17,7 +17,14 @@ from django.utils.html import strip_tags
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
-from apps.pages.schema import article_schema, breadcrumb_list_schema, faq_page_schema, json_ld
+from apps.pages.schema import (
+    article_schema,
+    breadcrumb_list_schema,
+    faq_page_schema,
+    item_list_schema,
+    json_ld,
+)
+from apps.pages.seo import redirect_to_canonical_no_slash
 
 pytestmark = pytest.mark.django_db
 
@@ -227,16 +234,28 @@ def test_marketing_trailing_slash_routes_redirect_to_canonical_paths(client, pat
         "/playbooks/database-mcp-server/",
     ),
 )
-def test_marketing_trailing_slash_redirects_use_canonical_fallback_route(path):
-    assert resolve(path).url_name == "canonical_no_slash_redirect"
+def test_marketing_trailing_slash_redirects_use_shared_redirect_view(path):
+    assert resolve(path).func is redirect_to_canonical_no_slash
 
 
-def test_canonical_no_slash_fallback_does_not_capture_real_slash_routes(client):
+def test_no_slash_redirects_do_not_capture_real_slash_routes(client):
     assert resolve("/docs/features/mcp/").url_name == "docs_page"
 
     response = client.get("/missing/")
 
     assert response.status_code == 404
+
+
+def test_no_slash_redirects_do_not_redirect_unregistered_slash_variants(client):
+    response = client.get("/sitemap.xml/")
+
+    assert response.status_code == 404
+
+
+def test_marketing_trailing_slash_redirect_rejects_unsafe_methods(client):
+    response = client.post("/pricing/")
+
+    assert response.status_code == 405
 
 
 def test_use_cases_index_lists_public_use_case_pages(client):
@@ -261,8 +280,18 @@ def test_use_cases_index_schema_uses_configured_public_urls(client):
     schema = _page_schema(response.content.decode())
 
     assert schema["@type"] == "ItemList"
-    assert schema["url"] == "https://rowset.example/use-cases"
-    assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/use-cases/")
+    assert schema["url"] == f"{settings.SITE_URL}/use-cases"
+    assert schema["itemListElement"][0]["url"].startswith(f"{settings.SITE_URL}/use-cases/")
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_use_cases_index_meta_uses_configured_public_urls(client):
+    response = client.get(reverse("use_cases"), secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert '<link rel="canonical" href="https://rowset.example/use-cases" />' in content
+    assert '<meta property="og:url" content="https://rowset.example/use-cases" />' in content
 
 
 def test_authenticated_public_pages_use_app_header(client):
@@ -360,6 +389,15 @@ def test_json_ld_escapes_script_breakout_sequences():
 def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
     assert breadcrumb_list_schema(())["itemListElement"] == []
     assert faq_page_schema(())["mainEntity"] == []
+    assert (
+        item_list_schema(
+            name="Empty list",
+            description="No items.",
+            path="/empty",
+            items=(),
+        )["itemListElement"]
+        == []
+    )
 
     faq_schema = faq_page_schema((("Can agents use Rowset?", "Yes, through MCP or REST."),))
     assert faq_schema["mainEntity"][0]["acceptedAnswer"]["text"] == "Yes, through MCP or REST."
@@ -375,6 +413,24 @@ def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
     assert "dateModified" not in schema
     assert "\\u003cguide\\u003e" in rendered
     assert "\\u003cstructured\\u003e" in rendered
+
+
+def test_schema_helpers_reject_relative_public_paths():
+    with pytest.raises(ValueError, match="must start with '/'"):
+        item_list_schema(
+            name="Invalid",
+            description="Invalid path.",
+            path="relative",
+            items=(),
+        )
+
+    with pytest.raises(ValueError, match="must start with '/'"):
+        item_list_schema(
+            name="Invalid",
+            description="Invalid item path.",
+            path="/valid",
+            items=(("Invalid", "relative"),),
+        )
 
 
 def test_use_case_article_schema_includes_main_entity(client):
