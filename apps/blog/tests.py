@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.core.checks import run_checks
 from django.urls import reverse
 
@@ -31,6 +32,46 @@ def test_blog_index_renders_empty_state(client, blog_posts_dir):
     content = response.content.decode()
     assert "No blog posts are available yet." in content
     assert 'href="https://rowset.example/blog/"' in content
+
+
+def test_authenticated_blog_pages_use_app_header(client, blog_posts_dir):
+    write_post(
+        blog_posts_dir,
+        "agent-managed-datasets",
+        {
+            "title": "Agent-managed datasets",
+            "description": "How AI agents keep Rowset datasets current.",
+            "published_at": "2026-07-03",
+        },
+        "Agents need stable APIs for rows.",
+    )
+    user = get_user_model().objects.create_user(
+        username="blog-header-auth",
+        email="blog-header-auth@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    urls = [
+        reverse("blog_posts"),
+        reverse("blog_post", kwargs={"slug": "agent-managed-datasets"}),
+    ]
+    for url in urls:
+        response = client.get(url)
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        header = content[content.index("<header") : content.index("</header>") + len("</header>")]
+        assert f'href="{reverse("home")}"' in header
+        assert "Dashboard" in header
+        assert "Docs" in header
+        assert "Settings" in header
+        assert "Search data" in header
+        assert f'action="{reverse("account_logout")}"' in header
+        assert "How it works" not in header
+        assert "Sign in" not in header
+        assert "Create account" not in header
+        assert "data-command-palette" in content
 
 
 def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_dir):

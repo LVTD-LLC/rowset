@@ -4,7 +4,7 @@
 <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
   <div class="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-4 sm:px-6 lg:px-8">
     <a
-      href="{% if nav_variant == 'app' %}{% url 'home' %}{% else %}{% url 'landing' %}{% endif %}"
+      href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'landing' %}{% endif %}"
       class="fb-focus flex min-w-0 items-center gap-2 rounded-md"
     >
       <img class="h-7 w-auto" src="{% static 'vendors/images/logo.png' %}" alt="Rowset Logo" />
@@ -12,7 +12,7 @@
     </a>
 
     <nav class="hidden items-center gap-1 md:flex" aria-label="Primary navigation">
-      {% if nav_variant == 'app' and user.is_authenticated %}
+      {% if user.is_authenticated %}
         <a href="{% url 'home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Dashboard</a>
         <a href="{% url 'docs_home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Docs</a>
         <a href="{% url 'settings' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Settings</a>
@@ -28,37 +28,33 @@
 
     <div class="ml-auto hidden items-center gap-2 md:flex">
       {% if user.is_authenticated %}
-        {% if nav_variant == 'app' %}
-          <button
-            type="button"
-            data-command-palette-trigger
-            class="fb-focus flex h-10 w-64 items-center justify-between gap-3 rounded-md border border-slate-300 bg-white px-3 text-left text-sm text-slate-500 transition hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200"
-            aria-label="Search rows, datasets, and projects"
-            aria-keyshortcuts="Meta+K Control+K"
-          >
-            <span class="flex min-w-0 items-center gap-2">
-              <svg class="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35" />
-                <circle cx="11" cy="11" r="7" />
-              </svg>
-              <span class="truncate">Search data</span>
-            </span>
-            <kbd class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400" data-command-palette-shortcut>Cmd K</kbd>
-          </button>
-          <form method="post" action="{% url 'account_logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="fb-button-secondary">Sign out</button>
-          </form>
-        {% else %}
-          <a href="{% url 'home' %}" class="fb-button-secondary">Dashboard</a>
-        {% endif %}
+        <button
+          type="button"
+          data-command-palette-trigger
+          class="fb-focus flex h-10 w-64 items-center justify-between gap-3 rounded-md border border-slate-300 bg-white px-3 text-left text-sm text-slate-500 transition hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+          aria-label="Search rows, datasets, and projects"
+          aria-keyshortcuts="Meta+K Control+K"
+        >
+          <span class="flex min-w-0 items-center gap-2">
+            <svg class="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35" />
+              <circle cx="11" cy="11" r="7" />
+            </svg>
+            <span class="truncate">Search data</span>
+          </span>
+          <kbd class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400" data-command-palette-shortcut>Cmd K</kbd>
+        </button>
+        <form method="post" action="{% url 'account_logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="fb-button-secondary">Sign out</button>
+        </form>
       {% else %}
         <a href="{% url 'account_login' %}" class="fb-button-secondary">Sign in</a>
         <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
       {% endif %}
     </div>
 
-    {% if nav_variant == 'app' and user.is_authenticated %}
+    {% if user.is_authenticated %}
       <button
         type="button"
         data-command-palette-trigger
@@ -74,7 +70,7 @@
     {% endif %}
 
     <div
-      class="{% if nav_variant == 'app' and user.is_authenticated %}md:hidden{% else %}ml-auto md:hidden{% endif %}"
+      class="{% if user.is_authenticated %}md:hidden{% else %}ml-auto md:hidden{% endif %}"
       x-data="{ open: false }"
       @keydown.escape.window="open = false"
       @click.outside="open = false"
@@ -100,7 +96,7 @@
         class="absolute left-3 right-3 top-16 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950"
       >
         <nav class="grid gap-1" aria-label="Mobile navigation">
-          {% if nav_variant == 'app' and user.is_authenticated %}
+          {% if user.is_authenticated %}
             <a href="{% url 'home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Dashboard</a>
             <a href="{% url 'docs_home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Docs</a>
             <a href="{% url 'settings' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Settings</a>
@@ -116,14 +112,10 @@
           <div class="my-1 border-t border-slate-200 dark:border-slate-800"></div>
 
           {% if user.is_authenticated %}
-            {% if nav_variant == 'app' %}
-              <form method="post" action="{% url 'account_logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="fb-focus w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Sign out</button>
-              </form>
-            {% else %}
-              <a href="{% url 'home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Dashboard</a>
-            {% endif %}
+            <form method="post" action="{% url 'account_logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="fb-focus w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Sign out</button>
+            </form>
           {% else %}
             <a href="{% url 'account_login' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Sign in</a>
             <a href="{% url 'account_signup' %}" class="fb-focus rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Create account</a>
