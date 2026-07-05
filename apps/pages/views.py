@@ -17,7 +17,7 @@ from apps.pages.schema import (
     use_case_article_schema,
 )
 from apps.pages.use_cases import get_use_case_page, get_use_case_pages
-from rowset.utils import get_rowset_logger
+from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 logger = get_rowset_logger(__name__)
 
@@ -165,6 +165,7 @@ class DatabaseMcpServerPlaybookView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["mcp_url"] = build_absolute_public_url("/mcp/")
         context["schema_json"] = json_ld(
             [
                 article_schema(
@@ -180,7 +181,6 @@ class DatabaseMcpServerPlaybookView(TemplateView):
                 breadcrumb_list_schema(
                     (
                         ("Home", "/"),
-                        ("Playbooks", "/playbooks/database-mcp-server"),
                         ("Database MCP server", "/playbooks/database-mcp-server"),
                     )
                 ),

@@ -10,12 +10,12 @@
 <meta property="og:title" content="Database MCP server: when to use Rowset instead" />
 <meta property="og:url" content="https://{{ request.get_host }}{% url 'database_mcp_server_playbook' %}" />
 <meta property="og:description" content="A practical guide to hosted MCP datasets, direct database MCP servers, credentials, row identity, and agent-safe data workflows." />
-<meta property="og:image" content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=Database%20MCP%20server&subtitle=Rowset%20playbook&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta property="og:image" content="https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 <meta property="og:locale" content="en_US" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Database MCP server: when to use Rowset instead" />
 <meta name="twitter:description" content="How to decide between direct database MCP access and Rowset's private MCP dataset backend." />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Database%20MCP%20server&subtitle=Rowset%20playbook&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+<meta name="twitter:image" content="https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 
 {% block content %}
@@ -111,7 +111,7 @@
         <p>
           Rowset exposes a hosted MCP endpoint for authenticated users. The user creates or copies an agent API key, stores it privately in the agent runtime, and configures the MCP client with a bearer token. For Codex/OpenClaw-compatible clients, the command looks like this:
         </p>
-        <pre><code>codex mcp add rowset --url https://rowset.lvtd.dev/mcp/ --bearer-token-env-var ROWSET_API_KEY</code></pre>
+        <pre><code>codex mcp add rowset --url {{ mcp_url }} --bearer-token-env-var ROWSET_API_KEY</code></pre>
         <p>
           The exact URL should come from the user's Rowset dashboard or the <a href="{% url 'docs_page' category='features' page='agent-access' %}">Agent access docs</a>. The key should live in an environment variable or secret store, not in a public prompt, shared document, screenshot, or repository. After connecting, the agent should discover tools from the MCP server and verify the authenticated user before creating data.
         </p>
