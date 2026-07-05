@@ -39,25 +39,21 @@ class TestDocsView:
         assert "Reference" in content
         assert "Explanation" in content
         assert (
-            reverse("docs_page", kwargs={"category": "tutorials", "page": "get-started"})
-            in content
+            reverse("docs_page", kwargs={"category": "tutorials", "page": "get-started"}) in content
         )
         assert (
             reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
             in content
         )
         assert (
-            reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"})
-            in content
+            reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
         )
         assert reverse("use_cases") in content
         assert "/playbooks/database-mcp-server" in content
         assert reverse("blog_posts") in content
 
     def test_legacy_docs_urls_redirect_to_diataxis_paths(self, client):
-        response = client.get(
-            reverse("docs_page", kwargs={"category": "features", "page": "mcp"})
-        )
+        response = client.get(reverse("docs_page", kwargs={"category": "features", "page": "mcp"}))
 
         assert response.status_code == 301
         assert response["Location"] == reverse(
