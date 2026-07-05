@@ -365,7 +365,13 @@ def test_pricing_schema_uses_configured_public_url(client):
     schema = json.loads(_json_ld_payload(response.content.decode()))
 
     assert schema["@type"] == "Product"
+    assert schema["description"] == "Private MCP and REST datasets for trusted AI agents."
     assert schema["url"] == "https://rowset.example/pricing"
+    assert schema["image"].startswith("https://osig.app/g?")
+    assert (
+        "image_url=https%3A%2F%2Frowset.example%2Fstatic%2Fvendors%2Fimages%2Flogo.png"
+        in schema["image"]
+    )
 
 
 def test_use_case_pages_reject_missing_page_copy(monkeypatch):

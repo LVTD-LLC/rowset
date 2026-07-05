@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from urllib.parse import urlencode
 
 from django.templatetags.static import static
 from django.urls import reverse
@@ -30,6 +31,20 @@ def public_url(path: str) -> str:
 
 def logo_url() -> str:
     return public_url(static("vendors/images/logo.png"))
+
+
+def social_card_url(*, site: str, title: str, subtitle: str) -> str:
+    query = urlencode(
+        {
+            "site": site,
+            "style": "logo",
+            "font": "markerfelt",
+            "title": title,
+            "subtitle": subtitle,
+            "image_url": logo_url(),
+        }
+    )
+    return f"https://osig.app/g?{query}"
 
 
 def organization_schema() -> dict:
@@ -76,9 +91,13 @@ def product_schema() -> dict:
         "@context": "https://schema.org",
         "@type": "Product",
         "name": ROWSET_NAME,
-        "description": "Hosted MCP and REST datasets for trusted AI agents.",
+        "description": ROWSET_DESCRIPTION,
         "url": public_url(reverse("pricing")),
-        "image": logo_url(),
+        "image": social_card_url(
+            site="x",
+            title="Rowset Pricing",
+            subtitle="Agent-managed datasets",
+        ),
         "offers": [
             {
                 "@type": "Offer",
