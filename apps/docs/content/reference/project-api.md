@@ -183,3 +183,9 @@ To leave the dataset ungrouped, send:
   "project_key": null
 }
 ```
+
+## Related docs
+
+- [Dataset API](/docs/reference/dataset-api/)
+- [How Rowset datasets work](/docs/explanation/datasets/)
+- [MCP tool reference](/docs/reference/mcp-tools/)

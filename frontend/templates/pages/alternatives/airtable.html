@@ -41,9 +41,9 @@
                 </p>
                 <div class="mt-8 flex flex-wrap gap-3">
                     <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
-                    <a href="{% url 'docs_page' category='features' page='mcp' %}"
+                    <a href="{% url 'docs_page' category='how-to-guides' page='connect-mcp' %}"
                        class="fb-button-secondary">MCP docs</a>
-                    <a href="{% url 'docs_page' category='api-reference' page='datasets' %}"
+                    <a href="{% url 'docs_page' category='reference' page='dataset-api' %}"
                        class="fb-button-secondary">Dataset API</a>
                 </div>
             </div>
@@ -121,7 +121,7 @@
                     <h2>How to start with Rowset</h2>
                     <ol>
                         <li>Create a Rowset account and review <a href="{% url 'pricing' %}">Rowset pricing</a>.</li>
-                        <li>Connect a trusted agent through <a href="{% url 'docs_page' category='features' page='mcp' %}">hosted MCP access</a> or the <a href="{% url 'docs_page' category='api-reference' page='datasets' %}">Dataset API</a>.</li>
+                        <li>Connect a trusted agent through <a href="{% url 'docs_page' category='how-to-guides' page='connect-mcp' %}">hosted MCP access</a> or the <a href="{% url 'docs_page' category='reference' page='dataset-api' %}">Dataset API</a>.</li>
                         <li>Ask the agent to create one dataset with clear headers, a stable index column, and operating instructions.</li>
                         <li>Keep private writes behind MCP or REST, then enable a read-only preview only when humans need review.</li>
                     </ol>
@@ -152,7 +152,7 @@
                 </div>
                 <div class="flex flex-col gap-3 sm:flex-row">
                     <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
-                    <a href="{% url 'docs_page' category='api-reference' page='datasets' %}"
+                    <a href="{% url 'docs_page' category='reference' page='dataset-api' %}"
                        class="fb-button-secondary">Read Dataset API</a>
                 </div>
             </div>

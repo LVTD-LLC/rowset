@@ -24,6 +24,11 @@
     <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Rowset Blog</p>
     <h1 class="fb-page-title mt-3">Practical notes on agent-managed datasets</h1>
     <p class="mt-4 text-lg leading-8 text-slate-700 dark:text-slate-300">{{ blog_description }}</p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <a href="{% url 'docs_home' %}" class="fb-button-secondary">Browse docs</a>
+      <a href="{% url 'use_cases' %}" class="fb-button-secondary">See use cases</a>
+      <a href="{% url 'docs_page' category='tutorials' page='first-agent-dataset' %}" class="fb-button-secondary">Start tutorial</a>
+    </div>
   </div>
 
   {% if blog_posts %}

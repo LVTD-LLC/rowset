@@ -1,10 +1,10 @@
 ---
-title: Public previews
-description: Share read-only dataset previews without requiring API clients.
+title: Share a public preview
+description: Share a read-only dataset preview without requiring an API client.
 keywords: Rowset public preview, dataset sharing, password protected preview
 ---
 
-# Public previews
+# Share a public preview
 
 Public previews let someone view a read-only dataset page without using the authenticated REST API.
 
@@ -50,3 +50,9 @@ If the data is not meant for casual forwarding, add a password. Anyone with the 
 
 - **Public preview**: browser page, read-only, optional password.
 - **Dataset API**: authenticated HTTP endpoints, supports row reads/writes and exports.
+
+## Related docs
+
+- [Dataset API](/docs/reference/dataset-api/)
+- [MCP tool reference](/docs/reference/mcp-tools/)
+- [How Rowset datasets work](/docs/explanation/datasets/)

@@ -25,10 +25,40 @@ logger = get_rowset_logger(__name__)
 API_KEY_PLACEHOLDER = "YOUR_ROWSET_API_KEY"
 USER_EMAIL_PLACEHOLDER = "you@example.com"
 DOCS_SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+DOCS_CATEGORY_LABELS = {
+    "tutorials": "Tutorials",
+    "how-to-guides": "How-to guides",
+    "reference": "Reference",
+    "explanation": "Explanation",
+}
+DOCS_CATEGORY_DESCRIPTIONS = {
+    "tutorials": "Follow a guided path to connect Rowset and create a useful first dataset.",
+    "how-to-guides": (
+        "Complete specific Rowset jobs with MCP, REST, public previews, and agent discovery."
+    ),
+    "reference": "Look up exact API, MCP, authentication, and endpoint details.",
+    "explanation": "Understand Rowset concepts, tradeoffs, and product boundaries.",
+}
+DOCS_PAGE_REDIRECTS = {
+    ("getting-started", "introduction"): ("tutorials", "first-agent-dataset"),
+    ("features", "agent-access"): ("how-to-guides", "configure-agent-access"),
+    ("features", "agent-discovery"): ("how-to-guides", "help-agents-discover-rowset"),
+    ("features", "datasets"): ("explanation", "datasets"),
+    ("features", "mcp"): ("how-to-guides", "connect-mcp"),
+    ("features", "public-previews"): ("how-to-guides", "share-public-preview"),
+    ("api-reference", "datasets"): ("reference", "dataset-api"),
+    ("api-reference", "introduction"): ("reference", "api-overview"),
+    ("api-reference", "projects"): ("reference", "project-api"),
+    ("api-reference", "user"): ("reference", "user-api"),
+}
 
 
 def is_docs_slug(value):
     return bool(DOCS_SLUG_PATTERN.fullmatch(value))
+
+
+def get_docs_category_title(category_slug):
+    return DOCS_CATEGORY_LABELS.get(category_slug, category_slug.replace("-", " ").title())
 
 
 def load_navigation_config():
@@ -88,11 +118,7 @@ def get_docs_navigation():  # noqa: C901
 
     for category_slug in ordered_categories:
         category_dir = all_categories[category_slug]
-        category_name = (
-            "API Reference"
-            if category_slug == "api-reference"
-            else category_slug.replace("-", " ").title()
-        )
+        category_name = get_docs_category_title(category_slug)
 
         all_pages = {}
         for markdown_file in category_dir.glob("*.md"):
@@ -130,6 +156,25 @@ def get_docs_navigation():  # noqa: C901
             )
 
     return navigation
+
+
+def get_docs_category_cards(navigation):
+    cards = []
+    for category_item in navigation:
+        first_page = category_item["pages"][0] if category_item["pages"] else None
+        cards.append(
+            {
+                "category": category_item["category"],
+                "category_slug": category_item["category_slug"],
+                "description": DOCS_CATEGORY_DESCRIPTIONS.get(
+                    category_item["category_slug"],
+                    "Browse Rowset documentation for this section.",
+                ),
+                "pages": category_item["pages"],
+                "url": first_page["url"] if first_page else "",
+            }
+        )
+    return cards
 
 
 def get_flat_page_list(navigation):
@@ -177,8 +222,17 @@ def get_previous_and_next_pages(navigation, current_category, current_page):
 
 
 def docs_home_view(request):
-    return redirect(
-        reverse("docs_page", kwargs={"category": "getting-started", "page": "introduction"})
+    navigation = get_docs_navigation()
+    return render(
+        request,
+        "docs/docs_home.html",
+        {
+            "navigation": navigation,
+            "category_cards": get_docs_category_cards(navigation),
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
+        },
     )
 
 
@@ -235,6 +289,14 @@ def docs_page_view(request, category, page):
     if not is_docs_slug(category) or not is_docs_slug(page):
         raise Http404("Documentation page not found")
 
+    redirect_target = DOCS_PAGE_REDIRECTS.get((category, page))
+    if redirect_target:
+        target_category, target_page = redirect_target
+        return redirect(
+            reverse("docs_page", kwargs={"category": target_category, "page": target_page}),
+            permanent=True,
+        )
+
     content_dir = (Path(settings.BASE_DIR) / "apps" / "docs" / "content").resolve()
     markdown_file = (content_dir / category / f"{page}.md").resolve()
 
@@ -255,9 +317,7 @@ def docs_page_view(request, category, page):
         )
 
         default_page_title = page.replace("-", " ").title()
-        default_category_title = (
-            "API Reference" if category == "api-reference" else category.replace("-", " ").title()
-        )
+        default_category_title = get_docs_category_title(category)
 
         context = {
             "content": markdown_html,

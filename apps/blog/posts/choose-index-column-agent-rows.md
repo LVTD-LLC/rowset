@@ -47,7 +47,7 @@ operating principle matters: an agent needs a non-blank value that points to one
 row and only one row.
 
 In Rowset, that choice controls by-index operations in both [hosted MCP
-access](/docs/features/mcp/) and the [Dataset API](/docs/api-reference/datasets/).
+access](/docs/how-to-guides/connect-mcp/) and the [Dataset API](/docs/reference/dataset-api/).
 When the agent has the stable value, it can call by-index read, update, image,
 relationship, and lookup paths without first listing every row.
 
@@ -204,7 +204,7 @@ by task_id. If a task has no task_id, create one before using the row in later
 updates.
 ```
 
-This is also where [agent discovery](/docs/features/agent-discovery/) matters.
+This is also where [agent discovery](/docs/how-to-guides/help-agents-discover-rowset/) matters.
 The agent should inspect the dataset before mutation so it sees the current
 index column, schema, instructions, relationships, and allowed choices.
 

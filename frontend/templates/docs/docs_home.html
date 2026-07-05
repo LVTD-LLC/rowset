@@ -1,0 +1,81 @@
+{% extends docs_base_template %}
+
+{% block meta %}
+<title>Rowset Docs</title>
+<meta name="description" content="Find Rowset tutorials, how-to guides, reference pages, explanations, use cases, playbooks, and blog articles." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://{{ request.get_host }}{% url 'docs_home' %}" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Rowset Docs" />
+<meta property="og:url" content="https://{{ request.get_host }}{% url 'docs_home' %}" />
+<meta property="og:description" content="Find the right Rowset guide for connecting agents, creating datasets, using MCP, and working with the REST API." />
+<meta property="og:site_name" content="Rowset" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Rowset Docs" />
+<meta name="twitter:description" content="Tutorials, how-to guides, reference, and explanations for Rowset." />
+{% endblock meta %}
+
+{% block content %}
+<main class="bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
+  <section class="border-b border-slate-200 bg-[#f7faf8] dark:border-slate-800 dark:bg-[#050807]">
+    <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+      <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Rowset Docs</p>
+      <h1 class="mt-4 max-w-4xl text-4xl font-semibold leading-tight text-slate-950 dark:text-white sm:text-5xl">
+        Find the right path for your agent workflow.
+      </h1>
+      <p class="mt-5 max-w-3xl text-lg leading-8 text-slate-700 dark:text-slate-300">
+        Start with a guided first dataset, follow a task guide when you know the job, use reference pages for exact API details, and read explanations when you need the model behind Rowset.
+      </p>
+      <div class="mt-7 flex flex-wrap gap-3">
+        <a href="{% url 'docs_page' category='tutorials' page='first-agent-dataset' %}" class="fb-button-primary">Start tutorial</a>
+        <a href="{% url 'docs_page' category='how-to-guides' page='connect-mcp' %}" class="fb-button-secondary">Connect MCP</a>
+        <a href="{% url 'use_cases' %}" class="fb-button-secondary">Browse use cases</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+      <div class="grid gap-4 md:grid-cols-2">
+        {% for card in category_cards %}
+          <a href="{{ card.url }}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+            <h2 class="text-xl font-semibold text-slate-950 dark:text-white">{{ card.category }}</h2>
+            <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ card.description }}</p>
+            <ul class="mt-5 grid gap-2 text-sm text-slate-600 dark:text-slate-300">
+              {% for page in card.pages|slice:":3" %}
+                <li>{{ page.title }}</li>
+              {% endfor %}
+            </ul>
+            <span class="mt-5 inline-flex text-sm font-semibold text-slate-950 dark:text-white">Open section &rarr;</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-[#fbfaf6] dark:bg-[#0a0b08]">
+    <div class="mx-auto grid max-w-6xl gap-6 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:px-8">
+      <div>
+        <p class="fb-label-caps text-amber-700 dark:text-amber-300">Explore</p>
+        <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Jump from docs into examples.</h2>
+      </div>
+      <a href="{% url 'use_cases' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-5 transition hover:border-emerald-500/50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-400/50">
+        <h3 class="font-semibold text-slate-950 dark:text-white">Use cases</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">See concrete agent-managed dataset patterns for CRMs, task boards, feedback, content, catalogs, and QA.</p>
+      </a>
+      <a href="{% url 'database_mcp_server_playbook' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-5 transition hover:border-emerald-500/50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-400/50">
+        <h3 class="font-semibold text-slate-950 dark:text-white">Playbook</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Decide when to use Rowset instead of a direct database MCP server.</p>
+      </a>
+      <a href="{% url 'blog_posts' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-5 transition hover:border-emerald-500/50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-400/50 lg:col-start-2">
+        <h3 class="font-semibold text-slate-950 dark:text-white">Blog</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Read deeper notes on agent-managed datasets, MCP vs REST, and index-column choices.</p>
+      </a>
+      <a href="{% url 'docs_page' category='reference' page='dataset-api' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-5 transition hover:border-emerald-500/50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-400/50">
+        <h3 class="font-semibold text-slate-950 dark:text-white">Dataset API</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Look up dataset creation, row CRUD, search, exports, projects, relationships, and public previews.</p>
+      </a>
+    </div>
+  </section>
+</main>
+{% endblock content %}

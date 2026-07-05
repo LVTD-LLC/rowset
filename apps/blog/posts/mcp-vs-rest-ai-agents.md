@@ -38,8 +38,8 @@ program, integration, scheduled job, or constrained agent environment where
 standard HTTP requests are easier to configure, test, and audit.
 
 In Rowset, that means a compatible agent should usually start with [hosted MCP
-access](/docs/features/mcp/). If MCP is unavailable, use the [Dataset
-API](/docs/api-reference/datasets/) with `Authorization: Bearer <key>`.
+access](/docs/how-to-guides/connect-mcp/). If MCP is unavailable, use the [Dataset
+API](/docs/reference/dataset-api/) with `Authorization: Bearer <key>`.
 Whichever surface you choose, the dataset still needs a stable row identity; use
 the [index-column guide](/blog/choose-index-column-agent-rows) before giving an
 agent write access to production rows.
@@ -180,9 +180,9 @@ value is not the protocol by itself. The value is that trusted agents get a
 private, structured place to operate on rows, while humans keep ownership,
 review, and sharing controls.
 
-Start with [agent access](/docs/features/agent-access/) if you are configuring a
-trusted assistant. Use [MCP access](/docs/features/mcp/) when the client supports
-it. Keep the [Dataset API](/docs/api-reference/datasets/) close for scripts,
+Start with [agent access](/docs/how-to-guides/configure-agent-access/) if you are configuring a
+trusted assistant. Use [MCP access](/docs/how-to-guides/connect-mcp/) when the client supports
+it. Keep the [Dataset API](/docs/reference/dataset-api/) close for scripts,
 workers, and REST fallback.
 
 ## FAQ

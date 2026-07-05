@@ -18,8 +18,8 @@ narrow: it gives trusted agents an authenticated row store with stable indexes,
 schema context, dataset instructions, metadata, search, exports, and optional
 read-only previews. It is not a public spreadsheet embed or a replacement for a
 full application database. Use the REST API when a script or app already speaks
-HTTP; use [MCP access](/docs/features/mcp/) when an agent can discover tools and
-schemas directly. If you are deciding whether an agent should connect directly
+HTTP; use [Connect over MCP](/docs/how-to-guides/connect-mcp/) when an agent can
+discover tools and schemas directly. If you are deciding whether an agent should connect directly
 to a database or use Rowset as a private dataset layer, read
 [Database MCP server: when to use Rowset instead](/playbooks/database-mcp-server/).
 
@@ -627,3 +627,10 @@ curl \
 ## Public previews
 
 Public previews are separate from authenticated row APIs. Use `PATCH /datasets/{dataset_key}/public-preview` or the MCP `update_dataset_public_preview` tool to configure sharing.
+
+## Related docs
+
+- [How Rowset datasets work](/docs/explanation/datasets/)
+- [MCP tool reference](/docs/reference/mcp-tools/)
+- [Share a public preview](/docs/how-to-guides/share-public-preview/)
+- [Use cases](/use-cases)

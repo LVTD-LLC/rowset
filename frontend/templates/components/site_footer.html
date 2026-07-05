@@ -1,4 +1,5 @@
 {% url 'use_cases' as use_cases_url %}
+{% url 'database_mcp_server_playbook' as playbook_url %}
 {% url 'landing' as landing_url %}
 {% url 'pricing' as pricing_url %}
 {% url 'account_signup' as account_signup_url %}
@@ -51,6 +52,12 @@
                         <li>
                             <a href="{{ docs_home_url }}"
                                class="hover:text-slate-950 dark:hover:text-white">Docs</a>
+                        </li>
+                    {% endif %}
+                    {% if playbook_url %}
+                        <li>
+                            <a href="{{ playbook_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Playbook</a>
                         </li>
                     {% endif %}
                     {% if blog_posts_url %}

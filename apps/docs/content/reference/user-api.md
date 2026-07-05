@@ -51,3 +51,9 @@ The response does **not** include your API key.
 - Check that an integration is authenticated correctly.
 - Give an AI agent a low-risk connectivity test before it works with datasets.
 - Confirm which Rowset account a key belongs to.
+
+## Related docs
+
+- [API overview](/docs/reference/api-overview/)
+- [Connect over MCP](/docs/how-to-guides/connect-mcp/)
+- [Dataset API](/docs/reference/dataset-api/)

@@ -1,12 +1,13 @@
 ---
-title: Working with datasets
-description: Understand the Rowset dataset lifecycle, index columns, and exports.
+title: How Rowset datasets work
+description: Understand Rowset dataset lifecycle, index columns, schema context, relationships, exports, and sharing.
 keywords: Rowset datasets, MCP datasets, index columns
 ---
 
-# Working with datasets
+# How Rowset datasets work
 
-Datasets are the core object in Rowset. Agents create them through MCP or REST, then use row tools and endpoints to keep them current.
+Datasets are the core object in Rowset. Agents create them through MCP or REST,
+then use row tools and endpoints to keep them current.
 
 Agents should inspect a dataset with `get_dataset` before row operations. That
 response includes headers, index column, semantic column schema, persistent
@@ -141,4 +142,12 @@ explicitly expects a file.
 
 ## Sharing
 
-Use Public previews when a human needs a browser-friendly, read-only view. Use the authenticated Dataset API for applications and agents.
+Use public previews when a human needs a browser-friendly, read-only view. Use
+the authenticated Dataset API for applications and agents.
+
+## Related docs
+
+- [Start with your first agent dataset](/docs/tutorials/first-agent-dataset/)
+- [Dataset API](/docs/reference/dataset-api/)
+- [Connect over MCP](/docs/how-to-guides/connect-mcp/)
+- [Share a public preview](/docs/how-to-guides/share-public-preview/)

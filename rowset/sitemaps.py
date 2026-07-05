@@ -26,6 +26,7 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "database_mcp_server_playbook",
             "airtable_alternatives",
             "blog_posts",
+            "docs_home",
         ]
 
     def location(self, item):
