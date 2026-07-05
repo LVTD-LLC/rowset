@@ -87,7 +87,10 @@ first, then call `create_dataset` with a clear `description`, `instructions`,
 and stable `index_column`. Useful starting points include the
 [agent-managed personal CRM](/use-cases/personal-crm), [agent task
 board](/use-cases/agent-task-board), and [feedback triage
-workflow](/use-cases/feedback-triage).
+workflow](/use-cases/feedback-triage). If the source data has several possible
+identifiers, use the
+[index-column guide](/blog/choose-index-column-agent-rows) before asking the
+agent to create the dataset.
 
 Agent API key permissions apply to MCP tools. Read keys can inspect data, Read +
 write keys can mutate datasets and projects, and Admin keys can also call

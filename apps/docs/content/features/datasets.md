@@ -29,6 +29,9 @@ Pick the column your apps and agents naturally use to find a row:
 
 If the file does not have a stable key, let Rowset generate one.
 
+For a deeper decision checklist, see the guide to
+[choosing an index column for agent-managed rows](/blog/choose-index-column-agent-rows).
+
 ## Organizing with projects
 
 Use projects to group related datasets by client, workflow, campaign, or agent

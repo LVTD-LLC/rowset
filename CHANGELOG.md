@@ -21,6 +21,7 @@ cut date.
 ## 2026-07-05
 
 ### Added
+- Added a Rowset blog post on choosing stable index columns for agent-managed rows, with inbound links from dataset docs, MCP docs, and existing agent workflow posts.
 - Added a Rowset blog post explaining when AI-agent workflows should use MCP versus REST, with inbound links from MCP, Agent access, and the agent-managed-datasets article.
 
 ## 2026-07-04
