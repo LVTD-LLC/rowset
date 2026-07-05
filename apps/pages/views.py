@@ -8,6 +8,7 @@ from django.shortcuts import redirect
 from django.templatetags.static import static
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
+from django.views.decorators.vary import vary_on_cookie
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
@@ -34,8 +35,7 @@ def build_absolute_static_url(path: str) -> str:
     if parsed_static_url.scheme in {"http", "https"}:
         return static_url
     if parsed_static_url.netloc:
-        public_scheme = urlsplit(settings.SITE_URL).scheme or "https"
-        return f"{public_scheme}:{static_url}"
+        return f"https://{static_url.removeprefix('//')}"
     return build_absolute_public_url(static_url)
 
 
@@ -206,7 +206,7 @@ class DatabaseMcpServerPlaybookView(TemplateView):
         return context
 
 
-# FAQ answers are plain text and intentionally render through Django autoescaping.
+# FAQ answers are plain text, not HTML; Django autoescaping handles template safety.
 # Keep inline links in the template body, not inside this schema/source tuple.
 AIRTABLE_ALTERNATIVE_FAQS = (
     (
@@ -237,6 +237,7 @@ AIRTABLE_ALTERNATIVE_FAQS = (
 
 
 @method_decorator(cache_control(public=True, max_age=3600), name="dispatch")
+@method_decorator(vary_on_cookie, name="dispatch")
 class AirtableAlternativeView(TemplateView):
     template_name = "pages/alternatives/airtable.html"
 

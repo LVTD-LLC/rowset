@@ -9,10 +9,13 @@ from apps.pages.use_cases import get_use_case_pages
 class StaticViewSitemap(sitemaps.Sitemap):
     """Generate Sitemap for the site"""
 
-    default_priority = 0.9
+    _default_priority = 0.9
     protocol = "https"
-    priority_overrides = {
+    _priority_overrides = {
         "airtable_alternative": 0.7,
+    }
+    _changefreq_overrides = {
+        "airtable_alternative": "monthly",
     }
 
     def items(self):
@@ -43,7 +46,10 @@ class StaticViewSitemap(sitemaps.Sitemap):
         return reverse(item)
 
     def priority(self, item):
-        return self.priority_overrides.get(item, self.default_priority)
+        return self._priority_overrides.get(item, self._default_priority)
+
+    def changefreq(self, item):
+        return self._changefreq_overrides.get(item)
 
 
 class UseCaseSitemap(sitemaps.Sitemap):

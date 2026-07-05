@@ -19,6 +19,7 @@ from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
 from apps.pages.schema import article_schema, breadcrumb_list_schema, faq_page_schema, json_ld
 from apps.pages.views import build_absolute_static_url
+from rowset.sitemaps import StaticViewSitemap
 
 pytestmark = pytest.mark.django_db
 
@@ -191,6 +192,15 @@ def test_sitemap_response_does_not_set_noindex_header(client):
     assert "X-Robots-Tag" not in response.headers
 
 
+def test_static_sitemap_overrides_airtable_alternative_metadata():
+    sitemap = StaticViewSitemap()
+
+    assert sitemap.priority("airtable_alternative") == 0.7
+    assert sitemap.changefreq("airtable_alternative") == "monthly"
+    assert sitemap.priority("landing") == 0.9
+    assert sitemap.changefreq("landing") is None
+
+
 @pytest.mark.parametrize(
     ("path", "expected"),
     (
@@ -275,6 +285,7 @@ def test_airtable_alternative_has_required_links_and_faq_schema(client):
 
     assert response.status_code == 200
     assert response["Cache-Control"] == "public, max-age=3600"
+    assert response["Vary"] == "Cookie"
     content = response.content.decode()
     text = strip_tags(content)
     words = re.findall(r"\b[\w'-]+\b", text)
@@ -319,7 +330,7 @@ def test_json_ld_escapes_script_breakout_sequences():
 
 def test_build_absolute_static_url_adds_scheme_to_protocol_relative_static_url(settings):
     settings.STATIC_URL = "//cdn.example.test/static/"
-    settings.SITE_URL = "https://testserver"
+    settings.SITE_URL = "http://testserver"
     settings.STORAGES = {
         **settings.STORAGES,
         "staticfiles": {
@@ -330,6 +341,22 @@ def test_build_absolute_static_url_adds_scheme_to_protocol_relative_static_url(s
     assert (
         build_absolute_static_url("vendors/images/logo.png")
         == "https://cdn.example.test/static/vendors/images/logo.png"
+    )
+
+
+def test_build_absolute_static_url_builds_public_url_for_plain_static_path(settings):
+    settings.STATIC_URL = "/static/"
+    settings.SITE_URL = "https://testserver"
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+    assert (
+        build_absolute_static_url("vendors/images/logo.png")
+        == "https://testserver/static/vendors/images/logo.png"
     )
 
 
