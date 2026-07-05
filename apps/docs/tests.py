@@ -31,16 +31,35 @@ class TestDocsView:
     def test_docs_home_is_public(self, client):
         response = client.get(reverse("docs_home"))
 
-        assert response.status_code == 302
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Find the right path for your agent workflow." in content
+        assert "Tutorials" in content
+        assert "How-to guides" in content
+        assert "Reference" in content
+        assert "Explanation" in content
+        assert reverse(
+            "docs_page",
+            kwargs={"category": "tutorials", "page": "first-agent-dataset"},
+        ) in content
+        assert reverse("use_cases") in content
+        assert reverse("database_mcp_server_playbook") in content
+
+    def test_legacy_docs_paths_redirect_to_diataxis_pages(self, client):
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "features", "page": "mcp"})
+        )
+
+        assert response.status_code == 301
         assert response["Location"] == reverse(
             "docs_page",
-            kwargs={"category": "getting-started", "page": "introduction"},
+            kwargs={"category": "how-to-guides", "page": "connect-mcp"},
         )
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_docs_page_is_public_and_uses_safe_placeholders(self, client):
         response = client.get(
-            reverse("docs_page", kwargs={"category": "api-reference", "page": "user"})
+            reverse("docs_page", kwargs={"category": "reference", "page": "user-api"})
         )
 
         assert response.status_code == 200
@@ -59,7 +78,10 @@ class TestDocsView:
     @override_settings(SITE_URL="https://rowset.example")
     def test_anonymous_agent_access_docs_use_masked_prompt(self, client, profile):
         response = client.get(
-            reverse("docs_page", kwargs={"category": "features", "page": "agent-access"})
+            reverse(
+                "docs_page",
+                kwargs={"category": "how-to-guides", "page": "configure-agent-access"},
+            )
         )
 
         assert response.status_code == 200
@@ -72,7 +94,7 @@ class TestDocsView:
     @override_settings(SITE_URL="http://rowset.example")
     def test_docs_use_https_public_urls(self, auth_client):
         response = auth_client.get(
-            reverse("docs_page", kwargs={"category": "api-reference", "page": "introduction"})
+            reverse("docs_page", kwargs={"category": "reference", "page": "api-overview"})
         )
 
         assert response.status_code == 200
@@ -84,7 +106,7 @@ class TestDocsView:
     @override_settings(SITE_URL="https://rowset.example")
     def test_authenticated_docs_do_not_render_real_api_key(self, auth_client, profile):
         response = auth_client.get(
-            reverse("docs_page", kwargs={"category": "api-reference", "page": "introduction"})
+            reverse("docs_page", kwargs={"category": "reference", "page": "api-overview"})
         )
 
         assert response.status_code == 200
@@ -95,7 +117,10 @@ class TestDocsView:
     @override_settings(SITE_URL="https://rowset.example")
     def test_agent_access_docs_include_dashboard_prompt(self, auth_client, profile):
         response = auth_client.get(
-            reverse("docs_page", kwargs={"category": "features", "page": "agent-access"})
+            reverse(
+                "docs_page",
+                kwargs={"category": "how-to-guides", "page": "configure-agent-access"},
+            )
         )
 
         assert response.status_code == 200
@@ -119,14 +144,15 @@ class TestDocsView:
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_mcp_docs_use_bearer_api_key_instead_of_oauth(self, client):
-        response = client.get(reverse("docs_page", kwargs={"category": "features", "page": "mcp"}))
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
+        )
 
         assert response.status_code == 200
         content = response.content.decode()
         assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content
         assert "ROWSET_API_KEY" in content
         assert "get_rowset_capabilities" in content
-        assert "https://rowset.example/llms.txt" in content
         assert "Direct database MCP servers" in content
         assert "/use-cases/personal-crm/" in content
         assert "OAuth" not in content
@@ -134,19 +160,22 @@ class TestDocsView:
     @override_settings(SITE_URL="https://rowset.example")
     def test_dataset_api_docs_explain_agent_dataset_api_positioning(self, client):
         response = client.get(
-            reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"})
+            reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"})
         )
 
         assert response.status_code == 200
         content = response.content.decode()
         assert "dataset API" in content
-        assert "/docs/features/mcp/" in content
+        assert "/docs/how-to-guides/connect-mcp/" in content
         assert "real business key" in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_agent_discovery_docs_include_runtime_discovery_surfaces(self, client):
         response = client.get(
-            reverse("docs_page", kwargs={"category": "features", "page": "agent-discovery"})
+            reverse(
+                "docs_page",
+                kwargs={"category": "how-to-guides", "page": "help-agents-discover-rowset"},
+            )
         )
 
         assert response.status_code == 200

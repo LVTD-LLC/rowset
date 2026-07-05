@@ -1,10 +1,10 @@
 ---
-title: Introduction
+title: API overview
 description: Learn how Rowset API authentication works and where to find generated API docs.
 keywords: Rowset API, API authentication, OpenAPI docs
 ---
 
-# API Reference introduction
+# API overview
 
 Rowset exposes authenticated REST endpoints for account checks, dataset creation,
 profile-wide row search, dataset rows, exports, and public preview settings.
@@ -60,3 +60,9 @@ Use those generated docs when you want request/response schemas or to inspect lo
 - **API key management** — create scoped agent keys with an admin key.
 - **Dataset API** — search rows, create datasets; list, look up, create, update,
   delete, export rows, and configure public previews.
+
+## Related docs
+
+- [Connect over MCP](/docs/how-to-guides/connect-mcp/) for agent-native tool access.
+- [Dataset API](/docs/reference/dataset-api/) for dataset and row endpoints.
+- [MCP tool reference](/docs/reference/mcp-tools/) for MCP tool groups.

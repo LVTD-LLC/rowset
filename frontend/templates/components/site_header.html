@@ -22,6 +22,7 @@
         {% endif %}
       {% else %}
         <a href="{{ use_cases_url|default:'/' }}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Use cases</a>
+        <a href="{% url 'database_mcp_server_playbook' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Playbook</a>
         <a href="{% url 'landing' %}#workflow" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">How it works</a>
         <a href="{% url 'docs_home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Docs</a>
         <a href="{% url 'blog_posts' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Blog</a>
@@ -108,6 +109,7 @@
             {% endif %}
           {% else %}
             <a href="{{ use_cases_url|default:'/' }}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Use cases</a>
+            <a href="{% url 'database_mcp_server_playbook' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Playbook</a>
             <a href="{% url 'landing' %}#workflow" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">How it works</a>
             <a href="{% url 'docs_home' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Docs</a>
             <a href="{% url 'blog_posts' %}" class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Blog</a>

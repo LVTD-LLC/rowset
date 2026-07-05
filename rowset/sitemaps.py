@@ -25,6 +25,7 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "use_cases",
             "database_mcp_server_playbook",
             "blog_posts",
+            "docs_home",
         ]
 
     def location(self, item):

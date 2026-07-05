@@ -1,10 +1,10 @@
 ---
-title: Agent discovery
+title: Help agents discover Rowset
 description: Help AI agents discover Rowset features, tool schemas, skills, and workflow guides.
 keywords: Rowset agents, llms.txt, MCP discovery, Rowset skills
 ---
 
-# Agent discovery
+# Help agents discover Rowset
 
 Rowset is designed so agents do not have to rely on stale prompt text. A trusted
 agent should discover the live MCP server, then load Rowset's current feature
@@ -91,3 +91,9 @@ passwords.
 
 Public previews are read-only browser sharing. They are not authentication and
 do not replace MCP or REST access.
+
+## Related docs
+
+- [Connect over MCP](/docs/how-to-guides/connect-mcp/)
+- [Configure agent access](/docs/how-to-guides/configure-agent-access/)
+- [MCP tool reference](/docs/reference/mcp-tools/)

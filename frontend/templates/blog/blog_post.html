@@ -40,6 +40,15 @@
   <div class="prose prose-slate max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-emerald-700 hover:prose-a:text-emerald-800 prose-pre:rounded-lg prose-pre:bg-slate-950 dark:prose-invert dark:prose-a:text-emerald-300">
     {{ blog_post.html|safe }}
   </div>
+
+  <nav class="not-prose mt-12 border-t border-slate-200 pt-8 dark:border-slate-800" aria-label="Related Rowset resources">
+    <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">Related resources</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="{% url 'docs_page' category='tutorials' page='first-agent-dataset' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">Start tutorial</a>
+      <a href="{% url 'docs_page' category='reference' page='dataset-api' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">Dataset API</a>
+      <a href="{% url 'use_cases' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">Use cases</a>
+    </div>
+  </nav>
 </article>
 {% endblock content %}
 
