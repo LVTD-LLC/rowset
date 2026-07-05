@@ -122,6 +122,8 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Content pipeline" in content
     assert "Bug and QA tracker" in content
     assert reverse("use_cases") in content
+    assert reverse("docs_page", kwargs={"category": "features", "page": "mcp"}) in content
+    assert reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"}) in content
     assert '"@type": "SoftwareApplication"' in content
     assert '"@type": "Organization"' in content
 
@@ -212,6 +214,9 @@ def test_use_cases_index_lists_public_use_case_pages(client):
     assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
     assert reverse("use_case_detail", kwargs={"slug": "agent-task-board"}) in content
     assert "product-inventory-catalog" in content
+    assert reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"}) in content
+    assert reverse("docs_page", kwargs={"category": "features", "page": "mcp"}) in content
+    assert reverse("pricing") in content
 
 
 def test_use_case_detail_page_shows_structured_example(client):
@@ -224,6 +229,9 @@ def test_use_case_detail_page_shows_structured_example(client):
     assert "People dataset indexed by email or person_id." in content
     assert "Dataset context and semantic schema" in content
     assert "alex@example.com" in content
+    assert reverse("docs_page", kwargs={"category": "features", "page": "mcp"}) in content
+    assert reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"}) in content
+    assert reverse("pricing") in content
     assert '"@type": "Article"' in content
 
 

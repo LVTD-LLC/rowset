@@ -33,6 +33,7 @@ cut date.
 ## 2026-07-02
 
 ### Changed
+- Strengthened the SEO internal-link spine between homepage, use-case pages, Dataset API docs, MCP docs, pricing, and commercially useful use cases.
 - Dataset browser views now render URL-looking string cell values as plain text instead of auto-converting them into Rowset or external links. Explicit dataset relationship/reference columns, row-detail links, and image links still render as links; arbitrary URL strings can be copied from the cell text and link rendering can be reintroduced later with safer, explicit column-level behavior.
 - Extracted public-preview settings and session-token helpers out of the API service kernel while preserving REST, MCP, and browser-preview behavior.
 

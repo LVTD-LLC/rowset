@@ -13,6 +13,15 @@ If you are deciding what kind of data should sit behind an agent, start with
 where MCP fits alongside row identity, schema, dataset instructions, and human
 review.
 
+Use Rowset's hosted MCP server when the agent needs a private, user-owned
+dataset backend but you do not want to expose a production database directly.
+Direct database MCP servers are better when the agent must query an existing
+Postgres/MySQL/SQLite system and the operator is ready to manage database
+credentials, permissions, query cost, and schema safety. Rowset is the narrower
+choice for agent-owned task boards, CRMs, feedback queues, catalogs, QA trackers,
+and other structured row workflows that should stay behind a scoped Rowset API
+key.
+
 ## MCP URL
 
 ```text
@@ -66,6 +75,13 @@ get_rowset_capabilities
 The guide summarizes feature groups, recommended startup order, REST fallback
 paths, use-case patterns, and privacy guardrails. Use MCP tool discovery for the
 exact current input schemas.
+
+When the agent is setting up a new workflow, have it read the relevant use case
+first, then call `create_dataset` with a clear `description`, `instructions`,
+and stable `index_column`. Useful starting points include the
+[agent-managed personal CRM](/use-cases/personal-crm), [agent task
+board](/use-cases/agent-task-board), and [feedback triage
+workflow](/use-cases/feedback-triage).
 
 Agent API key permissions apply to MCP tools. Read keys can inspect data, Read +
 write keys can mutate datasets and projects, and Admin keys can also call

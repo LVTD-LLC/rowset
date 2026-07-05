@@ -127,7 +127,21 @@ class TestDocsView:
         assert "ROWSET_API_KEY" in content
         assert "get_rowset_capabilities" in content
         assert "https://rowset.example/llms.txt" in content
+        assert "Direct database MCP servers" in content
+        assert "/use-cases/personal-crm" in content
         assert "OAuth" not in content
+
+    @override_settings(SITE_URL="https://rowset.example")
+    def test_dataset_api_docs_explain_agent_dataset_api_positioning(self, client):
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"})
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "dataset API" in content
+        assert "/docs/features/mcp/" in content
+        assert "real business key" in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_agent_discovery_docs_include_runtime_discovery_surfaces(self, client):
