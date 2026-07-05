@@ -25,8 +25,29 @@ from rowset.utils import build_absolute_public_url, get_rowset_logger
 logger = get_rowset_logger(__name__)
 
 
-class LandingPageView(TemplateView):
+class CanonicalUrlMixin:
+    canonical_url_name = None
+    canonical_url_path = None
+
+    def get_canonical_url_kwargs(self):
+        return {}
+
+    def get_canonical_url_path(self):
+        if self.canonical_url_path is not None:
+            return self.canonical_url_path
+        if self.canonical_url_name is None:
+            raise ValueError("CanonicalUrlMixin requires canonical_url_name or canonical_url_path.")
+        return reverse(self.canonical_url_name, kwargs=self.get_canonical_url_kwargs())
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["canonical_url"] = public_url(self.get_canonical_url_path())
+        return context
+
+
+class LandingPageView(CanonicalUrlMixin, TemplateView):
     template_name = "pages/landing-page.html"
+    canonical_url_path = "/"
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:
@@ -119,8 +140,9 @@ class AccountSignupByPasskeyView(SignupTrackingMixin, SignupByPasskeyView):
     tracking_source_name = "AccountSignupByPasskeyView"
 
 
-class PricingView(TemplateView):
+class PricingView(CanonicalUrlMixin, TemplateView):
     template_name = "pages/pricing.html"
+    canonical_url_name = "pricing"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -137,14 +159,14 @@ class PricingView(TemplateView):
         return context
 
 
-class UseCasesIndexView(TemplateView):
+class UseCasesIndexView(CanonicalUrlMixin, TemplateView):
     template_name = "pages/use-cases-index.html"
+    canonical_url_name = "use_cases"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         use_case_pages = get_use_case_pages()
         context["use_case_pages"] = use_case_pages
-        context["canonical_url"] = public_url(reverse("use_cases"))
         context["schema_json"] = json_ld(
             item_list_schema(
                 name="Rowset use cases",
@@ -162,8 +184,12 @@ class UseCasesIndexView(TemplateView):
         return context
 
 
-class UseCaseDetailView(TemplateView):
+class UseCaseDetailView(CanonicalUrlMixin, TemplateView):
     template_name = "pages/use-case-detail.html"
+    canonical_url_name = "use_case_detail"
+
+    def get_canonical_url_kwargs(self):
+        return {"slug": self.kwargs["slug"]}
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -179,8 +205,14 @@ class UseCaseDetailView(TemplateView):
         return context
 
 
-class DatabaseMcpServerPlaybookView(TemplateView):
+class UsesView(CanonicalUrlMixin, TemplateView):
+    template_name = "pages/uses.html"
+    canonical_url_name = "uses"
+
+
+class DatabaseMcpServerPlaybookView(CanonicalUrlMixin, TemplateView):
     template_name = "pages/playbooks/database-mcp-server.html"
+    canonical_url_name = "database_mcp_server_playbook"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -208,9 +240,11 @@ class DatabaseMcpServerPlaybookView(TemplateView):
         return context
 
 
-class PrivacyPolicyView(TemplateView):
+class PrivacyPolicyView(CanonicalUrlMixin, TemplateView):
     template_name = "pages/privacy-policy.html"
+    canonical_url_name = "privacy_policy"
 
 
-class TermsOfServiceView(TemplateView):
+class TermsOfServiceView(CanonicalUrlMixin, TemplateView):
     template_name = "pages/terms-of-service.html"
+    canonical_url_name = "terms_of_service"

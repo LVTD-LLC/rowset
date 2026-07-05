@@ -16,11 +16,10 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import TemplateView
 
 from apps.api.views import api_not_found, api_v1_redirect
 from apps.pages.seo import canonical_no_slash_path, public_sitemap, robots_txt
-from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView
+from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView, UsesView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -35,7 +34,7 @@ urlpatterns = [
     path("anymail/", include("anymail.urls")),
     *canonical_no_slash_path(
         "uses",
-        TemplateView.as_view(template_name="pages/uses.html"),
+        UsesView.as_view(),
         name="uses",
     ),
     path("blog/", include("apps.blog.urls")),

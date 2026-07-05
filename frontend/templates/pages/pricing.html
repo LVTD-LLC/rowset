@@ -5,12 +5,10 @@
     <meta name="description"
           content="Simple Rowset pricing for hosted MCP and REST datasets that trusted AI agents create, update, export, and share." />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical"
-          href="https://{{ request.get_host }}{% url 'pricing' %}" />
+    <link rel="canonical" href="{{ canonical_url }}" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Rowset Pricing" />
-    <meta property="og:url"
-          content="https://{{ request.get_host }}{% url 'pricing' %}" />
+    <meta property="og:url" content="{{ canonical_url }}" />
     <meta property="og:description"
           content="Start free for small agent workflows. Upgrade to Rowset Pro for unlimited hosted datasets and rows." />
     <meta property="og:image"
@@ -283,7 +281,7 @@
     "@type": "Product",
     "name": "Rowset",
     "description": "Hosted MCP and REST datasets for trusted AI agents.",
-    "url": "https://{{ request.get_host }}{% url 'pricing' %}",
+    "url": "{{ canonical_url }}",
     "image": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
     "offers": [
       {

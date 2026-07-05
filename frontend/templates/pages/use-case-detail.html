@@ -5,10 +5,10 @@
 <title>{{ use_case.title }} - Rowset use case</title>
 <meta name="description" content="{{ use_case.meta_description }}" />
 <meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://{{ request.get_host }}{% url 'use_case_detail' slug=use_case.slug %}" />
+<link rel="canonical" href="{{ canonical_url }}" />
 <meta property="og:type" content="article" />
 <meta property="og:title" content="{{ use_case.title }} - Rowset use case" />
-<meta property="og:url" content="https://{{ request.get_host }}{% url 'use_case_detail' slug=use_case.slug %}" />
+<meta property="og:url" content="{{ canonical_url }}" />
 <meta property="og:description" content="{{ use_case.meta_description }}" />
 <meta property="og:image" content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title={{ use_case.title|urlencode }}&subtitle=Rowset%20use%20case&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 <meta property="og:locale" content="en_US" />

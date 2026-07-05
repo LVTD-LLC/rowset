@@ -203,6 +203,23 @@ def test_sitemap_response_does_not_set_noindex_header(client):
     assert "X-Robots-Tag" not in response.headers
 
 
+def test_sitemap_lists_canonical_marketing_urls_without_slash_redirects(client):
+    response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    for path in (
+        "/uses",
+        "/pricing",
+        "/use-cases",
+        "/use-cases/personal-crm",
+        "/playbooks/database-mcp-server",
+    ):
+        escaped_path = re.escape(path)
+        assert re.search(rf"<loc>https://[^<]+{escaped_path}</loc>", content)
+        assert not re.search(rf"<loc>https://[^<]+{escaped_path}/</loc>", content)
+
+
 @pytest.mark.parametrize(
     ("path", "expected"),
     (
@@ -252,10 +269,50 @@ def test_no_slash_redirects_do_not_redirect_unregistered_slash_variants(client):
     assert response.status_code == 404
 
 
-def test_marketing_trailing_slash_redirect_rejects_unsafe_methods(client):
-    response = client.post("/pricing/")
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/pricing/",
+        "/privacy-policy/",
+        "/terms-of-service/",
+        "/use-cases/",
+        "/use-cases/personal-crm/",
+        "/uses/",
+        "/playbooks/database-mcp-server/",
+    ),
+)
+def test_marketing_trailing_slash_redirect_rejects_unsafe_methods(client, path):
+    response = client.post(path)
 
     assert response.status_code == 405
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    ("url_name", "kwargs", "expected_path"),
+    (
+        ("landing", None, "/"),
+        ("pricing", None, "/pricing"),
+        ("privacy_policy", None, "/privacy-policy"),
+        ("terms_of_service", None, "/terms-of-service"),
+        ("use_case_detail", {"slug": "personal-crm"}, "/use-cases/personal-crm"),
+        ("uses", None, "/uses"),
+        ("database_mcp_server_playbook", None, "/playbooks/database-mcp-server"),
+    ),
+)
+def test_public_page_meta_uses_configured_public_urls(
+    client,
+    url_name,
+    kwargs,
+    expected_path,
+):
+    response = client.get(reverse(url_name, kwargs=kwargs), secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    canonical_url = f"{settings.SITE_URL}{expected_path}"
+    assert f'<link rel="canonical" href="{canonical_url}"' in content
+    assert f'<meta property="og:url" content="{canonical_url}"' in content
 
 
 def test_use_cases_index_lists_public_use_case_pages(client):
