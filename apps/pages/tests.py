@@ -508,7 +508,7 @@ def test_seo_sprint_tracks_airtable_phase_as_blog_post():
     phase_label = "| 3 | Ship `/blog/airtable-alternatives`"
     row = next(line for line in roadmap.read_text().splitlines() if phase_label in line)
 
-    assert "| in_progress | branch `scribe/airtable-alternatives-blog-rewrite` |" in row
+    assert "| completed | #207 |" in row
 
 
 def test_seo_link_inventory_tracks_airtable_blog_post_links():
