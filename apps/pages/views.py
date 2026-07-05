@@ -182,6 +182,9 @@ def blog_posts_view(request):
             "canonical_url": blog_index_url(),
             "og_image_url": default_blog_image_url(),
             "schema_json": blog_json_ld(blog_index_schema(blog_posts)),
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
         },
     )
 
@@ -199,6 +202,9 @@ def blog_post_view(request, slug):
             "blog_post": blog_post,
             "canonical_url": blog_post.canonical_url,
             "schema_json": blog_json_ld(blog_post_schema(blog_post)),
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
         },
     )
 
@@ -274,6 +280,9 @@ class DatabaseMcpServerExplanationView(TemplateView):
         context = super().get_context_data(**kwargs)
         path = reverse("explanation_page", kwargs={"slug": "database-mcp-server"})
         context["mcp_url"] = build_absolute_public_url("/mcp/")
+        context["docs_base_template"] = (
+            "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
+        )
         context["schema_json"] = json_ld(
             [
                 article_schema(

@@ -440,6 +440,29 @@ def test_database_mcp_server_explanation_has_required_links_and_schema(client):
     assert '"@type": "BreadcrumbList"' in content
 
 
+def test_authenticated_database_mcp_server_explanation_uses_app_header(client):
+    user = get_user_model().objects.create_user(
+        username="database-mcp-explanation-auth",
+        email="database-mcp-explanation-auth@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("explanation_page", kwargs={"slug": "database-mcp-server"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
+    assert f'href="{reverse("home")}"' in header
+    assert "Dashboard" in header
+    assert "Settings" in header
+    assert "Search data" in header
+    assert f'action="{reverse("account_logout")}"' in header
+    assert "How it works" not in header
+    assert "Sign in" not in header
+    assert "Create account" not in header
+
+
 def test_airtable_alternatives_page_has_required_links_schema_and_content(client):
     response = client.get(reverse("airtable_alternatives"))
 
