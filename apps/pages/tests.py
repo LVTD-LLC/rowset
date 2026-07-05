@@ -241,10 +241,22 @@ def test_root_content_sections_render_markdown_pages(client):
         assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content or "dataset" in content
 
 
-def test_old_docs_diataxis_category_paths_are_not_routed(client):
-    response = client.get("/docs/how-to-guides/connect-mcp/")
+@pytest.mark.parametrize(
+    ("old_path", "new_path"),
+    (
+        ("/docs/how-to-guides/connect-mcp/", "/how-to/connect-mcp/"),
+        ("/docs/reference/dataset-api/", "/docs/dataset-api/"),
+        ("/docs/features/mcp/", "/how-to/connect-mcp/"),
+        ("/docs/api-reference/datasets/", "/docs/dataset-api/"),
+        ("/use-cases/personal-crm/", "/how-to/personal-crm/"),
+        ("/playbooks/database-mcp-server/", "/explanations/database-mcp-server/"),
+    ),
+)
+def test_legacy_public_content_paths_redirect(client, old_path, new_path):
+    response = client.get(old_path)
 
-    assert response.status_code == 404
+    assert response.status_code == 301
+    assert response["Location"] == new_path
 
 
 def test_how_to_index_includes_task_guides_and_use_case_pages(client):
