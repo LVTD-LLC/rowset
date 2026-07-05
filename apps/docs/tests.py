@@ -16,6 +16,7 @@ from apps.docs.views import (
     LEGACY_DOCS_CATEGORY_REDIRECTS,
     LEGACY_DOCS_REDIRECTS,
     build_configured_link,
+    build_docs_sidebar_links,
     docs_page_view,
     get_docs_navigation,
     load_navigation_config,
@@ -245,6 +246,12 @@ class TestDocsView:
             link = build_configured_link(link_config)
             assert link["url"] in content
             assert link["title"] in content
+
+    def test_sidebar_link_builder_accepts_navigation_context(self):
+        sidebar_links = build_docs_sidebar_links(get_docs_navigation())
+
+        assert sidebar_links["docs_sidebar_start_links"]
+        assert sidebar_links["docs_sidebar_explore_links"]
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_docs_page_is_public_and_uses_safe_placeholders(self, client):

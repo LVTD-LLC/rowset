@@ -348,10 +348,16 @@ def build_configured_links(link_configs, navigation=None):
     return links
 
 
-def build_docs_sidebar_links():
+def build_docs_sidebar_links(navigation=None):
     return {
-        "docs_sidebar_start_links": build_configured_links(DOCS_SIDEBAR_START_LINKS),
-        "docs_sidebar_explore_links": build_configured_links(DOCS_SIDEBAR_EXPLORE_LINKS),
+        "docs_sidebar_start_links": build_configured_links(
+            DOCS_SIDEBAR_START_LINKS,
+            navigation,
+        ),
+        "docs_sidebar_explore_links": build_configured_links(
+            DOCS_SIDEBAR_EXPLORE_LINKS,
+            navigation,
+        ),
     }
 
 
@@ -376,7 +382,7 @@ def docs_home_view(request):
         {
             "navigation": navigation,
             **build_docs_home_links(navigation),
-            **build_docs_sidebar_links(),
+            **build_docs_sidebar_links(navigation),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
@@ -494,7 +500,7 @@ def docs_page_view(request, category, page):
             "page_url": page_url,
             "previous_page": previous_page,
             "next_page": next_page,
-            **build_docs_sidebar_links(),
+            **build_docs_sidebar_links(navigation),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
