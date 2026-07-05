@@ -20,7 +20,8 @@ Postgres/MySQL/SQLite system and the operator is ready to manage database
 credentials, permissions, query cost, and schema safety. Rowset is the narrower
 choice for agent-owned task boards, CRMs, feedback queues, catalogs, QA trackers,
 and other structured row workflows that should stay behind a scoped Rowset API
-key.
+key. For the longer decision guide, read
+[Database MCP server: when to use Rowset instead](/playbooks/database-mcp-server).
 
 ## MCP URL
 

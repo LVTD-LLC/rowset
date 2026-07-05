@@ -22,7 +22,7 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 |---|---|---|---|---|
 | 0 | Technical foundations: robots, sitemap headers, schema helpers | Setup | completed | #190 |
 | 1 | Strengthen Dataset API, MCP docs, and use-case pages as the internal-link spine | Use-case/docs | completed | #193 |
-| 2 | Ship `/playbooks/database-mcp-server` from measured MCP/database demand | Playbook | pending | - |
+| 2 | Ship `/playbooks/database-mcp-server` from measured MCP/database demand | Playbook | in_progress | branch `forge/seo-phase-2-database-mcp-playbook` (PR TBD) |
 | 3 | Ship `/alternatives/airtable` with an AI-agent dataset angle | Alternatives | pending | - |
 | 4 | Ship `/alternatives/google-sheets` with an MCP/REST backend angle | Alternatives | pending | - |
 | 5 | Ship `/playbooks/spreadsheet-database-for-ai-agents` | Playbook | pending | - |

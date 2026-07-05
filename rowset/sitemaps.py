@@ -23,6 +23,7 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "uses",
             "pricing",
             "use_cases",
+            "database_mcp_server_playbook",
             "blog_posts",
         ]
 

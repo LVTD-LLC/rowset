@@ -9,6 +9,8 @@ from django_q.tasks import async_task
 from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
 from apps.core.models import Profile
 from apps.pages.schema import (
+    article_schema,
+    breadcrumb_list_schema,
     json_ld,
     organization_schema,
     software_application_schema,
@@ -155,6 +157,35 @@ class UseCaseDetailView(TemplateView):
             page for page in get_use_case_pages() if page["slug"] != use_case["slug"]
         )[:3]
         context["schema_json"] = json_ld(use_case_article_schema(use_case))
+        return context
+
+
+class DatabaseMcpServerPlaybookView(TemplateView):
+    template_name = "pages/playbooks/database-mcp-server.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["schema_json"] = json_ld(
+            [
+                article_schema(
+                    headline="Database MCP server: when to use Rowset instead",
+                    description=(
+                        "A practical guide to choosing between direct database MCP servers "
+                        "and Rowset's hosted MCP dataset backend for AI-agent workflows."
+                    ),
+                    path="/playbooks/database-mcp-server",
+                    date_published="2026-07-05",
+                    date_modified="2026-07-05",
+                ),
+                breadcrumb_list_schema(
+                    (
+                        ("Home", "/"),
+                        ("Playbooks", "/playbooks/database-mcp-server"),
+                        ("Database MCP server", "/playbooks/database-mcp-server"),
+                    )
+                ),
+            ]
+        )
         return context
 
 
