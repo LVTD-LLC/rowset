@@ -9,6 +9,7 @@
 | Date | Title | Type | Slug / URL | Target keyword | Vol | KD | Primary internal links | Commit / PR |
 |---|---|---|---|---|---|---|---|---|
 | 2026-07-04 | What is an agent-managed dataset? | definition | `/blog/agent-managed-datasets` | agent-managed dataset | unmeasured | n/a | MCP access, Dataset API, public previews, content pipeline | #191 |
+| 2026-07-05 | When should an AI agent use MCP instead of REST? | comparison | `/blog/mcp-vs-rest-ai-agents` | MCP vs REST for AI agents | estimated | n/a | MCP access, Dataset API, Agent access, agent-managed datasets | #195 |
 
 ---
 
@@ -17,7 +18,7 @@
 | Rank | Candidate | Proposed type | Target keyword | Vol | KD | Intent | Score | Notes / angle |
 |---|---|---|---|---|---|---|---|---|
 | 1 | What is an agent-managed dataset? | definition | agent-managed dataset | unmeasured | n/a | informational/AEO | 19 | Shipped in this run as a foundational concept page that supports Dataset API, MCP, and future playbooks without duplicating the sprint roadmap. |
-| 2 | When should an AI agent use MCP instead of REST? | comparison | MCP vs REST for AI agents | estimated | n/a | decision | 17 | Useful companion to MCP docs; avoid if Phase 2/8 playbooks already cover it deeply. |
+| 2 | When should an AI agent use MCP instead of REST? | comparison | MCP vs REST for AI agents | estimated | n/a | decision | 17 | Shipped in this run as a protocol decision guide for Rowset's MCP and REST surfaces. |
 | 3 | How to choose an index column for agent-managed rows | how-to | dataset index column | estimated | n/a | process | 16 | Product-native tutorial that could support Dataset API docs and reduce agent row-update mistakes. |
 
 ---
@@ -26,8 +27,8 @@
 
 | Cluster / theme | Pieces shipped | Gaps still open |
 |---|---|---|
-| Agent-managed datasets | `/blog/agent-managed-datasets` | Index-column tutorial, MCP vs REST decision page |
-| MCP and Dataset API | - | Sprint Phase 1 docs strengthening, Phase 2 database MCP server playbook |
+| Agent-managed datasets | `/blog/agent-managed-datasets` | Index-column tutorial |
+| MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents` | Sprint Phase 1 docs strengthening, Phase 2 database MCP server playbook |
 | Spreadsheet/database alternatives | - | Sprint alternatives and playbooks |
 
 ---

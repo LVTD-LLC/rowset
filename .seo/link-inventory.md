@@ -47,6 +47,7 @@
 | Slug | URL | Title | Topic | Linked by |
 |---|---|---|---|---|
 | `/blog/agent-managed-datasets` | https://rowset.lvtd.dev/blog/agent-managed-datasets | What is an agent-managed dataset? | agent workflows, datasets, MCP | Dataset API docs, MCP docs |
+| `/blog/mcp-vs-rest-ai-agents` | https://rowset.lvtd.dev/blog/mcp-vs-rest-ai-agents | When should an AI agent use MCP instead of REST? | MCP, REST, agent workflows | MCP docs, Agent access docs, agent-managed datasets blog |
 
 ## SEO-Sprint-Generated Pages
 
@@ -100,3 +101,7 @@
 - public read-only previews
 - Rowset setup prompt
 - agent discovery guide
+- MCP vs REST for AI agents
+- when to use MCP instead of REST
+- Rowset MCP and REST access
+- agent API decision guide

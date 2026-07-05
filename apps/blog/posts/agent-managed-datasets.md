@@ -117,6 +117,8 @@ instead of clicking through a human UI.
 REST still matters too. Some runtimes cannot configure MCP, and many scripts
 need plain HTTP. Rowset supports both paths: [MCP access](/docs/features/mcp/)
 for compatible agents and REST endpoints for scripts or clients.
+For the protocol decision itself, read [When should an AI agent use MCP instead
+of REST?](/blog/mcp-vs-rest-ai-agents).
 
 ### 5. A human review surface
 
