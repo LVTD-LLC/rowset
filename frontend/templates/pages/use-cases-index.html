@@ -64,23 +64,8 @@
 {% endblock content %}
 
 {% block schema %}
+{# JSON-LD payloads are escaped by apps.pages.schema.json_ld; add a nonce here when CSP is enforced. #}
 <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    "name": "Rowset use cases",
-    "description": "Agent-managed dataset use cases for Rowset.",
-    "url": "https://{{ request.get_host }}{% url 'use_cases' %}",
-    "itemListElement": [
-      {% for page in use_case_pages %}
-        {
-          "@type": "ListItem",
-          "position": {{ forloop.counter }},
-          "name": "{{ page.title|escapejs }}",
-          "url": "https://{{ request.get_host }}{% url 'use_case_detail' slug=page.slug %}"
-        }{% if not forloop.last %},{% endif %}
-      {% endfor %}
-    ]
-  }
+  {{ schema_json|safe }}
 </script>
 {% endblock schema %}

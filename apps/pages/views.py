@@ -13,8 +13,10 @@ from apps.pages.schema import (
     breadcrumb_list_schema,
     json_ld,
     organization_schema,
+    product_schema,
     software_application_schema,
     use_case_article_schema,
+    use_case_item_list_schema,
 )
 from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import build_absolute_public_url, get_rowset_logger
@@ -131,6 +133,7 @@ class PricingView(TemplateView):
         else:
             context["has_pro_subscription"] = False
 
+        context["schema_json"] = json_ld(product_schema())
         return context
 
 
@@ -140,6 +143,7 @@ class UseCasesIndexView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["use_case_pages"] = get_use_case_pages()
+        context["schema_json"] = json_ld(use_case_item_list_schema(context["use_case_pages"]))
         return context
 
 

@@ -71,6 +71,80 @@ def software_application_schema() -> dict:
     }
 
 
+def product_schema() -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": ROWSET_NAME,
+        "description": "Hosted MCP and REST datasets for trusted AI agents.",
+        "url": public_url(reverse("pricing")),
+        "image": logo_url(),
+        "offers": [
+            {
+                "@type": "Offer",
+                "name": "Rowset Free",
+                "price": "0",
+                "priceCurrency": "USD",
+                "priceSpecification": {
+                    "@type": "UnitPriceSpecification",
+                    "price": "0",
+                    "priceCurrency": "USD",
+                    "billingDuration": "P1M",
+                },
+            },
+            {
+                "@type": "Offer",
+                "name": "Rowset Pro",
+                "price": "50",
+                "priceCurrency": "USD",
+                "priceSpecification": {
+                    "@type": "UnitPriceSpecification",
+                    "price": "50",
+                    "priceCurrency": "USD",
+                    "billingDuration": "P1M",
+                },
+            },
+        ],
+        "author": {"@type": "Person", "name": ROWSET_AUTHOR},
+    }
+
+
+def item_list_schema(
+    *, name: str, description: str, path: str, items: Sequence[tuple[str, str]]
+) -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": name,
+        "description": description,
+        "url": public_url(path),
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": index,
+                "name": item_name,
+                "url": public_url(item_path),
+            }
+            for index, (item_name, item_path) in enumerate(items, start=1)
+        ],
+    }
+
+
+def use_case_item_list_schema(use_cases: Sequence[dict]) -> dict:
+    return item_list_schema(
+        name="Rowset use cases",
+        description="Agent-managed dataset use cases for Rowset.",
+        path=reverse("use_cases"),
+        items=tuple(
+            (
+                use_case["title"],
+                reverse("use_case_detail", kwargs={"slug": use_case["slug"]}),
+            )
+            for use_case in use_cases
+        ),
+    )
+
+
 def breadcrumb_list_schema(items: Sequence[tuple[str, str]]) -> dict:
     return {
         "@context": "https://schema.org",

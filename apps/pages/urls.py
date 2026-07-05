@@ -1,48 +1,51 @@
 from django.urls import path
+from django.views.generic import RedirectView, TemplateView
 
 from apps.pages import views
-from apps.pages.seo import redirect_without_trailing_slash
+
+
+def canonical_no_slash_path(route, view, *, name):
+    return (
+        path(route, view, name=name),
+        path(
+            f"{route}/",
+            RedirectView.as_view(pattern_name=name, permanent=True, query_string=True),
+            name=f"{name}_slash_redirect",
+        ),
+    )
+
 
 urlpatterns = [
     path("", views.LandingPageView.as_view(), name="landing"),
-    path("privacy-policy", views.PrivacyPolicyView.as_view(), name="privacy_policy"),
-    path(
-        "privacy-policy/",
-        redirect_without_trailing_slash,
-        name="privacy_policy_slash_redirect",
+    *canonical_no_slash_path(
+        "privacy-policy",
+        views.PrivacyPolicyView.as_view(),
+        name="privacy_policy",
     ),
-    path("terms-of-service", views.TermsOfServiceView.as_view(), name="terms_of_service"),
-    path(
-        "terms-of-service/",
-        redirect_without_trailing_slash,
-        name="terms_of_service_slash_redirect",
+    *canonical_no_slash_path(
+        "terms-of-service",
+        views.TermsOfServiceView.as_view(),
+        name="terms_of_service",
     ),
-    path("pricing", views.PricingView.as_view(), name="pricing"),
-    path(
-        "pricing/",
-        redirect_without_trailing_slash,
-        name="pricing_slash_redirect",
+    *canonical_no_slash_path("pricing", views.PricingView.as_view(), name="pricing"),
+    *canonical_no_slash_path(
+        "use-cases",
+        views.UseCasesIndexView.as_view(),
+        name="use_cases",
     ),
-    path("use-cases", views.UseCasesIndexView.as_view(), name="use_cases"),
-    path(
-        "use-cases/",
-        redirect_without_trailing_slash,
-        name="use_cases_slash_redirect",
+    *canonical_no_slash_path(
+        "use-cases/<slug:slug>",
+        views.UseCaseDetailView.as_view(),
+        name="use_case_detail",
     ),
-    path("use-cases/<slug:slug>", views.UseCaseDetailView.as_view(), name="use_case_detail"),
-    path(
-        "use-cases/<slug:slug>/",
-        redirect_without_trailing_slash,
-        name="use_case_detail_slash_redirect",
-    ),
-    path(
+    *canonical_no_slash_path(
         "playbooks/database-mcp-server",
         views.DatabaseMcpServerPlaybookView.as_view(),
         name="database_mcp_server_playbook",
     ),
-    path(
-        "playbooks/database-mcp-server/",
-        redirect_without_trailing_slash,
-        name="database_mcp_server_playbook_slash_redirect",
+    *canonical_no_slash_path(
+        "uses",
+        TemplateView.as_view(template_name="pages/uses.html"),
+        name="uses",
     ),
 ]

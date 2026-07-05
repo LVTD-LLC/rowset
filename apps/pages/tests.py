@@ -27,6 +27,12 @@ def _nav_html(content, aria_label):
     return content[start : content.index("</nav>", start)]
 
 
+def _json_ld_payload(content):
+    start = content.index('<script type="application/ld+json">')
+    end = content.index("</script>", start)
+    return content[start:end].split(">", 1)[1].strip()
+
+
 def test_login_page_shows_passkey_option(client):
     response = client.get(reverse("account_login"))
     assert response.status_code == 200
@@ -295,10 +301,7 @@ def test_schema_helpers_render_valid_homepage_json_ld(client):
     response = client.get(reverse("landing"))
 
     content = response.content.decode()
-    start = content.index('<script type="application/ld+json">')
-    end = content.index("</script>", start)
-    payload = content[start:end].split(">", 1)[1].strip()
-    schema = json.loads(payload)
+    schema = json.loads(_json_ld_payload(content))
 
     assert {entry["@type"] for entry in schema} == {"SoftwareApplication", "Organization"}
     organization = next(entry for entry in schema if entry["@type"] == "Organization")
@@ -337,12 +340,32 @@ def test_use_case_article_schema_includes_main_entity(client):
     response = client.get(reverse("use_case_detail", kwargs={"slug": "personal-crm"}))
 
     content = response.content.decode()
-    start = content.index('<script type="application/ld+json">')
-    end = content.index("</script>", start)
-    payload = content[start:end].split(">", 1)[1].strip()
-    schema = json.loads(payload)
+    schema = json.loads(_json_ld_payload(content))
 
     assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm")
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_use_cases_index_schema_uses_configured_public_urls(client):
+    response = client.get(reverse("use_cases"), secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    schema = json.loads(_json_ld_payload(response.content.decode()))
+
+    assert schema["@type"] == "ItemList"
+    assert schema["url"] == "https://rowset.example/use-cases"
+    assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/use-cases/")
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_pricing_schema_uses_configured_public_url(client):
+    response = client.get(reverse("pricing"), secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    schema = json.loads(_json_ld_payload(response.content.decode()))
+
+    assert schema["@type"] == "Product"
+    assert schema["url"] == "https://rowset.example/pricing"
 
 
 def test_use_case_pages_reject_missing_page_copy(monkeypatch):

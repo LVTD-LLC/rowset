@@ -277,44 +277,8 @@
     </section>
 {% endblock content %}
 {% block schema %}
+    {# JSON-LD payloads are escaped by apps.pages.schema.json_ld; add a nonce here when CSP is enforced. #}
     <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "name": "Rowset",
-    "description": "Hosted MCP and REST datasets for trusted AI agents.",
-    "url": "https://{{ request.get_host }}{% url 'pricing' %}",
-    "image": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset Pricing&subtitle=Agent-managed%20datasets&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
-    "offers": [
-      {
-        "@type": "Offer",
-        "name": "Rowset Free",
-        "price": "0",
-        "priceCurrency": "USD",
-        "priceSpecification": {
-          "@type": "UnitPriceSpecification",
-          "price": "0",
-          "priceCurrency": "USD",
-          "billingDuration": "P1M"
-        }
-      },
-      {
-        "@type": "Offer",
-        "name": "Rowset Pro",
-        "price": "50",
-        "priceCurrency": "USD",
-        "priceSpecification": {
-          "@type": "UnitPriceSpecification",
-          "price": "50",
-          "priceCurrency": "USD",
-          "billingDuration": "P1M"
-        }
-      }
-    ],
-    "author": {
-      "@type": "Person",
-      "name": "Rasul Kireev"
-    }
-  }
+  {{ schema_json|safe }}
     </script>
 {% endblock schema %}
