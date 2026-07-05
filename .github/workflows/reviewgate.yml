@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   review:
+    if: ${{ false }} # Temporarily disabled.
     runs-on: ubuntu-latest
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
