@@ -106,7 +106,6 @@ def test_dashboard_does_not_show_email_confirmation_reminder(client):
     response = client.get(reverse("home"))
 
     assert response.status_code == 200
-    assert response["Cache-Control"] == "public, max-age=3600"
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
     assert "Connect your AI agent to Rowset" in content
@@ -275,6 +274,7 @@ def test_airtable_alternative_has_required_links_and_faq_schema(client):
     response = client.get(reverse("airtable_alternative"))
 
     assert response.status_code == 200
+    assert response["Cache-Control"] == "public, max-age=3600"
     content = response.content.decode()
     text = strip_tags(content)
     words = re.findall(r"\b[\w'-]+\b", text)
