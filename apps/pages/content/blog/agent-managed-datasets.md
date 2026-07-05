@@ -155,6 +155,12 @@ Use an agent-managed dataset when:
 This is not an argument that spreadsheets are bad. It is an argument that
 delegated agent work needs a different default.
 
+The same distinction applies when people compare spreadsheet-database products.
+If humans need a collaborative app, a tool like Airtable may still be the right
+surface. If agents need private row operations, use the more focused decision
+guide to [Airtable alternatives for AI-agent-managed
+datasets](/blog/airtable-alternatives).
+
 ## A concrete example
 
 Imagine a content pipeline. A user wants an agent to track article ideas,

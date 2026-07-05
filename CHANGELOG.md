@@ -21,8 +21,12 @@ cut date.
 ## 2026-07-05
 
 ### Added
+- Added the Airtable alternatives article as a Markdown blog post for AI-agent-managed datasets, with current source links and inbound links from related blog posts.
 - Added a Rowset blog post on choosing stable index columns for agent-managed rows, with inbound links from dataset docs, MCP docs, and existing agent workflow posts.
 - Added a Rowset blog post explaining when AI-agent workflows should use MCP versus REST, with inbound links from MCP, Agent access, and the agent-managed-datasets article.
+
+### Changed
+- Moved the Airtable alternatives SEO target from a bespoke `/alternatives/airtable/` page to `/blog/airtable-alternatives` and redirected the old URL.
 
 ## 2026-07-04
 

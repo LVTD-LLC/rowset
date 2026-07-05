@@ -27,7 +27,9 @@ For Rowset, the practical answer is simple: MCP is the default path for trusted
 interactive agents, and REST is the durable fallback for anything that needs
 ordinary HTTP. Both surfaces use private authentication, both operate on the
 same datasets, and both should be treated as permissioned access to user-owned
-data.
+data. If you are comparing this model with a broader workspace product, read
+the guide to [Airtable alternatives for AI-agent-managed
+datasets](/blog/airtable-alternatives).
 
 ## The short decision rule
 

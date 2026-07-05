@@ -133,7 +133,7 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert reverse("how_to_guides") in content
     assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
-    assert reverse("airtable_alternatives") in content
+    assert reverse("blog_post", kwargs={"slug": "airtable-alternatives"}) in content
     assert '"@type": "SoftwareApplication"' in content
     assert '"@type": "Organization"' in content
 
@@ -141,7 +141,6 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     blog_href = f'href="{reverse("blog_posts")}"'
     explanations_href = f'href="{reverse("explanations_home")}"'
-    airtable_href = f'href="{reverse("airtable_alternatives")}"'
 
     landing_response = client.get(reverse("landing"))
     assert landing_response.status_code == 200
@@ -154,8 +153,7 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert explanations_href in _nav_html(landing_content, "Primary navigation")
     assert explanations_href in _nav_html(landing_content, "Mobile navigation")
     assert explanations_href in landing_footer
-    assert "Alternatives" in landing_footer
-    assert airtable_href in landing_footer
+    assert "Alternatives" not in landing_footer
 
     user = get_user_model().objects.create_user(
         username="chrome-blog",
@@ -173,8 +171,7 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert blog_href in _nav_html(app_content, "Mobile navigation")
     assert blog_href in app_footer
     assert explanations_href in app_footer
-    assert "Alternatives" in app_footer
-    assert airtable_href in app_footer
+    assert "Alternatives" not in app_footer
 
 
 def test_public_resources_nav_links_to_root_content_sections(client):
@@ -343,7 +340,7 @@ def test_how_to_index_lists_public_use_case_pages(client):
     assert "product-inventory-catalog" in content
     assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("pricing") not in main_content
-    assert reverse("airtable_alternatives") not in main_content
+    assert reverse("blog_post", kwargs={"slug": "airtable-alternatives"}) not in main_content
 
 
 def test_authenticated_public_pages_use_app_header(client):
@@ -463,8 +460,8 @@ def test_authenticated_database_mcp_server_explanation_uses_app_header(client):
     assert "Create account" not in header
 
 
-def test_airtable_alternatives_page_has_required_links_schema_and_content(client):
-    response = client.get(reverse("airtable_alternatives"))
+def test_airtable_alternatives_blog_post_has_required_links_schema_and_content(client):
+    response = client.get(reverse("blog_post", kwargs={"slug": "airtable-alternatives"}))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -472,51 +469,57 @@ def test_airtable_alternatives_page_has_required_links_schema_and_content(client
     words = re.findall(r"\b[\w'-]+\b", text)
     schema = json.loads(_json_ld_payload(content))
 
-    assert "Best Airtable alternatives for AI-agent-managed datasets in 2026" in content
-    assert len(words) >= 600
-    assert "When Airtable is still the better choice" in content
-    assert "Why Rowset is different" in content
-    assert "Migration decision table" in content
-    assert "Frequently asked questions" in content
-    assert "Airtable is still better when" in content
-    assert "not a spreadsheet replacement" in text
+    assert "Best Airtable alternatives for AI-agent-managed datasets" in content
+    assert len(words) >= 1500
+    assert "Why Airtable alternatives changed in 2026" in content
+    assert "What an AI-agent dataset backend needs" in content
+    assert "Airtable vs Rowset for AI agents" in content
+    assert "Migration paths" in content
+    assert "FAQ" in content
+    assert "not a no-code app builder" in text
     assert reverse("pricing") in content
-    assert reverse("account_signup") in content
     assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
     assert reverse("how_to_guide", kwargs={"slug": "personal-crm"}) in content
-    assert {entry["@type"] for entry in schema} == {"BreadcrumbList", "FAQPage"}
+    assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
+    assert schema["@type"] == "BlogPosting"
 
-    breadcrumb_schema = next(entry for entry in schema if entry["@type"] == "BreadcrumbList")
-    assert breadcrumb_schema["itemListElement"][-1]["item"] == (
-        "https://testserver/alternatives/airtable/"
-    )
+    assert schema["url"] == "https://testserver/blog/airtable-alternatives"
+    assert schema["headline"] == "Best Airtable alternatives for AI-agent-managed datasets"
 
 
-def test_airtable_alternatives_page_is_in_sitemap(client):
+def test_airtable_alternatives_old_url_redirects_to_blog(client):
+    response = client.get("/alternatives/airtable/")
+
+    assert response.status_code == 301
+    assert response["Location"] == "/blog/airtable-alternatives"
+
+
+def test_airtable_alternatives_blog_post_is_in_sitemap(client):
     response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
 
     assert response.status_code == 200
-    assert b"/alternatives/airtable/" in response.content
+    assert b"/blog/airtable-alternatives" in response.content
+    assert b"/alternatives/airtable/" not in response.content
 
 
-def test_seo_sprint_tracks_airtable_phase_completed():
+def test_seo_sprint_tracks_airtable_phase_as_blog_post():
     roadmap = Path(settings.BASE_DIR) / "docs/seo-sprint.md"
-    phase_label = "| 3 | Ship `/alternatives/airtable`"
+    phase_label = "| 3 | Ship `/blog/airtable-alternatives`"
     row = next(line for line in roadmap.read_text().splitlines() if phase_label in line)
 
-    assert "| completed | #204 |" in row
+    assert "| in_progress | branch `scribe/airtable-alternatives-blog-rewrite` |" in row
 
 
-def test_seo_link_inventory_tracks_airtable_page_links():
+def test_seo_link_inventory_tracks_airtable_blog_post_links():
     inventory = Path(settings.BASE_DIR) / ".seo/link-inventory.md"
     row = next(
         line for line in inventory.read_text().splitlines() if "| `airtable` | Phase 3 |" in line
     )
 
-    assert "| `/alternatives/airtable/` |" in row
-    assert "landing page, how-to index" in row
-    assert "pricing, signup, MCP docs, Dataset API" in row
+    assert "| `/blog/airtable-alternatives` |" in row
+    assert "landing page, agent-managed datasets blog, MCP vs REST blog" in row
+    assert "pricing, MCP docs, Dataset API" in row
 
 
 def test_schema_helpers_render_valid_homepage_json_ld(client):

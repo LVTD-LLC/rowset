@@ -49,17 +49,18 @@
 | `/blog/agent-managed-datasets` | https://rowset.lvtd.dev/blog/agent-managed-datasets | What is an agent-managed dataset? | agent workflows, datasets, MCP | Dataset API docs, MCP docs |
 | `/blog/mcp-vs-rest-ai-agents` | https://rowset.lvtd.dev/blog/mcp-vs-rest-ai-agents | When should an AI agent use MCP instead of REST? | MCP, REST, agent workflows | MCP docs, Agent access docs, agent-managed datasets blog |
 | `/blog/choose-index-column-agent-rows` | https://rowset.lvtd.dev/blog/choose-index-column-agent-rows | How to choose an index column for agent-managed rows | index columns, stable row identity, agent workflows | Dataset API docs, MCP docs, agent-managed datasets blog |
+| `/blog/airtable-alternatives` | https://rowset.lvtd.dev/blog/airtable-alternatives | Best Airtable alternatives for AI-agent-managed datasets | Airtable alternatives, agent workflows, datasets | landing page, agent-managed datasets blog, MCP vs REST blog |
 
 ## SEO-Sprint-Generated Pages
 
-### `/alternatives/[slug]`
+### Blog alternatives posts
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `airtable` | Phase 3 | `/alternatives/airtable/` | landing page, how-to index | pricing, signup, MCP docs, Dataset API |
-| `google-sheets` | Phase 4 | `/alternatives/google-sheets` | TBD | homepage, pricing, use cases, Dataset API |
-| `baserow` | Phase 6 | `/alternatives/baserow` | TBD | homepage, MCP docs, Dataset API |
-| `nocodb` | Phase 7 | `/alternatives/nocodb` | TBD | homepage, MCP docs, Dataset API |
+| `airtable` | Phase 3 | `/blog/airtable-alternatives` | landing page, agent-managed datasets blog, MCP vs REST blog | pricing, MCP docs, Dataset API, public previews, index-column guide |
+| `google-sheets` | Phase 4 | `/blog/google-sheets-alternatives` | TBD | homepage, pricing, use cases, Dataset API |
+| `baserow` | Phase 6 | `/blog/baserow-alternatives` | TBD | homepage, MCP docs, Dataset API |
+| `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | TBD | homepage, MCP docs, Dataset API |
 
 ### `/how-to/[slug]` or Future `/for/[slug]`
 
@@ -74,7 +75,7 @@
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `rowset-vs-airtable` | Phase 9 | `/compare/rowset-vs-airtable` | TBD | `/alternatives/airtable`, pricing, MCP docs |
+| `rowset-vs-airtable` | Phase 9 | `/compare/rowset-vs-airtable` | TBD | `/blog/airtable-alternatives`, pricing, MCP docs |
 
 ### Long-Form Explanations and How-To Guides
 
@@ -111,3 +112,6 @@
 - Rowset index column guide
 - generated rowset_id fallback
 - by-index row operations
+- Airtable alternatives for AI-agent-managed datasets
+- Airtable alternative for trusted agents
+- agent-managed Airtable alternative
