@@ -77,7 +77,7 @@ For MCP, store the key in a private environment variable such as
 `ROWSET_API_KEY`, then configure the MCP client's bearer-token env var to
 `ROWSET_API_KEY`. That makes the client send `Authorization: Bearer <key>`.
 
-If you are deciding whether a workflow should use MCP or the REST API first,
+If you are deciding whether a workflow should start with MCP or REST,
 read [When should an AI agent use MCP instead of REST?](/blog/mcp-vs-rest-ai-agents).
 In short: use MCP for compatible agent sessions that benefit from discovery, and
 use REST for scripts, backend jobs, or constrained runtimes.
