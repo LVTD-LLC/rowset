@@ -202,6 +202,7 @@ def test_authenticated_public_pages_use_app_header(client):
     assert "How it works" not in header
     assert "Sign in" not in header
     assert "Create account" not in header
+    assert "data-command-palette" in content
 
 
 def test_use_case_detail_page_shows_structured_example(client):
