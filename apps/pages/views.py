@@ -1,11 +1,11 @@
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import Http404
 from django.shortcuts import redirect
-from django.templatetags.static import static
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
 from django.views.decorators.vary import vary_on_cookie
@@ -30,12 +30,20 @@ logger = get_rowset_logger(__name__)
 
 
 def build_absolute_static_url(path: str) -> str:
-    static_url = static(path)
+    static_url = staticfiles_storage.url(path)
     parsed_static_url = urlsplit(static_url)
     if parsed_static_url.scheme in {"http", "https"}:
         return static_url
     if parsed_static_url.netloc:
-        return f"https://{static_url.removeprefix('//')}"
+        return urlunsplit(
+            (
+                "https",
+                parsed_static_url.netloc,
+                parsed_static_url.path,
+                parsed_static_url.query,
+                parsed_static_url.fragment,
+            )
+        )
     return build_absolute_public_url(static_url)
 
 
