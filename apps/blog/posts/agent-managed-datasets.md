@@ -39,9 +39,10 @@ and persistent instructions for how the data should be used.
 
 In Rowset, that usually means a user creates or finds a dataset, gives a trusted
 agent a scoped API key, and lets the agent work through [hosted MCP
-access](/docs/features/mcp/) or the [Dataset API](/docs/api-reference/datasets/).
-The human still owns the account and decides what should be shared. The agent
-gets a stable operating surface instead of a browser page to scrape.
+access](/docs/how-to-guides/connect-mcp/) or the [Dataset
+API](/docs/reference/dataset-api/). The human still owns the account and
+decides what should be shared. The agent gets a stable operating surface instead
+of a browser page to scrape.
 
 ## Why agents need this layer
 
@@ -118,7 +119,7 @@ MCP is useful here because the agent can discover tools and call them directly,
 instead of clicking through a human UI.
 
 REST still matters too. Some runtimes cannot configure MCP, and many scripts
-need plain HTTP. Rowset supports both paths: [MCP access](/docs/features/mcp/)
+need plain HTTP. Rowset supports both paths: [MCP access](/docs/how-to-guides/connect-mcp/)
 for compatible agents and REST endpoints for scripts or clients.
 For the protocol decision itself, read [When should an AI agent use MCP instead
 of REST?](/blog/mcp-vs-rest-ai-agents).
@@ -129,7 +130,7 @@ The agent should not be the only way to inspect the data. Humans still need to
 review current state, revoke keys, export a file, or share a read-only preview.
 This is where Rowset intentionally stays different from a generic memory layer:
 the agent gets private API/MCP access, while the human gets a dashboard and
-optional [public previews](/docs/features/public-previews/).
+optional [public previews](/docs/how-to-guides/share-public-preview/).
 
 ## Agent-managed dataset vs spreadsheet
 
@@ -235,6 +236,6 @@ It gives the agent a place to act, gives the human a place to review, and keeps
 the rules close to the rows.
 
 If you want to try the pattern in Rowset, start with the [getting started
-guide](/docs/getting-started/introduction/), connect an agent through
-[MCP](/docs/features/mcp/), and ask it to create one small dataset for a real
-workflow.
+guide](/docs/tutorials/get-started/), connect an agent through
+[MCP](/docs/how-to-guides/connect-mcp/), and ask it to create one small dataset
+for a real workflow.

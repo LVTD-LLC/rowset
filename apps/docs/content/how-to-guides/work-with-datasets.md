@@ -1,10 +1,10 @@
 ---
-title: Working with datasets
-description: Understand the Rowset dataset lifecycle, index columns, and exports.
+title: Work with datasets
+description: Choose index columns, organize datasets, add schema context, and export snapshots.
 keywords: Rowset datasets, MCP datasets, index columns
 ---
 
-# Working with datasets
+# Work with datasets
 
 Datasets are the core object in Rowset. Agents create them through MCP or REST, then use row tools and endpoints to keep them current.
 

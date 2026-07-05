@@ -32,8 +32,8 @@
         A direct database MCP server is useful when an agent needs controlled access to an existing production database. Rowset is useful when the agent needs its own private, structured dataset backend without exposing that database. This playbook explains the difference, the tradeoffs, and a practical setup path.
       </p>
       <div class="mt-8 flex flex-wrap gap-3">
-        <a href="{% url 'docs_page' category='features' page='mcp' %}" class="fb-button-primary">Read MCP docs</a>
-        <a href="{% url 'docs_page' category='api-reference' page='datasets' %}" class="fb-button-secondary">Dataset API</a>
+        <a href="{% url 'docs_page' category='how-to-guides' page='connect-mcp' %}" class="fb-button-primary">Read MCP docs</a>
+        <a href="{% url 'docs_page' category='reference' page='dataset-api' %}" class="fb-button-secondary">Dataset API</a>
         <a href="{% url 'pricing' %}" class="fb-button-secondary">Pricing</a>
       </div>
     </div>
@@ -84,7 +84,7 @@
           Rowset is designed for that middle zone. A user can create an account, copy a setup prompt, give a trusted agent a scoped API key, and let the agent create a dataset. The agent can set headers, choose an index column, add rows, update rows, attach instructions, add metadata, search, export, and organize datasets into projects. The dashboard remains a human control surface for setup, review, exports, and optional public previews.
         </p>
         <p>
-          The important word is optional. Rowset public previews are read-only and off by default. They are useful when humans need to inspect a table, but they are not the private operating path. For private agent workflows, the agent should use <a href="{% url 'docs_page' category='features' page='mcp' %}">MCP access</a> or the <a href="{% url 'docs_page' category='api-reference' page='datasets' %}">Dataset API</a>. That keeps bearer-key authentication, ownership boundaries, and row mutations in the private channel.
+          The important word is optional. Rowset public previews are read-only and off by default. They are useful when humans need to inspect a table, but they are not the private operating path. For private agent workflows, the agent should use <a href="{% url 'docs_page' category='how-to-guides' page='connect-mcp' %}">MCP access</a> or the <a href="{% url 'docs_page' category='reference' page='dataset-api' %}">Dataset API</a>. That keeps bearer-key authentication, ownership boundaries, and row mutations in the private channel.
         </p>
         <p>
           Rowset is also useful when the agent needs to remember context across runs. A dataset can carry a description, instructions, semantic column schema, and JSON metadata. That means the rule "do not mark a task done unless the PR is merged" or "treat price as USD unless a currency column says otherwise" can live with the dataset instead of being repeated in every prompt. The agent can call `get_dataset` before row operations and recover the operating context.
@@ -113,7 +113,7 @@
         </p>
         <pre><code>codex mcp add rowset --url {{ mcp_url }} --bearer-token-env-var ROWSET_API_KEY</code></pre>
         <p>
-          The exact URL should come from the user's Rowset dashboard or the <a href="{% url 'docs_page' category='features' page='agent-access' %}">Agent access docs</a>. The key should live in an environment variable or secret store, not in a public prompt, shared document, screenshot, or repository. After connecting, the agent should discover tools from the MCP server and verify the authenticated user before creating data.
+          The exact URL should come from the user's Rowset dashboard or the <a href="{% url 'docs_page' category='how-to-guides' page='configure-agent-access' %}">Agent access docs</a>. The key should live in an environment variable or secret store, not in a public prompt, shared document, screenshot, or repository. After connecting, the agent should discover tools from the MCP server and verify the authenticated user before creating data.
         </p>
         <p>
           A good first workflow is small. Ask the agent to create one dataset with a clear name, description, instructions, headers, and index column. For a personal CRM, use `email` or `person_id`. For an agent task board, use `task_id`. For feedback triage, use `feedback_id`. For a catalog, use `sku`. Stable indexes are important because they let the agent update a row by meaning instead of relying only on opaque row ids.
@@ -194,7 +194,7 @@
       </div>
       <div class="flex flex-col gap-3 sm:flex-row">
         <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
-        <a href="{% url 'docs_page' category='features' page='mcp' %}" class="fb-button-secondary">Connect MCP</a>
+        <a href="{% url 'docs_page' category='how-to-guides' page='connect-mcp' %}" class="fb-button-secondary">Connect MCP</a>
       </div>
     </div>
   </section>

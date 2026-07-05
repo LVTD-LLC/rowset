@@ -28,19 +28,61 @@ def profile(user):
 
 @pytest.mark.django_db
 class TestDocsView:
-    def test_docs_home_is_public(self, client):
+    def test_docs_home_is_public_diataxis_landing_page(self, client):
         response = client.get(reverse("docs_home"))
 
-        assert response.status_code == 302
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Find the right Rowset guide" in content
+        assert "Tutorials" in content
+        assert "How-to guides" in content
+        assert "Reference" in content
+        assert "Explanation" in content
+        assert (
+            reverse("docs_page", kwargs={"category": "tutorials", "page": "get-started"})
+            in content
+        )
+        assert (
+            reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
+            in content
+        )
+        assert (
+            reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"})
+            in content
+        )
+        assert reverse("use_cases") in content
+        assert "/playbooks/database-mcp-server" in content
+        assert reverse("blog_posts") in content
+
+    def test_legacy_docs_urls_redirect_to_diataxis_paths(self, client):
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "features", "page": "mcp"})
+        )
+
+        assert response.status_code == 301
         assert response["Location"] == reverse(
             "docs_page",
-            kwargs={"category": "getting-started", "page": "introduction"},
+            kwargs={"category": "how-to-guides", "page": "connect-mcp"},
         )
+
+    def test_docs_navigation_uses_diataxis_sections(self, client):
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Tutorials" in content
+        assert "How-to guides" in content
+        assert "Reference" in content
+        assert "Explanation" in content
+        assert "Features" not in content
+        assert "API Reference" not in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_docs_page_is_public_and_uses_safe_placeholders(self, client):
         response = client.get(
-            reverse("docs_page", kwargs={"category": "api-reference", "page": "user"})
+            reverse("docs_page", kwargs={"category": "reference", "page": "user-api"})
         )
 
         assert response.status_code == 200
@@ -59,7 +101,10 @@ class TestDocsView:
     @override_settings(SITE_URL="https://rowset.example")
     def test_anonymous_agent_access_docs_use_masked_prompt(self, client, profile):
         response = client.get(
-            reverse("docs_page", kwargs={"category": "features", "page": "agent-access"})
+            reverse(
+                "docs_page",
+                kwargs={"category": "how-to-guides", "page": "configure-agent-access"},
+            )
         )
 
         assert response.status_code == 200
@@ -72,7 +117,7 @@ class TestDocsView:
     @override_settings(SITE_URL="http://rowset.example")
     def test_docs_use_https_public_urls(self, auth_client):
         response = auth_client.get(
-            reverse("docs_page", kwargs={"category": "api-reference", "page": "introduction"})
+            reverse("docs_page", kwargs={"category": "reference", "page": "rest-api"})
         )
 
         assert response.status_code == 200
@@ -84,7 +129,7 @@ class TestDocsView:
     @override_settings(SITE_URL="https://rowset.example")
     def test_authenticated_docs_do_not_render_real_api_key(self, auth_client, profile):
         response = auth_client.get(
-            reverse("docs_page", kwargs={"category": "api-reference", "page": "introduction"})
+            reverse("docs_page", kwargs={"category": "reference", "page": "rest-api"})
         )
 
         assert response.status_code == 200
@@ -95,7 +140,10 @@ class TestDocsView:
     @override_settings(SITE_URL="https://rowset.example")
     def test_agent_access_docs_include_dashboard_prompt(self, auth_client, profile):
         response = auth_client.get(
-            reverse("docs_page", kwargs={"category": "features", "page": "agent-access"})
+            reverse(
+                "docs_page",
+                kwargs={"category": "how-to-guides", "page": "configure-agent-access"},
+            )
         )
 
         assert response.status_code == 200
@@ -119,7 +167,9 @@ class TestDocsView:
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_mcp_docs_use_bearer_api_key_instead_of_oauth(self, client):
-        response = client.get(reverse("docs_page", kwargs={"category": "features", "page": "mcp"}))
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
+        )
 
         assert response.status_code == 200
         content = response.content.decode()
@@ -134,19 +184,22 @@ class TestDocsView:
     @override_settings(SITE_URL="https://rowset.example")
     def test_dataset_api_docs_explain_agent_dataset_api_positioning(self, client):
         response = client.get(
-            reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"})
+            reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"})
         )
 
         assert response.status_code == 200
         content = response.content.decode()
         assert "dataset API" in content
-        assert "/docs/features/mcp/" in content
+        assert "/docs/how-to-guides/connect-mcp/" in content
         assert "real business key" in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_agent_discovery_docs_include_runtime_discovery_surfaces(self, client):
         response = client.get(
-            reverse("docs_page", kwargs={"category": "features", "page": "agent-discovery"})
+            reverse(
+                "docs_page",
+                kwargs={"category": "how-to-guides", "page": "help-agents-discover-rowset"},
+            )
         )
 
         assert response.status_code == 200

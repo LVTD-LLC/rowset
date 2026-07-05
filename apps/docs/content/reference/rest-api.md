@@ -1,10 +1,10 @@
 ---
-title: Introduction
+title: REST API
 description: Learn how Rowset API authentication works and where to find generated API docs.
 keywords: Rowset API, API authentication, OpenAPI docs
 ---
 
-# API Reference introduction
+# REST API
 
 Rowset exposes authenticated REST endpoints for account checks, dataset creation,
 profile-wide row search, dataset rows, exports, and public preview settings.

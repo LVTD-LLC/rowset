@@ -1,10 +1,10 @@
 ---
-title: Public previews
-description: Share read-only dataset previews without requiring API clients.
+title: Share a public preview
+description: Share read-only dataset previews with humans without giving them API access.
 keywords: Rowset public preview, dataset sharing, password protected preview
 ---
 
-# Public previews
+# Share a public preview
 
 Public previews let someone view a read-only dataset page without using the authenticated REST API.
 

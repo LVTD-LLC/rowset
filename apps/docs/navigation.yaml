@@ -1,16 +1,19 @@
 navigation:
-  getting-started:
-    - introduction
+  tutorials:
+    - get-started
 
-  features:
-    - datasets
-    - public-previews
-    - agent-discovery
-    - mcp
-    - agent-access
+  how-to-guides:
+    - connect-mcp
+    - configure-agent-access
+    - help-agents-discover-rowset
+    - work-with-datasets
+    - share-public-preview
 
-  api-reference:
-    - introduction
-    - user
-    - projects
-    - datasets
+  reference:
+    - rest-api
+    - user-api
+    - project-api
+    - dataset-api
+
+  explanation:
+    - concepts-and-decisions

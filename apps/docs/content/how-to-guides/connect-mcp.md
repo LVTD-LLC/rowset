@@ -1,10 +1,10 @@
 ---
-title: MCP access
-description: Connect AI agents to Rowset through the hosted MCP endpoint.
+title: Connect MCP
+description: Connect a compatible AI agent to Rowset through the hosted MCP endpoint.
 keywords: Rowset MCP, Streamable HTTP MCP, AI agents
 ---
 
-# MCP access
+# Connect MCP
 
 Rowset includes a hosted MCP endpoint so compatible AI agents can discover and use datasets without browser automation.
 
