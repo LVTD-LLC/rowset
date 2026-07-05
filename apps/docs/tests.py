@@ -13,6 +13,7 @@ from apps.docs.views import (
     DOCS_HOME_SECTION_CARDS,
     DOCS_SIDEBAR_EXPLORE_LINKS,
     DOCS_SIDEBAR_START_LINKS,
+    LEGACY_DOCS_CATEGORY_REDIRECTS,
     LEGACY_DOCS_REDIRECTS,
     build_configured_link,
     docs_page_view,
@@ -101,6 +102,8 @@ class TestDocsView:
         response = client.get(reverse("docs_home"))
 
         assert response.status_code == 200
+        assert response.context["docs_sidebar_start_links"]
+        assert response.context["docs_sidebar_explore_links"]
         content = response.content.decode()
         navigation = get_docs_navigation()
         configured_links = (
@@ -111,6 +114,7 @@ class TestDocsView:
 
         for link_config in configured_links:
             link = build_configured_link(link_config, navigation)
+            assert link is not None
             assert link["url"] in content
             assert link["title"] in content
 
@@ -124,7 +128,14 @@ class TestDocsView:
             assert (content_dir / category / f"{page}.md").is_file()
 
     def test_navigation_config_categories_have_explicit_labels(self):
-        assert set(load_navigation_config()) <= set(CATEGORY_LABELS)
+        assert set(load_navigation_config()) == set(CATEGORY_LABELS)
+
+    @pytest.mark.parametrize("legacy_category", sorted(LEGACY_DOCS_CATEGORY_REDIRECTS))
+    def test_legacy_category_urls_redirect_to_docs_home(self, client, legacy_category):
+        response = client.get(f"/docs/{legacy_category}/")
+
+        assert response.status_code == 301
+        assert response["Location"] == reverse("docs_home")
 
     @pytest.mark.parametrize(
         ("legacy_path", "target_path"),
@@ -177,6 +188,36 @@ class TestDocsView:
         assert "/docs/features/mcp/" not in docs_locations
         assert "/docs/api-reference/datasets/" not in docs_locations
         assert "/docs/getting-started/introduction/" not in docs_locations
+
+    def test_docs_navigation_excludes_draft_pages(self, tmp_path):
+        docs_dir = tmp_path / "apps" / "docs"
+        content_dir = docs_dir / "content" / "tutorials"
+        content_dir.mkdir(parents=True)
+        (docs_dir / "navigation.yaml").write_text(
+            "navigation:\n  tutorials:\n    - published\n    - draft\n",
+            encoding="utf-8",
+        )
+        (content_dir / "published.md").write_text(
+            "---\ntitle: Published\n---\n# Published\n",
+            encoding="utf-8",
+        )
+        (content_dir / "draft.md").write_text(
+            "---\ntitle: Draft\ndraft: true\n---\n# Draft\n",
+            encoding="utf-8",
+        )
+
+        with override_settings(BASE_DIR=tmp_path):
+            navigation = get_docs_navigation()
+
+        assert [page["slug"] for page in navigation[0]["pages"]] == ["published"]
+
+    def test_missing_configured_docs_links_are_omitted(self):
+        missing_link = build_configured_link(
+            {"title": "Missing", "category": "tutorials", "page": "missing"},
+            get_docs_navigation(),
+        )
+
+        assert missing_link is None
 
     def test_docs_navigation_uses_diataxis_sections(self, client):
         response = client.get(

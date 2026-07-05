@@ -5,7 +5,6 @@ import frontmatter
 import markdown
 import yaml
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.template import Context, Template
@@ -44,6 +43,7 @@ LEGACY_DOCS_REDIRECTS = {
     ("api-reference", "projects"): ("reference", "project-api"),
     ("api-reference", "datasets"): ("reference", "dataset-api"),
 }
+LEGACY_DOCS_CATEGORY_REDIRECTS = {"getting-started", "features", "api-reference"}
 DOCS_SIDEBAR_START_LINKS = ({"title": "Docs home", "url_name": "docs_home"},)
 DOCS_SIDEBAR_EXPLORE_LINKS = (
     {"title": "Use cases", "url_name": "use_cases"},
@@ -169,6 +169,15 @@ def get_page_title(markdown_file, fallback):
         return fallback
 
 
+def is_draft_page(markdown_file):
+    try:
+        with open(markdown_file, encoding="utf-8") as file:
+            post = frontmatter.load(file)
+        return bool(post.get("draft", False))
+    except Exception:
+        return False
+
+
 def get_docs_navigation():  # noqa: C901
     """
     Build navigation structure from the docs/content directory.
@@ -208,6 +217,8 @@ def get_docs_navigation():  # noqa: C901
 
         all_pages = {}
         for markdown_file in category_dir.glob("*.md"):
+            if is_draft_page(markdown_file):
+                continue
             page_slug = markdown_file.stem
             all_pages[page_slug] = markdown_file
 
@@ -297,9 +308,7 @@ def get_navigation_page(navigation, category_slug, page_slug):
             if page_item["slug"] == page_slug:
                 return page_item
 
-    raise ImproperlyConfigured(
-        f"Docs navigation is missing configured page {category_slug}/{page_slug}."
-    )
+    return None
 
 
 def build_configured_link(link_config, navigation=None):
@@ -311,8 +320,18 @@ def build_configured_link(link_config, navigation=None):
 
     if "category" in link_config and "page" in link_config:
         if navigation is None:
-            raise ImproperlyConfigured("Docs navigation is required for configured doc links.")
+            logger.warning(
+                "Configured docs link skipped because navigation was not provided: "
+                f"{link_config['category']}/{link_config['page']}"
+            )
+            return None
         page_item = get_navigation_page(navigation, link_config["category"], link_config["page"])
+        if page_item is None:
+            logger.warning(
+                "Configured docs link skipped because page was not found: "
+                f"{link_config['category']}/{link_config['page']}"
+            )
+            return None
         link["url"] = page_item["url"]
     else:
         link["url"] = reverse(link_config["url_name"], kwargs=link_config.get("kwargs"))
@@ -320,31 +339,28 @@ def build_configured_link(link_config, navigation=None):
     return link
 
 
+def build_configured_links(link_configs, navigation=None):
+    links = []
+    for link_config in link_configs:
+        link = build_configured_link(link_config, navigation)
+        if link is not None:
+            links.append(link)
+    return links
+
+
 def build_docs_sidebar_links():
     return {
-        "docs_sidebar_start_links": [
-            build_configured_link(link_config) for link_config in DOCS_SIDEBAR_START_LINKS
-        ],
-        "docs_sidebar_explore_links": [
-            build_configured_link(link_config) for link_config in DOCS_SIDEBAR_EXPLORE_LINKS
-        ],
+        "docs_sidebar_start_links": build_configured_links(DOCS_SIDEBAR_START_LINKS),
+        "docs_sidebar_explore_links": build_configured_links(DOCS_SIDEBAR_EXPLORE_LINKS),
     }
 
 
 def build_docs_home_links(navigation):
     return {
         "docs_home_url": reverse("docs_home"),
-        "docs_home_section_cards": [
-            build_configured_link(link_config, navigation)
-            for link_config in DOCS_HOME_SECTION_CARDS
-        ],
-        "docs_home_common_paths": [
-            build_configured_link(link_config, navigation) for link_config in DOCS_HOME_COMMON_PATHS
-        ],
-        "docs_home_resource_links": [
-            build_configured_link(link_config, navigation)
-            for link_config in DOCS_HOME_RESOURCE_LINKS
-        ],
+        "docs_home_section_cards": build_configured_links(DOCS_HOME_SECTION_CARDS, navigation),
+        "docs_home_common_paths": build_configured_links(DOCS_HOME_COMMON_PATHS, navigation),
+        "docs_home_resource_links": build_configured_links(DOCS_HOME_RESOURCE_LINKS, navigation),
         "docs_home_blog_index_link": build_configured_link(
             {"title": "Browse all blog articles", "url_name": "blog_posts"}
         ),
@@ -360,11 +376,22 @@ def docs_home_view(request):
         {
             "navigation": navigation,
             **build_docs_home_links(navigation),
+            **build_docs_sidebar_links(),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
         },
     )
+
+
+def docs_category_view(request, category):
+    if not is_docs_slug(category):
+        raise Http404("Documentation category not found")
+
+    if category in LEGACY_DOCS_CATEGORY_REDIRECTS:
+        return redirect(reverse("docs_home"), permanent=True)
+
+    raise Http404("Documentation category not found")
 
 
 def build_docs_agent_setup_prompt():
