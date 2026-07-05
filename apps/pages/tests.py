@@ -130,11 +130,9 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Agent CRM" in content
     assert "Content pipeline" in content
     assert "Bug and QA tracker" in content
-    assert reverse("use_cases") in content
-    assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
-    )
-    assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
+    assert reverse("how_to_guides") in content
+    assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
     assert reverse("airtable_alternatives") in content
     assert '"@type": "SoftwareApplication"' in content
     assert '"@type": "Organization"' in content
@@ -142,7 +140,7 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
 
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     blog_href = f'href="{reverse("blog_posts")}"'
-    playbook_href = f'href="{reverse("database_mcp_server_playbook")}"'
+    explanations_href = f'href="{reverse("explanations_home")}"'
     airtable_href = f'href="{reverse("airtable_alternatives")}"'
 
     landing_response = client.get(reverse("landing"))
@@ -153,9 +151,9 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert blog_href in _nav_html(landing_content, "Primary navigation")
     assert blog_href in _nav_html(landing_content, "Mobile navigation")
     assert blog_href in landing_footer
-    assert playbook_href in _nav_html(landing_content, "Primary navigation")
-    assert playbook_href in _nav_html(landing_content, "Mobile navigation")
-    assert playbook_href in landing_footer
+    assert explanations_href in _nav_html(landing_content, "Primary navigation")
+    assert explanations_href in _nav_html(landing_content, "Mobile navigation")
+    assert explanations_href in landing_footer
     assert "Alternatives" in landing_footer
     assert airtable_href in landing_footer
 
@@ -174,9 +172,113 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert blog_href in _nav_html(app_content, "Primary navigation")
     assert blog_href in _nav_html(app_content, "Mobile navigation")
     assert blog_href in app_footer
-    assert playbook_href in app_footer
+    assert explanations_href in app_footer
     assert "Alternatives" in app_footer
     assert airtable_href in app_footer
+
+
+def test_public_resources_nav_links_to_root_content_sections(client):
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    primary_nav = _nav_html(content, "Primary navigation")
+    mobile_nav = _nav_html(content, "Mobile navigation")
+    footer_nav = _nav_html(content, "Footer navigation")
+
+    expected_hrefs = (
+        reverse("docs_home"),
+        reverse("tutorials_home"),
+        reverse("how_to_guides"),
+        reverse("explanations_home"),
+        reverse("blog_posts"),
+    )
+    assert "Resources" in primary_nav
+    assert "Tutorials" in footer_nav
+    assert "How-to guides" in footer_nav
+    assert "Explanations" in footer_nav
+    for href in expected_hrefs:
+        assert f'href="{href}"' in primary_nav
+        assert f'href="{href}"' in mobile_nav
+        assert f'href="{href}"' in footer_nav
+
+
+def test_docs_home_lists_reference_pages_only(client):
+    response = client.get(reverse("docs_home"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    main_content = content[content.index("<main") : content.index("</main>") + len("</main>")]
+    assert "Reference for Rowset APIs and agent access." in content
+    assert reverse("docs_page", kwargs={"slug": "api-overview"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
+    assert reverse("docs_page", kwargs={"slug": "mcp-tools"}) in content
+    assert "Start tutorial" not in main_content
+    assert "How-to guides" not in main_content
+    assert "Explanation" not in main_content
+    assert reverse("tutorial_page", kwargs={"slug": "first-agent-dataset"}) not in main_content
+    assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) not in main_content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_root_content_sections_render_markdown_pages(client):
+    cases = (
+        (reverse("docs_page", kwargs={"slug": "user-api"}), "User API"),
+        (
+            reverse("tutorial_page", kwargs={"slug": "first-agent-dataset"}),
+            "Start with your first agent dataset",
+        ),
+        (reverse("how_to_guide", kwargs={"slug": "connect-mcp"}), "Connect over MCP"),
+        (reverse("explanation_page", kwargs={"slug": "datasets"}), "How Rowset datasets work"),
+    )
+
+    for url, expected_title in cases:
+        response = client.get(url)
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert expected_title in content
+        assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content or "dataset" in content
+
+
+@pytest.mark.parametrize(
+    ("old_path", "new_path"),
+    (
+        ("/docs/how-to-guides/connect-mcp/", "/how-to/connect-mcp/"),
+        ("/docs/reference/dataset-api/", "/docs/dataset-api/"),
+        ("/docs/features/mcp/", "/how-to/connect-mcp/"),
+        ("/docs/api-reference/datasets/", "/docs/dataset-api/"),
+        ("/use-cases/personal-crm/", "/how-to/personal-crm/"),
+        ("/playbooks/database-mcp-server/", "/explanations/database-mcp-server/"),
+    ),
+)
+def test_legacy_public_content_paths_redirect(client, old_path, new_path):
+    response = client.get(old_path)
+
+    assert response.status_code == 301
+    assert response["Location"] == new_path
+
+
+def test_how_to_index_includes_task_guides_and_use_case_pages(client):
+    response = client.get(reverse("how_to_guides"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "How-to guides for agent-managed datasets." in content
+    assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "share-public-preview"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "agent-task-board"}) in content
+    assert "/use-cases/personal-crm/" not in content
+
+
+def test_explanations_section_contains_database_mcp_decision_page(client):
+    response = client.get(reverse("explanations_home"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Explanations for Rowset concepts and tradeoffs." in content
+    assert reverse("explanation_page", kwargs={"slug": "database-mcp-server"}) in content
 
 
 def test_landing_page_redirects_authenticated_users_to_home(client):
@@ -217,8 +319,8 @@ def test_sitemap_response_does_not_set_noindex_header(client):
         ("/pricing", "/pricing/"),
         ("/privacy-policy", "/privacy-policy/"),
         ("/terms-of-service", "/terms-of-service/"),
-        ("/use-cases", "/use-cases/"),
-        ("/use-cases/personal-crm", "/use-cases/personal-crm/"),
+        ("/how-to", "/how-to/"),
+        ("/how-to/personal-crm", "/how-to/personal-crm/"),
         ("/uses", "/uses/"),
     ),
 )
@@ -229,21 +331,19 @@ def test_marketing_routes_use_django_append_slash_redirects(client, path, expect
     assert response["Location"] == f"{expected}?utm_source=test"
 
 
-def test_use_cases_index_lists_public_use_case_pages(client):
-    response = client.get(reverse("use_cases"))
+def test_how_to_index_lists_public_use_case_pages(client):
+    response = client.get(reverse("how_to_guides"))
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Agent workflows that start as structured rows." in content
-    assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
-    assert reverse("use_case_detail", kwargs={"slug": "agent-task-board"}) in content
+    main_content = content[content.index("<main") : content.index("</main>") + len("</main>")]
+    assert "How-to guides for agent-managed datasets." in content
+    assert reverse("how_to_guide", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "agent-task-board"}) in content
     assert "product-inventory-catalog" in content
-    assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
-    assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
-    )
-    assert reverse("pricing") in content
-    assert reverse("airtable_alternatives") in content
+    assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("pricing") not in main_content
+    assert reverse("airtable_alternatives") not in main_content
 
 
 def test_authenticated_public_pages_use_app_header(client):
@@ -254,7 +354,7 @@ def test_authenticated_public_pages_use_app_header(client):
     )
     client.force_login(user)
 
-    response = client.get(reverse("use_cases"))
+    response = client.get(reverse("how_to_guides"))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -271,8 +371,8 @@ def test_authenticated_public_pages_use_app_header(client):
     assert "data-command-palette" in content
 
 
-def test_use_case_detail_page_shows_structured_example(client):
-    response = client.get(reverse("use_case_detail", kwargs={"slug": "personal-crm"}))
+def test_how_to_use_case_page_shows_structured_example(client):
+    response = client.get(reverse("how_to_guide", kwargs={"slug": "personal-crm"}))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -281,23 +381,44 @@ def test_use_case_detail_page_shows_structured_example(client):
     assert "People dataset indexed by email or person_id." in content
     assert "Dataset context and semantic schema" in content
     assert "alex@example.com" in content
-    assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
-    )
-    assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
     assert reverse("pricing") in content
     assert '"@type": "Article"' in content
 
 
+def test_authenticated_how_to_use_case_page_uses_app_header(client):
+    user = get_user_model().objects.create_user(
+        username="use-case-detail-auth",
+        email="use-case-detail-auth@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("how_to_guide", kwargs={"slug": "personal-crm"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
+    assert f'href="{reverse("home")}"' in header
+    assert "Dashboard" in header
+    assert "Settings" in header
+    assert "Search data" in header
+    assert f'action="{reverse("account_logout")}"' in header
+    assert "How it works" not in header
+    assert "Sign in" not in header
+    assert "Create account" not in header
+
+
 def test_unknown_use_case_returns_404(client):
-    response = client.get(reverse("use_case_detail", kwargs={"slug": "missing"}))
+    response = client.get(reverse("how_to_guide", kwargs={"slug": "missing"}))
 
     assert response.status_code == 404
 
 
 @override_settings(SITE_URL="https://testserver")
-def test_database_mcp_server_playbook_has_required_links_and_schema(client):
-    response = client.get(reverse("database_mcp_server_playbook"))
+def test_database_mcp_server_explanation_has_required_links_and_schema(client):
+    response = client.get(reverse("explanation_page", kwargs={"slug": "database-mcp-server"}))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -306,25 +427,40 @@ def test_database_mcp_server_playbook_has_required_links_and_schema(client):
 
     assert "Database MCP server: when to use Rowset instead" in content
     assert len(words) >= 2500
-    assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
-    )
-    assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
-    assert (
-        reverse(
-            "docs_page",
-            kwargs={"category": "how-to-guides", "page": "configure-agent-access"},
-        )
-        in content
-    )
+    assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "configure-agent-access"}) in content
     assert reverse("docs_home") in content
     assert reverse("pricing") in content
-    assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
-    assert reverse("use_case_detail", kwargs={"slug": "agent-task-board"}) in content
-    assert reverse("use_case_detail", kwargs={"slug": "feedback-triage"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "agent-task-board"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "feedback-triage"}) in content
     assert "https://testserver/mcp/" in content
     assert '"@type": "Article"' in content
     assert '"@type": "BreadcrumbList"' in content
+
+
+def test_authenticated_database_mcp_server_explanation_uses_app_header(client):
+    user = get_user_model().objects.create_user(
+        username="database-mcp-explanation-auth",
+        email="database-mcp-explanation-auth@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("explanation_page", kwargs={"slug": "database-mcp-server"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
+    assert f'href="{reverse("home")}"' in header
+    assert "Dashboard" in header
+    assert "Settings" in header
+    assert "Search data" in header
+    assert f'action="{reverse("account_logout")}"' in header
+    assert "How it works" not in header
+    assert "Sign in" not in header
+    assert "Create account" not in header
 
 
 def test_airtable_alternatives_page_has_required_links_schema_and_content(client):
@@ -346,11 +482,9 @@ def test_airtable_alternatives_page_has_required_links_schema_and_content(client
     assert "not a spreadsheet replacement" in text
     assert reverse("pricing") in content
     assert reverse("account_signup") in content
-    assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
-    )
-    assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
-    assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
+    assert reverse("how_to_guide", kwargs={"slug": "personal-crm"}) in content
     assert {entry["@type"] for entry in schema} == {"BreadcrumbList", "FAQPage"}
 
     breadcrumb_schema = next(entry for entry in schema if entry["@type"] == "BreadcrumbList")
@@ -381,7 +515,7 @@ def test_seo_link_inventory_tracks_airtable_page_links():
     )
 
     assert "| `/alternatives/airtable/` |" in row
-    assert "landing page, use cases index" in row
+    assert "landing page, how-to index" in row
     assert "pricing, signup, MCP docs, Dataset API" in row
 
 
@@ -414,7 +548,7 @@ def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
     schema = article_schema(
         headline='Agent "CRM" <guide>',
         description="Use <structured> rows safely.",
-        path="/use-cases/personal-crm/",
+        path="/how-to/personal-crm/",
     )
     rendered = json_ld(schema)
 
@@ -425,24 +559,24 @@ def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
 
 
 def test_use_case_article_schema_includes_main_entity(client):
-    response = client.get(reverse("use_case_detail", kwargs={"slug": "personal-crm"}))
+    response = client.get(reverse("how_to_guide", kwargs={"slug": "personal-crm"}))
 
     content = response.content.decode()
     schema = json.loads(_json_ld_payload(content))
 
-    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm/")
+    assert schema["mainEntityOfPage"]["@id"].endswith("/how-to/personal-crm/")
 
 
 @override_settings(SITE_URL="https://rowset.example")
-def test_use_cases_index_schema_uses_configured_public_urls(client):
-    response = client.get(reverse("use_cases"), secure=True, HTTP_HOST="testserver")
+def test_how_to_index_schema_uses_configured_public_urls(client):
+    response = client.get(reverse("how_to_guides"), secure=True, HTTP_HOST="testserver")
 
     assert response.status_code == 200
     schema = json.loads(_json_ld_payload(response.content.decode()))
 
     assert schema["@type"] == "ItemList"
-    assert schema["url"] == "https://rowset.example/use-cases/"
-    assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/use-cases/")
+    assert schema["url"] == "https://rowset.example/how-to/"
+    assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/how-to/")
 
 
 @override_settings(SITE_URL="https://rowset.example")

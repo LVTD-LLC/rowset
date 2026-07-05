@@ -78,7 +78,7 @@ DEBUG = env("DEBUG")
 
 SITE_URL = env("SITE_URL")
 SITE_HOST = SITE_URL.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
-BLOG_POSTS_DIR = BASE_DIR / "apps" / "blog" / "posts"
+BLOG_POSTS_DIR = BASE_DIR / "apps" / "pages" / "content" / "blog"
 
 # Keep production locked to the configured site hostname.
 ALLOWED_HOSTS = [SITE_HOST]
@@ -134,8 +134,6 @@ CUSTOM_APPS = [
     "apps.mcp_server.apps.McpServerConfig",
     "apps.datasets.apps.DatasetsConfig",
     "apps.pages.PagesConfig",
-    "apps.blog.BlogConfig",
-    "apps.docs.DocsConfig",
 ]
 
 INSTALLED_APPS = DEFAULT_APPS + THIRD_PARTY_APPS + CUSTOM_APPS

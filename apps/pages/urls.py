@@ -1,10 +1,51 @@
 from django.urls import path
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 
 from apps.pages import views
 
+LEGACY_CONTENT_REDIRECTS = {
+    "docs/getting-started/introduction/": "/tutorials/first-agent-dataset/",
+    "docs/features/datasets/": "/explanations/datasets/",
+    "docs/features/public-previews/": "/how-to/share-public-preview/",
+    "docs/features/agent-discovery/": "/how-to/help-agents-discover-rowset/",
+    "docs/features/mcp/": "/how-to/connect-mcp/",
+    "docs/features/agent-access/": "/how-to/configure-agent-access/",
+    "docs/api-reference/introduction/": "/docs/api-overview/",
+    "docs/api-reference/user/": "/docs/user-api/",
+    "docs/api-reference/projects/": "/docs/project-api/",
+    "docs/api-reference/datasets/": "/docs/dataset-api/",
+    "docs/reference/api-overview/": "/docs/api-overview/",
+    "docs/reference/user-api/": "/docs/user-api/",
+    "docs/reference/project-api/": "/docs/project-api/",
+    "docs/reference/dataset-api/": "/docs/dataset-api/",
+    "docs/reference/mcp-tools/": "/docs/mcp-tools/",
+    "docs/tutorials/first-agent-dataset/": "/tutorials/first-agent-dataset/",
+    "docs/how-to-guides/configure-agent-access/": "/how-to/configure-agent-access/",
+    "docs/how-to-guides/connect-mcp/": "/how-to/connect-mcp/",
+    "docs/how-to-guides/help-agents-discover-rowset/": "/how-to/help-agents-discover-rowset/",
+    "docs/how-to-guides/share-public-preview/": "/how-to/share-public-preview/",
+    "docs/explanation/datasets/": "/explanations/datasets/",
+    "docs/explanation/mcp-rest-and-previews/": "/explanations/mcp-rest-and-previews/",
+    "playbooks/database-mcp-server/": "/explanations/database-mcp-server/",
+}
+
 urlpatterns = [
     path("", views.LandingPageView.as_view(), name="landing"),
+    *(
+        path(
+            old_path,
+            RedirectView.as_view(url=new_path, permanent=True),
+        )
+        for old_path, new_path in LEGACY_CONTENT_REDIRECTS.items()
+    ),
+    path(
+        "use-cases/",
+        RedirectView.as_view(pattern_name="how_to_guides", permanent=True),
+    ),
+    path(
+        "use-cases/<slug:slug>/",
+        RedirectView.as_view(pattern_name="how_to_guide", permanent=True),
+    ),
     path(
         "privacy-policy/",
         views.PrivacyPolicyView.as_view(),
@@ -16,21 +57,24 @@ urlpatterns = [
         name="terms_of_service",
     ),
     path("pricing/", views.PricingView.as_view(), name="pricing"),
+    path("docs/", views.docs_home_view, name="docs_home"),
+    path("docs/<slug:slug>/", views.docs_page_view, name="docs_page"),
+    path("tutorials/", views.tutorials_home_view, name="tutorials_home"),
+    path("tutorials/<slug:slug>/", views.tutorial_page_view, name="tutorial_page"),
+    path("blog/", views.blog_posts_view, name="blog_posts"),
+    path("blog/<slug:slug>", views.blog_post_view, name="blog_post"),
     path(
-        "use-cases/",
-        views.UseCasesIndexView.as_view(),
-        name="use_cases",
+        "how-to/",
+        views.HowToIndexView.as_view(),
+        name="how_to_guides",
     ),
     path(
-        "use-cases/<slug:slug>/",
-        views.UseCaseDetailView.as_view(),
-        name="use_case_detail",
+        "how-to/<slug:slug>/",
+        views.how_to_guide_view,
+        name="how_to_guide",
     ),
-    path(
-        "playbooks/database-mcp-server/",
-        views.DatabaseMcpServerPlaybookView.as_view(),
-        name="database_mcp_server_playbook",
-    ),
+    path("explanations/", views.explanations_home_view, name="explanations_home"),
+    path("explanations/<slug:slug>/", views.explanation_page_view, name="explanation_page"),
     path(
         "alternatives/airtable/",
         views.AirtableAlternativesView.as_view(),

@@ -1,0 +1,278 @@
+import re
+from pathlib import Path
+
+import frontmatter
+import markdown
+import yaml
+from django.conf import settings
+from django.http import Http404
+from django.shortcuts import render
+from django.template import Context, Template
+from django.urls import reverse
+
+from apps.core.agent_skill import (
+    ROWSET_AGENT_SETUP_INSTRUCTIONS,
+    ROWSET_FEATURES_SKILL_SOURCE_URL,
+    ROWSET_SKILL_INSTALL_COMMAND,
+    ROWSET_SKILL_SOURCE_URL,
+    ROWSET_USE_CASES_SKILL_SOURCE_URL,
+)
+from apps.core.views import AGENT_API_KEY_MASK
+from rowset.utils import build_absolute_public_url, get_rowset_logger
+
+logger = get_rowset_logger(__name__)
+
+API_KEY_PLACEHOLDER = "YOUR_ROWSET_API_KEY"
+USER_EMAIL_PLACEHOLDER = "you@example.com"
+CONTENT_SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+CONTENT_MARKDOWN_EXTENSIONS = ["fenced_code", "tables"]
+CONTENT_SECTIONS = {
+    "docs": {
+        "label": "Docs",
+        "title": "Rowset Docs",
+        "description": "Reference for Rowset APIs and agent access.",
+        "home_url_name": "docs_home",
+        "page_url_name": "docs_page",
+    },
+    "tutorials": {
+        "label": "Tutorials",
+        "title": "Rowset Tutorials",
+        "description": "Guided paths for learning Rowset from a concrete first workflow.",
+        "home_url_name": "tutorials_home",
+        "page_url_name": "tutorial_page",
+    },
+    "how-to": {
+        "label": "How-to guides",
+        "title": "Rowset How-to Guides",
+        "description": "How-to guides for agent-managed datasets.",
+        "home_url_name": "how_to_guides",
+        "page_url_name": "how_to_guide",
+    },
+    "explanations": {
+        "label": "Explanations",
+        "title": "Rowset Explanations",
+        "description": "Explanations for Rowset concepts and tradeoffs.",
+        "home_url_name": "explanations_home",
+        "page_url_name": "explanation_page",
+    },
+}
+
+
+def is_content_slug(value):
+    return bool(CONTENT_SLUG_PATTERN.fullmatch(value))
+
+
+def get_content_root():
+    return Path(settings.BASE_DIR) / "apps" / "pages" / "content"
+
+
+def get_content_section_config(section_slug):
+    try:
+        return CONTENT_SECTIONS[section_slug]
+    except KeyError as exc:
+        raise Http404("Content section not found") from exc
+
+
+def get_content_section_dir(section_slug):
+    return get_content_root() / section_slug
+
+
+def load_content_navigation_config():
+    navigation_file = get_content_root() / "navigation.yaml"
+
+    if not navigation_file.exists():
+        return {}
+
+    try:
+        with navigation_file.open(encoding="utf-8") as file:
+            config = yaml.safe_load(file)
+            return config.get("navigation", {}) if config else {}
+    except Exception:
+        return {}
+
+
+def get_page_title(markdown_file, fallback):
+    try:
+        with markdown_file.open(encoding="utf-8") as file:
+            post = frontmatter.load(file)
+        return post.get("title", fallback)
+    except Exception:
+        return fallback
+
+
+def get_section_page_url(section_slug, page_slug):
+    config = get_content_section_config(section_slug)
+    return reverse(config["page_url_name"], kwargs={"slug": page_slug})
+
+
+def get_section_home_url(section_slug):
+    config = get_content_section_config(section_slug)
+    return reverse(config["home_url_name"])
+
+
+def get_content_section(section_slug):
+    config = get_content_section_config(section_slug)
+    content_dir = get_content_section_dir(section_slug)
+    navigation_config = load_content_navigation_config()
+    configured_order = navigation_config.get(section_slug, [])
+
+    if not content_dir.exists():
+        pages = []
+    else:
+        all_pages = {
+            markdown_file.stem: markdown_file for markdown_file in content_dir.glob("*.md")
+        }
+        ordered_pages = [page_slug for page_slug in configured_order if page_slug in all_pages]
+        ordered_pages.extend(sorted(set(all_pages.keys()) - set(ordered_pages)))
+
+        pages = []
+        for page_slug in ordered_pages:
+            page_title = page_slug.replace("-", " ").title()
+            pages.append(
+                {
+                    "slug": page_slug,
+                    "title": get_page_title(all_pages[page_slug], page_title),
+                    "url": get_section_page_url(section_slug, page_slug),
+                }
+            )
+
+    return {
+        "section_slug": section_slug,
+        "label": config["label"],
+        "title": config["title"],
+        "description": config["description"],
+        "url": get_section_home_url(section_slug),
+        "pages": pages,
+    }
+
+
+def get_content_sections():
+    return [get_content_section(section_slug) for section_slug in CONTENT_SECTIONS]
+
+
+def get_previous_and_next_pages(section, current_page):
+    pages = section["pages"]
+    current_index = None
+    for index, page_item in enumerate(pages):
+        if page_item["slug"] == current_page:
+            current_index = index
+            break
+
+    if current_index is None:
+        return None, None
+
+    previous_page = pages[current_index - 1] if current_index > 0 else None
+    next_page = pages[current_index + 1] if current_index < len(pages) - 1 else None
+    return previous_page, next_page
+
+
+def build_content_agent_setup_prompt():
+    mcp_url = build_absolute_public_url("/mcp/")
+    rest_api_base_url = build_absolute_public_url("/api/")
+    instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
+
+    return "\n".join(
+        [
+            "Set up Rowset for this user.",
+            "",
+            f"Rowset MCP URL: {mcp_url}",
+            f"Rowset REST API base: {rest_api_base_url}",
+            f"Rowset API key: {AGENT_API_KEY_MASK}",
+            f"Rowset skill: {instructions_url}",
+            f"Rowset skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
+            "",
+            ROWSET_AGENT_SETUP_INSTRUCTIONS,
+        ]
+    )
+
+
+def get_content_template_context():
+    return {
+        "api_base_url": build_absolute_public_url("/api/").rstrip("/"),
+        "api_docs_url": build_absolute_public_url("/api/docs"),
+        "api_key_placeholder": API_KEY_PLACEHOLDER,
+        "agent_setup_prompt_masked": build_content_agent_setup_prompt(),
+        "dashboard_url": build_absolute_public_url(reverse("home")),
+        "features_skill_source_url": ROWSET_FEATURES_SKILL_SOURCE_URL,
+        "features_skill_url": build_absolute_public_url(
+            reverse("agent_instructions_rowset_features")
+        ),
+        "llms_txt_url": build_absolute_public_url(reverse("llms_txt")),
+        "mcp_url": build_absolute_public_url("/mcp/"),
+        "settings_url": build_absolute_public_url(reverse("settings")),
+        "skill_install_command": ROWSET_SKILL_INSTALL_COMMAND,
+        "skill_source_url": ROWSET_SKILL_SOURCE_URL,
+        "signup_url": build_absolute_public_url(reverse("account_signup")),
+        "site_url": build_absolute_public_url("/").rstrip("/"),
+        "use_cases_skill_source_url": ROWSET_USE_CASES_SKILL_SOURCE_URL,
+        "use_cases_skill_url": build_absolute_public_url(
+            reverse("agent_instructions_rowset_use_cases")
+        ),
+        "user_email_placeholder": USER_EMAIL_PLACEHOLDER,
+    }
+
+
+def render_content_section(request, section_slug, extra_pages=(), template_name=None):
+    section = get_content_section(section_slug)
+    return render(
+        request,
+        template_name or "pages/content/section.html",
+        {
+            "section": section,
+            "extra_pages": extra_pages,
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
+        },
+    )
+
+
+def render_content_page(request, section_slug, page_slug):
+    if not is_content_slug(page_slug):
+        raise Http404("Content page not found")
+
+    content_dir = get_content_section_dir(section_slug).resolve()
+    markdown_file = (content_dir / f"{page_slug}.md").resolve()
+
+    if not markdown_file.is_relative_to(content_dir) or not markdown_file.exists():
+        raise Http404("Content page not found")
+
+    try:
+        with markdown_file.open(encoding="utf-8") as file:
+            post = frontmatter.load(file)
+
+        rendered_markdown = Template(post.content).render(Context(get_content_template_context()))
+        markdown_html = markdown.markdown(rendered_markdown, extensions=CONTENT_MARKDOWN_EXTENSIONS)
+        section = get_content_section(section_slug)
+        previous_page, next_page = get_previous_and_next_pages(section, page_slug)
+        page_url = build_absolute_public_url(get_section_page_url(section_slug, page_slug))
+
+        default_page_title = page_slug.replace("-", " ").title()
+
+        context = {
+            "content": markdown_html,
+            "section": section,
+            "current_page": page_slug,
+            "page_title": post.get("title", default_page_title),
+            "section_title": section["label"],
+            "meta_description": post.get("description", ""),
+            "meta_keywords": post.get("keywords", ""),
+            "author": post.get("author", ""),
+            "canonical_url": post.get("canonical_url", page_url),
+            "page_url": page_url,
+            "previous_page": previous_page,
+            "next_page": next_page,
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
+        }
+
+        return render(request, "pages/content/page.html", context)
+    except Exception as e:
+        logger.error(
+            "Error loading content page",
+            section=section_slug,
+            page=page_slug,
+            error=str(e),
+        )
+        raise Http404("Content page not found") from e

@@ -53,11 +53,12 @@ contents.
 - `apps/mcp_server` exposes hosted MCP tools and bearer API-key auth.
 - `apps/core` owns profiles, account state, feedback, email delivery, Stripe
   webhook handling, and shared helpers.
-- `apps/docs` renders Markdown docs from `apps/docs/content` and navigation YAML.
-- `apps/blog` renders checked-in Markdown posts from `apps/blog/posts`; there is
-  no database-backed blog authoring path.
+- `apps/pages` renders checked-in docs, tutorials, how-to guides, explanations,
+  blog posts, marketing pages, and page context processors from root-level
+  public routes. Blog Markdown lives in `apps/pages/content/blog`; there is no
+  database-backed blog authoring path.
 - `frontend/templates` contains Django templates for landing, authenticated app,
-  datasets, docs, account flows, and shared components.
+  datasets, pages content, account flows, and shared components.
 - `frontend/src/js` contains Alpine component registration and small global
   browser enhancements.
 - `scripts/build-assets.mjs` compiles Tailwind/PostCSS and copies vendor/static

@@ -72,7 +72,7 @@
           "visit_duration": 1934
         },
         {
-          "path": "/docs/getting-started/introduction/",
+          "path": "/tutorials/first-agent-dataset/",
           "visitors": 9,
           "visits": 12,
           "pageviews": 26,
@@ -88,7 +88,7 @@
           "visit_duration": 4810
         },
         {
-          "path": "/use-cases",
+          "path": "/how-to",
           "visitors": 7,
           "visits": 7,
           "pageviews": 18,
@@ -96,7 +96,7 @@
           "visit_duration": 0
         },
         {
-          "path": "/docs/features/mcp/",
+          "path": "/how-to/connect-mcp/",
           "visitors": 4,
           "visits": 4,
           "pageviews": 4,
@@ -112,7 +112,7 @@
           "visit_duration": 0
         },
         {
-          "path": "/docs/features/public-previews/",
+          "path": "/how-to/share-public-preview/",
           "visitors": 4,
           "visits": 5,
           "pageviews": 5,
@@ -443,7 +443,7 @@
     {
       "keyword": "dataset api",
       "page_slug": "dataset-api",
-      "existing_url": "/docs/api-reference/datasets/",
+      "existing_url": "/docs/dataset-api/",
       "search_volume": 480,
       "keyword_difficulty": 43,
       "cpc": 24.07,
@@ -454,7 +454,7 @@
     {
       "keyword": "spreadsheet database",
       "page_slug": "spreadsheet-database",
-      "target_url": "/playbooks/spreadsheet-database-for-ai-agents",
+      "target_url": "/explanations/spreadsheet-database-for-ai-agents",
       "search_volume": 170,
       "keyword_difficulty": 20,
       "cpc": 55.7,
@@ -465,7 +465,7 @@
     {
       "keyword": "database mcp server",
       "page_slug": "database-mcp-server",
-      "target_url": "/playbooks/database-mcp-server",
+      "target_url": "/explanations/database-mcp-server",
       "search_volume": 70,
       "keyword_difficulty": 16,
       "cpc": 14.92,
@@ -476,7 +476,7 @@
     {
       "keyword": "ai agent crm",
       "page_slug": "personal-crm",
-      "existing_url": "/use-cases/personal-crm",
+      "existing_url": "/how-to/personal-crm",
       "search_volume": 30,
       "keyword_difficulty": 3,
       "cpc": 22.77,
@@ -519,11 +519,11 @@
       "note": "No measured demand yet; useful as sales enablement after alternatives pages exist."
     }
   ],
-  "playbooks": [
+  "long_form_guides": [
     {
       "keyword": "database mcp server",
       "page_slug": "database-mcp-server",
-      "target_url": "/playbooks/database-mcp-server",
+      "target_url": "/explanations/database-mcp-server",
       "search_volume": 70,
       "keyword_difficulty": 16,
       "cpc": 14.92,
@@ -533,7 +533,7 @@
     {
       "keyword": "connect ai agent to dataset api",
       "page_slug": "connect-ai-agent-to-dataset-api",
-      "target_url": "/playbooks/connect-ai-agent-to-dataset-api",
+      "target_url": "/how-to/connect-ai-agent-to-dataset-api",
       "search_volume": 0,
       "keyword_difficulty": null,
       "confidence": "measured_absent",
@@ -543,7 +543,7 @@
     {
       "keyword": "agent managed feedback board",
       "page_slug": "agent-managed-feedback-board",
-      "target_url": "/playbooks/agent-managed-feedback-board",
+      "target_url": "/how-to/agent-managed-feedback-board",
       "search_volume": 0,
       "keyword_difficulty": null,
       "confidence": "measured_absent",

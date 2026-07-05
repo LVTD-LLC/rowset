@@ -1,0 +1,20 @@
+navigation:
+  docs:
+    - api-overview
+    - user-api
+    - project-api
+    - dataset-api
+    - mcp-tools
+
+  tutorials:
+    - first-agent-dataset
+
+  how-to:
+    - configure-agent-access
+    - connect-mcp
+    - help-agents-discover-rowset
+    - share-public-preview
+
+  explanations:
+    - datasets
+    - mcp-rest-and-previews

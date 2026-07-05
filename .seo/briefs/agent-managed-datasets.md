@@ -5,7 +5,7 @@
 - **Chosen type:** definition / answer page
 - **Target keyword:** agent-managed dataset
 - **Slug:** `/blog/agent-managed-datasets`
-- **Reason:** Rowset's sprint roadmap owns playbooks, alternatives, and comparison pages. This first editorial piece defines a product-native concept that supports the Dataset API, MCP docs, use-case pages, and future SEO sprint pages without cannibalizing a roadmap phase.
+- **Reason:** Rowset's sprint roadmap owns long-form guides, alternatives, and comparison pages. This first editorial piece defines a product-native concept that supports the Dataset API, MCP docs, use-case pages, and future SEO sprint pages without cannibalizing a roadmap phase.
 
 ## Information Gain
 
@@ -20,7 +20,7 @@ The post introduces a Rowset-specific operational definition: an agent-managed d
 | Databricks frames memory scaling as agent performance improving as external memory grows. | Databricks: https://www.databricks.com/blog/memory-scaling-ai-agents | primary/secondary | 2026 | verified by direct Databricks source |
 | Anthropic introduced MCP as an open standard for connecting AI tools to external data sources. | Anthropic: https://www.anthropic.com/news/model-context-protocol | primary | 2024 | verified by direct Anthropic source and MCP docs |
 | Agent memory systems often combine multiple storage patterns rather than one store. | Redis: https://redis.io/blog/ai-agent-memory-stateful-systems/ | secondary | accessed 2026-07-04 | verified by IBM and Redis coverage |
-| Rowset supports hosted MCP and REST for datasets. | Rowset repo docs: `apps/docs/content/features/mcp.md`, `apps/docs/content/api-reference/datasets.md` | primary/product | 2026-07-04 | verified in repo |
+| Rowset supports hosted MCP and REST for datasets. | Rowset repo docs: `apps/pages/content/how-to/connect-mcp.md`, `apps/pages/content/docs/dataset-api.md` | primary/product | 2026-07-04 | verified in repo |
 | Rowset datasets can use stable index columns, column types, metadata, instructions, projects, exports, and public previews. | Rowset repo docs and services | primary/product | 2026-07-04 | verified in repo |
 
 ## Entity Map
