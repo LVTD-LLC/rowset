@@ -2,7 +2,10 @@
 All notable changes to this project will be documented in this file.
 
 Entries are grouped by calendar date, newest first, and use the change types from
-[Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+[Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioned releases,
+when used, still try to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The date grouping also places older bullets under the most accurate change type
+for that date while preserving their original text.
 
 ## Types of changes
 
