@@ -21,7 +21,7 @@ full application database. Use the REST API when a script or app already speaks
 HTTP; use [MCP access](/docs/features/mcp/) when an agent can discover tools and
 schemas directly. If you are deciding whether an agent should connect directly
 to a database or use Rowset as a private dataset layer, read
-[Database MCP server: when to use Rowset instead](/playbooks/database-mcp-server).
+[Database MCP server: when to use Rowset instead](/playbooks/database-mcp-server/).
 
 ## Authentication
 

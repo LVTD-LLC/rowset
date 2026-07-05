@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
@@ -178,14 +179,14 @@ class DatabaseMcpServerPlaybookView(TemplateView):
                         "A practical guide to choosing between direct database MCP servers "
                         "and Rowset's hosted MCP dataset backend for AI-agent workflows."
                     ),
-                    path="/playbooks/database-mcp-server",
+                    path=reverse("database_mcp_server_playbook"),
                     date_published="2026-07-05",
                     date_modified="2026-07-05",
                 ),
                 breadcrumb_list_schema(
                     (
                         ("Home", "/"),
-                        ("Database MCP server", "/playbooks/database-mcp-server"),
+                        ("Database MCP server", reverse("database_mcp_server_playbook")),
                     )
                 ),
             ]

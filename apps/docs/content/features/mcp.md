@@ -21,7 +21,7 @@ credentials, permissions, query cost, and schema safety. Rowset is the narrower
 choice for agent-owned task boards, CRMs, feedback queues, catalogs, QA trackers,
 and other structured row workflows that should stay behind a scoped Rowset API
 key. For the longer decision guide, read
-[Database MCP server: when to use Rowset instead](/playbooks/database-mcp-server).
+[Database MCP server: when to use Rowset instead](/playbooks/database-mcp-server/).
 
 If you are choosing between the hosted MCP endpoint and plain HTTP calls, read
 [When should an AI agent use MCP instead of REST?](/blog/mcp-vs-rest-ai-agents).
@@ -85,9 +85,9 @@ exact current input schemas.
 When the agent is setting up a new workflow, have it read the relevant use case
 first, then call `create_dataset` with a clear `description`, `instructions`,
 and stable `index_column`. Useful starting points include the
-[agent-managed personal CRM](/use-cases/personal-crm), [agent task
-board](/use-cases/agent-task-board), and [feedback triage
-workflow](/use-cases/feedback-triage). If the source data has several possible
+[agent-managed personal CRM](/use-cases/personal-crm/), [agent task
+board](/use-cases/agent-task-board/), and [feedback triage
+workflow](/use-cases/feedback-triage/). If the source data has several possible
 identifiers, use the
 [index-column guide](/blog/choose-index-column-agent-rows) before asking the
 agent to create the dataset.

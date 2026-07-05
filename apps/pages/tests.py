@@ -198,15 +198,15 @@ def test_sitemap_response_does_not_set_noindex_header(client):
 @pytest.mark.parametrize(
     ("path", "expected"),
     (
-        ("/pricing/", "/pricing"),
-        ("/privacy-policy/", "/privacy-policy"),
-        ("/terms-of-service/", "/terms-of-service"),
-        ("/use-cases/", "/use-cases"),
-        ("/use-cases/personal-crm/", "/use-cases/personal-crm"),
-        ("/uses/", "/uses"),
+        ("/pricing", "/pricing/"),
+        ("/privacy-policy", "/privacy-policy/"),
+        ("/terms-of-service", "/terms-of-service/"),
+        ("/use-cases", "/use-cases/"),
+        ("/use-cases/personal-crm", "/use-cases/personal-crm/"),
+        ("/uses", "/uses/"),
     ),
 )
-def test_marketing_trailing_slash_routes_redirect_to_canonical_paths(client, path, expected):
+def test_marketing_routes_use_django_append_slash_redirects(client, path, expected):
     response = client.get(f"{path}?utm_source=test")
 
     assert response.status_code == 301
@@ -326,7 +326,7 @@ def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
     schema = article_schema(
         headline='Agent "CRM" <guide>',
         description="Use <structured> rows safely.",
-        path="/use-cases/personal-crm",
+        path="/use-cases/personal-crm/",
     )
     rendered = json_ld(schema)
 
@@ -342,7 +342,7 @@ def test_use_case_article_schema_includes_main_entity(client):
     content = response.content.decode()
     schema = json.loads(_json_ld_payload(content))
 
-    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm")
+    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm/")
 
 
 @override_settings(SITE_URL="https://rowset.example")
@@ -353,7 +353,7 @@ def test_use_cases_index_schema_uses_configured_public_urls(client):
     schema = json.loads(_json_ld_payload(response.content.decode()))
 
     assert schema["@type"] == "ItemList"
-    assert schema["url"] == "https://rowset.example/use-cases"
+    assert schema["url"] == "https://rowset.example/use-cases/"
     assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/use-cases/")
 
 
@@ -366,7 +366,7 @@ def test_pricing_schema_uses_configured_public_url(client):
 
     assert schema["@type"] == "Product"
     assert schema["description"] == "Private MCP and REST datasets for trusted AI agents."
-    assert schema["url"] == "https://rowset.example/pricing"
+    assert schema["url"] == "https://rowset.example/pricing/"
     assert schema["image"].startswith("https://osig.app/g?")
     assert (
         "image_url=https%3A%2F%2Frowset.example%2Fstatic%2Fvendors%2Fimages%2Flogo.png"
