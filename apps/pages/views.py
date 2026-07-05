@@ -28,7 +28,8 @@ logger = get_rowset_logger(__name__)
 
 def build_absolute_static_url(path: str) -> str:
     static_url = static(path)
-    if urlsplit(static_url).scheme in {"http", "https"}:
+    parsed_static_url = urlsplit(static_url)
+    if parsed_static_url.scheme in {"http", "https"} or parsed_static_url.netloc:
         return static_url
     return build_absolute_public_url(static_url)
 

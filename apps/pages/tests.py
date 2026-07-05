@@ -18,6 +18,7 @@ from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
 from apps.pages.schema import article_schema, breadcrumb_list_schema, faq_page_schema, json_ld
+from apps.pages.views import build_absolute_static_url
 
 pytestmark = pytest.mark.django_db
 
@@ -313,6 +314,22 @@ def test_json_ld_escapes_script_breakout_sequences():
     assert "</script>" not in payload
     assert "\\u003c/script\\u003e" in payload
     assert "\\u0026" in payload
+
+
+def test_build_absolute_static_url_preserves_protocol_relative_static_url(settings):
+    settings.STATIC_URL = "//cdn.example.test/static/"
+    settings.SITE_URL = "https://testserver"
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+    assert (
+        build_absolute_static_url("vendors/images/logo.png")
+        == "//cdn.example.test/static/vendors/images/logo.png"
+    )
 
 
 def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
