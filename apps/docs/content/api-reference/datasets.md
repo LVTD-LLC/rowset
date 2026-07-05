@@ -13,6 +13,14 @@ agent-managed dataset?](/blog/agent-managed-datasets). It explains why stable
 row identity, schema context, instructions, and authenticated writes matter for
 AI-agent workflows.
 
+If you are comparing generic "dataset API" options, Rowset is intentionally
+narrow: it gives trusted agents an authenticated row store with stable indexes,
+schema context, dataset instructions, metadata, search, exports, and optional
+read-only previews. It is not a public spreadsheet embed or a replacement for a
+full application database. Use the REST API when a script or app already speaks
+HTTP; use [MCP access](/docs/features/mcp/) when an agent can discover tools and
+schemas directly.
+
 ## Authentication
 
 Prefer the `Authorization` header for private API requests:
@@ -90,6 +98,11 @@ both fields to leave the dataset ungrouped.
 ```
 
 The response includes `dataset.key`; use that key with the row endpoints below. It also returns `column_schema`, including any column descriptions, so agents can keep that context while reading or updating rows.
+
+For agent-managed workflows, prefer a real business key for `index_column` when
+one exists: `email` for a personal CRM, `task_id` for an agent task board,
+`feedback_id` for feedback triage, or `sku` for a catalog. Stable index values
+let agents patch rows by meaning instead of depending on opaque row ids.
 
 Choice columns are experimental. Use them when an agent should keep a text value
 inside a fixed set:

@@ -31,7 +31,7 @@
       <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-700 dark:text-slate-300">{{ use_case.short_summary }}</p>
       <div class="mt-7 flex flex-col gap-3 sm:flex-row">
         <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
-        <a href="{% url 'docs_home' %}" class="fb-button-secondary">Read setup docs</a>
+        <a href="{% url 'docs_page' category='features' page='agent-access' %}" class="fb-button-secondary">Read setup docs</a>
       </div>
     </div>
 
@@ -114,6 +114,32 @@
           </li>
         {% endfor %}
       </ol>
+    </div>
+  </div>
+</section>
+
+<section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+  <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.72fr_1.28fr] lg:px-8">
+    <div>
+      <p class="fb-label-caps text-cyan-700 dark:text-cyan-300">Agent setup</p>
+      <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Connect this workflow to the private API surface.</h2>
+      <p class="mt-4 text-sm leading-6 text-slate-700 dark:text-slate-300">
+        Public previews stay read-only. Trusted agents should use authenticated MCP or REST when they create, inspect, or update rows.
+      </p>
+    </div>
+    <div class="grid gap-3 md:grid-cols-3">
+      <a href="{% url 'docs_page' category='features' page='mcp' %}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">MCP access</p>
+        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Let an agent discover Rowset tools and call them with a bearer key.</p>
+      </a>
+      <a href="{% url 'docs_page' category='api-reference' page='datasets' %}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Dataset API</p>
+        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Create datasets, list rows, update rows, search, export, and manage previews.</p>
+      </a>
+      <a href="{% url 'pricing' %}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Pricing</p>
+        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Start free, then use Rowset Pro when agents need unlimited hosted rows.</p>
+      </a>
     </div>
   </div>
 </section>
