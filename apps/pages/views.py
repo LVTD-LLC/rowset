@@ -12,6 +12,7 @@ from apps.core.models import Profile
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
+    faq_page_schema,
     json_ld,
     organization_schema,
     product_schema,
@@ -189,6 +190,52 @@ class DatabaseMcpServerPlaybookView(TemplateView):
                         ("Database MCP server", reverse("database_mcp_server_playbook")),
                     )
                 ),
+            ]
+        )
+        return context
+
+
+class AirtableAlternativesView(TemplateView):
+    template_name = "pages/alternatives/airtable.html"
+
+    faqs = (
+        (
+            "Is Rowset an Airtable replacement?",
+            (
+                "No. Rowset is a private MCP and REST dataset backend for trusted AI agents. "
+                "Airtable is broader collaborative app-building software with interfaces, "
+                "automations, forms, and team workflows."
+            ),
+        ),
+        (
+            "When should an agent use Rowset instead of Airtable?",
+            (
+                "Use Rowset when the agent needs to create, inspect, update, export, or share "
+                "structured rows through authenticated MCP or REST without operating a full "
+                "no-code app workspace."
+            ),
+        ),
+        (
+            "Can Rowset import or sync Airtable bases?",
+            (
+                "Rowset does not provide an Airtable sync product. A trusted agent can read "
+                "approved source data with its own tools and write selected rows into Rowset."
+            ),
+        ),
+    )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["faqs"] = self.faqs
+        context["schema_json"] = json_ld(
+            [
+                breadcrumb_list_schema(
+                    (
+                        ("Home", "/"),
+                        ("Airtable alternatives", reverse("airtable_alternatives")),
+                    )
+                ),
+                faq_page_schema(self.faqs),
             ]
         )
         return context
