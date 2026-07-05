@@ -129,10 +129,18 @@
                         Good first datasets include an <a href="{% url 'use_case_detail' slug='personal-crm' %}">agent-managed personal CRM</a>, an agent task board, feedback triage, content operations, QA findings, or product inventory snapshots. Start with one workflow where the agent already has permission to read the source material and where a human can review the resulting rows.
                     </p>
                     <h2>Frequently asked questions</h2>
-                    {% for question, answer in faqs %}
-                        <h3>{{ question }}</h3>
-                        <p>{{ answer }}</p>
-                    {% endfor %}
+                    <h3>Is Rowset an Airtable replacement?</h3>
+                    <p>
+                        No. Rowset is a private MCP and REST dataset backend for trusted AI agents. Airtable is broader collaborative app-building software with interfaces, automations, forms, and team workflows.
+                    </p>
+                    <h3>When should an agent use Rowset instead of Airtable?</h3>
+                    <p>
+                        Use Rowset when the agent needs to create, inspect, update, export, or share structured rows through authenticated MCP or REST without operating a full no-code app workspace.
+                    </p>
+                    <h3>Can Rowset import or sync Airtable bases?</h3>
+                    <p>
+                        Rowset does not provide an Airtable sync product. A trusted agent can read approved source data with its own tools and write selected rows into Rowset.
+                    </p>
                 </div>
             </div>
         </section>
@@ -152,6 +160,56 @@
     </article>
 {% endblock content %}
 {% block schema %}
-    {# JSON-LD payloads are escaped by apps.pages.schema.json_ld; add a nonce here when CSP is enforced. #}
-    <script type="application/ld+json">{{ schema_json|safe }}</script>
+    <script type="application/ld+json">
+        [
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://{{ request.get_host }}/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Airtable alternatives",
+                "item": "https://{{ request.get_host }}{% url 'airtable_alternatives' %}"
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is Rowset an Airtable replacement?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Rowset is a private MCP and REST dataset backend for trusted AI agents. Airtable is broader collaborative app-building software with interfaces, automations, forms, and team workflows."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "When should an agent use Rowset instead of Airtable?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Use Rowset when the agent needs to create, inspect, update, export, or share structured rows through authenticated MCP or REST without operating a full no-code app workspace."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can Rowset import or sync Airtable bases?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Rowset does not provide an Airtable sync product. A trusted agent can read approved source data with its own tools and write selected rows into Rowset."
+                }
+              }
+            ]
+          }
+        ]
+    </script>
 {% endblock schema %}

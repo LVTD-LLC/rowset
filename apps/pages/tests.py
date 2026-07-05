@@ -140,14 +140,18 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
 
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     blog_href = f'href="{reverse("blog_posts")}"'
+    airtable_href = f'href="{reverse("airtable_alternatives")}"'
 
     landing_response = client.get(reverse("landing"))
     assert landing_response.status_code == 200
     landing_content = landing_response.content.decode()
+    landing_footer = _nav_html(landing_content, "Footer navigation")
 
     assert blog_href in _nav_html(landing_content, "Primary navigation")
     assert blog_href in _nav_html(landing_content, "Mobile navigation")
-    assert blog_href in _nav_html(landing_content, "Footer navigation")
+    assert blog_href in landing_footer
+    assert "Alternatives" in landing_footer
+    assert airtable_href in landing_footer
 
     user = get_user_model().objects.create_user(
         username="chrome-blog",
@@ -159,10 +163,13 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     app_response = client.get(reverse("home"))
     assert app_response.status_code == 200
     app_content = app_response.content.decode()
+    app_footer = _nav_html(app_content, "Footer navigation")
 
     assert blog_href in _nav_html(app_content, "Primary navigation")
     assert blog_href in _nav_html(app_content, "Mobile navigation")
-    assert blog_href in _nav_html(app_content, "Footer navigation")
+    assert blog_href in app_footer
+    assert "Alternatives" in app_footer
+    assert airtable_href in app_footer
 
 
 def test_landing_page_redirects_authenticated_users_to_home(client):
@@ -302,7 +309,11 @@ def test_database_mcp_server_playbook_has_required_links_and_schema(client):
 
 @override_settings(SITE_URL="https://rowset.example")
 def test_airtable_alternatives_page_has_required_links_schema_and_content(client):
-    response = client.get(reverse("airtable_alternatives"))
+    response = client.get(
+        reverse("airtable_alternatives"),
+        secure=True,
+        HTTP_HOST="rowset.example",
+    )
 
     assert response.status_code == 200
     content = response.content.decode()
