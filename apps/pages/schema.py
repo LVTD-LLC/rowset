@@ -102,6 +102,31 @@ def faq_page_schema(faqs: Sequence[tuple[str, str]]) -> dict:
     }
 
 
+def item_list_schema(
+    *,
+    name: str,
+    description: str,
+    path: str,
+    items: Sequence[tuple[str, str]],
+) -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": name,
+        "description": description,
+        "url": public_url(path),
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": index,
+                "name": item_name,
+                "url": public_url(item_path),
+            }
+            for index, (item_name, item_path) in enumerate(items, start=1)
+        ],
+    }
+
+
 def article_schema(
     *,
     headline: str,

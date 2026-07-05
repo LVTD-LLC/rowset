@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
-from django.urls import reverse
+from django.urls import resolve, reverse
 from django.utils.html import strip_tags
 
 from apps.core.capabilities import RowsetUseCase
@@ -25,6 +25,13 @@ pytestmark = pytest.mark.django_db
 def _nav_html(content, aria_label):
     start = content.index(f'aria-label="{aria_label}"')
     return content[start : content.index("</nav>", start)]
+
+
+def _page_schema(content):
+    start = content.index('<script type="application/ld+json">')
+    end = content.index("</script>", start)
+    payload = content[start:end].split(">", 1)[1].strip()
+    return json.loads(payload)
 
 
 def test_login_page_shows_passkey_option(client):
@@ -198,6 +205,7 @@ def test_sitemap_response_does_not_set_noindex_header(client):
         ("/use-cases/", "/use-cases"),
         ("/use-cases/personal-crm/", "/use-cases/personal-crm"),
         ("/uses/", "/uses"),
+        ("/playbooks/database-mcp-server/", "/playbooks/database-mcp-server"),
     ),
 )
 def test_marketing_trailing_slash_routes_redirect_to_canonical_paths(client, path, expected):
@@ -205,6 +213,30 @@ def test_marketing_trailing_slash_routes_redirect_to_canonical_paths(client, pat
 
     assert response.status_code == 301
     assert response["Location"] == f"{expected}?utm_source=test"
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/pricing/",
+        "/privacy-policy/",
+        "/terms-of-service/",
+        "/use-cases/",
+        "/use-cases/personal-crm/",
+        "/uses/",
+        "/playbooks/database-mcp-server/",
+    ),
+)
+def test_marketing_trailing_slash_redirects_use_canonical_fallback_route(path):
+    assert resolve(path).url_name == "canonical_no_slash_redirect"
+
+
+def test_canonical_no_slash_fallback_does_not_capture_real_slash_routes(client):
+    assert resolve("/docs/features/mcp/").url_name == "docs_page"
+
+    response = client.get("/missing/")
+
+    assert response.status_code == 404
 
 
 def test_use_cases_index_lists_public_use_case_pages(client):
@@ -219,6 +251,18 @@ def test_use_cases_index_lists_public_use_case_pages(client):
     assert reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"}) in content
     assert reverse("docs_page", kwargs={"category": "features", "page": "mcp"}) in content
     assert reverse("pricing") in content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_use_cases_index_schema_uses_configured_public_urls(client):
+    response = client.get(reverse("use_cases"), secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    schema = _page_schema(response.content.decode())
+
+    assert schema["@type"] == "ItemList"
+    assert schema["url"] == "https://rowset.example/use-cases"
+    assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/use-cases/")
 
 
 def test_authenticated_public_pages_use_app_header(client):

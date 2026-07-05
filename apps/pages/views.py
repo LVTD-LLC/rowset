@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
@@ -11,6 +12,7 @@ from apps.core.models import Profile
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
+    item_list_schema,
     json_ld,
     organization_schema,
     software_application_schema,
@@ -139,7 +141,22 @@ class UseCasesIndexView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["use_case_pages"] = get_use_case_pages()
+        use_case_pages = get_use_case_pages()
+        context["use_case_pages"] = use_case_pages
+        context["schema_json"] = json_ld(
+            item_list_schema(
+                name="Rowset use cases",
+                description="Agent-managed dataset use cases for Rowset.",
+                path=reverse("use_cases"),
+                items=tuple(
+                    (
+                        page["title"],
+                        reverse("use_case_detail", kwargs={"slug": page["slug"]}),
+                    )
+                    for page in use_case_pages
+                ),
+            )
+        )
         return context
 
 

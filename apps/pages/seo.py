@@ -1,5 +1,6 @@
 from django.contrib.sitemaps.views import sitemap
-from django.http import HttpResponse, HttpResponsePermanentRedirect
+from django.http import Http404, HttpResponse, HttpResponsePermanentRedirect
+from django.urls import get_urlconf, is_valid_path
 from django.views.decorators.cache import cache_control
 
 from rowset.sitemaps import sitemaps
@@ -28,9 +29,14 @@ def public_sitemap(request, **kwargs):
     return response
 
 
-def redirect_without_trailing_slash(request, **kwargs):
-    # Permanent redirects intentionally consolidate marketing URLs onto canonical no-slash paths.
+def redirect_to_canonical_no_slash(request, _path):
+    if request.method not in {"GET", "HEAD"}:
+        raise Http404
+
     target = request.path_info.rstrip("/") or "/"
+    if not is_valid_path(target, urlconf=get_urlconf()):
+        raise Http404
+
     if request.META.get("QUERY_STRING"):
         target = f"{target}?{request.META['QUERY_STRING']}"
     return HttpResponsePermanentRedirect(target)
