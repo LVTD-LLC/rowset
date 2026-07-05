@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
@@ -13,8 +14,10 @@ from apps.pages.schema import (
     breadcrumb_list_schema,
     json_ld,
     organization_schema,
+    product_schema,
     software_application_schema,
     use_case_article_schema,
+    use_case_item_list_schema,
 )
 from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import build_absolute_public_url, get_rowset_logger
@@ -131,6 +134,7 @@ class PricingView(TemplateView):
         else:
             context["has_pro_subscription"] = False
 
+        context["schema_json"] = json_ld(product_schema())
         return context
 
 
@@ -140,6 +144,7 @@ class UseCasesIndexView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["use_case_pages"] = get_use_case_pages()
+        context["schema_json"] = json_ld(use_case_item_list_schema(context["use_case_pages"]))
         return context
 
 
@@ -174,14 +179,14 @@ class DatabaseMcpServerPlaybookView(TemplateView):
                         "A practical guide to choosing between direct database MCP servers "
                         "and Rowset's hosted MCP dataset backend for AI-agent workflows."
                     ),
-                    path="/playbooks/database-mcp-server",
+                    path=reverse("database_mcp_server_playbook"),
                     date_published="2026-07-05",
                     date_modified="2026-07-05",
                 ),
                 breadcrumb_list_schema(
                     (
                         ("Home", "/"),
-                        ("Database MCP server", "/playbooks/database-mcp-server"),
+                        ("Database MCP server", reverse("database_mcp_server_playbook")),
                     )
                 ),
             ]

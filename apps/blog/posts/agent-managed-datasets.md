@@ -173,10 +173,10 @@ one row by index, and export a snapshot without asking the user to restate the
 workflow. That is the practical value.
 
 Rowset already has a [content pipeline use
-case](/use-cases/content-pipeline), but the same pattern works for a [personal
-CRM](/use-cases/personal-crm), an [agent task
-board](/use-cases/agent-task-board), or [feedback
-triage](/use-cases/feedback-triage).
+case](/use-cases/content-pipeline/), but the same pattern works for a [personal
+CRM](/use-cases/personal-crm/), an [agent task
+board](/use-cases/agent-task-board/), or [feedback
+triage](/use-cases/feedback-triage/).
 
 ## Where vector memory fits
 

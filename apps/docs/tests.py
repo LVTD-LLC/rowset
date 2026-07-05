@@ -128,7 +128,7 @@ class TestDocsView:
         assert "get_rowset_capabilities" in content
         assert "https://rowset.example/llms.txt" in content
         assert "Direct database MCP servers" in content
-        assert "/use-cases/personal-crm" in content
+        assert "/use-cases/personal-crm/" in content
         assert "OAuth" not in content
 
     @override_settings(SITE_URL="https://rowset.example")
