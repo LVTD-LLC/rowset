@@ -131,8 +131,7 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Bug and QA tracker" in content
     assert reverse("use_cases") in content
     assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
-        in content
+        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
     )
     assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
     assert '"@type": "SoftwareApplication"' in content
@@ -231,8 +230,7 @@ def test_use_cases_index_lists_public_use_case_pages(client):
     assert "product-inventory-catalog" in content
     assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
     assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
-        in content
+        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
     )
     assert reverse("pricing") in content
 
@@ -273,8 +271,7 @@ def test_use_case_detail_page_shows_structured_example(client):
     assert "Dataset context and semantic schema" in content
     assert "alex@example.com" in content
     assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
-        in content
+        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
     )
     assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
     assert reverse("pricing") in content
@@ -299,14 +296,16 @@ def test_database_mcp_server_playbook_has_required_links_and_schema(client):
     assert "Database MCP server: when to use Rowset instead" in content
     assert len(words) >= 2500
     assert (
-        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
-        in content
+        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
     )
     assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
-    assert reverse(
-        "docs_page",
-        kwargs={"category": "how-to-guides", "page": "configure-agent-access"},
-    ) in content
+    assert (
+        reverse(
+            "docs_page",
+            kwargs={"category": "how-to-guides", "page": "configure-agent-access"},
+        )
+        in content
+    )
     assert reverse("docs_home") in content
     assert reverse("pricing") in content
     assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content

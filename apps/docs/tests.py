@@ -38,17 +38,18 @@ class TestDocsView:
         assert "How-to guides" in content
         assert "Reference" in content
         assert "Explanation" in content
-        assert reverse(
-            "docs_page",
-            kwargs={"category": "tutorials", "page": "first-agent-dataset"},
-        ) in content
+        assert (
+            reverse(
+                "docs_page",
+                kwargs={"category": "tutorials", "page": "first-agent-dataset"},
+            )
+            in content
+        )
         assert reverse("use_cases") in content
         assert reverse("database_mcp_server_playbook") in content
 
     def test_legacy_docs_paths_redirect_to_diataxis_pages(self, client):
-        response = client.get(
-            reverse("docs_page", kwargs={"category": "features", "page": "mcp"})
-        )
+        response = client.get(reverse("docs_page", kwargs={"category": "features", "page": "mcp"}))
 
         assert response.status_code == 301
         assert response["Location"] == reverse(
