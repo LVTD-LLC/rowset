@@ -40,6 +40,9 @@ standard HTTP requests are easier to configure, test, and audit.
 In Rowset, that means a compatible agent should usually start with [hosted MCP
 access](/docs/features/mcp/). If MCP is unavailable, use the [Dataset
 API](/docs/api-reference/datasets/) with `Authorization: Bearer <key>`.
+Whichever surface you choose, the dataset still needs a stable row identity; use
+the [index-column guide](/blog/choose-index-column-agent-rows) before giving an
+agent write access to production rows.
 
 ## What MCP gives the agent
 
