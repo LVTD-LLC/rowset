@@ -5,6 +5,7 @@ import frontmatter
 import markdown
 import yaml
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.template import Context, Template
@@ -43,6 +44,89 @@ LEGACY_DOCS_REDIRECTS = {
     ("api-reference", "projects"): ("reference", "project-api"),
     ("api-reference", "datasets"): ("reference", "dataset-api"),
 }
+DOCS_SIDEBAR_START_LINKS = ({"title": "Docs home", "url_name": "docs_home"},)
+DOCS_SIDEBAR_EXPLORE_LINKS = (
+    {"title": "Use cases", "url_name": "use_cases"},
+    {"title": "Database MCP playbook", "url_name": "database_mcp_server_playbook"},
+    {"title": "Blog", "url_name": "blog_posts"},
+)
+DOCS_HOME_SECTION_CARDS = (
+    {
+        "title": "Tutorials",
+        "description": "Get a trusted agent connected and create the first useful dataset.",
+        "category": "tutorials",
+        "page": "get-started",
+    },
+    {
+        "title": "How-to guides",
+        "description": "Connect MCP, configure agents, design datasets, and share previews.",
+        "category": "how-to-guides",
+        "page": "connect-mcp",
+    },
+    {
+        "title": "Reference",
+        "description": (
+            "Look up REST authentication, endpoints, request bodies, and response behavior."
+        ),
+        "category": "reference",
+        "page": "dataset-api",
+    },
+    {
+        "title": "Explanation",
+        "description": "Understand agent-managed datasets, index choice, and MCP versus REST.",
+        "category": "explanation",
+        "page": "concepts-and-decisions",
+    },
+)
+DOCS_HOME_COMMON_PATHS = (
+    {
+        "title": "Connect an agent",
+        "description": "Use hosted MCP with a private bearer-token environment variable.",
+        "category": "how-to-guides",
+        "page": "connect-mcp",
+    },
+    {
+        "title": "Design a dataset",
+        "description": "Choose an index, add schema context, link datasets, and plan exports.",
+        "category": "how-to-guides",
+        "page": "work-with-datasets",
+    },
+    {
+        "title": "Pick a workflow",
+        "description": (
+            "Browse CRMs, task boards, feedback triage, catalogs, content pipelines, "
+            "and QA trackers."
+        ),
+        "url_name": "use_cases",
+    },
+    {
+        "title": "Call the API",
+        "description": (
+            "Create datasets, mutate rows, search, export snapshots, and manage previews."
+        ),
+        "category": "reference",
+        "page": "dataset-api",
+    },
+)
+DOCS_HOME_RESOURCE_LINKS = (
+    {
+        "eyebrow": "Concept",
+        "title": "What is an agent-managed dataset?",
+        "url_name": "blog_post",
+        "kwargs": {"slug": "agent-managed-datasets"},
+    },
+    {
+        "eyebrow": "Decision",
+        "title": "When should an AI agent use MCP instead of REST?",
+        "url_name": "blog_post",
+        "kwargs": {"slug": "mcp-vs-rest-ai-agents"},
+    },
+    {
+        "eyebrow": "Playbook",
+        "title": "Database MCP server: when to use Rowset instead",
+        "url_name": "database_mcp_server_playbook",
+    },
+)
 
 
 def is_docs_slug(value):
@@ -50,7 +134,12 @@ def is_docs_slug(value):
 
 
 def get_category_title(category_slug):
-    return CATEGORY_LABELS.get(category_slug, category_slug.replace("-", " ").title())
+    category_label = CATEGORY_LABELS.get(category_slug)
+    if category_label:
+        return category_label
+
+    logger.warning("Docs category missing explicit label", category=category_slug)
+    return category_slug.replace("-", " ").title()
 
 
 def load_navigation_config():
@@ -199,12 +288,78 @@ def get_previous_and_next_pages(navigation, current_category, current_page):
     return previous_page, next_page
 
 
+def get_navigation_page(navigation, category_slug, page_slug):
+    for category_item in navigation:
+        if category_item["category_slug"] != category_slug:
+            continue
+
+        for page_item in category_item["pages"]:
+            if page_item["slug"] == page_slug:
+                return page_item
+
+    raise ImproperlyConfigured(
+        f"Docs navigation is missing configured page {category_slug}/{page_slug}."
+    )
+
+
+def build_configured_link(link_config, navigation=None):
+    link = {
+        key: value
+        for key, value in link_config.items()
+        if key not in {"category", "page", "url_name", "kwargs"}
+    }
+
+    if "category" in link_config and "page" in link_config:
+        if navigation is None:
+            raise ImproperlyConfigured("Docs navigation is required for configured doc links.")
+        page_item = get_navigation_page(navigation, link_config["category"], link_config["page"])
+        link["url"] = page_item["url"]
+    else:
+        link["url"] = reverse(link_config["url_name"], kwargs=link_config.get("kwargs"))
+
+    return link
+
+
+def build_docs_sidebar_links():
+    return {
+        "docs_sidebar_start_links": [
+            build_configured_link(link_config) for link_config in DOCS_SIDEBAR_START_LINKS
+        ],
+        "docs_sidebar_explore_links": [
+            build_configured_link(link_config) for link_config in DOCS_SIDEBAR_EXPLORE_LINKS
+        ],
+    }
+
+
+def build_docs_home_links(navigation):
+    return {
+        "docs_home_url": reverse("docs_home"),
+        "docs_home_section_cards": [
+            build_configured_link(link_config, navigation)
+            for link_config in DOCS_HOME_SECTION_CARDS
+        ],
+        "docs_home_common_paths": [
+            build_configured_link(link_config, navigation) for link_config in DOCS_HOME_COMMON_PATHS
+        ],
+        "docs_home_resource_links": [
+            build_configured_link(link_config, navigation)
+            for link_config in DOCS_HOME_RESOURCE_LINKS
+        ],
+        "docs_home_blog_index_link": build_configured_link(
+            {"title": "Browse all blog articles", "url_name": "blog_posts"}
+        ),
+    }
+
+
 def docs_home_view(request):
+    navigation = get_docs_navigation()
+
     return render(
         request,
         "docs/docs_home.html",
         {
-            "navigation": get_docs_navigation(),
+            "navigation": navigation,
+            **build_docs_home_links(navigation),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
@@ -312,6 +467,7 @@ def docs_page_view(request, category, page):
             "page_url": page_url,
             "previous_page": previous_page,
             "next_page": next_page,
+            **build_docs_sidebar_links(),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),

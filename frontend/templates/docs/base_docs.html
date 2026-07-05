@@ -8,9 +8,11 @@
         <section class="space-y-3" aria-labelledby="docs-start">
           <h2 id="docs-start" class="px-3 text-sm font-semibold text-slate-950 dark:text-slate-100">Start</h2>
           <ul class="space-y-1">
-            <li>
-              <a href="{% url 'docs_home' %}" class="fb-focus block rounded-md px-3 py-2 text-sm leading-snug text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Docs home</a>
-            </li>
+            {% for link in docs_sidebar_start_links %}
+              <li>
+                <a href="{{ link.url }}" class="fb-focus block rounded-md px-3 py-2 text-sm leading-snug text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">{{ link.title }}</a>
+              </li>
+            {% endfor %}
           </ul>
         </section>
         {% for section in navigation %}
@@ -28,15 +30,11 @@
         <section class="space-y-3" aria-labelledby="docs-explore">
           <h2 id="docs-explore" class="px-3 text-sm font-semibold text-slate-950 dark:text-slate-100">Explore</h2>
           <ul class="space-y-1">
-            <li>
-              <a href="{% url 'use_cases' %}" class="fb-focus block rounded-md px-3 py-2 text-sm leading-snug text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Use cases</a>
-            </li>
-            <li>
-              <a href="{% url 'database_mcp_server_playbook' %}" class="fb-focus block rounded-md px-3 py-2 text-sm leading-snug text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Database MCP playbook</a>
-            </li>
-            <li>
-              <a href="{% url 'blog_posts' %}" class="fb-focus block rounded-md px-3 py-2 text-sm leading-snug text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Blog</a>
-            </li>
+            {% for link in docs_sidebar_explore_links %}
+              <li>
+                <a href="{{ link.url }}" class="fb-focus block rounded-md px-3 py-2 text-sm leading-snug text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">{{ link.title }}</a>
+              </li>
+            {% endfor %}
           </ul>
         </section>
       </nav>

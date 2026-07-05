@@ -1,9 +1,17 @@
+from pathlib import Path
+
 import pytest
+from django.conf import settings
 from django.http import Http404
 from django.test import override_settings
 from django.urls import reverse
 
-from apps.docs.views import LEGACY_DOCS_REDIRECTS, docs_page_view
+from apps.docs.views import (
+    CATEGORY_LABELS,
+    LEGACY_DOCS_REDIRECTS,
+    docs_page_view,
+    load_navigation_config,
+)
 from rowset.sitemaps import DocsSitemap, StaticViewSitemap
 
 EXPECTED_LEGACY_DOCS_REDIRECTS = {
@@ -62,12 +70,37 @@ class TestDocsView:
         assert (
             reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
         )
+        assert (
+            reverse(
+                "docs_page",
+                kwargs={"category": "explanation", "page": "concepts-and-decisions"},
+            )
+            in content
+        )
+        assert (
+            reverse(
+                "docs_page",
+                kwargs={"category": "how-to-guides", "page": "work-with-datasets"},
+            )
+            in content
+        )
         assert reverse("use_cases") in content
         assert "/playbooks/database-mcp-server" in content
         assert reverse("blog_posts") in content
+        assert reverse("blog_post", kwargs={"slug": "agent-managed-datasets"}) in content
+        assert reverse("blog_post", kwargs={"slug": "mcp-vs-rest-ai-agents"}) in content
 
     def test_legacy_redirect_map_covers_pre_diataxis_public_paths(self):
         assert LEGACY_DOCS_REDIRECTS == EXPECTED_LEGACY_DOCS_REDIRECTS
+
+    def test_legacy_redirect_targets_exist_on_filesystem(self):
+        content_dir = Path(settings.BASE_DIR) / "apps" / "docs" / "content"
+
+        for category, page in set(LEGACY_DOCS_REDIRECTS.values()):
+            assert (content_dir / category / f"{page}.md").is_file()
+
+    def test_navigation_config_categories_have_explicit_labels(self):
+        assert set(load_navigation_config()) <= set(CATEGORY_LABELS)
 
     @pytest.mark.parametrize(
         ("legacy_path", "target_path"),
@@ -134,6 +167,18 @@ class TestDocsView:
         assert "Explanation" in content
         assert "Features" not in content
         assert "API Reference" not in content
+
+    def test_docs_page_sidebar_links_are_resolvable(self, client):
+        response = client.get(
+            reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert reverse("docs_home") in content
+        assert reverse("use_cases") in content
+        assert reverse("database_mcp_server_playbook") in content
+        assert reverse("blog_posts") in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_docs_page_is_public_and_uses_safe_placeholders(self, client):
