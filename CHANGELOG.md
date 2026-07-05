@@ -5,7 +5,9 @@ Entries are grouped by calendar date, newest first, and use the change types fro
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioned releases,
 when used, still try to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The date grouping also places older bullets under the most accurate change type
-for that date while preserving their original text.
+for that date while preserving their original text. Dates represent when the
+changelog entry landed in git history, not a production deployment or release
+cut date.
 
 ## Types of changes
 
