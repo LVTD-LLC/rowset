@@ -341,9 +341,7 @@ def test_airtable_alternatives_page_is_in_sitemap(client):
 def test_seo_sprint_tracks_airtable_phase_completed():
     roadmap = Path(settings.BASE_DIR) / "docs/seo-sprint.md"
     phase_label = "| 3 | Ship `/alternatives/airtable`"
-    row = next(
-        line for line in roadmap.read_text().splitlines() if phase_label in line
-    )
+    row = next(line for line in roadmap.read_text().splitlines() if phase_label in line)
 
     assert "| completed | #204 |" in row
 
