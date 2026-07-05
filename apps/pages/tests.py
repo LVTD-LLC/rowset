@@ -126,6 +126,7 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert reverse("use_cases") in content
     assert reverse("docs_page", kwargs={"category": "features", "page": "mcp"}) in content
     assert reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"}) in content
+    assert reverse("airtable_alternative") in content
     assert '"@type": "SoftwareApplication"' in content
     assert '"@type": "Organization"' in content
 
@@ -197,6 +198,7 @@ def test_sitemap_response_does_not_set_noindex_header(client):
         ("/terms-of-service/", "/terms-of-service"),
         ("/use-cases/", "/use-cases"),
         ("/use-cases/personal-crm/", "/use-cases/personal-crm"),
+        ("/alternatives/airtable/", "/alternatives/airtable"),
         ("/uses/", "/uses"),
     ),
 )
@@ -263,6 +265,31 @@ def test_database_mcp_server_playbook_has_required_links_and_schema(client):
     assert reverse("use_case_detail", kwargs={"slug": "feedback-triage"}) in content
     assert "https://testserver/mcp/" in content
     assert '"@type": "Article"' in content
+    assert '"@type": "BreadcrumbList"' in content
+
+
+@override_settings(SITE_URL="https://testserver")
+def test_airtable_alternative_has_required_links_and_faq_schema(client):
+    response = client.get(reverse("airtable_alternative"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    text = strip_tags(content)
+    words = re.findall(r"\b[\w'-]+\b", text)
+
+    assert '<link rel="canonical" href="https://testserver/alternatives/airtable" />' in content
+    assert "Airtable alternatives for AI-agent-managed datasets" in content
+    assert len(words) >= 600
+    assert "Airtable is still the better choice" in content
+    assert reverse("pricing") in content
+    assert reverse("account_signup") in content
+    assert reverse("docs_page", kwargs={"category": "features", "page": "mcp"}) in content
+    assert reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"}) in content
+    assert reverse("docs_page", kwargs={"category": "features", "page": "agent-access"}) in content
+    assert reverse("use_case_detail", kwargs={"slug": "agent-task-board"}) in content
+    assert reverse("use_case_detail", kwargs={"slug": "feedback-triage"}) in content
+    assert '"@type": "Article"' in content
+    assert '"@type": "FAQPage"' in content
     assert '"@type": "BreadcrumbList"' in content
 
 

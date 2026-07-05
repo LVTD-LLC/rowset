@@ -1,0 +1,154 @@
+{% extends "base_landing.html" %}
+{% load static %}
+
+{% block meta %}
+<title>Airtable alternatives for AI-agent-managed datasets</title>
+<meta name="description" content="Compare Airtable with Rowset when AI agents need private, indexed rows over MCP and REST." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="{{ canonical_url }}" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Airtable alternatives for AI-agent-managed datasets" />
+<meta property="og:url" content="{{ canonical_url }}" />
+<meta property="og:description" content="When to use Airtable, when to use Rowset, and how to migrate agent-maintained rows safely." />
+<meta property="og:image" content="{{ og_image_url }}" />
+<meta property="og:locale" content="en_US" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Airtable alternatives for AI-agent-managed datasets" />
+<meta name="twitter:description" content="A practical Airtable alternative guide for private MCP and REST agent workflows." />
+<meta name="twitter:image" content="{{ og_image_url }}" />
+{% endblock meta %}
+
+{% block content %}
+<article class="bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
+  <section class="relative overflow-hidden border-b border-slate-200 bg-[#f7faf8] dark:border-slate-800 dark:bg-[#050807]">
+    <div class="rs-grid-field absolute inset-0" aria-hidden="true"></div>
+    <div class="relative mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
+      <a href="{% url 'landing' %}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">&larr; Rowset</a>
+      <p class="fb-label-caps mt-8 text-emerald-700 dark:text-emerald-300">Airtable alternative</p>
+      <h1 class="mt-4 text-4xl font-semibold leading-none text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
+        Airtable alternatives for AI-agent-managed datasets
+      </h1>
+      <p class="mt-6 text-lg leading-8 text-slate-700 dark:text-slate-300">
+        Airtable is a strong no-code database for teams that need views, forms, automations, templates, and collaborative editing. Rowset is different: it gives trusted AI agents a private MCP and REST backend for rows they need to create, update, search, export, and hand back to humans.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="{% url 'account_signup' %}" class="fb-button-primary">Create a dataset</a>
+        <a href="{% url 'docs_page' category='features' page='mcp' %}" class="fb-button-secondary">Read MCP docs</a>
+        <a href="{% url 'pricing' %}" class="fb-button-secondary">Pricing</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <div class="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.7fr_1.3fr] lg:px-8">
+      <aside class="text-sm leading-6 text-slate-600 dark:text-slate-300">
+        <p class="fb-label-caps text-cyan-700 dark:text-cyan-300">Short version</p>
+        <p class="mt-3">
+          Use Airtable when humans need a flexible app-like workspace. Use Rowset when an agent needs authenticated row storage with stable indexes, dataset instructions, schema context, exports, and private-by-default access.
+        </p>
+      </aside>
+      <div class="prose prose-slate max-w-none dark:prose-invert prose-headings:font-semibold prose-a:text-emerald-700 dark:prose-a:text-emerald-300">
+        <h2>Best Airtable alternatives for AI-agent-managed datasets in 2026</h2>
+        <p>
+          Most Airtable alternative lists compare spreadsheet interfaces, relational fields, forms, automations, and template libraries. Those comparisons are useful, but they miss a newer job: an AI agent needs a durable place to keep structured work. The agent may be maintaining a task board, triaging feedback, building a personal CRM, collecting research rows, or preparing an export for another system. In that case, the central question is not "which spreadsheet UI is best?" The question is "which backend can an agent use safely without browser automation?"
+        </p>
+        <p>
+          Rowset is built for that narrower job. A user signs in, creates or lets an agent create a dataset, chooses a stable index column, adds instructions, and gives the agent access through <a href="{% url 'docs_page' category='features' page='mcp' %}">hosted MCP</a> or the <a href="{% url 'docs_page' category='api-reference' page='datasets' %}">Dataset API</a>. The agent can then read rows, update specific records, search datasets, export CSV/JSONL/XLSX, and create read-only previews only when a human needs to inspect the result.
+        </p>
+        <p>
+          That makes Rowset a practical Airtable alternative for AI-agent-managed datasets, not a blanket replacement for Airtable. It fits work where rows are the handoff between a human and an agent: <a href="{% url 'use_case_detail' slug='agent-task-board' %}">agent task boards</a>, <a href="{% url 'use_case_detail' slug='feedback-triage' %}">feedback triage</a>, QA lists, lead research, content pipelines, inventory snapshots, lightweight CRMs, and other operational tables that need private authenticated writes more than a rich human editing surface.
+        </p>
+
+        <h2>Airtable is still the better choice when humans need the app</h2>
+        <p>
+          Airtable is still the better choice when your team primarily wants a collaborative no-code workspace. If people need custom views, kanban layouts, forms, automations, interfaces, templates, permissions, comments, and daily manual editing, Airtable is mature and familiar. Rowset is not trying to replace that full application layer.
+        </p>
+        <p>
+          Airtable can also be the better choice when the workflow already lives there and agents only need occasional read-only context. If the table structure is stable, the team is comfortable with Airtable's API, and human operators are still the main users, there may be no reason to move. Rowset becomes interesting when the agent is the primary maintainer of the rows and the human wants a small, private backend instead of another full workspace to administer.
+        </p>
+
+        <h2>Why Rowset is different</h2>
+        <p>
+          Rowset starts from the agent handoff. MCP is a first-class interface, so compatible agents can discover tools and schemas instead of scraping a web UI. REST is available for scripts and backend jobs. Dataset rows have explicit headers, index columns, instructions, metadata, search, and export formats. Public previews are read-only and optional; private MCP/REST remains the mutation path.
+        </p>
+        <p>
+          Rowset also gives the agent a setup prompt through <a href="{% url 'docs_page' category='features' page='agent-access' %}">Agent access</a>. That prompt includes the endpoint, authentication pattern, and operating guidance the agent needs to use the account. This is different from asking an agent to log into a browser, infer table semantics from a UI, or paste sensitive data into a conversation. The smaller surface is easier to audit and easier to revoke.
+        </p>
+
+        <h2>Migration decision table</h2>
+        <div class="not-prose overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <table class="min-w-full text-left text-sm">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+              <tr>
+                <th class="px-4 py-3">Situation</th>
+                <th class="px-4 py-3">Use Airtable</th>
+                <th class="px-4 py-3">Use Rowset</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+              <tr>
+                <td class="px-4 py-3">Humans edit rows every day</td>
+                <td class="px-4 py-3">Yes</td>
+                <td class="px-4 py-3">Only if agents own a separate working copy</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3">Agent needs private row CRUD</td>
+                <td class="px-4 py-3">Possible through API setup</td>
+                <td class="px-4 py-3">Best fit</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3">Workflow needs forms and interfaces</td>
+                <td class="px-4 py-3">Best fit</td>
+                <td class="px-4 py-3">Not the goal</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3">Need CSV, JSONL, XLSX handoff</td>
+                <td class="px-4 py-3">Possible</td>
+                <td class="px-4 py-3">Built in</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3">Want optional read-only review previews</td>
+                <td class="px-4 py-3">Use shared views</td>
+                <td class="px-4 py-3">Use public preview only when enabled</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>How to move an agent workflow from Airtable to Rowset</h2>
+        <p>
+          Start with one table, not the whole base. Export the rows to CSV, decide which column uniquely identifies a row, then create a Rowset dataset with that column as the index. Add a description and instructions that explain who may update the dataset, which statuses are valid, what evidence should be attached, and when the agent should ask before changing data.
+        </p>
+        <p>
+          Keep Airtable as the human workspace if it is still doing useful work. Rowset can be the agent-maintained working layer, a staging table before a richer app, or a private backend for datasets that should not be public by default. Compare the <a href="{% url 'pricing' %}">pricing</a>, create a small test dataset, and verify that the agent can perform one complete read-update-export loop before migrating more rows.
+        </p>
+
+        <h2>FAQ</h2>
+        {% for question, answer in faqs %}
+          <h3>{{ question }}</h3>
+          <p>{{ answer }}</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-[#f7faf8] dark:bg-[#050807]">
+    <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+      <div>
+        <h2 class="text-3xl font-semibold text-slate-950 dark:text-white">Test Rowset with one agent-owned table.</h2>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-700 dark:text-slate-300">Create a private dataset, connect a trusted agent over MCP or REST, and see whether the row handoff is simpler than maintaining another full workspace.</p>
+      </div>
+      <div class="flex flex-col gap-3 sm:flex-row">
+        <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
+        <a href="{% url 'docs_page' category='api-reference' page='datasets' %}" class="fb-button-secondary">Dataset API</a>
+      </div>
+    </div>
+  </section>
+</article>
+{% endblock content %}
+
+{% block schema %}
+<script type="application/ld+json">
+  {{ schema_json|safe }}
+</script>
+{% endblock schema %}

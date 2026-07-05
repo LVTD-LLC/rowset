@@ -45,4 +45,14 @@ urlpatterns = [
         redirect_without_trailing_slash,
         name="database_mcp_server_playbook_slash_redirect",
     ),
+    path(
+        "alternatives/airtable",
+        views.AirtableAlternativeView.as_view(),
+        name="airtable_alternative",
+    ),
+    path(
+        "alternatives/airtable/",
+        redirect_without_trailing_slash,
+        name="airtable_alternative_slash_redirect",
+    ),
 ]

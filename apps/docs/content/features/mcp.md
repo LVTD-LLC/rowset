@@ -28,6 +28,11 @@ If you are choosing between the hosted MCP endpoint and plain HTTP calls, read
 It gives the short decision rule for agents, scripts, backend jobs, and REST
 fallbacks.
 
+If you are comparing Airtable-style tools for agent-maintained rows, read
+[Airtable alternatives for AI-agent-managed datasets](/alternatives/airtable).
+It explains when Rowset is a narrower MCP/REST backend instead of a full
+no-code workspace.
+
 ## MCP URL
 
 ```text

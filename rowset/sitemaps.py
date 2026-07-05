@@ -9,8 +9,11 @@ from apps.pages.use_cases import get_use_case_pages
 class StaticViewSitemap(sitemaps.Sitemap):
     """Generate Sitemap for the site"""
 
-    priority = 0.9
+    default_priority = 0.9
     protocol = "https"
+    priority_overrides = {
+        "airtable_alternative": 0.7,
+    }
 
     def items(self):
         """Identify items that will be in the Sitemap
@@ -24,6 +27,7 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "pricing",
             "use_cases",
             "database_mcp_server_playbook",
+            "airtable_alternative",
             "blog_posts",
         ]
 
@@ -37,6 +41,9 @@ class StaticViewSitemap(sitemaps.Sitemap):
             str: Url for the sitemap item
         """
         return reverse(item)
+
+    def priority(self, item):
+        return self.priority_overrides.get(item, self.default_priority)
 
 
 class UseCaseSitemap(sitemaps.Sitemap):

@@ -1,8 +1,11 @@
+from urllib.parse import urlsplit
+
 from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect
+from django.templatetags.static import static
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
@@ -11,6 +14,7 @@ from apps.core.models import Profile
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
+    faq_page_schema,
     json_ld,
     organization_schema,
     software_application_schema,
@@ -20,6 +24,13 @@ from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+
+
+def build_absolute_static_url(path: str) -> str:
+    static_url = static(path)
+    if urlsplit(static_url).scheme in {"http", "https"}:
+        return static_url
+    return build_absolute_public_url(static_url)
 
 
 class LandingPageView(TemplateView):
@@ -184,6 +195,68 @@ class DatabaseMcpServerPlaybookView(TemplateView):
                         ("Database MCP server", "/playbooks/database-mcp-server"),
                     )
                 ),
+            ]
+        )
+        return context
+
+
+# FAQ answers are plain text and intentionally render through Django autoescaping.
+# Keep inline links in the template body, not inside this schema/source tuple.
+AIRTABLE_ALTERNATIVE_FAQS = (
+    (
+        "Is Rowset a full Airtable replacement?",
+        (
+            "No. Airtable is a broader no-code app builder with views, automations, "
+            "forms, templates, and collaboration features. Rowset is narrower: a "
+            "private MCP and REST dataset backend for trusted AI agents."
+        ),
+    ),
+    (
+        "When should I choose Rowset over Airtable?",
+        (
+            "Choose Rowset when an agent needs to create, update, search, export, "
+            "and share structured rows through a small authenticated backend without "
+            "using browser automation or exposing a production database."
+        ),
+    ),
+    (
+        "Can I move Airtable data into Rowset?",
+        (
+            "Yes. Export the Airtable table to CSV, create a Rowset dataset with a "
+            "stable index column, then give the agent instructions for how rows "
+            "should be maintained."
+        ),
+    ),
+)
+
+
+class AirtableAlternativeView(TemplateView):
+    template_name = "pages/alternatives/airtable.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["faqs"] = AIRTABLE_ALTERNATIVE_FAQS
+        context["canonical_url"] = build_absolute_public_url("/alternatives/airtable")
+        context["og_image_url"] = build_absolute_static_url("vendors/images/logo.png")
+        context["schema_json"] = json_ld(
+            [
+                article_schema(
+                    headline="Airtable alternatives for AI-agent-managed datasets",
+                    description=(
+                        "A practical Airtable alternative guide for teams that need "
+                        "trusted AI agents to maintain private structured rows over MCP and REST."
+                    ),
+                    path="/alternatives/airtable",
+                    date_published="2026-07-05",
+                    date_modified="2026-07-05",
+                ),
+                breadcrumb_list_schema(
+                    (
+                        ("Home", "/"),
+                        ("Airtable alternatives", "/alternatives/airtable"),
+                    )
+                ),
+                faq_page_schema(AIRTABLE_ALTERNATIVE_FAQS),
             ]
         )
         return context

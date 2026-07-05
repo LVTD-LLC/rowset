@@ -55,7 +55,7 @@
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `airtable` | Phase 3 | `/alternatives/airtable` | TBD | homepage, pricing, MCP docs, Dataset API |
+| `airtable` | Phase 3 | `/alternatives/airtable` | homepage, MCP docs, Dataset API docs | pricing, signup, MCP docs, Dataset API, Agent access, agent task board, feedback triage |
 | `google-sheets` | Phase 4 | `/alternatives/google-sheets` | TBD | homepage, pricing, use cases, Dataset API |
 | `baserow` | Phase 6 | `/alternatives/baserow` | TBD | homepage, MCP docs, Dataset API |
 | `nocodb` | Phase 7 | `/alternatives/nocodb` | TBD | homepage, MCP docs, Dataset API |
