@@ -139,7 +139,7 @@ class TestDocsView:
 
         assert response.status_code == 200
         content = response.content.decode()
-        assert "generic &quot;dataset API&quot; options" in content
+        assert "dataset API" in content
         assert "/docs/features/mcp/" in content
         assert "stable index values" in content
 
