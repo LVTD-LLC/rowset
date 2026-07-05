@@ -106,6 +106,7 @@ def test_dashboard_does_not_show_email_confirmation_reminder(client):
     response = client.get(reverse("home"))
 
     assert response.status_code == 200
+    assert response["Cache-Control"] == "public, max-age=3600"
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
     assert "Connect your AI agent to Rowset" in content
@@ -316,7 +317,7 @@ def test_json_ld_escapes_script_breakout_sequences():
     assert "\\u0026" in payload
 
 
-def test_build_absolute_static_url_preserves_protocol_relative_static_url(settings):
+def test_build_absolute_static_url_adds_scheme_to_protocol_relative_static_url(settings):
     settings.STATIC_URL = "//cdn.example.test/static/"
     settings.SITE_URL = "https://testserver"
     settings.STORAGES = {
@@ -328,7 +329,7 @@ def test_build_absolute_static_url_preserves_protocol_relative_static_url(settin
 
     assert (
         build_absolute_static_url("vendors/images/logo.png")
-        == "//cdn.example.test/static/vendors/images/logo.png"
+        == "https://cdn.example.test/static/vendors/images/logo.png"
     )
 
 

@@ -6,6 +6,8 @@ from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect
 from django.templatetags.static import static
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
@@ -29,8 +31,11 @@ logger = get_rowset_logger(__name__)
 def build_absolute_static_url(path: str) -> str:
     static_url = static(path)
     parsed_static_url = urlsplit(static_url)
-    if parsed_static_url.scheme in {"http", "https"} or parsed_static_url.netloc:
+    if parsed_static_url.scheme in {"http", "https"}:
         return static_url
+    if parsed_static_url.netloc:
+        public_scheme = urlsplit(settings.SITE_URL).scheme or "https"
+        return f"{public_scheme}:{static_url}"
     return build_absolute_public_url(static_url)
 
 
@@ -231,6 +236,7 @@ AIRTABLE_ALTERNATIVE_FAQS = (
 )
 
 
+@method_decorator(cache_control(public=True, max_age=3600), name="dispatch")
 class AirtableAlternativeView(TemplateView):
     template_name = "pages/alternatives/airtable.html"
 
