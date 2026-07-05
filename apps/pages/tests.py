@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.exceptions import ImproperlyConfigured
+from django.test import override_settings
 from django.urls import reverse
 
 from apps.core.capabilities import RowsetUseCase
@@ -17,6 +18,11 @@ from apps.pages.checks import check_use_case_page_registry
 from apps.pages.schema import article_schema, breadcrumb_list_schema, faq_page_schema, json_ld
 
 pytestmark = pytest.mark.django_db
+
+
+def _nav_html(content, aria_label):
+    start = content.index(f'aria-label="{aria_label}"')
+    return content[start : content.index("</nav>", start)]
 
 
 def test_login_page_shows_passkey_option(client):
@@ -120,6 +126,33 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert '"@type": "Organization"' in content
 
 
+def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
+    blog_href = f'href="{reverse("blog_posts")}"'
+
+    landing_response = client.get(reverse("landing"))
+    assert landing_response.status_code == 200
+    landing_content = landing_response.content.decode()
+
+    assert blog_href in _nav_html(landing_content, "Primary navigation")
+    assert blog_href in _nav_html(landing_content, "Mobile navigation")
+    assert blog_href in _nav_html(landing_content, "Footer navigation")
+
+    user = get_user_model().objects.create_user(
+        username="chrome-blog",
+        email="chrome-blog@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    app_response = client.get(reverse("home"))
+    assert app_response.status_code == 200
+    app_content = app_response.content.decode()
+
+    assert blog_href in _nav_html(app_content, "Primary navigation")
+    assert blog_href in _nav_html(app_content, "Mobile navigation")
+    assert blog_href in _nav_html(app_content, "Footer navigation")
+
+
 def test_landing_page_redirects_authenticated_users_to_home(client):
     user = get_user_model().objects.create_user(
         username="landing-auth",
@@ -134,6 +167,7 @@ def test_landing_page_redirects_authenticated_users_to_home(client):
     assert response["Location"] == reverse("home")
 
 
+@override_settings(SITE_URL="https://testserver")
 def test_robots_txt_allows_crawling_and_links_sitemap(client):
     response = client.get(reverse("robots_txt"), secure=True, HTTP_HOST="testserver")
 
