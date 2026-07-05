@@ -141,7 +141,7 @@ class TestDocsView:
         content = response.content.decode()
         assert "dataset API" in content
         assert "/docs/features/mcp/" in content
-        assert "stable index values" in content
+        assert "real business key" in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_agent_discovery_docs_include_runtime_discovery_surfaces(self, client):
