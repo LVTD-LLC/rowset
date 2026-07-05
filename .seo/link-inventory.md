@@ -9,10 +9,10 @@
 | Slug | URL | Title / anchor candidate | Used by patterns |
 |---|---|---|---|
 | `/` | https://rowset.lvtd.dev/ | Rowset private datasets for AI agents | All |
-| `/pricing` | https://rowset.lvtd.dev/pricing | Rowset pricing | Compare, alternatives, playbooks |
-| `/use-cases` | https://rowset.lvtd.dev/use-cases | Rowset use cases | Use-case, playbooks |
-| `/uses` | https://rowset.lvtd.dev/uses | Technology behind Rowset | Technical playbooks |
-| `/blog/` | https://rowset.lvtd.dev/blog/ | Rowset Blog | Playbooks |
+| `/pricing` | https://rowset.lvtd.dev/pricing | Rowset pricing | Compare, alternatives, long-form guides |
+| `/how-to` | https://rowset.lvtd.dev/how-to | Rowset how-to guides | Use-case guides, long-form guides |
+| `/uses` | https://rowset.lvtd.dev/uses | Technology behind Rowset | Technical explanations |
+| `/blog/` | https://rowset.lvtd.dev/blog/ | Rowset Blog | Long-form guides |
 | `/llms.txt` | https://rowset.lvtd.dev/llms.txt | Rowset overview for agents | AI/agent discovery |
 | `/SKILL.md` | https://rowset.lvtd.dev/SKILL.md | Rowset setup skill | Agent setup |
 
@@ -20,27 +20,27 @@
 
 | Slug | URL | Title | Linked by |
 |---|---|---|---|
-| `/docs/getting-started/introduction/` | https://rowset.lvtd.dev/docs/getting-started/introduction/ | Getting started with Rowset | All |
-| `/docs/features/datasets/` | https://rowset.lvtd.dev/docs/features/datasets/ | Working with datasets | Use-case, alternatives, playbooks |
-| `/docs/features/public-previews/` | https://rowset.lvtd.dev/docs/features/public-previews/ | Public previews | Use-case, alternatives |
-| `/docs/features/agent-discovery/` | https://rowset.lvtd.dev/docs/features/agent-discovery/ | Agent discovery | Use-case, playbooks |
-| `/docs/features/mcp/` | https://rowset.lvtd.dev/docs/features/mcp/ | MCP access | Alternatives, playbooks |
-| `/docs/features/agent-access/` | https://rowset.lvtd.dev/docs/features/agent-access/ | Agent access | Alternatives, use-case |
-| `/docs/api-reference/introduction/` | https://rowset.lvtd.dev/docs/api-reference/introduction/ | Rowset API introduction | Alternatives, playbooks |
-| `/docs/api-reference/user/` | https://rowset.lvtd.dev/docs/api-reference/user/ | User API | Setup content |
-| `/docs/api-reference/projects/` | https://rowset.lvtd.dev/docs/api-reference/projects/ | Project API | Use-case content |
-| `/docs/api-reference/datasets/` | https://rowset.lvtd.dev/docs/api-reference/datasets/ | Dataset API | All |
+| `/tutorials/first-agent-dataset/` | https://rowset.lvtd.dev/tutorials/first-agent-dataset/ | Getting started with Rowset | All |
+| `/explanations/datasets/` | https://rowset.lvtd.dev/explanations/datasets/ | Working with datasets | Use-case guides, alternatives, long-form guides |
+| `/how-to/share-public-preview/` | https://rowset.lvtd.dev/how-to/share-public-preview/ | Public previews | Use-case, alternatives |
+| `/how-to/help-agents-discover-rowset/` | https://rowset.lvtd.dev/how-to/help-agents-discover-rowset/ | Agent discovery | Use-case guides, long-form guides |
+| `/how-to/connect-mcp/` | https://rowset.lvtd.dev/how-to/connect-mcp/ | MCP access | Alternatives, long-form guides |
+| `/how-to/configure-agent-access/` | https://rowset.lvtd.dev/how-to/configure-agent-access/ | Agent access | Alternatives, use-case |
+| `/docs/api-overview/` | https://rowset.lvtd.dev/docs/api-overview/ | Rowset API introduction | Alternatives, long-form guides |
+| `/docs/user-api/` | https://rowset.lvtd.dev/docs/user-api/ | User API | Setup content |
+| `/docs/project-api/` | https://rowset.lvtd.dev/docs/project-api/ | Project API | Use-case content |
+| `/docs/dataset-api/` | https://rowset.lvtd.dev/docs/dataset-api/ | Dataset API | All |
 
 ### Existing Use-Case Pages
 
 | Slug | URL | Title | Linked by |
 |---|---|---|---|
-| `/use-cases/personal-crm` | https://rowset.lvtd.dev/use-cases/personal-crm | Agent-managed personal CRM | Use-case, alternatives |
-| `/use-cases/agent-task-board` | https://rowset.lvtd.dev/use-cases/agent-task-board | Agent task board | Use-case, alternatives |
-| `/use-cases/feedback-triage` | https://rowset.lvtd.dev/use-cases/feedback-triage | Feedback triage | Use-case, alternatives |
-| `/use-cases/content-pipeline` | https://rowset.lvtd.dev/use-cases/content-pipeline | Content pipeline | Use-case, playbooks |
-| `/use-cases/product-inventory-catalog` | https://rowset.lvtd.dev/use-cases/product-inventory-catalog | Product or inventory catalog | Use-case, alternatives |
-| `/use-cases/bug-qa-tracker` | https://rowset.lvtd.dev/use-cases/bug-qa-tracker | Bug or QA tracker | Use-case, playbooks |
+| `/how-to/personal-crm` | https://rowset.lvtd.dev/how-to/personal-crm | Agent-managed personal CRM | Use-case, alternatives |
+| `/how-to/agent-task-board` | https://rowset.lvtd.dev/how-to/agent-task-board | Agent task board | Use-case, alternatives |
+| `/how-to/feedback-triage` | https://rowset.lvtd.dev/how-to/feedback-triage | Feedback triage | Use-case, alternatives |
+| `/how-to/content-pipeline` | https://rowset.lvtd.dev/how-to/content-pipeline | Content pipeline | Use-case guides, long-form guides |
+| `/how-to/product-inventory-catalog` | https://rowset.lvtd.dev/how-to/product-inventory-catalog | Product or inventory catalog | Use-case, alternatives |
+| `/how-to/bug-qa-tracker` | https://rowset.lvtd.dev/how-to/bug-qa-tracker | Bug or QA tracker | Use-case guides, long-form guides |
 
 ### Blog Posts
 
@@ -56,19 +56,19 @@
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `airtable` | Phase 3 | `/alternatives/airtable/` | landing page, use cases index | pricing, signup, MCP docs, Dataset API |
+| `airtable` | Phase 3 | `/alternatives/airtable/` | landing page, how-to index | pricing, signup, MCP docs, Dataset API |
 | `google-sheets` | Phase 4 | `/alternatives/google-sheets` | TBD | homepage, pricing, use cases, Dataset API |
 | `baserow` | Phase 6 | `/alternatives/baserow` | TBD | homepage, MCP docs, Dataset API |
 | `nocodb` | Phase 7 | `/alternatives/nocodb` | TBD | homepage, MCP docs, Dataset API |
 
-### `/use-cases/[slug]` or Future `/for/[slug]`
+### `/how-to/[slug]` or Future `/for/[slug]`
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `ai-agent-crm` | existing/Phase 1 expansion | `/use-cases/personal-crm` | homepage, use-cases index | Dataset API, MCP docs, Agent access |
-| `agent-task-board` | existing/Phase 1 expansion | `/use-cases/agent-task-board` | homepage, use-cases index | Dataset API, MCP docs, projects docs |
-| `feedback-triage` | existing/Phase 1 expansion | `/use-cases/feedback-triage` | homepage, use-cases index | public previews, Dataset API |
-| `content-pipeline` | existing/Phase 1 expansion | `/use-cases/content-pipeline` | homepage, use-cases index | projects docs, Dataset API |
+| `ai-agent-crm` | existing/Phase 1 expansion | `/how-to/personal-crm` | homepage, how-to index | Dataset API, MCP docs, Agent access |
+| `agent-task-board` | existing/Phase 1 expansion | `/how-to/agent-task-board` | homepage, how-to index | Dataset API, MCP docs, projects docs |
+| `feedback-triage` | existing/Phase 1 expansion | `/how-to/feedback-triage` | homepage, how-to index | public previews, Dataset API |
+| `content-pipeline` | existing/Phase 1 expansion | `/how-to/content-pipeline` | homepage, how-to index | projects docs, Dataset API |
 
 ### `/compare/[slug]`
 
@@ -76,13 +76,13 @@
 |---|---|---|---|---|
 | `rowset-vs-airtable` | Phase 9 | `/compare/rowset-vs-airtable` | TBD | `/alternatives/airtable`, pricing, MCP docs |
 
-### `/playbooks/[slug]`
+### Long-Form Explanations and How-To Guides
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `database-mcp-server` | Phase 2 | `/playbooks/database-mcp-server` | MCP docs, Dataset API docs | MCP docs, Dataset API, Agent access, pricing, personal CRM, agent task board, feedback triage |
-| `spreadsheet-database-for-ai-agents` | Phase 5 | `/playbooks/spreadsheet-database-for-ai-agents` | TBD | Google Sheets alternatives, Dataset API, MCP docs |
-| `connect-ai-agent-to-dataset-api` | Phase 8 | `/playbooks/connect-ai-agent-to-dataset-api` | TBD | MCP docs, Dataset API, Agent access |
+| `database-mcp-server` | Phase 2 | `/explanations/database-mcp-server` | MCP docs, Dataset API docs | MCP docs, Dataset API, Agent access, pricing, personal CRM, agent task board, feedback triage |
+| `spreadsheet-database-for-ai-agents` | Phase 5 | `/explanations/spreadsheet-database-for-ai-agents` | TBD | Google Sheets alternatives, Dataset API, MCP docs |
+| `connect-ai-agent-to-dataset-api` | Phase 8 | `/how-to/connect-ai-agent-to-dataset-api` | TBD | MCP docs, Dataset API, Agent access |
 
 ## Anchor-Text Variations
 

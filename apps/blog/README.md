@@ -1,6 +1,6 @@
 # Blog Posts
 
-Published blog posts live in `apps/blog/posts` as Markdown files. Every
+Published blog posts live in `apps/pages/content/blog` as Markdown files. Every
 `*.md` file in that directory is public on deploy at `/blog/{filename-slug}`.
 
 Required frontmatter:

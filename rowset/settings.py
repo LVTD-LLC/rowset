@@ -135,7 +135,6 @@ CUSTOM_APPS = [
     "apps.datasets.apps.DatasetsConfig",
     "apps.pages.PagesConfig",
     "apps.blog.BlogConfig",
-    "apps.docs.DocsConfig",
 ]
 
 INSTALLED_APPS = DEFAULT_APPS + THIRD_PARTY_APPS + CUSTOM_APPS

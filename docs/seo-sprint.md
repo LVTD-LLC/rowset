@@ -22,13 +22,13 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 |---|---|---|---|---|
 | 0 | Technical foundations: robots, sitemap headers, schema helpers | Setup | completed | #190 |
 | 1 | Strengthen Dataset API, MCP docs, and use-case pages as the internal-link spine | Use-case/docs | completed | #193 |
-| 2 | Ship `/playbooks/database-mcp-server` from measured MCP/database demand | Playbook | completed | #196 |
+| 2 | Ship `/explanations/database-mcp-server` from measured MCP/database demand | Playbook | completed | #196 |
 | 3 | Ship `/alternatives/airtable` with an AI-agent dataset angle | Alternatives | completed | #204 |
 | 4 | Ship `/alternatives/google-sheets` with an MCP/REST backend angle | Alternatives | pending | - |
-| 5 | Ship `/playbooks/spreadsheet-database-for-ai-agents` | Playbook | pending | - |
+| 5 | Ship `/explanations/spreadsheet-database-for-ai-agents` | Explanation | pending | - |
 | 6 | Ship `/alternatives/baserow` with honest open-source/no-code positioning | Alternatives | pending | - |
 | 7 | Ship `/alternatives/nocodb` with SQL UI vs agent backend positioning | Alternatives | pending | - |
-| 8 | Ship `/playbooks/connect-ai-agent-to-dataset-api` as a strategic product-native guide | Playbook | pending | - |
+| 8 | Ship `/how-to/connect-ai-agent-to-dataset-api` as a strategic product-native guide | How-to guide | pending | - |
 | 9 | Ship `/compare/rowset-vs-airtable` after alternatives pages exist | Compare | pending | - |
 | 10 | Off-page starter submissions and backlink target list | Off-page | pending | - |
 
@@ -51,7 +51,7 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 - **Domain Rating:** unknown; use DataForSEO KD/backlink signals until Ahrefs is connected.
 - **Stack:** Django 6, Django templates, HTMX, Alpine.js, Tailwind/PostCSS.
 - **Marketing pages root:** `apps/pages`, `frontend/templates/pages`.
-- **Docs content root:** `apps/docs/content`.
+- **Checked-in content root:** `apps/pages/content`.
 - **Sitemap generator:** `rowset/sitemaps.py`.
 - **Brand accent color:** emerald over slate/white surfaces.
 - **Fonts:** Inter / system sans.
@@ -74,9 +74,11 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 
 | Surface | URL pattern | Implementation |
 |---|---|---|
-| Use cases | `/use-cases/<slug>` | `apps/pages/use_cases.py`, `frontend/templates/pages/use-case-detail.html` |
-| Docs | `/docs/<category>/<page>/` | `apps/docs/content`, docs views/templates |
-| Blog | `/blog/<slug>` | `apps/blog`, Markdown-backed blog service/templates |
+| How-to guides | `/how-to/<slug>` | `apps/pages/content/how-to`, `apps/pages/use_cases.py`, `frontend/templates/pages/use-case-detail.html` |
+| Docs reference | `/docs/<slug>/` | `apps/pages/content/docs`, shared pages content renderer/templates |
+| Tutorials | `/tutorials/<slug>/` | `apps/pages/content/tutorials`, shared pages content renderer/templates |
+| Explanations | `/explanations/<slug>/` | `apps/pages/content/explanations`, shared pages content renderer/templates |
+| Blog | `/blog/<slug>` | `apps/pages/content/blog`, Markdown-backed blog service/templates |
 | Sitemap | `/sitemap.xml` | `rowset/sitemaps.py` |
 | Public agent skill | `/SKILL.md` | core skill-serving path |
 | Agent overview | `/llms.txt` | generated Rowset overview for agents/search tools |
@@ -92,11 +94,11 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 | `apps/pages/urls.py` | Marketing page routes |
 | `frontend/templates/pages/landing-page.html` | Homepage copy and internal links |
 | `frontend/templates/pages/pricing.html` | Pricing page copy |
-| `frontend/templates/pages/use-cases-index.html` | Use-case index |
+| `frontend/templates/pages/content/how_to_index.html` | How-to guide and use-case index |
 | `frontend/templates/pages/use-case-detail.html` | Use-case page template |
 | `frontend/templates/base_landing.html` | Shared public meta/schema fallback |
 | `rowset/sitemaps.py` | Sitemap entries |
-| `apps/docs/content/**` | Docs pages and keyword-focused metadata |
+| `apps/pages/content/**` | Docs, tutorials, how-to guides, explanations, and blog Markdown |
 
 ## Technical Audit Snapshot
 
@@ -112,7 +114,7 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 Findings:
 
-- `sitemap.xml` returns `200` and includes homepage, use cases, pricing, docs, and blog URLs.
+- `sitemap.xml` returns `200` and includes homepage, how-to guides, pricing, docs, and blog URLs.
 - Production `robots.txt` returns `404`. This is the main Phase 0 fix.
 - `sitemap.xml` response includes `X-Robots-Tag: noindex, noodp, noarchive`; review whether this header is inherited globally and remove it from sitemap responses if so.
 - Homepage returns `200`, has a title, meta description, canonical, one H1, and JSON-LD.
@@ -129,21 +131,21 @@ Findings:
 
 **Internal-link minimums:**
 - `/alternatives/*` -> at least 2 sibling alternatives, 1 feature/doc page, 1 pricing/signup link.
-- `/use-cases/*` -> at least 2 feature/doc links and 1 sibling use case.
+- `/how-to/*` -> at least 2 feature/doc links and 1 sibling guide where relevant.
 - `/compare/*` -> both related alternatives pages, pricing, and one setup/doc link.
-- `/playbooks/*` -> at least 3 docs/features, 2 use cases, 1 alternative/comparison where relevant.
+- `/explanations/*` -> at least 3 docs/reference pages, 2 how-to guides, 1 alternative/comparison where relevant.
 - Every new SEO page should be reachable from at least 2 existing pages.
 
 **Word counts:**
 - `/alternatives/*`: at least 600 words.
 - `/compare/*`: at least 700 words.
-- `/playbooks/*`: at least 2,500 words.
+- long-form explanation pages: at least 2,500 words.
 - Existing use-case pages should be expanded only where it improves concrete workflow usefulness.
 
 **Schema:**
 - Homepage: `SoftwareApplication` or `Product`, plus `Organization` when helper exists.
-- Alternatives/use-cases/compare pages: `BreadcrumbList` and `FAQPage` where an FAQ section exists.
-- Playbooks/blog posts: `Article` and `BreadcrumbList`.
+- Alternatives/how-to/compare pages: `BreadcrumbList` and `FAQPage` where an FAQ section exists.
+- Long-form explanations/blog posts: `Article` and `BreadcrumbList`.
 
 ## Keyword Research Appendix
 
@@ -152,7 +154,7 @@ Values below are measured unless explicitly labeled otherwise. See `.seo/keyword
 ### Owned Search and Analytics Baseline
 
 - **GSC, last 90 days:** one query/page row: `rowset` -> homepage, 1 impression, 0 clicks, average position 9. There are no meaningful striking-distance opportunities yet.
-- **Plausible, last 90 days:** 42 direct visitors, 7 referral visitors, 2 organic-social visitors, and no Organic Search rows. Top public pages include `/` (34 visitors), `/home` (15), `/docs/getting-started/introduction/` (9), `/use-cases` (7), `/docs/features/mcp/` (4), and `/accounts/signup/` (4).
+- **Plausible, last 90 days:** 42 direct visitors, 7 referral visitors, 2 organic-social visitors, and no Organic Search rows. Top public pages include `/` (34 visitors), `/home` (15), `/tutorials/first-agent-dataset/` (9), `/how-to` (7), `/how-to/connect-mcp/` (4), and `/accounts/signup/` (4).
 - **Plausible goals:** one `Outbound Link: Click`; no signup/activation goal data available.
 - **PostHog, last 90 days:** project `rowset` is connected, but only `$set` (220) and `$identify` (2) events were present. No pageview, signup, dataset, project, checkout, or subscription events were available for conversion weighting.
 - **Implication:** market demand should come from DataForSEO for now, but Phase 0/1 should improve crawlability, internal links, and measurement before relying on conversion-weighted SEO decisions.
@@ -171,13 +173,13 @@ Values below are measured unless explicitly labeled otherwise. See `.seo/keyword
 
 | Keyword | Existing URL / Target | US volume | KD | CPC |
 |---|---|---:|---|---|
-| dataset api | `/docs/api-reference/datasets/` | 480 | 43 | $24.07 |
-| spreadsheet database | `/playbooks/spreadsheet-database-for-ai-agents` | 170 | 20 | $55.70 |
-| database mcp server | `/playbooks/database-mcp-server` | 70 | 16 | $14.92 |
-| mcp server for database | `/playbooks/database-mcp-server` | 20 | 16 | n/a |
-| ai agent crm | `/use-cases/personal-crm` | 30 | 3 | $22.77 |
-| agent task board | `/use-cases/agent-task-board` | no measured row | n/a | n/a |
-| feedback triage ai agent | `/use-cases/feedback-triage` | no measured row | n/a | n/a |
+| dataset api | `/docs/dataset-api/` | 480 | 43 | $24.07 |
+| spreadsheet database | `/explanations/spreadsheet-database-for-ai-agents` | 170 | 20 | $55.70 |
+| database mcp server | `/explanations/database-mcp-server` | 70 | 16 | $14.92 |
+| mcp server for database | `/explanations/database-mcp-server` | 20 | 16 | n/a |
+| ai agent crm | `/how-to/personal-crm` | 30 | 3 | $22.77 |
+| agent task board | `/how-to/agent-task-board` | no measured row | n/a | n/a |
+| feedback triage ai agent | `/how-to/feedback-triage` | no measured row | n/a | n/a |
 
 ### A.3 - Compare Candidates
 
@@ -191,9 +193,9 @@ Values below are measured unless explicitly labeled otherwise. See `.seo/keyword
 
 | Keyword | Page | US volume | KD | Notes |
 |---|---|---:|---|---|
-| database mcp server | `/playbooks/database-mcp-server` | 70 | 16 | Measured query variant from DataForSEO suggestions. |
-| connect ai agent to dataset api | `/playbooks/connect-ai-agent-to-dataset-api` | no measured row | n/a | Still strategic/product-native, but not a demand-led first page. |
-| agent managed feedback board | `/playbooks/agent-managed-feedback-board` | no measured row | n/a | Keep later unless product/content strategy overrides search demand. |
+| database mcp server | `/explanations/database-mcp-server` | 70 | 16 | Measured query variant from DataForSEO suggestions. |
+| connect ai agent to dataset api | `/how-to/connect-ai-agent-to-dataset-api` | no measured row | n/a | Still strategic/product-native, but not a demand-led first page. |
+| agent managed feedback board | `/how-to/agent-managed-feedback-board` | no measured row | n/a | Keep later unless product/content strategy overrides search demand. |
 
 ### A.5 - Striking Distance
 
@@ -247,7 +249,7 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 **Scope:**
 
-1. Add stronger internal links from homepage/use-case index into Dataset API docs, MCP docs, and the most commercially useful use cases.
+1. Add stronger internal links from homepage/how-to index into Dataset API docs, MCP docs, and the most commercially useful use cases.
 2. Add links from each use-case page to MCP docs, Dataset API, pricing/signup, and 1-2 sibling use cases.
 3. Expand the Dataset API and MCP docs where they can clearly answer `dataset api`, `database mcp server`, and agent-setup questions.
 4. Consider concise FAQ sections and `FAQPage` JSON-LD where questions are real and not keyword stuffing.
@@ -255,7 +257,7 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 **Verification:** page source has canonical, one H1, JSON-LD, and at least 3 relevant internal links per use-case page.
 
-### Phase 2 - Ship `/playbooks/database-mcp-server`
+### Phase 2 - Ship `/explanations/database-mcp-server`
 
 **Why:** `database mcp server` has measured demand (70 US searches/month, KD 16, $14.92 CPC), and Exa surfaced adjacent MCP/database tools. This is more concrete than the original unmeasured "connect agent to dataset API" seed.
 
@@ -285,7 +287,7 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 **Quality gate:** at least 600 words, honesty section, FAQ schema, links to use cases and Dataset API.
 
-### Phase 5 - Ship `/playbooks/spreadsheet-database-for-ai-agents`
+### Phase 5 - Ship `/explanations/spreadsheet-database-for-ai-agents`
 
 **Why:** `spreadsheet database` has measured demand (170 US searches/month, KD 20, $55.70 CPC). The CPC is strong, but this can become a positioning trap unless the page is explicit that Rowset is not a spreadsheet replacement.
 
@@ -309,7 +311,7 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 **Quality gate:** at least 600 words, honesty section, FAQ schema, current NocoDB feature/pricing review before writing.
 
-### Phase 8 - Ship `/playbooks/connect-ai-agent-to-dataset-api`
+### Phase 8 - Ship `/how-to/connect-ai-agent-to-dataset-api`
 
 **Why:** exact-match demand was not measured, but this remains the most product-native educational topic: concrete setup, clear payoff, and good internal links to docs.
 

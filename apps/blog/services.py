@@ -61,7 +61,8 @@ class BlogPost:
 
 
 def get_blog_posts_dir() -> Path:
-    return Path(getattr(settings, "BLOG_POSTS_DIR", settings.BASE_DIR / "apps" / "blog" / "posts"))
+    default_posts_dir = settings.BASE_DIR / "apps" / "pages" / "content" / "blog"
+    return Path(getattr(settings, "BLOG_POSTS_DIR", default_posts_dir))
 
 
 def is_blog_slug(value: str) -> bool:

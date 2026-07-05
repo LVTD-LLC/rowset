@@ -42,7 +42,6 @@ urlpatterns = [
     path("", include("apps.datasets.urls")),
     path("", include("apps.pages.urls")),
     path("", include("apps.core.urls")),
-    path("docs/", include("apps.docs.urls")),
     path(
         "sitemap.xml",
         public_sitemap,

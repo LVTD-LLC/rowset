@@ -37,8 +37,8 @@
 | HTTP MCP authorization uses bearer tokens when authorization is supported; tokens should not be placed in query strings. | https://modelcontextprotocol.io/specification/draft/basic/authorization | primary | Official draft authorization spec lists access token requirements. |
 | MCP authorization is recommended for user data, audits, enterprise controls, and rate limiting. | https://modelcontextprotocol.io/docs/tutorials/security/authorization | primary | Official MCP security tutorial lists when to use authorization. |
 | REST is a set of architectural constraints for efficient, reliable, scalable distributed systems. | https://developer.mozilla.org/en-US/docs/Glossary/REST | secondary authoritative | MDN glossary defines REST and notes standardized client/server interactions. |
-| Rowset exposes hosted MCP access and REST Dataset API access. | `apps/docs/content/features/mcp.md`, `apps/docs/content/api-reference/datasets.md` | product source | Local docs describe both surfaces. |
-| Rowset recommends MCP for compatible agent workflows and REST when MCP is unavailable. | `apps/docs/content/features/agent-access.md` | product source | Local Agent access docs state the preference and fallback. |
+| Rowset exposes hosted MCP access and REST Dataset API access. | `apps/pages/content/how-to/connect-mcp.md`, `apps/pages/content/docs/dataset-api.md` | product source | Local docs describe both surfaces. |
+| Rowset recommends MCP for compatible agent workflows and REST when MCP is unavailable. | `apps/pages/content/how-to/configure-agent-access.md` | product source | Local Agent access docs state the preference and fallback. |
 
 ## Information Gain
 
@@ -46,9 +46,9 @@ The piece does not try to define MCP or REST generically. It frames the decision
 
 ## Internal Links
 
-- `/docs/features/mcp/`
-- `/docs/api-reference/datasets/`
-- `/docs/features/agent-access/`
+- `/how-to/connect-mcp/`
+- `/docs/dataset-api/`
+- `/how-to/configure-agent-access/`
 - `/blog/agent-managed-datasets`
 
 ## QA Notes

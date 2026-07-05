@@ -35,21 +35,21 @@ The post applies stable-row-identity guidance to Rowset's actual product contrac
 
 | Claim | Source | Tier | Date checked | Verification |
 |---|---|---|---|---|
-| Rowset datasets expose headers, index column, semantic column schema, instructions, metadata, and relationship summaries to agents. | `apps/docs/content/features/datasets.md`; `apps/docs/content/features/mcp.md` | primary/product | 2026-07-05 | Verified in repo docs. |
-| If `index_column` is omitted on dataset creation, Rowset adds generated `rowset_id`. | `apps/docs/content/api-reference/datasets.md`; `apps/api/services.py` | primary/product | 2026-07-05 | Verified in API docs and service implementation. |
-| Rowset supports row lookup and update by index through REST and MCP. | `apps/docs/content/api-reference/datasets.md`; `apps/docs/content/features/mcp.md`; `apps/api/services.py`; `apps/mcp_server/server.py` | primary/product | 2026-07-05 | Verified endpoints/tool names in repo docs and code. |
+| Rowset datasets expose headers, index column, semantic column schema, instructions, metadata, and relationship summaries to agents. | `apps/pages/content/explanations/datasets.md`; `apps/pages/content/how-to/connect-mcp.md` | primary/product | 2026-07-05 | Verified in repo docs. |
+| If `index_column` is omitted on dataset creation, Rowset adds generated `rowset_id`. | `apps/pages/content/docs/dataset-api.md`; `apps/api/services.py` | primary/product | 2026-07-05 | Verified in API docs and service implementation. |
+| Rowset supports row lookup and update by index through REST and MCP. | `apps/pages/content/docs/dataset-api.md`; `apps/pages/content/how-to/connect-mcp.md`; `apps/api/services.py`; `apps/mcp_server/server.py` | primary/product | 2026-07-05 | Verified endpoints/tool names in repo docs and code. |
 | Rowset requires explicit index values to be non-blank and unique. | `apps/api/services.py`; `apps/api/row_mutations.py`; dataset creation tests | primary/product | 2026-07-05 | Verified service errors for blank and duplicate indexes. |
-| Generated index values are Rowset-managed and cannot be changed arbitrarily. | `apps/api/row_mutations.py`; `apps/datasets/tests/test_csv_datasets.py`; `apps/docs/content/features/mcp.md` | primary/product | 2026-07-05 | Verified guardrails and docs. |
+| Generated index values are Rowset-managed and cannot be changed arbitrarily. | `apps/api/row_mutations.py`; `apps/datasets/tests/test_csv_datasets.py`; `apps/pages/content/how-to/connect-mcp.md` | primary/product | 2026-07-05 | Verified guardrails and docs. |
 | Image columns cannot be used as dataset indexes. | `apps/api/services.py`; `apps/datasets/tests/test_csv_datasets.py` | primary/product | 2026-07-05 | Verified service error and tests. |
-| Rowset relationships store another dataset row's index value and can enforce that non-blank values match target indexes. | `apps/docs/content/features/datasets.md`; `apps/docs/content/api-reference/datasets.md`; `apps/api/services.py` | primary/product | 2026-07-05 | Verified docs and relationship service behavior. |
+| Rowset relationships store another dataset row's index value and can enforce that non-blank values match target indexes. | `apps/pages/content/explanations/datasets.md`; `apps/pages/content/docs/dataset-api.md`; `apps/api/services.py` | primary/product | 2026-07-05 | Verified docs and relationship service behavior. |
 | PostgreSQL primary keys identify rows and require unique, non-null values. | PostgreSQL docs: <https://www.postgresql.org/docs/current/ddl-constraints.html> | primary/external | 2026-07-05 | Official docs state primary keys identify rows and require unique/not-null values. |
 | MCP tools expose executable functions with names, metadata, and input schemas for model/client use. | MCP tools spec: <https://modelcontextprotocol.io/specification/draft/server/tools> | primary/external | 2026-07-05 | Official spec describes tool names, metadata, and schema. |
 
 ## Internal Links
 
-- `/docs/features/mcp/`
-- `/docs/api-reference/datasets/`
-- `/docs/features/agent-discovery/`
+- `/how-to/connect-mcp/`
+- `/docs/dataset-api/`
+- `/how-to/help-agents-discover-rowset/`
 - `/blog/agent-managed-datasets`
 - `/blog/mcp-vs-rest-ai-agents`
 

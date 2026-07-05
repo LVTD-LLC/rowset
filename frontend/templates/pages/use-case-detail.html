@@ -1,174 +1,175 @@
 {% extends "base_landing.html" %}
 {% load static %}
-
 {% block meta %}
-<title>{{ use_case.title }} - Rowset use case</title>
-<meta name="description" content="{{ use_case.meta_description }}" />
-<meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://{{ request.get_host }}{% url 'use_case_detail' slug=use_case.slug %}" />
-<meta property="og:type" content="article" />
-<meta property="og:title" content="{{ use_case.title }} - Rowset use case" />
-<meta property="og:url" content="https://{{ request.get_host }}{% url 'use_case_detail' slug=use_case.slug %}" />
-<meta property="og:description" content="{{ use_case.meta_description }}" />
-<meta property="og:image" content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title={{ use_case.title|urlencode }}&subtitle=Rowset%20use%20case&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
-<meta property="og:locale" content="en_US" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="{{ use_case.title }} - Rowset use case" />
-<meta name="twitter:description" content="{{ use_case.meta_description }}" />
-<meta name="twitter:image" content="https://osig.app/g?site=x&style=logo&font=markerfelt&title={{ use_case.title|urlencode }}&subtitle=Rowset%20use%20case&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+    <title>{{ use_case.title }} - Rowset use case</title>
+    <meta name="description" content="{{ use_case.meta_description }}" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical"
+          href="https://{{ request.get_host }}{% url 'how_to_guide' slug=use_case.slug %}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="{{ use_case.title }} - Rowset use case" />
+    <meta property="og:url"
+          content="https://{{ request.get_host }}{% url 'how_to_guide' slug=use_case.slug %}" />
+    <meta property="og:description" content="{{ use_case.meta_description }}" />
+    <meta property="og:image"
+          content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title={{ use_case.title|urlencode }}&subtitle=Rowset%20use%20case&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ use_case.title }} - Rowset use case" />
+    <meta name="twitter:description" content="{{ use_case.meta_description }}" />
+    <meta name="twitter:image"
+          content="https://osig.app/g?site=x&style=logo&font=markerfelt&title={{ use_case.title|urlencode }}&subtitle=Rowset%20use%20case&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
-
 {% block content %}
-<section class="relative overflow-hidden border-b border-slate-200 bg-[#f7faf8] dark:border-slate-800 dark:bg-[#050807]">
-  <div class="rs-grid-field absolute inset-0" aria-hidden="true"></div>
-  <div class="relative mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-8">
-    <div>
-      <a href="{% url 'use_cases' %}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">&larr; Use cases</a>
-      <p class="fb-label-caps mt-6 text-emerald-700 dark:text-emerald-300">{{ use_case.eyebrow }}</p>
-      <h1 class="mt-4 text-4xl font-semibold leading-none text-slate-950 dark:text-white sm:text-5xl">
-        {{ use_case.hero_title }}
-      </h1>
-      <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-700 dark:text-slate-300">{{ use_case.short_summary }}</p>
-      <div class="mt-7 flex flex-col gap-3 sm:flex-row">
-        <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
-        <a href="{% url 'docs_page' category='how-to-guides' page='configure-agent-access' %}" class="fb-button-secondary">Read setup docs</a>
-      </div>
-    </div>
-
-    <div class="rs-console hidden md:block" aria-label="Example Rowset dataset for {{ use_case.title }}">
-      <div class="flex items-center justify-between border-b border-slate-200 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
-        <div>
-          <p class="font-mono text-xs text-slate-500 dark:text-slate-400">dataset</p>
-          <h2 class="text-lg font-semibold text-slate-950 dark:text-white">{{ use_case.example_name }}</h2>
+    <section class="relative overflow-hidden border-b border-slate-200 bg-[#f7faf8] dark:border-slate-800 dark:bg-[#050807]">
+        <div class="rs-grid-field absolute inset-0" aria-hidden="true"></div>
+        <div class="relative mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-8">
+            <div>
+                <a href="{% url 'how_to_guides' %}"
+                   class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">&larr; How-to guides</a>
+                <p class="fb-label-caps mt-6 text-emerald-700 dark:text-emerald-300">{{ use_case.eyebrow }}</p>
+                <h1 class="mt-4 text-4xl font-semibold leading-none text-slate-950 dark:text-white sm:text-5xl">
+                    {{ use_case.hero_title }}
+                </h1>
+                <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-700 dark:text-slate-300">{{ use_case.short_summary }}</p>
+                <div class="mt-7 flex flex-col gap-3 sm:flex-row">
+                    <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
+                    <a href="{% url 'how_to_guide' slug='configure-agent-access' %}"
+                       class="fb-button-secondary">Read setup guide</a>
+                </div>
+            </div>
+            <div class="rs-console hidden md:block"
+                 aria-label="Example Rowset dataset for {{ use_case.title }}">
+                <div class="flex items-center justify-between border-b border-slate-200 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+                    <div>
+                        <p class="font-mono text-xs text-slate-500 dark:text-slate-400">dataset</p>
+                        <h2 class="text-lg font-semibold text-slate-950 dark:text-white">{{ use_case.example_name }}</h2>
+                    </div>
+                    <div class="rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-600 dark:border-white/10 dark:text-slate-300">{{ use_case.index_column }}</div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
+                                <th class="px-4 py-3">key</th>
+                                <th class="px-4 py-3">state</th>
+                                <th class="px-4 py-3">note</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-white/10">
+                            {% for row in use_case.sample_rows %}
+                                <tr>
+                                    <td class="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-300">{{ row.0 }}</td>
+                                    <td class="px-4 py-3 text-emerald-700 dark:text-emerald-300">{{ row.1 }}</td>
+                                    <td class="px-4 py-3 text-slate-700 dark:text-slate-300">{{ row.2 }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="border-t border-slate-200 px-4 py-3 dark:border-white/10">
+                    <p class="font-mono text-xs leading-6 text-slate-600 dark:text-slate-300">MCP tools: get_dataset -> update_row -> export snapshot</p>
+                </div>
+            </div>
         </div>
-        <div class="rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-600 dark:border-white/10 dark:text-slate-300">{{ use_case.index_column }}</div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-left text-sm">
-          <thead>
-            <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
-              <th class="px-4 py-3">key</th>
-              <th class="px-4 py-3">state</th>
-              <th class="px-4 py-3">note</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 dark:divide-white/10">
-            {% for row in use_case.sample_rows %}
-              <tr>
-                <td class="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-300">{{ row.0 }}</td>
-                <td class="px-4 py-3 text-emerald-700 dark:text-emerald-300">{{ row.1 }}</td>
-                <td class="px-4 py-3 text-slate-700 dark:text-slate-300">{{ row.2 }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="border-t border-slate-200 px-4 py-3 dark:border-white/10">
-        <p class="font-mono text-xs leading-6 text-slate-600 dark:text-slate-300">MCP tools: get_dataset -> update_row -> export snapshot</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-  <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
-    <div>
-      <p class="fb-label-caps text-cyan-700 dark:text-cyan-300">Agent jobs</p>
-      <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">What the agent can do</h2>
-    </div>
-    <div class="grid gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 md:grid-cols-3">
-      {% for action in use_case.agent_actions %}
-        <div class="bg-white p-5 dark:bg-slate-950">
-          <p class="font-mono text-sm text-emerald-700 dark:text-emerald-300">0{{ forloop.counter }}</p>
-          <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ action }}</p>
+    </section>
+    <section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
+            <div>
+                <p class="fb-label-caps text-cyan-700 dark:text-cyan-300">Agent jobs</p>
+                <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">What the agent can do</h2>
+            </div>
+            <div class="grid gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 md:grid-cols-3">
+                {% for action in use_case.agent_actions %}
+                    <div class="bg-white p-5 dark:bg-slate-950">
+                        <p class="font-mono text-sm text-emerald-700 dark:text-emerald-300">0{{ forloop.counter }}</p>
+                        <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ action }}</p>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-
-<section class="border-b border-slate-200 bg-[#fbfaf6] dark:border-slate-800 dark:bg-[#0a0b08]">
-  <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
-    <div>
-      <p class="fb-label-caps text-amber-700 dark:text-amber-300">Starter shape</p>
-      <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Start with a few durable tables.</h2>
-      <ul class="mt-6 grid gap-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
-        {% for item in use_case.starter_shape %}
-          <li class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">{{ item }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    <div>
-      <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Rowset features</p>
-      <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">The useful parts stay explicit.</h2>
-      <div class="mt-6 flex flex-wrap gap-2">
-        {% for feature in use_case.features %}
-          <span class="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">{{ feature }}</span>
-        {% endfor %}
-      </div>
-      <ol class="mt-8 divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800">
-        {% for step in use_case.workflow_steps %}
-          <li class="grid gap-3 py-4 sm:grid-cols-[8rem_1fr]">
-            <span class="font-mono text-sm text-slate-500 dark:text-slate-400">{{ step.0 }}</span>
-            <span class="text-sm leading-6 text-slate-700 dark:text-slate-300">{{ step.1 }}</span>
-          </li>
-        {% endfor %}
-      </ol>
-    </div>
-  </div>
-</section>
-
-<section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-  <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.72fr_1.28fr] lg:px-8">
-    <div>
-      <p class="fb-label-caps text-cyan-700 dark:text-cyan-300">Agent setup</p>
-      <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Connect this workflow to the private API surface.</h2>
-      <p class="mt-4 text-sm leading-6 text-slate-700 dark:text-slate-300">
-        Public previews stay read-only. Trusted agents should use authenticated MCP or REST when they create, inspect, or update rows.
-      </p>
-    </div>
-    <div class="grid gap-3 md:grid-cols-3">
-      <a href="{% url 'docs_page' category='how-to-guides' page='connect-mcp' %}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
-        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">MCP access</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Let an agent discover Rowset tools and call them with a bearer key.</p>
-      </a>
-      <a href="{% url 'docs_page' category='reference' page='dataset-api' %}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
-        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Dataset API</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Create datasets, list rows, update rows, search, export, and manage previews.</p>
-      </a>
-      <a href="{% url 'pricing' %}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
-        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Pricing</p>
-        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Start free, then use Rowset Pro when agents need unlimited hosted rows.</p>
-      </a>
-    </div>
-  </div>
-</section>
-
-<section class="bg-white dark:bg-slate-950">
-  <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-      <div>
-        <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">More workflows</p>
-        <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Other ways to use Rowset</h2>
-      </div>
-      <a href="{% url 'use_cases' %}" class="fb-button-secondary">View all use cases</a>
-    </div>
-    <div class="mt-8 grid gap-3 md:grid-cols-3">
-      {% for page in related_use_cases %}
-        <a href="{% url 'use_case_detail' slug=page.slug %}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
-          <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{{ page.eyebrow }}</p>
-          <h3 class="mt-3 text-lg font-semibold text-slate-950 dark:text-white">{{ page.title }}</h3>
-          <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ page.short_summary }}</p>
-        </a>
-      {% endfor %}
-    </div>
-  </div>
-</section>
+    </section>
+    <section class="border-b border-slate-200 bg-[#fbfaf6] dark:border-slate-800 dark:bg-[#0a0b08]">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div>
+                <p class="fb-label-caps text-amber-700 dark:text-amber-300">Starter shape</p>
+                <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Start with a few durable tables.</h2>
+                <ul class="mt-6 grid gap-3 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                    {% for item in use_case.starter_shape %}
+                        <li class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div>
+                <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Rowset features</p>
+                <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">The useful parts stay explicit.</h2>
+                <div class="mt-6 flex flex-wrap gap-2">
+                    {% for feature in use_case.features %}
+                        <span class="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">{{ feature }}</span>
+                    {% endfor %}
+                </div>
+                <ol class="mt-8 divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                    {% for step in use_case.workflow_steps %}
+                        <li class="grid gap-3 py-4 sm:grid-cols-[8rem_1fr]">
+                            <span class="font-mono text-sm text-slate-500 dark:text-slate-400">{{ step.0 }}</span>
+                            <span class="text-sm leading-6 text-slate-700 dark:text-slate-300">{{ step.1 }}</span>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </div>
+        </div>
+    </section>
+    <section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.72fr_1.28fr] lg:px-8">
+            <div>
+                <p class="fb-label-caps text-cyan-700 dark:text-cyan-300">Agent setup</p>
+                <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Connect this workflow to the private API surface.</h2>
+                <p class="mt-4 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                    Public previews stay read-only. Trusted agents should use authenticated MCP or REST when they create, inspect, or update rows.
+                </p>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+                <a href="{% url 'how_to_guide' slug='connect-mcp' %}"
+                   class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+                    <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">MCP access</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Let an agent discover Rowset tools and call them with a bearer key.</p>
+                </a>
+                <a href="{% url 'docs_page' slug='dataset-api' %}"
+                   class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+                    <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Dataset API</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Create datasets, list rows, update rows, search, export, and manage previews.</p>
+                </a>
+                <a href="{% url 'pricing' %}"
+                   class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+                    <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Pricing</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Start free, then use Rowset Pro when agents need unlimited hosted rows.</p>
+                </a>
+            </div>
+        </div>
+    </section>
+    <section class="bg-white dark:bg-slate-950">
+        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">More workflows</p>
+                    <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Other ways to use Rowset</h2>
+                </div>
+                <a href="{% url 'how_to_guides' %}" class="fb-button-secondary">View all how-to guides</a>
+            </div>
+            <div class="mt-8 grid gap-3 md:grid-cols-3">
+                {% for page in related_use_cases %}
+                    <a href="{% url 'how_to_guide' slug=page.slug %}"
+                       class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+                        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{{ page.eyebrow }}</p>
+                        <h3 class="mt-3 text-lg font-semibold text-slate-950 dark:text-white">{{ page.title }}</h3>
+                        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ page.short_summary }}</p>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
 {% endblock content %}
-
 {% block schema %}
-{# JSON-LD payloads are escaped by apps.pages.schema.json_ld; add a nonce here when CSP is enforced. #}
-<script type="application/ld+json">
-  {{ schema_json|safe }}
-</script>
+    {# JSON-LD payloads are escaped by apps.pages.schema.json_ld; add a nonce here when CSP is enforced. #}
+    <script type="application/ld+json">{{ schema_json|safe }}</script>
 {% endblock schema %}

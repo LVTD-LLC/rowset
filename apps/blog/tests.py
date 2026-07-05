@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -107,7 +108,10 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
     )
     assert "<h2>Why agents need it</h2>" in content
     assert "<strong>stable APIs</strong>" in content
-    assert 'property="article:published_time" content="2026-07-03T00:00:00+00:00"' in content
+    assert re.search(
+        r'<meta\s+property="article:published_time"\s+content="2026-07-03T00:00:00\+00:00"\s*/>',
+        content,
+    )
     assert (
         'property="og:image" content="https://rowset.example/static/blog/agent-managed-datasets.png"'
         in content

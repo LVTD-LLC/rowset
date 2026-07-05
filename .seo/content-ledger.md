@@ -29,13 +29,13 @@
 | Cluster / theme | Pieces shipped | Gaps still open |
 |---|---|---|
 | Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows` | Dataset instructions tutorial |
-| MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents` | Sprint Phase 1 docs strengthening, Phase 2 database MCP server playbook |
-| Spreadsheet/database alternatives | - | Sprint alternatives and playbooks |
+| MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents` | Sprint Phase 1 docs strengthening, Phase 2 database MCP server explanation |
+| Spreadsheet/database alternatives | - | Sprint alternatives and long-form guides |
 
 ---
 
 ## Notes
 
 - **DR cap:** Ahrefs DR is unavailable; use DataForSEO KD/backlink signals in `.seo/keyword-research.json`.
-- **No duplication:** this piece intentionally avoids the sprint roadmap's `/alternatives`, `/compare`, and `/playbooks` targets.
+- **No duplication:** this piece intentionally avoids the sprint roadmap's `/alternatives`, `/compare`, `/how-to`, and `/explanations` targets.
 - **One piece per run:** this ledger grows by one shipped row per `seo-content` invocation.

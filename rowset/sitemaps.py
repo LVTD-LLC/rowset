@@ -2,7 +2,7 @@ from django.contrib import sitemaps
 from django.urls import reverse
 
 from apps.blog.services import list_blog_posts
-from apps.docs.views import get_docs_navigation
+from apps.pages.content import CONTENT_SECTIONS, get_content_section
 from apps.pages.use_cases import get_use_case_pages
 
 
@@ -22,11 +22,12 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "landing",
             "uses",
             "pricing",
-            "use_cases",
-            "database_mcp_server_playbook",
+            "docs_home",
+            "tutorials_home",
+            "how_to_guides",
+            "explanations_home",
             "airtable_alternatives",
             "blog_posts",
-            "docs_home",
         ]
 
     def location(self, item):
@@ -52,48 +53,26 @@ class UseCaseSitemap(sitemaps.Sitemap):
         return get_use_case_pages()
 
     def location(self, item):
-        return reverse("use_case_detail", kwargs={"slug": item["slug"]})
+        return reverse("how_to_guide", kwargs={"slug": item["slug"]})
 
 
-class DocsSitemap(sitemaps.Sitemap):
-    """Generate Sitemap for documentation pages"""
+class ContentSitemap(sitemaps.Sitemap):
+    """Generate sitemap entries for checked-in pages content."""
 
     priority = 0.8
     protocol = "https"
     changefreq = "weekly"
 
     def items(self):
-        """Get all documentation pages from the navigation structure
-
-        Returns:
-            List: List of dicts with category and page slugs for each doc page
-        """
-        doc_pages = []
-        navigation = get_docs_navigation()
-
-        for category_info in navigation:
-            category_slug = category_info["category_slug"]
-            for page_info in category_info["pages"]:
-                page_slug = page_info["slug"]
-                doc_pages.append(
-                    {
-                        "category": category_slug,
-                        "page": page_slug,
-                    }
-                )
-
-        return doc_pages
+        pages = []
+        for section_slug in CONTENT_SECTIONS:
+            section = get_content_section(section_slug)
+            pages.extend(page["url"] for page in section["pages"])
+        pages.append(reverse("explanation_page", kwargs={"slug": "database-mcp-server"}))
+        return pages
 
     def location(self, item):
-        """Get location for each doc page in the Sitemap
-
-        Args:
-            item (dict): Dictionary with category and page slugs
-
-        Returns:
-            str: URL for the sitemap item
-        """
-        return f"/docs/{item['category']}/{item['page']}/"
+        return item
 
 
 class BlogSitemap(sitemaps.Sitemap):
@@ -115,7 +94,7 @@ class BlogSitemap(sitemaps.Sitemap):
 
 sitemaps = {
     "static": StaticViewSitemap,
-    "use_cases": UseCaseSitemap,
+    "how_to_use_cases": UseCaseSitemap,
     "blog": BlogSitemap,
-    "docs": DocsSitemap,
+    "content": ContentSitemap,
 }

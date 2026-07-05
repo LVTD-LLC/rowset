@@ -9,6 +9,7 @@ from django_q.tasks import async_task
 
 from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
 from apps.core.models import Profile
+from apps.pages.content import get_content_section, render_content_page, render_content_section
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
@@ -138,17 +139,37 @@ class PricingView(TemplateView):
         return context
 
 
-class UseCasesIndexView(TemplateView):
-    template_name = "pages/use-cases-index.html"
+def docs_home_view(request):
+    return render_content_section(request, "docs")
+
+
+def docs_page_view(request, slug):
+    return render_content_page(request, "docs", slug)
+
+
+def tutorials_home_view(request):
+    return render_content_section(request, "tutorials")
+
+
+def tutorial_page_view(request, slug):
+    return render_content_page(request, "tutorials", slug)
+
+
+class HowToIndexView(TemplateView):
+    template_name = "pages/content/how_to_index.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["section"] = get_content_section("how-to")
         context["use_case_pages"] = get_use_case_pages()
         context["schema_json"] = json_ld(use_case_item_list_schema(context["use_case_pages"]))
+        context["docs_base_template"] = (
+            "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
+        )
         return context
 
 
-class UseCaseDetailView(TemplateView):
+class HowToUseCaseDetailView(TemplateView):
     template_name = "pages/use-case-detail.html"
 
     def get_context_data(self, **kwargs):
@@ -165,11 +186,42 @@ class UseCaseDetailView(TemplateView):
         return context
 
 
-class DatabaseMcpServerPlaybookView(TemplateView):
-    template_name = "pages/playbooks/database-mcp-server.html"
+def how_to_guide_view(request, slug):
+    try:
+        return render_content_page(request, "how-to", slug)
+    except Http404:
+        return HowToUseCaseDetailView.as_view()(request, slug=slug)
+
+
+def explanations_home_view(request):
+    return render_content_section(
+        request,
+        "explanations",
+        extra_pages=(
+            {
+                "title": "Database MCP server: when to use Rowset instead",
+                "description": (
+                    "A practical guide to choosing between direct database MCP servers "
+                    "and Rowset's hosted MCP dataset backend."
+                ),
+                "url": reverse("explanation_page", kwargs={"slug": "database-mcp-server"}),
+            },
+        ),
+    )
+
+
+def explanation_page_view(request, slug):
+    if slug == "database-mcp-server":
+        return DatabaseMcpServerExplanationView.as_view()(request)
+    return render_content_page(request, "explanations", slug)
+
+
+class DatabaseMcpServerExplanationView(TemplateView):
+    template_name = "pages/explanations/database-mcp-server.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        path = reverse("explanation_page", kwargs={"slug": "database-mcp-server"})
         context["mcp_url"] = build_absolute_public_url("/mcp/")
         context["schema_json"] = json_ld(
             [
@@ -179,14 +231,15 @@ class DatabaseMcpServerPlaybookView(TemplateView):
                         "A practical guide to choosing between direct database MCP servers "
                         "and Rowset's hosted MCP dataset backend for AI-agent workflows."
                     ),
-                    path=reverse("database_mcp_server_playbook"),
+                    path=path,
                     date_published="2026-07-05",
                     date_modified="2026-07-05",
                 ),
                 breadcrumb_list_schema(
                     (
                         ("Home", "/"),
-                        ("Database MCP server", reverse("database_mcp_server_playbook")),
+                        ("Explanations", reverse("explanations_home")),
+                        ("Database MCP server", path),
                     )
                 ),
             ]
