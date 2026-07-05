@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from dataclasses import replace
 
@@ -11,6 +12,7 @@ from django.contrib.messages import get_messages
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 from django.urls import reverse
+from django.utils.html import strip_tags
 
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
@@ -239,6 +241,29 @@ def test_unknown_use_case_returns_404(client):
     response = client.get(reverse("use_case_detail", kwargs={"slug": "missing"}))
 
     assert response.status_code == 404
+
+
+@override_settings(SITE_URL="https://testserver")
+def test_database_mcp_server_playbook_has_required_links_and_schema(client):
+    response = client.get(reverse("database_mcp_server_playbook"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    text = strip_tags(content)
+    words = re.findall(r"\b[\w'-]+\b", text)
+
+    assert "Database MCP server: when to use Rowset instead" in content
+    assert len(words) >= 2500
+    assert reverse("docs_page", kwargs={"category": "features", "page": "mcp"}) in content
+    assert reverse("docs_page", kwargs={"category": "api-reference", "page": "datasets"}) in content
+    assert reverse("docs_page", kwargs={"category": "features", "page": "agent-access"}) in content
+    assert reverse("pricing") in content
+    assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("use_case_detail", kwargs={"slug": "agent-task-board"}) in content
+    assert reverse("use_case_detail", kwargs={"slug": "feedback-triage"}) in content
+    assert "https://testserver/mcp/" in content
+    assert '"@type": "Article"' in content
+    assert '"@type": "BreadcrumbList"' in content
 
 
 def test_schema_helpers_render_valid_homepage_json_ld(client):

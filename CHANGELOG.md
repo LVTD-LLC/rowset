@@ -26,6 +26,7 @@ cut date.
 ## 2026-07-04
 
 ### Added
+- Added the `/playbooks/database-mcp-server` SEO playbook with Article/Breadcrumb schema, sitemap coverage, and internal links from MCP and Dataset API docs.
 - Added the first SEO content article, defining agent-managed datasets and linking it into the MCP and Dataset API docs.
 - Added the Rowset SEO sprint foundation with a measured GSC/Plausible/PostHog/DataForSEO-backed roadmap, brand context, keyword research cache, and internal-link inventory for phased organic-search work.
 

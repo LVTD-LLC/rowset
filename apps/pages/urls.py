@@ -35,4 +35,14 @@ urlpatterns = [
         redirect_without_trailing_slash,
         name="use_case_detail_slash_redirect",
     ),
+    path(
+        "playbooks/database-mcp-server",
+        views.DatabaseMcpServerPlaybookView.as_view(),
+        name="database_mcp_server_playbook",
+    ),
+    path(
+        "playbooks/database-mcp-server/",
+        redirect_without_trailing_slash,
+        name="database_mcp_server_playbook_slash_redirect",
+    ),
 ]

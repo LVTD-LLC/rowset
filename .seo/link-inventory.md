@@ -79,7 +79,7 @@
 
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
-| `database-mcp-server` | Phase 2 | `/playbooks/database-mcp-server` | TBD | MCP docs, Dataset API, Agent access |
+| `database-mcp-server` | Phase 2 | `/playbooks/database-mcp-server` | MCP docs, Dataset API docs | MCP docs, Dataset API, Agent access, pricing, personal CRM, agent task board, feedback triage |
 | `spreadsheet-database-for-ai-agents` | Phase 5 | `/playbooks/spreadsheet-database-for-ai-agents` | TBD | Google Sheets alternatives, Dataset API, MCP docs |
 | `connect-ai-agent-to-dataset-api` | Phase 8 | `/playbooks/connect-ai-agent-to-dataset-api` | TBD | MCP docs, Dataset API, Agent access |
 
