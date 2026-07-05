@@ -749,8 +749,7 @@ CI tests against PostgreSQL 18 (`rasulkireev/custom-postgres:18`), while
 (`rasulkireev/custom-postgres:17`). Keep that version split in mind for
 database behavior until the stacks are aligned.
 
-ReviewGate also runs on pull requests in report mode when `OPENROUTER_API_KEY`
-is configured in GitHub secrets.
+ReviewGate is present but temporarily disabled.
 
 ## Deployment
 
