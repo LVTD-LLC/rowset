@@ -22,6 +22,11 @@ choice for agent-owned task boards, CRMs, feedback queues, catalogs, QA trackers
 and other structured row workflows that should stay behind a scoped Rowset API
 key.
 
+If you are choosing between the hosted MCP endpoint and plain HTTP calls, read
+[When should an AI agent use MCP instead of REST?](/blog/mcp-vs-rest-ai-agents).
+It gives the short decision rule for agents, scripts, backend jobs, and REST
+fallbacks.
+
 ## MCP URL
 
 ```text
