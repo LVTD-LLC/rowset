@@ -106,6 +106,11 @@ def get_docs_navigation():  # noqa: C901
             ordered_categories.append(category_slug)
 
     remaining_categories = sorted(set(all_categories.keys()) - set(ordered_categories))
+    if remaining_categories:
+        logger.warning(
+            "Docs categories missing from navigation.yaml were appended to navigation",
+            categories=remaining_categories,
+        )
     ordered_categories.extend(remaining_categories)
 
     for category_slug in ordered_categories:

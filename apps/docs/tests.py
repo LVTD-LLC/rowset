@@ -3,7 +3,21 @@ from django.http import Http404
 from django.test import override_settings
 from django.urls import reverse
 
-from apps.docs.views import docs_page_view
+from apps.docs.views import LEGACY_DOCS_REDIRECTS, docs_page_view
+from rowset.sitemaps import DocsSitemap, StaticViewSitemap
+
+EXPECTED_LEGACY_DOCS_REDIRECTS = {
+    ("getting-started", "introduction"): ("tutorials", "get-started"),
+    ("features", "mcp"): ("how-to-guides", "connect-mcp"),
+    ("features", "agent-access"): ("how-to-guides", "configure-agent-access"),
+    ("features", "agent-discovery"): ("how-to-guides", "help-agents-discover-rowset"),
+    ("features", "datasets"): ("how-to-guides", "work-with-datasets"),
+    ("features", "public-previews"): ("how-to-guides", "share-public-preview"),
+    ("api-reference", "introduction"): ("reference", "rest-api"),
+    ("api-reference", "user"): ("reference", "user-api"),
+    ("api-reference", "projects"): ("reference", "project-api"),
+    ("api-reference", "datasets"): ("reference", "dataset-api"),
+}
 
 
 @pytest.fixture
@@ -52,14 +66,60 @@ class TestDocsView:
         assert "/playbooks/database-mcp-server" in content
         assert reverse("blog_posts") in content
 
-    def test_legacy_docs_urls_redirect_to_diataxis_paths(self, client):
-        response = client.get(reverse("docs_page", kwargs={"category": "features", "page": "mcp"}))
+    def test_legacy_redirect_map_covers_pre_diataxis_public_paths(self):
+        assert LEGACY_DOCS_REDIRECTS == EXPECTED_LEGACY_DOCS_REDIRECTS
+
+    @pytest.mark.parametrize(
+        ("legacy_path", "target_path"),
+        sorted(EXPECTED_LEGACY_DOCS_REDIRECTS.items()),
+    )
+    def test_legacy_docs_urls_redirect_to_diataxis_paths(
+        self,
+        client,
+        legacy_path,
+        target_path,
+    ):
+        response = client.get(
+            reverse(
+                "docs_page",
+                kwargs={"category": legacy_path[0], "page": legacy_path[1]},
+            )
+        )
 
         assert response.status_code == 301
         assert response["Location"] == reverse(
             "docs_page",
-            kwargs={"category": "how-to-guides", "page": "connect-mcp"},
+            kwargs={"category": target_path[0], "page": target_path[1]},
         )
+
+    def test_sitemap_uses_diataxis_docs_urls(self):
+        docs_sitemap = DocsSitemap()
+        docs_locations = {docs_sitemap.location(item) for item in docs_sitemap.items()}
+        static_sitemap = StaticViewSitemap()
+        static_locations = {static_sitemap.location(item) for item in static_sitemap.items()}
+
+        assert reverse("docs_home") in static_locations
+        assert reverse("docs_page", kwargs={"category": "tutorials", "page": "get-started"}) in (
+            docs_locations
+        )
+        assert (
+            reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"})
+            in docs_locations
+        )
+        assert (
+            reverse("docs_page", kwargs={"category": "reference", "page": "rest-api"})
+            in docs_locations
+        )
+        assert (
+            reverse(
+                "docs_page",
+                kwargs={"category": "explanation", "page": "concepts-and-decisions"},
+            )
+            in docs_locations
+        )
+        assert "/docs/features/mcp/" not in docs_locations
+        assert "/docs/api-reference/datasets/" not in docs_locations
+        assert "/docs/getting-started/introduction/" not in docs_locations
 
     def test_docs_navigation_uses_diataxis_sections(self, client):
         response = client.get(

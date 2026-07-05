@@ -24,6 +24,9 @@ cut date.
 - Added a Rowset blog post on choosing stable index columns for agent-managed rows, with inbound links from dataset docs, MCP docs, and existing agent workflow posts.
 - Added a Rowset blog post explaining when AI-agent workflows should use MCP versus REST, with inbound links from MCP, Agent access, and the agent-managed-datasets article.
 
+### Changed
+- Reworked `/docs/` into a Diátaxis-oriented docs hub instead of redirecting to a single introduction page, with permanent redirects from legacy docs URLs to their canonical tutorial, how-to, reference, and explanation pages.
+
 ## 2026-07-04
 
 ### Added
