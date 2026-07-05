@@ -2,6 +2,7 @@ import json
 import re
 import time
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -134,6 +135,7 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
         reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
     )
     assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
+    assert reverse("airtable_alternatives") in content
     assert '"@type": "SoftwareApplication"' in content
     assert '"@type": "Organization"' in content
 
@@ -141,17 +143,21 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     blog_href = f'href="{reverse("blog_posts")}"'
     playbook_href = f'href="{reverse("database_mcp_server_playbook")}"'
+    airtable_href = f'href="{reverse("airtable_alternatives")}"'
 
     landing_response = client.get(reverse("landing"))
     assert landing_response.status_code == 200
     landing_content = landing_response.content.decode()
+    landing_footer = _nav_html(landing_content, "Footer navigation")
 
     assert blog_href in _nav_html(landing_content, "Primary navigation")
     assert blog_href in _nav_html(landing_content, "Mobile navigation")
-    assert blog_href in _nav_html(landing_content, "Footer navigation")
+    assert blog_href in landing_footer
     assert playbook_href in _nav_html(landing_content, "Primary navigation")
     assert playbook_href in _nav_html(landing_content, "Mobile navigation")
-    assert playbook_href in _nav_html(landing_content, "Footer navigation")
+    assert playbook_href in landing_footer
+    assert "Alternatives" in landing_footer
+    assert airtable_href in landing_footer
 
     user = get_user_model().objects.create_user(
         username="chrome-blog",
@@ -163,10 +169,14 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     app_response = client.get(reverse("home"))
     assert app_response.status_code == 200
     app_content = app_response.content.decode()
+    app_footer = _nav_html(app_content, "Footer navigation")
 
     assert blog_href in _nav_html(app_content, "Primary navigation")
     assert blog_href in _nav_html(app_content, "Mobile navigation")
-    assert blog_href in _nav_html(app_content, "Footer navigation")
+    assert blog_href in app_footer
+    assert playbook_href in app_footer
+    assert "Alternatives" in app_footer
+    assert airtable_href in app_footer
 
 
 def test_landing_page_redirects_authenticated_users_to_home(client):
@@ -233,6 +243,7 @@ def test_use_cases_index_lists_public_use_case_pages(client):
         reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
     )
     assert reverse("pricing") in content
+    assert reverse("airtable_alternatives") in content
 
 
 def test_authenticated_public_pages_use_app_header(client):
@@ -314,6 +325,64 @@ def test_database_mcp_server_playbook_has_required_links_and_schema(client):
     assert "https://testserver/mcp/" in content
     assert '"@type": "Article"' in content
     assert '"@type": "BreadcrumbList"' in content
+
+
+def test_airtable_alternatives_page_has_required_links_schema_and_content(client):
+    response = client.get(reverse("airtable_alternatives"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    text = strip_tags(content)
+    words = re.findall(r"\b[\w'-]+\b", text)
+    schema = json.loads(_json_ld_payload(content))
+
+    assert "Best Airtable alternatives for AI-agent-managed datasets in 2026" in content
+    assert len(words) >= 600
+    assert "When Airtable is still the better choice" in content
+    assert "Why Rowset is different" in content
+    assert "Migration decision table" in content
+    assert "Frequently asked questions" in content
+    assert "Airtable is still better when" in content
+    assert "not a spreadsheet replacement" in text
+    assert reverse("pricing") in content
+    assert reverse("account_signup") in content
+    assert (
+        reverse("docs_page", kwargs={"category": "how-to-guides", "page": "connect-mcp"}) in content
+    )
+    assert reverse("docs_page", kwargs={"category": "reference", "page": "dataset-api"}) in content
+    assert reverse("use_case_detail", kwargs={"slug": "personal-crm"}) in content
+    assert {entry["@type"] for entry in schema} == {"BreadcrumbList", "FAQPage"}
+
+    breadcrumb_schema = next(entry for entry in schema if entry["@type"] == "BreadcrumbList")
+    assert breadcrumb_schema["itemListElement"][-1]["item"] == (
+        "https://testserver/alternatives/airtable/"
+    )
+
+
+def test_airtable_alternatives_page_is_in_sitemap(client):
+    response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    assert b"/alternatives/airtable/" in response.content
+
+
+def test_seo_sprint_tracks_airtable_phase_completed():
+    roadmap = Path(settings.BASE_DIR) / "docs/seo-sprint.md"
+    phase_label = "| 3 | Ship `/alternatives/airtable`"
+    row = next(line for line in roadmap.read_text().splitlines() if phase_label in line)
+
+    assert "| completed | #204 |" in row
+
+
+def test_seo_link_inventory_tracks_airtable_page_links():
+    inventory = Path(settings.BASE_DIR) / ".seo/link-inventory.md"
+    row = next(
+        line for line in inventory.read_text().splitlines() if "| `airtable` | Phase 3 |" in line
+    )
+
+    assert "| `/alternatives/airtable/` |" in row
+    assert "landing page, use cases index" in row
+    assert "pricing, signup, MCP docs, Dataset API" in row
 
 
 def test_schema_helpers_render_valid_homepage_json_ld(client):
