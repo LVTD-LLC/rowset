@@ -32,7 +32,6 @@ urlpatterns = [
     path("accounts/signup/", AccountSignupView.as_view(), name="account_signup"),
     path("accounts/", include("allauth.urls")),
     path("anymail/", include("anymail.urls")),
-    path("blog/", include("apps.blog.urls")),
     path("robots.txt", robots_txt, name="robots_txt"),
     path("api/v1", api_v1_redirect, name="api_v1_redirect_root"),
     path("api/v1/", api_v1_redirect, name="api_v1_redirect_root_slash"),

@@ -198,7 +198,7 @@ def list_blog_posts() -> list[BlogPost]:
         try:
             posts.append(load_blog_post(path, content_dir=content_dir))
         except BlogPostValidationError:
-            # The blog.E001 system check reports invalid posts before deploy.
+            # The pages.E002 system check reports invalid posts before deploy.
             pass
     return sorted(posts, key=lambda post: (post.published_at, post.slug), reverse=True)
 

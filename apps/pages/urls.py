@@ -20,6 +20,8 @@ urlpatterns = [
     path("docs/<slug:slug>/", views.docs_page_view, name="docs_page"),
     path("tutorials/", views.tutorials_home_view, name="tutorials_home"),
     path("tutorials/<slug:slug>/", views.tutorial_page_view, name="tutorial_page"),
+    path("blog/", views.blog_posts_view, name="blog_posts"),
+    path("blog/<slug:slug>", views.blog_post_view, name="blog_post"),
     path(
         "how-to/",
         views.HowToIndexView.as_view(),

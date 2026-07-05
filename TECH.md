@@ -54,9 +54,9 @@ contents.
 - `apps/core` owns profiles, account state, feedback, email delivery, Stripe
   webhook handling, and shared helpers.
 - `apps/pages` renders checked-in docs, tutorials, how-to guides, explanations,
-  marketing pages, and page context processors from root-level public routes.
-- `apps/blog` renders checked-in Markdown posts from `apps/pages/content/blog`;
-  there is no database-backed blog authoring path.
+  blog posts, marketing pages, and page context processors from root-level
+  public routes. Blog Markdown lives in `apps/pages/content/blog`; there is no
+  database-backed blog authoring path.
 - `frontend/templates` contains Django templates for landing, authenticated app,
   datasets, pages content, account flows, and shared components.
 - `frontend/src/js` contains Alpine component registration and small global

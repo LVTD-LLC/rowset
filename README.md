@@ -1028,7 +1028,8 @@ should use REST or MCP with bearer API-key auth.
 
 - Read `AGENTS.md`, `PRODUCT.md`, `TECH.md`, `STRUCTURE.md`, `VISION.md`, and
   `DESIGN.md` before changing product behavior.
-- For documentation under `apps/docs`, also read `apps/docs/AGENTS.md`.
+- Public checked-in docs, tutorials, how-to guides, explanations, and blog
+  Markdown live under `apps/pages/content`.
 - Keep reusable dataset behavior in services, not views, templates, or MCP tool
   bodies.
 - Keep REST and MCP behavior aligned by reusing service functions.

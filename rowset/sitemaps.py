@@ -1,7 +1,7 @@
 from django.contrib import sitemaps
 from django.urls import reverse
 
-from apps.blog.services import list_blog_posts
+from apps.pages.blog import list_blog_posts
 from apps.pages.content import CONTENT_SECTIONS, get_content_section
 from apps.pages.use_cases import get_use_case_pages
 

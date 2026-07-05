@@ -25,7 +25,7 @@
 - Important claims cite official or primary sources where possible.
 - Entity coverage: Model Context Protocol, MCP host/client/server, MCP tools, REST, bearer-token auth, Rowset MCP, Rowset Dataset API.
 - Freshness: article is dated 2026-07-05; MCP sources use current official docs/spec pages available during the run.
-- Schema: repo emits `BlogPosting` JSON-LD for markdown posts through `apps.blog.services.blog_post_schema`.
+- Schema: repo emits `BlogPosting` JSON-LD for markdown posts through `apps.pages.blog.blog_post_schema`.
 
 ## Claim Ledger
 

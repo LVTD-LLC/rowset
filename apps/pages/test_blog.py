@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.checks import run_checks
 from django.urls import reverse
 
-from apps.blog.services import get_blog_post, list_blog_posts
+from apps.pages.blog import get_blog_post, list_blog_posts
 from rowset.sitemaps import BlogSitemap
 
 pytestmark = pytest.mark.django_db
@@ -201,7 +201,7 @@ def test_blog_frontmatter_check_reports_missing_seo_fields(blog_posts_dir):
     errors = run_checks()
 
     assert len(errors) == 1
-    assert errors[0].id == "blog.E001"
+    assert errors[0].id == "pages.E002"
     assert "missing required frontmatter: description" in errors[0].msg
 
 
@@ -246,6 +246,6 @@ def test_blog_post_schema_uses_checked_in_markdown_content(blog_posts_dir):
 
 
 def post_schema_json(post):
-    from apps.blog.services import blog_post_schema, json_ld
+    from apps.pages.blog import blog_post_schema, json_ld
 
     return json_ld(blog_post_schema(post))

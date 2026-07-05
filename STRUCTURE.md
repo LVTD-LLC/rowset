@@ -12,9 +12,8 @@
   service wrappers.
 - `apps/mcp_server/` - hosted FastMCP server, MCP bearer auth, tools, and tests.
 - `apps/pages/` - marketing/static pages, root-level content routes, checked-in
-  docs/tutorial/how-to/explanation/blog content, and page context processors.
-- `apps/blog/` - Markdown-backed blog services, validation checks, views, and
-  public templates; post Markdown lives in `apps/pages/content/blog`.
+  docs/tutorial/how-to/explanation/blog content, blog services/checks/views, and
+  page context processors.
 - `frontend/templates/` - Django templates for public pages, authenticated app,
   account flows, datasets, docs, MCP auth, components, and email.
 - `frontend/src/js/` - Alpine component registration and small global browser

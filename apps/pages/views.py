@@ -2,13 +2,28 @@ from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
 from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
 from apps.core.models import Profile
+from apps.pages.blog import (
+    BLOG_DESCRIPTION,
+    BLOG_TITLE,
+    BlogPostNotFound,
+    BlogPostValidationError,
+    blog_index_schema,
+    blog_index_url,
+    blog_post_schema,
+    default_blog_image_url,
+    get_blog_post,
+    list_blog_posts,
+)
+from apps.pages.blog import (
+    json_ld as blog_json_ld,
+)
 from apps.pages.content import get_content_section, render_content_page, render_content_section
 from apps.pages.schema import (
     article_schema,
@@ -153,6 +168,39 @@ def tutorials_home_view(request):
 
 def tutorial_page_view(request, slug):
     return render_content_page(request, "tutorials", slug)
+
+
+def blog_posts_view(request):
+    blog_posts = list_blog_posts()
+    return render(
+        request,
+        "blog/blog_posts.html",
+        {
+            "blog_title": BLOG_TITLE,
+            "blog_description": BLOG_DESCRIPTION,
+            "blog_posts": blog_posts,
+            "canonical_url": blog_index_url(),
+            "og_image_url": default_blog_image_url(),
+            "schema_json": blog_json_ld(blog_index_schema(blog_posts)),
+        },
+    )
+
+
+def blog_post_view(request, slug):
+    try:
+        blog_post = get_blog_post(slug)
+    except (BlogPostNotFound, BlogPostValidationError) as exc:
+        raise Http404("Blog post not found") from exc
+
+    return render(
+        request,
+        "blog/blog_post.html",
+        {
+            "blog_post": blog_post,
+            "canonical_url": blog_post.canonical_url,
+            "schema_json": blog_json_ld(blog_post_schema(blog_post)),
+        },
+    )
 
 
 class HowToIndexView(TemplateView):
