@@ -207,6 +207,7 @@ class UseCaseDetailView(CanonicalUrlMixin, TemplateView):
 
 class UsesView(CanonicalUrlMixin, TemplateView):
     template_name = "pages/uses.html"
+    # Registered in rowset.urls so this legacy top-level page keeps its existing URL name.
     canonical_url_name = "uses"
 
 

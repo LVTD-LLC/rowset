@@ -41,6 +41,9 @@ def redirect_to_canonical_no_slash(request, **kwargs):
 
 
 def canonical_no_slash_path(route, view, *, name):
+    """Register a relative no-slash route and its canonical slash redirect."""
+    if route.startswith("/"):
+        raise ValueError("Canonical no-slash routes must be relative and must not start with '/'.")
     if route.endswith("/"):
         raise ValueError("Canonical no-slash routes must not end with '/'.")
 

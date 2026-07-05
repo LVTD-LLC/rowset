@@ -24,7 +24,7 @@ from apps.pages.schema import (
     item_list_schema,
     json_ld,
 )
-from apps.pages.seo import redirect_to_canonical_no_slash
+from apps.pages.seo import canonical_no_slash_path, redirect_to_canonical_no_slash
 
 pytestmark = pytest.mark.django_db
 
@@ -267,6 +267,11 @@ def test_no_slash_redirects_do_not_redirect_unregistered_slash_variants(client):
     response = client.get("/sitemap.xml/")
 
     assert response.status_code == 404
+
+
+def test_canonical_no_slash_path_rejects_non_relative_routes():
+    with pytest.raises(ValueError, match="must be relative"):
+        canonical_no_slash_path("/pricing", lambda request: None, name="bad_pricing")
 
 
 @pytest.mark.parametrize(
