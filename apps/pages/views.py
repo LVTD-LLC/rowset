@@ -194,6 +194,10 @@ class DatabaseMcpServerPlaybookView(TemplateView):
         return context
 
 
+class AirtableAlternativesView(TemplateView):
+    template_name = "pages/alternatives/airtable.html"
+
+
 class PrivacyPolicyView(TemplateView):
     template_name = "pages/privacy-policy.html"
 

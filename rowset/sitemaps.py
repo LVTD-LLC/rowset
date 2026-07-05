@@ -24,6 +24,7 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "pricing",
             "use_cases",
             "database_mcp_server_playbook",
+            "airtable_alternatives",
             "blog_posts",
         ]
 

@@ -1,13 +1,94 @@
 {% url 'use_cases' as use_cases_url %}
+{% url 'landing' as landing_url %}
+{% url 'pricing' as pricing_url %}
+{% url 'account_signup' as account_signup_url %}
+{% url 'docs_home' as docs_home_url %}
+{% url 'blog_posts' as blog_posts_url %}
+{% url 'airtable_alternatives' as airtable_alternatives_url %}
+{% url 'privacy_policy' as privacy_policy_url %}
+{% url 'terms_of_service' as terms_of_service_url %}
 <footer class="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-  <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-slate-600 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-    <p>&copy; {% now "Y" %} <a href="https://lvtd.dev?ref={{ request.get_host }}" class="font-medium text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white">LVTD, LLC</a></p>
-    <nav class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Footer navigation">
-      <a href="{{ use_cases_url|default:'/' }}" class="hover:text-slate-950 dark:hover:text-white">Use cases</a>
-      <a href="{% url 'privacy_policy' %}" class="hover:text-slate-950 dark:hover:text-white">Privacy</a>
-      <a href="{% url 'terms_of_service' %}" class="hover:text-slate-950 dark:hover:text-white">Terms</a>
-      <a href="{% url 'docs_home' %}" class="hover:text-slate-950 dark:hover:text-white">Docs</a>
-      <a href="{% url 'blog_posts' %}" class="hover:text-slate-950 dark:hover:text-white">Blog</a>
-    </nav>
-  </div>
+    <div class="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 text-sm text-slate-600 dark:text-slate-400 sm:px-6 lg:grid-cols-[1fr_2fr] lg:px-8">
+        <div>
+            <a href="{{ landing_url|default:'/' }}"
+               class="font-semibold text-slate-950 hover:text-emerald-700 dark:text-white dark:hover:text-emerald-300">Rowset</a>
+            <p class="mt-3 max-w-xs leading-6">Private MCP and REST datasets for trusted AI agents.</p>
+            <p class="mt-6">
+                &copy; {% now "Y" %}
+                <a href="https://lvtd.dev?ref={{ request.get_host }}"
+                   class="font-medium text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white">LVTD, LLC</a>
+            </p>
+        </div>
+        <nav class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4"
+             aria-label="Footer navigation">
+            <div>
+                <h2 class="fb-label-caps text-slate-500 dark:text-slate-400">Product</h2>
+                <ul class="mt-3 space-y-2">
+                    {% if use_cases_url %}
+                        <li>
+                            <a href="{{ use_cases_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Use cases</a>
+                        </li>
+                    {% endif %}
+                    {% if pricing_url %}
+                        <li>
+                            <a href="{{ pricing_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Pricing</a>
+                        </li>
+                    {% endif %}
+                    {% if account_signup_url %}
+                        <li>
+                            <a href="{{ account_signup_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Create account</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+            <div>
+                <h2 class="fb-label-caps text-slate-500 dark:text-slate-400">Resources</h2>
+                <ul class="mt-3 space-y-2">
+                    {% if docs_home_url %}
+                        <li>
+                            <a href="{{ docs_home_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Docs</a>
+                        </li>
+                    {% endif %}
+                    {% if blog_posts_url %}
+                        <li>
+                            <a href="{{ blog_posts_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Blog</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+            <div>
+                <h2 class="fb-label-caps text-slate-500 dark:text-slate-400">Alternatives</h2>
+                <ul class="mt-3 space-y-2">
+                    {% if airtable_alternatives_url %}
+                        <li>
+                            <a href="{{ airtable_alternatives_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Airtable alternatives</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+            <div>
+                <h2 class="fb-label-caps text-slate-500 dark:text-slate-400">Company</h2>
+                <ul class="mt-3 space-y-2">
+                    {% if privacy_policy_url %}
+                        <li>
+                            <a href="{{ privacy_policy_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Privacy</a>
+                        </li>
+                    {% endif %}
+                    {% if terms_of_service_url %}
+                        <li>
+                            <a href="{{ terms_of_service_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Terms</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </div>
 </footer>

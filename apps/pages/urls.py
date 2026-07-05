@@ -32,6 +32,11 @@ urlpatterns = [
         name="database_mcp_server_playbook",
     ),
     path(
+        "alternatives/airtable/",
+        views.AirtableAlternativesView.as_view(),
+        name="airtable_alternatives",
+    ),
+    path(
         "uses/",
         TemplateView.as_view(template_name="pages/uses.html"),
         name="uses",
