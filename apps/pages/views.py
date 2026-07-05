@@ -231,6 +231,9 @@ class HowToUseCaseDetailView(TemplateView):
             page for page in get_use_case_pages() if page["slug"] != use_case["slug"]
         )[:3]
         context["schema_json"] = json_ld(use_case_article_schema(use_case))
+        context["docs_base_template"] = (
+            "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
+        )
         return context
 
 

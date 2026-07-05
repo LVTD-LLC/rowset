@@ -375,6 +375,29 @@ def test_how_to_use_case_page_shows_structured_example(client):
     assert '"@type": "Article"' in content
 
 
+def test_authenticated_how_to_use_case_page_uses_app_header(client):
+    user = get_user_model().objects.create_user(
+        username="use-case-detail-auth",
+        email="use-case-detail-auth@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("how_to_guide", kwargs={"slug": "personal-crm"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
+    assert f'href="{reverse("home")}"' in header
+    assert "Dashboard" in header
+    assert "Settings" in header
+    assert "Search data" in header
+    assert f'action="{reverse("account_logout")}"' in header
+    assert "How it works" not in header
+    assert "Sign in" not in header
+    assert "Create account" not in header
+
+
 def test_unknown_use_case_returns_404(client):
     response = client.get(reverse("how_to_guide", kwargs={"slug": "missing"}))
 
