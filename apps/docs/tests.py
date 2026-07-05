@@ -8,8 +8,15 @@ from django.urls import reverse
 
 from apps.docs.views import (
     CATEGORY_LABELS,
+    DOCS_HOME_COMMON_PATHS,
+    DOCS_HOME_RESOURCE_LINKS,
+    DOCS_HOME_SECTION_CARDS,
+    DOCS_SIDEBAR_EXPLORE_LINKS,
+    DOCS_SIDEBAR_START_LINKS,
     LEGACY_DOCS_REDIRECTS,
+    build_configured_link,
     docs_page_view,
+    get_docs_navigation,
     load_navigation_config,
 )
 from rowset.sitemaps import DocsSitemap, StaticViewSitemap
@@ -89,6 +96,23 @@ class TestDocsView:
         assert reverse("blog_posts") in content
         assert reverse("blog_post", kwargs={"slug": "agent-managed-datasets"}) in content
         assert reverse("blog_post", kwargs={"slug": "mcp-vs-rest-ai-agents"}) in content
+
+    def test_docs_home_renders_all_configured_discovery_links(self, client):
+        response = client.get(reverse("docs_home"))
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        navigation = get_docs_navigation()
+        configured_links = (
+            *DOCS_HOME_SECTION_CARDS,
+            *DOCS_HOME_COMMON_PATHS,
+            *DOCS_HOME_RESOURCE_LINKS,
+        )
+
+        for link_config in configured_links:
+            link = build_configured_link(link_config, navigation)
+            assert link["url"] in content
+            assert link["title"] in content
 
     def test_legacy_redirect_map_covers_pre_diataxis_public_paths(self):
         assert LEGACY_DOCS_REDIRECTS == EXPECTED_LEGACY_DOCS_REDIRECTS
@@ -175,10 +199,11 @@ class TestDocsView:
 
         assert response.status_code == 200
         content = response.content.decode()
-        assert reverse("docs_home") in content
-        assert reverse("use_cases") in content
-        assert reverse("database_mcp_server_playbook") in content
-        assert reverse("blog_posts") in content
+
+        for link_config in (*DOCS_SIDEBAR_START_LINKS, *DOCS_SIDEBAR_EXPLORE_LINKS):
+            link = build_configured_link(link_config)
+            assert link["url"] in content
+            assert link["title"] in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_docs_page_is_public_and_uses_safe_placeholders(self, client):

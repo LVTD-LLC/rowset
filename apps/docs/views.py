@@ -138,7 +138,7 @@ def get_category_title(category_slug):
     if category_label:
         return category_label
 
-    logger.warning("Docs category missing explicit label", category=category_slug)
+    logger.warning(f"Docs category missing explicit label: {category_slug}")
     return category_slug.replace("-", " ").title()
 
 
@@ -197,8 +197,8 @@ def get_docs_navigation():  # noqa: C901
     remaining_categories = sorted(set(all_categories.keys()) - set(ordered_categories))
     if remaining_categories:
         logger.warning(
-            "Docs categories missing from navigation.yaml were appended to navigation",
-            categories=remaining_categories,
+            "Docs categories missing from navigation.yaml were appended to navigation: "
+            f"{', '.join(remaining_categories)}"
         )
     ordered_categories.extend(remaining_categories)
 
