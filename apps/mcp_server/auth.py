@@ -10,7 +10,6 @@ from rowset.utils import build_absolute_public_url
 MCP_MOUNT_PATH = "/mcp"
 MCP_INTERNAL_PATH = "/"
 MCP_SCOPE = "rowset:mcp"
-LEGACY_API_KEY_CLIENT_ID = "rowset-api-key"
 AGENT_API_KEY_CLIENT_ID = "rowset-agent-api-key"
 
 
@@ -41,25 +40,20 @@ class RowsetApiKeyAuthProvider(AuthProvider):
             return None
 
         profile, agent_api_key = resolved
-        client_id = (
-            AGENT_API_KEY_CLIENT_ID if agent_api_key is not None else LEGACY_API_KEY_CLIENT_ID
-        )
         resolved_profile_id = profile.id
         claims = {
             "iss": build_mcp_base_url(),
             "sub": str(resolved_profile_id),
             "profile_id": resolved_profile_id,
             "email": profile.user.email,
-            "legacy_api_key": agent_api_key is None,
+            "agent_api_key_id": agent_api_key.id,
+            "agent_api_key_name": agent_api_key.name,
+            "agent_api_key_access_level": agent_api_key.access_level,
         }
-        if agent_api_key is not None:
-            claims["agent_api_key_id"] = agent_api_key.id
-            claims["agent_api_key_name"] = agent_api_key.name
-            claims["agent_api_key_access_level"] = agent_api_key.access_level
 
         return AccessToken(
             token=token,
-            client_id=client_id,
+            client_id=AGENT_API_KEY_CLIENT_ID,
             scopes=[MCP_SCOPE],
             expires_at=None,
             subject=str(resolved_profile_id),

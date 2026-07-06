@@ -72,7 +72,6 @@ AGENT_API_KEY_ACCESS_LEVEL_ORDER = {
     AgentApiKeyAccessLevel.READ_WRITE: 1,
     AgentApiKeyAccessLevel.ADMIN: 2,
 }
-LEGACY_PROFILE_KEY_ACCESS_LEVEL = AgentApiKeyAccessLevel.READ
 
 
 @dataclass(frozen=True)
@@ -320,10 +319,10 @@ def agent_api_key_allows(
     agent_api_key: AgentApiKey | None,
     required_access_level: str,
 ) -> bool:
+    if agent_api_key is None:
+        return False
     required = normalize_agent_api_key_access_level(required_access_level)
-    actual = normalize_agent_api_key_access_level(
-        LEGACY_PROFILE_KEY_ACCESS_LEVEL if agent_api_key is None else agent_api_key.access_level
-    )
+    actual = normalize_agent_api_key_access_level(agent_api_key.access_level)
     return AGENT_API_KEY_ACCESS_LEVEL_ORDER[actual] >= AGENT_API_KEY_ACCESS_LEVEL_ORDER[required]
 
 
@@ -334,12 +333,12 @@ def require_agent_api_key_access(
     if agent_api_key_allows(agent_api_key, required_access_level):
         return
 
+    if agent_api_key is None:
+        raise PermissionError("This action requires an active Rowset agent API key.")
+
     required = normalize_agent_api_key_access_level(required_access_level)
     required_label = AgentApiKeyAccessLevel(required).label
-    actual = (
-        LEGACY_PROFILE_KEY_ACCESS_LEVEL if agent_api_key is None else agent_api_key.access_level
-    )
-    actual_label = AgentApiKeyAccessLevel(actual).label
+    actual_label = AgentApiKeyAccessLevel(agent_api_key.access_level).label
     raise PermissionError(
         f"This Rowset API key has {actual_label} access, but this action requires "
         f"{required_label} access."
@@ -612,7 +611,7 @@ def _mark_agent_api_key_used(agent_api_key: AgentApiKey) -> None:
     agent_api_key.updated_at = now
 
 
-def resolve_api_key_profile(raw_key: str) -> tuple[Profile, AgentApiKey | None] | None:
+def resolve_api_key_profile(raw_key: str) -> tuple[Profile, AgentApiKey] | None:
     token = (raw_key or "").strip()
     if not token:
         return None
@@ -622,7 +621,4 @@ def resolve_api_key_profile(raw_key: str) -> tuple[Profile, AgentApiKey | None] 
         _mark_agent_api_key_used(agent_api_key)
         return agent_api_key.profile, agent_api_key
 
-    try:
-        return Profile.objects.select_related("user").get(key=token), None
-    except Profile.DoesNotExist:
-        return None
+    return None

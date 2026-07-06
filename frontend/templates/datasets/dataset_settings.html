@@ -55,21 +55,6 @@
                                     <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Types and descriptions</span>
                                 </a>
                             </li>
-                            {% if show_dataset_plugins %}
-                                <li>
-                                    <a href="#plugins"
-                                       class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
-                                        Plugins
-                                        <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">
-                                            {% if dataset_plugin_settings %}
-                                                {{ dataset_plugin_settings|length }} installed
-                                            {% else %}
-                                                None installed
-                                            {% endif %}
-                                        </span>
-                                    </a>
-                                </li>
-                            {% endif %}
                             <li>
                                 <a href="#public-preview"
                                    class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
@@ -355,69 +340,6 @@
                             </form>
                         </section>
                     </section>
-                    {% if show_dataset_plugins %}
-                        <section class="space-y-4" aria-labelledby="plugin-settings-group-heading">
-                            <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
-                                <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Plugins</p>
-                                <h2 id="plugin-settings-group-heading"
-                                    class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Dataset extensions</h2>
-                            </div>
-                            <section id="plugins"
-                                     class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
-                                     aria-labelledby="dataset-plugin-settings-heading">
-                                <div class="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
-                                        <h3 id="dataset-plugin-settings-heading" class="fb-section-title">Installed plugins</h3>
-                                        <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Account plugins appear here after Rowset checks this dataset for the required columns.</p>
-                                    </div>
-                                    <a href="{% url 'plugin_marketplace' %}" class="fb-button-secondary">Open plugins</a>
-                                </div>
-                                {% if dataset_plugin_settings %}
-                                    <div class="mt-5 overflow-hidden rounded-md border border-slate-200 dark:border-slate-800">
-                                        <div class="divide-y divide-slate-200 dark:divide-slate-800">
-                                            {% for plugin_row in dataset_plugin_settings %}
-                                                <div class="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_10rem_auto] md:items-center">
-                                                    <div class="min-w-0">
-                                                        <p class="break-words font-semibold text-slate-950 dark:text-slate-100">{{ plugin_row.plugin.name }}</p>
-                                                        <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ plugin_row.plugin.description }}</p>
-                                                        <p class="mt-2 break-words text-xs leading-5 {% if plugin_row.validation_error %}text-amber-700 dark:text-amber-200{% else %}text-slate-500 dark:text-slate-400{% endif %}">{{ plugin_row.feedback }}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span class="inline-flex rounded-md border px-2 py-1 text-xs font-semibold {% if plugin_row.enabled %}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200{% elif plugin_row.can_enable %}border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200{% else %}border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200{% endif %}">{{ plugin_row.status_label }}</span>
-                                                    </div>
-                                                    <div class="flex flex-wrap gap-2 md:justify-end">
-                                                        {% if plugin_row.enabled %}
-                                                            <a href="{{ plugin_row.activation.view_url }}"
-                                                               class="fb-button-secondary">Open view</a>
-                                                            <form method="post"
-                                                                  action="{% url 'dataset_disable_plugin' dataset.key plugin_row.plugin.slug %}">
-                                                                {% csrf_token %}
-                                                                <button type="submit" class="fb-button-secondary">Disable</button>
-                                                            </form>
-                                                        {% elif plugin_row.can_enable %}
-                                                            <form method="post"
-                                                                  action="{% url 'dataset_enable_plugin' dataset.key plugin_row.plugin.slug %}">
-                                                                {% csrf_token %}
-                                                                <button type="submit" class="fb-button-primary">Enable plugin</button>
-                                                            </form>
-                                                        {% else %}
-                                                            <button type="button" class="fb-button-secondary opacity-60" disabled>Enable plugin</button>
-                                                        {% endif %}
-                                                    </div>
-                                                </div>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                {% else %}
-                                    <div class="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                                        <p>No account plugins are installed yet.</p>
-                                        <a href="{% url 'plugin_marketplace' %}"
-                                           class="fb-focus mt-2 inline-flex rounded-md font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">Install plugins</a>
-                                    </div>
-                                {% endif %}
-                            </section>
-                        </section>
-                    {% endif %}
                     <section class="space-y-4" aria-labelledby="sharing-settings-group-heading">
                         <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
                             <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Sharing</p>

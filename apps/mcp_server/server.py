@@ -72,12 +72,6 @@ from apps.core.services import (
     serialize_feedback_submission_result,
     submit_profile_feedback,
 )
-from apps.dataset_plugins.services import (
-    disable_profile_dataset_plugin,
-    enable_profile_dataset_plugin,
-    list_available_dataset_plugins,
-    list_profile_dataset_plugin_activations,
-)
 from apps.datasets.types import ColumnTypeSpec, DatasetRowInput, JsonObject
 from apps.mcp_server.auth import mcp_auth
 from rowset.utils import get_rowset_logger
@@ -1546,90 +1540,6 @@ def update_dataset_public_preview(
             public_page_size=public_page_size,
             public_password=public_password,
             clear_public_password=clear_public_password,
-            **_agent_actor_kwargs(profile),
-        )
-    except DatasetServiceError as exc:
-        raise _service_error_to_tool_error(exc) from exc
-
-
-@mcp.tool(
-    name="get_available_dataset_plugins",
-    description=(
-        "Return trusted dataset plugins installed for this Rowset account, including "
-        "their required and optional column roles."
-    ),
-)
-def get_available_dataset_plugins() -> dict:
-    close_old_connections()
-    profile = _mcp_authenticated_profile()
-    return list_available_dataset_plugins(profile)
-
-
-@mcp.tool(
-    name="get_dataset_plugin_activations",
-    description="Return enabled and disabled plugin activations for one owned Rowset dataset.",
-)
-def get_dataset_plugin_activations(
-    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
-) -> dict:
-    close_old_connections()
-    profile = _mcp_authenticated_profile()
-    try:
-        return list_profile_dataset_plugin_activations(profile, dataset_key)
-    except DatasetServiceError as exc:
-        raise _service_error_to_tool_error(exc) from exc
-
-
-@mcp.tool(
-    name="enable_dataset_plugin",
-    description=(
-        "Enable or reconfigure a trusted plugin on one owned Rowset dataset. "
-        "Pass config.columns as a mapping from plugin role keys to dataset headers."
-    ),
-)
-def enable_dataset_plugin(
-    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
-    plugin_slug: Annotated[str, Field(description="Installed dataset plugin slug.")],
-    config: Annotated[
-        JsonObject | None,
-        Field(
-            default=None,
-            description=(
-                "Optional plugin config. For column-based plugins, pass "
-                '{"columns": {"front_question": "question", "back_answer": "answer"}}.'
-            ),
-        ),
-    ] = None,
-) -> dict:
-    close_old_connections()
-    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
-    try:
-        return enable_profile_dataset_plugin(
-            profile,
-            dataset_key,
-            plugin_slug,
-            config=config,
-            **_agent_actor_kwargs(profile),
-        )
-    except DatasetServiceError as exc:
-        raise _service_error_to_tool_error(exc) from exc
-
-
-@mcp.tool(
-    name="disable_dataset_plugin",
-    description="Disable one dataset plugin activation without deleting dataset rows.",
-)
-def disable_dataset_plugin(
-    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
-    plugin_slug: Annotated[str, Field(description="Installed dataset plugin slug.")],
-) -> dict:
-    close_old_connections()
-    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
-    try:
-        return disable_profile_dataset_plugin(
-            profile,
-            dataset_key,
-            plugin_slug,
             **_agent_actor_kwargs(profile),
         )
     except DatasetServiceError as exc:

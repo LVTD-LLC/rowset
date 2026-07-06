@@ -4,7 +4,6 @@ from typing import NoReturn
 from django.core.cache import cache
 from django.db import IntegrityError, connection
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.http.response import HttpResponseRedirectBase
 from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
 from django.views.decorators.csrf import csrf_exempt
@@ -39,10 +38,6 @@ from apps.api.schemas import (
     DatasetListOut,
     DatasetMetadataOut,
     DatasetMetadataPatchIn,
-    DatasetPluginActivationListOut,
-    DatasetPluginActivationResponseOut,
-    DatasetPluginConfigIn,
-    DatasetPluginListOut,
     DatasetProjectOut,
     DatasetProjectPatchIn,
     DatasetPublicPreviewOut,
@@ -138,12 +133,6 @@ from apps.core.services import (
     serialize_agent_api_key,
     serialize_feedback,
     submit_profile_feedback,
-)
-from apps.dataset_plugins.services import (
-    disable_profile_dataset_plugin,
-    enable_profile_dataset_plugin,
-    list_available_dataset_plugins,
-    list_profile_dataset_plugin_activations,
 )
 from apps.datasets.services import (
     DATASET_ASSET_CACHE_CONTROL,
@@ -241,18 +230,6 @@ def _agent_actor_kwargs(request: HttpRequest) -> dict:
 @csrf_exempt
 def api_not_found(request: HttpRequest, unmatched: str = "") -> JsonResponse:
     return JsonResponse({"detail": "Not Found"}, status=404)
-
-
-class HttpResponsePermanentRedirect308(HttpResponseRedirectBase):
-    status_code = 308
-
-
-@csrf_exempt
-def api_v1_redirect(request: HttpRequest, unmatched: str = "") -> HttpResponsePermanentRedirect308:
-    target = f"/api/{unmatched}".rstrip("/") if unmatched else "/api/"
-    if request.META.get("QUERY_STRING"):
-        target = f"{target}?{request.META['QUERY_STRING']}"
-    return HttpResponsePermanentRedirect308(target)
 
 
 @api.get("/capabilities", auth=None, tags=["agent discovery"])
@@ -1111,75 +1088,6 @@ def patch_dataset_public_preview(
             public_page_size=payload.public_page_size,
             public_password=payload.public_password,
             clear_public_password=payload.clear_public_password,
-            **_agent_actor_kwargs(request),
-        )
-    except DatasetServiceError as exc:
-        _raise_http_error(exc)
-
-
-@api.get(
-    "/dataset-plugins",
-    response=DatasetPluginListOut,
-    auth=[api_key_auth],
-    tags=["dataset plugins"],
-)
-def list_dataset_plugins(request: HttpRequest):
-    """Return trusted dataset plugins installed for this account."""
-    return list_available_dataset_plugins(request.auth)
-
-
-@api.get(
-    "/datasets/{dataset_key}/plugins",
-    response=DatasetPluginActivationListOut,
-    auth=[api_key_auth],
-    tags=["dataset plugins"],
-)
-def list_dataset_plugin_activations(request: HttpRequest, dataset_key: str):
-    """Return plugin activations and available plugins for one owned dataset."""
-    try:
-        return list_profile_dataset_plugin_activations(request.auth, dataset_key)
-    except DatasetServiceError as exc:
-        _raise_http_error(exc)
-
-
-@api.post(
-    "/datasets/{dataset_key}/plugins/{plugin_slug}",
-    response=DatasetPluginActivationResponseOut,
-    auth=[api_key_write_auth],
-    tags=["dataset plugins"],
-)
-def enable_dataset_plugin(
-    request: HttpRequest,
-    dataset_key: str,
-    plugin_slug: str,
-    payload: DatasetPluginConfigIn,
-):
-    """Enable or reconfigure a trusted plugin on one owned dataset."""
-    try:
-        return enable_profile_dataset_plugin(
-            request.auth,
-            dataset_key,
-            plugin_slug,
-            config=payload.config,
-            **_agent_actor_kwargs(request),
-        )
-    except DatasetServiceError as exc:
-        _raise_http_error(exc)
-
-
-@api.delete(
-    "/datasets/{dataset_key}/plugins/{plugin_slug}",
-    response=DatasetPluginActivationResponseOut,
-    auth=[api_key_write_auth],
-    tags=["dataset plugins"],
-)
-def disable_dataset_plugin(request: HttpRequest, dataset_key: str, plugin_slug: str):
-    """Disable one dataset plugin activation without deleting dataset rows."""
-    try:
-        return disable_profile_dataset_plugin(
-            request.auth,
-            dataset_key,
-            plugin_slug,
             **_agent_actor_kwargs(request),
         )
     except DatasetServiceError as exc:

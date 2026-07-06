@@ -769,16 +769,6 @@ def test_dataset_list_hides_unconfirmed_preview_dataset(auth_client, profile):
     assert "Preview Only" not in content
 
 
-def test_dataset_and_project_index_pages_redirect_to_home(auth_client):
-    dataset_response = auth_client.get(reverse("dataset_list"))
-    project_response = auth_client.get(reverse("project_list"))
-
-    assert dataset_response.status_code == 302
-    assert dataset_response["Location"] == reverse("home")
-    assert project_response.status_code == 302
-    assert project_response["Location"] == reverse("home")
-
-
 def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, profile):
     project = Project.objects.create(profile=profile, name="Research")
     dataset = create_ready_dataset(profile)
@@ -1134,7 +1124,6 @@ def test_archived_dataset_list_shows_archived_datasets_only(
     assert "Archived draft" not in content
     assert "Archived other account dataset" not in content
     assert reverse("home") in content
-    assert f'href="{reverse("project_list")}"' not in content
     assert reverse("dataset_export", args=[archived_dataset.key, "csv"]) not in content
     assert reverse("dataset_delete", args=[archived_dataset.key]) not in content
 
@@ -6763,13 +6752,14 @@ def test_dataset_api_rejects_other_users_dataset(client, django_user_model, prof
         email="other@example.com",
         password="password123",
     )
+    other_credential = create_agent_api_key(other_user.profile, "Other Agent")
 
-    response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={other_user.profile.key}")
+    response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={other_credential.raw_key}")
 
     assert response.status_code == 404
 
     public_key_response = client.get(
-        f"/api/datasets/{dataset.public_key}/rows?api_key={other_user.profile.key}"
+        f"/api/datasets/{dataset.public_key}/rows?api_key={other_credential.raw_key}"
     )
 
     assert public_key_response.status_code == 404

@@ -37,17 +37,11 @@ def test_openapi_dataset_asset_thumbnail_url_is_required_string(client):
     }
 
 
-def test_capabilities_endpoint_supports_current_and_legacy_api_prefixes(client):
-    current_response = client.get("/api/capabilities")
-    legacy_response = client.get("/api/v1/capabilities", follow=True)
-    legacy_root_response = client.get("/api/v1")
+def test_capabilities_endpoint_supports_current_api_prefix(client):
+    response = client.get("/api/capabilities")
 
-    assert current_response.status_code == 200
-    assert legacy_response.status_code == 200
-    assert legacy_root_response.status_code == 308
-    assert legacy_root_response["Location"] == "/api/"
-    assert current_response.json()["product"] == "Rowset"
-    assert legacy_response.json()["product"] == "Rowset"
+    assert response.status_code == 200
+    assert response.json()["product"] == "Rowset"
 
 
 def test_row_mutations_normalize_row_data_for_declared_headers():
@@ -152,31 +146,6 @@ def test_submit_feedback_api_creates_feedback_dataset_row(client, django_user_mo
     assert feedback.metadata == {"rowset_row_url": expected_row_url}
 
 
-def test_legacy_v1_api_prefix_serves_dataset_endpoints(client):
-    profile = SimpleNamespace(id=11)
-    payload = {
-        "count": 0,
-        "total_count": 0,
-        "limit": 100,
-        "offset": 0,
-        "has_more": False,
-        "datasets": [],
-    }
-
-    with (
-        patch("apps.api.auth.resolve_api_key_profile", return_value=(profile, None)),
-        patch("apps.api.views.search_profile_datasets", return_value=payload),
-    ):
-        response = client.get(
-            "/api/v1/datasets",
-            follow=True,
-            HTTP_AUTHORIZATION="Bearer test-key",
-        )
-
-    assert response.status_code == 200
-    assert response.json()["count"] == 0
-
-
 def test_unknown_api_paths_return_json_without_rendering_landing_context(client, monkeypatch):
     from apps.pages.models import ReferrerBanner
 
@@ -185,19 +154,11 @@ def test_unknown_api_paths_return_json_without_rendering_landing_context(client,
 
     monkeypatch.setattr(ReferrerBanner.objects, "get", fail_if_queried)
 
-    current_response = client.get("/api/missing-endpoint/")
-    legacy_response = client.get("/api/v1/missing-endpoint/", follow=True)
-    trailing_slash_response = client.get("/api/v1/datasets/", follow=True)
+    response = client.get("/api/missing-endpoint/")
 
-    assert current_response.status_code == 404
-    assert legacy_response.status_code == 404
-    assert trailing_slash_response.status_code == 401
-    assert current_response["Content-Type"] == "application/json"
-    assert legacy_response["Content-Type"] == "application/json"
-    assert trailing_slash_response["Content-Type"].startswith("application/json")
-    assert current_response.json() == {"detail": "Not Found"}
-    assert legacy_response.json() == {"detail": "Not Found"}
-    assert trailing_slash_response.json() == {"detail": "Unauthorized"}
+    assert response.status_code == 404
+    assert response["Content-Type"] == "application/json"
+    assert response.json() == {"detail": "Not Found"}
 
 
 def test_referrer_banner_ignores_database_connection_errors(monkeypatch):
@@ -484,14 +445,18 @@ class ProjectListApiUnitTests(SimpleTestCase):
 def test_api_key_auth_returns_profile_for_valid_key():
     from apps.api.auth import APIKeyAuth
 
+    agent_api_key = SimpleNamespace(id=1, access_level=AgentApiKeyAccessLevel.READ_WRITE)
     profile = SimpleNamespace(id=11)
     request = HttpRequest()
 
-    with patch("apps.api.auth.resolve_api_key_profile", return_value=(profile, None)) as resolver:
+    with patch(
+        "apps.api.auth.resolve_api_key_profile",
+        return_value=(profile, agent_api_key),
+    ) as resolver:
         response = APIKeyAuth().authenticate(request, "secret-key")
 
     assert response is profile
-    assert request.agent_api_key is None
+    assert request.agent_api_key is agent_api_key
     resolver.assert_called_once_with("secret-key")
 
     with patch("apps.api.auth.resolve_api_key_profile", return_value=None):
@@ -525,11 +490,15 @@ def test_api_key_auth_enforces_required_access_level():
 def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
     from apps.api.auth import APIKeyAuth
 
+    agent_api_key = SimpleNamespace(id=1, access_level=AgentApiKeyAccessLevel.READ_WRITE)
     profile = SimpleNamespace(id=11)
 
     bearer_request = HttpRequest()
     bearer_request.META["HTTP_AUTHORIZATION"] = "Bearer secret-key"
-    with patch("apps.api.auth.resolve_api_key_profile", return_value=(profile, None)) as resolver:
+    with patch(
+        "apps.api.auth.resolve_api_key_profile",
+        return_value=(profile, agent_api_key),
+    ) as resolver:
         response = APIKeyAuth()(bearer_request)
 
     assert response is profile
@@ -537,7 +506,10 @@ def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
 
     header_request = HttpRequest()
     header_request.META["HTTP_X_API_KEY"] = "header-key"
-    with patch("apps.api.auth.resolve_api_key_profile", return_value=(profile, None)) as resolver:
+    with patch(
+        "apps.api.auth.resolve_api_key_profile",
+        return_value=(profile, agent_api_key),
+    ) as resolver:
         response = APIKeyAuth()(header_request)
 
     assert response is profile
@@ -692,27 +664,19 @@ def test_agent_feedback_returns_dataset_service_errors(
 
 
 @pytest.mark.django_db
-def test_legacy_profile_api_key_can_read_but_cannot_write(client, django_user_model):
+def test_profile_api_key_is_not_an_api_credential(client, django_user_model):
     user = django_user_model.objects.create_user(
-        username="legacyreadonlyapiuser",
-        email="legacyreadonlyapiuser@example.com",
+        username="profilekeyapiuser",
+        email="profilekeyapiuser@example.com",
         password="password123",
     )
 
-    read_response = client.get(
+    response = client.get(
         "/api/user",
         HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
     )
-    write_response = client.post(
-        "/api/projects",
-        data=json.dumps({"name": "Launch"}),
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
-    )
 
-    assert read_response.status_code == 200
-    assert read_response.json()["email"] == "legacyreadonlyapiuser@example.com"
-    assert write_response.status_code == 401
+    assert response.status_code == 401
 
 
 @pytest.mark.django_db
@@ -780,33 +744,16 @@ def test_non_admin_agent_api_key_cannot_create_new_agent_api_key(client, django_
     assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
 
 
-@pytest.mark.django_db
-def test_legacy_profile_api_key_cannot_create_new_agent_api_key(client, django_user_model):
-    from apps.core.models import AgentApiKey
-
-    user = django_user_model.objects.create_user(
-        username="legacyapiuser",
-        email="legacyapiuser@example.com",
-        password="password123",
-    )
-
-    response = client.post(
-        "/api/agent-api-keys",
-        data=json.dumps({"name": "Denied Agent", "access_level": "read"}),
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {user.profile.key}",
-    )
-
-    assert response.status_code == 401
-    assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
-
-
 def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
     from apps.api.auth import SuperuserAPIKeyAuth
 
     superuser_profile = SimpleNamespace(id=11, user=SimpleNamespace(id=21, is_superuser=True))
     regular_profile = SimpleNamespace(id=12, user=SimpleNamespace(id=22, is_superuser=False))
     admin_agent_api_key = SimpleNamespace(id=1, access_level=AgentApiKeyAccessLevel.ADMIN)
+    read_write_agent_api_key = SimpleNamespace(
+        id=2,
+        access_level=AgentApiKeyAccessLevel.READ_WRITE,
+    )
 
     with patch(
         "apps.api.auth.resolve_api_key_profile",
@@ -817,12 +764,18 @@ def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
     assert response is superuser_profile
     resolver.assert_called_once_with("secret-key")
 
-    with patch("apps.api.auth.resolve_api_key_profile", return_value=(superuser_profile, None)):
-        response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "legacy-key")
+    with patch(
+        "apps.api.auth.resolve_api_key_profile",
+        return_value=(superuser_profile, read_write_agent_api_key),
+    ):
+        response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "write-key")
 
     assert response is None
 
-    with patch("apps.api.auth.resolve_api_key_profile", return_value=(regular_profile, None)):
+    with patch(
+        "apps.api.auth.resolve_api_key_profile",
+        return_value=(regular_profile, admin_agent_api_key),
+    ):
         response = SuperuserAPIKeyAuth().authenticate(HttpRequest(), "regular-key")
 
     assert response is None
@@ -2291,11 +2244,14 @@ def test_dataset_search_endpoint_delegates_to_search_service(
     django_user_model,
     monkeypatch,
 ):
+    from apps.core.services import create_agent_api_key
+
     user = django_user_model.objects.create_user(
         username="vectorendpointowner",
         email="vectorendpointowner@example.com",
         password="password123",
     )
+    credential = create_agent_api_key(user.profile, "Search Agent")
     calls = []
 
     def search_rows(profile, dataset_key, *, query, filters=None, limit=10):
@@ -2330,7 +2286,7 @@ def test_dataset_search_endpoint_delegates_to_search_service(
     monkeypatch.setattr("apps.api.views.search_profile_dataset_rows", search_rows)
 
     response = client.post(
-        f"/api/datasets/dataset-key/search?api_key={user.profile.key}",
+        f"/api/datasets/dataset-key/search?api_key={credential.raw_key}",
         data={"query": "TASK-1", "filters": {"status": "Ready"}, "limit": 5},
         content_type="application/json",
     )
@@ -2346,11 +2302,14 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
     django_user_model,
     monkeypatch,
 ):
+    from apps.core.services import create_agent_api_key
+
     user = django_user_model.objects.create_user(
         username="profilesearchendpointowner",
         email="profilesearchendpointowner@example.com",
         password="password123",
     )
+    credential = create_agent_api_key(user.profile, "Search Agent")
     calls = []
 
     def search_rows(
@@ -2432,7 +2391,7 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
     monkeypatch.setattr("apps.api.views.search_profile_rows", search_rows)
 
     response = client.post(
-        f"/api/search?api_key={user.profile.key}",
+        f"/api/search?api_key={credential.raw_key}",
         data={
             "query": "stale vectors",
             "filters": {"status": "Ready"},

@@ -7,7 +7,6 @@ from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.services import create_agent_api_key
 from apps.mcp_server.auth import (
     AGENT_API_KEY_CLIENT_ID,
-    LEGACY_API_KEY_CLIENT_ID,
     MCP_INTERNAL_PATH,
     MCP_SCOPE,
     RowsetApiKeyAuthProvider,
@@ -38,17 +37,6 @@ def _provider() -> RowsetApiKeyAuthProvider:
 
 
 @override_settings(SITE_URL="https://rowset.example")
-def test_api_key_provider_accepts_legacy_bearer_api_key(profile):
-    provider = _provider()
-
-    access_token = anyio.run(provider.verify_token, profile.key)
-
-    assert access_token.client_id == LEGACY_API_KEY_CLIENT_ID
-    assert access_token.subject == str(profile.id)
-    assert access_token.claims["iss"] == "https://rowset.example/mcp"
-    assert access_token.claims["legacy_api_key"] is True
-
-
 def test_api_key_provider_accepts_named_agent_api_key(profile):
     provider = _provider()
     credential = create_agent_api_key(profile, "Codex", AgentApiKeyAccessLevel.ADMIN)
@@ -57,7 +45,7 @@ def test_api_key_provider_accepts_named_agent_api_key(profile):
 
     assert access_token.client_id == AGENT_API_KEY_CLIENT_ID
     assert access_token.subject == str(profile.id)
-    assert access_token.claims["legacy_api_key"] is False
+    assert access_token.claims["iss"] == "https://rowset.example/mcp"
     assert access_token.claims["agent_api_key_id"] == credential.agent_api_key.id
     assert access_token.claims["agent_api_key_name"] == "Codex"
     assert access_token.claims["agent_api_key_access_level"] == AgentApiKeyAccessLevel.ADMIN

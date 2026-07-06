@@ -133,13 +133,10 @@ CUSTOM_APPS = [
     "apps.api.ApiConfig",
     "apps.mcp_server.apps.McpServerConfig",
     "apps.datasets.apps.DatasetsConfig",
-    "apps.dataset_plugins.apps.DatasetPluginsConfig",
     "apps.pages.PagesConfig",
 ]
 
 INSTALLED_APPS = DEFAULT_APPS + THIRD_PARTY_APPS + CUSTOM_APPS
-
-ROWSET_DATASET_PLUGIN_MODULES = env.list("ROWSET_DATASET_PLUGIN_MODULES", default=[])
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

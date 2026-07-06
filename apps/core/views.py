@@ -167,7 +167,7 @@ def build_agent_setup_prompt(
     if mask_api_key:
         api_key = AGENT_API_KEY_MASK
     elif api_key is None:
-        api_key = profile.key
+        api_key = AGENT_API_KEY_MASK
 
     return "\n".join(
         [
@@ -301,15 +301,6 @@ def llms_txt(request):
         content_type="text/plain; charset=utf-8",
     )
     response["Cache-Control"] = "public, max-age=300"
-    return response
-
-
-@login_required
-@require_GET
-def agent_setup_prompt(request):
-    profile = get_or_create_profile_for_user(request.user)
-    response = JsonResponse({"prompt": build_agent_setup_prompt(request, profile=profile)})
-    response["Cache-Control"] = "no-store"
     return response
 
 

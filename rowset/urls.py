@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
-from apps.api.views import api_not_found, api_v1_redirect
+from apps.api.views import api_not_found
 from apps.pages.seo import public_sitemap, robots_txt
 from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView
 
@@ -33,9 +33,6 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("anymail/", include("anymail.urls")),
     path("robots.txt", robots_txt, name="robots_txt"),
-    path("api/v1", api_v1_redirect, name="api_v1_redirect_root"),
-    path("api/v1/", api_v1_redirect, name="api_v1_redirect_root_slash"),
-    path("api/v1/<path:unmatched>", api_v1_redirect, name="api_v1_redirect"),
     path("api/", include("apps.api.urls")),
     path("api/<path:unmatched>", api_not_found, name="api_not_found"),
     path("", include("apps.datasets.urls")),

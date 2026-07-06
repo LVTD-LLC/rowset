@@ -33,18 +33,10 @@ from apps.pages.schema import (
     product_schema,
     software_application_schema,
 )
-from apps.pages.use_cases import get_use_case_page, get_use_case_pages
+from apps.pages.use_cases import get_use_case_pages
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 logger = get_rowset_logger(__name__)
-
-LEGACY_DOC_SLUG_REDIRECTS = {
-    "first-agent-dataset": "quickstart",
-    "help-agents-discover-rowset": "agent-discovery",
-    "mcp-rest-and-previews": "mcp-rest-public-previews",
-    "share-public-preview": "share-public-previews",
-}
-
 
 class LandingPageView(TemplateView):
     template_name = "pages/landing-page.html"
@@ -177,28 +169,6 @@ def use_case_page_view(request, slug):
     return render_content_page(request, "use-cases", slug)
 
 
-def legacy_how_to_redirect(request, slug=None):
-    if slug is None:
-        return redirect("use_cases", permanent=True)
-    if get_use_case_page(slug) is not None:
-        return redirect("use_case_page", slug=slug, permanent=True)
-    return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
-
-
-def legacy_explanation_redirect(request, slug=None):
-    if slug is None:
-        return redirect("docs_page", slug="quickstart", permanent=True)
-    return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
-
-
-def tutorials_home_view(request):
-    return redirect("docs_page", slug="quickstart", permanent=True)
-
-
-def tutorial_page_view(request, slug):
-    return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
-
-
 def blog_posts_view(request):
     blog_posts = list_blog_posts()
     return render(
@@ -236,18 +206,6 @@ def blog_post_view(request, slug):
             ),
         },
     )
-
-
-def how_to_guide_view(request, slug):
-    return legacy_how_to_redirect(request, slug)
-
-
-def explanations_home_view(request):
-    return legacy_explanation_redirect(request)
-
-
-def explanation_page_view(request, slug):
-    return legacy_explanation_redirect(request, slug)
 
 
 class DatabaseMcpServerExplanationView(TemplateView):

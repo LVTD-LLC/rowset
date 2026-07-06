@@ -364,54 +364,6 @@ class DatasetPublicPreviewOut(Schema):
     dataset: DatasetSummaryOut
 
 
-class DatasetPluginColumnRoleOut(Schema):
-    key: str
-    label: str
-    description: str
-    required: bool
-    aliases: list[str]
-
-
-class DatasetPluginOut(Schema):
-    slug: str
-    name: str
-    description: str
-    supports_public: bool
-    column_roles: list[DatasetPluginColumnRoleOut]
-
-
-class DatasetPluginListOut(Schema):
-    plugins: list[DatasetPluginOut]
-
-
-class DatasetPluginConfigIn(Schema):
-    config: JsonObject | None = None
-
-
-class DatasetPluginActivationOut(Schema):
-    id: int
-    dataset: str
-    plugin_slug: str
-    plugin: DatasetPluginOut
-    enabled: bool
-    config: JsonObject
-    view_url: str
-    created_at: datetime
-    updated_at: datetime
-
-
-class DatasetPluginActivationResponseOut(Schema):
-    status: str
-    message: str
-    activation: DatasetPluginActivationOut
-
-
-class DatasetPluginActivationListOut(Schema):
-    dataset: str
-    available_plugins: list[DatasetPluginOut]
-    activations: list[DatasetPluginActivationOut]
-
-
 class DatasetProjectPatchIn(Schema):
     project_key: str | None = None
     section_key: str | None = None
