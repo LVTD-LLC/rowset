@@ -275,7 +275,8 @@ def test_docs_use_cases_page_lists_use_case_pages(client):
     assert "Start here when you know the job" in content
     assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in content
     assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "flashcard-deck"}) in content
+    assert "flashcard-deck" not in content
+    assert "Flashcards plugin" not in content
     assert "/how-to/personal-crm/" not in content
 
 
@@ -344,6 +345,8 @@ def test_docs_use_cases_page_links_public_use_case_pages(client):
     main_content = content[content.index("<main") : content.index("</main>") + len("</main>")]
     assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in content
     assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in content
+    assert "flashcard-deck" not in content
+    assert "Flashcards plugin" not in content
     assert "product-inventory-catalog" in content
     assert reverse("pricing") not in main_content
     assert reverse("blog_post", kwargs={"slug": "airtable-alternatives"}) not in main_content

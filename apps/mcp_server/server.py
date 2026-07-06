@@ -464,8 +464,8 @@ def create_agent_api_key_tool(
 def get_rowset_capabilities() -> dict:
     """Return the current Rowset feature guide for the authenticated agent."""
     close_old_connections()
-    _mcp_authenticated_profile()
-    return rowset_capabilities_payload()
+    profile = _mcp_authenticated_profile()
+    return rowset_capabilities_payload(profile)
 
 
 @mcp.tool(

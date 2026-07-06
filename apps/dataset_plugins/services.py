@@ -17,6 +17,20 @@ from apps.datasets.models import Dataset
 PLUGIN_CONFIG_COLUMNS_KEY = "columns"
 
 
+def profile_can_use_dataset_plugins(profile: Profile | None) -> bool:
+    return bool(profile and profile.user.is_staff)
+
+
+def _raise_plugin_not_found_for_profile(profile: Profile) -> None:
+    if not profile_can_use_dataset_plugins(profile):
+        raise DatasetServiceError(404, "Dataset plugin not found.")
+
+
+def _raise_plugin_activation_not_found_for_profile(profile: Profile) -> None:
+    if not profile_can_use_dataset_plugins(profile):
+        raise DatasetServiceError(404, "Dataset plugin activation not found.")
+
+
 def _normalized_header_key(value: object) -> str:
     return "_".join(str(value or "").strip().lower().replace("-", " ").split())
 
@@ -128,6 +142,7 @@ def install_profile_dataset_plugin(
     profile: Profile,
     plugin_slug: str,
 ) -> tuple[ProfilePluginInstallation, bool]:
+    _raise_plugin_not_found_for_profile(profile)
     spec = _get_plugin_or_raise(plugin_slug)
     return ProfilePluginInstallation.objects.get_or_create(
         profile=profile,
@@ -137,6 +152,7 @@ def install_profile_dataset_plugin(
 
 @transaction.atomic
 def uninstall_profile_dataset_plugin(profile: Profile, plugin_slug: str) -> bool:
+    _raise_plugin_not_found_for_profile(profile)
     spec = _get_plugin_or_raise(plugin_slug)
     deleted_count, _ = ProfilePluginInstallation.objects.filter(
         profile=profile,
@@ -150,6 +166,8 @@ def uninstall_profile_dataset_plugin(profile: Profile, plugin_slug: str) -> bool
 
 
 def dataset_plugin_marketplace_context(profile: Profile) -> list[dict[str, Any]]:
+    if not profile_can_use_dataset_plugins(profile):
+        return []
     installed_slugs = _installed_plugin_slugs(profile)
     return [
         {
@@ -180,6 +198,8 @@ def serialize_dataset_plugin_activation(
 
 
 def list_available_dataset_plugins(profile: Profile | None = None) -> dict[str, Any]:
+    if not profile_can_use_dataset_plugins(profile):
+        return {"plugins": []}
     installed_slugs = _installed_plugin_slugs(profile) if profile is not None else set()
     return {
         "plugins": [
@@ -192,6 +212,12 @@ def list_available_dataset_plugins(profile: Profile | None = None) -> dict[str, 
 
 def list_profile_dataset_plugin_activations(profile: Profile, dataset_key: str) -> dict[str, Any]:
     dataset = get_profile_dataset(profile, dataset_key)
+    if not profile_can_use_dataset_plugins(profile):
+        return {
+            "dataset": str(dataset.key),
+            "available_plugins": [],
+            "activations": [],
+        }
     activations = (
         DatasetPluginActivation.objects.select_related("dataset")
         .filter(profile=profile, dataset=dataset)
@@ -237,6 +263,8 @@ def _plugin_settings_feedback(
 
 
 def dataset_plugin_settings_context(dataset: Dataset) -> list[dict[str, Any]]:
+    if not profile_can_use_dataset_plugins(dataset.profile):
+        return []
     installed_slugs = _installed_plugin_slugs(dataset.profile)
     activations = {
         activation.plugin_slug: activation
@@ -300,6 +328,8 @@ def dataset_plugin_settings_context(dataset: Dataset) -> list[dict[str, Any]]:
 
 
 def enabled_dataset_plugin_links(dataset: Dataset) -> list[dict[str, Any]]:
+    if not profile_can_use_dataset_plugins(dataset.profile):
+        return []
     activations = (
         DatasetPluginActivation.objects.select_related("dataset")
         .filter(profile=dataset.profile, dataset=dataset, enabled=True)
@@ -321,6 +351,7 @@ def enable_profile_dataset_plugin(
     config: dict[str, Any] | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict[str, Any]:
+    _raise_plugin_not_found_for_profile(profile)
     spec = _get_plugin_or_raise(plugin_slug)
     _require_profile_plugin_installation(profile, spec)
     with transaction.atomic():
@@ -365,6 +396,7 @@ def disable_profile_dataset_plugin(
     plugin_slug: str,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict[str, Any]:
+    _raise_plugin_activation_not_found_for_profile(profile)
     spec = _get_plugin_or_raise(plugin_slug)
     with transaction.atomic():
         dataset = get_profile_dataset(profile, dataset_key)
@@ -394,6 +426,7 @@ def get_profile_dataset_plugin_activation(
     *,
     require_enabled: bool = True,
 ) -> DatasetPluginActivation:
+    _raise_plugin_activation_not_found_for_profile(profile)
     spec = _get_plugin_or_raise(plugin_slug)
     dataset = get_profile_dataset(profile, dataset_key)
     activation = (

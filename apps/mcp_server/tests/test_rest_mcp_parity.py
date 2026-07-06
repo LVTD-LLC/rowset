@@ -208,6 +208,8 @@ def test_rest_and_mcp_enable_dataset_plugin_share_response_contract(
     monkeypatch,
 ):
     profile = create_profile_with_api_key(django_user_model)
+    profile.user.is_staff = True
+    profile.user.save(update_fields=["is_staff"])
     _authenticate_mcp_as(monkeypatch, profile)
     ProfilePluginInstallation.objects.create(profile=profile, plugin_slug="flashcards")
     rest_dataset = create_dataset(
@@ -263,6 +265,48 @@ def test_rest_and_mcp_enable_dataset_plugin_share_response_contract(
     assert rest_activation["enabled"] is True
     assert mcp_activation["enabled"] is True
     assert rest_activation["config"] == mcp_activation["config"] == config
+
+
+def test_rest_and_mcp_hide_dataset_plugins_from_non_staff(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    profile = create_profile_with_api_key(django_user_model)
+    _authenticate_mcp_as(monkeypatch, profile)
+    dataset = create_dataset(
+        profile,
+        name="REST flashcards",
+        headers=["card_id", "front_question", "back_answer"],
+        index_column="card_id",
+        rows=[
+            {
+                "card_id": "card-1",
+                "front_question": "What does hola mean?",
+                "back_answer": "Hello",
+            }
+        ],
+    )
+
+    rest_available_response = client.get(
+        "/api/dataset-plugins",
+        HTTP_AUTHORIZATION=_bearer(profile),
+    )
+    mcp_available_result = mcp_server.get_available_dataset_plugins()
+    rest_enable_response = client.post(
+        f"/api/datasets/{dataset.key}/plugins/flashcards",
+        {"config": {}},
+        content_type="application/json",
+        HTTP_AUTHORIZATION=_bearer(profile),
+    )
+
+    with pytest.raises(Exception) as exc_info:
+        mcp_server.enable_dataset_plugin(str(dataset.key), "flashcards", config={})
+
+    assert rest_available_response.status_code == 200
+    assert rest_available_response.json() == mcp_available_result == {"plugins": []}
+    assert rest_enable_response.status_code == 404
+    assert _extract_mcp_error_payload(exc_info.value)["details"]["http_status"] == 404
 
 
 def test_rest_and_mcp_project_section_assignment_share_contract(

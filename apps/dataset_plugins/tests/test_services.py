@@ -4,8 +4,11 @@ from apps.api.services import DatasetServiceError
 from apps.dataset_plugins.models import DatasetPluginActivation, ProfilePluginInstallation
 from apps.dataset_plugins.services import (
     dataset_plugin_marketplace_context,
+    dataset_plugin_settings_context,
     disable_profile_dataset_plugin,
     enable_profile_dataset_plugin,
+    enabled_dataset_plugin_links,
+    get_profile_dataset_plugin_activation,
     install_profile_dataset_plugin,
     list_available_dataset_plugins,
     list_profile_dataset_plugin_activations,
@@ -47,8 +50,14 @@ def install_flashcards(profile):
     return ProfilePluginInstallation.objects.create(profile=profile, plugin_slug="flashcards")
 
 
+def make_staff(profile):
+    profile.user.is_staff = True
+    profile.user.save(update_fields=["is_staff"])
+    return profile
+
+
 def test_plugin_marketplace_context_marks_installed_plugins(django_user_model):
-    profile = create_profile_with_api_key(django_user_model)
+    profile = make_staff(create_profile_with_api_key(django_user_model))
 
     rows = dataset_plugin_marketplace_context(profile)
 
@@ -62,8 +71,15 @@ def test_plugin_marketplace_context_marks_installed_plugins(django_user_model):
     assert rows[0]["is_installed"] is True
 
 
-def test_available_plugins_include_flashcards(django_user_model):
+def test_plugin_marketplace_context_is_hidden_from_non_staff(django_user_model):
     profile = create_profile_with_api_key(django_user_model)
+    install_flashcards(profile)
+
+    assert dataset_plugin_marketplace_context(profile) == []
+
+
+def test_available_plugins_include_flashcards(django_user_model):
+    profile = make_staff(create_profile_with_api_key(django_user_model))
 
     result = list_available_dataset_plugins(profile)
 
@@ -80,8 +96,17 @@ def test_available_plugins_include_flashcards(django_user_model):
     }
 
 
-def test_enable_dataset_plugin_autodetects_flashcard_columns(django_user_model):
+def test_available_plugins_are_hidden_from_non_staff(django_user_model):
     profile = create_profile_with_api_key(django_user_model)
+    install_flashcards(profile)
+
+    result = list_available_dataset_plugins(profile)
+
+    assert result == {"plugins": []}
+
+
+def test_enable_dataset_plugin_autodetects_flashcard_columns(django_user_model):
+    profile = make_staff(create_profile_with_api_key(django_user_model))
     install_flashcards(profile)
     dataset = create_flashcard_dataset(profile)
 
@@ -101,7 +126,7 @@ def test_enable_dataset_plugin_autodetects_flashcard_columns(django_user_model):
 
 
 def test_enable_dataset_plugin_accepts_explicit_column_mapping(django_user_model):
-    profile = create_profile_with_api_key(django_user_model)
+    profile = make_staff(create_profile_with_api_key(django_user_model))
     install_flashcards(profile)
     dataset = create_flashcard_dataset(
         profile,
@@ -129,7 +154,7 @@ def test_enable_dataset_plugin_accepts_explicit_column_mapping(django_user_model
 
 
 def test_enable_dataset_plugin_rejects_missing_required_columns(django_user_model):
-    profile = create_profile_with_api_key(django_user_model)
+    profile = make_staff(create_profile_with_api_key(django_user_model))
     install_flashcards(profile)
     dataset = create_dataset(
         profile,
@@ -146,9 +171,21 @@ def test_enable_dataset_plugin_rejects_missing_required_columns(django_user_mode
     assert not DatasetPluginActivation.objects.filter(dataset=dataset).exists()
 
 
+def test_enable_dataset_plugin_rejects_non_staff(django_user_model):
+    profile = create_profile_with_api_key(django_user_model)
+    install_flashcards(profile)
+    dataset = create_flashcard_dataset(profile)
+
+    with pytest.raises(DatasetServiceError, match="Dataset plugin not found") as exc_info:
+        enable_profile_dataset_plugin(profile, str(dataset.key), "flashcards")
+
+    assert exc_info.value.status_code == 404
+    assert not DatasetPluginActivation.objects.filter(dataset=dataset).exists()
+
+
 def test_enable_dataset_plugin_enforces_dataset_ownership(django_user_model):
-    profile = create_profile_with_api_key(django_user_model, username="owner")
-    other_profile = create_profile_with_api_key(django_user_model, username="other")
+    profile = make_staff(create_profile_with_api_key(django_user_model, username="owner"))
+    other_profile = make_staff(create_profile_with_api_key(django_user_model, username="other"))
     install_flashcards(other_profile)
     dataset = create_flashcard_dataset(profile)
 
@@ -159,7 +196,7 @@ def test_enable_dataset_plugin_enforces_dataset_ownership(django_user_model):
 
 
 def test_enable_dataset_plugin_requires_account_installation(django_user_model):
-    profile = create_profile_with_api_key(django_user_model)
+    profile = make_staff(create_profile_with_api_key(django_user_model))
     dataset = create_flashcard_dataset(profile)
 
     with pytest.raises(DatasetServiceError, match="Install Flashcards before enabling") as exc_info:
@@ -170,7 +207,7 @@ def test_enable_dataset_plugin_requires_account_installation(django_user_model):
 
 
 def test_disable_dataset_plugin_marks_activation_disabled(django_user_model):
-    profile = create_profile_with_api_key(django_user_model)
+    profile = make_staff(create_profile_with_api_key(django_user_model))
     install_flashcards(profile)
     dataset = create_flashcard_dataset(profile)
     enable_profile_dataset_plugin(profile, str(dataset.key), "flashcards")
@@ -183,7 +220,7 @@ def test_disable_dataset_plugin_marks_activation_disabled(django_user_model):
 
 
 def test_list_dataset_plugin_activations_returns_available_and_enabled(django_user_model):
-    profile = create_profile_with_api_key(django_user_model)
+    profile = make_staff(create_profile_with_api_key(django_user_model))
     install_flashcards(profile)
     dataset = create_flashcard_dataset(profile)
     enable_profile_dataset_plugin(profile, str(dataset.key), "flashcards")
@@ -197,7 +234,7 @@ def test_list_dataset_plugin_activations_returns_available_and_enabled(django_us
 
 
 def test_uninstall_dataset_plugin_removes_account_install_and_activations(django_user_model):
-    profile = create_profile_with_api_key(django_user_model)
+    profile = make_staff(create_profile_with_api_key(django_user_model))
     install_flashcards(profile)
     dataset = create_flashcard_dataset(profile)
     enable_profile_dataset_plugin(profile, str(dataset.key), "flashcards")
@@ -213,3 +250,37 @@ def test_uninstall_dataset_plugin_removes_account_install_and_activations(django
         profile=profile,
         plugin_slug="flashcards",
     ).exists()
+
+
+def test_dataset_plugin_surfaces_hide_existing_activations_from_non_staff(django_user_model):
+    profile = create_profile_with_api_key(django_user_model)
+    install_flashcards(profile)
+    dataset = create_flashcard_dataset(profile)
+    DatasetPluginActivation.objects.create(
+        profile=profile,
+        dataset=dataset,
+        plugin_slug="flashcards",
+        enabled=True,
+        config={
+            "columns": {
+                "front_question": "front_question",
+                "back_answer": "back_answer",
+            }
+        },
+    )
+
+    result = list_profile_dataset_plugin_activations(profile, str(dataset.key))
+
+    assert result == {
+        "dataset": str(dataset.key),
+        "available_plugins": [],
+        "activations": [],
+    }
+    assert dataset_plugin_settings_context(dataset) == []
+    assert enabled_dataset_plugin_links(dataset) == []
+    with pytest.raises(
+        DatasetServiceError,
+        match="Dataset plugin activation not found",
+    ) as exc_info:
+        get_profile_dataset_plugin_activation(profile, str(dataset.key), "flashcards")
+    assert exc_info.value.status_code == 404

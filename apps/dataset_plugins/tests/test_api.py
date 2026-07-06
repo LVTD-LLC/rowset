@@ -22,8 +22,14 @@ def create_flashcard_dataset(profile):
     )
 
 
+def make_staff(profile):
+    profile.user.is_staff = True
+    profile.user.save(update_fields=["is_staff"])
+    return profile
+
+
 def test_rest_lists_available_dataset_plugins(client, django_user_model):
-    profile = create_profile_with_api_key(django_user_model)
+    profile = make_staff(create_profile_with_api_key(django_user_model))
 
     response = client.get(
         "/api/dataset-plugins",
@@ -44,8 +50,51 @@ def test_rest_lists_available_dataset_plugins(client, django_user_model):
     assert response.json()["plugins"][0]["slug"] == "flashcards"
 
 
-def test_rest_enables_lists_and_disables_dataset_plugin(client, django_user_model):
+def test_rest_hides_dataset_plugins_from_non_staff(client, django_user_model):
     profile = create_profile_with_api_key(django_user_model)
+    ProfilePluginInstallation.objects.create(profile=profile, plugin_slug="flashcards")
+    dataset = create_flashcard_dataset(profile)
+    DatasetPluginActivation.objects.create(
+        profile=profile,
+        dataset=dataset,
+        plugin_slug="flashcards",
+        enabled=True,
+        config={
+            "columns": {
+                "front_question": "front_question",
+                "back_answer": "back_answer",
+            }
+        },
+    )
+
+    available_response = client.get(
+        "/api/dataset-plugins",
+        HTTP_AUTHORIZATION=f"Bearer {profile.key}",
+    )
+    list_response = client.get(
+        f"/api/datasets/{dataset.key}/plugins",
+        HTTP_AUTHORIZATION=f"Bearer {profile.key}",
+    )
+    enable_response = client.post(
+        f"/api/datasets/{dataset.key}/plugins/flashcards",
+        {"config": {}},
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {profile.key}",
+    )
+
+    assert available_response.status_code == 200
+    assert available_response.json() == {"plugins": []}
+    assert list_response.status_code == 200
+    assert list_response.json() == {
+        "dataset": str(dataset.key),
+        "available_plugins": [],
+        "activations": [],
+    }
+    assert enable_response.status_code == 404
+
+
+def test_rest_enables_lists_and_disables_dataset_plugin(client, django_user_model):
+    profile = make_staff(create_profile_with_api_key(django_user_model))
     ProfilePluginInstallation.objects.create(profile=profile, plugin_slug="flashcards")
     dataset = create_flashcard_dataset(profile)
 

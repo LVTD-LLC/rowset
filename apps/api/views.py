@@ -257,7 +257,10 @@ def api_v1_redirect(request: HttpRequest, unmatched: str = "") -> HttpResponsePe
 
 @api.get("/capabilities", auth=None, tags=["agent discovery"])
 def get_rowset_capabilities(request: HttpRequest):
-    return rowset_capabilities_payload()
+    profile = None
+    if request.user.is_authenticated:
+        profile = request.user.profile
+    return rowset_capabilities_payload(profile)
 
 
 @api.get("/healthcheck", auth=None, include_in_schema=False, tags=["private"])

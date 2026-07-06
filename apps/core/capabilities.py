@@ -2,6 +2,11 @@ from dataclasses import dataclass
 from typing import Any
 
 CAPABILITY_VERSION = "2026-07-05"
+STAFF_ONLY_CAPABILITY_IDS = frozenset({"dataset_plugins"})
+
+
+def profile_can_view_staff_capabilities(profile: Any | None) -> bool:
+    return bool(profile and getattr(getattr(profile, "user", None), "is_staff", False))
 
 
 @dataclass(frozen=True)
@@ -529,8 +534,39 @@ def _validate_capability_registry() -> None:
         )
 
 
-def rowset_capabilities_payload() -> dict[str, Any]:
+def _visible_rowset_capabilities(profile: Any | None = None) -> tuple[RowsetCapability, ...]:
+    if profile_can_view_staff_capabilities(profile):
+        return ROWSET_CAPABILITIES
+    return tuple(
+        capability
+        for capability in ROWSET_CAPABILITIES
+        if capability.id not in STAFF_ONLY_CAPABILITY_IDS
+    )
+
+
+def _visible_rowset_use_cases(
+    capabilities: tuple[RowsetCapability, ...],
+) -> tuple[RowsetUseCase, ...]:
+    visible_capability_ids = {capability.id for capability in capabilities}
+    return tuple(
+        use_case
+        for use_case in ROWSET_USE_CASES
+        if set(use_case.rowset_features) <= visible_capability_ids
+    )
+
+
+def public_rowset_capabilities() -> tuple[RowsetCapability, ...]:
+    return _visible_rowset_capabilities(None)
+
+
+def public_rowset_use_cases() -> tuple[RowsetUseCase, ...]:
+    return _visible_rowset_use_cases(public_rowset_capabilities())
+
+
+def rowset_capabilities_payload(profile: Any | None = None) -> dict[str, Any]:
     _validate_capability_registry()
+    visible_capabilities = _visible_rowset_capabilities(profile)
+    visible_use_cases = _visible_rowset_use_cases(visible_capabilities)
     return {
         "product": "Rowset",
         "capability_version": CAPABILITY_VERSION,
@@ -543,8 +579,8 @@ def rowset_capabilities_payload() -> dict[str, Any]:
             "semantics, feature groups, and recommended startup order."
         ),
         "recommended_startup": list(ROWSET_RECOMMENDED_STARTUP),
-        "capabilities": [capability.as_dict() for capability in ROWSET_CAPABILITIES],
-        "use_cases": [use_case.as_dict() for use_case in ROWSET_USE_CASES],
+        "capabilities": [capability.as_dict() for capability in visible_capabilities],
+        "use_cases": [use_case.as_dict() for use_case in visible_use_cases],
         "guardrails": list(ROWSET_GUARDRAILS),
     }
 
@@ -560,6 +596,8 @@ def render_rowset_llms_txt(
     use_cases_skill_url: str,
 ) -> str:
     _validate_capability_registry()
+    visible_capabilities = _visible_rowset_capabilities()
+    visible_use_cases = _visible_rowset_use_cases(visible_capabilities)
     lines = [
         "# Rowset",
         "",
@@ -591,7 +629,7 @@ def render_rowset_llms_txt(
             "",
         ]
     )
-    for capability in ROWSET_CAPABILITIES:
+    for capability in visible_capabilities:
         lines.extend(
             [
                 f"### {capability.title}",
@@ -613,7 +651,7 @@ def render_rowset_llms_txt(
             "",
         ]
     )
-    for use_case in ROWSET_USE_CASES:
+    for use_case in visible_use_cases:
         lines.extend(
             [
                 f"### {use_case.title}",
