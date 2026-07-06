@@ -203,17 +203,27 @@ def test_public_resources_nav_links_to_root_content_sections(client):
         assert f'href="{href}"' in footer_nav
 
 
-def test_docs_home_lists_grouped_user_job_pages(client):
+def test_docs_home_redirects_to_quickstart(client):
     response = client.get(reverse("docs_home"))
+
+    assert response.status_code == 301
+    assert response["Location"] == reverse("docs_page", kwargs={"slug": "quickstart"})
+
+
+def test_docs_pages_use_grouped_user_job_sidebar(client):
+    response = client.get(reverse("docs_page", kwargs={"slug": "project-api"}))
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Start, build, operate, and look up Rowset workflows from one place." in content
-    assert "Start" in content
-    assert "Build" in content
-    assert "Use Cases" in content
-    assert "Reference" in content
-    assert "Operate" in content
+    docs_nav = _nav_html(content, "Docs pages")
+    assert "Explore" not in docs_nav
+    assert "Docs home" not in docs_nav
+    assert "Blog" not in docs_nav
+    assert "Start" in docs_nav
+    assert "Build" in docs_nav
+    assert "Use Cases" in docs_nav
+    assert "Reference" in docs_nav
+    assert "Operate" in docs_nav
     assert reverse("docs_page", kwargs={"slug": "quickstart"}) in content
     assert reverse("docs_page", kwargs={"slug": "create-datasets"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-plugins"}) in content
@@ -284,7 +294,7 @@ def test_legacy_explanations_home_redirects_to_docs(client):
     response = client.get(reverse("explanations_home"))
 
     assert response.status_code == 301
-    assert response["Location"] == reverse("docs_home")
+    assert response["Location"] == reverse("docs_page", kwargs={"slug": "quickstart"})
 
 
 def test_landing_page_redirects_authenticated_users_to_home(client):
@@ -444,6 +454,11 @@ def test_database_mcp_server_explanation_has_required_links_and_schema(client):
     assert "https://testserver/mcp/" in content
     assert '"@type": "Article"' in content
     assert '"@type": "BreadcrumbList"' in content
+    schema = json.loads(_json_ld_payload(content))
+    breadcrumb = next(item for item in schema if item["@type"] == "BreadcrumbList")
+    assert breadcrumb["itemListElement"][1]["item"].endswith(
+        reverse("docs_page", kwargs={"slug": "quickstart"})
+    )
 
 
 def test_authenticated_database_mcp_server_explanation_uses_app_header(client):

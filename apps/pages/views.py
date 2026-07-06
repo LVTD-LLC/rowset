@@ -24,7 +24,7 @@ from apps.pages.blog import (
 from apps.pages.blog import (
     json_ld as blog_json_ld,
 )
-from apps.pages.content import render_content_page, render_content_section
+from apps.pages.content import render_content_page
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
@@ -161,7 +161,7 @@ class PricingView(TemplateView):
 
 
 def docs_home_view(request):
-    return render_content_section(request, "docs")
+    return redirect("docs_page", slug="quickstart", permanent=True)
 
 
 def docs_page_view(request, slug):
@@ -184,12 +184,12 @@ def legacy_how_to_redirect(request, slug=None):
 
 def legacy_explanation_redirect(request, slug=None):
     if slug is None:
-        return redirect("docs_home", permanent=True)
+        return redirect("docs_page", slug="quickstart", permanent=True)
     return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
 
 
 def tutorials_home_view(request):
-    return redirect("docs_home", permanent=True)
+    return redirect("docs_page", slug="quickstart", permanent=True)
 
 
 def tutorial_page_view(request, slug):
@@ -302,7 +302,7 @@ class DatabaseMcpServerExplanationView(TemplateView):
                 breadcrumb_list_schema(
                     (
                         ("Home", "/"),
-                        ("Docs", reverse("docs_home")),
+                        ("Docs", reverse("docs_page", kwargs={"slug": "quickstart"})),
                         ("Database MCP server", path),
                     )
                 ),
