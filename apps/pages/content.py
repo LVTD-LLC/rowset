@@ -230,21 +230,6 @@ def get_content_template_context():
     }
 
 
-def render_content_section(request, section_slug, extra_pages=(), template_name=None):
-    section = get_content_section(section_slug)
-    return render(
-        request,
-        template_name or "pages/content/section.html",
-        {
-            "section": section,
-            "extra_pages": extra_pages,
-            "docs_base_template": (
-                "base_app.html" if request.user.is_authenticated else "base_landing.html"
-            ),
-        },
-    )
-
-
 def render_content_page(request, section_slug, page_slug):
     if not is_content_slug(page_slug):
         raise Http404("Content page not found")
