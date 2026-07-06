@@ -484,7 +484,7 @@ def test_airtable_alternatives_blog_post_has_required_links_schema_and_content(c
     assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
     assert schema["@type"] == "BlogPosting"
 
-    assert schema["url"] == "https://rowset.lvtd.dev/blog/airtable-alternatives"
+    assert schema["url"] == "https://testserver/blog/airtable-alternatives"
     assert schema["headline"] == "Best Airtable alternatives for AI-agent-managed datasets"
 
 

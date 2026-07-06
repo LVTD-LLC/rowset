@@ -60,5 +60,6 @@ The top SERP pattern for `airtable alternatives` is broad no-code database listi
 ## Verification Notes
 
 - The old bespoke `/alternatives/airtable/` page was removed and redirected to `/blog/airtable-alternatives`.
+- The blog post omits `canonical_url` frontmatter so the blog renderer emits host-aware canonical/schema URLs.
 - The article avoids claiming Rowset replaces Airtable's no-code app builder.
 - The article includes a FAQ section, comparison table, current official source links, and in-body internal links.

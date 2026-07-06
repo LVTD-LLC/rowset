@@ -12,7 +12,6 @@ topics:
   - Airtable alternatives
   - agent workflows
   - datasets
-canonical_url: https://rowset.lvtd.dev/blog/airtable-alternatives
 image: /static/vendors/images/logo.png
 image_alt: Rowset logo
 robots: index, follow
