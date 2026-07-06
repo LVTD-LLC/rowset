@@ -723,13 +723,10 @@
       },
     }));
 
-    Alpine.data("docsToc", (activeSidebarGroup = "") => ({
-      activeSidebarGroup,
+    Alpine.data("docsToc", () => ({
       headingIds: [],
       handleScroll: null,
       observer: null,
-      openSidebarGroup: "",
-      pinnedSidebarGroup: "",
       scrollFrame: null,
       visibleSectionIds: null,
 
@@ -758,43 +755,14 @@
         }
       },
 
-      isSidebarGroupOpen(groupId) {
-        return this.activeSidebarGroup === groupId || this.openSidebarGroup === groupId;
-      },
-
-      showSidebarGroup(groupId) {
-        if (groupId !== this.activeSidebarGroup && !this.pinnedSidebarGroup) {
-          this.openSidebarGroup = groupId;
-        }
-      },
-
-      hideSidebarGroup(groupId) {
-        if (this.openSidebarGroup === groupId && this.pinnedSidebarGroup !== groupId) {
-          this.openSidebarGroup = "";
-        }
-      },
-
-      toggleSidebarGroup(groupId) {
-        if (groupId === this.activeSidebarGroup) {
-          return;
-        }
-
-        if (this.pinnedSidebarGroup === groupId) {
-          this.openSidebarGroup = "";
-          this.pinnedSidebarGroup = "";
-          return;
-        }
-
-        this.openSidebarGroup = groupId;
-        this.pinnedSidebarGroup = groupId;
+      getContentHeadings() {
+        return Array.from(document.querySelectorAll("#docs-main-content article h2"));
       },
 
       generateTableOfContents() {
-        const headings = Array.from(this.$refs.content?.querySelectorAll("h2") || []);
+        const headings = this.getContentHeadings();
         if (headings.length === 0) {
-          if (this.$refs.sidebar) {
-            this.$refs.sidebar.style.display = "none";
-          }
+          this.$el.style.display = "none";
           return;
         }
 
@@ -825,7 +793,7 @@
       },
 
       setupIntersectionObserver() {
-        const headings = Array.from(this.$refs.content?.querySelectorAll("h2") || []);
+        const headings = this.getContentHeadings();
         if (headings.length === 0 || typeof window.IntersectionObserver !== "function") {
           return false;
         }
