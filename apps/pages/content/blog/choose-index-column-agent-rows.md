@@ -226,6 +226,11 @@ add a better business key later when the workflow proves one exists.
 The goal is not a clever schema. The goal is a dataset an agent can operate on
 without guessing which row the user meant.
 
+This matters most when a workflow outgrows a spreadsheet. The guide to [Google
+Sheets alternatives for AI-agent-managed datasets](/blog/google-sheets-alternatives)
+explains when a human-edited sheet should stay in Sheets and when the
+agent-operated rows should move into a private Rowset dataset.
+
 ## FAQ
 
 ### Is an index column the same as a database primary key?

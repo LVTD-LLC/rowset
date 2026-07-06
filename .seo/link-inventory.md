@@ -50,6 +50,7 @@
 | `/blog/mcp-vs-rest-ai-agents` | https://rowset.lvtd.dev/blog/mcp-vs-rest-ai-agents | When should an AI agent use MCP instead of REST? | MCP, REST, agent workflows | MCP docs, Agent access docs, agent-managed datasets blog |
 | `/blog/choose-index-column-agent-rows` | https://rowset.lvtd.dev/blog/choose-index-column-agent-rows | How to choose an index column for agent-managed rows | index columns, stable row identity, agent workflows | Dataset API docs, MCP docs, agent-managed datasets blog |
 | `/blog/airtable-alternatives` | https://rowset.lvtd.dev/blog/airtable-alternatives | Best Airtable alternatives for AI-agent-managed datasets | Airtable alternatives, agent workflows, datasets | landing page, agent-managed datasets blog, MCP vs REST blog |
+| `/blog/google-sheets-alternatives` | https://rowset.lvtd.dev/blog/google-sheets-alternatives | Best Google Sheets alternatives for AI-agent-managed datasets | Google Sheets alternatives, agent workflows, datasets | Airtable alternatives blog, agent-managed datasets blog, index-column guide |
 
 ## SEO-Sprint-Generated Pages
 
@@ -58,7 +59,7 @@
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
 | `airtable` | Phase 3 | `/blog/airtable-alternatives` | landing page, agent-managed datasets blog, MCP vs REST blog | pricing, MCP docs, Dataset API, public previews, index-column guide |
-| `google-sheets` | Phase 4 | `/blog/google-sheets-alternatives` | TBD | homepage, pricing, use cases, Dataset API |
+| `google-sheets` | Phase 4 | `/blog/google-sheets-alternatives` | Airtable alternatives blog, agent-managed datasets blog, index-column guide | homepage, pricing, use cases, Dataset API |
 | `baserow` | Phase 6 | `/blog/baserow-alternatives` | TBD | homepage, MCP docs, Dataset API |
 | `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | TBD | homepage, MCP docs, Dataset API |
 
@@ -115,3 +116,7 @@
 - Airtable alternatives for AI-agent-managed datasets
 - Airtable alternative for trusted agents
 - agent-managed Airtable alternative
+- Google Sheets alternatives for AI-agent-managed datasets
+- Google Sheets alternative for trusted agents
+- agent-managed Google Sheets alternative
+- private row backend for AI agents

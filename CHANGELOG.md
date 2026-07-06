@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-06
+
+### Added
+- Added the Google Sheets alternatives article as a Markdown blog post for AI-agent-managed datasets, with a verified SEO brief and inbound links from related blog posts.
+
 ## 2026-07-05
 
 ### Added

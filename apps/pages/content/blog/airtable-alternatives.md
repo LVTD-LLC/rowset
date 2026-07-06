@@ -76,7 +76,9 @@ Google Sheets has a similar mismatch for agent work. Google documents
 [per-minute Sheets API quotas](https://developers.google.com/workspace/sheets/api/limits),
 including 300 read or write requests per minute per project and 60 per minute
 per user per project. Sheets is excellent for ad hoc human work, but an agent
-doing repeated stateful writes needs more than a familiar grid.
+doing repeated stateful writes needs more than a familiar grid. If your
+workflow currently lives in Sheets, use the companion guide to [Google Sheets
+alternatives for AI-agent-managed datasets](/blog/google-sheets-alternatives).
 
 ## What an AI-agent dataset backend needs
 
