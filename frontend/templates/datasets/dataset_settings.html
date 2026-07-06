@@ -53,6 +53,12 @@
               </a>
             </li>
             <li>
+              <a href="#plugins" class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                Plugins
+                <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Dataset views and logic</span>
+              </a>
+            </li>
+            <li>
               <a href="#public-preview" class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
                 Public preview
                 <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">{% if dataset.public_enabled %}Enabled{% else %}Disabled{% endif %}</span>
@@ -266,6 +272,70 @@
                 <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
               </div>
             </form>
+          </section>
+
+          <section id="plugins" class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="dataset-plugin-settings-heading">
+            <div>
+              <h3 id="dataset-plugin-settings-heading" class="fb-section-title">Plugins</h3>
+              <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Enable trusted dataset views that read this dataset's existing rows and schema.</p>
+            </div>
+
+            <div class="mt-5 grid gap-4">
+              {% for entry in dataset_plugin_settings %}
+                <div class="rounded-md border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <h4 class="break-words text-sm font-semibold text-slate-950 dark:text-slate-100">{{ entry.plugin.name }}</h4>
+                        {% if entry.enabled %}
+                          <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">Enabled</span>
+                        {% endif %}
+                      </div>
+                      <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ entry.plugin.description }}</p>
+                      {% if entry.validation_error %}
+                        <p class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{{ entry.validation_error }}</p>
+                      {% endif %}
+                    </div>
+                    {% if entry.enabled %}
+                      <a href="{{ entry.activation.view_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Open view</a>
+                    {% endif %}
+                  </div>
+
+                  <form method="post" action="{% url 'dataset_enable_plugin' dataset.key entry.plugin.slug %}" class="mt-4 grid gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                    {% csrf_token %}
+                    <div class="grid gap-3 md:grid-cols-2">
+                      {% for role in entry.roles %}
+                        <div>
+                          <label for="plugin-{{ entry.plugin.slug }}-{{ role.key }}" class="block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                            {{ role.label }}{% if role.required %}<span class="text-red-600 dark:text-red-300"> *</span>{% endif %}
+                          </label>
+                          <select id="plugin-{{ entry.plugin.slug }}-{{ role.key }}" name="column__{{ role.key }}" class="fb-input mt-1 block w-full px-3 py-2 text-sm">
+                            <option value="">Do not map</option>
+                            {% for header in dataset.headers %}
+                              <option value="{{ header }}" {% if role.selected_column == header %}selected{% endif %}>{{ header }}</option>
+                            {% endfor %}
+                          </select>
+                          <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{{ role.description }}</p>
+                        </div>
+                      {% endfor %}
+                    </div>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                      <button type="submit" class="fb-button-primary">{% if entry.enabled %}Save plugin mapping{% else %}Enable plugin{% endif %}</button>
+                      {% if entry.enabled %}
+                        <button type="submit" form="disable-plugin-{{ entry.plugin.slug }}" class="fb-button-secondary border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950">Disable</button>
+                      {% endif %}
+                    </div>
+                  </form>
+                  {% if entry.enabled %}
+                    <form id="disable-plugin-{{ entry.plugin.slug }}" method="post" action="{% url 'dataset_disable_plugin' dataset.key entry.plugin.slug %}">
+                      {% csrf_token %}
+                    </form>
+                  {% endif %}
+                </div>
+              {% empty %}
+                <p class="text-sm text-slate-500 dark:text-slate-400">No dataset plugins are installed for this Rowset instance.</p>
+              {% endfor %}
+            </div>
           </section>
         </section>
 

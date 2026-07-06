@@ -25,6 +25,36 @@ class UseCasePageCopy:
 
 
 USE_CASE_PAGE_COPY: dict[str, UseCasePageCopy] = {
+    "flashcards": UseCasePageCopy(
+        slug="flashcard-deck",
+        eyebrow="Flashcards",
+        hero_title="A study deck your agent can keep fresh.",
+        meta_description=(
+            "Use Rowset as an agent-managed flashcard deck with structured question, "
+            "answer, image, tag, and review fields."
+        ),
+        short_summary=(
+            "Keep cards as private dataset rows, then enable the Flashcards plugin "
+            "when a human wants to study them."
+        ),
+        example_name="study_cards",
+        index_column="card_id",
+        sample_rows=(
+            ("CARD-001", "front_question", "What does MCP stand for?"),
+            ("CARD-002", "back_answer", "Model Context Protocol"),
+            ("CARD-003", "tags", "api,agents"),
+        ),
+        agent_actions=(
+            "Create cards from notes, docs, or mistakes worth reviewing.",
+            "Map front and back columns to the Flashcards plugin roles.",
+            "Update card rows as the user learns or asks for more examples.",
+        ),
+        workflow_steps=(
+            ("Structure", "The agent creates a card_id-indexed dataset."),
+            ("Enable", "It turns on the Flashcards plugin with the required columns."),
+            ("Review", "The user studies the same rows through a focused card view."),
+        ),
+    ),
     "personal_crm": UseCasePageCopy(
         slug="personal-crm",
         eyebrow="Agent CRM",
