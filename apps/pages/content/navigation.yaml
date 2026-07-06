@@ -19,10 +19,11 @@ navigation:
         - dataset-plugins
         - share-public-previews
 
-    - label: Use Cases
+    - label: Use cases
       description: Start from a concrete job when you want a ready dataset shape instead of a blank table.
-      pages:
+      current_pages:
         - use-cases
+      use_cases: true
 
     - label: Reference
       description: Look up REST endpoints, MCP tools, authentication, and generated API docs.
