@@ -18,10 +18,10 @@ narrow: it gives trusted agents an authenticated row store with stable indexes,
 schema context, dataset instructions, metadata, search, exports, and optional
 read-only previews. It is not a public spreadsheet embed or a replacement for a
 full application database. Use the REST API when a script or app already speaks
-HTTP; use [Connect over MCP](/how-to/connect-mcp/) when an agent can
+HTTP; use [Connect over MCP](/docs/connect-mcp/) when an agent can
 discover tools and schemas directly. If you are deciding whether an agent should connect directly
 to a database or use Rowset as a private dataset layer, read
-[Database MCP server: when to use Rowset instead](/explanations/database-mcp-server/).
+[Database MCP server: when to use Rowset instead](/docs/database-mcp-server/).
 
 ## Authentication
 
@@ -628,9 +628,50 @@ curl \
 
 Public previews are separate from authenticated row APIs. Use `PATCH /datasets/{dataset_key}/public-preview` or the MCP `update_dataset_public_preview` tool to configure sharing.
 
+## Dataset plugins
+
+List trusted plugins installed for the account:
+
+```http
+GET {{ api_base_url }}/dataset-plugins
+```
+
+List plugin activations for one dataset:
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}/plugins
+```
+
+Enable or reconfigure a plugin:
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/plugins/{plugin_slug}
+Content-Type: application/json
+```
+
+```json
+{
+  "config": {
+    "columns": {
+      "front_question": "question",
+      "back_answer": "answer"
+    }
+  }
+}
+```
+
+Disable a plugin without deleting rows:
+
+```http
+DELETE {{ api_base_url }}/datasets/{dataset_key}/plugins/{plugin_slug}
+```
+
+Use [Use dataset plugins](/docs/dataset-plugins/) for workflow guidance.
+
 ## Related docs
 
-- [How Rowset datasets work](/explanations/datasets/)
+- [How Rowset datasets work](/docs/datasets/)
 - [MCP tool reference](/docs/mcp-tools/)
-- [Share a public preview](/how-to/share-public-preview/)
-- [Use cases](/how-to)
+- [Share a public preview](/docs/share-public-previews/)
+- [Use dataset plugins](/docs/dataset-plugins/)
+- [Use cases](/docs/use-cases/)

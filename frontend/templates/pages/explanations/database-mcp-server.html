@@ -6,12 +6,12 @@
           content="Choose between direct database MCP servers and Rowset's hosted MCP dataset backend for AI-agent workflows." />
     <meta name="robots" content="index, follow" />
     <link rel="canonical"
-          href="https://{{ request.get_host }}{% url 'explanation_page' slug='database-mcp-server' %}" />
+          href="https://{{ request.get_host }}{% url 'docs_page' slug='database-mcp-server' %}" />
     <meta property="og:type" content="article" />
     <meta property="og:title"
           content="Database MCP server: when to use Rowset instead" />
     <meta property="og:url"
-          content="https://{{ request.get_host }}{% url 'explanation_page' slug='database-mcp-server' %}" />
+          content="https://{{ request.get_host }}{% url 'docs_page' slug='database-mcp-server' %}" />
     <meta property="og:description"
           content="A practical guide to hosted MCP datasets, direct database MCP servers, credentials, row identity, and agent-safe data workflows." />
     <meta property="og:image"
@@ -40,7 +40,7 @@
                     A direct database MCP server is useful when an agent needs controlled access to an existing production database. Rowset is useful when the agent needs its own private, structured dataset backend without exposing that database. This playbook explains the difference, the tradeoffs, and a practical setup path.
                 </p>
                 <div class="mt-8 flex flex-wrap gap-3">
-                    <a href="{% url 'how_to_guide' slug='connect-mcp' %}"
+                    <a href="{% url 'docs_page' slug='connect-mcp' %}"
                        class="fb-button-primary">Read MCP guide</a>
                     <a href="{% url 'docs_page' slug='dataset-api' %}"
                        class="fb-button-secondary">Dataset API</a>
@@ -91,7 +91,7 @@
                         Rowset is designed for that middle zone. A user can create an account, copy a setup prompt, give a trusted agent a scoped API key, and let the agent create a dataset. The agent can set headers, choose an index column, add rows, update rows, attach instructions, add metadata, search, export, and organize datasets into projects. The dashboard remains a human control surface for setup, review, exports, and optional public previews.
                     </p>
                     <p>
-                        The important word is optional. Rowset public previews are read-only and off by default. They are useful when humans need to inspect a table, but they are not the private operating path. For private agent workflows, the agent should use <a href="{% url 'how_to_guide' slug='connect-mcp' %}">MCP access</a> or the <a href="{% url 'docs_page' slug='dataset-api' %}">Dataset API</a>. That keeps bearer-key authentication, ownership boundaries, and row mutations in the private channel.
+                        The important word is optional. Rowset public previews are read-only and off by default. They are useful when humans need to inspect a table, but they are not the private operating path. For private agent workflows, the agent should use <a href="{% url 'docs_page' slug='connect-mcp' %}">MCP access</a> or the <a href="{% url 'docs_page' slug='dataset-api' %}">Dataset API</a>. That keeps bearer-key authentication, ownership boundaries, and row mutations in the private channel.
                     </p>
                     <p>
                         Rowset is also useful when the agent needs to remember context across runs. A dataset can carry a description, instructions, semantic column schema, and JSON metadata. That means the rule "do not mark a task done unless the PR is merged" or "treat price as USD unless a currency column says otherwise" can live with the dataset instead of being repeated in every prompt. The agent can call `get_dataset` before row operations and recover the operating context.
@@ -118,7 +118,7 @@
                     </p>
                     <pre><code>codex mcp add rowset --url {{ mcp_url }} --bearer-token-env-var ROWSET_API_KEY</code></pre>
                     <p>
-                        The exact URL should come from the user's Rowset dashboard or the <a href="{% url 'how_to_guide' slug='configure-agent-access' %}">agent access guide</a>. The key should live in an environment variable or secret store, not in a public prompt, shared document, screenshot, or repository. After connecting, the agent should discover tools from the MCP server and verify the authenticated user before creating data.
+                        The exact URL should come from the user's Rowset dashboard or the <a href="{% url 'docs_page' slug='configure-agent-access' %}">agent access guide</a>. The key should live in an environment variable or secret store, not in a public prompt, shared document, screenshot, or repository. After connecting, the agent should discover tools from the MCP server and verify the authenticated user before creating data.
                     </p>
                     <p>
                         A good first workflow is small. Ask the agent to create one dataset with a clear name, description, instructions, headers, and index column. For a personal CRM, use `email` or `person_id`. For an agent task board, use `task_id`. For feedback triage, use `feedback_id`. For a catalog, use `sku`. Stable indexes are important because they let the agent update a row by meaning instead of relying only on opaque row ids.
@@ -128,13 +128,13 @@
                     </p>
                     <h2>Recommended first dataset shapes</h2>
                     <p>
-                        Start with rows the agent can maintain without guessing. For an <a href="{% url 'how_to_guide' slug='personal-crm' %}">agent-managed personal CRM</a>, create a people dataset with `person_id` or `email`, name, company, relationship stage, last interaction, next action, and notes. Add instructions about when a person is warm, stale, or waiting. The agent can add people from meeting notes and surface follow-ups.
+                        Start with rows the agent can maintain without guessing. For an <a href="{% url 'docs_use_case' slug='personal-crm' %}">agent-managed personal CRM</a>, create a people dataset with `person_id` or `email`, name, company, relationship stage, last interaction, next action, and notes. Add instructions about when a person is warm, stale, or waiting. The agent can add people from meeting notes and surface follow-ups.
                     </p>
                     <p>
-                        For an <a href="{% url 'how_to_guide' slug='agent-task-board' %}">agent task board</a>, create rows with `task_id`, title, owner, status, priority, blocker, source link, and completion evidence. Add instructions about status transitions. This is useful when multiple agent sessions need to see the same work queue without scraping a project-management UI.
+                        For an <a href="{% url 'docs_use_case' slug='agent-task-board' %}">agent task board</a>, create rows with `task_id`, title, owner, status, priority, blocker, source link, and completion evidence. Add instructions about status transitions. This is useful when multiple agent sessions need to see the same work queue without scraping a project-management UI.
                     </p>
                     <p>
-                        For <a href="{% url 'how_to_guide' slug='feedback-triage' %}">feedback triage</a>, create rows with `feedback_id`, customer, source, theme, severity, duplicate_of, status, and next action. The agent can dedupe related signals and keep customer evidence linked. Public previews can help stakeholders inspect a read-only board, while private MCP/REST remains the mutation path.
+                        For <a href="{% url 'docs_use_case' slug='feedback-triage' %}">feedback triage</a>, create rows with `feedback_id`, customer, source, theme, severity, duplicate_of, status, and next action. The agent can dedupe related signals and keep customer evidence linked. Public previews can help stakeholders inspect a read-only board, while private MCP/REST remains the mutation path.
                     </p>
                     <p>
                         For content operations, create a content pipeline with slug, title, stage, owner, target keyword, brief link, draft link, canonical URL, and publish date. For QA, create issue rows with issue_id, severity, reproduction notes, environment, owner, fix status, and evidence URL. In each case, Rowset works best when the dataset reflects the workflow language the agent and human already use.
@@ -192,7 +192,7 @@
                 <div class="flex flex-col gap-3 sm:flex-row">
                     <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
                     <a href="{% url 'docs_home' %}" class="fb-button-secondary">Browse docs</a>
-                    <a href="{% url 'how_to_guide' slug='connect-mcp' %}"
+                    <a href="{% url 'docs_page' slug='connect-mcp' %}"
                        class="fb-button-secondary">Connect MCP</a>
                 </div>
             </div>

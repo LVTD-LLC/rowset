@@ -187,5 +187,5 @@ To leave the dataset ungrouped, send:
 ## Related docs
 
 - [Dataset API](/docs/dataset-api/)
-- [How Rowset datasets work](/explanations/datasets/)
+- [How Rowset datasets work](/docs/datasets/)
 - [MCP tool reference](/docs/mcp-tools/)

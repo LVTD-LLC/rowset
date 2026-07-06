@@ -2,9 +2,6 @@
 {% url 'pricing' as pricing_url %}
 {% url 'account_signup' as account_signup_url %}
 {% url 'docs_home' as docs_home_url %}
-{% url 'tutorials_home' as tutorials_home_url %}
-{% url 'how_to_guides' as how_to_guides_url %}
-{% url 'explanations_home' as explanations_home_url %}
 {% url 'blog_posts' as blog_posts_url %}
 {% url 'privacy_policy' as privacy_policy_url %}
 {% url 'terms_of_service' as terms_of_service_url %}
@@ -46,24 +43,6 @@
                         <li>
                             <a href="{{ docs_home_url }}"
                                class="hover:text-slate-950 dark:hover:text-white">Docs</a>
-                        </li>
-                    {% endif %}
-                    {% if tutorials_home_url %}
-                        <li>
-                            <a href="{{ tutorials_home_url }}"
-                               class="hover:text-slate-950 dark:hover:text-white">Tutorials</a>
-                        </li>
-                    {% endif %}
-                    {% if how_to_guides_url %}
-                        <li>
-                            <a href="{{ how_to_guides_url }}"
-                               class="hover:text-slate-950 dark:hover:text-white">How-to guides</a>
-                        </li>
-                    {% endif %}
-                    {% if explanations_home_url %}
-                        <li>
-                            <a href="{{ explanations_home_url }}"
-                               class="hover:text-slate-950 dark:hover:text-white">Explanations</a>
                         </li>
                     {% endif %}
                     {% if blog_posts_url %}

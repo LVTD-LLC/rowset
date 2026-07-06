@@ -85,9 +85,9 @@ stable `index_column`.
 
 Useful starting points:
 
-- [Agent-managed personal CRM](/how-to/personal-crm/)
-- [Agent task board](/how-to/agent-task-board/)
-- [Feedback triage workflow](/how-to/feedback-triage/)
+- [Agent-managed personal CRM](/docs/use-cases/personal-crm/)
+- [Agent task board](/docs/use-cases/agent-task-board/)
+- [Feedback triage workflow](/docs/use-cases/feedback-triage/)
 - [Index-column decision guide](/blog/choose-index-column-agent-rows)
 
 ## 7. Use the right permission level
@@ -112,12 +112,12 @@ Rowset is narrower. Use it when the agent needs its own private dataset backend
 for task boards, CRMs, feedback queues, catalogs, QA trackers, content
 pipelines, or similar structured row workflows.
 
-Read [Database MCP server: when to use Rowset instead](/explanations/database-mcp-server)
+Read [Database MCP server: when to use Rowset instead](/docs/database-mcp-server/)
 for the longer decision guide.
 
 ## Reference
 
 - [MCP tool reference](/docs/mcp-tools/)
 - [Dataset API](/docs/dataset-api/)
-- [Configure agent access](/how-to/configure-agent-access/)
-- [Help agents discover Rowset](/how-to/help-agents-discover-rowset/)
+- [Configure agent access](/docs/configure-agent-access/)
+- [Help agents discover Rowset](/docs/agent-discovery/)

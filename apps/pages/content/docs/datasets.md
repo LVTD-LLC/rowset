@@ -147,7 +147,7 @@ the authenticated Dataset API for applications and agents.
 
 ## Related docs
 
-- [Start with your first agent dataset](/tutorials/first-agent-dataset/)
+- [Start with your first agent dataset](/docs/quickstart/)
 - [Dataset API](/docs/dataset-api/)
-- [Connect over MCP](/how-to/connect-mcp/)
-- [Share a public preview](/how-to/share-public-preview/)
+- [Connect over MCP](/docs/connect-mcp/)
+- [Share a public preview](/docs/share-public-previews/)

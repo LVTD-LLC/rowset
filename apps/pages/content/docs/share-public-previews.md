@@ -55,4 +55,4 @@ If the data is not meant for casual forwarding, add a password. Anyone with the 
 
 - [Dataset API](/docs/dataset-api/)
 - [MCP tool reference](/docs/mcp-tools/)
-- [How Rowset datasets work](/explanations/datasets/)
+- [How Rowset datasets work](/docs/datasets/)

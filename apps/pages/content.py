@@ -30,30 +30,9 @@ CONTENT_SECTIONS = {
     "docs": {
         "label": "Docs",
         "title": "Rowset Docs",
-        "description": "Reference for Rowset APIs and agent access.",
+        "description": ("Start, build, operate, and look up Rowset workflows from one place."),
         "home_url_name": "docs_home",
         "page_url_name": "docs_page",
-    },
-    "tutorials": {
-        "label": "Tutorials",
-        "title": "Rowset Tutorials",
-        "description": "Guided paths for learning Rowset from a concrete first workflow.",
-        "home_url_name": "tutorials_home",
-        "page_url_name": "tutorial_page",
-    },
-    "how-to": {
-        "label": "How-to guides",
-        "title": "Rowset How-to Guides",
-        "description": "How-to guides for agent-managed datasets.",
-        "home_url_name": "how_to_guides",
-        "page_url_name": "how_to_guide",
-    },
-    "explanations": {
-        "label": "Explanations",
-        "title": "Rowset Explanations",
-        "description": "Explanations for Rowset concepts and tradeoffs.",
-        "home_url_name": "explanations_home",
-        "page_url_name": "explanation_page",
     },
 }
 
@@ -92,12 +71,16 @@ def load_content_navigation_config():
 
 
 def get_page_title(markdown_file, fallback):
+    return get_page_frontmatter(markdown_file).get("title", fallback)
+
+
+def get_page_frontmatter(markdown_file):
     try:
         with markdown_file.open(encoding="utf-8") as file:
             post = frontmatter.load(file)
-        return post.get("title", fallback)
+        return post.metadata
     except Exception:
-        return fallback
+        return {}
 
 
 def get_section_page_url(section_slug, page_slug):
@@ -116,25 +99,59 @@ def get_content_section(section_slug):
     navigation_config = load_content_navigation_config()
     configured_order = navigation_config.get(section_slug, [])
 
+    grouped_pages = []
     if not content_dir.exists():
         pages = []
     else:
         all_pages = {
             markdown_file.stem: markdown_file for markdown_file in content_dir.glob("*.md")
         }
-        ordered_pages = [page_slug for page_slug in configured_order if page_slug in all_pages]
+        ordered_page_slugs = []
+        groups = []
+        for item in configured_order:
+            if isinstance(item, str):
+                ordered_page_slugs.append(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+            page_slugs = [
+                page_slug for page_slug in item.get("pages", []) if page_slug in all_pages
+            ]
+            ordered_page_slugs.extend(page_slugs)
+            groups.append(
+                {
+                    "label": item.get("label", ""),
+                    "description": item.get("description", ""),
+                    "pages": page_slugs,
+                }
+            )
+
+        ordered_pages = [page_slug for page_slug in ordered_page_slugs if page_slug in all_pages]
         ordered_pages.extend(sorted(set(all_pages.keys()) - set(ordered_pages)))
 
         pages = []
         for page_slug in ordered_pages:
             page_title = page_slug.replace("-", " ").title()
+            metadata = get_page_frontmatter(all_pages[page_slug])
             pages.append(
                 {
                     "slug": page_slug,
-                    "title": get_page_title(all_pages[page_slug], page_title),
+                    "title": metadata.get("title", page_title),
+                    "description": metadata.get("description", ""),
                     "url": get_section_page_url(section_slug, page_slug),
                 }
             )
+
+        page_lookup = {page["slug"]: page for page in pages}
+        grouped_pages = [
+            {
+                "label": group["label"],
+                "description": group["description"],
+                "pages": [page_lookup[page_slug] for page_slug in group["pages"]],
+            }
+            for group in groups
+            if group["pages"]
+        ]
 
     return {
         "section_slug": section_slug,
@@ -143,6 +160,7 @@ def get_content_section(section_slug):
         "description": config["description"],
         "url": get_section_home_url(section_slug),
         "pages": pages,
+        "groups": grouped_pages,
     }
 
 
