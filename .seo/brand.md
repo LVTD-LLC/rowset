@@ -70,7 +70,7 @@
 
 - Homepage: https://rowset.lvtd.dev/
 - Pricing: https://rowset.lvtd.dev/pricing
-- Use cases: https://rowset.lvtd.dev/use-cases
-- Docs: https://rowset.lvtd.dev/docs/getting-started/introduction/
+- How-to guides: https://rowset.lvtd.dev/how-to/
+- Docs: https://rowset.lvtd.dev/docs/
 - Blog: https://rowset.lvtd.dev/blog/
 - Public skill: https://rowset.lvtd.dev/SKILL.md

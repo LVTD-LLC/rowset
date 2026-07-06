@@ -20,7 +20,8 @@ vendor-neutral steering set:
   warranted.
 - Never hand-write migrations. Use `make makemigrations`.
 - Ask before destructive data actions or anything that exposes credentials.
-- For docs under `apps/docs`, follow `apps/docs/AGENTS.md`.
+- Public checked-in docs, tutorials, how-to guides, explanations, and blog
+  Markdown live under `apps/pages/content`.
 
 ## High-Risk Areas
 

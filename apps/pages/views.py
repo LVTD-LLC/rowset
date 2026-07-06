@@ -2,13 +2,29 @@ from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.generic import TemplateView
 from django_q.tasks import async_task
 
 from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
 from apps.core.models import Profile
+from apps.pages.blog import (
+    BLOG_DESCRIPTION,
+    BLOG_TITLE,
+    BlogPostNotFound,
+    BlogPostValidationError,
+    blog_index_schema,
+    blog_index_url,
+    blog_post_schema,
+    default_blog_image_url,
+    get_blog_post,
+    list_blog_posts,
+)
+from apps.pages.blog import (
+    json_ld as blog_json_ld,
+)
+from apps.pages.content import get_content_section, render_content_page, render_content_section
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
@@ -138,17 +154,76 @@ class PricingView(TemplateView):
         return context
 
 
-class UseCasesIndexView(TemplateView):
-    template_name = "pages/use-cases-index.html"
+def docs_home_view(request):
+    return render_content_section(request, "docs")
+
+
+def docs_page_view(request, slug):
+    return render_content_page(request, "docs", slug)
+
+
+def tutorials_home_view(request):
+    return render_content_section(request, "tutorials")
+
+
+def tutorial_page_view(request, slug):
+    return render_content_page(request, "tutorials", slug)
+
+
+def blog_posts_view(request):
+    blog_posts = list_blog_posts()
+    return render(
+        request,
+        "blog/blog_posts.html",
+        {
+            "blog_title": BLOG_TITLE,
+            "blog_description": BLOG_DESCRIPTION,
+            "blog_posts": blog_posts,
+            "canonical_url": blog_index_url(),
+            "og_image_url": default_blog_image_url(),
+            "schema_json": blog_json_ld(blog_index_schema(blog_posts)),
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
+        },
+    )
+
+
+def blog_post_view(request, slug):
+    try:
+        blog_post = get_blog_post(slug)
+    except (BlogPostNotFound, BlogPostValidationError) as exc:
+        raise Http404("Blog post not found") from exc
+
+    return render(
+        request,
+        "blog/blog_post.html",
+        {
+            "blog_post": blog_post,
+            "canonical_url": blog_post.canonical_url,
+            "schema_json": blog_json_ld(blog_post_schema(blog_post)),
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
+        },
+    )
+
+
+class HowToIndexView(TemplateView):
+    template_name = "pages/content/how_to_index.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["section"] = get_content_section("how-to")
         context["use_case_pages"] = get_use_case_pages()
         context["schema_json"] = json_ld(use_case_item_list_schema(context["use_case_pages"]))
+        context["docs_base_template"] = (
+            "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
+        )
         return context
 
 
-class UseCaseDetailView(TemplateView):
+class HowToUseCaseDetailView(TemplateView):
     template_name = "pages/use-case-detail.html"
 
     def get_context_data(self, **kwargs):
@@ -162,15 +237,52 @@ class UseCaseDetailView(TemplateView):
             page for page in get_use_case_pages() if page["slug"] != use_case["slug"]
         )[:3]
         context["schema_json"] = json_ld(use_case_article_schema(use_case))
+        context["docs_base_template"] = (
+            "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
+        )
         return context
 
 
-class DatabaseMcpServerPlaybookView(TemplateView):
-    template_name = "pages/playbooks/database-mcp-server.html"
+def how_to_guide_view(request, slug):
+    try:
+        return render_content_page(request, "how-to", slug)
+    except Http404:
+        return HowToUseCaseDetailView.as_view()(request, slug=slug)
+
+
+def explanations_home_view(request):
+    return render_content_section(
+        request,
+        "explanations",
+        extra_pages=(
+            {
+                "title": "Database MCP server: when to use Rowset instead",
+                "description": (
+                    "A practical guide to choosing between direct database MCP servers "
+                    "and Rowset's hosted MCP dataset backend."
+                ),
+                "url": reverse("explanation_page", kwargs={"slug": "database-mcp-server"}),
+            },
+        ),
+    )
+
+
+def explanation_page_view(request, slug):
+    if slug == "database-mcp-server":
+        return DatabaseMcpServerExplanationView.as_view()(request)
+    return render_content_page(request, "explanations", slug)
+
+
+class DatabaseMcpServerExplanationView(TemplateView):
+    template_name = "pages/explanations/database-mcp-server.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        path = reverse("explanation_page", kwargs={"slug": "database-mcp-server"})
         context["mcp_url"] = build_absolute_public_url("/mcp/")
+        context["docs_base_template"] = (
+            "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
+        )
         context["schema_json"] = json_ld(
             [
                 article_schema(
@@ -179,23 +291,20 @@ class DatabaseMcpServerPlaybookView(TemplateView):
                         "A practical guide to choosing between direct database MCP servers "
                         "and Rowset's hosted MCP dataset backend for AI-agent workflows."
                     ),
-                    path=reverse("database_mcp_server_playbook"),
+                    path=path,
                     date_published="2026-07-05",
                     date_modified="2026-07-05",
                 ),
                 breadcrumb_list_schema(
                     (
                         ("Home", "/"),
-                        ("Database MCP server", reverse("database_mcp_server_playbook")),
+                        ("Explanations", reverse("explanations_home")),
+                        ("Database MCP server", path),
                     )
                 ),
             ]
         )
         return context
-
-
-class AirtableAlternativesView(TemplateView):
-    template_name = "pages/alternatives/airtable.html"
 
 
 class PrivacyPolicyView(TemplateView):

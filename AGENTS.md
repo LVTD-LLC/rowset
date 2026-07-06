@@ -20,8 +20,8 @@ browser-friendly and read-only; REST and MCP are the private programmatic paths.
 ## Workflow
 
 - Start by reading the files you are changing and the steering files relevant to
-  the task. For documentation work under `apps/docs`, also read
-  `apps/docs/AGENTS.md`.
+  the task. Public checked-in docs, tutorials, how-to guides, explanations, and
+  blog Markdown live under `apps/pages/content`.
 - Prefer `rg` and `rg --files` for repo search.
 - Keep changes inside the existing app boundaries from `STRUCTURE.md`.
 - Put reusable dataset business logic in services, not directly in views,

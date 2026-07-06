@@ -1,59 +1,61 @@
-{% extends "base_landing.html" %}
-
+{% extends docs_base_template %}
 {% block meta %}
-<title>{{ blog_post.title }} · Rowset Blog</title>
-<meta name="description" content="{{ blog_post.description }}" />
-{% if blog_post.metadata_keywords %}<meta name="keywords" content="{{ blog_post.metadata_keywords|join:', ' }}" />{% endif %}
-<meta name="robots" content="{{ blog_post.robots }}" />
-<link rel="canonical" href="{{ canonical_url }}" />
-<meta property="og:type" content="article" />
-<meta property="og:title" content="{{ blog_post.title }}" />
-<meta property="og:url" content="{{ canonical_url }}" />
-<meta property="og:description" content="{{ blog_post.description }}" />
-<meta property="og:image" content="{{ blog_post.image_url }}" />
-{% if blog_post.image_alt %}<meta property="og:image:alt" content="{{ blog_post.image_alt }}" />{% endif %}
-<meta property="og:site_name" content="Rowset" />
-<meta property="og:locale" content="en_US" />
-<meta property="article:published_time" content="{{ blog_post.published_at|date:'c' }}" />
-<meta property="article:modified_time" content="{{ blog_post.updated_at|date:'c' }}" />
-{% for topic in blog_post.topics %}<meta property="article:tag" content="{{ topic }}" />{% endfor %}
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="{{ blog_post.title }}" />
-<meta name="twitter:description" content="{{ blog_post.description }}" />
-<meta name="twitter:image" content="{{ blog_post.image_url }}" />
-{% if blog_post.image_alt %}<meta name="twitter:image:alt" content="{{ blog_post.image_alt }}" />{% endif %}
+    <title>{{ blog_post.title }} · Rowset Blog</title>
+    <meta name="description" content="{{ blog_post.description }}" />
+    {% if blog_post.metadata_keywords %}
+        <meta name="keywords" content="{{ blog_post.metadata_keywords|join:', ' }}" />
+    {% endif %}
+    <meta name="robots" content="{{ blog_post.robots }}" />
+    <link rel="canonical" href="{{ canonical_url }}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="{{ blog_post.title }}" />
+    <meta property="og:url" content="{{ canonical_url }}" />
+    <meta property="og:description" content="{{ blog_post.description }}" />
+    <meta property="og:image" content="{{ blog_post.image_url }}" />
+    {% if blog_post.image_alt %}<meta property="og:image:alt" content="{{ blog_post.image_alt }}" />{% endif %}
+    <meta property="og:site_name" content="Rowset" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="article:published_time"
+          content="{{ blog_post.published_at|date:'c' }}" />
+    <meta property="article:modified_time"
+          content="{{ blog_post.updated_at|date:'c' }}" />
+    {% for topic in blog_post.topics %}<meta property="article:tag" content="{{ topic }}" />{% endfor %}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ blog_post.title }}" />
+    <meta name="twitter:description" content="{{ blog_post.description }}" />
+    <meta name="twitter:image" content="{{ blog_post.image_url }}" />
+    {% if blog_post.image_alt %}<meta name="twitter:image:alt" content="{{ blog_post.image_alt }}" />{% endif %}
 {% endblock meta %}
-
 {% block content %}
-<article class="fb-page-narrow">
-  <header class="mb-10">
-    <a href="{% url 'blog_posts' %}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">← Blog</a>
-    <div class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
-      <time datetime="{{ blog_post.published_at|date:'Y-m-d' }}">{{ blog_post.published_at|date:"M j, Y" }}</time>
-      <span>{{ blog_post.reading_time_minutes }} min read</span>
-      <span>{{ blog_post.author }}</span>
-    </div>
-    <h1 class="mt-4 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">{{ blog_post.title }}</h1>
-    <p class="mt-4 text-lg leading-8 text-slate-700 dark:text-slate-300">{{ blog_post.description }}</p>
-  </header>
-
-  <div class="prose prose-slate max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-emerald-700 hover:prose-a:text-emerald-800 prose-pre:rounded-lg prose-pre:bg-slate-950 dark:prose-invert dark:prose-a:text-emerald-300">
-    {{ blog_post.html|safe }}
-  </div>
-
-  <nav class="not-prose mt-12 border-t border-slate-200 pt-8 dark:border-slate-800" aria-label="Related Rowset resources">
-    <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">Related resources</h2>
-    <div class="mt-4 grid gap-3 sm:grid-cols-3">
-      <a href="{% url 'docs_page' category='tutorials' page='first-agent-dataset' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">Start tutorial</a>
-      <a href="{% url 'docs_page' category='reference' page='dataset-api' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">Dataset API</a>
-      <a href="{% url 'use_cases' %}" class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">Use cases</a>
-    </div>
-  </nav>
-</article>
+    <article class="fb-page-narrow">
+        <header class="mb-10">
+            <a href="{% url 'blog_posts' %}"
+               class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">← Blog</a>
+            <div class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+                <time datetime="{{ blog_post.published_at|date:'Y-m-d' }}">{{ blog_post.published_at|date:"M j, Y" }}</time>
+                <span>{{ blog_post.reading_time_minutes }} min read</span>
+                <span>{{ blog_post.author }}</span>
+            </div>
+            <h1 class="mt-4 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">{{ blog_post.title }}</h1>
+            <p class="mt-4 text-lg leading-8 text-slate-700 dark:text-slate-300">{{ blog_post.description }}</p>
+        </header>
+        <div class="prose prose-slate max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-emerald-700 hover:prose-a:text-emerald-800 prose-pre:rounded-lg prose-pre:bg-slate-950 dark:prose-invert dark:prose-a:text-emerald-300">
+            {{ blog_post.html|safe }}
+        </div>
+        <nav class="not-prose mt-12 border-t border-slate-200 pt-8 dark:border-slate-800"
+             aria-label="Related Rowset resources">
+            <h2 class="text-lg font-semibold text-slate-950 dark:text-slate-100">Related resources</h2>
+            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <a href="{% url 'tutorial_page' slug='first-agent-dataset' %}"
+                   class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">Start tutorial</a>
+                <a href="{% url 'docs_page' slug='dataset-api' %}"
+                   class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">Dataset API</a>
+                <a href="{% url 'how_to_guides' %}"
+                   class="fb-focus rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-950 transition hover:border-emerald-500/50 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-950/30">How-to guides</a>
+            </div>
+        </nav>
+    </article>
 {% endblock content %}
-
 {% block schema %}
-<script type="application/ld+json">
-  {{ schema_json|safe }}
-</script>
+    <script type="application/ld+json">{{ schema_json|safe }}</script>
 {% endblock schema %}

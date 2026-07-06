@@ -1,0 +1,48 @@
+{% extends 'pages/content/base.html' %}
+{% block meta %}
+    <title>{{ page_title }} · {{ section_title }} · Rowset</title>
+    <meta name="description"
+          content="{% if meta_description %}{{ meta_description }}{% else %}{{ page_title }} documentation for Rowset{% endif %}" />
+    {% if meta_keywords %}<meta name="keywords" content="{{ meta_keywords }}" />{% endif %}
+    {% if author %}<meta name="author" content="{{ author }}" />{% endif %}
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="{{ canonical_url }}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title"
+          content="{{ page_title }} · {{ section_title }} · Rowset" />
+    <meta property="og:url" content="{{ page_url }}" />
+    <meta property="og:description"
+          content="{% if meta_description %}{{ meta_description }}{% else %}{{ page_title }} documentation for Rowset{% endif %}" />
+    <meta property="og:site_name" content="Rowset" />
+    <meta name="twitter:card" content="summary" />
+    <meta property="twitter:title"
+          content="{{ page_title }} · {{ section_title }} · Rowset" />
+    <meta name="twitter:description"
+          content="{% if meta_description %}{{ meta_description }}{% else %}{{ page_title }} documentation for Rowset{% endif %}" />
+{% endblock meta %}
+{% block docs_content %}
+    {{ content|safe }}
+    <nav class="not-prose mt-12 border-t border-slate-200 pt-8 dark:border-slate-800"
+         aria-label="Documentation page navigation">
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                {% if previous_page %}
+                    <a href="{{ previous_page.url }}"
+                       class="fb-focus block rounded-lg border border-slate-200 p-4 no-underline transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-800 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30">
+                        <div class="mb-1 text-sm font-medium text-slate-500 dark:text-slate-400">← Previous</div>
+                        <div class="text-base font-semibold text-slate-800 dark:text-slate-100">{{ previous_page.title }}</div>
+                    </a>
+                {% endif %}
+            </div>
+            <div>
+                {% if next_page %}
+                    <a href="{{ next_page.url }}"
+                       class="fb-focus block rounded-lg border border-slate-200 p-4 text-right no-underline transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-800 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30">
+                        <div class="mb-1 text-sm font-medium text-slate-500 dark:text-slate-400">Next →</div>
+                        <div class="text-base font-semibold text-slate-800 dark:text-slate-100">{{ next_page.title }}</div>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+{% endblock docs_content %}

@@ -11,11 +11,9 @@
 - `apps/api/` - Django Ninja API object, auth, schemas, REST views, and API
   service wrappers.
 - `apps/mcp_server/` - hosted FastMCP server, MCP bearer auth, tools, and tests.
-- `apps/docs/` - in-app documentation renderer, Markdown content, navigation,
-  and docs-specific agent guidance.
-- `apps/pages/` - marketing/static pages and page context processors.
-- `apps/blog/` - Markdown-backed blog posts, validation checks, services,
-  views, and public templates.
+- `apps/pages/` - marketing/static pages, root-level content routes, checked-in
+  docs/tutorial/how-to/explanation/blog content, blog services/checks/views, and
+  page context processors.
 - `frontend/templates/` - Django templates for public pages, authenticated app,
   account flows, datasets, docs, MCP auth, components, and email.
 - `frontend/src/js/` - Alpine component registration and small global browser
@@ -37,9 +35,9 @@
 - Put MCP tools in `apps/mcp_server/server.py`; keep tool bodies thin and backed
   by the same services as REST endpoints.
 - Put MCP auth logic in `apps/mcp_server/auth.py`.
-- Put user-facing docs in `apps/docs/content/...` and update
-  `apps/docs/navigation.yaml` when adding a page.
-- Put docs writing guidance in `apps/docs/AGENTS.md`, not repeated in every doc.
+- Put user-facing docs, tutorials, how-to guides, explanations, and blog
+  Markdown in `apps/pages/content/...`; update
+  `apps/pages/content/navigation.yaml` when adding a routed content page.
 - Put Django templates under the matching `frontend/templates/<area>/` folder.
 - Put shared template fragments in `frontend/templates/components/`.
 - Use HTMX attributes for server round trips and Alpine.js for local-only
@@ -65,14 +63,14 @@
 - REST endpoints delegating to services: `apps/api/views.py`.
 - MCP tools delegating to services: `apps/mcp_server/server.py`.
 - User-facing docs front matter and concise sections:
-  `apps/docs/content/features/mcp.md`.
+  `apps/pages/content/how-to/connect-mcp.md`.
 - Shared template include pattern:
   `frontend/templates/components/`.
 
 ## Special Cases
 
 - Never hand-create migrations. Use `make makemigrations` after model changes.
-- The docs app has its own agent instructions in `apps/docs/AGENTS.md`.
+- Pages-owned content uses the repo-level documentation guidance in `AGENTS.md`.
 - Public previews live in dataset pages/templates and must remain read-only.
 - The hosted MCP URL and agent setup prompt appear in docs and authenticated app
   context; keep the behavior consistent when changing either path.
