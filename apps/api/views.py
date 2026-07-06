@@ -1121,7 +1121,7 @@ def patch_dataset_public_preview(
     tags=["dataset plugins"],
 )
 def list_dataset_plugins(request: HttpRequest):
-    """Return trusted dataset plugins installed on this Rowset instance."""
+    """Return trusted dataset plugins installed for this account."""
     return list_available_dataset_plugins(request.auth)
 
 

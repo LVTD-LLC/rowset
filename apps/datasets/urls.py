@@ -30,6 +30,17 @@ urlpatterns = [
         name="project_section_delete",
     ),
     path("projects/<uuid:project_key>/delete/", views.project_delete, name="project_delete"),
+    path("plugins/", dataset_plugin_views.plugin_marketplace, name="plugin_marketplace"),
+    path(
+        "plugins/<slug:plugin_slug>/install/",
+        dataset_plugin_views.plugin_install,
+        name="plugin_install",
+    ),
+    path(
+        "plugins/<slug:plugin_slug>/uninstall/",
+        dataset_plugin_views.plugin_uninstall,
+        name="plugin_uninstall",
+    ),
     path("datasets/", views.dataset_list_redirect, name="dataset_list"),
     path(
         "datasets/archived/",

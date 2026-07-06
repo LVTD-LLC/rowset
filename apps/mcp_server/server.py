@@ -1555,7 +1555,7 @@ def update_dataset_public_preview(
 @mcp.tool(
     name="get_available_dataset_plugins",
     description=(
-        "Return trusted dataset plugins installed on this Rowset instance, including "
+        "Return trusted dataset plugins installed for this Rowset account, including "
         "their required and optional column roles."
     ),
 )

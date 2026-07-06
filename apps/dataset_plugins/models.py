@@ -6,6 +6,30 @@ from apps.core.models import AgentApiKey, Profile
 from apps.datasets.models import Dataset
 
 
+class ProfilePluginInstallation(BaseModel):
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name="plugin_installations",
+    )
+    plugin_slug = models.CharField(max_length=80)
+
+    class Meta:
+        ordering = ["plugin_slug", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profile", "plugin_slug"],
+                name="unique_profile_plugin_installation",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["profile", "plugin_slug"], name="profile_plugin_slug_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.profile_id} {self.plugin_slug}"
+
+
 class DatasetPluginActivation(BaseModel):
     profile = models.ForeignKey(
         Profile,

@@ -1,6 +1,6 @@
 import pytest
 
-from apps.dataset_plugins.models import DatasetPluginActivation
+from apps.dataset_plugins.models import DatasetPluginActivation, ProfilePluginInstallation
 from apps.datasets.tests.factories import create_dataset, create_profile_with_api_key
 
 pytestmark = pytest.mark.django_db
@@ -31,11 +31,22 @@ def test_rest_lists_available_dataset_plugins(client, django_user_model):
     )
 
     assert response.status_code == 200
+    assert response.json()["plugins"] == []
+
+    ProfilePluginInstallation.objects.create(profile=profile, plugin_slug="flashcards")
+
+    response = client.get(
+        "/api/dataset-plugins",
+        HTTP_AUTHORIZATION=f"Bearer {profile.key}",
+    )
+
+    assert response.status_code == 200
     assert response.json()["plugins"][0]["slug"] == "flashcards"
 
 
 def test_rest_enables_lists_and_disables_dataset_plugin(client, django_user_model):
     profile = create_profile_with_api_key(django_user_model)
+    ProfilePluginInstallation.objects.create(profile=profile, plugin_slug="flashcards")
     dataset = create_flashcard_dataset(profile)
 
     enable_response = client.post(

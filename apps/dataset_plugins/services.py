@@ -4,7 +4,7 @@ from django.db import transaction
 
 from apps.api.services import DatasetServiceError, get_profile_dataset
 from apps.core.models import AgentApiKey, Profile
-from apps.dataset_plugins.models import DatasetPluginActivation
+from apps.dataset_plugins.models import DatasetPluginActivation, ProfilePluginInstallation
 from apps.dataset_plugins.registry import (
     DatasetPluginSpec,
     get_dataset_plugin,
@@ -103,6 +103,63 @@ def _get_plugin_or_raise(plugin_slug: str) -> DatasetPluginSpec:
     return spec
 
 
+def _installed_plugin_slugs(profile: Profile) -> set[str]:
+    return set(
+        ProfilePluginInstallation.objects.filter(profile=profile).values_list(
+            "plugin_slug",
+            flat=True,
+        )
+    )
+
+
+def _is_plugin_installed(profile: Profile, plugin_slug: str) -> bool:
+    return ProfilePluginInstallation.objects.filter(
+        profile=profile,
+        plugin_slug=plugin_slug,
+    ).exists()
+
+
+def _require_profile_plugin_installation(profile: Profile, spec: DatasetPluginSpec) -> None:
+    if not _is_plugin_installed(profile, spec.slug):
+        raise DatasetServiceError(400, f"Install {spec.name} before enabling it on a dataset.")
+
+
+def install_profile_dataset_plugin(
+    profile: Profile,
+    plugin_slug: str,
+) -> tuple[ProfilePluginInstallation, bool]:
+    spec = _get_plugin_or_raise(plugin_slug)
+    return ProfilePluginInstallation.objects.get_or_create(
+        profile=profile,
+        plugin_slug=spec.slug,
+    )
+
+
+@transaction.atomic
+def uninstall_profile_dataset_plugin(profile: Profile, plugin_slug: str) -> bool:
+    spec = _get_plugin_or_raise(plugin_slug)
+    deleted_count, _ = ProfilePluginInstallation.objects.filter(
+        profile=profile,
+        plugin_slug=spec.slug,
+    ).delete()
+    DatasetPluginActivation.objects.filter(
+        profile=profile,
+        plugin_slug=spec.slug,
+    ).delete()
+    return deleted_count > 0
+
+
+def dataset_plugin_marketplace_context(profile: Profile) -> list[dict[str, Any]]:
+    installed_slugs = _installed_plugin_slugs(profile)
+    return [
+        {
+            "plugin": serialize_dataset_plugin(plugin),
+            "is_installed": plugin.slug in installed_slugs,
+        }
+        for plugin in iter_dataset_plugins()
+    ]
+
+
 def serialize_dataset_plugin_activation(
     activation: DatasetPluginActivation,
     *,
@@ -123,7 +180,14 @@ def serialize_dataset_plugin_activation(
 
 
 def list_available_dataset_plugins(profile: Profile | None = None) -> dict[str, Any]:
-    return {"plugins": [serialize_dataset_plugin(plugin) for plugin in iter_dataset_plugins()]}
+    installed_slugs = _installed_plugin_slugs(profile) if profile is not None else set()
+    return {
+        "plugins": [
+            serialize_dataset_plugin(plugin)
+            for plugin in iter_dataset_plugins()
+            if profile is None or plugin.slug in installed_slugs
+        ]
+    }
 
 
 def list_profile_dataset_plugin_activations(profile: Profile, dataset_key: str) -> dict[str, Any]:
@@ -142,7 +206,38 @@ def list_profile_dataset_plugin_activations(profile: Profile, dataset_key: str) 
     }
 
 
+def _plugin_settings_status_label(
+    *,
+    enabled: bool,
+    validation_error: str,
+) -> str:
+    if enabled:
+        return "Enabled"
+    if validation_error:
+        return "Needs columns"
+    return "Plugin available"
+
+
+def _plugin_settings_feedback(
+    *,
+    plugin: dict[str, Any],
+    roles: list[dict[str, Any]],
+    validation_error: str,
+) -> str:
+    if validation_error:
+        return validation_error
+    mapped_roles = [
+        f"{role['label']} -> {role['selected_column']}"
+        for role in roles
+        if role.get("required") and role.get("selected_column")
+    ]
+    if mapped_roles:
+        return "Mapped " + "; ".join(mapped_roles) + "."
+    return f"{plugin['name']} can be enabled for this dataset."
+
+
 def dataset_plugin_settings_context(dataset: Dataset) -> list[dict[str, Any]]:
+    installed_slugs = _installed_plugin_slugs(dataset.profile)
     activations = {
         activation.plugin_slug: activation
         for activation in DatasetPluginActivation.objects.select_related("dataset").filter(
@@ -152,6 +247,8 @@ def dataset_plugin_settings_context(dataset: Dataset) -> list[dict[str, Any]]:
     }
     entries = []
     for spec in iter_dataset_plugins():
+        if spec.slug not in installed_slugs:
+            continue
         activation = activations.get(spec.slug)
         selected_columns = {}
         validation_error = ""
@@ -165,25 +262,38 @@ def dataset_plugin_settings_context(dataset: Dataset) -> list[dict[str, Any]]:
             selected_columns = (
                 (activation.config or {}).get(PLUGIN_CONFIG_COLUMNS_KEY, {}) if activation else {}
             )
-            validation_error = exc.message if activation else ""
+            validation_error = exc.message
 
+        plugin_payload = serialize_dataset_plugin(spec)
+        roles = [
+            {
+                **role_payload,
+                "selected_column": selected_columns.get(role_payload["key"], ""),
+            }
+            for role_payload in plugin_payload["column_roles"]
+        ]
+        enabled = bool(activation and activation.enabled)
         entries.append(
             {
-                "plugin": serialize_dataset_plugin(spec),
+                "plugin": plugin_payload,
                 "activation": (
                     serialize_dataset_plugin_activation(activation, plugin=spec)
                     if activation
                     else None
                 ),
-                "enabled": bool(activation and activation.enabled),
-                "roles": [
-                    {
-                        **role_payload,
-                        "selected_column": selected_columns.get(role_payload["key"], ""),
-                    }
-                    for role_payload in serialize_dataset_plugin(spec)["column_roles"]
-                ],
+                "enabled": enabled,
+                "can_enable": not enabled and not validation_error,
+                "roles": roles,
                 "validation_error": validation_error,
+                "feedback": _plugin_settings_feedback(
+                    plugin=plugin_payload,
+                    roles=roles,
+                    validation_error=validation_error,
+                ),
+                "status_label": _plugin_settings_status_label(
+                    enabled=enabled,
+                    validation_error=validation_error,
+                ),
             }
         )
     return entries
@@ -212,6 +322,7 @@ def enable_profile_dataset_plugin(
     agent_api_key: AgentApiKey | None = None,
 ) -> dict[str, Any]:
     spec = _get_plugin_or_raise(plugin_slug)
+    _require_profile_plugin_installation(profile, spec)
     with transaction.atomic():
         dataset = get_profile_dataset(profile, dataset_key)
         dataset = Dataset.objects.select_for_update().get(pk=dataset.pk)
