@@ -166,12 +166,12 @@ def docs_home_view(request):
 
 def docs_page_view(request, slug):
     if slug == "database-mcp-server":
-        return DatabaseMcpServerExplanationView.as_view()(request, docs_path=True)
+        return DatabaseMcpServerExplanationView.as_view()(request)
     return render_content_page(request, "docs", slug)
 
 
 def docs_use_case_view(request, slug):
-    return HowToUseCaseDetailView.as_view()(request, slug=slug, docs_path=True)
+    return HowToUseCaseDetailView.as_view()(request, slug=slug)
 
 
 def legacy_how_to_redirect(request, slug=None):
