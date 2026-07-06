@@ -27,6 +27,7 @@ LEGACY_CONTENT_REDIRECTS = {
     "docs/explanation/datasets/": "/explanations/datasets/",
     "docs/explanation/mcp-rest-and-previews/": "/explanations/mcp-rest-and-previews/",
     "playbooks/database-mcp-server/": "/explanations/database-mcp-server/",
+    "alternatives/airtable/": "/blog/airtable-alternatives",
 }
 
 urlpatterns = [
@@ -75,11 +76,6 @@ urlpatterns = [
     ),
     path("explanations/", views.explanations_home_view, name="explanations_home"),
     path("explanations/<slug:slug>/", views.explanation_page_view, name="explanation_page"),
-    path(
-        "alternatives/airtable/",
-        views.AirtableAlternativesView.as_view(),
-        name="airtable_alternatives",
-    ),
     path(
         "uses/",
         TemplateView.as_view(template_name="pages/uses.html"),

@@ -26,7 +26,6 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "tutorials_home",
             "how_to_guides",
             "explanations_home",
-            "airtable_alternatives",
             "blog_posts",
         ]
 

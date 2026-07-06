@@ -23,13 +23,13 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 | 0 | Technical foundations: robots, sitemap headers, schema helpers | Setup | completed | #190 |
 | 1 | Strengthen Dataset API, MCP docs, and use-case pages as the internal-link spine | Use-case/docs | completed | #193 |
 | 2 | Ship `/explanations/database-mcp-server` from measured MCP/database demand | Playbook | completed | #196 |
-| 3 | Ship `/alternatives/airtable` with an AI-agent dataset angle | Alternatives | completed | #204 |
-| 4 | Ship `/alternatives/google-sheets` with an MCP/REST backend angle | Alternatives | pending | - |
+| 3 | Ship `/blog/airtable-alternatives` with an AI-agent dataset angle | Blog alternatives | completed | #207 |
+| 4 | Ship `/blog/google-sheets-alternatives` with an MCP/REST backend angle | Blog alternatives | pending | - |
 | 5 | Ship `/explanations/spreadsheet-database-for-ai-agents` | Explanation | pending | - |
-| 6 | Ship `/alternatives/baserow` with honest open-source/no-code positioning | Alternatives | pending | - |
-| 7 | Ship `/alternatives/nocodb` with SQL UI vs agent backend positioning | Alternatives | pending | - |
+| 6 | Ship `/blog/baserow-alternatives` with honest open-source/no-code positioning | Blog alternatives | pending | - |
+| 7 | Ship `/blog/nocodb-alternatives` with SQL UI vs agent backend positioning | Blog alternatives | pending | - |
 | 8 | Ship `/how-to/connect-ai-agent-to-dataset-api` as a strategic product-native guide | How-to guide | pending | - |
-| 9 | Ship `/compare/rowset-vs-airtable` after alternatives pages exist | Compare | pending | - |
+| 9 | Ship `/compare/rowset-vs-airtable` after alternatives blog posts exist | Compare | pending | - |
 | 10 | Off-page starter submissions and backlink target list | Off-page | pending | - |
 
 **Conventions:**
@@ -125,26 +125,27 @@ Findings:
 
 **URL slugs:** lowercase, hyphenated, never underscored.
 
-**Honesty section:** every `/alternatives/*` page must include 3-4 honest tradeoffs where the competitor is better. This is non-negotiable.
+**Honesty section:** every alternatives-style blog post must include 3-4 honest tradeoffs where the competitor is better. This is non-negotiable.
 
 **Positioning:** Rowset is not a spreadsheet replacement, no-code app builder, BI platform, or Google Sheets sync product. Keep the angle on private MCP/REST datasets for trusted agents.
 
 **Internal-link minimums:**
-- `/alternatives/*` -> at least 2 sibling alternatives, 1 feature/doc page, 1 pricing/signup link.
+- alternatives blog posts -> at least 2 related alternatives/content links, 1 feature/doc page, 1 pricing/signup link.
 - `/how-to/*` -> at least 2 feature/doc links and 1 sibling guide where relevant.
 - `/compare/*` -> both related alternatives pages, pricing, and one setup/doc link.
 - `/explanations/*` -> at least 3 docs/reference pages, 2 how-to guides, 1 alternative/comparison where relevant.
 - Every new SEO page should be reachable from at least 2 existing pages.
 
 **Word counts:**
-- `/alternatives/*`: at least 600 words.
+- alternatives blog posts: at least 1,500 words with current source links.
 - `/compare/*`: at least 700 words.
 - long-form explanation pages: at least 2,500 words.
 - Existing use-case pages should be expanded only where it improves concrete workflow usefulness.
 
 **Schema:**
 - Homepage: `SoftwareApplication` or `Product`, plus `Organization` when helper exists.
-- Alternatives/how-to/compare pages: `BreadcrumbList` and `FAQPage` where an FAQ section exists.
+- Alternatives-style blog posts: `BlogPosting` via the blog renderer, with an FAQ section where useful.
+- How-to/compare pages: `BreadcrumbList` and `FAQPage` where an FAQ section exists.
 - Long-form explanations/blog posts: `Article` and `BreadcrumbList`.
 
 ## Keyword Research Appendix
@@ -159,14 +160,14 @@ Values below are measured unless explicitly labeled otherwise. See `.seo/keyword
 - **PostHog, last 90 days:** project `rowset` is connected, but only `$set` (220) and `$identify` (2) events were present. No pageview, signup, dataset, project, checkout, or subscription events were available for conversion weighting.
 - **Implication:** market demand should come from DataForSEO for now, but Phase 0/1 should improve crawlability, internal links, and measurement before relying on conversion-weighted SEO decisions.
 
-### A.1 - `/alternatives/[brand]` Candidates
+### A.1 - Alternatives Blog Post Candidates
 
 | Keyword | Page | US volume | KD | CPC | Notes |
 |---|---|---:|---|---|---|
-| airtable alternatives | `/alternatives/airtable` | 720 | 0 | $15.50 | Commercial intent. SERP is broad/listicle-heavy; Rowset needs a narrow "AI-agent dataset backend" angle. |
-| google sheets alternatives | `/alternatives/google-sheets` | 480 | 0 | $16.63 | Broad informational intent. Target the subset that needs MCP/REST, private keys, and stable row identity. |
-| baserow alternatives | `/alternatives/baserow` | 70 | 0 | $5.41 | Smaller but relevant open-source/no-code database adjacency. |
-| nocodb alternatives | `/alternatives/nocodb` | 50 | 14 | $5.61 | Smaller and harder; useful after the first alternatives pages. |
+| airtable alternatives | `/blog/airtable-alternatives` | 720 | 0 | $15.50 | Commercial intent. SERP is broad/listicle-heavy; Rowset needs a narrow "AI-agent dataset backend" blog angle. |
+| google sheets alternatives | `/blog/google-sheets-alternatives` | 480 | 0 | $16.63 | Broad informational intent. Target the subset that needs MCP/REST, private keys, and stable row identity. |
+| baserow alternatives | `/blog/baserow-alternatives` | 70 | 0 | $5.41 | Smaller but relevant open-source/no-code database adjacency. |
+| nocodb alternatives | `/blog/nocodb-alternatives` | 50 | 14 | $5.61 | Smaller and harder; useful after the first alternatives posts. |
 | grist alternatives | deferred | 10 | n/a | n/a | Too small for an early standalone page. |
 
 ### A.2 - Existing Use-Case Candidates
@@ -265,7 +266,7 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 **Quality gate:** at least 2,500 words, Article schema, code/setup examples, links to MCP docs, Dataset API, Agent access, pricing, and relevant use cases.
 
-### Phase 3 - Ship `/alternatives/airtable`
+### Phase 3 - Ship `/blog/airtable-alternatives`
 
 **Why:** `airtable alternatives` has measured demand (720 US searches/month, KD 0, $15.50 CPC), but the SERP is broad and listicle-heavy. Rowset should target the specific sub-intent: "I need agents to maintain structured rows through an API/MCP backend."
 
@@ -277,15 +278,15 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 - Migration decision table.
 - FAQ.
 
-**Quality gate:** at least 600 words, honesty section, FAQ schema, links to pricing, MCP docs, Dataset API, and at least 2 sibling alternatives once available.
+**Quality gate:** at least 1,500 words, current source links, honesty section, FAQ section, links to pricing, MCP docs, Dataset API, and at least 2 related alternatives/content links once available.
 
-### Phase 4 - Ship `/alternatives/google-sheets`
+### Phase 4 - Ship `/blog/google-sheets-alternatives`
 
 **Why:** `google sheets alternatives` has measured demand (480 US searches/month, KD 0, $16.63 CPC). Many users start with Sheets for agent-managed lists, then hit authentication, schema, row lookup, and automation reliability limits.
 
 **Angle:** not "Sheets is bad"; Rowset is for private agent workflows where MCP/REST, stable keys, and ownership boundaries matter.
 
-**Quality gate:** at least 600 words, honesty section, FAQ schema, links to use cases and Dataset API.
+**Quality gate:** at least 1,500 words, current source links, honesty section, FAQ section, links to use cases and Dataset API.
 
 ### Phase 5 - Ship `/explanations/spreadsheet-database-for-ai-agents`
 
@@ -293,23 +294,23 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 **Scope:** show when a spreadsheet-database tool is the right answer, when an AI-agent dataset backend is the better fit, and how Rowset fits private MCP/REST workflows.
 
-**Quality gate:** at least 2,500 words, Article schema, honest "use a spreadsheet database if..." section, links to Dataset API, MCP docs, Google Sheets alternatives, and relevant use cases.
+**Quality gate:** at least 2,500 words, Article schema, honest "use a spreadsheet database if..." section, links to Dataset API, MCP docs, Google Sheets alternatives blog post, and relevant use cases.
 
-### Phase 6 - Ship `/alternatives/baserow`
+### Phase 6 - Ship `/blog/baserow-alternatives`
 
 **Why:** `baserow alternatives` has measured demand (70 US searches/month, KD 0, $5.41 CPC). Baserow owns "open-source Airtable alternative" positioning; Rowset should explain the narrower agent-native backend angle.
 
 **Angle:** Baserow is stronger for no-code database UI and self-hosted app building; Rowset is stronger for trusted agents managing private datasets through MCP/REST.
 
-**Quality gate:** at least 600 words, honesty section, FAQ schema, current Baserow feature/pricing review before writing.
+**Quality gate:** at least 1,500 words, honesty section, FAQ section, current Baserow feature/pricing review before writing.
 
-### Phase 7 - Ship `/alternatives/nocodb`
+### Phase 7 - Ship `/blog/nocodb-alternatives`
 
 **Why:** `nocodb alternatives` has measured demand (50 US searches/month, KD 14, $5.61 CPC). NocoDB appears in open-source no-code database comparisons and has a clear contrast with Rowset.
 
 **Angle:** NocoDB is for exposing SQL databases through a spreadsheet-like UI; Rowset is for agent-owned structured datasets with MCP/REST access.
 
-**Quality gate:** at least 600 words, honesty section, FAQ schema, current NocoDB feature/pricing review before writing.
+**Quality gate:** at least 1,500 words, honesty section, FAQ section, current NocoDB feature/pricing review before writing.
 
 ### Phase 8 - Ship `/how-to/connect-ai-agent-to-dataset-api`
 
@@ -321,11 +322,11 @@ curl -sI https://rowset.lvtd.dev/sitemap.xml
 
 ### Phase 9 - Ship `/compare/rowset-vs-airtable`
 
-**Why:** no measured demand exists yet for `rowset vs airtable`, but it becomes useful sales enablement after `/alternatives/airtable` exists.
+**Why:** no measured demand exists yet for `rowset vs airtable`, but it becomes useful sales enablement after `/blog/airtable-alternatives` exists.
 
 **Scope:** compare Rowset against Airtable for users deciding where trusted agents should keep structured work. Include "choose Airtable if" and "choose Rowset if" sections.
 
-**Quality gate:** at least 700 words, comparison table, links to Airtable alternatives page, pricing, MCP docs, and Dataset API.
+**Quality gate:** at least 700 words, comparison table, links to Airtable alternatives blog post, pricing, MCP docs, and Dataset API.
 
 ### Phase 10 - Off-Page Starter Submissions and Backlink Target List
 

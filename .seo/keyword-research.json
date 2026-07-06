@@ -397,7 +397,7 @@
     {
       "keyword": "airtable alternatives",
       "page_slug": "airtable",
-      "target_url": "/alternatives/airtable",
+      "target_url": "/blog/airtable-alternatives",
       "search_volume": 720,
       "keyword_difficulty": 0,
       "cpc": 15.5,
@@ -408,7 +408,7 @@
     {
       "keyword": "google sheets alternatives",
       "page_slug": "google-sheets",
-      "target_url": "/alternatives/google-sheets",
+      "target_url": "/blog/google-sheets-alternatives",
       "search_volume": 480,
       "keyword_difficulty": 0,
       "cpc": 16.63,
@@ -419,7 +419,7 @@
     {
       "keyword": "baserow alternatives",
       "page_slug": "baserow",
-      "target_url": "/alternatives/baserow",
+      "target_url": "/blog/baserow-alternatives",
       "search_volume": 70,
       "keyword_difficulty": 0,
       "cpc": 5.41,
@@ -430,7 +430,7 @@
     {
       "keyword": "nocodb alternatives",
       "page_slug": "nocodb",
-      "target_url": "/alternatives/nocodb",
+      "target_url": "/blog/nocodb-alternatives",
       "search_volume": 50,
       "keyword_difficulty": 14,
       "cpc": 5.61,

@@ -6,7 +6,6 @@
 {% url 'how_to_guides' as how_to_guides_url %}
 {% url 'explanations_home' as explanations_home_url %}
 {% url 'blog_posts' as blog_posts_url %}
-{% url 'airtable_alternatives' as airtable_alternatives_url %}
 {% url 'privacy_policy' as privacy_policy_url %}
 {% url 'terms_of_service' as terms_of_service_url %}
 <footer class="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
@@ -21,7 +20,7 @@
                    class="font-medium text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white">LVTD, LLC</a>
             </p>
         </div>
-        <nav class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4"
+        <nav class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
              aria-label="Footer navigation">
             <div>
                 <h2 class="fb-label-caps text-slate-500 dark:text-slate-400">Product</h2>
@@ -71,17 +70,6 @@
                         <li>
                             <a href="{{ blog_posts_url }}"
                                class="hover:text-slate-950 dark:hover:text-white">Blog</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </div>
-            <div>
-                <h2 class="fb-label-caps text-slate-500 dark:text-slate-400">Alternatives</h2>
-                <ul class="mt-3 space-y-2">
-                    {% if airtable_alternatives_url %}
-                        <li>
-                            <a href="{{ airtable_alternatives_url }}"
-                               class="hover:text-slate-950 dark:hover:text-white">Airtable alternatives</a>
                         </li>
                     {% endif %}
                 </ul>
