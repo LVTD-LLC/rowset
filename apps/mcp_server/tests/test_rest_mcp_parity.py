@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from apps.dataset_plugins.models import ProfilePluginInstallation
 from apps.datasets.models import ProjectSection
 from apps.datasets.tests.factories import (
     configure_filterable_dataset,
@@ -208,6 +209,7 @@ def test_rest_and_mcp_enable_dataset_plugin_share_response_contract(
 ):
     profile = create_profile_with_api_key(django_user_model)
     _authenticate_mcp_as(monkeypatch, profile)
+    ProfilePluginInstallation.objects.create(profile=profile, plugin_slug="flashcards")
     rest_dataset = create_dataset(
         profile,
         name="REST flashcards",

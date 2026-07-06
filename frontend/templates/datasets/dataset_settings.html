@@ -1,410 +1,521 @@
 {% extends "base_app.html" %}
 {% block title %}{{ dataset.name }} settings · Rowset{% endblock title %}
-
 {% block content %}
-<div class="fb-page">
-  <div class="space-y-8">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <a href="{{ dataset.get_absolute_url }}" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← Back to dataset</a>
-      <div class="flex flex-wrap gap-2">
-        {% if dataset.public_enabled %}
-          <a href="{{ public_url }}" class="fb-button-secondary">Open public preview</a>
-        {% endif %}
-        {% if dataset.status == "ready" %}
-          {% include "components/dataset_export_menu.html" %}
-        {% endif %}
-      </div>
-    </div>
-
-    <div>
-      <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Dataset controls</p>
-      <h1 class="fb-page-title mt-2">Dataset settings</h1>
-      <p class="mt-2 break-words leading-6 text-slate-600 dark:text-slate-300">Control schema metadata and public sharing for {{ dataset.name }}. Private authenticated API access remains available even when public preview is off.</p>
-      <p class="mt-2 break-words text-sm text-slate-600 dark:text-slate-300">Created by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.created_by_actor_label }}</span> · Last updated by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.updated_by_actor_label }}</span></p>
-    </div>
-
-    <div class="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-      <aside class="lg:sticky lg:top-24">
-        <nav class="fb-card p-3" aria-labelledby="dataset-settings-nav-heading">
-          <h2 id="dataset-settings-nav-heading" class="px-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Settings sections</h2>
-          <ol class="mt-3 grid gap-1 text-sm">
-            <li>
-              <a href="#dataset-context" class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
-                Dataset context
-                <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Description, instructions, JSON</span>
-              </a>
-            </li>
-            <li>
-              <a href="#project" class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
-                Project
-                <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Dataset grouping</span>
-              </a>
-            </li>
-            <li>
-              <a href="#relationships" class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
-                Relationships
-                <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Linked dataset rows</span>
-              </a>
-            </li>
-            <li>
-              <a href="#column-types" class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
-                Column schema
-                <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Types and descriptions</span>
-              </a>
-            </li>
-            <li>
-              <a href="#plugins" class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
-                Plugins
-                <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Dataset views and logic</span>
-              </a>
-            </li>
-            <li>
-              <a href="#public-preview" class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
-                Public preview
-                <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">{% if dataset.public_enabled %}Enabled{% else %}Disabled{% endif %}</span>
-              </a>
-            </li>
-            <li>
-              <a href="#danger-zone" class="fb-focus block rounded-md px-3 py-2 font-semibold text-red-700 transition hover:bg-red-50 dark:text-red-200 dark:hover:bg-red-950/30">
-                Delete dataset
-                <span class="mt-0.5 block text-xs font-normal leading-5 text-red-700/80 dark:text-red-200/80">Permanent removal</span>
-              </a>
-            </li>
-          </ol>
-        </nav>
-
-        <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-          <p class="font-semibold text-slate-900 dark:text-slate-100">Private access stays on</p>
-          <p class="mt-1">REST and MCP access use authenticated API keys regardless of public preview settings.</p>
+    <div class="fb-page">
+        <div class="space-y-8">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <a href="{{ dataset.get_absolute_url }}"
+                   class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← Back to dataset</a>
+                <div class="flex flex-wrap gap-2">
+                    {% if dataset.public_enabled %}
+                        <a href="{{ public_url }}" class="fb-button-secondary">Open public preview</a>
+                    {% endif %}
+                    {% if dataset.status == "ready" %}
+                        {% include "components/dataset_export_menu.html" %}
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Dataset controls</p>
+                <h1 class="fb-page-title mt-2">Dataset settings</h1>
+                <p class="mt-2 break-words leading-6 text-slate-600 dark:text-slate-300">Control schema metadata and public sharing for {{ dataset.name }}. Private authenticated API access remains available even when public preview is off.</p>
+                <p class="mt-2 break-words text-sm text-slate-600 dark:text-slate-300">Created by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.created_by_actor_label }}</span> · Last updated by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.updated_by_actor_label }}</span></p>
+            </div>
+            <div class="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+                <aside class="lg:sticky lg:top-24">
+                    <nav class="fb-card p-3" aria-labelledby="dataset-settings-nav-heading">
+                        <h2 id="dataset-settings-nav-heading"
+                            class="px-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Settings sections</h2>
+                        <ol class="mt-3 grid gap-1 text-sm">
+                            <li>
+                                <a href="#dataset-context"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Dataset context
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Description, instructions, JSON</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#project"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Project
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Dataset grouping</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#relationships"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Relationships
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Linked dataset rows</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#column-types"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Column schema
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">Types and descriptions</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#plugins"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Plugins
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">
+                                        {% if dataset_plugin_settings %}
+                                            {{ dataset_plugin_settings|length }} installed
+                                        {% else %}
+                                            None installed
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#public-preview"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white">
+                                    Public preview
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">
+                                        {% if dataset.public_enabled %}
+                                            Enabled
+                                        {% else %}
+                                            Disabled
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#danger-zone"
+                                   class="fb-focus block rounded-md px-3 py-2 font-semibold text-red-700 transition hover:bg-red-50 dark:text-red-200 dark:hover:bg-red-950/30">
+                                    Delete dataset
+                                    <span class="mt-0.5 block text-xs font-normal leading-5 text-red-700/80 dark:text-red-200/80">Permanent removal</span>
+                                </a>
+                            </li>
+                        </ol>
+                    </nav>
+                    <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+                        <p class="font-semibold text-slate-900 dark:text-slate-100">Private access stays on</p>
+                        <p class="mt-1">REST and MCP access use authenticated API keys regardless of public preview settings.</p>
+                    </div>
+                </aside>
+                <div class="min-w-0 space-y-10">
+                    <section class="space-y-4" aria-labelledby="metadata-settings-group-heading">
+                        <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
+                            <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Schema &amp; metadata</p>
+                            <h2 id="metadata-settings-group-heading"
+                                class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Context agents and API clients rely on</h2>
+                        </div>
+                        <section id="dataset-context"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="dataset-metadata-settings-heading">
+                            <form method="post"
+                                  action="{% url 'dataset_update_metadata' dataset.key %}"
+                                  class="space-y-5">
+                                {% csrf_token %}
+                                <div>
+                                    <h3 id="dataset-metadata-settings-heading" class="fb-section-title">Dataset context</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Persistent context returned through REST and MCP dataset metadata.</p>
+                                </div>
+                                <div>
+                                    <label for="description"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
+                                    <textarea id="description"
+                                              name="description"
+                                              rows="3"
+                                              class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ dataset.description }}</textarea>
+                                </div>
+                                <div>
+                                    <label for="instructions"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Agent instructions</label>
+                                    <textarea id="instructions"
+                                              name="instructions"
+                                              rows="6"
+                                              class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ dataset.instructions }}</textarea>
+                                </div>
+                                <div>
+                                    <label for="metadata"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
+                                    <textarea id="metadata"
+                                              name="metadata"
+                                              rows="8"
+                                              spellcheck="false"
+                                              class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6">{{ metadata_json }}</textarea>
+                                </div>
+                                <div class="flex flex-col gap-3 sm:flex-row">
+                                    <button type="submit" class="fb-button-primary">Save context</button>
+                                    <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
+                                </div>
+                            </form>
+                        </section>
+                        <section id="project"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="project-settings-heading">
+                            <form method="post"
+                                  action="{% url 'dataset_update_project' dataset.key %}"
+                                  class="space-y-5"
+                                  x-data="datasetProject">
+                                {% csrf_token %}
+                                <div>
+                                    <h3 id="project-settings-heading" class="fb-section-title">Project</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Assign this dataset to one semantic group and an optional section inside it.</p>
+                                </div>
+                                <div>
+                                    <label for="project_key"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Project</label>
+                                    <select id="project_key"
+                                            name="project_key"
+                                            class="fb-input mt-2 block w-full px-3 py-2 text-sm"
+                                            x-ref="projectSelect"
+                                            @change="syncSections()">
+                                        <option value="">No project</option>
+                                        {% for project in project_choices %}
+                                            <option value="{{ project.key }}"
+                                                    {% if dataset.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="section_key"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Section</label>
+                                    <select id="section_key"
+                                            name="section_key"
+                                            class="fb-input mt-2 block w-full px-3 py-2 text-sm"
+                                            x-ref="sectionSelect">
+                                        <option value="">No section</option>
+                                        {% for section in section_choices %}
+                                            <option value="{{ section.key }}"
+                                                    data-project-key="{{ section.project.key }}"
+                                                    {% if dataset.section_id == section.id %}selected{% endif %}>{{ section.project.name }} / {{ section.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="flex flex-col gap-3 sm:flex-row">
+                                    <button type="submit" class="fb-button-primary">Save project</button>
+                                    <a href="{% url 'home' %}#datasets-workspace"
+                                       class="fb-button-secondary">View project groups</a>
+                                </div>
+                            </form>
+                        </section>
+                        <section id="relationships"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="relationship-settings-heading">
+                            <div>
+                                <h3 id="relationship-settings-heading" class="fb-section-title">Relationships</h3>
+                                <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Link this dataset to another dataset by storing the target row index value in one source column.</p>
+                            </div>
+                            <div class="mt-5 grid gap-4">
+                                {% for relationship in outgoing_relationships %}
+                                    <div class="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                                        <div class="min-w-0">
+                                            <p class="break-words font-semibold text-slate-900 dark:text-slate-100">{{ relationship.name }}</p>
+                                            <p class="mt-1 break-words text-slate-600 dark:text-slate-300">{{ relationship.source_column }} → {{ relationship.target_dataset.name }}.{{ relationship.target_index_column }}</p>
+                                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                {% if relationship.enforce_integrity %}
+                                                    Validated on row writes
+                                                {% else %}
+                                                    Not enforced
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                        <form method="post"
+                                              action="{% url 'dataset_delete_relationship' dataset.key relationship.key %}"
+                                              onsubmit="return confirm('Delete relationship {{ relationship.name|escapejs }}? Row data will not change.');">
+                                            {% csrf_token %}
+                                            <button type="submit"
+                                                    class="fb-button-secondary min-h-8 border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950">Delete</button>
+                                        </form>
+                                    </div>
+                                {% empty %}
+                                    <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">No outgoing relationships yet.</p>
+                                {% endfor %}
+                            </div>
+                            <form method="post"
+                                  action="{% url 'dataset_create_relationship' dataset.key %}"
+                                  class="mt-6 grid gap-4 border-t border-slate-200 pt-5 dark:border-slate-800">
+                                {% csrf_token %}
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label for="relationship-name"
+                                               class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
+                                        <input id="relationship-name"
+                                               name="name"
+                                               type="text"
+                                               maxlength="120"
+                                               placeholder="Message person"
+                                               class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="relationship-source-column"
+                                               class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Source column</label>
+                                        <select id="relationship-source-column"
+                                                name="source_column"
+                                                class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+                                            {% for header in dataset.headers %}
+                                                <option value="{{ header }}">{{ header }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="relationship-target-dataset"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Target dataset</label>
+                                    <select id="relationship-target-dataset"
+                                            name="target_dataset_key"
+                                            class="fb-input mt-2 block w-full px-3 py-2 text-sm"
+                                            {% if not relationship_target_dataset_choices %}disabled{% endif %}>
+                                        {% for target_dataset in relationship_target_dataset_choices %}
+                                            <option value="{{ target_dataset.key }}">{{ target_dataset.name }} · index {{ target_dataset.index_column }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if not relationship_target_dataset_choices %}
+                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Create another ready dataset before adding a relationship.</p>
+                                    {% endif %}
+                                </div>
+                                <label class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200">
+                                    <input name="enforce_integrity"
+                                           type="checkbox"
+                                           checked
+                                           class="fb-focus mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 dark:border-slate-700">
+                                    <span>
+                                        <span class="font-semibold text-slate-900 dark:text-slate-100">Validate non-blank row values</span>
+                                        <span class="mt-1 block text-slate-600 dark:text-slate-300">Row creates and updates fail when this source column points at a missing target row.</span>
+                                    </span>
+                                </label>
+                                <div>
+                                    <button type="submit"
+                                            class="fb-button-primary"
+                                            {% if not relationship_target_dataset_choices %}disabled{% endif %}>Add relationship</button>
+                                </div>
+                            </form>
+                            {% if incoming_relationships %}
+                                <div class="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
+                                    <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Incoming relationships</h4>
+                                    <div class="mt-3 grid gap-2">
+                                        {% for relationship in incoming_relationships %}
+                                            <p class="break-words rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">{{ relationship.source_dataset.name }}.{{ relationship.source_column }} → {{ dataset.name }}.{{ relationship.target_index_column }}</p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </section>
+                        <section id="column-types"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="column-schema-settings-heading">
+                            <form method="post"
+                                  action="{% url 'dataset_update_column_settings' dataset.key %}"
+                                  class="space-y-5">
+                                {% csrf_token %}
+                                <div>
+                                    <h3 id="column-schema-settings-heading" class="fb-section-title">Column schema</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Column types are metadata for previews, API clients, exports, and analysis.</p>
+                                </div>
+                                <div class="grid gap-3">
+                                    {% for column in column_definitions %}
+                                        <div class="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                                            <input type="hidden" name="column_name" value="{{ column.name }}">
+                                            <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center">
+                                                <span class="min-w-0 break-words font-semibold text-slate-800 dark:text-slate-100">{{ column.name }}</span>
+                                                <label class="sr-only" for="column-type-{{ forloop.counter }}">Type for {{ column.name }}</label>
+                                                <select id="column-type-{{ forloop.counter }}"
+                                                        name="column_type"
+                                                        class="fb-input w-full px-3 py-2 text-sm">
+                                                    {% for value, label in column_type_choices %}
+                                                        <option value="{{ value }}" {% if column.type == value %}selected{% endif %}>{{ label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label for="column-description-{{ forloop.counter }}"
+                                                       class="block text-xs font-semibold text-slate-600 dark:text-slate-300">Description</label>
+                                                <textarea id="column-description-{{ forloop.counter }}"
+                                                          name="column_description"
+                                                          rows="2"
+                                                          class="fb-input mt-1 block w-full px-3 py-2 text-sm"
+                                                          placeholder="Primary contact email for the customer">{{ column.description }}</textarea>
+                                            </div>
+                                            {% if column.choice_values %}
+                                                <div>
+                                                    <p class="block text-xs font-semibold text-slate-600 dark:text-slate-300">Choice values</p>
+                                                    <div class="mt-2 flex flex-wrap gap-2">
+                                                        {% for choice in column.choice_values %}
+                                                            <span class="fb-choice-pill {{ choice.accent_class }}"
+                                                                  title="{{ choice.value }}">
+                                                                <span class="truncate">{{ choice.value }}</span>
+                                                            </span>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="flex flex-col gap-3 sm:flex-row">
+                                    <button type="submit" class="fb-button-primary">Save column schema</button>
+                                    <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
+                                </div>
+                            </form>
+                        </section>
+                    </section>
+                    <section class="space-y-4" aria-labelledby="plugin-settings-group-heading">
+                        <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
+                            <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Plugins</p>
+                            <h2 id="plugin-settings-group-heading"
+                                class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Dataset extensions</h2>
+                        </div>
+                        <section id="plugins"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="dataset-plugin-settings-heading">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 id="dataset-plugin-settings-heading" class="fb-section-title">Installed plugins</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Account plugins appear here after Rowset checks this dataset for the required columns.</p>
+                                </div>
+                                <a href="{% url 'plugin_marketplace' %}" class="fb-button-secondary">Open plugins</a>
+                            </div>
+                            {% if dataset_plugin_settings %}
+                                <div class="mt-5 overflow-hidden rounded-md border border-slate-200 dark:border-slate-800">
+                                    <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                                        {% for plugin_row in dataset_plugin_settings %}
+                                            <div class="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_10rem_auto] md:items-center">
+                                                <div class="min-w-0">
+                                                    <p class="break-words font-semibold text-slate-950 dark:text-slate-100">{{ plugin_row.plugin.name }}</p>
+                                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ plugin_row.plugin.description }}</p>
+                                                    <p class="mt-2 break-words text-xs leading-5 {% if plugin_row.validation_error %}text-amber-700 dark:text-amber-200{% else %}text-slate-500 dark:text-slate-400{% endif %}">{{ plugin_row.feedback }}</p>
+                                                </div>
+                                                <div>
+                                                    <span class="inline-flex rounded-md border px-2 py-1 text-xs font-semibold {% if plugin_row.enabled %}border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200{% elif plugin_row.can_enable %}border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200{% else %}border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200{% endif %}">{{ plugin_row.status_label }}</span>
+                                                </div>
+                                                <div class="flex flex-wrap gap-2 md:justify-end">
+                                                    {% if plugin_row.enabled %}
+                                                        <a href="{{ plugin_row.activation.view_url }}"
+                                                           class="fb-button-secondary">Open view</a>
+                                                        <form method="post"
+                                                              action="{% url 'dataset_disable_plugin' dataset.key plugin_row.plugin.slug %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="fb-button-secondary">Disable</button>
+                                                        </form>
+                                                    {% elif plugin_row.can_enable %}
+                                                        <form method="post"
+                                                              action="{% url 'dataset_enable_plugin' dataset.key plugin_row.plugin.slug %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="fb-button-primary">Enable plugin</button>
+                                                        </form>
+                                                    {% else %}
+                                                        <button type="button" class="fb-button-secondary opacity-60" disabled>Enable plugin</button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                    <p>No account plugins are installed yet.</p>
+                                    <a href="{% url 'plugin_marketplace' %}"
+                                       class="fb-focus mt-2 inline-flex rounded-md font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">Install plugins</a>
+                                </div>
+                            {% endif %}
+                        </section>
+                    </section>
+                    <section class="space-y-4" aria-labelledby="sharing-settings-group-heading">
+                        <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
+                            <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Sharing</p>
+                            <h2 id="sharing-settings-group-heading"
+                                class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Browser preview controls</h2>
+                        </div>
+                        <section id="public-preview"
+                                 class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+                                 aria-labelledby="public-preview-settings-heading">
+                            <form method="post"
+                                  action="{% url 'dataset_update_public_settings' dataset.key %}"
+                                  class="space-y-6">
+                                {% csrf_token %}
+                                <div>
+                                    <h3 id="public-preview-settings-heading" class="fb-section-title">Public preview</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Optional browser sharing for humans. This does not replace authenticated API or MCP access.</p>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <input id="public_enabled"
+                                           name="public_enabled"
+                                           type="checkbox"
+                                           {% if dataset.public_enabled %}checked{% endif %}
+                                           class="fb-focus mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 dark:border-slate-700">
+                                    <div>
+                                        <label for="public_enabled"
+                                               class="font-bold text-slate-900 dark:text-slate-100">Enable public preview</label>
+                                        <p class="fb-text-muted mt-1 text-sm leading-6">
+                                            When enabled, anyone with the link can view this table
+                                            {% if dataset.is_public_password_protected %}with the password{% endif %}
+                                            .
+                                        </p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="public_page_size"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Rows per page</label>
+                                    <input id="public_page_size"
+                                           name="public_page_size"
+                                           type="number"
+                                           min="1"
+                                           max="100"
+                                           value="{{ dataset.public_page_size }}"
+                                           class="fb-input mt-2 w-32 px-3 py-2 text-sm">
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Default is 10. Maximum is 100.</p>
+                                </div>
+                                <div>
+                                    <label for="public_password"
+                                           class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Password protection</label>
+                                    <input id="public_password"
+                                           name="public_password"
+                                           type="password"
+                                           autocomplete="new-password"
+                                           placeholder="Leave blank to keep current password"
+                                           class="fb-input mt-2 block w-full px-3 py-2 text-sm">
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                        {% if dataset.is_public_password_protected %}
+                                            A password is currently set.
+                                        {% else %}
+                                            No password is set. Add one if this public link might be shared outside the intended audience.
+                                        {% endif %}
+                                    </p>
+                                    {% if dataset.is_public_password_protected %}
+                                        <label class="mt-3 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                            <input name="clear_public_password"
+                                                   type="checkbox"
+                                                   class="fb-focus h-4 w-4 rounded border-slate-300 text-red-600 dark:border-slate-700">
+                                            Remove password protection
+                                        </label>
+                                    {% endif %}
+                                </div>
+                                <div class="flex flex-col gap-3 sm:flex-row">
+                                    <button type="submit" class="fb-button-primary">Save sharing settings</button>
+                                    <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
+                                </div>
+                            </form>
+                        </section>
+                    </section>
+                    <section class="space-y-4" aria-labelledby="danger-settings-group-heading">
+                        <div class="border-b border-red-200 pb-3 dark:border-red-900/60">
+                            <p class="text-sm font-semibold leading-6 text-red-700 dark:text-red-300">Danger zone</p>
+                            <h2 id="danger-settings-group-heading"
+                                class="mt-1 text-xl font-semibold text-red-900 dark:text-red-100">Irreversible actions</h2>
+                        </div>
+                        <section id="danger-zone"
+                                 class="scroll-mt-24 rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30"
+                                 aria-labelledby="delete-dataset-heading">
+                            <h3 id="delete-dataset-heading"
+                                class="text-lg font-semibold text-red-900 dark:text-red-100">Delete dataset</h3>
+                            <p class="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">Delete this dataset, its imported rows, and its stored source file. This cannot be undone.</p>
+                            <form method="post"
+                                  action="{% url 'dataset_delete' dataset.key %}"
+                                  onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');"
+                                  class="mt-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="settings">
+                                <button type="submit"
+                                        class="fb-button-secondary border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950">Delete dataset</button>
+                            </form>
+                        </section>
+                    </section>
+                </div>
+            </div>
         </div>
-      </aside>
-
-      <div class="min-w-0 space-y-10">
-        <section class="space-y-4" aria-labelledby="metadata-settings-group-heading">
-          <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
-            <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Schema &amp; metadata</p>
-            <h2 id="metadata-settings-group-heading" class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Context agents and API clients rely on</h2>
-          </div>
-
-          <section id="dataset-context" class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="dataset-metadata-settings-heading">
-            <form method="post" action="{% url 'dataset_update_metadata' dataset.key %}" class="space-y-5">
-              {% csrf_token %}
-              <div>
-                <h3 id="dataset-metadata-settings-heading" class="fb-section-title">Dataset context</h3>
-                <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Persistent context returned through REST and MCP dataset metadata.</p>
-              </div>
-
-              <div>
-                <label for="description" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Description</label>
-                <textarea id="description" name="description" rows="3" class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ dataset.description }}</textarea>
-              </div>
-
-              <div>
-                <label for="instructions" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Agent instructions</label>
-                <textarea id="instructions" name="instructions" rows="6" class="fb-input mt-2 block w-full px-3 py-2 text-sm">{{ dataset.instructions }}</textarea>
-              </div>
-
-              <div>
-                <label for="metadata" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">JSON metadata</label>
-                <textarea id="metadata" name="metadata" rows="8" spellcheck="false" class="fb-input mt-2 block w-full px-3 py-2 font-mono text-xs leading-6">{{ metadata_json }}</textarea>
-              </div>
-
-              <div class="flex flex-col gap-3 sm:flex-row">
-                <button type="submit" class="fb-button-primary">Save context</button>
-                <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
-              </div>
-            </form>
-          </section>
-
-          <section id="project" class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="project-settings-heading">
-            <form method="post" action="{% url 'dataset_update_project' dataset.key %}" class="space-y-5" x-data="datasetProject">
-              {% csrf_token %}
-              <div>
-                <h3 id="project-settings-heading" class="fb-section-title">Project</h3>
-                <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Assign this dataset to one semantic group and an optional section inside it.</p>
-              </div>
-
-              <div>
-                <label for="project_key" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Project</label>
-                <select id="project_key" name="project_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm" x-ref="projectSelect" @change="syncSections()">
-                  <option value="">No project</option>
-                  {% for project in project_choices %}
-                    <option value="{{ project.key }}" {% if dataset.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <div>
-                <label for="section_key" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Section</label>
-                <select id="section_key" name="section_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm" x-ref="sectionSelect">
-                  <option value="">No section</option>
-                  {% for section in section_choices %}
-                    <option value="{{ section.key }}" data-project-key="{{ section.project.key }}" {% if dataset.section_id == section.id %}selected{% endif %}>{{ section.project.name }} / {{ section.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <div class="flex flex-col gap-3 sm:flex-row">
-                <button type="submit" class="fb-button-primary">Save project</button>
-                <a href="{% url 'home' %}#datasets-workspace" class="fb-button-secondary">View project groups</a>
-              </div>
-            </form>
-          </section>
-
-          <section id="relationships" class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="relationship-settings-heading">
-            <div>
-              <h3 id="relationship-settings-heading" class="fb-section-title">Relationships</h3>
-              <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Link this dataset to another dataset by storing the target row index value in one source column.</p>
-            </div>
-
-            <div class="mt-5 grid gap-4">
-              {% for relationship in outgoing_relationships %}
-                <div class="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                  <div class="min-w-0">
-                    <p class="break-words font-semibold text-slate-900 dark:text-slate-100">{{ relationship.name }}</p>
-                    <p class="mt-1 break-words text-slate-600 dark:text-slate-300">{{ relationship.source_column }} → {{ relationship.target_dataset.name }}.{{ relationship.target_index_column }}</p>
-                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if relationship.enforce_integrity %}Validated on row writes{% else %}Not enforced{% endif %}</p>
-                  </div>
-                  <form method="post" action="{% url 'dataset_delete_relationship' dataset.key relationship.key %}" onsubmit="return confirm('Delete relationship {{ relationship.name|escapejs }}? Row data will not change.');">
-                    {% csrf_token %}
-                    <button type="submit" class="fb-button-secondary min-h-8 border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950">Delete</button>
-                  </form>
-                </div>
-              {% empty %}
-                <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">No outgoing relationships yet.</p>
-              {% endfor %}
-            </div>
-
-            <form method="post" action="{% url 'dataset_create_relationship' dataset.key %}" class="mt-6 grid gap-4 border-t border-slate-200 pt-5 dark:border-slate-800">
-              {% csrf_token %}
-              <div class="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label for="relationship-name" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Name</label>
-                  <input id="relationship-name" name="name" type="text" maxlength="120" placeholder="Message person" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
-                </div>
-                <div>
-                  <label for="relationship-source-column" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Source column</label>
-                  <select id="relationship-source-column" name="source_column" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
-                    {% for header in dataset.headers %}
-                      <option value="{{ header }}">{{ header }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label for="relationship-target-dataset" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Target dataset</label>
-                <select id="relationship-target-dataset" name="target_dataset_key" class="fb-input mt-2 block w-full px-3 py-2 text-sm" {% if not relationship_target_dataset_choices %}disabled{% endif %}>
-                  {% for target_dataset in relationship_target_dataset_choices %}
-                    <option value="{{ target_dataset.key }}">{{ target_dataset.name }} · index {{ target_dataset.index_column }}</option>
-                  {% endfor %}
-                </select>
-                {% if not relationship_target_dataset_choices %}
-                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Create another ready dataset before adding a relationship.</p>
-                {% endif %}
-              </div>
-              <label class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200">
-                <input name="enforce_integrity" type="checkbox" checked class="fb-focus mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 dark:border-slate-700">
-                <span>
-                  <span class="font-semibold text-slate-900 dark:text-slate-100">Validate non-blank row values</span>
-                  <span class="mt-1 block text-slate-600 dark:text-slate-300">Row creates and updates fail when this source column points at a missing target row.</span>
-                </span>
-              </label>
-              <div>
-                <button type="submit" class="fb-button-primary" {% if not relationship_target_dataset_choices %}disabled{% endif %}>Add relationship</button>
-              </div>
-            </form>
-
-            {% if incoming_relationships %}
-              <div class="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
-                <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Incoming relationships</h4>
-                <div class="mt-3 grid gap-2">
-                  {% for relationship in incoming_relationships %}
-                    <p class="break-words rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">{{ relationship.source_dataset.name }}.{{ relationship.source_column }} → {{ dataset.name }}.{{ relationship.target_index_column }}</p>
-                  {% endfor %}
-                </div>
-              </div>
-            {% endif %}
-          </section>
-
-          <section id="column-types" class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="column-schema-settings-heading">
-            <form method="post" action="{% url 'dataset_update_column_settings' dataset.key %}" class="space-y-5">
-              {% csrf_token %}
-              <div>
-                <h3 id="column-schema-settings-heading" class="fb-section-title">Column schema</h3>
-                <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Column types are metadata for previews, API clients, exports, and analysis.</p>
-              </div>
-
-              <div class="grid gap-3">
-                {% for column in column_definitions %}
-                  <div class="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
-                    <input type="hidden" name="column_name" value="{{ column.name }}">
-                    <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center">
-                      <span class="min-w-0 break-words font-semibold text-slate-800 dark:text-slate-100">{{ column.name }}</span>
-                      <label class="sr-only" for="column-type-{{ forloop.counter }}">Type for {{ column.name }}</label>
-                      <select id="column-type-{{ forloop.counter }}" name="column_type" class="fb-input w-full px-3 py-2 text-sm">
-                        {% for value, label in column_type_choices %}
-                          <option value="{{ value }}" {% if column.type == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <div>
-                      <label for="column-description-{{ forloop.counter }}" class="block text-xs font-semibold text-slate-600 dark:text-slate-300">Description</label>
-                      <textarea id="column-description-{{ forloop.counter }}" name="column_description" rows="2" class="fb-input mt-1 block w-full px-3 py-2 text-sm" placeholder="Primary contact email for the customer">{{ column.description }}</textarea>
-                    </div>
-                    {% if column.choice_values %}
-                      <div>
-                        <p class="block text-xs font-semibold text-slate-600 dark:text-slate-300">Choice values</p>
-                        <div class="mt-2 flex flex-wrap gap-2">
-                          {% for choice in column.choice_values %}
-                            <span class="fb-choice-pill {{ choice.accent_class }}" title="{{ choice.value }}">
-                              <span class="truncate">{{ choice.value }}</span>
-                            </span>
-                          {% endfor %}
-                        </div>
-                      </div>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-
-              <div class="flex flex-col gap-3 sm:flex-row">
-                <button type="submit" class="fb-button-primary">Save column schema</button>
-                <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
-              </div>
-            </form>
-          </section>
-
-          <section id="plugins" class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="dataset-plugin-settings-heading">
-            <div>
-              <h3 id="dataset-plugin-settings-heading" class="fb-section-title">Plugins</h3>
-              <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Enable trusted dataset views that read this dataset's existing rows and schema.</p>
-            </div>
-
-            <div class="mt-5 grid gap-4">
-              {% for entry in dataset_plugin_settings %}
-                <div class="rounded-md border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div class="min-w-0">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <h4 class="break-words text-sm font-semibold text-slate-950 dark:text-slate-100">{{ entry.plugin.name }}</h4>
-                        {% if entry.enabled %}
-                          <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">Enabled</span>
-                        {% endif %}
-                      </div>
-                      <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ entry.plugin.description }}</p>
-                      {% if entry.validation_error %}
-                        <p class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{{ entry.validation_error }}</p>
-                      {% endif %}
-                    </div>
-                    {% if entry.enabled %}
-                      <a href="{{ entry.activation.view_url }}" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Open view</a>
-                    {% endif %}
-                  </div>
-
-                  <form method="post" action="{% url 'dataset_enable_plugin' dataset.key entry.plugin.slug %}" class="mt-4 grid gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
-                    {% csrf_token %}
-                    <div class="grid gap-3 md:grid-cols-2">
-                      {% for role in entry.roles %}
-                        <div>
-                          <label for="plugin-{{ entry.plugin.slug }}-{{ role.key }}" class="block text-xs font-semibold text-slate-600 dark:text-slate-300">
-                            {{ role.label }}{% if role.required %}<span class="text-red-600 dark:text-red-300"> *</span>{% endif %}
-                          </label>
-                          <select id="plugin-{{ entry.plugin.slug }}-{{ role.key }}" name="column__{{ role.key }}" class="fb-input mt-1 block w-full px-3 py-2 text-sm">
-                            <option value="">Do not map</option>
-                            {% for header in dataset.headers %}
-                              <option value="{{ header }}" {% if role.selected_column == header %}selected{% endif %}>{{ header }}</option>
-                            {% endfor %}
-                          </select>
-                          <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{{ role.description }}</p>
-                        </div>
-                      {% endfor %}
-                    </div>
-                    <div class="flex flex-col gap-2 sm:flex-row">
-                      <button type="submit" class="fb-button-primary">{% if entry.enabled %}Save plugin mapping{% else %}Enable plugin{% endif %}</button>
-                      {% if entry.enabled %}
-                        <button type="submit" form="disable-plugin-{{ entry.plugin.slug }}" class="fb-button-secondary border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950">Disable</button>
-                      {% endif %}
-                    </div>
-                  </form>
-                  {% if entry.enabled %}
-                    <form id="disable-plugin-{{ entry.plugin.slug }}" method="post" action="{% url 'dataset_disable_plugin' dataset.key entry.plugin.slug %}">
-                      {% csrf_token %}
-                    </form>
-                  {% endif %}
-                </div>
-              {% empty %}
-                <p class="text-sm text-slate-500 dark:text-slate-400">No dataset plugins are installed for this Rowset instance.</p>
-              {% endfor %}
-            </div>
-          </section>
-        </section>
-
-        <section class="space-y-4" aria-labelledby="sharing-settings-group-heading">
-          <div class="border-b border-slate-200 pb-3 dark:border-slate-800">
-            <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Sharing</p>
-            <h2 id="sharing-settings-group-heading" class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Browser preview controls</h2>
-          </div>
-
-          <section id="public-preview" class="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="public-preview-settings-heading">
-            <form method="post" action="{% url 'dataset_update_public_settings' dataset.key %}" class="space-y-6">
-              {% csrf_token %}
-              <div>
-                <h3 id="public-preview-settings-heading" class="fb-section-title">Public preview</h3>
-                <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Optional browser sharing for humans. This does not replace authenticated API or MCP access.</p>
-              </div>
-
-              <div class="flex items-start gap-3">
-                <input id="public_enabled" name="public_enabled" type="checkbox" {% if dataset.public_enabled %}checked{% endif %} class="fb-focus mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 dark:border-slate-700">
-                <div>
-                  <label for="public_enabled" class="font-bold text-slate-900 dark:text-slate-100">Enable public preview</label>
-                  <p class="fb-text-muted mt-1 text-sm leading-6">When enabled, anyone with the link can view this table{% if dataset.is_public_password_protected %} with the password{% endif %}.</p>
-                </div>
-              </div>
-
-              <div>
-                <label for="public_page_size" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Rows per page</label>
-                <input id="public_page_size" name="public_page_size" type="number" min="1" max="100" value="{{ dataset.public_page_size }}" class="fb-input mt-2 w-32 px-3 py-2 text-sm">
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Default is 10. Maximum is 100.</p>
-              </div>
-
-              <div>
-                <label for="public_password" class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Password protection</label>
-                <input id="public_password" name="public_password" type="password" autocomplete="new-password" placeholder="Leave blank to keep current password" class="fb-input mt-2 block w-full px-3 py-2 text-sm">
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if dataset.is_public_password_protected %}A password is currently set.{% else %}No password is set. Add one if this public link might be shared outside the intended audience.{% endif %}</p>
-                {% if dataset.is_public_password_protected %}
-                  <label class="mt-3 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                    <input name="clear_public_password" type="checkbox" class="fb-focus h-4 w-4 rounded border-slate-300 text-red-600 dark:border-slate-700">
-                    Remove password protection
-                  </label>
-                {% endif %}
-              </div>
-
-              <div class="flex flex-col gap-3 sm:flex-row">
-                <button type="submit" class="fb-button-primary">Save sharing settings</button>
-                <a href="{{ dataset.get_absolute_url }}" class="fb-button-secondary">Cancel</a>
-              </div>
-            </form>
-          </section>
-        </section>
-
-        <section class="space-y-4" aria-labelledby="danger-settings-group-heading">
-          <div class="border-b border-red-200 pb-3 dark:border-red-900/60">
-            <p class="text-sm font-semibold leading-6 text-red-700 dark:text-red-300">Danger zone</p>
-            <h2 id="danger-settings-group-heading" class="mt-1 text-xl font-semibold text-red-900 dark:text-red-100">Irreversible actions</h2>
-          </div>
-
-          <section id="danger-zone" class="scroll-mt-24 rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30" aria-labelledby="delete-dataset-heading">
-            <h3 id="delete-dataset-heading" class="text-lg font-semibold text-red-900 dark:text-red-100">Delete dataset</h3>
-            <p class="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">Delete this dataset, its imported rows, and its stored source file. This cannot be undone.</p>
-            <form method="post" action="{% url 'dataset_delete' dataset.key %}" onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');" class="mt-4">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="settings">
-              <button type="submit" class="fb-button-secondary border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950">Delete dataset</button>
-            </form>
-          </section>
-        </section>
-      </div>
     </div>
-  </div>
-</div>
 {% endblock content %}

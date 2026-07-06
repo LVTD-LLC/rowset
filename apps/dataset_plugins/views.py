@@ -9,14 +9,20 @@ from apps.api.services import DatasetServiceError
 from apps.dataset_plugins.registry import get_dataset_plugin
 from apps.dataset_plugins.rendering import dataset_plugin_view_context
 from apps.dataset_plugins.services import (
+    dataset_plugin_marketplace_context,
     disable_profile_dataset_plugin,
     enable_profile_dataset_plugin,
     get_profile_dataset_plugin_activation,
+    install_profile_dataset_plugin,
+    uninstall_profile_dataset_plugin,
 )
 
 
 def _plugin_config_from_post(plugin_slug: str, post_data) -> dict:
-    spec = get_dataset_plugin(plugin_slug)
+    try:
+        spec = get_dataset_plugin(plugin_slug)
+    except ValueError:
+        return {"columns": {}}
     if spec is None:
         return {"columns": {}}
     columns = {}
@@ -25,6 +31,53 @@ def _plugin_config_from_post(plugin_slug: str, post_data) -> dict:
         if value:
             columns[role.key] = value
     return {"columns": columns}
+
+
+@login_required
+def plugin_marketplace(request):
+    return render(
+        request,
+        "plugins/plugin_marketplace.html",
+        {"plugin_rows": dataset_plugin_marketplace_context(request.user.profile)},
+    )
+
+
+@login_required
+@require_POST
+def plugin_install(request, plugin_slug):
+    try:
+        installation, created = install_profile_dataset_plugin(request.user.profile, plugin_slug)
+        spec = get_dataset_plugin(installation.plugin_slug)
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        name = spec.name if spec else installation.plugin_slug
+        if created:
+            messages.success(request, f"{name} installed.")
+        else:
+            messages.info(request, f"{name} is already installed.")
+    return redirect("plugin_marketplace")
+
+
+@login_required
+@require_POST
+def plugin_uninstall(request, plugin_slug):
+    try:
+        removed = uninstall_profile_dataset_plugin(request.user.profile, plugin_slug)
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        spec = get_dataset_plugin(plugin_slug)
+        name = spec.name if spec else plugin_slug
+        if removed:
+            messages.success(request, f"{name} removed from this account.")
+        else:
+            messages.info(request, f"{name} was not installed.")
+    return redirect("plugin_marketplace")
 
 
 @login_required
