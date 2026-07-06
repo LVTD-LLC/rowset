@@ -177,12 +177,12 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     app_content = app_response.content.decode()
     app_footer = _nav_html(app_content, "Footer navigation")
 
-    assert blog_href in _nav_html(app_content, "Primary navigation")
-    assert blog_href in _nav_html(app_content, "Mobile navigation")
+    assert blog_href not in _nav_html(app_content, "Primary navigation")
+    assert blog_href not in _nav_html(app_content, "Mobile navigation")
     assert blog_href in app_footer
     assert docs_href in app_footer
-    assert use_cases_href in _nav_html(app_content, "Primary navigation")
-    assert use_cases_href in _nav_html(app_content, "Mobile navigation")
+    assert use_cases_href not in _nav_html(app_content, "Primary navigation")
+    assert use_cases_href not in _nav_html(app_content, "Mobile navigation")
     assert use_cases_href in app_footer
     assert "Alternatives" not in app_footer
 
@@ -203,6 +203,8 @@ def test_public_nav_links_to_root_content_sections(client):
     )
     assert "Resources" not in primary_nav
     assert "Use Cases" in primary_nav
+    assert "How it works" not in primary_nav
+    assert "How it works" not in mobile_nav
     assert "Tutorials" not in footer_nav
     assert "How-to guides" not in footer_nav
     assert "Explanations" not in footer_nav
@@ -225,9 +227,15 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert response.status_code == 200
     content = response.content.decode()
     docs_nav = _nav_html(content, "Docs pages")
+    docs_left_sidebar = content[: content.index('aria-label="Page table of contents"')]
     assert "Explore" not in docs_nav
     assert "Docs home" not in docs_nav
     assert "Blog" not in docs_nav
+    assert "transition" not in docs_nav
+    assert "x-show" not in docs_nav
+    assert "x-transition" not in docs_nav
+    assert "<button" not in docs_nav
+    assert 'x-data="docsToc"' not in docs_left_sidebar
     assert "Getting started" in docs_nav
     assert "Features" in docs_nav
     assert "Use cases" not in docs_nav
@@ -244,7 +252,7 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
 
 
-def test_docs_sidebar_groups_pages_and_expands_current_section(client):
+def test_docs_sidebar_lists_groups_without_disclosure_controls(client):
     response = client.get(reverse("docs_page", kwargs={"slug": "quickstart"}))
 
     assert response.status_code == 200
@@ -253,12 +261,15 @@ def test_docs_sidebar_groups_pages_and_expands_current_section(client):
 
     assert "Docs home" not in sidebar
     assert ">Docs<" not in sidebar
-    assert "docsToc('getting-started-1')" in content
-    assert 'id="docs-nav-panel-getting-started-1"' in sidebar
-    assert 'id="docs-nav-panel-features-2"' in sidebar
-    assert "@focusin=" not in sidebar
-    assert "@focusout=" not in sidebar
-    assert "grid-template-rows: 1fr; opacity: 1;" in sidebar
+    assert 'x-data="docsToc"' not in sidebar
+    assert 'id="docs-nav-panel-getting-started-1"' not in sidebar
+    assert 'id="docs-nav-panel-features-2"' not in sidebar
+    assert "<button" not in sidebar
+    assert "grid-template-rows" not in sidebar
+    assert "inert" not in sidebar
+    assert "transition" not in sidebar
+    assert "Start with your first agent dataset" in sidebar
+    assert "Use dataset plugins" in sidebar
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in sidebar
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in sidebar
     assert reverse("use_case_page", kwargs={"slug": "bug-qa-tracker"}) not in sidebar
