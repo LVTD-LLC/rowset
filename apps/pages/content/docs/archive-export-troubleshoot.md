@@ -1,6 +1,6 @@
 ---
 title: Archive, export, and troubleshoot
-description: Recover archived datasets, export Rowset snapshots, and handle common MCP, REST, preview, plugin, and schema issues.
+description: Recover archived datasets, export Rowset snapshots, and handle common MCP, REST, preview, and schema issues.
 keywords: Rowset archive, restore dataset, export dataset, Rowset troubleshooting
 ---
 
@@ -94,20 +94,3 @@ If a tool argument fails validation, ask the agent to call
 Public previews are read-only. If an agent or script needs data, use MCP or
 REST. If a human cannot open the preview, check whether the preview is enabled,
 password-protected, or disabled by archiving.
-
-## Plugin issues
-
-Plugins must be installed for the account before they can be enabled on a
-dataset. Column-based plugins require their required roles to map to real
-dataset headers.
-
-For Flashcards, map at least:
-
-```json
-{
-  "columns": {
-    "front_question": "question",
-    "back_answer": "answer"
-  }
-}
-```

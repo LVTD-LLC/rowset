@@ -8,7 +8,7 @@ keywords: Rowset API, API authentication, OpenAPI docs
 
 Rowset exposes authenticated REST endpoints for account checks, dataset creation,
 profile-wide row search, dataset rows, projects, schema changes, image assets,
-dataset plugins, exports, and public preview settings.
+exports, and public preview settings.
 
 ## Base URL
 
@@ -61,12 +61,10 @@ Use those generated docs when you want request/response schemas or to inspect lo
 - **API key management** — create scoped agent keys with an admin key.
 - **Project API** — group datasets into projects and sections.
 - **Dataset API** — search rows, create datasets; list, look up, create, update,
-  delete, export rows, configure public previews, attach image assets, and
-  enable dataset plugins.
+  delete, export rows, configure public previews, and attach image assets.
 
 ## Related docs
 
 - [Connect over MCP](/docs/connect-mcp/) for agent-native tool access.
 - [Dataset API](/docs/dataset-api/) for dataset and row endpoints.
-- [Use dataset plugins](/docs/dataset-plugins/) for plugin workflow guidance.
 - [MCP tool reference](/docs/mcp-tools/) for MCP tool groups.

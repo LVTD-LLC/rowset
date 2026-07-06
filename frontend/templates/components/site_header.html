@@ -16,8 +16,6 @@
             {% if user.is_authenticated %}
                 <a href="{% url 'home' %}"
                    class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Dashboard</a>
-                <a href="{% url 'plugin_marketplace' %}"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Plugins</a>
                 <a href="{% url 'docs_home' %}"
                    class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">Docs</a>
                 <a href="{% url 'settings' %}"
@@ -111,8 +109,6 @@
                     {% if user.is_authenticated %}
                         <a href="{% url 'home' %}"
                            class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Dashboard</a>
-                        <a href="{% url 'plugin_marketplace' %}"
-                           class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Plugins</a>
                         <a href="{% url 'docs_home' %}"
                            class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900">Docs</a>
                         <a href="{% url 'settings' %}"

@@ -42,11 +42,6 @@ from apps.api.services import (
     update_profile_project_metadata,
 )
 from apps.core.services import get_or_create_profile_for_user
-from apps.dataset_plugins.services import (
-    dataset_plugin_settings_context,
-    enabled_dataset_plugin_links,
-    profile_can_use_dataset_plugins,
-)
 from apps.datasets.choices import DatasetColumnType, DatasetStatus
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project, ProjectSection
 from apps.datasets.public_previews import (
@@ -1973,7 +1968,6 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             indent=2,
             sort_keys=True,
         )
-        context["dataset_plugin_links"] = enabled_dataset_plugin_links(dataset)
         context.update(_dataset_relationship_context(dataset))
         return context
 
@@ -2220,10 +2214,6 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
             ensure_ascii=False,
             indent=2,
             sort_keys=True,
-        )
-        context["show_dataset_plugins"] = profile_can_use_dataset_plugins(self.request.user.profile)
-        context["dataset_plugin_settings"] = (
-            dataset_plugin_settings_context(self.object) if context["show_dataset_plugins"] else []
         )
         context.update(_dataset_relationship_context(self.object))
         return context

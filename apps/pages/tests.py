@@ -243,7 +243,7 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert "Operate" not in docs_nav
     assert reverse("docs_page", kwargs={"slug": "quickstart"}) in content
     assert reverse("docs_page", kwargs={"slug": "create-datasets"}) in content
-    assert reverse("docs_page", kwargs={"slug": "dataset-plugins"}) in content
+    assert reverse("docs_page", kwargs={"slug": "share-public-previews"}) in content
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in docs_nav
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in docs_nav
     assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) not in docs_nav
@@ -270,7 +270,7 @@ def test_docs_sidebar_lists_groups_without_disclosure_controls(client):
     assert "inert" not in sidebar
     assert "transition" not in sidebar
     assert "Start with your first agent dataset" in sidebar
-    assert "Use dataset plugins" in sidebar
+    assert "Share a public preview" in sidebar
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in sidebar
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in sidebar
     assert reverse("use_case_page", kwargs={"slug": "bug-qa-tracker"}) not in sidebar
@@ -331,8 +331,6 @@ def test_use_cases_page_lists_use_case_pages(client):
     assert "Start here when you know the job" in content
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) in content
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) in content
-    assert "flashcard-deck" not in content
-    assert "Flashcards plugin" not in content
     assert "/how-to/personal-crm/" not in content
 
 
@@ -401,8 +399,6 @@ def test_use_cases_page_links_public_use_case_pages(client):
     main_content = content[content.index("<main") : content.index("</main>") + len("</main>")]
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) in content
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) in content
-    assert "flashcard-deck" not in content
-    assert "Flashcards plugin" not in content
     assert "product-inventory-catalog" in content
     assert reverse("pricing") not in main_content
     assert reverse("blog_post", kwargs={"slug": "airtable-alternatives"}) not in main_content

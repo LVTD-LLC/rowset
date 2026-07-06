@@ -106,6 +106,5 @@ dataset.
 - Feedback triage: `feedback`, indexed by `feedback_id`
 - Content pipeline: `content_queue`, indexed by `slug`
 - Product catalog: `products`, indexed by `sku`
-- Flashcards: `study_cards`, indexed by `card_id`
 
 See [Use cases](/use-cases/) for starter shapes.
