@@ -95,7 +95,7 @@ def get_section_home_url(section_slug):
 
 def get_navigation_group_id(label, index):
     group_id = re.sub(r"[^a-z0-9]+", "-", str(label).lower()).strip("-")
-    return group_id or f"group-{index}"
+    return f"{group_id or 'group'}-{index}"
 
 
 def get_docs_use_case_navigation_pages():

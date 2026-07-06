@@ -727,8 +727,9 @@
       activeSidebarGroup,
       headingIds: [],
       handleScroll: null,
-      hoveredSidebarGroup: "",
       observer: null,
+      openSidebarGroup: "",
+      pinnedSidebarGroup: "",
       scrollFrame: null,
       visibleSectionIds: null,
 
@@ -758,18 +759,18 @@
       },
 
       isSidebarGroupOpen(groupId) {
-        return this.activeSidebarGroup === groupId || this.hoveredSidebarGroup === groupId;
+        return this.activeSidebarGroup === groupId || this.openSidebarGroup === groupId;
       },
 
       showSidebarGroup(groupId) {
-        if (groupId !== this.activeSidebarGroup) {
-          this.hoveredSidebarGroup = groupId;
+        if (groupId !== this.activeSidebarGroup && !this.pinnedSidebarGroup) {
+          this.openSidebarGroup = groupId;
         }
       },
 
       hideSidebarGroup(groupId) {
-        if (this.hoveredSidebarGroup === groupId) {
-          this.hoveredSidebarGroup = "";
+        if (this.openSidebarGroup === groupId && this.pinnedSidebarGroup !== groupId) {
+          this.openSidebarGroup = "";
         }
       },
 
@@ -778,7 +779,14 @@
           return;
         }
 
-        this.hoveredSidebarGroup = this.hoveredSidebarGroup === groupId ? "" : groupId;
+        if (this.pinnedSidebarGroup === groupId) {
+          this.openSidebarGroup = "";
+          this.pinnedSidebarGroup = "";
+          return;
+        }
+
+        this.openSidebarGroup = groupId;
+        this.pinnedSidebarGroup = groupId;
       },
 
       generateTableOfContents() {

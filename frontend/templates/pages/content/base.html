@@ -9,9 +9,7 @@
                         <section class="rounded-lg border transition duration-200 ease-out motion-reduce:transition-none {% if current_page in group.page_slugs %}border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60{% else %}border-transparent hover:border-slate-200 hover:bg-slate-50/70 focus-within:border-slate-200 focus-within:bg-slate-50/70 dark:hover:border-slate-800 dark:hover:bg-slate-900/50 dark:focus-within:border-slate-800 dark:focus-within:bg-slate-900/50{% endif %}"
                                  aria-labelledby="docs-nav-group-{{ group.id }}"
                                  @mouseenter="showSidebarGroup('{{ group.id }}')"
-                                 @mouseleave="hideSidebarGroup('{{ group.id }}')"
-                                 @focusin="showSidebarGroup('{{ group.id }}')"
-                                 @focusout="if (!$el.contains($event.relatedTarget)) hideSidebarGroup('{{ group.id }}')">
+                                 @mouseleave="hideSidebarGroup('{{ group.id }}')">
                             <button type="button"
                                     class="fb-focus flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left"
                                     aria-controls="docs-nav-panel-{{ group.id }}"

@@ -245,9 +245,11 @@ def test_docs_sidebar_groups_pages_and_expands_current_section(client):
 
     assert "Docs home" not in sidebar
     assert ">Docs<" not in sidebar
-    assert "docsToc('start')" in content
-    assert 'id="docs-nav-panel-start"' in sidebar
-    assert 'id="docs-nav-panel-build"' in sidebar
+    assert "docsToc('start-1')" in content
+    assert 'id="docs-nav-panel-start-1"' in sidebar
+    assert 'id="docs-nav-panel-build-2"' in sidebar
+    assert "@focusin=" not in sidebar
+    assert "@focusout=" not in sidebar
     assert "grid-template-rows: 1fr; opacity: 1;" in sidebar
     assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in sidebar
     assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in sidebar
