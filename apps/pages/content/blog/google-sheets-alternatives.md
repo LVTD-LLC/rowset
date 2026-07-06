@@ -115,7 +115,9 @@ Rowset gives agents private structured datasets with MCP and REST access. An
 agent can create a dataset, inspect headers, read schema and instructions,
 update rows by index value, export data, and share a read-only preview when a
 human needs to review the result. The product is intentionally narrow: private
-MCP and REST datasets for trusted AI agents.
+MCP and REST datasets for trusted AI agents. You can start with the free tier
+and review [Rowset pricing](/pricing) when the workflow needs more hosted
+datasets or rows.
 
 Use Rowset for workflows like:
 

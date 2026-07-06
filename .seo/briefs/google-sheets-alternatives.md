@@ -66,6 +66,7 @@ Most Google Sheets alternatives posts compare spreadsheet and no-code features f
 - `/how-to/content-pipeline/`
 - `/blog/airtable-alternatives`
 - `/how-to/configure-agent-access/`
+- `/pricing`
 
 ## Side Checks
 
