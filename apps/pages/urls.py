@@ -39,8 +39,8 @@ urlpatterns = [
         )
         for old_path, new_path in LEGACY_CONTENT_REDIRECTS.items()
     ),
-    path("use-cases/", views.legacy_use_case_redirect, name="legacy_use_cases"),
-    path("use-cases/<slug:slug>/", views.legacy_use_case_redirect, name="legacy_use_case"),
+    path("use-cases/", views.use_cases_view, name="use_cases"),
+    path("use-cases/<slug:slug>/", views.use_case_page_view, name="use_case_page"),
     path(
         "privacy-policy/",
         views.PrivacyPolicyView.as_view(),
@@ -53,7 +53,6 @@ urlpatterns = [
     ),
     path("pricing/", views.PricingView.as_view(), name="pricing"),
     path("docs/", views.docs_home_view, name="docs_home"),
-    path("docs/use-cases/<slug:slug>/", views.docs_use_case_view, name="docs_use_case"),
     path("docs/<slug:slug>/", views.docs_page_view, name="docs_page"),
     path("tutorials/", views.tutorials_home_view, name="tutorials_home"),
     path("tutorials/<slug:slug>/", views.tutorial_page_view, name="tutorial_page"),

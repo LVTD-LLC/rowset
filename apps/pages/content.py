@@ -18,6 +18,7 @@ from apps.core.agent_skill import (
     ROWSET_USE_CASES_SKILL_SOURCE_URL,
 )
 from apps.core.views import AGENT_API_KEY_MASK
+from apps.pages.schema import article_schema, json_ld
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -30,9 +31,17 @@ CONTENT_SECTIONS = {
     "docs": {
         "label": "Docs",
         "title": "Rowset Docs",
-        "description": ("Start, build, operate, and look up Rowset workflows from one place."),
+        "description": ("Start, use features, and look up reference details from one place."),
         "home_url_name": "docs_home",
         "page_url_name": "docs_page",
+    },
+    "use-cases": {
+        "label": "Use cases",
+        "title": "Rowset Use Cases",
+        "description": ("Starter dataset shapes for common AI-agent workflows."),
+        "home_page_slug": "index",
+        "home_url_name": "use_cases",
+        "page_url_name": "use_case_page",
     },
 }
 
@@ -85,6 +94,8 @@ def get_page_frontmatter(markdown_file):
 
 def get_section_page_url(section_slug, page_slug):
     config = get_content_section_config(section_slug)
+    if page_slug == config.get("home_page_slug"):
+        return reverse(config["home_url_name"])
     return reverse(config["page_url_name"], kwargs={"slug": page_slug})
 
 
@@ -96,20 +107,6 @@ def get_section_home_url(section_slug):
 def get_navigation_group_id(label, index):
     group_id = re.sub(r"[^a-z0-9]+", "-", str(label).lower()).strip("-")
     return f"{group_id or 'group'}-{index}"
-
-
-def get_docs_use_case_navigation_pages():
-    from apps.pages.use_cases import get_use_case_pages
-
-    return [
-        {
-            "slug": f"use-cases/{page['slug']}",
-            "title": page["title"],
-            "description": page.get("short_summary", ""),
-            "url": reverse("docs_use_case", kwargs={"slug": page["slug"]}),
-        }
-        for page in get_use_case_pages()
-    ]
 
 
 def get_current_content_group_id(section, current_page):
@@ -149,10 +146,6 @@ def get_content_section(section_slug):
             ordered_page_slugs.extend(page_slugs)
             ordered_page_slugs.extend(current_page_slugs)
             group_pages = [{"type": "content", "slug": page_slug} for page_slug in page_slugs]
-            use_case_pages = []
-            if item.get("use_cases"):
-                use_case_pages = get_docs_use_case_navigation_pages()
-                group_pages.extend({"type": "link", "page": page} for page in use_case_pages)
             groups.append(
                 {
                     "id": get_navigation_group_id(item.get("label", ""), len(groups) + 1),
@@ -161,7 +154,6 @@ def get_content_section(section_slug):
                     "page_slugs": [
                         *page_slugs,
                         *current_page_slugs,
-                        *[page["slug"] for page in use_case_pages],
                     ],
                     "pages": group_pages,
                 }
@@ -313,6 +305,13 @@ def render_content_page(request, section_slug, page_slug):
             "page_url": page_url,
             "previous_page": previous_page,
             "next_page": next_page,
+            "schema_json": json_ld(
+                article_schema(
+                    headline=post.get("title", default_page_title),
+                    description=post.get("description", ""),
+                    path=get_section_page_url(section_slug, page_slug),
+                )
+            ),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),

@@ -153,11 +153,11 @@ def use_case_item_list_schema(use_cases: Sequence[dict]) -> dict:
     return item_list_schema(
         name="Rowset use-case docs",
         description="Agent-managed dataset use cases for Rowset.",
-        path=reverse("docs_page", kwargs={"slug": "use-cases"}),
+        path=reverse("use_cases"),
         items=tuple(
             (
                 use_case["title"],
-                reverse("docs_use_case", kwargs={"slug": use_case["slug"]}),
+                reverse("use_case_page", kwargs={"slug": use_case["slug"]}),
             )
             for use_case in use_cases
         ),
@@ -231,5 +231,5 @@ def use_case_article_schema(use_case: dict) -> dict:
     return article_schema(
         headline=f"{use_case['title']} - Rowset use case",
         description=use_case["meta_description"],
-        path=reverse("docs_use_case", kwargs={"slug": use_case["slug"]}),
+        path=reverse("use_case_page", kwargs={"slug": use_case["slug"]}),
     )

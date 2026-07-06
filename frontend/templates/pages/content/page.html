@@ -46,3 +46,7 @@
         </div>
     </nav>
 {% endblock docs_content %}
+{% block schema %}
+    {# JSON-LD payloads are escaped by apps.pages.schema.json_ld; add a nonce here when CSP is enforced. #}
+    <script type="application/ld+json">{{ schema_json|safe }}</script>
+{% endblock schema %}

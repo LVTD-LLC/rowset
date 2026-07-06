@@ -674,4 +674,4 @@ Use [Use dataset plugins](/docs/dataset-plugins/) for workflow guidance.
 - [MCP tool reference](/docs/mcp-tools/)
 - [Share a public preview](/docs/share-public-previews/)
 - [Use dataset plugins](/docs/dataset-plugins/)
-- [Use cases](/docs/use-cases/)
+- [Use cases](/use-cases/)

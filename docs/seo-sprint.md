@@ -74,7 +74,7 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 
 | Surface | URL pattern | Implementation |
 |---|---|---|
-| How-to guides | `/how-to/<slug>` | `apps/pages/content/how-to`, `apps/pages/use_cases.py`, `frontend/templates/pages/use-case-detail.html` |
+| Use cases | `/use-cases/<slug>/` | `apps/pages/content/use-cases`, shared pages content renderer/templates |
 | Docs reference | `/docs/<slug>/` | `apps/pages/content/docs`, shared pages content renderer/templates |
 | Tutorials | `/tutorials/<slug>/` | `apps/pages/content/tutorials`, shared pages content renderer/templates |
 | Explanations | `/explanations/<slug>/` | `apps/pages/content/explanations`, shared pages content renderer/templates |
@@ -95,7 +95,7 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 | `frontend/templates/pages/landing-page.html` | Homepage copy and internal links |
 | `frontend/templates/pages/pricing.html` | Pricing page copy |
 | `frontend/templates/pages/content/how_to_index.html` | How-to guide and use-case index |
-| `frontend/templates/pages/use-case-detail.html` | Use-case page template |
+| `apps/pages/content/use-cases/**` | Markdown-backed use-case pages |
 | `frontend/templates/base_landing.html` | Shared public meta/schema fallback |
 | `rowset/sitemaps.py` | Sitemap entries |
 | `apps/pages/content/**` | Docs, tutorials, how-to guides, explanations, and blog Markdown |

@@ -108,4 +108,4 @@ dataset.
 - Product catalog: `products`, indexed by `sku`
 - Flashcards: `study_cards`, indexed by `card_id`
 
-See [Use cases](/docs/use-cases/) for starter shapes.
+See [Use cases](/use-cases/) for starter shapes.

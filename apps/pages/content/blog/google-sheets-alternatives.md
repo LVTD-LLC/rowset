@@ -121,10 +121,10 @@ datasets or rows.
 
 Use Rowset for workflows like:
 
-- an [agent-managed personal CRM](/docs/use-cases/personal-crm/)
-- an [agent task board](/docs/use-cases/agent-task-board/)
-- [feedback triage](/docs/use-cases/feedback-triage/)
-- [content operations](/docs/use-cases/content-pipeline/)
+- an [agent-managed personal CRM](/use-cases/personal-crm/)
+- an [agent task board](/use-cases/agent-task-board/)
+- [feedback triage](/use-cases/feedback-triage/)
+- [content operations](/use-cases/content-pipeline/)
 - QA findings
 - product or inventory snapshots
 - research tables that an agent updates across sessions

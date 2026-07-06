@@ -3,7 +3,6 @@ from django.urls import reverse
 
 from apps.pages.blog import list_blog_posts
 from apps.pages.content import CONTENT_SECTIONS, get_content_section
-from apps.pages.use_cases import get_use_case_pages
 
 
 class StaticViewSitemap(sitemaps.Sitemap):
@@ -35,20 +34,6 @@ class StaticViewSitemap(sitemaps.Sitemap):
             str: Url for the sitemap item
         """
         return reverse(item)
-
-
-class UseCaseSitemap(sitemaps.Sitemap):
-    """Generate sitemap entries for marketing use-case pages."""
-
-    priority = 0.85
-    protocol = "https"
-    changefreq = "monthly"
-
-    def items(self):
-        return get_use_case_pages()
-
-    def location(self, item):
-        return reverse("docs_use_case", kwargs={"slug": item["slug"]})
 
 
 class ContentSitemap(sitemaps.Sitemap):
@@ -88,7 +73,6 @@ class BlogSitemap(sitemaps.Sitemap):
 
 sitemaps = {
     "static": StaticViewSitemap,
-    "docs_use_cases": UseCaseSitemap,
     "blog": BlogSitemap,
     "content": ContentSitemap,
 }
