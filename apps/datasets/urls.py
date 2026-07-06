@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.dataset_plugins import views as dataset_plugin_views
 from apps.datasets import views
 
 urlpatterns = [
@@ -36,6 +37,21 @@ urlpatterns = [
         name="archived_dataset_list",
     ),
     path("datasets/<uuid:dataset_key>/", views.DatasetDetailView.as_view(), name="dataset_detail"),
+    path(
+        "datasets/<uuid:dataset_key>/plugins/<slug:plugin_slug>/",
+        dataset_plugin_views.dataset_plugin_detail,
+        name="dataset_plugin_detail",
+    ),
+    path(
+        "datasets/<uuid:dataset_key>/plugins/<slug:plugin_slug>/enable/",
+        dataset_plugin_views.dataset_enable_plugin,
+        name="dataset_enable_plugin",
+    ),
+    path(
+        "datasets/<uuid:dataset_key>/plugins/<slug:plugin_slug>/disable/",
+        dataset_plugin_views.dataset_disable_plugin,
+        name="dataset_disable_plugin",
+    ),
     path(
         "datasets/<uuid:dataset_key>/changes/",
         views.DatasetChangesView.as_view(),

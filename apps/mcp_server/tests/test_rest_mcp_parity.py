@@ -6,6 +6,7 @@ from apps.datasets.models import ProjectSection
 from apps.datasets.tests.factories import (
     configure_filterable_dataset,
     create_crm_datasets,
+    create_dataset,
     create_profile_with_api_key,
     create_project,
     create_ready_dataset,
@@ -198,6 +199,68 @@ def test_rest_and_mcp_update_public_preview_share_response_contract(
     assert rest_dataset_payload["public_page_size"] == mcp_dataset_payload["public_page_size"] == 1
     assert rest_dataset_payload["public_url"]
     assert mcp_dataset_payload["public_url"]
+
+
+def test_rest_and_mcp_enable_dataset_plugin_share_response_contract(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    profile = create_profile_with_api_key(django_user_model)
+    _authenticate_mcp_as(monkeypatch, profile)
+    rest_dataset = create_dataset(
+        profile,
+        name="REST flashcards",
+        headers=["card_id", "front_question", "back_answer"],
+        index_column="card_id",
+        rows=[
+            {
+                "card_id": "card-1",
+                "front_question": "What does hola mean?",
+                "back_answer": "Hello",
+            }
+        ],
+    )
+    mcp_dataset = create_dataset(
+        profile,
+        name="MCP flashcards",
+        headers=["card_id", "front_question", "back_answer"],
+        index_column="card_id",
+        rows=[
+            {
+                "card_id": "card-1",
+                "front_question": "What does hola mean?",
+                "back_answer": "Hello",
+            }
+        ],
+    )
+    config = {
+        "columns": {
+            "front_question": "front_question",
+            "back_answer": "back_answer",
+        }
+    }
+
+    rest_response = client.post(
+        f"/api/datasets/{rest_dataset.key}/plugins/flashcards",
+        {"config": config},
+        content_type="application/json",
+        HTTP_AUTHORIZATION=_bearer(profile),
+    )
+
+    mcp_result = mcp_server.enable_dataset_plugin(
+        str(mcp_dataset.key),
+        "flashcards",
+        config=config,
+    )
+
+    assert rest_response.status_code == 200
+    rest_activation = rest_response.json()["activation"]
+    mcp_activation = mcp_result["activation"]
+    assert rest_activation["plugin"]["slug"] == mcp_activation["plugin"]["slug"] == "flashcards"
+    assert rest_activation["enabled"] is True
+    assert mcp_activation["enabled"] is True
+    assert rest_activation["config"] == mcp_activation["config"] == config
 
 
 def test_rest_and_mcp_project_section_assignment_share_contract(

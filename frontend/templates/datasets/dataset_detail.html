@@ -46,6 +46,26 @@
       </div>
     </div>
 
+      {% if dataset_plugin_links %}
+        <section class="fb-card p-5" aria-labelledby="dataset-plugins-heading">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 id="dataset-plugins-heading" class="fb-section-title">Plugin views</h2>
+              <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Enabled dataset-specific views built on these rows.</p>
+            </div>
+            <a href="{{ dataset.get_settings_url }}#plugins" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Manage plugins</a>
+          </div>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            {% for activation in dataset_plugin_links %}
+              <a href="{{ activation.view_url }}" class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30">
+                <span class="block text-sm font-semibold text-slate-950 dark:text-slate-100">{{ activation.plugin.name }}</span>
+                <span class="mt-1 block text-sm leading-6 text-slate-600 dark:text-slate-300">{{ activation.plugin.description }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
       {% if dataset.description or dataset.instructions or dataset.metadata %}
         <details class="group fb-card overflow-hidden" aria-labelledby="dataset-context-heading">
         <summary class="fb-menu-summary fb-focus flex cursor-pointer flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between">
