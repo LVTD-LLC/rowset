@@ -128,13 +128,13 @@
                     </p>
                     <h2>Recommended first dataset shapes</h2>
                     <p>
-                        Start with rows the agent can maintain without guessing. For an <a href="{% url 'docs_use_case' slug='personal-crm' %}">agent-managed personal CRM</a>, create a people dataset with `person_id` or `email`, name, company, relationship stage, last interaction, next action, and notes. Add instructions about when a person is warm, stale, or waiting. The agent can add people from meeting notes and surface follow-ups.
+                        Start with rows the agent can maintain without guessing. For an <a href="{% url 'use_case_page' slug='personal-crm' %}">agent-managed personal CRM</a>, create a people dataset with `person_id` or `email`, name, company, relationship stage, last interaction, next action, and notes. Add instructions about when a person is warm, stale, or waiting. The agent can add people from meeting notes and surface follow-ups.
                     </p>
                     <p>
-                        For an <a href="{% url 'docs_use_case' slug='agent-task-board' %}">agent task board</a>, create rows with `task_id`, title, owner, status, priority, blocker, source link, and completion evidence. Add instructions about status transitions. This is useful when multiple agent sessions need to see the same work queue without scraping a project-management UI.
+                        For an <a href="{% url 'use_case_page' slug='agent-task-board' %}">agent task board</a>, create rows with `task_id`, title, owner, status, priority, blocker, source link, and completion evidence. Add instructions about status transitions. This is useful when multiple agent sessions need to see the same work queue without scraping a project-management UI.
                     </p>
                     <p>
-                        For <a href="{% url 'docs_use_case' slug='feedback-triage' %}">feedback triage</a>, create rows with `feedback_id`, customer, source, theme, severity, duplicate_of, status, and next action. The agent can dedupe related signals and keep customer evidence linked. Public previews can help stakeholders inspect a read-only board, while private MCP/REST remains the mutation path.
+                        For <a href="{% url 'use_case_page' slug='feedback-triage' %}">feedback triage</a>, create rows with `feedback_id`, customer, source, theme, severity, duplicate_of, status, and next action. The agent can dedupe related signals and keep customer evidence linked. Public previews can help stakeholders inspect a read-only board, while private MCP/REST remains the mutation path.
                     </p>
                     <p>
                         For content operations, create a content pipeline with slug, title, stage, owner, target keyword, brief link, draft link, canonical URL, and publish date. For QA, create issue rows with issue_id, severity, reproduction notes, environment, owner, fix status, and evidence URL. In each case, Rowset works best when the dataset reflects the workflow language the agent and human already use.

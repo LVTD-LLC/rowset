@@ -21,9 +21,11 @@ cut date.
 ## 2026-07-06
 
 ### Added
+- Added Markdown-backed use-case pages under `/use-cases/` with a standalone Use Cases navbar link.
 - Added the Google Sheets alternatives article as a Markdown blog post for AI-agent-managed datasets, with a verified SEO brief and inbound links from related blog posts.
 
 ### Changed
+- Simplified the docs sidebar to Getting started, Features, and Reference, and removed use cases from the docs navigation.
 - Changed `/docs/` into a permanent redirect to the quickstart and grouped the docs sidebar by Start, Build, Use Cases, Reference, and Operate on every docs page.
 - Reworked public Rowset docs into a docs-first, user-job information architecture with grouped Start, Build, Use Cases, Reference, and Operate pages, plus redirects from the older tutorial/how-to/explanation paths.
 

@@ -108,4 +108,4 @@ You now have a private dataset the agent can continue using in later sessions.
 - [Dataset API](/docs/dataset-api/) for REST endpoint details.
 - [How Rowset datasets work](/docs/datasets/) for index columns,
   projects, relationships, schema, exports, and previews.
-- [Use cases](/docs/use-cases/) for starting dataset shapes.
+- [Use cases](/use-cases/) for starting dataset shapes.

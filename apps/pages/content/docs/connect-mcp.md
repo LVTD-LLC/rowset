@@ -85,9 +85,9 @@ stable `index_column`.
 
 Useful starting points:
 
-- [Agent-managed personal CRM](/docs/use-cases/personal-crm/)
-- [Agent task board](/docs/use-cases/agent-task-board/)
-- [Feedback triage workflow](/docs/use-cases/feedback-triage/)
+- [Agent-managed personal CRM](/use-cases/personal-crm/)
+- [Agent task board](/use-cases/agent-task-board/)
+- [Feedback triage workflow](/use-cases/feedback-triage/)
 - [Index-column decision guide](/blog/choose-index-column-agent-rows)
 
 ## 7. Use the right permission level

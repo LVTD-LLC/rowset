@@ -128,8 +128,8 @@ hosted datasets or rows.
 
 Use Rowset for workflows like:
 
-- an [agent-managed personal CRM](/docs/use-cases/personal-crm/)
-- an [agent task board](/docs/use-cases/agent-task-board/)
+- an [agent-managed personal CRM](/use-cases/personal-crm/)
+- an [agent task board](/use-cases/agent-task-board/)
 - feedback triage
 - content operations
 - QA findings

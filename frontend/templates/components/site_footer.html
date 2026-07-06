@@ -3,6 +3,7 @@
 {% url 'account_signup' as account_signup_url %}
 {% url 'docs_home' as docs_home_url %}
 {% url 'blog_posts' as blog_posts_url %}
+{% url 'use_cases' as use_cases_url %}
 {% url 'privacy_policy' as privacy_policy_url %}
 {% url 'terms_of_service' as terms_of_service_url %}
 <footer class="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
@@ -49,6 +50,12 @@
                         <li>
                             <a href="{{ blog_posts_url }}"
                                class="hover:text-slate-950 dark:hover:text-white">Blog</a>
+                        </li>
+                    {% endif %}
+                    {% if use_cases_url %}
+                        <li>
+                            <a href="{{ use_cases_url }}"
+                               class="hover:text-slate-950 dark:hover:text-white">Use Cases</a>
                         </li>
                     {% endif %}
                 </ul>

@@ -32,7 +32,6 @@ from apps.pages.schema import (
     organization_schema,
     product_schema,
     software_application_schema,
-    use_case_article_schema,
 )
 from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import build_absolute_public_url, get_rowset_logger
@@ -170,15 +169,19 @@ def docs_page_view(request, slug):
     return render_content_page(request, "docs", slug)
 
 
-def docs_use_case_view(request, slug):
-    return HowToUseCaseDetailView.as_view()(request, slug=slug)
+def use_cases_view(request):
+    return render_content_page(request, "use-cases", "index")
+
+
+def use_case_page_view(request, slug):
+    return render_content_page(request, "use-cases", slug)
 
 
 def legacy_how_to_redirect(request, slug=None):
     if slug is None:
-        return redirect("docs_page", slug="use-cases", permanent=True)
+        return redirect("use_cases", permanent=True)
     if get_use_case_page(slug) is not None:
-        return redirect("docs_use_case", slug=slug, permanent=True)
+        return redirect("use_case_page", slug=slug, permanent=True)
     return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
 
 
@@ -194,12 +197,6 @@ def tutorials_home_view(request):
 
 def tutorial_page_view(request, slug):
     return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
-
-
-def legacy_use_case_redirect(request, slug=None):
-    if slug is None:
-        return redirect("docs_page", slug="use-cases", permanent=True)
-    return redirect("docs_use_case", slug=slug, permanent=True)
 
 
 def blog_posts_view(request):
@@ -239,30 +236,6 @@ def blog_post_view(request, slug):
             ),
         },
     )
-
-
-class HowToUseCaseDetailView(TemplateView):
-    template_name = "pages/use-case-detail.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        use_case = get_use_case_page(self.kwargs["slug"])
-        if use_case is None:
-            raise Http404("Use case not found")
-
-        context["use_case"] = use_case
-        context["use_case_canonical_path"] = reverse(
-            "docs_use_case",
-            kwargs={"slug": use_case["slug"]},
-        )
-        context["related_use_cases"] = tuple(
-            page for page in get_use_case_pages() if page["slug"] != use_case["slug"]
-        )[:3]
-        context["schema_json"] = json_ld(use_case_article_schema(use_case))
-        context["docs_base_template"] = (
-            "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
-        )
-        return context
 
 
 def how_to_guide_view(request, slug):

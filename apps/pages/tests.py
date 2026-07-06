@@ -136,7 +136,7 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Agent CRM" in content
     assert "Content pipeline" in content
     assert "Bug and QA tracker" in content
-    assert reverse("docs_page", kwargs={"slug": "use-cases"}) in content
+    assert reverse("use_cases") in content
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
     assert reverse("blog_post", kwargs={"slug": "airtable-alternatives"}) in content
@@ -147,6 +147,7 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     blog_href = f'href="{reverse("blog_posts")}"'
     docs_href = f'href="{reverse("docs_home")}"'
+    use_cases_href = f'href="{reverse("use_cases")}"'
 
     landing_response = client.get(reverse("landing"))
     assert landing_response.status_code == 200
@@ -159,6 +160,9 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert docs_href in _nav_html(landing_content, "Primary navigation")
     assert docs_href in _nav_html(landing_content, "Mobile navigation")
     assert docs_href in landing_footer
+    assert use_cases_href in _nav_html(landing_content, "Primary navigation")
+    assert use_cases_href in _nav_html(landing_content, "Mobile navigation")
+    assert use_cases_href in landing_footer
     assert "Alternatives" not in landing_footer
 
     user = get_user_model().objects.create_user(
@@ -177,10 +181,13 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert blog_href in _nav_html(app_content, "Mobile navigation")
     assert blog_href in app_footer
     assert docs_href in app_footer
+    assert use_cases_href in _nav_html(app_content, "Primary navigation")
+    assert use_cases_href in _nav_html(app_content, "Mobile navigation")
+    assert use_cases_href in app_footer
     assert "Alternatives" not in app_footer
 
 
-def test_public_resources_nav_links_to_root_content_sections(client):
+def test_public_nav_links_to_root_content_sections(client):
     response = client.get(reverse("landing"))
 
     assert response.status_code == 200
@@ -192,8 +199,10 @@ def test_public_resources_nav_links_to_root_content_sections(client):
     expected_hrefs = (
         reverse("docs_home"),
         reverse("blog_posts"),
+        reverse("use_cases"),
     )
-    assert "Resources" in primary_nav
+    assert "Resources" not in primary_nav
+    assert "Use Cases" in primary_nav
     assert "Tutorials" not in footer_nav
     assert "How-to guides" not in footer_nav
     assert "Explanations" not in footer_nav
@@ -219,17 +228,17 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert "Explore" not in docs_nav
     assert "Docs home" not in docs_nav
     assert "Blog" not in docs_nav
-    assert "Start" in docs_nav
-    assert "Build" in docs_nav
-    assert "Use cases" in docs_nav
+    assert "Getting started" in docs_nav
+    assert "Features" in docs_nav
+    assert "Use cases" not in docs_nav
     assert "Reference" in docs_nav
-    assert "Operate" in docs_nav
+    assert "Operate" not in docs_nav
     assert reverse("docs_page", kwargs={"slug": "quickstart"}) in content
     assert reverse("docs_page", kwargs={"slug": "create-datasets"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-plugins"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "content-pipeline"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in docs_nav
+    assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in docs_nav
+    assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) not in docs_nav
     assert reverse("docs_page", kwargs={"slug": "api-overview"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
     assert reverse("docs_page", kwargs={"slug": "mcp-tools"}) in content
@@ -245,16 +254,16 @@ def test_docs_sidebar_groups_pages_and_expands_current_section(client):
 
     assert "Docs home" not in sidebar
     assert ">Docs<" not in sidebar
-    assert "docsToc('start-1')" in content
-    assert 'id="docs-nav-panel-start-1"' in sidebar
-    assert 'id="docs-nav-panel-build-2"' in sidebar
+    assert "docsToc('getting-started-1')" in content
+    assert 'id="docs-nav-panel-getting-started-1"' in sidebar
+    assert 'id="docs-nav-panel-features-2"' in sidebar
     assert "@focusin=" not in sidebar
     assert "@focusout=" not in sidebar
     assert "grid-template-rows: 1fr; opacity: 1;" in sidebar
-    assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in sidebar
-    assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in sidebar
-    assert reverse("docs_use_case", kwargs={"slug": "bug-qa-tracker"}) in sidebar
-    assert f'href="{reverse("docs_page", kwargs={"slug": "use-cases"})}"' not in sidebar
+    assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in sidebar
+    assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in sidebar
+    assert reverse("use_case_page", kwargs={"slug": "bug-qa-tracker"}) not in sidebar
+    assert f'href="{reverse("use_cases")}"' not in sidebar
     assert "hover:prose-a:underline" not in content
     assert "prose-a:hover:underline" in content
 
@@ -291,7 +300,8 @@ def test_root_content_sections_render_markdown_pages(client):
         ("/docs/reference/dataset-api/", "/docs/dataset-api/"),
         ("/docs/features/mcp/", "/docs/connect-mcp/"),
         ("/docs/api-reference/datasets/", "/docs/dataset-api/"),
-        ("/use-cases/personal-crm/", "/docs/use-cases/personal-crm/"),
+        ("/docs/use-cases/", "/use-cases/"),
+        ("/docs/use-cases/personal-crm/", "/use-cases/personal-crm/"),
         ("/playbooks/database-mcp-server/", "/docs/database-mcp-server/"),
     ),
 )
@@ -302,14 +312,14 @@ def test_legacy_public_content_paths_redirect(client, old_path, new_path):
     assert response["Location"] == new_path
 
 
-def test_docs_use_cases_page_lists_use_case_pages(client):
-    response = client.get(reverse("docs_page", kwargs={"slug": "use-cases"}))
+def test_use_cases_page_lists_use_case_pages(client):
+    response = client.get(reverse("use_cases"))
 
     assert response.status_code == 200
     content = response.content.decode()
     assert "Start here when you know the job" in content
-    assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) in content
     assert "flashcard-deck" not in content
     assert "Flashcards plugin" not in content
     assert "/how-to/personal-crm/" not in content
@@ -372,14 +382,14 @@ def test_marketing_routes_use_django_append_slash_redirects(client, path, expect
     assert response["Location"] == f"{expected}?utm_source=test"
 
 
-def test_docs_use_cases_page_links_public_use_case_pages(client):
-    response = client.get(reverse("docs_page", kwargs={"slug": "use-cases"}))
+def test_use_cases_page_links_public_use_case_pages(client):
+    response = client.get(reverse("use_cases"))
 
     assert response.status_code == 200
     content = response.content.decode()
     main_content = content[content.index("<main") : content.index("</main>") + len("</main>")]
-    assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) in content
     assert "flashcard-deck" not in content
     assert "Flashcards plugin" not in content
     assert "product-inventory-catalog" in content
@@ -395,7 +405,7 @@ def test_authenticated_public_pages_use_app_header(client):
     )
     client.force_login(user)
 
-    response = client.get(reverse("docs_page", kwargs={"slug": "use-cases"}))
+    response = client.get(reverse("use_cases"))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -413,18 +423,17 @@ def test_authenticated_public_pages_use_app_header(client):
 
 
 def test_how_to_use_case_page_shows_structured_example(client):
-    response = client.get(reverse("docs_use_case", kwargs={"slug": "personal-crm"}))
+    response = client.get(reverse("use_case_page", kwargs={"slug": "personal-crm"}))
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "A CRM your agent can actually maintain." in content
+    assert "Agent-managed personal CRM" in content
     assert "people" in content
     assert "People dataset indexed by email or person_id." in content
     assert "Dataset context and semantic schema" in content
     assert "alex@example.com" in content
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
-    assert reverse("pricing") in content
     assert '"@type": "Article"' in content
 
 
@@ -436,7 +445,7 @@ def test_authenticated_how_to_use_case_page_uses_app_header(client):
     )
     client.force_login(user)
 
-    response = client.get(reverse("docs_use_case", kwargs={"slug": "personal-crm"}))
+    response = client.get(reverse("use_case_page", kwargs={"slug": "personal-crm"}))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -452,7 +461,7 @@ def test_authenticated_how_to_use_case_page_uses_app_header(client):
 
 
 def test_unknown_use_case_returns_404(client):
-    response = client.get(reverse("docs_use_case", kwargs={"slug": "missing"}))
+    response = client.get(reverse("use_case_page", kwargs={"slug": "missing"}))
 
     assert response.status_code == 404
 
@@ -473,9 +482,9 @@ def test_database_mcp_server_explanation_has_required_links_and_schema(client):
     assert reverse("docs_page", kwargs={"slug": "configure-agent-access"}) in content
     assert reverse("docs_home") in content
     assert reverse("pricing") in content
-    assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "feedback-triage"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "feedback-triage"}) in content
     assert "https://testserver/mcp/" in content
     assert '"@type": "Article"' in content
     assert '"@type": "BreadcrumbList"' in content
@@ -529,7 +538,7 @@ def test_airtable_alternatives_blog_post_has_required_links_schema_and_content(c
     assert reverse("pricing") in content
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
-    assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) in content
     assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
     assert schema["@type"] == "BlogPosting"
 
@@ -600,7 +609,7 @@ def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
     schema = article_schema(
         headline='Agent "CRM" <guide>',
         description="Use <structured> rows safely.",
-        path="/docs/use-cases/personal-crm/",
+        path="/use-cases/personal-crm/",
     )
     rendered = json_ld(schema)
 
@@ -611,12 +620,12 @@ def test_schema_helper_edge_cases_escape_and_omit_optional_fields():
 
 
 def test_use_case_article_schema_includes_main_entity(client):
-    response = client.get(reverse("docs_use_case", kwargs={"slug": "personal-crm"}))
+    response = client.get(reverse("use_case_page", kwargs={"slug": "personal-crm"}))
 
     content = response.content.decode()
     schema = json.loads(_json_ld_payload(content))
 
-    assert schema["mainEntityOfPage"]["@id"].endswith("/docs/use-cases/personal-crm/")
+    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm/")
 
 
 @override_settings(SITE_URL="https://rowset.example")
@@ -624,8 +633,8 @@ def test_use_case_item_list_schema_uses_docs_urls(client):
     schema = use_case_item_list_schema(page_use_cases.get_use_case_pages())
 
     assert schema["@type"] == "ItemList"
-    assert schema["url"] == "https://rowset.example/docs/use-cases/"
-    assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/docs/use-cases/")
+    assert schema["url"] == "https://rowset.example/use-cases/"
+    assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/use-cases/")
 
 
 @override_settings(SITE_URL="https://rowset.example")
