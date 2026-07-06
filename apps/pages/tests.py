@@ -300,6 +300,8 @@ def test_root_content_sections_render_markdown_pages(client):
         ("/docs/reference/dataset-api/", "/docs/dataset-api/"),
         ("/docs/features/mcp/", "/docs/connect-mcp/"),
         ("/docs/api-reference/datasets/", "/docs/dataset-api/"),
+        ("/docs/use-cases/", "/use-cases/"),
+        ("/docs/use-cases/personal-crm/", "/use-cases/personal-crm/"),
         ("/playbooks/database-mcp-server/", "/docs/database-mcp-server/"),
     ),
 )
