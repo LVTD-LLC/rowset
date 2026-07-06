@@ -24,7 +24,7 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 | 1 | Strengthen Dataset API, MCP docs, and use-case pages as the internal-link spine | Use-case/docs | completed | #193 |
 | 2 | Ship `/explanations/database-mcp-server` from measured MCP/database demand | Playbook | completed | #196 |
 | 3 | Ship `/blog/airtable-alternatives` with an AI-agent dataset angle | Blog alternatives | completed | #207 |
-| 4 | Ship `/blog/google-sheets-alternatives` with an MCP/REST backend angle | Blog alternatives | completed | branch `content/google-sheets-alternatives-2026-07-06` (PR TBD) |
+| 4 | Ship `/blog/google-sheets-alternatives` with an MCP/REST backend angle | Blog alternatives | completed | #209 |
 | 5 | Ship `/explanations/spreadsheet-database-for-ai-agents` | Explanation | pending | - |
 | 6 | Ship `/blog/baserow-alternatives` with honest open-source/no-code positioning | Blog alternatives | pending | - |
 | 7 | Ship `/blog/nocodb-alternatives` with SQL UI vs agent backend positioning | Blog alternatives | pending | - |
