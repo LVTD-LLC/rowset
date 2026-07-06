@@ -162,8 +162,10 @@ def dataset_plugin_settings_context(dataset: Dataset) -> list[dict[str, Any]]:
                 activation.config if activation else None,
             )[PLUGIN_CONFIG_COLUMNS_KEY]
         except DatasetServiceError as exc:
-            selected_columns = (activation.config or {}).get(PLUGIN_CONFIG_COLUMNS_KEY, {})
-            validation_error = exc.message
+            selected_columns = (
+                (activation.config or {}).get(PLUGIN_CONFIG_COLUMNS_KEY, {}) if activation else {}
+            )
+            validation_error = exc.message if activation else ""
 
         entries.append(
             {

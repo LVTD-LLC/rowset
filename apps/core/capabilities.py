@@ -377,6 +377,9 @@ ROWSET_CAPABILITIES = (
             "Exports are REST fallback paths; prefer MCP row tools for live agent workflows.",
         ),
     ),
+)
+
+ROWSET_USE_CASES = (
     RowsetUseCase(
         id="flashcards",
         title="Flashcards",
@@ -391,9 +394,6 @@ ROWSET_CAPABILITIES = (
         ),
         rowset_features=("dataset_plugins", "dataset_context", "rows", "image_assets"),
     ),
-)
-
-ROWSET_USE_CASES = (
     RowsetUseCase(
         id="personal_crm",
         title="Personal CRM",
