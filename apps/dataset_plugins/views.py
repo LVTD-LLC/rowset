@@ -19,6 +19,11 @@ from apps.dataset_plugins.services import (
 )
 
 
+def _require_dataset_plugins_staff(request) -> None:
+    if not profile_can_use_dataset_plugins(request.user.profile):
+        raise Http404("Dataset plugin not found.")
+
+
 def _plugin_config_from_post(plugin_slug: str, post_data) -> dict:
     try:
         spec = get_dataset_plugin(plugin_slug)
@@ -36,8 +41,7 @@ def _plugin_config_from_post(plugin_slug: str, post_data) -> dict:
 
 @login_required
 def plugin_marketplace(request):
-    if not profile_can_use_dataset_plugins(request.user.profile):
-        raise Http404("Dataset plugin not found.")
+    _require_dataset_plugins_staff(request)
     return render(
         request,
         "plugins/plugin_marketplace.html",
@@ -48,8 +52,7 @@ def plugin_marketplace(request):
 @login_required
 @require_POST
 def plugin_install(request, plugin_slug):
-    if not profile_can_use_dataset_plugins(request.user.profile):
-        raise Http404("Dataset plugin not found.")
+    _require_dataset_plugins_staff(request)
     try:
         installation, created = install_profile_dataset_plugin(request.user.profile, plugin_slug)
         spec = get_dataset_plugin(installation.plugin_slug)
@@ -69,8 +72,7 @@ def plugin_install(request, plugin_slug):
 @login_required
 @require_POST
 def plugin_uninstall(request, plugin_slug):
-    if not profile_can_use_dataset_plugins(request.user.profile):
-        raise Http404("Dataset plugin not found.")
+    _require_dataset_plugins_staff(request)
     try:
         removed = uninstall_profile_dataset_plugin(request.user.profile, plugin_slug)
     except DatasetServiceError as exc:
@@ -90,6 +92,7 @@ def plugin_uninstall(request, plugin_slug):
 @login_required
 @require_POST
 def dataset_enable_plugin(request, dataset_key, plugin_slug):
+    _require_dataset_plugins_staff(request)
     try:
         result = enable_profile_dataset_plugin(
             request.user.profile,
@@ -109,6 +112,7 @@ def dataset_enable_plugin(request, dataset_key, plugin_slug):
 @login_required
 @require_POST
 def dataset_disable_plugin(request, dataset_key, plugin_slug):
+    _require_dataset_plugins_staff(request)
     try:
         result = disable_profile_dataset_plugin(
             request.user.profile,
@@ -126,6 +130,7 @@ def dataset_disable_plugin(request, dataset_key, plugin_slug):
 
 @login_required
 def dataset_plugin_detail(request, dataset_key, plugin_slug):
+    _require_dataset_plugins_staff(request)
     try:
         activation = get_profile_dataset_plugin_activation(
             request.user.profile,

@@ -555,6 +555,14 @@ def _visible_rowset_use_cases(
     )
 
 
+def public_rowset_capabilities() -> tuple[RowsetCapability, ...]:
+    return _visible_rowset_capabilities(None)
+
+
+def public_rowset_use_cases() -> tuple[RowsetUseCase, ...]:
+    return _visible_rowset_use_cases(public_rowset_capabilities())
+
+
 def rowset_capabilities_payload(profile: Any | None = None) -> dict[str, Any]:
     _validate_capability_registry()
     visible_capabilities = _visible_rowset_capabilities(profile)
