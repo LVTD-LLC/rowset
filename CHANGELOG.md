@@ -23,6 +23,9 @@ cut date.
 ### Added
 - Added the Google Sheets alternatives article as a Markdown blog post for AI-agent-managed datasets, with a verified SEO brief and inbound links from related blog posts.
 
+### Changed
+- Reworked public Rowset docs into a docs-first, user-job information architecture with grouped Start, Build, Use Cases, Reference, and Operate pages, plus redirects from the older tutorial/how-to/explanation paths.
+
 ## 2026-07-05
 
 ### Added

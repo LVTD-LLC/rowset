@@ -28,23 +28,58 @@
         </section>
         <section class="bg-white dark:bg-slate-950">
             <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-                <div class="grid gap-4 md:grid-cols-2">
-                    {% for page in section.pages %}
-                        <a href="{{ page.url }}"
-                           class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
-                            <h2 class="text-xl font-semibold text-slate-950 dark:text-white">{{ page.title }}</h2>
-                            <span class="mt-5 inline-flex text-sm font-semibold text-slate-950 dark:text-white">Open page &rarr;</span>
-                        </a>
-                    {% endfor %}
-                    {% for page in extra_pages %}
-                        <a href="{{ page.url }}"
-                           class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
-                            <h2 class="text-xl font-semibold text-slate-950 dark:text-white">{{ page.title }}</h2>
-                            <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ page.description }}</p>
-                            <span class="mt-5 inline-flex text-sm font-semibold text-slate-950 dark:text-white">Open page &rarr;</span>
-                        </a>
-                    {% endfor %}
-                </div>
+                {% if section.groups %}
+                    <div class="space-y-10">
+                        {% for group in section.groups %}
+                            <section aria-labelledby="docs-group-{{ forloop.counter }}-heading">
+                                <div class="max-w-3xl">
+                                    <h2 id="docs-group-{{ forloop.counter }}-heading"
+                                        class="text-2xl font-semibold text-slate-950 dark:text-white">{{ group.label }}</h2>
+                                    {% if group.description %}
+                                        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ group.description }}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-5 grid gap-4 md:grid-cols-2">
+                                    {% for page in group.pages %}
+                                        <a href="{{ page.url }}"
+                                           class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+                                            <h3 class="text-xl font-semibold text-slate-950 dark:text-white">{{ page.title }}</h3>
+                                            {% if page.description %}
+                                                <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ page.description }}</p>
+                                            {% endif %}
+                                            <span class="mt-5 inline-flex text-sm font-semibold text-slate-950 dark:text-white">Open page &rarr;</span>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="grid gap-4 md:grid-cols-2">
+                        {% for page in section.pages %}
+                            <a href="{{ page.url }}"
+                               class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+                                <h2 class="text-xl font-semibold text-slate-950 dark:text-white">{{ page.title }}</h2>
+                                {% if page.description %}
+                                    <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ page.description }}</p>
+                                {% endif %}
+                                <span class="mt-5 inline-flex text-sm font-semibold text-slate-950 dark:text-white">Open page &rarr;</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if extra_pages %}
+                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                        {% for page in extra_pages %}
+                            <a href="{{ page.url }}"
+                               class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
+                                <h2 class="text-xl font-semibold text-slate-950 dark:text-white">{{ page.title }}</h2>
+                                <p class="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ page.description }}</p>
+                                <span class="mt-5 inline-flex text-sm font-semibold text-slate-950 dark:text-white">Open page &rarr;</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
         </section>
     </main>

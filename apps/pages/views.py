@@ -24,7 +24,7 @@ from apps.pages.blog import (
 from apps.pages.blog import (
     json_ld as blog_json_ld,
 )
-from apps.pages.content import get_content_section, render_content_page, render_content_section
+from apps.pages.content import render_content_page, render_content_section
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
@@ -33,12 +33,18 @@ from apps.pages.schema import (
     product_schema,
     software_application_schema,
     use_case_article_schema,
-    use_case_item_list_schema,
 )
 from apps.pages.use_cases import get_use_case_page, get_use_case_pages
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+
+LEGACY_DOC_SLUG_REDIRECTS = {
+    "first-agent-dataset": "quickstart",
+    "help-agents-discover-rowset": "agent-discovery",
+    "mcp-rest-and-previews": "mcp-rest-public-previews",
+    "share-public-preview": "share-public-previews",
+}
 
 
 class LandingPageView(TemplateView):
@@ -159,15 +165,41 @@ def docs_home_view(request):
 
 
 def docs_page_view(request, slug):
+    if slug == "database-mcp-server":
+        return DatabaseMcpServerExplanationView.as_view()(request)
     return render_content_page(request, "docs", slug)
 
 
+def docs_use_case_view(request, slug):
+    return HowToUseCaseDetailView.as_view()(request, slug=slug)
+
+
+def legacy_how_to_redirect(request, slug=None):
+    if slug is None:
+        return redirect("docs_page", slug="use-cases", permanent=True)
+    if get_use_case_page(slug) is not None:
+        return redirect("docs_use_case", slug=slug, permanent=True)
+    return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
+
+
+def legacy_explanation_redirect(request, slug=None):
+    if slug is None:
+        return redirect("docs_home", permanent=True)
+    return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
+
+
 def tutorials_home_view(request):
-    return render_content_section(request, "tutorials")
+    return redirect("docs_home", permanent=True)
 
 
 def tutorial_page_view(request, slug):
-    return render_content_page(request, "tutorials", slug)
+    return redirect("docs_page", slug=LEGACY_DOC_SLUG_REDIRECTS.get(slug, slug), permanent=True)
+
+
+def legacy_use_case_redirect(request, slug=None):
+    if slug is None:
+        return redirect("docs_page", slug="use-cases", permanent=True)
+    return redirect("docs_use_case", slug=slug, permanent=True)
 
 
 def blog_posts_view(request):
@@ -209,20 +241,6 @@ def blog_post_view(request, slug):
     )
 
 
-class HowToIndexView(TemplateView):
-    template_name = "pages/content/how_to_index.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["section"] = get_content_section("how-to")
-        context["use_case_pages"] = get_use_case_pages()
-        context["schema_json"] = json_ld(use_case_item_list_schema(context["use_case_pages"]))
-        context["docs_base_template"] = (
-            "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
-        )
-        return context
-
-
 class HowToUseCaseDetailView(TemplateView):
     template_name = "pages/use-case-detail.html"
 
@@ -233,6 +251,10 @@ class HowToUseCaseDetailView(TemplateView):
             raise Http404("Use case not found")
 
         context["use_case"] = use_case
+        context["use_case_canonical_path"] = reverse(
+            "docs_use_case",
+            kwargs={"slug": use_case["slug"]},
+        )
         context["related_use_cases"] = tuple(
             page for page in get_use_case_pages() if page["slug"] != use_case["slug"]
         )[:3]
@@ -244,33 +266,15 @@ class HowToUseCaseDetailView(TemplateView):
 
 
 def how_to_guide_view(request, slug):
-    try:
-        return render_content_page(request, "how-to", slug)
-    except Http404:
-        return HowToUseCaseDetailView.as_view()(request, slug=slug)
+    return legacy_how_to_redirect(request, slug)
 
 
 def explanations_home_view(request):
-    return render_content_section(
-        request,
-        "explanations",
-        extra_pages=(
-            {
-                "title": "Database MCP server: when to use Rowset instead",
-                "description": (
-                    "A practical guide to choosing between direct database MCP servers "
-                    "and Rowset's hosted MCP dataset backend."
-                ),
-                "url": reverse("explanation_page", kwargs={"slug": "database-mcp-server"}),
-            },
-        ),
-    )
+    return legacy_explanation_redirect(request)
 
 
 def explanation_page_view(request, slug):
-    if slug == "database-mcp-server":
-        return DatabaseMcpServerExplanationView.as_view()(request)
-    return render_content_page(request, "explanations", slug)
+    return legacy_explanation_redirect(request, slug)
 
 
 class DatabaseMcpServerExplanationView(TemplateView):
@@ -278,7 +282,7 @@ class DatabaseMcpServerExplanationView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        path = reverse("explanation_page", kwargs={"slug": "database-mcp-server"})
+        path = reverse("docs_page", kwargs={"slug": "database-mcp-server"})
         context["mcp_url"] = build_absolute_public_url("/mcp/")
         context["docs_base_template"] = (
             "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
@@ -298,7 +302,7 @@ class DatabaseMcpServerExplanationView(TemplateView):
                 breadcrumb_list_schema(
                     (
                         ("Home", "/"),
-                        ("Explanations", reverse("explanations_home")),
+                        ("Docs", reverse("docs_home")),
                         ("Database MCP server", path),
                     )
                 ),

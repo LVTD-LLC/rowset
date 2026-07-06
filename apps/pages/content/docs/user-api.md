@@ -55,5 +55,5 @@ The response does **not** include your API key.
 ## Related docs
 
 - [API overview](/docs/api-overview/)
-- [Connect over MCP](/how-to/connect-mcp/)
+- [Connect over MCP](/docs/connect-mcp/)
 - [Dataset API](/docs/dataset-api/)

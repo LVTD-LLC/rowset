@@ -1,20 +1,44 @@
 navigation:
   docs:
-    - api-overview
-    - user-api
-    - project-api
-    - dataset-api
-    - mcp-tools
+    - label: Start
+      description: Learn what Rowset is, create one useful dataset, and understand the core objects before choosing a deeper workflow.
+      pages:
+        - quickstart
+        - core-concepts
+        - datasets
 
-  tutorials:
-    - first-agent-dataset
+    - label: Build
+      description: Set up the dataset shape, organization, access path, sharing, and human-facing surfaces for real work.
+      pages:
+        - create-datasets
+        - organize-projects
+        - work-with-rows
+        - design-schema
+        - link-datasets
+        - attach-images
+        - dataset-plugins
+        - share-public-previews
 
-  how-to:
-    - configure-agent-access
-    - connect-mcp
-    - help-agents-discover-rowset
-    - share-public-preview
+    - label: Use Cases
+      description: Start from a concrete job when you want a ready dataset shape instead of a blank table.
+      pages:
+        - use-cases
 
-  explanations:
-    - datasets
-    - mcp-rest-and-previews
+    - label: Reference
+      description: Look up REST endpoints, MCP tools, authentication, and generated API docs.
+      pages:
+        - api-overview
+        - user-api
+        - project-api
+        - dataset-api
+        - mcp-tools
+
+    - label: Operate
+      description: Configure trusted agents, choose MCP or REST, recover from mistakes, export snapshots, and understand product boundaries.
+      pages:
+        - configure-agent-access
+        - connect-mcp
+        - agent-discovery
+        - archive-export-troubleshoot
+        - mcp-rest-public-previews
+        - database-mcp-server

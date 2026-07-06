@@ -98,7 +98,7 @@ or published. For feedback triage, it might mean new, investigating, planned,
 shipped, or closed. The labels are not enough.
 
 Finally, the access surface should match the caller. Compatible agent clients
-should use [hosted MCP access](/how-to/connect-mcp/) so the agent can discover
+should use [hosted MCP access](/docs/connect-mcp/) so the agent can discover
 tools and schemas before acting. Scripts, jobs, and unsupported runtimes should
 use the [Dataset API](/docs/dataset-api/) with private bearer-token
 authentication. If you are choosing between those interfaces, read the guide to
@@ -121,10 +121,10 @@ datasets or rows.
 
 Use Rowset for workflows like:
 
-- an [agent-managed personal CRM](/how-to/personal-crm/)
-- an [agent task board](/how-to/agent-task-board/)
-- [feedback triage](/how-to/feedback-triage/)
-- [content operations](/how-to/content-pipeline/)
+- an [agent-managed personal CRM](/docs/use-cases/personal-crm/)
+- an [agent task board](/docs/use-cases/agent-task-board/)
+- [feedback triage](/docs/use-cases/feedback-triage/)
+- [content operations](/docs/use-cases/content-pipeline/)
 - QA findings
 - product or inventory snapshots
 - research tables that an agent updates across sessions
@@ -308,8 +308,8 @@ agent-managed dataset backend all solve different jobs.
 
 Rowset's credible angle is narrow: private, structured rows for trusted AI
 agents, exposed through MCP and REST, with human ownership and review controls.
-If that is the job, start with [agent access](/how-to/configure-agent-access/),
-then connect an agent through [MCP](/how-to/connect-mcp/) or the [Dataset
+If that is the job, start with [agent access](/docs/configure-agent-access/),
+then connect an agent through [MCP](/docs/connect-mcp/) or the [Dataset
 API](/docs/dataset-api/). If the job is still a human spreadsheet, keep using
 Google Sheets.
 

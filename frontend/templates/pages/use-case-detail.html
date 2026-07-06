@@ -5,11 +5,11 @@
     <meta name="description" content="{{ use_case.meta_description }}" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical"
-          href="https://{{ request.get_host }}{% url 'how_to_guide' slug=use_case.slug %}" />
+          href="https://{{ request.get_host }}{{ use_case_canonical_path }}" />
     <meta property="og:type" content="article" />
     <meta property="og:title" content="{{ use_case.title }} - Rowset use case" />
     <meta property="og:url"
-          content="https://{{ request.get_host }}{% url 'how_to_guide' slug=use_case.slug %}" />
+          content="https://{{ request.get_host }}{{ use_case_canonical_path }}" />
     <meta property="og:description" content="{{ use_case.meta_description }}" />
     <meta property="og:image"
           content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title={{ use_case.title|urlencode }}&subtitle=Rowset%20use%20case&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
@@ -25,8 +25,8 @@
         <div class="rs-grid-field absolute inset-0" aria-hidden="true"></div>
         <div class="relative mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-8">
             <div>
-                <a href="{% url 'how_to_guides' %}"
-                   class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">&larr; How-to guides</a>
+                <a href="{% url 'docs_page' slug='use-cases' %}"
+                   class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">&larr; Use cases</a>
                 <p class="fb-label-caps mt-6 text-emerald-700 dark:text-emerald-300">{{ use_case.eyebrow }}</p>
                 <h1 class="mt-4 text-4xl font-semibold leading-none text-slate-950 dark:text-white sm:text-5xl">
                     {{ use_case.hero_title }}
@@ -34,7 +34,7 @@
                 <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-700 dark:text-slate-300">{{ use_case.short_summary }}</p>
                 <div class="mt-7 flex flex-col gap-3 sm:flex-row">
                     <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
-                    <a href="{% url 'how_to_guide' slug='configure-agent-access' %}"
+                    <a href="{% url 'docs_page' slug='configure-agent-access' %}"
                        class="fb-button-secondary">Read setup guide</a>
                 </div>
             </div>
@@ -129,7 +129,7 @@
                 </p>
             </div>
             <div class="grid gap-3 md:grid-cols-3">
-                <a href="{% url 'how_to_guide' slug='connect-mcp' %}"
+                <a href="{% url 'docs_page' slug='connect-mcp' %}"
                    class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
                     <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">MCP access</p>
                     <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Let an agent discover Rowset tools and call them with a bearer key.</p>
@@ -154,11 +154,11 @@
                     <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">More workflows</p>
                     <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Other ways to use Rowset</h2>
                 </div>
-                <a href="{% url 'how_to_guides' %}" class="fb-button-secondary">View all how-to guides</a>
+                <a href="{% url 'docs_page' slug='use-cases' %}" class="fb-button-secondary">View all use cases</a>
             </div>
             <div class="mt-8 grid gap-3 md:grid-cols-3">
                 {% for page in related_use_cases %}
-                    <a href="{% url 'how_to_guide' slug=page.slug %}"
+                    <a href="{% url 'docs_use_case' slug=page.slug %}"
                        class="fb-focus rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
                         <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{{ page.eyebrow }}</p>
                         <h3 class="mt-3 text-lg font-semibold text-slate-950 dark:text-white">{{ page.title }}</h3>

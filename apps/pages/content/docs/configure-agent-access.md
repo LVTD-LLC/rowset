@@ -124,10 +124,10 @@ Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 
 ## Related docs
 
-- [Connect over MCP](/how-to/connect-mcp/) explains the hosted MCP
+- [Connect over MCP](/docs/connect-mcp/) explains the hosted MCP
   endpoint and bearer token setup.
-- [Help agents discover Rowset](/how-to/help-agents-discover-rowset/)
+- [Help agents discover Rowset](/docs/agent-discovery/)
   explains `get_rowset_capabilities`, `llms.txt`, and the companion skills.
 - [API overview](/docs/api-overview/) explains REST authentication.
-- [Share a public preview](/how-to/share-public-preview/) covers
+- [Share a public preview](/docs/share-public-previews/) covers
   browser sharing. It is not agent authentication.

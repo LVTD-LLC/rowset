@@ -23,9 +23,6 @@ class StaticViewSitemap(sitemaps.Sitemap):
             "uses",
             "pricing",
             "docs_home",
-            "tutorials_home",
-            "how_to_guides",
-            "explanations_home",
             "blog_posts",
         ]
 
@@ -52,7 +49,7 @@ class UseCaseSitemap(sitemaps.Sitemap):
         return get_use_case_pages()
 
     def location(self, item):
-        return reverse("how_to_guide", kwargs={"slug": item["slug"]})
+        return reverse("docs_use_case", kwargs={"slug": item["slug"]})
 
 
 class ContentSitemap(sitemaps.Sitemap):
@@ -67,7 +64,6 @@ class ContentSitemap(sitemaps.Sitemap):
         for section_slug in CONTENT_SECTIONS:
             section = get_content_section(section_slug)
             pages.extend(page["url"] for page in section["pages"])
-        pages.append(reverse("explanation_page", kwargs={"slug": "database-mcp-server"}))
         return pages
 
     def location(self, item):
@@ -93,7 +89,7 @@ class BlogSitemap(sitemaps.Sitemap):
 
 sitemaps = {
     "static": StaticViewSitemap,
-    "how_to_use_cases": UseCaseSitemap,
+    "docs_use_cases": UseCaseSitemap,
     "blog": BlogSitemap,
     "content": ContentSitemap,
 }

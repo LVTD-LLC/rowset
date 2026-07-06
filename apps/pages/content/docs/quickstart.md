@@ -6,8 +6,8 @@ keywords: Rowset tutorial, getting started, MCP, dataset API
 
 # Start with your first agent dataset
 
-In this tutorial, we will connect a trusted agent to Rowset and create one
-small dataset the agent can inspect and update later.
+This guide connects a trusted agent to Rowset and creates one small dataset the
+agent can inspect and update later.
 
 You will use the dashboard for setup, then the agent will use authenticated MCP
 or REST for the actual dataset work. Public previews stay off unless you
@@ -101,11 +101,11 @@ You now have a private dataset the agent can continue using in later sessions.
 
 ## Next steps
 
-- [Configure agent access](/how-to/configure-agent-access/) for
+- [Configure agent access](/docs/configure-agent-access/) for
   permissions, installable skills, and setup prompts.
-- [Connect over MCP](/how-to/connect-mcp/) for a focused MCP setup
+- [Connect over MCP](/docs/connect-mcp/) for a focused MCP setup
   guide.
 - [Dataset API](/docs/dataset-api/) for REST endpoint details.
-- [How Rowset datasets work](/explanations/datasets/) for index columns,
+- [How Rowset datasets work](/docs/datasets/) for index columns,
   projects, relationships, schema, exports, and previews.
-- [Use cases](/how-to) for starting dataset shapes.
+- [Use cases](/docs/use-cases/) for starting dataset shapes.
