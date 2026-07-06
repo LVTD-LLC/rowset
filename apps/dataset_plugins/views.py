@@ -14,6 +14,7 @@ from apps.dataset_plugins.services import (
     enable_profile_dataset_plugin,
     get_profile_dataset_plugin_activation,
     install_profile_dataset_plugin,
+    profile_can_use_dataset_plugins,
     uninstall_profile_dataset_plugin,
 )
 
@@ -35,6 +36,8 @@ def _plugin_config_from_post(plugin_slug: str, post_data) -> dict:
 
 @login_required
 def plugin_marketplace(request):
+    if not profile_can_use_dataset_plugins(request.user.profile):
+        raise Http404("Dataset plugin not found.")
     return render(
         request,
         "plugins/plugin_marketplace.html",
@@ -45,6 +48,8 @@ def plugin_marketplace(request):
 @login_required
 @require_POST
 def plugin_install(request, plugin_slug):
+    if not profile_can_use_dataset_plugins(request.user.profile):
+        raise Http404("Dataset plugin not found.")
     try:
         installation, created = install_profile_dataset_plugin(request.user.profile, plugin_slug)
         spec = get_dataset_plugin(installation.plugin_slug)
@@ -64,6 +69,8 @@ def plugin_install(request, plugin_slug):
 @login_required
 @require_POST
 def plugin_uninstall(request, plugin_slug):
+    if not profile_can_use_dataset_plugins(request.user.profile):
+        raise Http404("Dataset plugin not found.")
     try:
         removed = uninstall_profile_dataset_plugin(request.user.profile, plugin_slug)
     except DatasetServiceError as exc:

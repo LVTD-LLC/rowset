@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from django.core.exceptions import ImproperlyConfigured
 
-from apps.core.capabilities import ROWSET_CAPABILITIES, ROWSET_USE_CASES
+from apps.core.capabilities import ROWSET_CAPABILITIES, ROWSET_USE_CASES, STAFF_ONLY_CAPABILITY_IDS
 
 PUBLIC_SLUG_PATTERN = re.compile(r"^[-a-zA-Z0-9_]+$")
 
@@ -239,7 +239,24 @@ USE_CASE_PAGE_COPY: dict[str, UseCasePageCopy] = {
 
 
 def _capability_titles() -> dict[str, str]:
-    return {capability.id: capability.title for capability in ROWSET_CAPABILITIES}
+    return {capability.id: capability.title for capability in _public_rowset_capabilities()}
+
+
+def _public_rowset_capabilities():
+    return tuple(
+        capability
+        for capability in ROWSET_CAPABILITIES
+        if capability.id not in STAFF_ONLY_CAPABILITY_IDS
+    )
+
+
+def _public_rowset_use_cases():
+    public_capability_ids = {capability.id for capability in _public_rowset_capabilities()}
+    return tuple(
+        use_case
+        for use_case in ROWSET_USE_CASES
+        if set(use_case.rowset_features) <= public_capability_ids
+    )
 
 
 def _duplicate_capability_ids() -> tuple[str, ...]:
@@ -255,7 +272,7 @@ def _duplicate_capability_ids() -> tuple[str, ...]:
 
 def _duplicate_public_slugs() -> set[str]:
     page_copy_slugs = []
-    for use_case in ROWSET_USE_CASES:
+    for use_case in _public_rowset_use_cases():
         page_copy = USE_CASE_PAGE_COPY.get(use_case.id)
         if isinstance(page_copy, UseCasePageCopy) and isinstance(page_copy.slug, str):
             page_copy_slugs.append(page_copy.slug)
@@ -265,7 +282,9 @@ def _duplicate_public_slugs() -> set[str]:
 
 def _invalid_public_slugs() -> tuple[str, ...]:
     invalid_slugs = []
-    for use_case_id, page_copy in sorted(USE_CASE_PAGE_COPY.items()):
+    for use_case in _public_rowset_use_cases():
+        use_case_id = use_case.id
+        page_copy = USE_CASE_PAGE_COPY.get(use_case_id)
         if not isinstance(page_copy, UseCasePageCopy):
             invalid_slugs.append(f"{use_case_id}: <invalid page copy>")
             continue
@@ -278,13 +297,13 @@ def _invalid_public_slugs() -> tuple[str, ...]:
 
 def get_use_case_page_registry_errors() -> tuple[str, ...]:
     use_case_ids = {use_case.id for use_case in ROWSET_USE_CASES}
+    public_use_case_ids = {use_case.id for use_case in _public_rowset_use_cases()}
     page_copy_ids = set(USE_CASE_PAGE_COPY)
     duplicate_capability_ids = _duplicate_capability_ids()
-    feature_titles = _capability_titles()
     duplicate_slugs = sorted(_duplicate_public_slugs())
     invalid_slugs = _invalid_public_slugs()
-    valid_feature_ids = set(feature_titles)
-    missing_page_copy_ids = sorted(use_case_ids - page_copy_ids)
+    valid_feature_ids = {capability.id for capability in ROWSET_CAPABILITIES}
+    missing_page_copy_ids = sorted(public_use_case_ids - page_copy_ids)
     stale_page_copy_ids = sorted(page_copy_ids - use_case_ids)
     unknown_feature_references = []
 
@@ -343,7 +362,7 @@ def get_use_case_pages() -> tuple[dict[str, object], ...]:
     feature_titles = _capability_titles()
     pages: list[dict[str, object]] = []
 
-    for use_case in ROWSET_USE_CASES:
+    for use_case in _public_rowset_use_cases():
         page_copy = USE_CASE_PAGE_COPY.get(use_case.id)
         if page_copy is None:
             raise ImproperlyConfigured(

@@ -1,7 +1,7 @@
 ---
 title: Use cases
-description: Choose a starter dataset shape for common Rowset workflows such as flashcards, CRMs, task boards, feedback, content, catalogs, and QA.
-keywords: Rowset use cases, agent CRM, task board, flashcards, feedback triage
+description: Choose a starter dataset shape for common Rowset workflows such as CRMs, task boards, feedback, content, catalogs, and QA.
+keywords: Rowset use cases, agent CRM, task board, feedback triage
 ---
 
 # Use cases
@@ -12,7 +12,6 @@ Rowset features that matter.
 
 ## Common starting points
 
-- [Flashcards](/docs/use-cases/flashcard-deck/)
 - [Personal CRM](/docs/use-cases/personal-crm/)
 - [Agent task board](/docs/use-cases/agent-task-board/)
 - [Feedback triage](/docs/use-cases/feedback-triage/)

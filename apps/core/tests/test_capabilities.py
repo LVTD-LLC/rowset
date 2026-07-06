@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from apps.core import capabilities
@@ -10,6 +12,23 @@ def test_use_case_feature_references_match_registered_capability_ids():
 
     for use_case in payload["use_cases"]:
         assert set(use_case["rowset_features"]) <= capability_ids
+
+
+def test_capabilities_payload_hides_staff_only_plugins_by_default():
+    payload = rowset_capabilities_payload()
+
+    assert {capability["id"] for capability in payload["capabilities"]} >= {"rows"}
+    assert "dataset_plugins" not in {capability["id"] for capability in payload["capabilities"]}
+    assert "flashcards" not in {use_case["id"] for use_case in payload["use_cases"]}
+
+
+def test_capabilities_payload_includes_plugins_for_staff_profiles():
+    profile = SimpleNamespace(user=SimpleNamespace(is_staff=True))
+
+    payload = rowset_capabilities_payload(profile)
+
+    assert "dataset_plugins" in {capability["id"] for capability in payload["capabilities"]}
+    assert "flashcards" in {use_case["id"] for use_case in payload["use_cases"]}
 
 
 def test_capabilities_payload_rejects_unknown_use_case_feature_references(monkeypatch):
