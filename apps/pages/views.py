@@ -38,6 +38,7 @@ from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 logger = get_rowset_logger(__name__)
 
+
 class LandingPageView(TemplateView):
     template_name = "pages/landing-page.html"
 

@@ -447,6 +447,7 @@ class TestHomeView:
         assert "Copy legacy key" not in content
         assert "Rowset API key: ***" not in content
         assert f"Rowset API key: {profile.key}" not in content
+
     def test_settings_view_includes_design_colorize_toggle(self, auth_client):
         response = auth_client.get(reverse("settings"))
 
