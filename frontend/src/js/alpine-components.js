@@ -723,9 +723,11 @@
       },
     }));
 
-    Alpine.data("docsToc", () => ({
+    Alpine.data("docsToc", (activeSidebarGroup = "") => ({
+      activeSidebarGroup,
       headingIds: [],
       handleScroll: null,
+      hoveredSidebarGroup: "",
       observer: null,
       scrollFrame: null,
       visibleSectionIds: null,
@@ -753,6 +755,30 @@
           window.cancelAnimationFrame(this.scrollFrame);
           this.scrollFrame = null;
         }
+      },
+
+      isSidebarGroupOpen(groupId) {
+        return this.activeSidebarGroup === groupId || this.hoveredSidebarGroup === groupId;
+      },
+
+      showSidebarGroup(groupId) {
+        if (groupId !== this.activeSidebarGroup) {
+          this.hoveredSidebarGroup = groupId;
+        }
+      },
+
+      hideSidebarGroup(groupId) {
+        if (this.hoveredSidebarGroup === groupId) {
+          this.hoveredSidebarGroup = "";
+        }
+      },
+
+      toggleSidebarGroup(groupId) {
+        if (groupId === this.activeSidebarGroup) {
+          return;
+        }
+
+        this.hoveredSidebarGroup = this.hoveredSidebarGroup === groupId ? "" : groupId;
       },
 
       generateTableOfContents() {

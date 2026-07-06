@@ -93,6 +93,32 @@ def get_section_home_url(section_slug):
     return reverse(config["home_url_name"])
 
 
+def get_navigation_group_id(label, index):
+    group_id = re.sub(r"[^a-z0-9]+", "-", str(label).lower()).strip("-")
+    return group_id or f"group-{index}"
+
+
+def get_docs_use_case_navigation_pages():
+    from apps.pages.use_cases import get_use_case_pages
+
+    return [
+        {
+            "slug": f"use-cases/{page['slug']}",
+            "title": page["title"],
+            "description": page.get("short_summary", ""),
+            "url": reverse("docs_use_case", kwargs={"slug": page["slug"]}),
+        }
+        for page in get_use_case_pages()
+    ]
+
+
+def get_current_content_group_id(section, current_page):
+    for group in section["groups"]:
+        if current_page in group["page_slugs"]:
+            return group["id"]
+    return ""
+
+
 def get_content_section(section_slug):
     config = get_content_section_config(section_slug)
     content_dir = get_content_section_dir(section_slug)
@@ -117,12 +143,27 @@ def get_content_section(section_slug):
             page_slugs = [
                 page_slug for page_slug in item.get("pages", []) if page_slug in all_pages
             ]
+            current_page_slugs = [
+                page_slug for page_slug in item.get("current_pages", []) if page_slug in all_pages
+            ]
             ordered_page_slugs.extend(page_slugs)
+            ordered_page_slugs.extend(current_page_slugs)
+            group_pages = [{"type": "content", "slug": page_slug} for page_slug in page_slugs]
+            use_case_pages = []
+            if item.get("use_cases"):
+                use_case_pages = get_docs_use_case_navigation_pages()
+                group_pages.extend({"type": "link", "page": page} for page in use_case_pages)
             groups.append(
                 {
+                    "id": get_navigation_group_id(item.get("label", ""), len(groups) + 1),
                     "label": item.get("label", ""),
                     "description": item.get("description", ""),
-                    "pages": page_slugs,
+                    "page_slugs": [
+                        *page_slugs,
+                        *current_page_slugs,
+                        *[page["slug"] for page in use_case_pages],
+                    ],
+                    "pages": group_pages,
                 }
             )
 
@@ -145,9 +186,14 @@ def get_content_section(section_slug):
         page_lookup = {page["slug"]: page for page in pages}
         grouped_pages = [
             {
+                "id": group["id"],
                 "label": group["label"],
                 "description": group["description"],
-                "pages": [page_lookup[page_slug] for page_slug in group["pages"]],
+                "page_slugs": group["page_slugs"],
+                "pages": [
+                    page_lookup[page["slug"]] if page["type"] == "content" else page["page"]
+                    for page in group["pages"]
+                ],
             }
             for group in groups
             if group["pages"]
@@ -249,6 +295,7 @@ def render_content_page(request, section_slug, page_slug):
         section = get_content_section(section_slug)
         previous_page, next_page = get_previous_and_next_pages(section, page_slug)
         page_url = build_absolute_public_url(get_section_page_url(section_slug, page_slug))
+        current_group_id = get_current_content_group_id(section, page_slug)
 
         default_page_title = page_slug.replace("-", " ").title()
 
@@ -256,6 +303,7 @@ def render_content_page(request, section_slug, page_slug):
             "content": markdown_html,
             "section": section,
             "current_page": page_slug,
+            "current_group_id": current_group_id,
             "page_title": post.get("title", default_page_title),
             "section_title": section["label"],
             "meta_description": post.get("description", ""),

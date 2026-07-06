@@ -221,17 +221,40 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert "Blog" not in docs_nav
     assert "Start" in docs_nav
     assert "Build" in docs_nav
-    assert "Use Cases" in docs_nav
+    assert "Use cases" in docs_nav
     assert "Reference" in docs_nav
     assert "Operate" in docs_nav
     assert reverse("docs_page", kwargs={"slug": "quickstart"}) in content
     assert reverse("docs_page", kwargs={"slug": "create-datasets"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-plugins"}) in content
-    assert reverse("docs_page", kwargs={"slug": "use-cases"}) in content
+    assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in content
+    assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in content
+    assert reverse("docs_use_case", kwargs={"slug": "content-pipeline"}) in content
     assert reverse("docs_page", kwargs={"slug": "api-overview"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
     assert reverse("docs_page", kwargs={"slug": "mcp-tools"}) in content
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
+
+
+def test_docs_sidebar_groups_pages_and_expands_current_section(client):
+    response = client.get(reverse("docs_page", kwargs={"slug": "quickstart"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    sidebar = _nav_html(content, "Docs pages")
+
+    assert "Docs home" not in sidebar
+    assert ">Docs<" not in sidebar
+    assert "docsToc('start')" in content
+    assert 'id="docs-nav-panel-start"' in sidebar
+    assert 'id="docs-nav-panel-build"' in sidebar
+    assert "grid-template-rows: 1fr; opacity: 1;" in sidebar
+    assert reverse("docs_use_case", kwargs={"slug": "personal-crm"}) in sidebar
+    assert reverse("docs_use_case", kwargs={"slug": "agent-task-board"}) in sidebar
+    assert reverse("docs_use_case", kwargs={"slug": "bug-qa-tracker"}) in sidebar
+    assert f'href="{reverse("docs_page", kwargs={"slug": "use-cases"})}"' not in sidebar
+    assert "hover:prose-a:underline" not in content
+    assert "prose-a:hover:underline" in content
 
 
 @override_settings(SITE_URL="https://rowset.example")
