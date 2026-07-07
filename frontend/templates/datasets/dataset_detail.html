@@ -37,6 +37,12 @@
         {% endif %}
         <a href="{{ dataset.get_changes_url }}" class="fb-button-secondary">Changes</a>
         <a href="{{ dataset.get_settings_url }}" class="fb-button-secondary">Settings</a>
+        {% if dataset.archived_at %}
+          <form method="post" action="{% url 'dataset_restore' dataset.key %}" onsubmit="return confirm('Unarchive {{ dataset.name|escapejs }}? It will return to normal dataset and project lists.');">
+            {% csrf_token %}
+            <button type="submit" class="fb-button-primary">Unarchive</button>
+          </form>
+        {% endif %}
         {% if dataset.status == "ready" and not dataset.archived_at %}
           <form method="post" action="{% url 'dataset_archive' dataset.key %}" onsubmit="return confirm('Archive {{ dataset.name|escapejs }}? It will leave normal lists and public preview sharing will turn off.');">
             {% csrf_token %}

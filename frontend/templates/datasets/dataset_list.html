@@ -111,6 +111,9 @@
               <th scope="col">Rows</th>
               <th scope="col">Columns</th>
               <th scope="col">{{ dataset_table_date_heading }}</th>
+              {% if dataset_list_is_archived %}
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              {% endif %}
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
