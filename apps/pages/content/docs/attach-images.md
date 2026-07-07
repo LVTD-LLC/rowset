@@ -7,7 +7,7 @@ keywords: Rowset image columns, dataset image assets, attach image to row
 # Attach images
 
 Use image columns when a dataset row needs a private visual asset, such as a
-product photo, receipt, screenshot, generated image, or flashcard prompt image.
+product photo, receipt, screenshot, generated image, or catalog reference image.
 
 ## Create an image column
 

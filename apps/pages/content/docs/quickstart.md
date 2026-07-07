@@ -13,6 +13,10 @@ You will use the dashboard for setup, then the agent will use authenticated MCP
 or REST for the actual dataset work. Public previews stay off unless you
 explicitly ask to share a read-only browser page.
 
+Use this as the shortest path. After it works, use the broader
+[dataset guide](/docs/datasets/) when you need projects, relationships, image
+columns, exports, or public previews.
+
 ## Before you start
 
 You need a Rowset account, a trusted agent runtime, and a private place to store
@@ -101,11 +105,10 @@ You now have a private dataset the agent can continue using in later sessions.
 
 ## Next steps
 
-- [Configure agent access](/docs/configure-agent-access/) for
-  permissions, installable skills, and setup prompts.
-- [Connect over MCP](/docs/connect-mcp/) for a focused MCP setup
-  guide.
-- [Dataset API](/docs/dataset-api/) for REST endpoint details.
 - [How Rowset datasets work](/docs/datasets/) for index columns,
   projects, relationships, schema, exports, and previews.
-- [Use cases](/use-cases/) for starting dataset shapes.
+- [Work with rows](/docs/work-with-rows/) for read, search, create, update, and
+  delete patterns.
+- [Connect over MCP](/docs/connect-mcp/) for a focused MCP setup guide.
+- [MCP tool reference](/docs/mcp-tools/) when an agent needs exact tool groups.
+- [Use cases](/use-cases/) for starter dataset shapes.

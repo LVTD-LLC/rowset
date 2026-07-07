@@ -9,6 +9,11 @@ keywords: Rowset archive, restore dataset, export dataset, Rowset troubleshootin
 Use this page when a dataset is in the wrong state, a workflow needs a file
 snapshot, or an agent cannot access the expected Rowset surface.
 
+For normal dataset creation and row work, start with
+[How Rowset datasets work](/docs/datasets/) and
+[Work with rows](/docs/work-with-rows/). This page is for recovery, exports,
+and operational checks.
+
 ## Archive instead of deleting
 
 Archive mistaken or inactive datasets:
