@@ -3153,10 +3153,15 @@ def test_dataset_restore_rejects_free_account_over_active_dataset_limit(auth_cli
     assert response.url == archived_dataset.get_absolute_url()
     archived_dataset.refresh_from_db()
     assert archived_dataset.archived_at is not None
-    assert Dataset.objects.filter(
-        profile=profile,
-        archived_at__isnull=True,
-    ).exclude(status=DatasetStatus.PREVIEWED).count() == 2
+    assert (
+        Dataset.objects.filter(
+            profile=profile,
+            archived_at__isnull=True,
+        )
+        .exclude(status=DatasetStatus.PREVIEWED)
+        .count()
+        == 2
+    )
     flash_messages = list(get_messages(response.wsgi_request))
     assert len(flash_messages) == 1
     assert flash_messages[0].level == message_constants.ERROR
