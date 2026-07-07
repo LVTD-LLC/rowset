@@ -63,7 +63,9 @@ def _mcp_tool_error_status_code(exc: BaseException) -> int | None:
             continue
         try:
             return int(details.get("http_status"))
-        except TypeError, ValueError:
+        except TypeError:
+            return None
+        except ValueError:
             return None
     return None
 
