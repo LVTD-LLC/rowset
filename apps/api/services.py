@@ -1299,7 +1299,7 @@ def search_profile_datasets(  # noqa: C901
     """
     Return a bounded, optionally filtered page of datasets owned by the profile.
 
-    Query text matches dataset name, original filename, and assigned project/section metadata.
+    Query text matches dataset name, description, instructions, and project/section metadata.
     Ungrouped datasets match only on dataset fields because they have no grouping metadata.
     """
     limit = max(1, min(limit, 500))
@@ -3060,6 +3060,7 @@ def restore_profile_dataset(
 ) -> dict:
     """Restore an archived dataset to normal dataset and project listings."""
     with transaction.atomic():
+        quota_profile = _lock_profile_for_quota(profile)
         dataset = _get_profile_dataset_from_queryset(
             Dataset.objects.select_for_update(),
             profile,
@@ -3068,6 +3069,7 @@ def restore_profile_dataset(
 
         message = "Dataset was not archived."
         if dataset.archived_at is not None:
+            _enforce_dataset_create_quota(quota_profile, dataset.row_count)
             message = "Dataset restored."
             dataset.archived_at = None
             dataset.archived_by_agent_api_key = None
@@ -3208,7 +3210,7 @@ def _get_dataset_asset_by_key(dataset: Dataset, profile: Profile, asset_key: str
 
 
 def get_profile_dataset_asset(profile: Profile, dataset_key: str, asset_key: str) -> DatasetAsset:
-    dataset = get_active_profile_dataset(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     return _get_dataset_asset_by_key(dataset, profile, asset_key)
 
 
@@ -3998,7 +4000,7 @@ def search_profile_dataset_rows(
 ) -> dict:
     query_id = uuid4().hex
     search_started_at = perf_counter()
-    dataset = get_active_profile_dataset(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     normalized_query = _normalize_search_query(query)
     if not normalized_query:
         raise DatasetServiceError(400, "Search query is required.")
@@ -4087,7 +4089,7 @@ def list_profile_dataset_rows(
     sort: str | None = None,
     direction: str | None = None,
 ) -> dict:
-    dataset = get_active_profile_dataset(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     total_count = dataset.rows.count()
@@ -4156,7 +4158,7 @@ def create_profile_dataset_row(
 
 
 def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
-    dataset = get_active_profile_dataset(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     try:
         row = dataset.rows.prefetch_related("assets").get(id=row_id)
     except DatasetRow.DoesNotExist as exc:
@@ -4170,7 +4172,7 @@ def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> 
 
 
 def get_profile_dataset_row_by_index(profile: Profile, dataset_key: str, index_value: str) -> dict:
-    dataset = get_active_profile_dataset(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     try:
         row = dataset.rows.prefetch_related("assets").get(index_value=index_value)
     except DatasetRow.DoesNotExist as exc:

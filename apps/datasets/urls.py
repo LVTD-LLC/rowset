@@ -59,6 +59,11 @@ urlpatterns = [
         views.dataset_archive,
         name="dataset_archive",
     ),
+    path(
+        "datasets/<uuid:dataset_key>/restore/",
+        views.dataset_restore,
+        name="dataset_restore",
+    ),
     path("datasets/<uuid:dataset_key>/delete/", views.dataset_delete, name="dataset_delete"),
     path(
         "datasets/<uuid:dataset_key>/export/<str:export_format>/",

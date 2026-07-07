@@ -1575,8 +1575,9 @@ def restore_dataset(
 @mcp.tool(
     name="list_dataset_rows",
     description=(
-        "Return a bounded page of rows for an active dataset. Optionally search across "
-        "row values, filter by column values, and sort by row_number or a dataset header."
+        "Return a bounded page of rows for a dataset, including archived datasets "
+        "when addressed directly. Optionally search across row values, filter by column "
+        "values, and sort by row_number or a dataset header."
     ),
 )
 def list_dataset_rows(
@@ -1720,8 +1721,9 @@ def search_rows(
 @mcp.tool(
     name="search_dataset_rows",
     description=(
-        "Search one active dataset with hybrid vector and lexical retrieval. "
-        "Results are hydrated from Rowset rows and include match metadata."
+        "Search one dataset, including archived datasets when addressed directly, "
+        "with hybrid vector and lexical retrieval. Results are hydrated from Rowset rows "
+        "and include match metadata."
     ),
 )
 def search_dataset_rows(
@@ -1758,7 +1760,10 @@ def search_dataset_rows(
 
 @mcp.tool(
     name="get_dataset_row",
-    description="Return one row from an active dataset by internal row id.",
+    description=(
+        "Return one row from a dataset by internal row id, including archived "
+        "datasets when addressed directly."
+    ),
 )
 def get_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1774,7 +1779,10 @@ def get_dataset_row(
 
 @mcp.tool(
     name="get_dataset_row_by_index",
-    description="Return one row from an active dataset by its configured index value.",
+    description=(
+        "Return one row from a dataset by its configured index value, including "
+        "archived datasets when addressed directly."
+    ),
 )
 def get_dataset_row_by_index(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1844,7 +1852,7 @@ def attach_image_to_dataset_row(
     ] = None,
     filename: Annotated[
         str | None,
-        Field(default=None, description="Optional original filename for display metadata."),
+        Field(default=None, description="Optional image filename for display metadata."),
     ] = None,
     content_type: Annotated[
         str | None,

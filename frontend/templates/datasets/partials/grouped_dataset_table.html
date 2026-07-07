@@ -7,6 +7,9 @@
         <th scope="col">Rows</th>
         <th scope="col">Columns</th>
         <th scope="col">{{ dataset_table_date_heading }}</th>
+        {% if dataset_list_is_archived %}
+          <th scope="col"><span class="sr-only">Actions</span></th>
+        {% endif %}
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
@@ -27,6 +30,16 @@
               {{ dataset.updated_at|date:"M d, Y" }}
             {% endif %}
           </td>
+          {% if dataset_list_is_archived %}
+            <td class="whitespace-nowrap text-right">
+              <form method="post"
+                    action="{% url 'dataset_restore' dataset.key %}"
+                    onsubmit="return confirm('Unarchive {{ dataset.name|escapejs }}? It will return to normal dataset and project lists.');">
+                {% csrf_token %}
+                <button type="submit" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Unarchive</button>
+              </form>
+            </td>
+          {% endif %}
         </tr>
       {% endfor %}
     </tbody>

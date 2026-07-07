@@ -30,6 +30,7 @@ from apps.api.services import (
     get_profile_dataset,
     get_profile_project_reference,
     patch_profile_dataset_row,
+    restore_profile_dataset,
     search_profile_datasets,
     search_profile_projects,
     search_profile_rows,
@@ -2530,6 +2531,30 @@ def dataset_archive(request, dataset_key):
     else:
         messages.success(request, result["message"])
     return redirect("home")
+
+
+@login_required
+@require_POST
+def dataset_restore(request, dataset_key):
+    get_object_or_404(
+        Dataset,
+        key=dataset_key,
+        profile=request.user.profile,
+    )
+
+    try:
+        result = restore_profile_dataset(request.user.profile, str(dataset_key))
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+        return redirect("dataset_detail", dataset_key=dataset_key)
+
+    if result["message"] == "Dataset was not archived.":
+        messages.info(request, result["message"])
+    else:
+        messages.success(request, result["message"])
+    return redirect("dataset_detail", dataset_key=dataset_key)
 
 
 @login_required

@@ -23,4 +23,14 @@
       {{ dataset.updated_at|date:"M d, Y" }}
     {% endif %}
   </td>
+  {% if dataset_list_is_archived %}
+    <td class="whitespace-nowrap text-right">
+      <form method="post"
+            action="{% url 'dataset_restore' dataset.key %}"
+            onsubmit="return confirm('Unarchive {{ dataset.name|escapejs }}? It will return to normal dataset and project lists.');">
+        {% csrf_token %}
+        <button type="submit" class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Unarchive</button>
+      </form>
+    </td>
+  {% endif %}
 </tr>
