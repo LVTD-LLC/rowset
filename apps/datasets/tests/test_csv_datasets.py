@@ -3140,6 +3140,31 @@ def test_dataset_restore_rejects_other_users_dataset(client, django_user_model, 
     assert dataset.archived_at is not None
 
 
+def test_dataset_restore_rejects_free_account_over_active_dataset_limit(auth_client, profile):
+    create_ready_dataset(profile)
+    create_ready_dataset(profile)
+    archived_dataset = create_ready_dataset(profile)
+    archived_dataset.archived_at = timezone.now()
+    archived_dataset.save(update_fields=["archived_at"])
+
+    response = auth_client.post(reverse("dataset_restore", args=[archived_dataset.key]))
+
+    assert response.status_code == 302
+    assert response.url == archived_dataset.get_absolute_url()
+    archived_dataset.refresh_from_db()
+    assert archived_dataset.archived_at is not None
+    assert Dataset.objects.filter(
+        profile=profile,
+        archived_at__isnull=True,
+    ).exclude(status=DatasetStatus.PREVIEWED).count() == 2
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == (
+        "Free accounts can have at most 2 active datasets. Upgrade for unlimited datasets."
+    )
+
+
 def test_dataset_delete_removes_owned_dataset(auth_client, profile):
     dataset = create_ready_dataset(profile)
 

@@ -3125,6 +3125,7 @@ def restore_profile_dataset(
 ) -> dict:
     """Restore an archived dataset to normal dataset and project listings."""
     with transaction.atomic():
+        quota_profile = _lock_profile_for_quota(profile)
         dataset = _get_profile_dataset_from_queryset(
             Dataset.objects.select_for_update(),
             profile,
@@ -3133,6 +3134,7 @@ def restore_profile_dataset(
 
         message = "Dataset was not archived."
         if dataset.archived_at is not None:
+            _enforce_dataset_create_quota(quota_profile, dataset.row_count)
             message = "Dataset restored."
             dataset.archived_at = None
             dataset.archived_by_agent_api_key = None
