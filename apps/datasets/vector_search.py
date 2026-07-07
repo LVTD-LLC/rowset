@@ -139,7 +139,7 @@ def dataset_row_search_filter(dataset: Dataset) -> qdrant_models.Filter:
     vector_filter = _dataset_row_filter(dataset)
     vector_filter.must.extend(
         [
-            _payload_match("dataset_archived", False),
+            _payload_match("dataset_archived", dataset.archived_at is not None),
         ]
     )
     return vector_filter
