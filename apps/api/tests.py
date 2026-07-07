@@ -161,6 +161,30 @@ def test_unknown_api_paths_return_json_without_rendering_landing_context(client,
     assert response.json() == {"detail": "Not Found"}
 
 
+def test_legacy_api_v1_paths_return_json_404_without_redirecting(client):
+    response = client.get("/api/v1/capabilities")
+
+    assert response.status_code == 404
+    assert "Location" not in response
+    assert response["Content-Type"] == "application/json"
+    assert response.json() == {"detail": "Not Found"}
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/dataset-plugins",
+        "/api/datasets/00000000-0000-0000-0000-000000000000/plugins/flashcards",
+    ],
+)
+def test_removed_dataset_plugin_api_paths_return_json_404(client, path):
+    response = client.get(path)
+
+    assert response.status_code == 404
+    assert response["Content-Type"] == "application/json"
+    assert response.json() == {"detail": "Not Found"}
+
+
 def test_referrer_banner_ignores_database_connection_errors(monkeypatch):
     from apps.pages.context_processors import referrer_banner
     from apps.pages.models import ReferrerBanner

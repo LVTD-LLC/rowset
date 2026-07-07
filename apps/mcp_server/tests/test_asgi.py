@@ -128,11 +128,46 @@ def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     assert "get_user_info" in tool_names
     assert "get_rowset_capabilities" in tool_names
     assert "list_dataset_rows" in tool_names
+    assert not {
+        "get_available_dataset_plugins",
+        "get_dataset_plugin_activations",
+        "enable_dataset_plugin",
+        "disable_dataset_plugin",
+    } & tool_names
     image_tool = next(tool for tool in tools if tool["name"] == "attach_image_to_dataset_row")
     assert "The target row must already exist" in image_tool["description"]
     assert "Hosted MCP cannot read local file paths" in image_tool["description"]
     image_base64_schema = image_tool["inputSchema"]["properties"]["image_base64"]
     assert "base64 or a data URI" in image_base64_schema["description"]
+
+
+def test_slashless_mcp_path_does_not_redirect_to_authenticated_endpoint(monkeypatch):
+    from apps.pages.models import ReferrerBanner
+
+    monkeypatch.setattr("apps.core.context_processors.SocialApp.objects.all", lambda: [])
+    monkeypatch.setattr(
+        "apps.pages.context_processors.ReferrerBanner.objects.get",
+        lambda *args, **kwargs: (_ for _ in ()).throw(ReferrerBanner.DoesNotExist),
+    )
+
+    with TestClient(application) as client:
+        response = client.post(
+            "/mcp",
+            headers=MCP_HEADERS,
+            json=_mcp_request(
+                "initialize",
+                99,
+                {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "capabilities": {},
+                    "clientInfo": {"name": "rowset-test", "version": "0.1"},
+                },
+            ),
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 404
+    assert "location" not in response.headers
 
 
 def test_mcp_get_user_info_uses_stateless_json_response(authenticated_mcp):
