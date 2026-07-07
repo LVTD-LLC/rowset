@@ -78,6 +78,7 @@ from apps.datasets.services import (
     COLUMN_SCHEMA_TYPE_KEY,
     DATASET_REFERENCE_TARGET,
     PROJECT_REFERENCE_TARGET,
+    ChoiceValueError,
     CSVParseError,
     DatasetImageError,
     DatasetRowQueryError,
@@ -1977,7 +1978,14 @@ def _validate_choice_row_data(
             choice_constraints=constraints,
         )
     except CSVParseError as exc:
-        raise DatasetServiceError(400, str(exc)) from exc
+        details = {}
+        if isinstance(exc, ChoiceValueError):
+            details = {
+                "column": exc.header,
+                "allowed_values": exc.choices,
+                "blank_allowed": True,
+            }
+        raise DatasetServiceError(400, str(exc), details=details) from exc
 
 
 def _validate_image_row_data(

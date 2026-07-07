@@ -2426,3 +2426,29 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
             5,
         )
     ]
+
+
+def test_choice_row_validation_service_error_includes_structured_details():
+    from apps.api.services import DatasetServiceError, _validate_choice_row_data
+
+    with pytest.raises(DatasetServiceError) as exc_info:
+        _validate_choice_row_data(
+            ["project_label"],
+            {
+                "project_label": {
+                    "type": "choice",
+                    "choices": ["Rowset", "PGSandbox MCP"],
+                }
+            },
+            {"project_label": "PGSandbox"},
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.message == (
+        "Column 'project_label' must be blank or one of: Rowset, PGSandbox MCP."
+    )
+    assert exc_info.value.details == {
+        "column": "project_label",
+        "allowed_values": ["Rowset", "PGSandbox MCP"],
+        "blank_allowed": True,
+    }

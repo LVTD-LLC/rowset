@@ -263,7 +263,19 @@ def _dataset_service_error_code(exc: DatasetServiceError) -> str:
     return "ROWSET_ERROR"
 
 
-def _dataset_service_error_suggested_action(code: str) -> str:
+def _dataset_service_error_details(exc: DatasetServiceError) -> JsonObject:
+    details: JsonObject = {**exc.details, "http_status": exc.status_code}
+    return details
+
+
+def _dataset_service_error_suggested_action(code: str, details: JsonObject | None = None) -> str:
+    if code == "VALIDATION_ERROR" and details and details.get("allowed_values"):
+        column = details.get("column") or "the choice column"
+        return (
+            f"Set {column} to one of details.allowed_values, leave it blank if valid, "
+            "or update the dataset schema before retrying."
+        )
+
     suggestions = {
         "ROW_NOT_FOUND": "Check the row id or index value and try again.",
         "DATASET_NOT_FOUND": (
@@ -288,13 +300,14 @@ def _dataset_service_error_suggested_action(code: str) -> str:
 
 def _service_error_to_tool_error(exc: DatasetServiceError) -> ToolError:
     code = _dataset_service_error_code(exc)
+    details = _dataset_service_error_details(exc)
     return _mcp_tool_error(
         _mcp_error_payload(
             code=code,
             message=exc.message,
             retryable=code in RETRYABLE_ERROR_CODES,
-            suggested_action=_dataset_service_error_suggested_action(code),
-            details={"http_status": exc.status_code},
+            suggested_action=_dataset_service_error_suggested_action(code, details),
+            details=details,
         )
     )
 

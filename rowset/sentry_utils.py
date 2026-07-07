@@ -1,5 +1,6 @@
 from logging import LogRecord
 
+from fastmcp.exceptions import ToolError
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 _IGNORED_LOGGERS = {"ask_hn_digest"}
@@ -17,6 +18,9 @@ class CustomLoggingIntegration(LoggingIntegration):
 def before_send(event, hint):
     if "exc_info" in hint:
         exc_type, exc_value, tb = hint["exc_info"]
+
+        if isinstance(exc_value, ToolError):
+            return None
 
         if isinstance(exc_value, SystemExit):  # group all SystemExits together
             event["fingerprint"] = ["system-exit"]

@@ -23,6 +23,9 @@ cut date.
 ### Added
 - Added a Rowset blog post on structuring dataset instructions for AI agents, with a verified SEO brief and inbound links from Dataset API, MCP setup, and content-pipeline pages.
 
+### Fixed
+- MCP choice-column validation errors now include structured allowed values for agents and are filtered from Sentry as expected tool errors.
+
 ## 2026-07-06
 
 ### Added

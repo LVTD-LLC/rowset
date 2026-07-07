@@ -2296,6 +2296,60 @@ def test_dataset_row_mcp_tools_return_service_errors(
     anyio.run(run)
 
 
+def test_dataset_row_mcp_choice_value_errors_include_structured_details(monkeypatch):
+    def raise_service_error(*args, **kwargs):
+        raise DatasetServiceError(
+            400,
+            "Column 'project_label' must be blank or one of: Rowset, PGSandbox MCP.",
+            details={
+                "column": "project_label",
+                "allowed_values": ["Rowset", "PGSandbox MCP"],
+                "blank_allowed": True,
+            },
+        )
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.create_profile_dataset_row",
+            raise_service_error,
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool(
+                    "create_dataset_row",
+                    {
+                        "dataset_key": "ds",
+                        "data": {
+                            "task_id": "T-1",
+                            "project_label": "PGSandbox",
+                        },
+                    },
+                )
+
+        assert _extract_mcp_error_payload(exc_info.value) == {
+            "code": "VALIDATION_ERROR",
+            "message": ("Column 'project_label' must be blank or one of: Rowset, PGSandbox MCP."),
+            "retryable": False,
+            "suggested_action": (
+                "Set project_label to one of details.allowed_values, leave it blank if valid, "
+                "or update the dataset schema before retrying."
+            ),
+            "details": {
+                "http_status": 400,
+                "column": "project_label",
+                "allowed_values": ["Rowset", "PGSandbox MCP"],
+                "blank_allowed": True,
+            },
+        }
+
+    anyio.run(run)
+
+
 @pytest.mark.parametrize(
     ("tool_name", "arguments", "serializer_path"),
     [

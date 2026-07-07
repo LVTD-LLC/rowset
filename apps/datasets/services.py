@@ -57,6 +57,14 @@ class CSVParseError(ValueError):
     pass
 
 
+class ChoiceValueError(CSVParseError):
+    def __init__(self, header: str, choices: list[str]):
+        self.header = header
+        self.choices = choices
+        allowed = ", ".join(choices)
+        super().__init__(f"Column '{header}' must be blank or one of: {allowed}.")
+
+
 class DatasetRowQueryError(ValueError):
     pass
 
@@ -1172,8 +1180,7 @@ def validate_and_canonicalize_choice_row_values(
             continue
         canonical_value = _canonical_choice_value(value, choices)
         if canonical_value is None:
-            allowed = ", ".join(choices)
-            raise CSVParseError(f"Column '{header}' must be blank or one of: {allowed}.")
+            raise ChoiceValueError(header, choices)
         row_data[header] = canonical_value
 
 
