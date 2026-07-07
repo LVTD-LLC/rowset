@@ -1441,7 +1441,7 @@ def test_row_write_services_enqueue_vector_index_and_delete_when_enabled(
 
 
 @pytest.mark.django_db
-def test_archive_profile_dataset_enqueues_vector_delete_when_enabled(
+def test_archive_profile_dataset_enqueues_vector_reindex_when_enabled(
     django_user_model,
     django_capture_on_commit_callbacks,
     monkeypatch,
@@ -1469,7 +1469,7 @@ def test_archive_profile_dataset_enqueues_vector_delete_when_enabled(
         with django_capture_on_commit_callbacks(execute=True):
             archive_profile_dataset(user.profile, str(dataset.key))
 
-    assert calls == [("apps.datasets.tasks.delete_dataset_vectors", (dataset.id,))]
+    assert calls == [("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,))]
 
 
 @pytest.mark.django_db

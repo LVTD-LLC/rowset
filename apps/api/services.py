@@ -295,10 +295,6 @@ def _enqueue_dataset_row_vector_delete(dataset_id: int, row_ids: list[int]) -> N
     enqueue_vector_task("apps.datasets.tasks.delete_dataset_row_vectors", dataset_id, row_ids)
 
 
-def _enqueue_dataset_vector_delete(dataset_id: int) -> None:
-    enqueue_vector_task("apps.datasets.tasks.delete_dataset_vectors", dataset_id)
-
-
 def _normalize_search_query(query: str | None) -> str:
     return str(query or "").strip()
 
@@ -3044,7 +3040,7 @@ def archive_profile_dataset(
                     agent_api_key=agent_api_key,
                     metadata={"public_preview_disabled": was_public_enabled},
                 )
-                _enqueue_dataset_vector_delete(dataset.id)
+                _enqueue_dataset_vector_reindex(dataset.id)
 
     return {
         "status": "success",

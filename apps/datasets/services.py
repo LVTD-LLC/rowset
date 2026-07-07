@@ -279,11 +279,6 @@ CURRENCY_HEADER_TOKENS = {
 }
 
 
-def _validate_vector_backfill_dataset(dataset) -> None:
-    if dataset.archived_at is not None:
-        raise ValueError("Vector backfill cannot index archived datasets.")
-
-
 def _dataset_rows_for_vector_backfill(dataset, *, limit: int | None = None):
     rows = dataset.rows.order_by("row_number", "id").only(
         "id",
@@ -360,7 +355,6 @@ def backfill_dataset_vectors(
     batch_size: int = DEFAULT_VECTOR_BACKFILL_BATCH_SIZE,
     stop_on_error: bool = False,
 ) -> VectorBackfillResult:
-    _validate_vector_backfill_dataset(dataset)
     if batch_size < 1:
         raise ValueError("batch_size must be at least 1.")
     if limit is not None and limit < 1:
@@ -430,7 +424,6 @@ def index_dataset_row_vector(
     vector_store: QdrantVectorStore | None = None,
 ) -> None:
     dataset = row.dataset
-    _validate_vector_backfill_dataset(dataset)
     provider = embedding_provider or get_embedding_provider()
     store = vector_store or QdrantVectorStore(
         embedding_model=provider.model,
