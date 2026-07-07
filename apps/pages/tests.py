@@ -244,6 +244,9 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert reverse("docs_page", kwargs={"slug": "quickstart"}) in content
     assert reverse("docs_page", kwargs={"slug": "create-datasets"}) in content
     assert reverse("docs_page", kwargs={"slug": "share-public-previews"}) in content
+    assert reverse("docs_page", kwargs={"slug": "organize-projects"}) not in docs_nav
+    assert reverse("docs_page", kwargs={"slug": "link-datasets"}) not in docs_nav
+    assert reverse("docs_page", kwargs={"slug": "attach-images"}) not in docs_nav
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in docs_nav
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in docs_nav
     assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) not in docs_nav
@@ -251,6 +254,10 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
     assert reverse("docs_page", kwargs={"slug": "mcp-tools"}) in content
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "user-api"}) not in docs_nav
+    assert reverse("docs_page", kwargs={"slug": "project-api"}) not in docs_nav
+    assert reverse("docs_page", kwargs={"slug": "agent-discovery"}) not in docs_nav
+    assert reverse("docs_page", kwargs={"slug": "database-mcp-server"}) not in docs_nav
 
 
 def test_docs_sidebar_lists_groups_without_disclosure_controls(client):

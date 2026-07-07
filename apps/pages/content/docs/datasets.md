@@ -13,6 +13,10 @@ Agents should inspect a dataset with `get_dataset` before row operations. That
 response includes headers, index column, semantic column schema, persistent
 dataset context, and relationship summaries.
 
+Use this page as the hub for dataset behavior. If you only need endpoint-level
+details, go straight to the [Dataset API](/docs/dataset-api/) or
+[MCP tool reference](/docs/mcp-tools/).
+
 ## Dataset lifecycle
 
 1. **Ready** — API-created datasets are available immediately.
@@ -148,6 +152,8 @@ the authenticated Dataset API for applications and agents.
 ## Related docs
 
 - [Start with your first agent dataset](/docs/quickstart/)
+- [Create datasets](/docs/create-datasets/)
+- [Work with rows](/docs/work-with-rows/)
 - [Dataset API](/docs/dataset-api/)
 - [Connect over MCP](/docs/connect-mcp/)
-- [Share a public preview](/docs/share-public-previews/)
+- [Archive, export, and troubleshoot](/docs/archive-export-troubleshoot/)

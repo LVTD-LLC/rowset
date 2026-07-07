@@ -23,6 +23,9 @@ cut date.
 ### Added
 - Added a Rowset blog post on structuring dataset instructions for AI agents, with a verified SEO brief and inbound links from Dataset API, MCP setup, and content-pipeline pages.
 
+### Changed
+- Simplified the docs sidebar by keeping advanced docs routable but removing them from the default navigation, and tightened core docs copy around dataset, API, setup, and troubleshooting paths.
+
 ## 2026-07-06
 
 ### Added
