@@ -128,12 +128,15 @@ def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     assert "get_user_info" in tool_names
     assert "get_rowset_capabilities" in tool_names
     assert "list_dataset_rows" in tool_names
-    assert not {
-        "get_available_dataset_plugins",
-        "get_dataset_plugin_activations",
-        "enable_dataset_plugin",
-        "disable_dataset_plugin",
-    } & tool_names
+    assert (
+        not {
+            "get_available_dataset_plugins",
+            "get_dataset_plugin_activations",
+            "enable_dataset_plugin",
+            "disable_dataset_plugin",
+        }
+        & tool_names
+    )
     image_tool = next(tool for tool in tools if tool["name"] == "attach_image_to_dataset_row")
     assert "The target row must already exist" in image_tool["description"]
     assert "Hosted MCP cannot read local file paths" in image_tool["description"]
