@@ -580,7 +580,8 @@ def get_archived_datasets(
 @mcp.tool(
     name="search_datasets",
     description=(
-        "Search and filter dataset metadata by name, project, header, status, or update time."
+        "Search and filter active dataset metadata by name, project, section, header, "
+        "or update time."
     ),
 )
 def search_datasets(
@@ -589,8 +590,8 @@ def search_datasets(
         Field(
             default=None,
             description=(
-                "Text to match against dataset name, original filename, project name, "
-                "or project description."
+                "Text to match against dataset name, description, instructions, project text, "
+                "or section text."
             ),
         ),
     ] = None,
