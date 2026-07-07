@@ -32,6 +32,9 @@ Define stages before agents start editing: `idea`, `brief`, `draft`, `review`,
 `scheduled`, and `published` are enough for most small teams. Add instructions
 for when agents can create drafts, when they must wait for approval, and where
 published URLs should be recorded.
+Use the guide to [structuring dataset instructions for AI
+agents](/blog/structure-dataset-instructions-ai-agents) when those stage rules
+need to survive across agent sessions.
 
 ## Connect it
 

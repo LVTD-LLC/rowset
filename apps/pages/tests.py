@@ -572,6 +572,41 @@ def test_airtable_alternatives_blog_post_is_in_sitemap(client):
     assert b"/alternatives/airtable/" not in response.content
 
 
+def test_dataset_instructions_blog_post_has_required_links_schema_and_content(client):
+    response = client.get(
+        reverse("blog_post", kwargs={"slug": "structure-dataset-instructions-ai-agents"})
+    )
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    text = strip_tags(content)
+    words = re.findall(r"\b[\w'-]+\b", text)
+    schema = json.loads(_json_ld_payload(content))
+
+    assert "How to structure dataset instructions for AI agents" in content
+    assert len(words) >= 1500
+    assert "The short rule" in content
+    assert "What belongs in metadata instead" in content
+    assert "A reusable instruction template" in content
+    assert "FAQ" in content
+    assert "operating contract" in text
+    assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
+    assert reverse("docs_page", kwargs={"slug": "design-schema"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) in content
+    assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
+    assert schema["@type"] == "BlogPosting"
+    assert schema["url"] == "https://testserver/blog/structure-dataset-instructions-ai-agents"
+    assert schema["headline"] == "How to structure dataset instructions for AI agents"
+
+
+def test_dataset_instructions_blog_post_is_in_sitemap(client):
+    response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    assert b"/blog/structure-dataset-instructions-ai-agents" in response.content
+
+
 def test_seo_sprint_tracks_airtable_phase_as_blog_post():
     roadmap = Path(settings.BASE_DIR) / "docs/seo-sprint.md"
     phase_label = "| 3 | Ship `/blog/airtable-alternatives`"

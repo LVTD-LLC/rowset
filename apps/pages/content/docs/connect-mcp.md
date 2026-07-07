@@ -76,6 +76,9 @@ search_datasets
 Before row operations, the agent should call `get_dataset`. That response
 includes headers, index column, dataset instructions, schema metadata, project
 context, and relationship summaries.
+If you are designing those rules for a new workflow, use the guide to
+[structuring dataset instructions for AI
+agents](/blog/structure-dataset-instructions-ai-agents).
 
 ## 6. Create a small first dataset
 
@@ -89,6 +92,7 @@ Useful starting points:
 - [Agent task board](/use-cases/agent-task-board/)
 - [Feedback triage workflow](/use-cases/feedback-triage/)
 - [Index-column decision guide](/blog/choose-index-column-agent-rows)
+- [Dataset-instructions guide](/blog/structure-dataset-instructions-ai-agents)
 
 ## 7. Use the right permission level
 

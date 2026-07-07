@@ -51,6 +51,7 @@
 | `/blog/choose-index-column-agent-rows` | https://rowset.lvtd.dev/blog/choose-index-column-agent-rows | How to choose an index column for agent-managed rows | index columns, stable row identity, agent workflows | Dataset API docs, MCP docs, agent-managed datasets blog |
 | `/blog/airtable-alternatives` | https://rowset.lvtd.dev/blog/airtable-alternatives | Best Airtable alternatives for AI-agent-managed datasets | Airtable alternatives, agent workflows, datasets | landing page, agent-managed datasets blog, MCP vs REST blog |
 | `/blog/google-sheets-alternatives` | https://rowset.lvtd.dev/blog/google-sheets-alternatives | Best Google Sheets alternatives for AI-agent-managed datasets | Google Sheets alternatives, agent workflows, datasets | Airtable alternatives blog, agent-managed datasets blog, index-column guide |
+| `/blog/structure-dataset-instructions-ai-agents` | https://rowset.lvtd.dev/blog/structure-dataset-instructions-ai-agents | How to structure dataset instructions for AI agents | dataset instructions, metadata, schema, agent workflows | Dataset API docs, MCP docs, content pipeline use case |
 
 ## SEO-Sprint-Generated Pages
 
@@ -120,3 +121,8 @@
 - Google Sheets alternative for trusted agents
 - agent-managed Google Sheets alternative
 - private row backend for AI agents
+- AI agent dataset instructions
+- dataset instructions for agents
+- Rowset dataset instructions
+- agent workflow rules
+- dataset metadata for agents
