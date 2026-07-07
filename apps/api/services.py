@@ -1495,6 +1495,16 @@ def get_ready_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     return dataset
 
 
+def get_ready_profile_dataset_for_read(profile: Profile, dataset_key: str) -> Dataset:
+    dataset = get_profile_dataset(profile, dataset_key)
+    if dataset.status != DatasetStatus.READY:
+        raise DatasetServiceError(
+            409,
+            "Dataset is not ready yet. Confirm and wait for import first.",
+        )
+    return dataset
+
+
 def get_ready_profile_dataset_for_update(profile: Profile, dataset_key: str) -> Dataset:
     dataset = _get_profile_dataset_from_queryset(
         Dataset.objects.select_for_update(),
@@ -3275,7 +3285,7 @@ def _get_dataset_asset_by_key(dataset: Dataset, profile: Profile, asset_key: str
 
 
 def get_profile_dataset_asset(profile: Profile, dataset_key: str, asset_key: str) -> DatasetAsset:
-    dataset = get_ready_profile_dataset(profile, dataset_key)
+    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
     return _get_dataset_asset_by_key(dataset, profile, asset_key)
 
 
@@ -4075,7 +4085,7 @@ def search_profile_dataset_rows(
 ) -> dict:
     query_id = uuid4().hex
     search_started_at = perf_counter()
-    dataset = get_ready_profile_dataset(profile, dataset_key)
+    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
     normalized_query = _normalize_search_query(query)
     if not normalized_query:
         raise DatasetServiceError(400, "Search query is required.")
@@ -4164,7 +4174,7 @@ def list_profile_dataset_rows(
     sort: str | None = None,
     direction: str | None = None,
 ) -> dict:
-    dataset = get_ready_profile_dataset(profile, dataset_key)
+    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     total_count = dataset.rows.count()
@@ -4233,7 +4243,7 @@ def create_profile_dataset_row(
 
 
 def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
-    dataset = get_ready_profile_dataset(profile, dataset_key)
+    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
     try:
         row = dataset.rows.prefetch_related("assets").get(id=row_id)
     except DatasetRow.DoesNotExist as exc:
@@ -4247,7 +4257,7 @@ def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> 
 
 
 def get_profile_dataset_row_by_index(profile: Profile, dataset_key: str, index_value: str) -> dict:
-    dataset = get_ready_profile_dataset(profile, dataset_key)
+    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
     try:
         row = dataset.rows.prefetch_related("assets").get(index_value=index_value)
     except DatasetRow.DoesNotExist as exc:

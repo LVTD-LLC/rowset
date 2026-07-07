@@ -938,6 +938,72 @@ def test_dataset_lookup_resolves_owned_public_identifiers(django_user_model):
 
 
 @pytest.mark.django_db
+def test_archived_ready_dataset_supports_direct_row_reads_but_not_writes(django_user_model):
+    from apps.api.services import (
+        DatasetServiceError,
+        create_profile_dataset_row,
+        get_profile_dataset_asset,
+        get_profile_dataset_row,
+        get_profile_dataset_row_by_index,
+        list_profile_dataset_rows,
+    )
+
+    user = django_user_model.objects.create_user(
+        username="archivedreadowner",
+        email="archivedreadowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Archived People",
+        original_filename="archived.csv",
+        file_type="api",
+        status=DatasetStatus.READY,
+        headers=["email", "name", "photo"],
+        index_column="email",
+        row_count=1,
+        archived_at=timezone.now(),
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="ada@example.com",
+        data={"email": "ada@example.com", "name": "Ada", "photo": ""},
+    )
+    asset = dataset_models.DatasetAsset.objects.create(
+        profile=user.profile,
+        dataset=dataset,
+        row=row,
+        column_name="photo",
+        file="dataset-assets/original/photo.png",
+        content_type="image/png",
+        byte_size=128,
+        checksum="checksum",
+    )
+
+    list_response = list_profile_dataset_rows(user.profile, str(dataset.key))
+    id_response = get_profile_dataset_row(user.profile, str(dataset.key), row.id)
+    index_response = get_profile_dataset_row_by_index(
+        user.profile,
+        str(dataset.key),
+        "ada@example.com",
+    )
+
+    assert list_response["rows"][0]["id"] == row.id
+    assert id_response["row"]["data"]["email"] == "ada@example.com"
+    assert index_response["row"]["id"] == row.id
+    assert get_profile_dataset_asset(user.profile, str(dataset.key), str(asset.key)) == asset
+    with pytest.raises(DatasetServiceError) as exc:
+        create_profile_dataset_row(
+            user.profile,
+            str(dataset.key),
+            {"email": "grace@example.com", "name": "Grace"},
+        )
+    assert exc.value.status_code == 409
+    assert exc.value.message == "Dataset is archived. Restore it before making changes."
+
+
+@pytest.mark.django_db
 @override_settings(SITE_URL="https://rowset.example")
 def test_search_profile_datasets_filters_metadata_without_rows(django_user_model):
     from apps.api.services import search_profile_datasets
@@ -2236,6 +2302,46 @@ def test_search_profile_dataset_rows_applies_canonical_filters_to_vector_hits(
     assert response["filters"] == {"status": "Ready"}
     assert [result["row"]["id"] for result in response["results"]] == [ready_row.id]
     assert response["results"][0]["match"]["point_id"] == "ready-point"
+
+
+@pytest.mark.django_db
+def test_search_profile_dataset_rows_supports_direct_archived_dataset_reads(
+    django_user_model,
+):
+    from apps.api.services import search_profile_dataset_rows
+
+    user = django_user_model.objects.create_user(
+        username="archivedsearchowner",
+        email="archivedsearchowner@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Archived Search Tasks",
+        original_filename="archived-search.csv",
+        status=DatasetStatus.READY,
+        headers=["task_id", "title"],
+        index_column="task_id",
+        archived_at=timezone.now(),
+    )
+    row = DatasetRow.objects.create(
+        dataset=dataset,
+        row_number=1,
+        index_value="TASK-1",
+        data={"task_id": "TASK-1", "title": "Archived lexical match"},
+    )
+
+    response = search_profile_dataset_rows(
+        user.profile,
+        str(dataset.key),
+        query="lexical",
+        embedding_provider=FakeDatasetSearchEmbeddingProvider(),
+        vector_store=FakeDatasetSearchVectorStore([]),
+    )
+
+    assert response["dataset"] == str(dataset.key)
+    assert [result["row"]["id"] for result in response["results"]] == [row.id]
+    assert response["results"][0]["match"]["source"] == "lexical"
 
 
 @pytest.mark.django_db
