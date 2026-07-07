@@ -1,6 +1,5 @@
 from django.urls import path
 
-from apps.dataset_plugins import views as dataset_plugin_views
 from apps.datasets import views
 
 urlpatterns = [
@@ -30,17 +29,6 @@ urlpatterns = [
         name="project_section_delete",
     ),
     path("projects/<uuid:project_key>/delete/", views.project_delete, name="project_delete"),
-    path("plugins/", dataset_plugin_views.plugin_marketplace, name="plugin_marketplace"),
-    path(
-        "plugins/<slug:plugin_slug>/install/",
-        dataset_plugin_views.plugin_install,
-        name="plugin_install",
-    ),
-    path(
-        "plugins/<slug:plugin_slug>/uninstall/",
-        dataset_plugin_views.plugin_uninstall,
-        name="plugin_uninstall",
-    ),
     path("datasets/", views.dataset_list_redirect, name="dataset_list"),
     path(
         "datasets/archived/",
@@ -48,21 +36,6 @@ urlpatterns = [
         name="archived_dataset_list",
     ),
     path("datasets/<uuid:dataset_key>/", views.DatasetDetailView.as_view(), name="dataset_detail"),
-    path(
-        "datasets/<uuid:dataset_key>/plugins/<slug:plugin_slug>/",
-        dataset_plugin_views.dataset_plugin_detail,
-        name="dataset_plugin_detail",
-    ),
-    path(
-        "datasets/<uuid:dataset_key>/plugins/<slug:plugin_slug>/enable/",
-        dataset_plugin_views.dataset_enable_plugin,
-        name="dataset_enable_plugin",
-    ),
-    path(
-        "datasets/<uuid:dataset_key>/plugins/<slug:plugin_slug>/disable/",
-        dataset_plugin_views.dataset_disable_plugin,
-        name="dataset_disable_plugin",
-    ),
     path(
         "datasets/<uuid:dataset_key>/changes/",
         views.DatasetChangesView.as_view(),

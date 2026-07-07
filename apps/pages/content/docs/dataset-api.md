@@ -630,50 +630,9 @@ curl \
 
 Public previews are separate from authenticated row APIs. Use `PATCH /datasets/{dataset_key}/public-preview` or the MCP `update_dataset_public_preview` tool to configure sharing.
 
-## Dataset plugins
-
-List trusted plugins installed for the account:
-
-```http
-GET {{ api_base_url }}/dataset-plugins
-```
-
-List plugin activations for one dataset:
-
-```http
-GET {{ api_base_url }}/datasets/{dataset_key}/plugins
-```
-
-Enable or reconfigure a plugin:
-
-```http
-POST {{ api_base_url }}/datasets/{dataset_key}/plugins/{plugin_slug}
-Content-Type: application/json
-```
-
-```json
-{
-  "config": {
-    "columns": {
-      "front_question": "question",
-      "back_answer": "answer"
-    }
-  }
-}
-```
-
-Disable a plugin without deleting rows:
-
-```http
-DELETE {{ api_base_url }}/datasets/{dataset_key}/plugins/{plugin_slug}
-```
-
-Use [Use dataset plugins](/docs/dataset-plugins/) for workflow guidance.
-
 ## Related docs
 
 - [How Rowset datasets work](/docs/datasets/)
 - [MCP tool reference](/docs/mcp-tools/)
 - [Share a public preview](/docs/share-public-previews/)
-- [Use dataset plugins](/docs/dataset-plugins/)
 - [Use cases](/use-cases/)

@@ -2,11 +2,6 @@ from dataclasses import dataclass
 from typing import Any
 
 CAPABILITY_VERSION = "2026-07-05"
-STAFF_ONLY_CAPABILITY_IDS = frozenset({"dataset_plugins"})
-
-
-def profile_can_view_staff_capabilities(profile: Any | None) -> bool:
-    return bool(profile and getattr(getattr(profile, "user", None), "is_staff", False))
 
 
 @dataclass(frozen=True)
@@ -334,33 +329,6 @@ ROWSET_CAPABILITIES = (
         ),
     ),
     RowsetCapability(
-        id="dataset_plugins",
-        title="Dataset plugins",
-        summary=(
-            "Enable trusted Rowset-installed plugins on a dataset to add a richer "
-            "human-facing view or workflow while keeping rows as the source of truth."
-        ),
-        mcp_tools=(
-            "get_available_dataset_plugins",
-            "get_dataset_plugin_activations",
-            "enable_dataset_plugin",
-            "disable_dataset_plugin",
-        ),
-        rest_paths=(
-            "/api/dataset-plugins",
-            "/api/datasets/{dataset_key}/plugins",
-            "/api/datasets/{dataset_key}/plugins/{plugin_slug}",
-        ),
-        notes=(
-            "Plugins are installed as trusted Rowset server code, then enabled per dataset.",
-            (
-                "Plugin config maps plugin role keys to existing dataset headers, for example "
-                "flashcards front_question and back_answer roles."
-            ),
-            "Disabling a plugin does not delete dataset rows or schema.",
-        ),
-    ),
-    RowsetCapability(
         id="archive_restore_and_exports",
         title="Archive, restore, and export",
         summary=(
@@ -385,20 +353,6 @@ ROWSET_CAPABILITIES = (
 )
 
 ROWSET_USE_CASES = (
-    RowsetUseCase(
-        id="flashcards",
-        title="Flashcards",
-        summary=(
-            "Use a dataset as a study deck where agents maintain card rows and humans "
-            "review them in the Flashcards plugin view."
-        ),
-        starter_shape=(
-            "Cards dataset indexed by card_id.",
-            "front_question and back_answer columns for the required plugin roles.",
-            "Optional front_title, front_image, back_title, back_image, and tags columns.",
-        ),
-        rowset_features=("dataset_plugins", "dataset_context", "rows", "image_assets"),
-    ),
     RowsetUseCase(
         id="personal_crm",
         title="Personal CRM",
@@ -534,14 +488,8 @@ def _validate_capability_registry() -> None:
         )
 
 
-def _visible_rowset_capabilities(profile: Any | None = None) -> tuple[RowsetCapability, ...]:
-    if profile_can_view_staff_capabilities(profile):
-        return ROWSET_CAPABILITIES
-    return tuple(
-        capability
-        for capability in ROWSET_CAPABILITIES
-        if capability.id not in STAFF_ONLY_CAPABILITY_IDS
-    )
+def _visible_rowset_capabilities() -> tuple[RowsetCapability, ...]:
+    return ROWSET_CAPABILITIES
 
 
 def _visible_rowset_use_cases(
@@ -556,16 +504,16 @@ def _visible_rowset_use_cases(
 
 
 def public_rowset_capabilities() -> tuple[RowsetCapability, ...]:
-    return _visible_rowset_capabilities(None)
+    return _visible_rowset_capabilities()
 
 
 def public_rowset_use_cases() -> tuple[RowsetUseCase, ...]:
     return _visible_rowset_use_cases(public_rowset_capabilities())
 
 
-def rowset_capabilities_payload(profile: Any | None = None) -> dict[str, Any]:
+def rowset_capabilities_payload() -> dict[str, Any]:
     _validate_capability_registry()
-    visible_capabilities = _visible_rowset_capabilities(profile)
+    visible_capabilities = _visible_rowset_capabilities()
     visible_use_cases = _visible_rowset_use_cases(visible_capabilities)
     return {
         "product": "Rowset",

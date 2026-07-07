@@ -16,7 +16,6 @@ navigation:
         - design-schema
         - link-datasets
         - attach-images
-        - dataset-plugins
         - share-public-previews
         - configure-agent-access
         - connect-mcp

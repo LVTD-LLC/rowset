@@ -1,6 +1,6 @@
 ---
 title: Core concepts
-description: Understand Rowset datasets, rows, indexes, projects, schema, access paths, previews, exports, and plugins.
+description: Understand Rowset datasets, rows, indexes, projects, schema, access paths, previews, and exports.
 keywords: Rowset concepts, datasets, rows, projects, MCP, REST, public previews
 ---
 
@@ -83,13 +83,3 @@ supports it.
 
 Use row tools for live agent workflows. Use exports when another system expects
 a file.
-
-## Dataset plugin
-
-A dataset plugin is trusted Rowset server code that renders or operates on rows
-in a richer human-facing way. Plugins are installed on an account, then enabled
-per dataset.
-
-The first built-in plugin is Flashcards. It maps dataset columns such as
-`front_question` and `back_answer` into a study-card view while keeping the
-dataset rows as the source of truth.
