@@ -167,6 +167,7 @@
                                                     <th scope="col">Rows</th>
                                                     <th scope="col">Columns</th>
                                                     <th scope="col">Archived</th>
+                                                    <th scope="col"><span class="sr-only">Actions</span></th>
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
@@ -180,6 +181,15 @@
                                                         <td>{{ dataset.row_count }}</td>
                                                         <td>{{ dataset.headers|length }}</td>
                                                         <td class="whitespace-nowrap">{{ dataset.archived_at|date:"M d, Y" }}</td>
+                                                        <td class="whitespace-nowrap text-right">
+                                                            <form method="post"
+                                                                  action="{% url 'dataset_restore' dataset.key %}"
+                                                                  onsubmit="return confirm('Unarchive {{ dataset.name|escapejs }}? It will return to normal dataset and project lists.');">
+                                                                {% csrf_token %}
+                                                                <button type="submit"
+                                                                        class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Unarchive</button>
+                                                            </form>
+                                                        </td>
                                                     </tr>
                                                 {% endfor %}
                                             </tbody>

@@ -1124,6 +1124,8 @@ def test_archived_dataset_list_shows_archived_datasets_only(
     assert "Archived draft" not in content
     assert "Archived other account dataset" not in content
     assert reverse("home") in content
+    assert reverse("dataset_restore", args=[archived_dataset.key]) in content
+    assert "Unarchive" in content
     assert reverse("dataset_export", args=[archived_dataset.key, "csv"]) not in content
     assert reverse("dataset_delete", args=[archived_dataset.key]) not in content
 
@@ -2755,6 +2757,8 @@ def test_dataset_detail_shows_archived_badge_without_archive_action(auth_client,
     assert response.status_code == 200
     assert 'aria-label="Dataset archived"' in content
     assert reverse("dataset_archive", args=[dataset.key]) not in content
+    assert reverse("dataset_restore", args=[dataset.key]) in content
+    assert "Unarchive" in content
 
 
 def test_dataset_detail_exposes_processing_status_live_region(auth_client, profile):
@@ -3089,6 +3093,81 @@ def test_dataset_archive_rejects_other_users_dataset(client, django_user_model, 
     assert response.status_code == 404
     dataset.refresh_from_db()
     assert dataset.archived_at is None
+
+
+def test_dataset_restore_restores_owned_dataset(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at"])
+
+    response = auth_client.post(reverse("dataset_restore", args=[dataset.key]))
+
+    assert response.status_code == 302
+    assert response.url == dataset.get_absolute_url()
+    dataset.refresh_from_db()
+    assert dataset.archived_at is None
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.SUCCESS
+    assert str(flash_messages[0]) == "Dataset restored."
+
+
+def test_dataset_restore_requires_post(auth_client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at"])
+
+    response = auth_client.get(reverse("dataset_restore", args=[dataset.key]))
+
+    assert response.status_code == 405
+
+
+def test_dataset_restore_rejects_other_users_dataset(client, django_user_model, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at"])
+    other_user = django_user_model.objects.create_user(
+        username="other-restore",
+        email="other-restore@example.com",
+        password="password123",
+    )
+    client.force_login(other_user)
+
+    response = client.post(reverse("dataset_restore", args=[dataset.key]))
+
+    assert response.status_code == 404
+    dataset.refresh_from_db()
+    assert dataset.archived_at is not None
+
+
+def test_dataset_restore_rejects_free_account_over_active_dataset_limit(auth_client, profile):
+    create_ready_dataset(profile)
+    create_ready_dataset(profile)
+    archived_dataset = create_ready_dataset(profile)
+    archived_dataset.archived_at = timezone.now()
+    archived_dataset.save(update_fields=["archived_at"])
+
+    response = auth_client.post(reverse("dataset_restore", args=[archived_dataset.key]))
+
+    assert response.status_code == 302
+    assert response.url == archived_dataset.get_absolute_url()
+    archived_dataset.refresh_from_db()
+    assert archived_dataset.archived_at is not None
+    assert (
+        Dataset.objects.filter(
+            profile=profile,
+            archived_at__isnull=True,
+        )
+        .exclude(status=DatasetStatus.PREVIEWED)
+        .count()
+        == 2
+    )
+    flash_messages = list(get_messages(response.wsgi_request))
+    assert len(flash_messages) == 1
+    assert flash_messages[0].level == message_constants.ERROR
+    assert str(flash_messages[0]) == (
+        "Free accounts can have at most 2 active datasets. Upgrade for unlimited datasets."
+    )
 
 
 def test_dataset_delete_removes_owned_dataset(auth_client, profile):
