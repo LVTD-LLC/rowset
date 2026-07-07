@@ -153,16 +153,6 @@ DATASET_EXPORT_FORMATS = {
 }
 
 
-@login_required
-def dataset_list_redirect(request):
-    return redirect("home")
-
-
-@login_required
-def project_list_redirect(request):
-    return redirect("home")
-
-
 def _command_palette_query(request) -> str:
     return request.GET.get("q", "").strip()[:COMMAND_PALETTE_MAX_QUERY_LENGTH]
 

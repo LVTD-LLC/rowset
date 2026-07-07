@@ -4,7 +4,6 @@ from typing import NoReturn
 from django.core.cache import cache
 from django.db import IntegrityError, connection
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.http.response import HttpResponseRedirectBase
 from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
 from django.views.decorators.csrf import csrf_exempt
@@ -231,18 +230,6 @@ def _agent_actor_kwargs(request: HttpRequest) -> dict:
 @csrf_exempt
 def api_not_found(request: HttpRequest, unmatched: str = "") -> JsonResponse:
     return JsonResponse({"detail": "Not Found"}, status=404)
-
-
-class HttpResponsePermanentRedirect308(HttpResponseRedirectBase):
-    status_code = 308
-
-
-@csrf_exempt
-def api_v1_redirect(request: HttpRequest, unmatched: str = "") -> HttpResponsePermanentRedirect308:
-    target = f"/api/{unmatched}".rstrip("/") if unmatched else "/api/"
-    if request.META.get("QUERY_STRING"):
-        target = f"{target}?{request.META['QUERY_STRING']}"
-    return HttpResponsePermanentRedirect308(target)
 
 
 @api.get("/capabilities", auth=None, tags=["agent discovery"])

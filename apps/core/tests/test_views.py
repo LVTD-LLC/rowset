@@ -256,7 +256,6 @@ class TestHomeView:
         assert profile.key not in content
         assert reverse("create_agent_api_key") in content
         assert 'name="next" value="home"' in content
-        assert reverse("agent_setup_prompt") not in content
         assert reverse("dismiss_agent_setup_prompt") in content
         assert "Skip setup for now" in content
         assert "Only share this prompt with agents and people you trust." not in content
@@ -284,7 +283,6 @@ class TestHomeView:
         assert (
             reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid]) in content
         )
-        assert reverse("agent_setup_prompt") not in content
         assert "Copy agent prompt" in content
         assert 'data-copy-tracking-event="rowset_agent_setup_prompt_copied"' in content
         assert "Copy request" in content
@@ -344,32 +342,6 @@ class TestHomeView:
         assert response["Location"] == reverse("home")
         profile.refresh_from_db()
         assert profile.agent_setup_prompt_dismissed is True
-
-    @override_settings(SITE_URL="https://rowset.example")
-    def test_agent_setup_prompt_endpoint_returns_full_prompt(self, auth_client, profile):
-        response = auth_client.get(reverse("agent_setup_prompt"))
-
-        assert response.status_code == 200
-        assert response["Content-Type"] == "application/json"
-        assert response["Cache-Control"] == "no-store"
-        prompt = response.json()["prompt"]
-        assert "Rowset MCP URL: https://rowset.example/mcp/" in prompt
-        assert "Rowset REST API base: https://rowset.example/api/" in prompt
-        assert f"Rowset API key: {profile.key}" in prompt
-        assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
-        assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in prompt
-        assert "get_user_info" in prompt
-        assert "get_rowset_capabilities" in prompt
-        assert "create_dataset" in prompt
-        assert "update_dataset_public_preview" in prompt
-        assert (
-            "codex mcp add rowset --url <Rowset MCP URL> "
-            "--bearer-token-env-var ROWSET_API_KEY" in prompt
-        )
-        assert "screenshots, public chats, generated files, or final responses" in prompt
-        assert "full key, not only its prefix" in prompt
-        assert prompt.index("discover the current MCP tools") < prompt.index("get_user_info")
-        assert "discover the current MCP tools and API docs at runtime" in prompt
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_home_view_creates_missing_profile(self, auth_client, user):
@@ -475,7 +447,6 @@ class TestHomeView:
         assert "Copy legacy key" not in content
         assert "Rowset API key: ***" not in content
         assert f"Rowset API key: {profile.key}" not in content
-        assert reverse("agent_setup_prompt") not in content
 
     def test_settings_view_includes_design_colorize_toggle(self, auth_client):
         response = auth_client.get(reverse("settings"))
@@ -514,8 +485,7 @@ class TestHomeView:
         response = auth_client.get(reverse("settings"))
 
         content = response.content.decode()
-        assert f'href="{reverse("dataset_list")}"' not in content
-        assert f'href="{reverse("project_list")}"' not in content
+        assert "Dashboard" in content
 
     def test_agent_instructions_markdown_is_public_and_actionable(self, client):
         response = client.get(reverse("agent_instructions_rowset_mcp"))
@@ -627,13 +597,13 @@ class TestHomeView:
         request = rf.get("/home", HTTP_HOST="internal-proxy")
         request.user = user
 
-        prompt = build_agent_setup_prompt(request)
+        prompt = build_agent_setup_prompt(request, api_key="rsk_explicit")
 
         assert "Rowset MCP URL: https://rowset.example/mcp/" in prompt
         assert "Rowset REST API base: https://rowset.example/api/" in prompt
         assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
         assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in prompt
-        assert f"Rowset API key: {user.profile.key}" in prompt
+        assert "Rowset API key: rsk_explicit" in prompt
         assert "bearer-token env var ROWSET_API_KEY" in prompt
         assert "get_rowset_capabilities" in prompt
         assert (
@@ -653,9 +623,9 @@ class TestHomeView:
         request = rf.get("/home", HTTP_HOST="internal-proxy")
         request.user = fresh_user
 
-        prompt = build_agent_setup_prompt(request)
+        prompt = build_agent_setup_prompt(request, mask_api_key=True)
 
-        assert f"Rowset API key: {fresh_user.profile.key}" in prompt
+        assert "Rowset API key: ***" in prompt
         assert fresh_user.profile
 
     @override_settings(SITE_URL="http://localhost:8000")

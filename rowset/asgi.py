@@ -8,9 +8,7 @@ import os
 
 from django.core.asgi import get_asgi_application
 from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import RedirectResponse
-from starlette.routing import Mount, Route
+from starlette.routing import Mount
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rowset.settings")
 
@@ -26,13 +24,8 @@ mcp_application = mcp.http_app(
 )
 
 
-def redirect_mcp(request: Request) -> RedirectResponse:
-    return RedirectResponse(str(request.url.replace(path="/mcp/")), status_code=307)
-
-
 application = Starlette(
     routes=[
-        Route("/mcp", endpoint=redirect_mcp, methods=["GET", "POST", "DELETE"]),
         Mount(MCP_MOUNT_PATH, app=mcp_application),
         Mount("/", app=django_application),
     ],

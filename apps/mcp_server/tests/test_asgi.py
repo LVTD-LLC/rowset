@@ -6,6 +6,8 @@ from mcp.server.streamable_http import MCP_SESSION_ID_HEADER
 from starlette.testclient import TestClient
 
 from apps.api.services import DatasetServiceError
+from apps.core.choices import AgentApiKeyAccessLevel
+from apps.mcp_server.server import AGENT_API_KEY_PROFILE_ATTR
 from rowset.asgi import application
 
 MCP_HEADERS = {
@@ -26,13 +28,21 @@ def profile():
         date_joined="2026-05-14T00:00:00Z",
         get_full_name=lambda: "MCP User",
     )
-    return SimpleNamespace(
+    agent_api_key = SimpleNamespace(
+        id=31,
+        name="ASGI Test Agent",
+        access_level=AgentApiKeyAccessLevel.READ_WRITE,
+    )
+    profile = SimpleNamespace(
         id=11,
         key="rsk_test",
         user=user,
         state="signed_up",
         has_active_subscription=False,
+        agent_api_key=agent_api_key,
     )
+    setattr(profile, AGENT_API_KEY_PROFILE_ATTR, agent_api_key)
+    return profile
 
 
 @pytest.fixture
@@ -40,7 +50,7 @@ def authenticated_mcp(monkeypatch, profile):
     # FastMCP's auth provider validates the bearer token before tool dispatch.
     monkeypatch.setattr(
         "apps.mcp_server.auth.resolve_api_key_profile",
-        lambda _key: (profile, None),
+        lambda _key: (profile, profile.agent_api_key),
     )
     # Rowset tool code then resolves the authenticated profile from the access token context.
     monkeypatch.setattr(

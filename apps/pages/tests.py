@@ -300,29 +300,6 @@ def test_root_content_sections_render_markdown_pages(client):
         assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content or "dataset" in content
 
 
-@pytest.mark.parametrize(
-    ("old_path", "new_path"),
-    (
-        ("/docs/how-to-guides/connect-mcp/", "/docs/connect-mcp/"),
-        ("/tutorials/first-agent-dataset/", "/docs/quickstart/"),
-        ("/how-to/share-public-preview/", "/docs/share-public-previews/"),
-        ("/how-to/help-agents-discover-rowset/", "/docs/agent-discovery/"),
-        ("/explanations/mcp-rest-and-previews/", "/docs/mcp-rest-public-previews/"),
-        ("/docs/reference/dataset-api/", "/docs/dataset-api/"),
-        ("/docs/features/mcp/", "/docs/connect-mcp/"),
-        ("/docs/api-reference/datasets/", "/docs/dataset-api/"),
-        ("/docs/use-cases/", "/use-cases/"),
-        ("/docs/use-cases/personal-crm/", "/use-cases/personal-crm/"),
-        ("/playbooks/database-mcp-server/", "/docs/database-mcp-server/"),
-    ),
-)
-def test_legacy_public_content_paths_redirect(client, old_path, new_path):
-    response = client.get(old_path)
-
-    assert response.status_code == 301
-    assert response["Location"] == new_path
-
-
 def test_use_cases_page_lists_use_case_pages(client):
     response = client.get(reverse("use_cases"))
 
@@ -332,13 +309,6 @@ def test_use_cases_page_lists_use_case_pages(client):
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) in content
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) in content
     assert "/how-to/personal-crm/" not in content
-
-
-def test_legacy_explanations_home_redirects_to_docs(client):
-    response = client.get(reverse("explanations_home"))
-
-    assert response.status_code == 301
-    assert response["Location"] == reverse("docs_page", kwargs={"slug": "quickstart"})
 
 
 def test_landing_page_redirects_authenticated_users_to_home(client):
@@ -379,8 +349,6 @@ def test_sitemap_response_does_not_set_noindex_header(client):
         ("/pricing", "/pricing/"),
         ("/privacy-policy", "/privacy-policy/"),
         ("/terms-of-service", "/terms-of-service/"),
-        ("/how-to", "/how-to/"),
-        ("/how-to/personal-crm", "/how-to/personal-crm/"),
         ("/uses", "/uses/"),
     ),
 )
@@ -525,6 +493,7 @@ def test_authenticated_database_mcp_server_explanation_uses_app_header(client):
     assert "Create account" not in header
 
 
+@override_settings(SITE_URL="https://testserver")
 def test_airtable_alternatives_blog_post_has_required_links_schema_and_content(client):
     response = client.get(reverse("blog_post", kwargs={"slug": "airtable-alternatives"}))
 
@@ -551,13 +520,6 @@ def test_airtable_alternatives_blog_post_has_required_links_schema_and_content(c
 
     assert schema["url"] == "https://testserver/blog/airtable-alternatives"
     assert schema["headline"] == "Best Airtable alternatives for AI-agent-managed datasets"
-
-
-def test_airtable_alternatives_old_url_redirects_to_blog(client):
-    response = client.get("/alternatives/airtable/")
-
-    assert response.status_code == 301
-    assert response["Location"] == "/blog/airtable-alternatives"
 
 
 def test_airtable_alternatives_blog_post_is_in_sitemap(client):

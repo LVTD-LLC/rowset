@@ -214,7 +214,7 @@ def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
     anyio.run(run)
 
 
-def test_write_mcp_tool_rejects_legacy_profile_key(monkeypatch):
+def test_write_mcp_tool_rejects_missing_agent_api_key_context(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -227,12 +227,13 @@ def test_write_mcp_tool_rejects_legacy_profile_key(monkeypatch):
 
         payload = _extract_mcp_error_payload(exc_info.value)
         assert payload == _expected_mcp_error(
-            code="API_KEY_FORBIDDEN",
-            message=(
-                "This Rowset API key has Read access, but this action requires Read + write access."
+            code="AUTHENTICATION_FAILED",
+            message="This action requires an active Rowset agent API key.",
+            suggested_action=(
+                "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
+                "with an active Rowset API key."
             ),
-            suggested_action="Use a Rowset API key with enough permissions for this action.",
-            http_status=403,
+            http_status=401,
         )
 
     anyio.run(run)
@@ -288,7 +289,7 @@ def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkey
     anyio.run(run)
 
 
-def test_create_agent_api_key_mcp_tool_rejects_legacy_profile_key(monkeypatch):
+def test_create_agent_api_key_mcp_tool_rejects_missing_agent_api_key_context(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -304,10 +305,13 @@ def test_create_agent_api_key_mcp_tool_rejects_legacy_profile_key(monkeypatch):
 
         payload = _extract_mcp_error_payload(exc_info.value)
         assert payload == _expected_mcp_error(
-            code="API_KEY_FORBIDDEN",
-            message=("This Rowset API key has Read access, but this action requires Admin access."),
-            suggested_action="Use a Rowset API key with enough permissions for this action.",
-            http_status=403,
+            code="AUTHENTICATION_FAILED",
+            message="This action requires an active Rowset agent API key.",
+            suggested_action=(
+                "Check that the MCP request sends Authorization: Bearer <ROWSET_API_KEY> "
+                "with an active Rowset API key."
+            ),
+            http_status=401,
         )
 
     anyio.run(run)
@@ -1772,6 +1776,11 @@ def test_dataset_row_mcp_tool_resolves_owned_public_row_url(monkeypatch, django_
         data={"email": "ada@example.com", "name": "Ada"},
     )
     public_row_url = f"https://rowset.example/share/datasets/{dataset.public_key}/rows/{row.id}/"
+    setattr(
+        user.profile,
+        AGENT_API_KEY_PROFILE_ATTR,
+        SimpleNamespace(id=1, access_level=AgentApiKeyAccessLevel.READ),
+    )
 
     monkeypatch.setattr(
         "apps.mcp_server.server._authenticate_profile",

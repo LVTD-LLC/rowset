@@ -24,11 +24,6 @@ urlpatterns = [
     ),
     path("llms.txt", views.llms_txt, name="llms_txt"),
     path(
-        "home/agent-setup-prompt/",
-        views.agent_setup_prompt,
-        name="agent_setup_prompt",
-    ),
-    path(
         "settings/agent-api-keys/",
         views.create_agent_api_key_view,
         name="create_agent_api_key",

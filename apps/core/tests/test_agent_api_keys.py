@@ -77,12 +77,12 @@ def test_agent_api_key_access_level_helpers(profile):
     assert agent_api_key_allows(read_key, AgentApiKeyAccessLevel.READ) is True
     assert agent_api_key_allows(read_key, AgentApiKeyAccessLevel.READ_WRITE) is False
     assert agent_api_key_allows(write_key, AgentApiKeyAccessLevel.READ_WRITE) is True
-    assert agent_api_key_allows(None, AgentApiKeyAccessLevel.READ) is True
+    assert agent_api_key_allows(None, AgentApiKeyAccessLevel.READ) is False
     assert agent_api_key_allows(None, AgentApiKeyAccessLevel.READ_WRITE) is False
     assert agent_api_key_allows(None, AgentApiKeyAccessLevel.ADMIN) is False
     with pytest.raises(PermissionError, match="requires Read \\+ write access"):
         require_agent_api_key_access(read_key, AgentApiKeyAccessLevel.READ_WRITE)
-    with pytest.raises(PermissionError, match="This Rowset API key has Read access"):
+    with pytest.raises(PermissionError, match="requires an active Rowset agent API key"):
         require_agent_api_key_access(None, AgentApiKeyAccessLevel.READ_WRITE)
     with pytest.raises(ValueError, match="Permission must be one of"):
         normalize_agent_api_key_access_level("root")
@@ -130,11 +130,8 @@ def test_resolve_api_key_profile_refreshes_stale_last_used_and_updated_at(profil
     assert credential.agent_api_key.updated_at == credential.agent_api_key.last_used_at
 
 
-def test_resolve_api_key_profile_keeps_legacy_profile_key(profile):
-    resolved_profile, agent_api_key = resolve_api_key_profile(profile.key)
-
-    assert resolved_profile == profile
-    assert agent_api_key is None
+def test_resolve_api_key_profile_rejects_profile_key(profile):
+    assert resolve_api_key_profile(profile.key) is None
 
 
 def test_settings_create_agent_api_key_keeps_raw_key_out_of_html(auth_client):
