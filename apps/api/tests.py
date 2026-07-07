@@ -899,9 +899,6 @@ def test_archived_ready_dataset_supports_direct_row_reads_but_not_writes(django_
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Archived People",
-        original_filename="archived.csv",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email", "name", "photo"],
         index_column="email",
         row_count=1,
@@ -2176,8 +2173,6 @@ def test_search_profile_dataset_rows_supports_direct_archived_dataset_reads(
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Archived Search Tasks",
-        original_filename="archived-search.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "title"],
         index_column="task_id",
         archived_at=timezone.now(),

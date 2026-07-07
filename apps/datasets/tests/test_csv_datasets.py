@@ -2745,9 +2745,7 @@ def test_dataset_restore_rejects_free_account_over_active_dataset_limit(auth_cli
         Dataset.objects.filter(
             profile=profile,
             archived_at__isnull=True,
-        )
-        .exclude(status=DatasetStatus.PREVIEWED)
-        .count()
+        ).count()
         == 2
     )
     flash_messages = list(get_messages(response.wsgi_request))
