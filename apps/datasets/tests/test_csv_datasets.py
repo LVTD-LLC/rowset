@@ -2993,6 +2993,18 @@ def test_dataset_api_crud_and_export(client, profile):
     assert not DatasetRow.objects.filter(id=row_id).exists()
 
 
+def test_dataset_api_exports_archived_dataset(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at", "updated_at"])
+
+    response = client.get(f"/api/datasets/{dataset.key}/export.csv?api_key={profile.key}")
+
+    assert response.status_code == 200
+    exported = list(csv.DictReader(io.StringIO(response.content.decode())))
+    assert exported[0] == {"name": "Ada", "email": "ada@example.com"}
+
+
 def test_prepare_dataset_image_rejects_encoded_payload_above_limit(monkeypatch):
     source_bytes = image_bytes()
 

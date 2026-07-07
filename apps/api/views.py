@@ -90,7 +90,7 @@ from apps.api.services import (
     delete_profile_dataset_relationship,
     delete_profile_dataset_row,
     drop_profile_dataset_column,
-    get_active_profile_dataset,
+    get_profile_dataset,
     get_profile_dataset_asset,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
@@ -1355,7 +1355,7 @@ def delete_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
 )
 def export_dataset_csv(request: HttpRequest, dataset_key: str):
     try:
-        dataset = get_active_profile_dataset(request.auth, dataset_key)
+        dataset = get_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
     return _export_dataset_response(dataset, "csv")
@@ -1368,7 +1368,7 @@ def export_dataset_csv(request: HttpRequest, dataset_key: str):
 )
 def export_dataset_jsonl(request: HttpRequest, dataset_key: str):
     try:
-        dataset = get_active_profile_dataset(request.auth, dataset_key)
+        dataset = get_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
     return _export_dataset_response(dataset, "jsonl")
@@ -1381,7 +1381,7 @@ def export_dataset_jsonl(request: HttpRequest, dataset_key: str):
 )
 def export_dataset_xlsx(request: HttpRequest, dataset_key: str):
     try:
-        dataset = get_active_profile_dataset(request.auth, dataset_key)
+        dataset = get_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
     return _export_dataset_response(dataset, "xlsx")
@@ -1394,7 +1394,7 @@ def export_dataset_xlsx(request: HttpRequest, dataset_key: str):
 )
 def export_dataset_sqlite(request: HttpRequest, dataset_key: str):
     try:
-        dataset = get_active_profile_dataset(request.auth, dataset_key)
+        dataset = get_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
     return _export_dataset_response(dataset, "sqlite")
