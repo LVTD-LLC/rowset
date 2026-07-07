@@ -19,7 +19,7 @@ from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import Feedback
 from apps.datasets import models as dataset_models
-from apps.datasets.choices import DatasetColumnType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow, Project
 from apps.datasets.vector_search import DatasetRowVectorSearchHit
@@ -256,9 +256,6 @@ class DatasetListApiUnitTests(SimpleTestCase):
             instructions="Use email as the stable identity. Do not rewrite names from guesses.",
             metadata={"workflow": {"default_status": "new"}},
             project=project,
-            original_filename="customers.csv",
-            file_type="csv",
-            status="ready",
             headers=["email", "name"],
             column_schema={
                 "email": {
@@ -276,8 +273,6 @@ class DatasetListApiUnitTests(SimpleTestCase):
             public_password_hash="hashed",
             created_at="2026-05-14T00:00:00Z",
             updated_at="2026-05-14T00:01:00Z",
-            confirmed_at="2026-05-14T00:02:00Z",
-            processed_at="2026-05-14T00:03:00Z",
             archived_at=None,
             is_public_password_protected=True,
             get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
@@ -313,9 +308,6 @@ class DatasetListApiUnitTests(SimpleTestCase):
                     "description": "Launch datasets",
                 },
                 "section": None,
-                "original_filename": "customers.csv",
-                "file_type": "csv",
-                "status": "ready",
                 "headers": ["email", "name"],
                 "column_schema": {
                     "email": {
@@ -336,8 +328,6 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "public_password_protected": True,
                 "created_at": "2026-05-14T00:00:00Z",
                 "updated_at": "2026-05-14T00:01:00Z",
-                "confirmed_at": "2026-05-14T00:02:00Z",
-                "processed_at": "2026-05-14T00:03:00Z",
                 "archived_at": None,
             }
         ]
@@ -355,9 +345,6 @@ class DatasetListApiUnitTests(SimpleTestCase):
             instructions="Restore before mutating rows.",
             metadata={"archive_reason": "cleanup"},
             project=None,
-            original_filename="customers.csv",
-            file_type="csv",
-            status="ready",
             headers=["email", "name"],
             column_schema={
                 "email": {"type": "email"},
@@ -372,8 +359,6 @@ class DatasetListApiUnitTests(SimpleTestCase):
             public_password_hash="",
             created_at="2026-05-14T00:00:00Z",
             updated_at="2026-05-14T00:01:00Z",
-            confirmed_at="2026-05-14T00:02:00Z",
-            processed_at="2026-05-14T00:03:00Z",
             archived_at="2026-05-15T00:00:00Z",
             is_public_password_protected=False,
             get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
@@ -383,8 +368,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
         queryset.__getitem__ = Mock(return_value=[dataset])
         datasets = Mock()
         archived_datasets = datasets.filter.return_value
-        visible_archived_datasets = archived_datasets.exclude.return_value
-        visible_archived_datasets.select_related.return_value.only.return_value = queryset
+        archived_datasets.select_related.return_value.only.return_value = queryset
         request = HttpRequest()
         request.auth = SimpleNamespace(datasets=datasets)
 
@@ -395,9 +379,8 @@ class DatasetListApiUnitTests(SimpleTestCase):
         assert response["datasets"][0]["name"] == "Archived customers"
         assert response["datasets"][0]["archived_at"] == "2026-05-15T00:00:00Z"
         datasets.filter.assert_called_once_with(archived_at__isnull=False)
-        archived_datasets.exclude.assert_called_once_with(status=DatasetStatus.PREVIEWED)
-        visible_archived_datasets.select_related.assert_called_once_with("project", "section")
-        visible_archived_datasets.select_related.return_value.only.assert_called_once()
+        archived_datasets.select_related.assert_called_once_with("project", "section")
+        archived_datasets.select_related.return_value.only.assert_called_once()
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
 
@@ -799,9 +782,6 @@ def test_update_dataset_public_preview_enables_public_link(django_user_model):
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="People",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email", "name"],
         index_column="email",
         row_count=0,
@@ -837,9 +817,6 @@ def test_update_dataset_public_preview_preserves_enabled_state_when_omitted(djan
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="People",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email", "name"],
         index_column="email",
         row_count=0,
@@ -862,39 +839,8 @@ def test_update_dataset_public_preview_preserves_enabled_state_when_omitted(djan
 
 
 @pytest.mark.django_db
-def test_update_dataset_public_preview_requires_ready_dataset(django_user_model):
-    from apps.api.services import DatasetServiceError, update_profile_dataset_public_preview
-
-    user = django_user_model.objects.create_user(
-        username="previewblocked",
-        email="previewblocked@example.com",
-        password="password123",
-    )
-    dataset = Dataset.objects.create(
-        profile=user.profile,
-        name="People",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.PROCESSING,
-        headers=["email", "name"],
-        index_column="email",
-        row_count=0,
-    )
-
-    with pytest.raises(DatasetServiceError) as exc:
-        update_profile_dataset_public_preview(
-            user.profile,
-            str(dataset.key),
-            public_enabled=True,
-        )
-
-    assert exc.value.status_code == 409
-    assert "ready datasets" in exc.value.message
-
-
-@pytest.mark.django_db
 def test_dataset_lookup_resolves_owned_public_identifiers(django_user_model):
-    from apps.api.services import DatasetServiceError, get_ready_profile_dataset
+    from apps.api.services import DatasetServiceError, get_active_profile_dataset
 
     owner = django_user_model.objects.create_user(
         username="publicidentifierowner",
@@ -909,9 +855,6 @@ def test_dataset_lookup_resolves_owned_public_identifiers(django_user_model):
     dataset = Dataset.objects.create(
         profile=owner.profile,
         name="People",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email", "name"],
         index_column="email",
         row_count=1,
@@ -926,12 +869,12 @@ def test_dataset_lookup_resolves_owned_public_identifiers(django_user_model):
     public_dataset_url = f"https://rowset.example/share/datasets/{dataset.public_key}/"
     public_row_url = f"{public_dataset_url}rows/{row.id}/"
 
-    assert get_ready_profile_dataset(owner.profile, str(dataset.public_key)) == dataset
-    assert get_ready_profile_dataset(owner.profile, public_dataset_url) == dataset
-    assert get_ready_profile_dataset(owner.profile, public_row_url) == dataset
+    assert get_active_profile_dataset(owner.profile, str(dataset.public_key)) == dataset
+    assert get_active_profile_dataset(owner.profile, public_dataset_url) == dataset
+    assert get_active_profile_dataset(owner.profile, public_row_url) == dataset
 
     with pytest.raises(DatasetServiceError) as exc:
-        get_ready_profile_dataset(other_user.profile, public_dataset_url)
+        get_active_profile_dataset(other_user.profile, public_dataset_url)
 
     assert exc.value.status_code == 404
     assert exc.value.message == "Dataset not found."
@@ -956,9 +899,6 @@ def test_archived_ready_dataset_supports_direct_row_reads_but_not_writes(django_
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Archived People",
-        original_filename="archived.csv",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email", "name", "photo"],
         index_column="email",
         row_count=1,
@@ -1027,9 +967,6 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
         profile=user.profile,
         project=project,
         name="Rowset Feature Suggestions",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["suggestion_id", "status", "notes"],
         index_column="suggestion_id",
         row_count=2,
@@ -1038,9 +975,6 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
         profile=user.profile,
         project=project,
         name="Old Rowset Feature Suggestions",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["suggestion_id", "status", "notes"],
         index_column="suggestion_id",
     )
@@ -1051,9 +985,6 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
         profile=user.profile,
         project=project,
         name="Rowset Feature Suggestions Archive",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["suggestion_id", "status"],
         index_column="suggestion_id",
         archived_at=timezone.now(),
@@ -1062,9 +993,6 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
         profile=user.profile,
         project=project,
         name="Rowset Feature Logs",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["feature_id", "status"],
         index_column="feature_id",
     )
@@ -1072,9 +1000,6 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
         profile=other_user.profile,
         project=None,
         name="Rowset Feature Suggestions",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["suggestion_id", "status", "notes"],
         index_column="suggestion_id",
     )
@@ -1084,7 +1009,6 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
         query="feature",
         project_key=str(project.key),
         header_contains="suggestion_id",
-        status="READY",
         updated_after=(timezone.now() - timedelta(days=1)).isoformat(),
     )
 
@@ -1110,18 +1034,12 @@ def test_search_profile_datasets_matches_description_and_instructions(django_use
         name="Launch tasks",
         description="Persistent planning board for launch execution.",
         instructions="Use the blocked status only when another person must act.",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["task_id", "status"],
         index_column="task_id",
     )
     Dataset.objects.create(
         profile=user.profile,
         name="Contacts",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email"],
         index_column="email",
     )
@@ -1185,9 +1103,6 @@ def test_search_profile_datasets_treats_naive_updated_after_as_utc(django_user_m
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="UTC Search",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
@@ -1214,9 +1129,6 @@ def test_search_profile_datasets_ignores_blank_updated_after(django_user_model):
     Dataset.objects.create(
         profile=user.profile,
         name="Blank Date Search",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
@@ -1238,9 +1150,6 @@ def test_search_profile_datasets_query_matches_projectless_dataset(django_user_m
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Ungrouped Feature Notes",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
@@ -1249,23 +1158,6 @@ def test_search_profile_datasets_query_matches_projectless_dataset(django_user_m
 
     assert response["count"] == 1
     assert response["datasets"][0]["key"] == str(dataset.key)
-
-
-@pytest.mark.django_db
-def test_search_profile_datasets_rejects_unknown_status(django_user_model):
-    from apps.api.services import DatasetServiceError, search_profile_datasets
-
-    user = django_user_model.objects.create_user(
-        username="datasetsearchstatus",
-        email="datasetsearchstatus@example.com",
-        password="password123",
-    )
-
-    with pytest.raises(DatasetServiceError) as exc:
-        search_profile_datasets(user.profile, status="missing")
-
-    assert exc.value.status_code == 400
-    assert "Unsupported dataset status" in exc.value.message
 
 
 @pytest.mark.django_db
@@ -1381,9 +1273,6 @@ def test_project_section_services_create_assign_and_group_datasets(django_user_m
         profile=user.profile,
         project=project,
         name="Content ledger",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["slug"],
         index_column="slug",
     )
@@ -1446,9 +1335,6 @@ def test_dataset_project_update_rejects_section_without_project(django_user_mode
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Content ledger",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["slug"],
         index_column="slug",
     )
@@ -1518,8 +1404,6 @@ def test_row_write_services_enqueue_vector_index_and_delete_when_enabled(
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Vector Rows",
-        original_filename="rows.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "title"],
         index_column="task_id",
     )
@@ -1557,7 +1441,7 @@ def test_row_write_services_enqueue_vector_index_and_delete_when_enabled(
 
 
 @pytest.mark.django_db
-def test_archive_profile_dataset_enqueues_vector_delete_when_enabled(
+def test_archive_profile_dataset_enqueues_vector_reindex_when_enabled(
     django_user_model,
     django_capture_on_commit_callbacks,
     monkeypatch,
@@ -1572,8 +1456,6 @@ def test_archive_profile_dataset_enqueues_vector_delete_when_enabled(
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Archive vectors",
-        original_filename="archive.csv",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
@@ -1587,7 +1469,7 @@ def test_archive_profile_dataset_enqueues_vector_delete_when_enabled(
         with django_capture_on_commit_callbacks(execute=True):
             archive_profile_dataset(user.profile, str(dataset.key))
 
-    assert calls == [("apps.datasets.tasks.delete_dataset_vectors", (dataset.id,))]
+    assert calls == [("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,))]
 
 
 @pytest.mark.django_db
@@ -1606,8 +1488,6 @@ def test_restore_profile_dataset_enqueues_vector_backfill_when_enabled(
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Restore vectors",
-        original_filename="restore.csv",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
         archived_at=timezone.now(),
@@ -1646,8 +1526,6 @@ def test_schema_mutation_services_enqueue_vector_reindex_when_enabled(
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Schema vectors",
-        original_filename="schema.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "title"],
         index_column="task_id",
     )
@@ -1748,7 +1626,6 @@ class FakeProfileRowSearchVectorStore:
         vector,
         *,
         dataset_ids=None,
-        dataset_status="ready",
         dataset_archived=False,
         limit=10,
     ):
@@ -1757,7 +1634,6 @@ class FakeProfileRowSearchVectorStore:
                 profile.id,
                 vector,
                 tuple(dataset_ids or ()),
-                dataset_status,
                 dataset_archived,
                 limit,
             )
@@ -1766,7 +1642,7 @@ class FakeProfileRowSearchVectorStore:
 
 
 @pytest.mark.django_db
-def test_search_profile_rows_searches_ready_datasets_and_filters_vector_hits(django_user_model):
+def test_search_profile_rows_searches_active_datasets_and_filters_vector_hits(django_user_model):
     from apps.api.services import search_profile_rows
 
     user = django_user_model.objects.create_user(
@@ -1777,32 +1653,24 @@ def test_search_profile_rows_searches_ready_datasets_and_filters_vector_hits(dja
     tasks = Dataset.objects.create(
         profile=user.profile,
         name="Launch tasks",
-        original_filename="tasks.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "status", "title"],
         index_column="task_id",
     )
     customers = Dataset.objects.create(
         profile=user.profile,
         name="Customer risks",
-        original_filename="customers.csv",
-        status=DatasetStatus.READY,
         headers=["customer_id", "status", "notes"],
         index_column="customer_id",
     )
     missing_filter_header = Dataset.objects.create(
         profile=user.profile,
         name="Research notes",
-        original_filename="notes.csv",
-        status=DatasetStatus.READY,
         headers=["note_id", "body"],
         index_column="note_id",
     )
     archived = Dataset.objects.create(
         profile=user.profile,
         name="Archived tasks",
-        original_filename="archived.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "status", "title"],
         index_column="task_id",
         archived_at=timezone.now(),
@@ -1880,7 +1748,6 @@ def test_search_profile_rows_searches_ready_datasets_and_filters_vector_hits(dja
             user.profile.id,
             [0.1, 0.2, 0.3],
             (tasks.id, customers.id),
-            DatasetStatus.READY,
             False,
             15,
         )
@@ -1945,8 +1812,6 @@ def test_search_profile_rows_skips_incompatible_filter_operator_datasets(django_
     scored = Dataset.objects.create(
         profile=user.profile,
         name="Scored accounts",
-        original_filename="scored.csv",
-        status=DatasetStatus.READY,
         headers=["id", "score", "notes"],
         column_schema={"score": {"type": DatasetColumnType.NUMBER}},
         index_column="id",
@@ -1954,8 +1819,6 @@ def test_search_profile_rows_skips_incompatible_filter_operator_datasets(django_
     tagged = Dataset.objects.create(
         profile=user.profile,
         name="Tagged accounts",
-        original_filename="tagged.csv",
-        status=DatasetStatus.READY,
         headers=["id", "score", "notes"],
         column_schema={"score": {"type": DatasetColumnType.TEXT}},
         index_column="id",
@@ -2011,8 +1874,6 @@ def test_search_profile_dataset_rows_fuses_exact_and_vector_matches(django_user_
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Vector Search Tasks",
-        original_filename="tasks.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "status", "title"],
         index_column="task_id",
     )
@@ -2076,8 +1937,6 @@ def test_search_quality_eval_fixtures_keep_expected_rows_on_top(django_user_mode
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Search Quality Fixtures",
-        original_filename="quality.csv",
-        status=DatasetStatus.READY,
         headers=["record_id", "kind", "title", "notes"],
         index_column="record_id",
     )
@@ -2192,8 +2051,6 @@ def test_search_profile_dataset_rows_logs_safe_observability_fields(
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Search Logs",
-        original_filename="logs.csv",
-        status=DatasetStatus.READY,
         headers=["id", "title"],
         index_column="id",
     )
@@ -2257,8 +2114,6 @@ def test_search_profile_dataset_rows_applies_canonical_filters_to_vector_hits(
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Filtered Search Tasks",
-        original_filename="tasks.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "status", "title"],
         column_schema={"status": {"type": "choice", "choices": ["Ready", "Blocked"]}},
         index_column="task_id",
@@ -2318,8 +2173,6 @@ def test_search_profile_dataset_rows_supports_direct_archived_dataset_reads(
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="Archived Search Tasks",
-        original_filename="archived-search.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "title"],
         index_column="task_id",
         archived_at=timezone.now(),
@@ -2427,7 +2280,6 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
         dataset_key=None,
         project_key=None,
         section_key=None,
-        status=None,
         archived=False,
         sort=None,
         direction=None,
@@ -2442,7 +2294,6 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
                 dataset_key,
                 project_key,
                 section_key,
-                status,
                 archived,
                 sort,
                 direction,
@@ -2457,7 +2308,6 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
                 "dataset_key": dataset_key,
                 "project_key": project_key,
                 "section_key": section_key,
-                "status": status or "ready",
                 "archived": archived,
             },
             "sort": sort or "rank",
@@ -2473,7 +2323,6 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
                         "name": "Tasks",
                         "project": None,
                         "section": None,
-                        "status": "ready",
                         "headers": ["task_id"],
                         "index_column": "task_id",
                         "row_count": 1,
@@ -2505,7 +2354,6 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
             "dataset_key": "dataset-key",
             "project_key": "project-key",
             "section_key": "section-key",
-            "status": "ready",
             "archived": False,
             "sort": "rank",
             "direction": "desc",
@@ -2525,7 +2373,6 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
             "dataset-key",
             "project-key",
             "section-key",
-            "ready",
             False,
             "rank",
             "desc",

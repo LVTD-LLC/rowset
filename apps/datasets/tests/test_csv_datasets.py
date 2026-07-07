@@ -13,8 +13,6 @@ import pytest
 from django.contrib import messages as message_constants
 from django.contrib.messages import get_messages
 from django.core.files.storage import storages
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
@@ -32,7 +30,7 @@ from apps.core.analytics import ROWSET_DATASET_ROW_MUTATED
 from apps.core.choices import ProfileStates
 from apps.core.services import create_agent_api_key
 from apps.datasets import models as dataset_models
-from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType, DatasetMutationType
 from apps.datasets.constants import MAX_DATASET_IMAGE_BYTES
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import (
@@ -47,7 +45,6 @@ from apps.datasets.models import (
     retry_dataset_asset_file_deletions,
 )
 from apps.datasets.services import (
-    CSVParseError,
     DatasetImageError,
     apply_dataset_row_query,
     choice_constraints_from_schema,
@@ -55,11 +52,8 @@ from apps.datasets.services import (
     infer_column_type,
     normalize_column_schema,
     prepare_dataset_image,
-    preview_csv_file,
-    preview_uploaded_table,
     rows_to_sqlite_bytes,
 )
-from apps.datasets.tasks import import_dataset_rows
 from apps.datasets.views import (
     DATASET_CHANGES_PAGE_SIZE,
     DATASET_DETAIL_ROW_PAGE_SIZE,
@@ -67,27 +61,6 @@ from apps.datasets.views import (
 )
 
 pytestmark = pytest.mark.django_db
-
-
-def csv_upload(content="name,email\nAda,ada@example.com\nGrace,grace@example.com\n"):
-    return SimpleUploadedFile("people.csv", content.encode(), content_type="text/csv")
-
-
-def parquet_upload(data=None):
-    buffer = io.BytesIO()
-    pl.DataFrame(
-        data
-        or {
-            "name": ["Ada", "Grace"],
-            "email": ["ada@example.com", "grace@example.com"],
-            "score": [10, None],
-        }
-    ).write_parquet(buffer)
-    return SimpleUploadedFile(
-        "people.parquet",
-        buffer.getvalue(),
-        content_type="application/vnd.apache.parquet",
-    )
 
 
 def image_base64() -> str:
@@ -143,9 +116,6 @@ def create_ready_dataset(profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="People",
-        original_filename="people.csv",
-        source_file=csv_upload(),
-        status=DatasetStatus.READY,
         headers=["name", "email"],
         index_column="email",
         preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
@@ -170,9 +140,6 @@ def create_choice_status_dataset(profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Tasks",
-        original_filename="tasks.csv",
-        source_file=csv_upload("task_id,status\nTASK-1,todo\nTASK-2,done\nTASK-3,paused\n"),
-        status=DatasetStatus.READY,
         headers=["task_id", "status"],
         column_schema={
             "task_id": {"type": DatasetColumnType.TEXT},
@@ -214,14 +181,9 @@ def create_crm_datasets(profile):
     people = Dataset.objects.create(
         profile=profile,
         name="People",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["person_id", "name", "email"],
         index_column="person_id",
         row_count=1,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
     DatasetRow.objects.create(
         dataset=people,
@@ -236,14 +198,9 @@ def create_crm_datasets(profile):
     messages = Dataset.objects.create(
         profile=profile,
         name="CRM Messages",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["message_id", "person_id", "body"],
         index_column="message_id",
         row_count=1,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
     DatasetRow.objects.create(
         dataset=messages,
@@ -405,9 +362,6 @@ def create_typed_row_dataset(profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Typed rows",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=TYPED_ROW_HEADERS,
         index_column="row_id",
         row_count=1,
@@ -559,22 +513,6 @@ def add_supported_datetime_format_rows(dataset):
     return dataset
 
 
-def test_preview_csv_file_returns_headers_sample_and_count():
-    preview = preview_csv_file(csv_upload())
-
-    assert preview.headers == ["name", "email"]
-    assert preview.text == "name,email\nAda,ada@example.com\nGrace,grace@example.com\n"
-    assert preview.row_count == 2
-    assert preview.preview_rows == [
-        {"name": "Ada", "email": "ada@example.com"},
-        {"name": "Grace", "email": "grace@example.com"},
-    ]
-    assert preview.column_schema == {
-        "name": {"type": "text"},
-        "email": {"type": "email"},
-    }
-
-
 def test_infer_column_type_detects_common_semantic_types():
     assert infer_column_type("id", ["1", "2"]) == "integer"
     assert infer_column_type("score", ["98.5", "100"]) == "number"
@@ -589,173 +527,11 @@ def test_infer_column_type_detects_common_semantic_types():
     assert infer_column_type("mixed", ["Ada", "10"]) == "text"
 
 
-def test_preview_csv_file_rejects_duplicate_headers():
-    with pytest.raises(CSVParseError, match="Duplicate headers"):
-        preview_csv_file(csv_upload("name,name\nAda,Lovelace\n"))
-
-
-def test_preview_uploaded_table_strips_parquet_header_whitespace():
-    preview = preview_uploaded_table(
-        parquet_upload({" name ": ["Ada"], " email ": ["ada@example.com"]}),
-        "people.parquet",
-    )
-
-    assert preview.headers == ["name", "email"]
-    assert preview.preview_rows == [{"name": "Ada", "email": "ada@example.com"}]
-
-
-def test_preview_uploaded_table_accepts_parquet_files():
-    preview = preview_uploaded_table(parquet_upload(), "people.parquet")
-
-    assert preview.file_type == "parquet"
-    assert preview.headers == ["name", "email", "score"]
-    assert preview.row_count == 2
-    assert preview.preview_rows == [
-        {"name": "Ada", "email": "ada@example.com", "score": "10"},
-        {"name": "Grace", "email": "grace@example.com", "score": ""},
-    ]
-    assert (
-        preview.source_text
-        == 'name,email,score\nAda,ada@example.com,10\nGrace,grace@example.com,""\n'
-    )
-
-
-def test_import_uses_stored_source_text_when_file_is_not_available(profile):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="People",
-        original_filename="people.csv",
-        source_file="datasets/csv/missing.csv",
-        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
-        status=DatasetStatus.PROCESSING,
-        headers=["name", "email"],
-        index_column="email",
-        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
-        row_count=2,
-    )
-
-    import_dataset_rows(dataset.id)
-
-    dataset.refresh_from_db()
-    assert dataset.status == DatasetStatus.READY
-    assert dataset.rows.count() == 2
-
-
-def test_import_enqueues_vector_reindex_after_commit_when_enabled(
-    profile,
-    django_capture_on_commit_callbacks,
-    monkeypatch,
-):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="People",
-        original_filename="people.csv",
-        source_file="datasets/csv/missing.csv",
-        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
-        status=DatasetStatus.PROCESSING,
-        headers=["name", "email"],
-        index_column="email",
-        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
-        row_count=2,
-    )
-    stale_row = DatasetRow.objects.create(
-        dataset=dataset,
-        row_number=1,
-        index_value="old@example.com",
-        data={"name": "Old", "email": "old@example.com"},
-    )
-    calls = []
-    monkeypatch.setattr(
-        "apps.datasets.vector_tasks.async_task",
-        lambda task_path, *args: calls.append((task_path, args)),
-    )
-
-    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
-        with django_capture_on_commit_callbacks(execute=True):
-            import_dataset_rows(dataset.id)
-
-    dataset.refresh_from_db()
-    assert dataset.status == DatasetStatus.READY
-    assert calls == [
-        ("apps.datasets.tasks.delete_dataset_row_vectors", (dataset.id, [stale_row.id])),
-        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
-    ]
-
-
-def test_import_chunks_stale_vector_delete_tasks_when_enabled(
-    profile,
-    django_capture_on_commit_callbacks,
-    monkeypatch,
-):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="People",
-        original_filename="people.csv",
-        source_file="datasets/csv/missing.csv",
-        source_text="name,email\nAda,ada@example.com\nGrace,grace@example.com\n",
-        status=DatasetStatus.PROCESSING,
-        headers=["name", "email"],
-        index_column="email",
-        row_count=3,
-    )
-    stale_rows = [
-        DatasetRow.objects.create(
-            dataset=dataset,
-            row_number=index,
-            index_value=f"old-{index}@example.com",
-            data={"name": f"Old {index}", "email": f"old-{index}@example.com"},
-        )
-        for index in range(1, 4)
-    ]
-    calls = []
-    monkeypatch.setattr(
-        "apps.datasets.vector_tasks.async_task",
-        lambda task_path, *args: calls.append((task_path, args)),
-    )
-    monkeypatch.setattr("apps.datasets.tasks.VECTOR_ROW_DELETE_TASK_BATCH_SIZE", 2)
-
-    with override_settings(ROWSET_VECTOR_SEARCH_ENABLED=True):
-        with django_capture_on_commit_callbacks(execute=True):
-            import_dataset_rows(dataset.id)
-
-    assert calls == [
-        (
-            "apps.datasets.tasks.delete_dataset_row_vectors",
-            (dataset.id, [stale_rows[0].id, stale_rows[1].id]),
-        ),
-        ("apps.datasets.tasks.delete_dataset_row_vectors", (dataset.id, [stale_rows[2].id])),
-        ("apps.datasets.tasks.reindex_dataset_vectors_task", (dataset.id,)),
-    ]
-
-
-def test_import_file_fallback_uses_selected_index_column(profile):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="People",
-        original_filename="people.csv",
-        source_file=csv_upload(),
-        source_text="",
-        status=DatasetStatus.PROCESSING,
-        headers=["name", "email"],
-        index_column="email",
-        preview_rows=[{"name": "Ada", "email": "ada@example.com"}],
-        row_count=2,
-    )
-
-    import_dataset_rows(dataset.id)
-
-    dataset.refresh_from_db()
-    assert dataset.status == DatasetStatus.READY
-    assert dataset.rows.first().index_value == "ada@example.com"
-
-
-def test_dataset_list_hides_unconfirmed_preview_dataset(auth_client, profile):
+def test_dataset_list_includes_active_datasets(auth_client, profile):
     create_ready_dataset(profile)
     Dataset.objects.create(
         profile=profile,
-        name="Preview Only",
-        original_filename="preview.csv",
-        status=DatasetStatus.PREVIEWED,
+        name="Scratch",
         headers=["name"],
         preview_rows=[{"name": "Ada"}],
         row_count=1,
@@ -766,7 +542,7 @@ def test_dataset_list_hides_unconfirmed_preview_dataset(auth_client, profile):
     assert response.status_code == 200
     content = response.content.decode()
     assert "People" in content
-    assert "Preview Only" not in content
+    assert "Scratch" in content
 
 
 def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, profile):
@@ -778,8 +554,6 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     Dataset.objects.create(
         profile=profile,
         name="Invoices",
-        original_filename="invoices.csv",
-        status=DatasetStatus.READY,
         headers=["invoice_id"],
         row_count=10,
     )
@@ -812,16 +586,12 @@ def test_home_defaults_to_project_grouped_recent_order(auth_client, profile):
     older_dataset = Dataset.objects.create(
         profile=profile,
         name="Alpha",
-        original_filename="alpha.csv",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
     newer_dataset = Dataset.objects.create(
         profile=profile,
         name="Beta",
-        original_filename="beta.csv",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
@@ -848,16 +618,12 @@ def test_dataset_list_supports_created_sort(auth_client, profile):
     older_created_dataset = Dataset.objects.create(
         profile=profile,
         name="Recently updated",
-        original_filename="recently-updated.csv",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
     newer_created_dataset = Dataset.objects.create(
         profile=profile,
         name="Recently created",
-        original_filename="recently-created.csv",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
@@ -887,8 +653,6 @@ def test_home_project_sort_puts_unassigned_dataset_group_last(auth_client, profi
     Dataset.objects.create(
         profile=profile,
         name="Alpha loose dataset",
-        original_filename="loose.csv",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
@@ -896,8 +660,6 @@ def test_home_project_sort_puts_unassigned_dataset_group_last(auth_client, profi
         profile=profile,
         project=project,
         name="Zulu project dataset",
-        original_filename="project.csv",
-        status=DatasetStatus.READY,
         headers=["id"],
         index_column="id",
     )
@@ -931,8 +693,6 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
         profile=profile,
         project=research,
         name="Research notes",
-        original_filename="notes.csv",
-        status=DatasetStatus.READY,
         headers=["note_id", "body"],
         index_column="note_id",
         row_count=1,
@@ -941,8 +701,6 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
         profile=profile,
         project=launch,
         name="Launch tasks",
-        original_filename="tasks.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "owner"],
         index_column="task_id",
         row_count=8,
@@ -950,8 +708,6 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
     Dataset.objects.create(
         profile=profile,
         name="Loose contacts",
-        original_filename="contacts.csv",
-        status=DatasetStatus.READY,
         headers=["email"],
         index_column="email",
         row_count=4,
@@ -987,8 +743,6 @@ def test_home_groups_project_datasets_by_section(auth_client, profile):
         project=project,
         section=blog,
         name="Content ledger",
-        original_filename="content.csv",
-        status=DatasetStatus.READY,
         headers=["slug"],
         index_column="slug",
     )
@@ -996,8 +750,6 @@ def test_home_groups_project_datasets_by_section(auth_client, profile):
         profile=profile,
         project=project,
         name="Topic backlog",
-        original_filename="topics.csv",
-        status=DatasetStatus.READY,
         headers=["topic"],
         index_column="topic",
     )
@@ -1025,8 +777,6 @@ def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client,
             profile=profile,
             project=project,
             name=f"Research dataset {index:03}",
-            original_filename=f"research-{index:03}.csv",
-            status=DatasetStatus.READY,
             headers=["record_id"],
             index_column="record_id",
             row_count=1,
@@ -1062,19 +812,14 @@ def test_archived_dataset_list_shows_archived_datasets_only(
         profile=profile,
         project=project,
         name="Archived people",
-        original_filename="archived-people.csv",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email"],
         index_column="email",
         row_count=4,
         archived_at=timezone.now(),
     )
-    Dataset.objects.create(
+    archived_draft = Dataset.objects.create(
         profile=profile,
         name="Archived draft",
-        original_filename="draft.csv",
-        status=DatasetStatus.PREVIEWED,
         headers=["email"],
         index_column="email",
         archived_at=timezone.now(),
@@ -1087,9 +832,6 @@ def test_archived_dataset_list_shows_archived_datasets_only(
     Dataset.objects.create(
         profile=other_user.profile,
         name="Archived other account dataset",
-        original_filename="other.csv",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email"],
         index_column="email",
         archived_at=timezone.now(),
@@ -1102,11 +844,14 @@ def test_archived_dataset_list_shows_archived_datasets_only(
 
     content = response.content.decode()
     assert response.status_code == 200
-    assert [dataset.key for dataset in response.context["datasets"]] == [archived_dataset.key]
+    assert [dataset.key for dataset in response.context["datasets"]] == [
+        archived_draft.key,
+        archived_dataset.key,
+    ]
     assert response.context["search_query"] == "archived"
     assert response.context["selected_sort"] == "archived"
     assert response.context["dataset_stats"] == {
-        "total_datasets": 1,
+        "total_datasets": 2,
         "total_rows": 4,
         "public_preview_count": 0,
         "total_projects": 1,
@@ -1121,7 +866,7 @@ def test_archived_dataset_list_shows_archived_datasets_only(
     assert "Research" in content
     assert "Active only" not in content
     assert "Archived active people" not in content
-    assert "Archived draft" not in content
+    assert "Archived draft" in content
     assert "Archived other account dataset" not in content
     assert reverse("home") in content
     assert reverse("dataset_restore", args=[archived_dataset.key]) in content
@@ -1135,9 +880,6 @@ def test_archived_dataset_list_paginates_archived_datasets(auth_client, profile)
         Dataset.objects.create(
             profile=profile,
             name=f"Archived dataset {index:03}",
-            original_filename="Created via API",
-            file_type="api",
-            status=DatasetStatus.READY,
             headers=["email"],
             index_column="email",
             row_count=0,
@@ -1162,9 +904,6 @@ def test_dataset_detail_orders_row_cells_by_headers(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Customers",
-        original_filename="customers.csv",
-        source_text="customer_id,name,plan\nC-1001,Ada Lovelace,Scale\n",
-        status=DatasetStatus.READY,
         headers=["customer_id", "name", "plan"],
         preview_rows=[{"name": "Ada Lovelace", "plan": "Scale", "customer_id": "C-1001"}],
         index_column="customer_id",
@@ -1188,7 +927,7 @@ def test_dataset_detail_orders_row_cells_by_headers(auth_client, profile):
     assert customer_id_position < name_position < plan_position
 
 
-def test_dataset_detail_links_imported_rows_and_truncates_cells(auth_client, profile):
+def test_dataset_detail_links_rows_and_truncates_cells(auth_client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.first()
 
@@ -1271,9 +1010,6 @@ def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
     source = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sprint_id", "task_dataset"],
         column_schema={
             "sprint_id": {"type": DatasetColumnType.TEXT},
@@ -1284,8 +1020,6 @@ def test_dataset_detail_links_dataset_reference_cells(auth_client, profile):
         },
         index_column="sprint_id",
         row_count=1,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
     DatasetRow.objects.create(
         dataset=source,
@@ -1315,9 +1049,6 @@ def test_dataset_detail_links_project_reference_cells(auth_client, profile):
     source = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sprint_id", "owning_project"],
         column_schema={
             "sprint_id": {"type": DatasetColumnType.TEXT},
@@ -1328,8 +1059,6 @@ def test_dataset_detail_links_project_reference_cells(auth_client, profile):
         },
         index_column="sprint_id",
         row_count=1,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
     DatasetRow.objects.create(
         dataset=source,
@@ -1359,9 +1088,6 @@ def test_dataset_detail_renders_archived_project_reference_cells_without_dead_li
     source = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sprint_id", "owning_project"],
         column_schema={
             "sprint_id": {"type": DatasetColumnType.TEXT},
@@ -1372,8 +1098,6 @@ def test_dataset_detail_renders_archived_project_reference_cells_without_dead_li
         },
         index_column="sprint_id",
         row_count=1,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
     DatasetRow.objects.create(
         dataset=source,
@@ -1401,9 +1125,6 @@ def test_dataset_detail_renders_rowset_dataset_urls_as_text(
     target_dataset = Dataset.objects.create(
         profile=profile,
         name="Sprint task board",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["task_id", "title"],
         index_column="task_id",
         row_count=0,
@@ -1674,7 +1395,7 @@ def test_dataset_detail_does_not_resolve_disabled_share_urls_to_private_links(
     assert "Open Rowset URL" not in content
 
 
-def test_dataset_detail_paginates_imported_rows_without_public_preview(auth_client, profile):
+def test_dataset_detail_paginates_rows_without_public_preview(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.rows.all().delete()
     total_rows = DATASET_DETAIL_ROW_PAGE_SIZE + 1
@@ -2322,9 +2043,6 @@ def test_dataset_row_create_view_uses_generated_index(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Tasks",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["rowset_id", "task"],
         index_column="rowset_id",
         index_generated=True,
@@ -2726,26 +2444,6 @@ def test_dataset_detail_shows_archive_action_for_active_dataset(auth_client, pro
     assert "Dataset archived" not in content
 
 
-def test_dataset_detail_hides_archive_action_for_non_ready_dataset(auth_client, profile):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="Processing import",
-        original_filename="processing.csv",
-        source_text="name\nAda\n",
-        status=DatasetStatus.PROCESSING,
-        headers=["name"],
-        preview_rows=[{"name": "Ada"}],
-        row_count=0,
-    )
-
-    response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
-
-    assert response.status_code == 200
-    assert reverse("dataset_archive", args=[dataset.key]) not in content
-    assert "Archive" not in content
-
-
 def test_dataset_detail_shows_archived_badge_without_archive_action(auth_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.archived_at = timezone.now()
@@ -2759,92 +2457,6 @@ def test_dataset_detail_shows_archived_badge_without_archive_action(auth_client,
     assert reverse("dataset_archive", args=[dataset.key]) not in content
     assert reverse("dataset_restore", args=[dataset.key]) in content
     assert "Unarchive" in content
-
-
-def test_dataset_detail_exposes_processing_status_live_region(auth_client, profile):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="Processing import",
-        original_filename="processing.csv",
-        source_text="name\nAda\n",
-        status=DatasetStatus.PROCESSING,
-        headers=["name"],
-        preview_rows=[{"name": "Ada"}],
-        row_count=0,
-    )
-
-    response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
-
-    assert response.status_code == 200
-    assert 'aria-label="Dataset status: Processing"' in content
-    assert ">Processing</span>" in content
-    assert 'id="dataset-status-panel"' in content
-    assert 'hx-get="' in content
-    assert 'hx-trigger="every 2.5s"' in content
-    assert 'role="status"' in content
-    assert 'aria-live="polite"' in content
-    assert "Still importing rows" in content
-
-
-def test_dataset_detail_failed_status_has_accessible_fallback_message(auth_client, profile):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="Failed import",
-        original_filename="failed.csv",
-        source_text="name\nAda\n",
-        status=DatasetStatus.FAILED,
-        headers=["name"],
-        preview_rows=[{"name": "Ada"}],
-        row_count=0,
-    )
-
-    response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
-
-    assert response.status_code == 200
-    assert 'aria-label="Dataset status: Failed"' in content
-    assert ">Failed</span>" in content
-    assert 'role="alert"' in content
-    assert 'aria-live="assertive"' in content
-    assert "Import failed. Check the source data and try again." in content
-
-
-def test_dataset_status_htmx_renders_processing_partial(auth_client, profile):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="Processing import",
-        original_filename="processing.csv",
-        source_text="name\nAda\n",
-        status=DatasetStatus.PROCESSING,
-        headers=["name"],
-        preview_rows=[{"name": "Ada"}],
-        row_count=0,
-    )
-
-    response = auth_client.get(
-        reverse("dataset_status", args=[dataset.key]),
-        HTTP_HX_REQUEST="true",
-    )
-    content = response.content.decode()
-
-    assert response.status_code == 200
-    assert 'id="dataset-status-panel"' in content
-    assert 'hx-trigger="every 2.5s"' in content
-    assert "<html" not in content.lower()
-    assert "Still importing rows" in content
-
-
-def test_dataset_status_htmx_refreshes_when_ready(auth_client, profile):
-    dataset = create_ready_dataset(profile)
-
-    response = auth_client.get(
-        reverse("dataset_status", args=[dataset.key]),
-        HTTP_HX_REQUEST="true",
-    )
-
-    assert response.status_code == 200
-    assert response.headers["HX-Refresh"] == "true"
 
 
 def test_project_detail_dataset_rows_omit_status_and_actions(auth_client, profile):
@@ -3032,30 +2644,6 @@ def test_dataset_archive_archives_owned_dataset(auth_client, profile):
     assert dataset.public_enabled is False
 
 
-def test_dataset_archive_rejects_non_ready_dataset(auth_client, profile):
-    dataset = Dataset.objects.create(
-        profile=profile,
-        name="Processing import",
-        original_filename="processing.csv",
-        source_text="name\nAda\n",
-        status=DatasetStatus.PROCESSING,
-        headers=["name"],
-        preview_rows=[{"name": "Ada"}],
-        row_count=0,
-    )
-
-    response = auth_client.post(reverse("dataset_archive", args=[dataset.key]))
-
-    assert response.status_code == 302
-    assert response.url == dataset.get_absolute_url()
-    dataset.refresh_from_db()
-    assert dataset.archived_at is None
-    flash_messages = list(get_messages(response.wsgi_request))
-    assert len(flash_messages) == 1
-    assert flash_messages[0].level == message_constants.ERROR
-    assert str(flash_messages[0]) == "Only ready datasets can be archived from the dataset page."
-
-
 def test_dataset_archive_requires_post(auth_client, profile):
     dataset = create_ready_dataset(profile)
 
@@ -3157,9 +2745,7 @@ def test_dataset_restore_rejects_free_account_over_active_dataset_limit(auth_cli
         Dataset.objects.filter(
             profile=profile,
             archived_at__isnull=True,
-        )
-        .exclude(status=DatasetStatus.PREVIEWED)
-        .count()
+        ).count()
         == 2
     )
     flash_messages = list(get_messages(response.wsgi_request))
@@ -3305,12 +2891,10 @@ def test_sqlite_export_handles_empty_headers():
     assert sqlite_rows(content) == []
 
 
-def test_dataset_export_requires_ready_dataset(auth_client, profile):
+def test_dataset_export_allows_active_dataset(auth_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Preview Only",
-        original_filename="preview.csv",
-        status=DatasetStatus.PREVIEWED,
         headers=["name"],
         preview_rows=[{"name": "Ada"}],
         row_count=1,
@@ -3318,7 +2902,8 @@ def test_dataset_export_requires_ready_dataset(auth_client, profile):
 
     response = auth_client.get(reverse("dataset_export", args=[dataset.key, "csv"]))
 
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/csv")
 
 
 def test_dataset_api_crud_and_export(client, profile):
@@ -3406,6 +2991,18 @@ def test_dataset_api_crud_and_export(client, profile):
     assert delete_response.status_code == 200
     assert delete_response.json()["dataset"] == str(dataset.key)
     assert not DatasetRow.objects.filter(id=row_id).exists()
+
+
+def test_dataset_api_exports_archived_dataset(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at", "updated_at"])
+
+    response = client.get(f"/api/datasets/{dataset.key}/export.csv?api_key={profile.key}")
+
+    assert response.status_code == 200
+    exported = list(csv.DictReader(io.StringIO(response.content.decode())))
+    assert exported[0] == {"name": "Ada", "email": "ada@example.com"}
 
 
 def test_prepare_dataset_image_rejects_encoded_payload_above_limit(monkeypatch):
@@ -3559,15 +3156,10 @@ def test_image_attach_records_failed_rollback_file_cleanup(profile, monkeypatch)
     dataset = Dataset.objects.create(
         profile=profile,
         name="Image cleanup",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sku", "photo"],
         column_schema={"photo": {"type": DatasetColumnType.IMAGE}},
         index_column="sku",
         row_count=1,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
     DatasetRow.objects.create(
         dataset=dataset,
@@ -3639,7 +3231,6 @@ def test_dataset_asset_delete_records_failed_file_cleanup(
         column_name="photo",
         file="dataset-assets/test/original.png",
         thumbnail="dataset-assets/test/thumbnail.jpg",
-        original_filename="photo.png",
         content_type="image/png",
         byte_size=10,
         width=3,
@@ -4357,11 +3948,6 @@ def test_dataset_api_lists_archived_datasets_separately(client, profile):
     archived_dataset.name = "Archived people"
     archived_dataset.archived_at = timezone.now()
     archived_dataset.save(update_fields=["name", "archived_at"])
-    preview_archived_dataset = create_ready_dataset(profile)
-    preview_archived_dataset.name = "Archived draft"
-    preview_archived_dataset.status = DatasetStatus.PREVIEWED
-    preview_archived_dataset.archived_at = timezone.now()
-    preview_archived_dataset.save(update_fields=["name", "status", "archived_at"])
 
     archived_response = client.get(f"/api/datasets/archived?api_key={profile.key}")
 
@@ -4372,7 +3958,6 @@ def test_dataset_api_lists_archived_datasets_separately(client, profile):
     ]
     assert archived_response.json()["datasets"][0]["name"] == "Archived people"
     assert archived_response.json()["datasets"][0]["archived_at"] is not None
-    assert "Archived draft" not in {item["name"] for item in archived_response.json()["datasets"]}
 
     active_response = client.get(f"/api/datasets?api_key={profile.key}")
     assert active_response.status_code == 200
@@ -5139,9 +4724,6 @@ def test_dataset_api_project_reference_columns_reject_other_profile_projects(
     source = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sprint_id", "owning_project"],
         column_schema={
             "sprint_id": {"type": DatasetColumnType.TEXT},
@@ -5152,8 +4734,6 @@ def test_dataset_api_project_reference_columns_reject_other_profile_projects(
         },
         index_column="sprint_id",
         row_count=0,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
 
     response = client.post(
@@ -5180,9 +4760,6 @@ def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, p
     source = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sprint_id", "task_dataset"],
         column_schema={
             "sprint_id": {"type": DatasetColumnType.TEXT},
@@ -5193,8 +4770,6 @@ def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, p
         },
         index_column="sprint_id",
         row_count=0,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
 
     create_response = client.post(
@@ -5232,9 +4807,6 @@ def test_dataset_api_project_reference_columns_canonicalize_row_writes(client, p
     source = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sprint_id", "owning_project"],
         column_schema={
             "sprint_id": {"type": DatasetColumnType.TEXT},
@@ -5245,8 +4817,6 @@ def test_dataset_api_project_reference_columns_canonicalize_row_writes(client, p
         },
         index_column="sprint_id",
         row_count=0,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
 
     create_response = client.post(
@@ -5284,9 +4854,6 @@ def test_dataset_api_project_reference_index_canonicalizes_row_writes(client, pr
     source = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["owning_project", "sprint_id"],
         column_schema={
             "owning_project": {
@@ -5297,8 +4864,6 @@ def test_dataset_api_project_reference_index_canonicalizes_row_writes(client, pr
         },
         index_column="owning_project",
         row_count=0,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
 
     response = client.post(
@@ -5587,15 +5152,13 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
         profile=profile,
         project=project,
         name="Draft upload",
-        original_filename="draft.csv",
-        status=DatasetStatus.PREVIEWED,
         headers=["email", "name"],
         index_column="email",
     )
 
     list_response = client.get(f"/api/projects?api_key={profile.key}")
     assert list_response.status_code == 200
-    assert list_response.json()["projects"][0]["dataset_count"] == 1
+    assert list_response.json()["projects"][0]["dataset_count"] == 2
     assert list_response.json()["projects"][0]["metadata"]["github_repo"] == (
         "https://github.com/acme/launch"
     )
@@ -5606,11 +5169,11 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
     assert detail_response.json()["project"]["metadata"]["source_thread"]["url"] == (
         "https://acme.slack.com/archives/C123/p456"
     )
-    assert detail_response.json()["datasets"]["count"] == 1
-    assert detail_response.json()["datasets"]["total_count"] == 1
-    assert detail_response.json()["datasets"]["datasets"][0]["name"] == "Launch contacts"
+    assert detail_response.json()["datasets"]["count"] == 2
+    assert detail_response.json()["datasets"]["total_count"] == 2
     assert [dataset["name"] for dataset in detail_response.json()["datasets"]["datasets"]] == [
-        "Launch contacts"
+        "Draft upload",
+        "Launch contacts",
     ]
 
 
@@ -5647,8 +5210,6 @@ def test_project_api_archives_project_and_hides_it_from_project_endpoints(client
         profile=profile,
         project=project,
         name="Launch contacts",
-        original_filename="launch.csv",
-        status=DatasetStatus.READY,
         headers=["email", "name"],
         index_column="email",
     )
@@ -6225,9 +5786,6 @@ def test_dataset_api_updates_column_types_to_project_reference(client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sprint_id", "owning_project"],
         column_schema={
             "sprint_id": {"type": DatasetColumnType.TEXT},
@@ -6235,8 +5793,6 @@ def test_dataset_api_updates_column_types_to_project_reference(client, profile):
         },
         index_column="sprint_id",
         row_count=1,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
     DatasetRow.objects.create(
         dataset=dataset,
@@ -6287,9 +5843,6 @@ def test_dataset_api_rejects_project_reference_column_type_for_other_profile_val
     dataset = Dataset.objects.create(
         profile=profile,
         name="Sprint history",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["sprint_id", "owning_project"],
         column_schema={
             "sprint_id": {"type": DatasetColumnType.TEXT},
@@ -6297,8 +5850,6 @@ def test_dataset_api_rejects_project_reference_column_type_for_other_profile_val
         },
         index_column="sprint_id",
         row_count=1,
-        confirmed_at=timezone.now(),
-        processed_at=timezone.now(),
     )
     DatasetRow.objects.create(
         dataset=dataset,
@@ -6387,8 +5938,6 @@ def test_dataset_api_add_column_backfills_rows_across_bulk_update_chunks(client,
     dataset = Dataset.objects.create(
         profile=profile,
         name="Large People",
-        original_filename="large.csv",
-        status=DatasetStatus.READY,
         headers=["email"],
         index_column="email",
         row_count=1001,
@@ -6517,8 +6066,6 @@ def test_dataset_api_rename_only_stringifies_renamed_value(client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Mixed",
-        original_filename="mixed.csv",
-        status=DatasetStatus.READY,
         headers=["name", "email", "score"],
         index_column="email",
         row_count=1,
@@ -7052,9 +6599,6 @@ def test_project_detail_paginates_assigned_datasets(auth_client, profile):
             profile=profile,
             project=project,
             name=f"Project dataset {index:03}",
-            original_filename="Created via API",
-            file_type="api",
-            status=DatasetStatus.READY,
             headers=["email"],
             index_column="email",
             row_count=0,
@@ -7063,8 +6607,6 @@ def test_project_detail_paginates_assigned_datasets(auth_client, profile):
         profile=profile,
         project=project,
         name="Draft upload",
-        original_filename="draft.csv",
-        status=DatasetStatus.PREVIEWED,
         headers=["email"],
         index_column="email",
     )
@@ -7074,15 +6616,15 @@ def test_project_detail_paginates_assigned_datasets(auth_client, profile):
 
     assert response.status_code == 200
     assert len(response.context["datasets"]) == 100
-    assert "101 datasets" in content
-    assert "Draft upload" not in content
+    assert "102 datasets" in content
+    assert "Draft upload" in content
     assert "Page 1 of 2" in content
     assert "archived_page=2&amp;page=2" in content
 
     page_two = auth_client.get(f"{project.get_absolute_url()}?page=2")
 
     assert page_two.status_code == 200
-    assert len(page_two.context["datasets"]) == 1
+    assert len(page_two.context["datasets"]) == 2
     assert "Page 2 of 2" in page_two.content.decode()
 
 
@@ -7096,9 +6638,6 @@ def test_project_detail_groups_datasets_by_section(auth_client, profile):
         project=project,
         section=blog,
         name="Content ledger",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["slug"],
         index_column="slug",
     )
@@ -7106,9 +6645,6 @@ def test_project_detail_groups_datasets_by_section(auth_client, profile):
         profile=profile,
         project=project,
         name="Backlog",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["signal"],
         index_column="signal",
     )
@@ -7116,9 +6652,6 @@ def test_project_detail_groups_datasets_by_section(auth_client, profile):
         profile=profile,
         project=project,
         name="Signals",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["signal"],
         index_column="signal",
     )
@@ -7184,9 +6717,6 @@ def test_project_detail_paginates_archived_datasets(auth_client, profile):
             profile=profile,
             project=project,
             name=f"Archived dataset {index:03d}",
-            original_filename="Created via API",
-            file_type="api",
-            status=DatasetStatus.READY,
             headers=["slug"],
             index_column="slug",
             archived_at=archived_at - timedelta(minutes=index),
@@ -7433,25 +6963,3 @@ def test_dataset_detail_shows_column_descriptions_on_header_hover(
     assert 'id="row-column-menu-description-0"' in content
     assert 'name="row_sort" value="col_0"' in content
     assert "Contains text" in content
-
-
-def test_dataset_owner_cannot_update_column_types_while_processing(auth_client, profile):
-    dataset = create_ready_dataset(profile)
-    dataset.status = DatasetStatus.PROCESSING
-    dataset.column_schema = {"name": {"type": "text"}, "email": {"type": "email"}}
-    dataset.save(update_fields=["status", "column_schema"])
-
-    response = auth_client.post(
-        reverse("dataset_update_column_settings", args=[dataset.key]),
-        {
-            "column_name": ["name", "email"],
-            "column_type": ["text", "text"],
-        },
-    )
-
-    assert response.status_code == 302
-    dataset.refresh_from_db()
-    assert dataset.column_schema == {
-        "name": {"type": "text"},
-        "email": {"type": "email"},
-    }

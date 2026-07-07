@@ -1,6 +1,6 @@
 ---
 title: How Rowset datasets work
-description: Understand Rowset dataset lifecycle, index columns, schema context, relationships, exports, and sharing.
+description: Understand Rowset datasets, index columns, schema context, relationships, exports, and sharing.
 keywords: Rowset datasets, MCP datasets, index columns
 ---
 
@@ -17,11 +17,11 @@ Use this page as the hub for dataset behavior. If you only need endpoint-level
 details, go straight to the [Dataset API](/docs/dataset-api/) or
 [MCP tool reference](/docs/mcp-tools/).
 
-## Dataset lifecycle
+## Dataset state
 
-1. **Ready** — API-created datasets are available immediately.
-2. **Processing** — Legacy background imports may still finish asynchronously.
-3. **Failed** — A background import stopped because its stored source could not be parsed or validated.
+Datasets are active when created and remain editable until archived. Archived
+datasets keep their rows and schema metadata but are hidden from normal dataset
+lists.
 
 ## Choosing an index column
 
@@ -62,7 +62,7 @@ index and store that value in `CRM Messages.person_id`.
 Relationships are intentionally simple:
 
 - the source column stores the target row's index value
-- the target must be another ready dataset in the same account
+- the target must be another active dataset in the same account
 - blank source values are allowed
 - when validation is enabled, row writes fail if a non-blank value does not point
   at an existing target row

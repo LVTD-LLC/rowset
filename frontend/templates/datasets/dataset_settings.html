@@ -10,9 +10,7 @@
                     {% if dataset.public_enabled %}
                         <a href="{{ public_url }}" class="fb-button-secondary">Open public preview</a>
                     {% endif %}
-                    {% if dataset.status == "ready" %}
-                        {% include "components/dataset_export_menu.html" %}
-                    {% endif %}
+                    {% include "components/dataset_export_menu.html" %}
                 </div>
             </div>
             <div>
@@ -252,7 +250,7 @@
                                         {% endfor %}
                                     </select>
                                     {% if not relationship_target_dataset_choices %}
-                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Create another ready dataset before adding a relationship.</p>
+                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Create another active dataset before adding a relationship.</p>
                                     {% endif %}
                                 </div>
                                 <label class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200">
@@ -428,7 +426,7 @@
                                  aria-labelledby="delete-dataset-heading">
                             <h3 id="delete-dataset-heading"
                                 class="text-lg font-semibold text-red-900 dark:text-red-100">Delete dataset</h3>
-                            <p class="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">Delete this dataset, its imported rows, and its stored source file. This cannot be undone.</p>
+                            <p class="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">Delete this dataset, its rows, assets, and settings. This cannot be undone.</p>
                             <form method="post"
                                   action="{% url 'dataset_delete' dataset.key %}"
                                   onsubmit="return confirm('Delete {{ dataset.name|escapejs }}? This cannot be undone.');"

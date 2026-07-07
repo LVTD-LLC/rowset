@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 from xml.sax.saxutils import escape
@@ -34,7 +34,7 @@ from django.db.models.functions import Cast, Concat, Lower, Replace, Substr, Tri
 from django.utils import timezone
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from apps.datasets.choices import DatasetColumnType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType
 from apps.datasets.constants import (
     MAX_COLUMN_DESCRIPTION_LENGTH,
     MAX_DATASET_IMAGE_BYTES,
@@ -53,7 +53,7 @@ from apps.datasets.vector_search import (
 )
 
 
-class CSVParseError(ValueError):
+class DatasetValidationError(ValueError):
     pass
 
 
@@ -90,7 +90,6 @@ class VectorBackfillResult:
 
 
 DEFAULT_VECTOR_BACKFILL_BATCH_SIZE = 100
-GENERATED_INDEX_CHOICE = "__rowset_generated__"
 GENERATED_INDEX_BASENAME = "rowset_id"
 DEFAULT_PUBLIC_PAGE_SIZE = 10
 MAX_PUBLIC_PAGE_SIZE = 100
@@ -103,9 +102,6 @@ DATASET_IMAGE_ALLOWED_FORMATS = {
     "PNG": "image/png",
     "WEBP": "image/webp",
 }
-# Backward compatibility for datasets that already stored normalized sheet text
-# before Rowset removed Google Sheets import/sync as an active product path.
-LEGACY_GOOGLE_SHEETS_FILE_TYPE = "google_sheets"
 COLUMN_TYPE_SAMPLE_LIMIT = 200
 COLUMN_SCHEMA_TYPE_KEY = "type"
 COLUMN_SCHEMA_CHOICES_KEY = "choices"
@@ -283,13 +279,6 @@ CURRENCY_HEADER_TOKENS = {
 }
 
 
-def _validate_vector_backfill_dataset(dataset) -> None:
-    if dataset.status != DatasetStatus.READY:
-        raise ValueError("Vector backfill requires a ready dataset.")
-    if dataset.archived_at is not None:
-        raise ValueError("Vector backfill cannot index archived datasets.")
-
-
 def _dataset_rows_for_vector_backfill(dataset, *, limit: int | None = None):
     rows = dataset.rows.order_by("row_number", "id").only(
         "id",
@@ -366,7 +355,6 @@ def backfill_dataset_vectors(
     batch_size: int = DEFAULT_VECTOR_BACKFILL_BATCH_SIZE,
     stop_on_error: bool = False,
 ) -> VectorBackfillResult:
-    _validate_vector_backfill_dataset(dataset)
     if batch_size < 1:
         raise ValueError("batch_size must be at least 1.")
     if limit is not None and limit < 1:
@@ -436,7 +424,6 @@ def index_dataset_row_vector(
     vector_store: QdrantVectorStore | None = None,
 ) -> None:
     dataset = row.dataset
-    _validate_vector_backfill_dataset(dataset)
     provider = embedding_provider or get_embedding_provider()
     store = vector_store or QdrantVectorStore(
         embedding_model=provider.model,
@@ -481,27 +468,6 @@ def delete_dataset_vectors(
 
 
 @dataclass(frozen=True)
-class TabularPreview:
-    headers: list[str]
-    preview_rows: list[dict[str, str]]
-    row_count: int
-    source_text: str
-    file_type: str
-    column_schema: dict[str, dict[str, Any]] = field(default_factory=dict)
-
-    @property
-    def text(self) -> str:
-        return self.source_text
-
-
-@dataclass(frozen=True)
-class IndexedRow:
-    row_number: int
-    index_value: str
-    data: dict[str, str]
-
-
-@dataclass(frozen=True)
 class PreparedDatasetImage:
     filename: str
     content_type: str
@@ -515,97 +481,6 @@ class PreparedDatasetImage:
 
 def ordered_row_values(headers: list[str], row_data: dict[str, object]) -> list[object]:
     return [row_data.get(header, "") for header in headers]
-
-
-class TabularParser(Protocol):
-    file_type: str
-
-    def source_text_from_file(self, uploaded_file) -> str: ...
-
-    def preview_file(self, uploaded_file, sample_size: int = 5) -> TabularPreview: ...
-
-    def iter_text_rows(self, text: str): ...
-
-
-class CSVParser:
-    file_type = "csv"
-
-    def source_text_from_file(self, uploaded_file) -> str:
-        uploaded_file.seek(0)
-        raw = uploaded_file.read()
-        uploaded_file.seek(0)
-        return _decode_bytes(raw)
-
-    def preview_file(self, uploaded_file, sample_size: int = 5) -> TabularPreview:
-        text = self.source_text_from_file(uploaded_file)
-        return self.preview_text(text, sample_size=sample_size)
-
-    def preview_text(self, text: str, sample_size: int = 5) -> TabularPreview:
-        reader = _reader_for_text(text)
-        headers = _validate_headers(reader.fieldnames)
-
-        preview_rows = []
-        column_samples: dict[str, list[str]] = {header: [] for header in headers}
-        row_count = 0
-        for row in reader:
-            row_count += 1
-            normalized = {header: (row.get(header) or "") for header in headers}
-            _collect_column_samples(column_samples, normalized)
-            if len(preview_rows) < sample_size:
-                preview_rows.append(normalized)
-
-        return TabularPreview(
-            headers=headers,
-            preview_rows=preview_rows,
-            row_count=row_count,
-            source_text=text,
-            file_type=self.file_type,
-            column_schema=_infer_column_schema_from_samples(headers, column_samples),
-        )
-
-    def iter_text_rows(self, text: str):
-        reader = _reader_for_text(text)
-        headers = _validate_headers(reader.fieldnames)
-
-        for index, row in enumerate(reader, start=1):
-            yield index, {header: (row.get(header) or "") for header in headers}
-
-
-class ParquetParser:
-    file_type = "parquet"
-
-    def source_text_from_file(self, uploaded_file) -> str:
-        dataframe = _parquet_dataframe(uploaded_file)
-        original_headers = dataframe.columns
-        headers = _validate_headers(original_headers, file_kind="Parquet")
-        dataframe = dataframe.rename(dict(zip(original_headers, headers, strict=True)))
-        normalized = dataframe.select([pl.col(header).cast(pl.String) for header in headers])
-        normalized = normalized.fill_null("")
-        return normalized.write_csv()
-
-    def preview_file(self, uploaded_file, sample_size: int = 5) -> TabularPreview:
-        source_text = self.source_text_from_file(uploaded_file)
-        preview = CSVParser().preview_text(source_text, sample_size=sample_size)
-        return TabularPreview(
-            headers=preview.headers,
-            preview_rows=preview.preview_rows,
-            row_count=preview.row_count,
-            source_text=source_text,
-            file_type=self.file_type,
-            column_schema=preview.column_schema,
-        )
-
-    def iter_text_rows(self, text: str):
-        yield from CSVParser().iter_text_rows(text)
-
-
-PARSERS_BY_EXTENSION = {".csv": CSVParser(), ".parquet": ParquetParser()}
-PARSERS_BY_TYPE = {parser.file_type: parser for parser in PARSERS_BY_EXTENSION.values()}
-PARSERS_BY_TYPE[LEGACY_GOOGLE_SHEETS_FILE_TYPE] = CSVParser()
-
-
-# Backward-compatible names used by existing views/tests.
-CSVPreview = TabularPreview
 
 
 def _collect_column_samples(column_samples: dict[str, list[str]], row: dict[str, str]) -> None:
@@ -767,7 +642,9 @@ def normalize_column_type(column_type: str | None) -> str:
     normalized = COLUMN_TYPE_ALIASES.get(normalized, normalized)
     if normalized not in DatasetColumnType.values:
         allowed = ", ".join(DatasetColumnType.values)
-        raise CSVParseError(f"Unsupported column type '{column_type}'. Use one of: {allowed}.")
+        raise DatasetValidationError(
+            f"Unsupported column type '{column_type}'. Use one of: {allowed}."
+        )
     return normalized
 
 
@@ -784,10 +661,10 @@ def _normalize_column_description(header: str, raw_description) -> str:
     if raw_description is None:
         return ""
     if not isinstance(raw_description, str):
-        raise CSVParseError(f"Column '{header}' description must be a string.")
+        raise DatasetValidationError(f"Column '{header}' description must be a string.")
     description = raw_description.strip()
     if len(description) > MAX_COLUMN_DESCRIPTION_LENGTH:
-        raise CSVParseError(
+        raise DatasetValidationError(
             f"Column '{header}' description must be "
             f"{MAX_COLUMN_DESCRIPTION_LENGTH} characters or fewer."
         )
@@ -805,7 +682,7 @@ def _column_description_from_schema_entry(header: str, entry, fallback_entry) ->
 
 def _normalize_choice_values(header: str, raw_choices) -> list[str]:
     if not isinstance(raw_choices, (list, tuple)):
-        raise CSVParseError(f"Choice column '{header}' choices must be a list.")
+        raise DatasetValidationError(f"Choice column '{header}' choices must be a list.")
 
     choices = []
     seen = set()
@@ -813,18 +690,20 @@ def _normalize_choice_values(header: str, raw_choices) -> list[str]:
     for raw_choice in raw_choices:
         choice = str("" if raw_choice is None else raw_choice).strip()
         if not choice:
-            raise CSVParseError(f"Choice column '{header}' choices must be non-empty strings.")
+            raise DatasetValidationError(
+                f"Choice column '{header}' choices must be non-empty strings."
+            )
         if choice in seen:
             duplicates.add(choice)
         seen.add(choice)
         choices.append(choice)
 
     if not choices:
-        raise CSVParseError(f"Choice column '{header}' requires at least one choice.")
+        raise DatasetValidationError(f"Choice column '{header}' requires at least one choice.")
 
     if duplicates:
         joined = ", ".join(sorted(duplicates))
-        raise CSVParseError(f"Choice column '{header}' choices must be unique: {joined}.")
+        raise DatasetValidationError(f"Choice column '{header}' choices must be unique: {joined}.")
 
     return choices
 
@@ -834,7 +713,7 @@ def _choice_source_entry(header: str, entry, fallback_entry):
         return entry
     if isinstance(fallback_entry, dict) and COLUMN_SCHEMA_CHOICES_KEY in fallback_entry:
         return fallback_entry
-    raise CSVParseError(f"Choice column '{header}' requires at least one choice.")
+    raise DatasetValidationError(f"Choice column '{header}' requires at least one choice.")
 
 
 def _reference_target_from_schema_entry(entry, fallback_entry):
@@ -861,7 +740,9 @@ def _normalize_reference_target(header: str, raw_target) -> str:
     allowed_targets = {DATASET_REFERENCE_TARGET, PROJECT_REFERENCE_TARGET}
     if normalized_target not in allowed_targets:
         allowed = ", ".join(sorted(allowed_targets))
-        raise CSVParseError(f"Reference column '{header}' target must be one of: {allowed}.")
+        raise DatasetValidationError(
+            f"Reference column '{header}' target must be one of: {allowed}."
+        )
     return normalized_target
 
 
@@ -933,7 +814,7 @@ def validate_image_row_values(
             continue
         if allow_asset_refs and is_dataset_asset_ref(value):
             continue
-        raise CSVParseError(
+        raise DatasetValidationError(
             f"Column '{header}' is an image column. Leave it blank and attach an image asset."
         )
 
@@ -951,7 +832,7 @@ def normalize_column_schema(
         unknown_headers = sorted(set(raw_schema) - set(headers))
         if unknown_headers:
             joined = ", ".join(unknown_headers)
-            raise CSVParseError(f"Column types include unknown headers: {joined}.")
+            raise DatasetValidationError(f"Column types include unknown headers: {joined}.")
 
     normalized_schema = {}
     for header in headers:
@@ -1173,7 +1054,7 @@ def validate_and_canonicalize_choice_row_values(
         canonical_value = _canonical_choice_value(value, choices)
         if canonical_value is None:
             allowed = ", ".join(choices)
-            raise CSVParseError(f"Column '{header}' must be blank or one of: {allowed}.")
+            raise DatasetValidationError(f"Column '{header}' must be blank or one of: {allowed}.")
         row_data[header] = canonical_value
 
 
@@ -1815,98 +1696,26 @@ def generated_index_column_schema() -> dict[str, str]:
     return {COLUMN_SCHEMA_TYPE_KEY: DatasetColumnType.INTEGER}
 
 
-def _decode_bytes(raw: bytes) -> str:
-    for encoding in ("utf-8-sig", "utf-8", "latin-1"):
-        try:
-            return raw.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    raise CSVParseError("Could not decode the CSV file. Please upload UTF-8 or latin-1 text.")
-
-
-def _parquet_dataframe(uploaded_file) -> pl.DataFrame:
-    uploaded_file.seek(0)
-    raw = uploaded_file.read()
-    uploaded_file.seek(0)
-    try:
-        return pl.read_parquet(io.BytesIO(raw))
-    except Exception as exc:
-        raise CSVParseError("Could not read the Parquet file.") from exc
-
-
-def _reader_for_text(text: str):
-    if not text.strip():
-        raise CSVParseError("The CSV file is empty.")
-
-    sample = text[:8192]
-    try:
-        dialect = csv.Sniffer().sniff(sample)
-    except csv.Error:
-        dialect = csv.excel
-
-    return csv.DictReader(io.StringIO(text), dialect=dialect)
-
-
 def _validate_headers(headers: list[str] | None, file_kind: str = "CSV") -> list[str]:
     if not headers:
-        raise CSVParseError(f"Could not find a header row in the {file_kind} file.")
+        raise DatasetValidationError(f"Could not find any {file_kind.lower()} headers.")
 
     cleaned = [(header or "").strip() for header in headers]
     if any(not header for header in cleaned):
-        raise CSVParseError(f"Every {file_kind} column needs a non-empty header.")
+        raise DatasetValidationError(f"Every {file_kind.lower()} column needs a non-empty header.")
 
     duplicates = sorted({header for header in cleaned if cleaned.count(header) > 1})
     if duplicates:
         joined = ", ".join(duplicates)
-        raise CSVParseError(f"{file_kind} headers must be unique. Duplicate headers: {joined}.")
+        raise DatasetValidationError(
+            f"{file_kind} headers must be unique. Duplicate headers: {joined}."
+        )
 
     return cleaned
 
 
 def validate_headers(headers: list[str] | None, file_kind: str = "CSV") -> list[str]:
     return _validate_headers(headers, file_kind=file_kind)
-
-
-def parser_for_filename(filename: str) -> TabularParser:
-    suffix = Path(filename).suffix.lower()
-    parser = PARSERS_BY_EXTENSION.get(suffix)
-    if not parser:
-        raise CSVParseError("Rowset accepts CSV and Parquet files.")
-    return parser
-
-
-def parser_for_file_type(file_type: str) -> TabularParser:
-    try:
-        return PARSERS_BY_TYPE[file_type]
-    except KeyError as exc:
-        raise CSVParseError(f"Unsupported file type: {file_type}.") from exc
-
-
-def preview_uploaded_table(uploaded_file, filename: str, sample_size: int = 5) -> TabularPreview:
-    return parser_for_filename(filename).preview_file(uploaded_file, sample_size=sample_size)
-
-
-def source_text_from_file(file_obj, file_type: str) -> str:
-    return parser_for_file_type(file_type).source_text_from_file(file_obj)
-
-
-def preview_csv_text(text: str, sample_size: int = 5) -> CSVPreview:
-    return CSVParser().preview_text(text, sample_size=sample_size)
-
-
-def preview_csv_file(uploaded_file, sample_size: int = 5) -> CSVPreview:
-    return CSVParser().preview_file(uploaded_file, sample_size=sample_size)
-
-
-def iter_csv_text_rows(text: str):
-    yield from CSVParser().iter_text_rows(text)
-
-
-def iter_csv_rows(file_obj):
-    file_obj.seek(0)
-    raw = file_obj.read()
-    text = _decode_bytes(raw)
-    yield from iter_csv_text_rows(text)
 
 
 def generated_index_column_name(headers: list[str]) -> str:
@@ -1917,38 +1726,6 @@ def generated_index_column_name(headers: list[str]) -> str:
     while f"{GENERATED_INDEX_BASENAME}_{suffix}" in headers:
         suffix += 1
     return f"{GENERATED_INDEX_BASENAME}_{suffix}"
-
-
-def iter_indexed_rows(
-    *,
-    file_type: str,
-    source_text: str,
-    headers: list[str],
-    index_column: str,
-    index_generated: bool,
-):
-    parser = parser_for_file_type(file_type)
-    seen = set()
-
-    for row_number, data in parser.iter_text_rows(source_text):
-        if index_generated:
-            index_value = str(row_number)
-            data = {index_column: index_value, **data}
-        else:
-            index_value = str(data.get(index_column, "")).strip()
-            if not index_value:
-                raise CSVParseError(f"Index column '{index_column}' cannot contain blank values.")
-
-        if index_value in seen:
-            raise CSVParseError(
-                f"Index column '{index_column}' must be unique. Duplicate value: {index_value}."
-            )
-        seen.add(index_value)
-        yield IndexedRow(
-            row_number=row_number,
-            index_value=index_value,
-            data={header: str(data.get(header, "")) for header in headers},
-        )
 
 
 def rows_to_csv_text(headers: list[str], rows) -> str:
@@ -2135,22 +1912,6 @@ def _xlsx_needs_preserved_space(value: str) -> bool:
 
 def _strip_invalid_xml_chars(value: str) -> str:
     return "".join(char for char in value if char in {"\t", "\n", "\r"} or ord(char) >= 0x20)
-
-
-def prepare_index_config(headers: list[str], selected_index: str) -> tuple[str, bool, list[str]]:
-    if selected_index == GENERATED_INDEX_CHOICE:
-        index_column = generated_index_column_name(headers)
-        return index_column, True, [index_column, *headers]
-
-    if selected_index not in headers:
-        raise CSVParseError("Choose a valid index column or let Rowset generate one.")
-
-    return selected_index, False, headers
-
-
-def dataset_name_from_filename(filename: str) -> str:
-    name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
-    return name.title() or "Untitled dataset"
 
 
 def normalize_public_page_size(value) -> int:

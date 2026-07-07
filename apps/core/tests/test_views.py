@@ -13,7 +13,6 @@ from apps.core import agent_skill
 from apps.core.models import Profile
 from apps.core.services import create_agent_api_key, get_or_create_profile_for_user
 from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_customer, server_error
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project
 from rowset.utils import build_absolute_public_url
 
@@ -310,8 +309,6 @@ class TestHomeView:
         Dataset.objects.create(
             profile=profile,
             name="People",
-            original_filename="people.csv",
-            status=DatasetStatus.READY,
             headers=["name"],
             row_count=0,
         )
@@ -656,8 +653,6 @@ class TestHomeView:
             profile=profile,
             project=project,
             name="People",
-            original_filename="people.csv",
-            status=DatasetStatus.READY,
             headers=["name"],
             row_count=3,
             public_enabled=True,

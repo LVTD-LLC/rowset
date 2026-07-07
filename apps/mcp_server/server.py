@@ -80,7 +80,6 @@ logger = get_rowset_logger(__name__)
 AGENT_API_KEY_PROFILE_ATTR = "_rowset_agent_api_key"
 DATASET_IDENTIFIER_DESCRIPTION = "Rowset dataset key, public key, or Rowset dataset/row URL."
 RETRYABLE_ERROR_CODES = {
-    "DATASET_NOT_READY",
     "RATE_LIMITED",
     "ROWSET_SERVICE_ERROR",
 }
@@ -248,10 +247,7 @@ def _dataset_service_error_code(exc: DatasetServiceError) -> str:
     if status_code == 409:
         return _message_error_code(
             message,
-            (
-                ("archived", "DATASET_ARCHIVED"),
-                ("not ready", "DATASET_NOT_READY"),
-            ),
+            (("archived", "DATASET_ARCHIVED"),),
             "CONFLICT",
         )
     if status_code in {401, 403}:
@@ -275,7 +271,6 @@ def _dataset_service_error_suggested_action(code: str) -> str:
         "COLUMN_NOT_FOUND": "Check the column name against the dataset headers and try again.",
         "VALIDATION_ERROR": "Check the tool arguments against the dataset schema and try again.",
         "DATASET_ARCHIVED": "Restore the dataset before making changes.",
-        "DATASET_NOT_READY": "Confirm and wait for dataset import to finish before retrying.",
         "CONFLICT": "Refresh the dataset or row state, resolve the conflict, and try again.",
         "AUTHORIZATION_FAILED": "Check that the API key has access to this Rowset resource.",
         "RATE_LIMITED": "Back off before retrying the request.",
@@ -585,7 +580,8 @@ def get_archived_datasets(
 @mcp.tool(
     name="search_datasets",
     description=(
-        "Search and filter dataset metadata by name, project, header, status, or update time."
+        "Search and filter active dataset metadata by name, project, section, header, "
+        "or update time."
     ),
 )
 def search_datasets(
@@ -594,8 +590,8 @@ def search_datasets(
         Field(
             default=None,
             description=(
-                "Text to match against dataset name, original filename, project name, "
-                "or project description."
+                "Text to match against dataset name, description, instructions, project text, "
+                "or section text."
             ),
         ),
     ] = None,
@@ -610,16 +606,6 @@ def search_datasets(
     header_contains: Annotated[
         str | None,
         Field(default=None, description="Optional exact header name that results must contain."),
-    ] = None,
-    status: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description=(
-                "Optional dataset status filter. "
-                "Accepted values: previewed, processing, ready, failed."
-            ),
-        ),
     ] = None,
     updated_after: Annotated[
         str | None,
@@ -650,7 +636,6 @@ def search_datasets(
             project_key=project_key,
             section_key=section_key,
             header_contains=header_contains,
-            status=status,
             updated_after=updated_after,
             limit=limit,
             offset=offset,
@@ -995,7 +980,7 @@ def archive_project(
 @mcp.tool(
     name="create_dataset",
     description=(
-        "Create a ready API-backed dataset for the authenticated Rowset profile. "
+        "Create an API-backed dataset for the authenticated Rowset profile. "
         "Provide headers, rows, or both. If index_column is omitted, Rowset generates "
         "a rowset_id index column so the dataset can be used immediately."
     ),
@@ -1217,7 +1202,7 @@ def update_dataset_column_types(
 @mcp.tool(
     name="add_column",
     description=(
-        "Add one column to an existing ready Rowset dataset and backfill existing rows "
+        "Add one column to an existing active Rowset dataset and backfill existing rows "
         "with a blank or default value."
     ),
 )
@@ -1266,7 +1251,7 @@ def add_column(
 @mcp.tool(
     name="rename_column",
     description=(
-        "Rename one column on an existing ready Rowset dataset while preserving row values."
+        "Rename one column on an existing active Rowset dataset while preserving row values."
     ),
 )
 def rename_column(
@@ -1290,7 +1275,7 @@ def rename_column(
 
 @mcp.tool(
     name="drop_column",
-    description="Drop one non-index column from an existing ready Rowset dataset and its rows.",
+    description="Drop one non-index column from an existing active Rowset dataset and its rows.",
 )
 def drop_column(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1398,7 +1383,7 @@ def list_dataset_relationships(
 @mcp.tool(
     name="create_dataset_relationship",
     description=(
-        "Create one relationship from a source dataset column to another ready dataset's "
+        "Create one relationship from a source dataset column to another active dataset's "
         "index column. When enforcement is true, row writes fail if the source value does "
         "not match an existing target row index."
     ),
@@ -1494,7 +1479,7 @@ def delete_dataset_relationship(
     name="update_dataset_public_preview",
     description=(
         "Enable, disable, password-protect, or resize a read-only public preview for "
-        "an existing ready Rowset dataset. Returns the public preview URL."
+        "an existing active Rowset dataset. Returns the public preview URL."
     ),
 )
 def update_dataset_public_preview(
@@ -1590,7 +1575,7 @@ def restore_dataset(
 @mcp.tool(
     name="list_dataset_rows",
     description=(
-        "Return a bounded page of rows for a ready dataset, including archived datasets "
+        "Return a bounded page of rows for a dataset, including archived datasets "
         "when addressed directly. Optionally search across row values, filter by column "
         "values, and sort by row_number or a dataset header."
     ),
@@ -1690,10 +1675,6 @@ def search_rows(
             description="Optional project section key to restrict searched datasets.",
         ),
     ] = None,
-    status: Annotated[
-        str | None,
-        Field(default=None, description="Optional dataset status. Defaults to ready."),
-    ] = None,
     archived: Annotated[
         bool | None,
         Field(
@@ -1728,7 +1709,6 @@ def search_rows(
             dataset_key=dataset_key,
             project_key=project_key,
             section_key=section_key,
-            status=status,
             archived=archived,
             sort=sort,
             direction=direction,
@@ -1741,7 +1721,7 @@ def search_rows(
 @mcp.tool(
     name="search_dataset_rows",
     description=(
-        "Search one ready dataset, including archived datasets when addressed directly, "
+        "Search one dataset, including archived datasets when addressed directly, "
         "with hybrid vector and lexical retrieval. Results are hydrated from Rowset rows "
         "and include match metadata."
     ),
@@ -1781,7 +1761,7 @@ def search_dataset_rows(
 @mcp.tool(
     name="get_dataset_row",
     description=(
-        "Return one row from a ready dataset by internal row id, including archived "
+        "Return one row from a dataset by internal row id, including archived "
         "datasets when addressed directly."
     ),
 )
@@ -1800,7 +1780,7 @@ def get_dataset_row(
 @mcp.tool(
     name="get_dataset_row_by_index",
     description=(
-        "Return one row from a ready dataset by its configured index value, including "
+        "Return one row from a dataset by its configured index value, including "
         "archived datasets when addressed directly."
     ),
 )
@@ -1818,7 +1798,7 @@ def get_dataset_row_by_index(
 
 @mcp.tool(
     name="create_dataset_row",
-    description="Create one row in a ready dataset. Provide values keyed by dataset header.",
+    description="Create one row in an active dataset. Provide values keyed by dataset header.",
 )
 def create_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1840,7 +1820,7 @@ def create_dataset_row(
 @mcp.tool(
     name="attach_image_to_dataset_row",
     description=(
-        "Attach or replace one image asset in an image column for a ready dataset row. "
+        "Attach or replace one image asset in an image column for an active dataset row. "
         "The target row must already exist. Provide exactly one of row_id or index_value. "
         "The row cell will store an opaque asset reference, not raw image bytes. For a "
         "local file, read the bytes in the agent environment and pass base64 or a data "
@@ -1872,7 +1852,7 @@ def attach_image_to_dataset_row(
     ] = None,
     filename: Annotated[
         str | None,
-        Field(default=None, description="Optional original filename for display metadata."),
+        Field(default=None, description="Optional image filename for display metadata."),
     ] = None,
     content_type: Annotated[
         str | None,
@@ -1920,7 +1900,7 @@ def get_dataset_image_asset(
 
 @mcp.tool(
     name="update_dataset_row",
-    description="Patch one row in a ready dataset. Unknown headers are ignored.",
+    description="Patch one row in an active dataset. Unknown headers are ignored.",
 )
 def update_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1943,7 +1923,7 @@ def update_dataset_row(
 
 @mcp.tool(
     name="update_dataset_row_by_index",
-    description="Patch one row in a ready dataset by its configured index value.",
+    description="Patch one row in an active dataset by its configured index value.",
 )
 def update_dataset_row_by_index(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1966,7 +1946,7 @@ def update_dataset_row_by_index(
 
 @mcp.tool(
     name="delete_dataset_row",
-    description="Delete one row from a ready dataset by internal row id.",
+    description="Delete one row from an active dataset by internal row id.",
 )
 def delete_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],

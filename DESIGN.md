@@ -120,7 +120,7 @@ split sections, but authenticated pages should feel like focused workspaces.
 - Dashboard: agent setup prompt first, connection details second, recent
   datasets below.
 - Dataset list: records in rows, not cards.
-- Dataset detail: title/status, API access, schema, sample rows.
+- Dataset detail: title, API access, schema, sample rows.
 - Dataset settings: schema metadata first, public preview controls second,
   destructive deletion last.
 - Docs: stable left navigation, readable prose, compact page navigation.
@@ -137,9 +137,8 @@ split sections, but authenticated pages should feel like focused workspaces.
 
 ## Product Guardrails
 
-- Do not make dashboard upload/import the primary path.
-- Do not promote Google Sheets connection, write-back, or sync as active UI
-  promises unless the shipped feature is restored and tested.
+- Do not promote Rowset-owned source connectors, write-back, or sync as active
+  UI promises unless the shipped feature is restored and tested.
 - Public previews are read-only browser sharing, not authentication.
 - Prefer MCP language first, REST fallback second, browser automation last.
 - Never expose full API keys in public pages, screenshots, or docs examples.

@@ -14,9 +14,8 @@ from django.utils import timezone
 
 from apps.core.base_models import BaseModel
 from apps.core.models import AgentApiKey, Profile
-from apps.datasets.choices import DatasetAssetStatus, DatasetMutationType, DatasetStatus
+from apps.datasets.choices import DatasetAssetStatus, DatasetMutationType
 from apps.datasets.constants import (
-    MAX_CSV_UPLOAD_BYTES,
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
 )
@@ -152,20 +151,6 @@ class Dataset(BaseModel):
         validators=[MaxLengthValidator(MAX_DATASET_INSTRUCTIONS_LENGTH)],
     )
     metadata = models.JSONField(default=dict, blank=True)
-    original_filename = models.CharField(max_length=255)
-    file_type = models.CharField(max_length=32, default="csv")
-    source_file = models.FileField(upload_to="datasets/csv/%Y/%m/%d/", blank=True)
-    source_url = models.URLField(blank=True, default="", max_length=2000)
-    source_text = models.TextField(
-        blank=True,
-        default="",
-        validators=[MaxLengthValidator(MAX_CSV_UPLOAD_BYTES)],
-    )
-    status = models.CharField(
-        max_length=32,
-        choices=DatasetStatus.choices,
-        default=DatasetStatus.PREVIEWED,
-    )
     headers = models.JSONField(default=list)
     column_schema = models.JSONField(default=dict)
     preview_rows = models.JSONField(default=list)
@@ -176,9 +161,6 @@ class Dataset(BaseModel):
     public_page_size = models.PositiveIntegerField(default=10)
     public_password_hash = models.CharField(max_length=255, blank=True, default="")
     row_count = models.PositiveIntegerField(default=0)
-    parse_error = models.TextField(blank=True, default="")
-    confirmed_at = models.DateTimeField(null=True, blank=True)
-    processed_at = models.DateTimeField(null=True, blank=True)
     archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:

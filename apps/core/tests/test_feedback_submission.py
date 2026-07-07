@@ -12,7 +12,6 @@ from apps.core.services import (
     FEEDBACK_DATASET_KEY,
     submit_profile_feedback,
 )
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project, ProjectSection
 
 
@@ -127,9 +126,6 @@ def test_submit_profile_feedback_writes_to_configured_dataset(django_user_model)
         profile=owner_user.profile,
         key=UUID(FEEDBACK_DATASET_KEY),
         name="Feedback",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=FEEDBACK_DATASET_HEADERS,
         index_column="feedback_id",
         row_count=0,

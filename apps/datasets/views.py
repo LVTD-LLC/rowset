@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Q, Sum
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import NoReverseMatch, reverse
 from django.utils.cache import patch_vary_headers
@@ -15,7 +15,6 @@ from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.vary import vary_on_headers
 from django.views.generic import DetailView, ListView
-from django_htmx.http import HttpResponseClientRefresh
 
 from apps.api.services import (
     DatasetServiceError,
@@ -43,7 +42,7 @@ from apps.api.services import (
     update_profile_project_metadata,
 )
 from apps.core.services import get_or_create_profile_for_user
-from apps.datasets.choices import DatasetColumnType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project, ProjectSection
 from apps.datasets.public_previews import (
     PUBLIC_PREVIEW_ROBOTS_POLICY,
@@ -205,7 +204,7 @@ def _command_palette_dataset_result(dataset: dict) -> dict[str, object] | None:
         _pluralized_count(_safe_int(dataset.get("row_count")), "row"),
         _pluralized_count(len(dataset.get("headers") or []), "column"),
     ]
-    description = _compact_text(dataset.get("description") or dataset.get("original_filename"))
+    description = _compact_text(dataset.get("description"))
 
     return {
         "type": "dataset",
@@ -294,7 +293,6 @@ def _command_palette_context(request) -> dict[str, object]:
         dataset_payload = search_profile_datasets(
             profile,
             query=query,
-            status=DatasetStatus.READY,
             limit=COMMAND_PALETTE_DATASET_LIMIT,
         )
     except DatasetServiceError:
@@ -335,7 +333,6 @@ def _command_palette_context(request) -> dict[str, object]:
         row_payload = search_profile_rows(
             profile,
             query=query,
-            status=DatasetStatus.READY,
             archived=False,
             limit=COMMAND_PALETTE_ROW_LIMIT,
         )
@@ -554,20 +551,18 @@ def _mutation_history_item(mutation) -> dict:
 def _visible_project_dataset_count():
     return Count(
         "datasets",
-        filter=Q(datasets__archived_at__isnull=True) & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+        filter=Q(datasets__archived_at__isnull=True),
     )
 
 
 def _visible_project_section_dataset_count():
     return Count(
         "datasets",
-        filter=Q(datasets__archived_at__isnull=True) & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+        filter=Q(datasets__archived_at__isnull=True),
     )
 
 
 def _delete_dataset(dataset: Dataset) -> None:
-    if dataset.source_file:
-        dataset.source_file.delete(save=False)
     dataset.delete()
 
 
@@ -819,10 +814,7 @@ def _row_relationship_links(
         )
     )
     for relationship in relationships:
-        if (
-            relationship.target_dataset.status != DatasetStatus.READY
-            or relationship.target_dataset.archived_at is not None
-        ):
+        if relationship.target_dataset.archived_at is not None:
             continue
         target_index_value = str(row_data.get(relationship.source_column, "") or "").strip()
         if not target_index_value:
@@ -949,7 +941,7 @@ def _dataset_reference_lookup(
                 "rowset_link_detail": (
                     "Archived dataset"
                     if target_dataset.archived_at
-                    else target_dataset.get_status_display()
+                    else f"{target_dataset.row_count} rows"
                 ),
                 "rowset_link_label": f"Open Rowset dataset {target_dataset.name}",
             }
@@ -1397,7 +1389,7 @@ class DatasetListView(LoginRequiredMixin, ListView):
     dataset_stats_projects_label = "Projects"
     dataset_stats_public_preview_label = "Public previews"
     dataset_search_label = "Search datasets"
-    dataset_search_placeholder = "Name, source file, or project"
+    dataset_search_placeholder = "Name, project, or section"
     dataset_empty_title = "No datasets yet"
     dataset_empty_body = (
         "Ask your connected agent to create a dataset from the source file or table it can access."
@@ -1445,10 +1437,8 @@ class DatasetListView(LoginRequiredMixin, ListView):
 
     def get_base_queryset(self):
         if not hasattr(self, "_base_queryset"):
-            self._base_queryset = (
-                _owned_dataset_queryset(self.get_profile())
-                .filter(archived_at__isnull=self.archived_at_isnull)
-                .exclude(status=DatasetStatus.PREVIEWED)
+            self._base_queryset = _owned_dataset_queryset(self.get_profile()).filter(
+                archived_at__isnull=self.archived_at_isnull
             )
         return self._base_queryset
 
@@ -1458,7 +1448,6 @@ class DatasetListView(LoginRequiredMixin, ListView):
         if search_query:
             queryset = queryset.filter(
                 Q(name__icontains=search_query)
-                | Q(original_filename__icontains=search_query)
                 | Q(project__name__icontains=search_query)
                 | Q(section__name__icontains=search_query)
             )
@@ -1656,7 +1645,7 @@ class ArchivedDatasetListView(DatasetListView):
     dataset_stats_projects_label = "Archived projects"
     dataset_stats_public_preview_label = "Archived public previews"
     dataset_search_label = "Search archived datasets"
-    dataset_search_placeholder = "Archived name, source file, or project"
+    dataset_search_placeholder = "Archived name, project, or section"
     dataset_empty_title = "No archived datasets"
     dataset_empty_body = (
         "Archived datasets will appear here after an agent or API client archives one."
@@ -1690,7 +1679,6 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 "updated_by_agent_api_key",
             )
             .filter(archived_at__isnull=True)
-            .exclude(status=DatasetStatus.PREVIEWED)
             .order_by("-updated_at"),
             PROJECT_DETAIL_DATASET_PAGE_SIZE,
         )
@@ -1703,7 +1691,6 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         active_section_ids = [section.id for section in sections]
         unsectioned_dataset_count = (
             self.object.datasets.filter(archived_at__isnull=True)
-            .exclude(status=DatasetStatus.PREVIEWED)
             .exclude(section_id__in=active_section_ids)
             .count()
         )
@@ -1711,7 +1698,6 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         archived_paginator = Paginator(
             self.object.datasets.select_related("section")
             .filter(archived_at__isnull=False)
-            .exclude(status=DatasetStatus.PREVIEWED)
             .order_by("-archived_at", "-updated_at", "-id"),
             PROJECT_DETAIL_DATASET_PAGE_SIZE,
         )
@@ -1927,11 +1913,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
         context["row_show_column_controls"] = has_imported_rows
-        context["rows_selectable"] = (
-            has_imported_rows
-            and dataset.status == DatasetStatus.READY
-            and dataset.archived_at is None
-        )
+        context["rows_selectable"] = has_imported_rows and dataset.archived_at is None
         context["hide_column_filter_section"] = True
         context["rows_colspan"] = (
             len(dataset.headers) + int(has_imported_rows) + int(context["rows_selectable"])
@@ -2000,10 +1982,7 @@ class DatasetRowCreateView(LoginRequiredMixin, DetailView):
     slug_field = "key"
 
     def get_queryset(self):
-        return _owned_dataset_queryset(self.request.user.profile).filter(
-            archived_at__isnull=True,
-            status=DatasetStatus.READY,
-        )
+        return _owned_dataset_queryset(self.request.user.profile).filter(archived_at__isnull=True)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -2077,7 +2056,7 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
         )
         if form_values is None:
             form_values = _row_form_values(dataset, row.data)
-        row_is_editable = dataset.status == DatasetStatus.READY and dataset.archived_at is None
+        row_is_editable = dataset.archived_at is None
         context["dataset"] = dataset
         context["row_cells"] = _editable_row_cells(
             dataset,
@@ -2191,7 +2170,7 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
         )
         context["relationship_target_dataset_choices"] = (
             _owned_dataset_queryset(self.request.user.profile)
-            .filter(status=DatasetStatus.READY)
+            .filter(archived_at__isnull=True)
             .exclude(pk=self.object.pk)
             .order_by("name", "-created_at")
         )
@@ -2533,14 +2512,11 @@ def dataset_update_column_settings(request, dataset_key):
 @login_required
 @require_POST
 def dataset_archive(request, dataset_key):
-    dataset = get_object_or_404(
+    get_object_or_404(
         Dataset,
         key=dataset_key,
         profile=request.user.profile,
     )
-    if dataset.status != DatasetStatus.READY:
-        messages.error(request, "Only ready datasets can be archived from the dataset page.")
-        return redirect("dataset_detail", dataset_key=dataset_key)
 
     try:
         result = archive_profile_dataset(request.user.profile, str(dataset_key))
@@ -2606,8 +2582,6 @@ def dataset_export(request, dataset_key, export_format):
         key=dataset_key,
         profile=request.user.profile,
     )
-    if dataset.status != DatasetStatus.READY:
-        raise Http404("Dataset exports are available after import completes.")
 
     return _dataset_export_response(dataset, export_format)
 
@@ -2625,33 +2599,6 @@ def dataset_asset_content(request, dataset_key, asset_key):
         asset,
         request.GET.get("variant", "original"),
         include_body=request.method != "HEAD",
-    )
-
-
-@login_required
-@require_http_methods(["GET", "HEAD"])
-@vary_on_headers("HX-Request")
-def dataset_status(request, dataset_key):
-    dataset = get_object_or_404(
-        Dataset,
-        key=dataset_key,
-        profile=request.user.profile,
-    )
-    if request.htmx:
-        if dataset.status == DatasetStatus.READY:
-            return HttpResponseClientRefresh()
-        return render(
-            request,
-            "datasets/partials/dataset_status_panel.html",
-            {"dataset": dataset},
-        )
-
-    return JsonResponse(
-        {
-            "status": dataset.status,
-            "row_count": dataset.row_count,
-            "parse_error": dataset.parse_error,
-        }
     )
 
 
@@ -2681,7 +2628,6 @@ def public_dataset(request, public_key):
         Dataset,
         public_key=public_key,
         public_enabled=True,
-        status=DatasetStatus.READY,
         archived_at__isnull=True,
     )
 
@@ -2778,7 +2724,6 @@ def public_dataset_row_detail(request, public_key, row_id):
         Dataset,
         public_key=public_key,
         public_enabled=True,
-        status=DatasetStatus.READY,
         archived_at__isnull=True,
     )
     row_url = reverse(
@@ -2851,7 +2796,6 @@ def public_dataset_asset_content(request, public_key, asset_key):
         Dataset,
         public_key=public_key,
         public_enabled=True,
-        status=DatasetStatus.READY,
         archived_at__isnull=True,
     )
     if not _has_public_dataset_access(request, dataset):

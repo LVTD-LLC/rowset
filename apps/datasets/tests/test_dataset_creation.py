@@ -3,7 +3,6 @@ import pytest
 from apps.api.services import DatasetServiceError, create_profile_dataset
 from apps.core.analytics import ROWSET_DATASET_CREATED
 from apps.core.choices import ProfileStates
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, Project
 
 pytestmark = pytest.mark.django_db
@@ -57,8 +56,6 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
         "name": "Catalogs",
         "description": "",
     }
-    assert payload["dataset"]["file_type"] == "api"
-    assert payload["dataset"]["status"] == DatasetStatus.READY
     assert payload["dataset"]["index_column"] == "sku"
     assert payload["dataset"]["column_schema"] == {
         "sku": {"type": "text"},
@@ -85,9 +82,6 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
         "name": {"type": "text"},
         "price": {"type": "currency"},
     }
-    assert dataset.original_filename == "Created via API"
-    assert dataset.confirmed_at is not None
-    assert dataset.processed_at is not None
     assert list(dataset.rows.values_list("index_value", flat=True)) == ["A-1", "B-2"]
     assert dataset.rows.first().data == {
         "sku": "A-1",
@@ -280,8 +274,6 @@ def test_free_account_rejects_third_active_dataset(profile):
         Dataset.objects.create(
             profile=profile,
             name=f"Dataset {index}",
-            original_filename="api",
-            status=DatasetStatus.READY,
             headers=["rowset_id", "name"],
             index_column="rowset_id",
             index_generated=True,
@@ -322,8 +314,6 @@ def test_paid_account_can_create_more_than_free_dataset_and_row_limits(profile):
         Dataset.objects.create(
             profile=profile,
             name=f"Existing dataset {index}",
-            original_filename="api",
-            status=DatasetStatus.READY,
             headers=["rowset_id", "name"],
             index_column="rowset_id",
             index_generated=True,
@@ -339,4 +329,4 @@ def test_paid_account_can_create_more_than_free_dataset_and_row_limits(profile):
 
     dataset = Dataset.objects.get(key=result["dataset"]["key"])
     assert dataset.row_count == 51
-    assert Dataset.objects.filter(profile=profile, status=DatasetStatus.READY).count() == 3
+    assert Dataset.objects.filter(profile=profile).count() == 3

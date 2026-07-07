@@ -90,10 +90,10 @@ from apps.api.services import (
     delete_profile_dataset_relationship,
     delete_profile_dataset_row,
     drop_profile_dataset_column,
+    get_profile_dataset,
     get_profile_dataset_asset,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
-    get_ready_profile_dataset,
     list_profile_dataset_relationships,
     list_profile_dataset_rows,
     patch_profile_dataset_row,
@@ -398,7 +398,7 @@ def submit_agent_feedback(request: HttpRequest, payload: SubmitFeedbackIn):
     tags=["search"],
 )
 def search_rows(request: HttpRequest, payload: ProfileRowSearchIn):
-    """Search rows across ready datasets with hybrid vector and lexical retrieval."""
+    """Search rows across active datasets with hybrid vector and lexical retrieval."""
     try:
         return search_profile_rows(
             request.auth,
@@ -408,7 +408,6 @@ def search_rows(request: HttpRequest, payload: ProfileRowSearchIn):
             dataset_key=payload.dataset_key,
             project_key=payload.project_key,
             section_key=payload.section_key,
-            status=payload.status,
             archived=payload.archived,
             sort=payload.sort,
             direction=payload.direction,
@@ -708,7 +707,6 @@ def list_datasets(
     project_key: str | None = None,
     section_key: str | None = None,
     header_contains: str | None = None,
-    status: str | None = None,
     updated_after: str | None = None,
 ):
     """Return a page of datasets available to the authenticated profile."""
@@ -719,7 +717,6 @@ def list_datasets(
             project_key=project_key,
             section_key=section_key,
             header_contains=header_contains,
-            status=status,
             updated_after=updated_after,
             limit=limit,
             offset=offset,
@@ -867,7 +864,7 @@ def add_dataset_column(
     dataset_key: str,
     payload: DatasetColumnAddIn,
 ):
-    """Add one column to a ready dataset and backfill existing rows."""
+    """Add one column to a active dataset and backfill existing rows."""
     try:
         return add_profile_dataset_column(
             request.auth,
@@ -892,7 +889,7 @@ def rename_dataset_column(
     dataset_key: str,
     payload: DatasetColumnRenameIn,
 ):
-    """Rename one column on a ready dataset while preserving row values."""
+    """Rename one column on a active dataset while preserving row values."""
     try:
         return rename_profile_dataset_column(
             request.auth,
@@ -916,7 +913,7 @@ def drop_dataset_column(
     dataset_key: str,
     payload: DatasetColumnDropIn,
 ):
-    """Drop one non-index column from a ready dataset and stored rows."""
+    """Drop one non-index column from a active dataset and stored rows."""
     try:
         return drop_profile_dataset_column(
             request.auth,
@@ -939,7 +936,7 @@ def reorder_dataset_columns(
     dataset_key: str,
     payload: DatasetColumnReorderIn,
 ):
-    """Update the display and export order for ready dataset columns."""
+    """Update the display and export order for active dataset columns."""
     try:
         return reorder_profile_dataset_columns(
             request.auth,
@@ -1358,7 +1355,7 @@ def delete_dataset_row(request: HttpRequest, dataset_key: str, row_id: int):
 )
 def export_dataset_csv(request: HttpRequest, dataset_key: str):
     try:
-        dataset = get_ready_profile_dataset(request.auth, dataset_key)
+        dataset = get_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
     return _export_dataset_response(dataset, "csv")
@@ -1371,7 +1368,7 @@ def export_dataset_csv(request: HttpRequest, dataset_key: str):
 )
 def export_dataset_jsonl(request: HttpRequest, dataset_key: str):
     try:
-        dataset = get_ready_profile_dataset(request.auth, dataset_key)
+        dataset = get_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
     return _export_dataset_response(dataset, "jsonl")
@@ -1384,7 +1381,7 @@ def export_dataset_jsonl(request: HttpRequest, dataset_key: str):
 )
 def export_dataset_xlsx(request: HttpRequest, dataset_key: str):
     try:
-        dataset = get_ready_profile_dataset(request.auth, dataset_key)
+        dataset = get_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
     return _export_dataset_response(dataset, "xlsx")
@@ -1397,7 +1394,7 @@ def export_dataset_xlsx(request: HttpRequest, dataset_key: str):
 )
 def export_dataset_sqlite(request: HttpRequest, dataset_key: str):
     try:
-        dataset = get_ready_profile_dataset(request.auth, dataset_key)
+        dataset = get_profile_dataset(request.auth, dataset_key)
     except DatasetServiceError as exc:
         _raise_http_error(exc)
     return _export_dataset_response(dataset, "sqlite")

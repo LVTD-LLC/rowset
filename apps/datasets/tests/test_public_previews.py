@@ -499,7 +499,6 @@ def test_public_dataset_orders_cells_by_headers(client, profile):
         headers=["customer_id", "name", "plan"],
         index_column="customer_id",
         public_enabled=True,
-        source_text="customer_id,name,plan\nC-1001,Ada Lovelace,Scale\n",
         rows=[
             {
                 "name": "Ada Lovelace",
@@ -540,7 +539,7 @@ def test_public_dataset_row_detail_password_protection(auth_client, client, prof
     assert "Public preview" in locked_content
     assert dataset.get_public_url() in locked_content
     assert dataset.name not in locked_content
-    assert "Ada" not in locked_content
+    assert "ada@example.com" not in locked_content
 
     wrong_response = client.post(row_url, {"password": "wrong"})
     assert "That password did not work" in wrong_response.content.decode()

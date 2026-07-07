@@ -3,7 +3,6 @@ from uuid import uuid4
 from django.urls import reverse
 
 from apps.api.services import DatasetServiceError
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.tests.factories import create_dataset, create_project, create_test_user
 
 
@@ -69,7 +68,6 @@ def test_command_palette_search_returns_dataset_project_and_row_results(
     def fake_search_profile_rows(search_profile, **kwargs):
         assert search_profile == profile
         assert kwargs["query"] == "Ada"
-        assert kwargs["status"] == DatasetStatus.READY
         assert kwargs["archived"] is False
         assert kwargs["limit"] == 5
         return {

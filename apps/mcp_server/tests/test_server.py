@@ -11,7 +11,6 @@ from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import Feedback
 from apps.core.services import create_agent_api_key
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.mcp_server.server import (
     AGENT_API_KEY_PROFILE_ATTR,
@@ -78,9 +77,6 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
         instructions="Use email as the stable identity. Do not rewrite names from guesses.",
         metadata={"workflow": {"default_status": "new"}},
         project=project,
-        original_filename="customers.csv",
-        file_type="csv",
-        status="ready",
         headers=["email", "name"],
         column_schema={
             "email": {
@@ -99,8 +95,6 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
         is_public_password_protected=False,
         created_at="2026-05-14T00:00:00Z",
         updated_at="2026-05-14T00:01:00Z",
-        confirmed_at=None,
-        processed_at=None,
         archived_at=None,
         get_public_url=lambda: "/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/",
     )
@@ -542,7 +536,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
         project_key=None,
         section_key=None,
         header_contains=None,
-        status=None,
         updated_after=None,
         limit=100,
         offset=0,
@@ -555,7 +548,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 project_key,
                 section_key,
                 header_contains,
-                status,
                 updated_after,
                 limit,
                 offset,
@@ -610,7 +602,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
         dataset_key=None,
         project_key=None,
         section_key=None,
-        status=None,
         archived=False,
         sort=None,
         direction=None,
@@ -626,7 +617,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 dataset_key,
                 project_key,
                 section_key,
-                status,
                 archived,
                 sort,
                 direction,
@@ -641,7 +631,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 "dataset_key": dataset_key,
                 "project_key": project_key,
                 "section_key": section_key,
-                "status": status or "ready",
                 "archived": archived,
             },
             "sort": sort or "rank",
@@ -669,7 +658,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                     "project_key": "project-key",
                     "section_key": "section-key",
                     "header_contains": "suggestion_id",
-                    "status": "ready",
                     "updated_after": "2026-06-01",
                     "limit": 5,
                     "offset": 2,
@@ -697,7 +685,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                     "dataset_key": "dataset-key",
                     "project_key": "project-key",
                     "section_key": "section-key",
-                    "status": "ready",
                     "archived": False,
                     "sort": "rank",
                     "direction": "desc",
@@ -717,7 +704,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 "project-key",
                 "section-key",
                 "suggestion_id",
-                "ready",
                 "2026-06-01",
                 5,
                 2,
@@ -740,7 +726,6 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
                 "dataset-key",
                 "project-key",
                 "section-key",
-                "ready",
                 False,
                 "rank",
                 "desc",
@@ -1761,9 +1746,6 @@ def test_dataset_row_mcp_tool_resolves_owned_public_row_url(monkeypatch, django_
     dataset = Dataset.objects.create(
         profile=user.profile,
         name="People",
-        original_filename="Created via API",
-        file_type="api",
-        status=DatasetStatus.READY,
         headers=["email", "name"],
         index_column="email",
         row_count=1,
@@ -2199,16 +2181,6 @@ def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
                 code="DATASET_ARCHIVED",
                 message="Dataset is archived. Restore it before making changes.",
                 suggested_action="Restore the dataset before making changes.",
-                http_status=409,
-            ),
-        ),
-        (
-            DatasetServiceError(409, "Dataset is not ready yet."),
-            _expected_mcp_error(
-                code="DATASET_NOT_READY",
-                message="Dataset is not ready yet.",
-                retryable=True,
-                suggested_action="Confirm and wait for dataset import to finish before retrying.",
                 http_status=409,
             ),
         ),

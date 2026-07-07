@@ -45,7 +45,7 @@ from apps.core.analytics import (
     track_activation_event,
 )
 from apps.core.models import AgentApiKey, Profile
-from apps.datasets.choices import DatasetColumnType, DatasetMutationType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType, DatasetMutationType
 from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
@@ -78,9 +78,9 @@ from apps.datasets.services import (
     COLUMN_SCHEMA_TYPE_KEY,
     DATASET_REFERENCE_TARGET,
     PROJECT_REFERENCE_TARGET,
-    CSVParseError,
     DatasetImageError,
     DatasetRowQueryError,
+    DatasetValidationError,
     apply_dataset_row_query,
     apply_dataset_rows_query,
     choice_constraints_from_schema,
@@ -107,7 +107,6 @@ from apps.datasets.vector_search import (
 from apps.datasets.vector_tasks import enqueue_vector_task
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
-API_CREATED_FILE_TYPE = "api"
 MAX_API_DATASET_CREATE_ROWS = 1000
 DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
@@ -143,9 +142,6 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "description",
     "instructions",
     "metadata",
-    "original_filename",
-    "file_type",
-    "status",
     "headers",
     "column_schema",
     "index_column",
@@ -167,8 +163,6 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "section__archived_at",
     "created_at",
     "updated_at",
-    "confirmed_at",
-    "processed_at",
     "archived_at",
 )
 UNSET = object()
@@ -212,14 +206,14 @@ def normalize_search_filter_operators(
 def _visible_project_dataset_count():
     return Count(
         "datasets",
-        filter=Q(datasets__archived_at__isnull=True) & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+        filter=Q(datasets__archived_at__isnull=True),
     )
 
 
 def _visible_project_section_dataset_count():
     return Count(
         "datasets",
-        filter=Q(datasets__archived_at__isnull=True) & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+        filter=Q(datasets__archived_at__isnull=True),
     )
 
 
@@ -240,7 +234,7 @@ def _active_project_section_queryset(queryset):
 
 
 def _visible_profile_dataset_queryset(profile: Profile):
-    return profile.datasets.filter(archived_at__isnull=True).exclude(status=DatasetStatus.PREVIEWED)
+    return profile.datasets.filter(archived_at__isnull=True)
 
 
 def _lock_profile_for_quota(profile: Profile) -> Profile:
@@ -301,19 +295,8 @@ def _enqueue_dataset_row_vector_delete(dataset_id: int, row_ids: list[int]) -> N
     enqueue_vector_task("apps.datasets.tasks.delete_dataset_row_vectors", dataset_id, row_ids)
 
 
-def _enqueue_dataset_vector_delete(dataset_id: int) -> None:
-    enqueue_vector_task("apps.datasets.tasks.delete_dataset_vectors", dataset_id)
-
-
 def _normalize_search_query(query: str | None) -> str:
     return str(query or "").strip()
-
-
-def _normalize_dataset_status(status: str | None) -> str:
-    normalized_status = str(status or "").strip().lower()
-    if normalized_status and normalized_status not in DatasetStatus.values:
-        raise DatasetServiceError(400, f"Unsupported dataset status '{normalized_status}'.")
-    return normalized_status
 
 
 def _normalize_updated_after(updated_after: str | date | datetime | None) -> datetime | None:
@@ -472,11 +455,7 @@ def serialize_project_summary(project: Project) -> dict:
     """Return machine-friendly project metadata without row payloads."""
     dataset_count = getattr(project, "dataset_count", None)
     if dataset_count is None:
-        dataset_count = (
-            _active_dataset_queryset(project.datasets)
-            .exclude(status=DatasetStatus.PREVIEWED)
-            .count()
-        )
+        dataset_count = _active_dataset_queryset(project.datasets).count()
     return {
         "key": str(project.key),
         "name": project.name,
@@ -493,11 +472,7 @@ def serialize_project_section_summary(section: ProjectSection) -> dict:
     """Return machine-friendly project section metadata without row payloads."""
     dataset_count = getattr(section, "dataset_count", None)
     if dataset_count is None:
-        dataset_count = (
-            _active_dataset_queryset(section.datasets)
-            .exclude(status=DatasetStatus.PREVIEWED)
-            .count()
-        )
+        dataset_count = _active_dataset_queryset(section.datasets).count()
     return {
         "key": str(section.key),
         "project": serialize_project_reference(section.project),
@@ -1003,9 +978,7 @@ def serialize_profile_project_detail(
     project = get_profile_project(profile, project_key)
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    queryset = _dataset_summary_queryset(
-        _active_dataset_queryset(project.datasets).exclude(status=DatasetStatus.PREVIEWED)
-    )
+    queryset = _dataset_summary_queryset(_active_dataset_queryset(project.datasets))
     sections = list(
         _active_project_section_queryset(
             project.sections.select_related("project").annotate(
@@ -1097,9 +1070,6 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "metadata": dataset.metadata or {},
         "project": serialize_project_reference(getattr(dataset, "project", None)),
         "section": serialize_project_section_reference(getattr(dataset, "section", None)),
-        "original_filename": dataset.original_filename,
-        "file_type": dataset.file_type,
-        "status": dataset.status,
         "headers": dataset.headers,
         "column_schema": normalize_column_schema(
             dataset.headers,
@@ -1115,8 +1085,6 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
         "public_password_protected": dataset.is_public_password_protected,
         "created_at": dataset.created_at,
         "updated_at": dataset.updated_at,
-        "confirmed_at": dataset.confirmed_at,
-        "processed_at": dataset.processed_at,
         "archived_at": dataset.archived_at,
     }
 
@@ -1153,7 +1121,6 @@ def serialize_dataset_reference(dataset: Dataset) -> dict:
         "name": dataset.name,
         "project": serialize_project_reference(getattr(dataset, "project", None)),
         "section": serialize_project_section_reference(getattr(dataset, "section", None)),
-        "status": dataset.status,
         "headers": dataset.headers,
         "index_column": dataset.index_column,
         "row_count": dataset.row_count,
@@ -1321,7 +1288,6 @@ def search_profile_datasets(  # noqa: C901
     project_key: str | None = None,
     section_key: str | None = None,
     header_contains: str | None = None,
-    status: str | None = None,
     updated_after: str | date | datetime | None = None,
     limit: int = 100,
     offset: int = 0,
@@ -1329,7 +1295,7 @@ def search_profile_datasets(  # noqa: C901
     """
     Return a bounded, optionally filtered page of datasets owned by the profile.
 
-    Query text matches dataset name, original filename, and assigned project/section metadata.
+    Query text matches dataset name, description, instructions, and project/section metadata.
     Ungrouped datasets match only on dataset fields because they have no grouping metadata.
     """
     limit = max(1, min(limit, 500))
@@ -1338,7 +1304,6 @@ def search_profile_datasets(  # noqa: C901
     normalized_project_key = str(project_key or "").strip()
     normalized_section_key = str(section_key or "").strip()
     normalized_header = str(header_contains or "").strip()
-    normalized_status = _normalize_dataset_status(status)
     normalized_updated_after = _normalize_updated_after(updated_after)
 
     queryset = _dataset_summary_queryset(_active_dataset_queryset(profile.datasets))
@@ -1347,7 +1312,6 @@ def search_profile_datasets(  # noqa: C901
             Q(name__icontains=normalized_query)
             | Q(description__icontains=normalized_query)
             | Q(instructions__icontains=normalized_query)
-            | Q(original_filename__icontains=normalized_query)
             | Q(
                 project__archived_at__isnull=True,
                 project__name__icontains=normalized_query,
@@ -1386,8 +1350,6 @@ def search_profile_datasets(  # noqa: C901
                 section__archived_at__isnull=True,
                 section__project__archived_at__isnull=True,
             )
-    if normalized_status:
-        queryset = queryset.filter(status=normalized_status)
     if normalized_updated_after is not None:
         queryset = queryset.filter(updated_at__gte=normalized_updated_after)
     if normalized_header:
@@ -1419,9 +1381,7 @@ def serialize_profile_archived_datasets(
     """Return a bounded page of archived datasets owned by the authenticated profile."""
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    queryset = _dataset_summary_queryset(
-        _archived_dataset_queryset(profile.datasets).exclude(status=DatasetStatus.PREVIEWED)
-    )
+    queryset = _dataset_summary_queryset(_archived_dataset_queryset(profile.datasets))
     total_count = queryset.count()
     page = list(queryset[offset : offset + limit])
 
@@ -1484,39 +1444,19 @@ def get_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     )
 
 
-def get_ready_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
+def get_active_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     dataset = get_profile_dataset(profile, dataset_key)
     _raise_if_archived(dataset)
-    if dataset.status != DatasetStatus.READY:
-        raise DatasetServiceError(
-            409,
-            "Dataset is not ready yet. Confirm and wait for import first.",
-        )
     return dataset
 
 
-def get_ready_profile_dataset_for_read(profile: Profile, dataset_key: str) -> Dataset:
-    dataset = get_profile_dataset(profile, dataset_key)
-    if dataset.status != DatasetStatus.READY:
-        raise DatasetServiceError(
-            409,
-            "Dataset is not ready yet. Confirm and wait for import first.",
-        )
-    return dataset
-
-
-def get_ready_profile_dataset_for_update(profile: Profile, dataset_key: str) -> Dataset:
+def get_active_profile_dataset_for_update(profile: Profile, dataset_key: str) -> Dataset:
     dataset = _get_profile_dataset_from_queryset(
         Dataset.objects.select_for_update(),
         profile,
         dataset_key,
     )
     _raise_if_archived(dataset)
-    if dataset.status != DatasetStatus.READY:
-        raise DatasetServiceError(
-            409,
-            "Dataset is not ready yet. Confirm and wait for import first.",
-        )
     return dataset
 
 
@@ -1676,8 +1616,8 @@ def create_profile_dataset_relationship(
 ) -> dict:
     """Create one lightweight foreign-key-style relationship for a source dataset."""
     with transaction.atomic():
-        source_dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
-        target_dataset = get_ready_profile_dataset(profile, target_dataset_key)
+        source_dataset = get_active_profile_dataset_for_update(profile, dataset_key)
+        target_dataset = get_active_profile_dataset(profile, target_dataset_key)
         if source_dataset.pk == target_dataset.pk:
             raise DatasetServiceError(
                 400,
@@ -1740,7 +1680,7 @@ def create_profile_dataset_relationship(
 
 
 def list_profile_dataset_relationships(profile: Profile, dataset_key: str) -> dict:
-    source_dataset = get_ready_profile_dataset(profile, dataset_key)
+    source_dataset = get_active_profile_dataset(profile, dataset_key)
     relationships = source_dataset.outgoing_relationships.select_related(
         "source_dataset", "target_dataset"
     ).order_by("name", "id")
@@ -1775,7 +1715,7 @@ def delete_profile_dataset_relationship(
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
-        source_dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        source_dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         relationship = _get_profile_dataset_relationship(
             profile,
             source_dataset,
@@ -1815,12 +1755,10 @@ def resolve_profile_dataset_relationship(
     *,
     source_index_value: str,
 ) -> dict:
-    source_dataset = get_ready_profile_dataset(profile, dataset_key)
+    source_dataset = get_active_profile_dataset(profile, dataset_key)
     relationship = _get_profile_dataset_relationship(profile, source_dataset, relationship_key)
     if relationship.target_dataset.archived_at is not None:
         raise DatasetServiceError(409, "Relationship target dataset is archived.")
-    if relationship.target_dataset.status != DatasetStatus.READY:
-        raise DatasetServiceError(409, "Relationship target dataset is not ready.")
 
     normalized_source_index = str(source_index_value or "").strip()
     if not normalized_source_index:
@@ -1951,7 +1889,7 @@ def _normalize_create_headers(
 
     try:
         return validate_headers([str(header or "").strip() for header in headers], "Dataset")
-    except CSVParseError as exc:
+    except DatasetValidationError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
 
@@ -1986,7 +1924,7 @@ def _validate_choice_row_data(
             columns=columns,
             choice_constraints=constraints,
         )
-    except CSVParseError as exc:
+    except DatasetValidationError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
 
@@ -2006,7 +1944,7 @@ def _validate_image_row_data(
             columns=columns,
             allow_asset_refs=allow_asset_refs,
         )
-    except CSVParseError as exc:
+    except DatasetValidationError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
 
@@ -2236,7 +2174,7 @@ def _normalize_dataset_column_schema(
             fallback_schema=inferred_schema,
             reject_unknown=True,
         )
-    except CSVParseError as exc:
+    except DatasetValidationError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
     if (
@@ -2300,11 +2238,7 @@ def create_profile_dataset(
         column_schema,
         normalized_rows,
     )
-    api_dataset_count_before = Dataset.objects.filter(
-        profile=profile,
-        file_type=API_CREATED_FILE_TYPE,
-        status=DatasetStatus.READY,
-    ).count()
+    active_dataset_count_before = _visible_profile_dataset_queryset(profile).count()
 
     seen_index_values = set()
     row_payloads = []
@@ -2332,7 +2266,6 @@ def create_profile_dataset(
     with transaction.atomic():
         quota_profile = _lock_profile_for_quota(profile)
         _enforce_dataset_create_quota(quota_profile, len(row_payloads))
-        now = timezone.now()
         dataset = Dataset.objects.create(
             profile=profile,
             project=project,
@@ -2343,17 +2276,12 @@ def create_profile_dataset(
             description=normalized_description,
             instructions=normalized_instructions,
             metadata=normalized_metadata,
-            original_filename="Created via API",
-            file_type=API_CREATED_FILE_TYPE,
-            status=DatasetStatus.READY,
             headers=dataset_headers,
             column_schema=column_schema,
             preview_rows=[payload[2] for payload in row_payloads[:5]],
             index_column=index_column,
             index_generated=index_generated,
             row_count=len(row_payloads),
-            confirmed_at=now,
-            processed_at=now,
         )
         DatasetRow.objects.bulk_create(
             [
@@ -2394,7 +2322,7 @@ def create_profile_dataset(
         ROWSET_DATASET_CREATED,
         {
             "dataset_id": dataset.id,
-            "is_first_dataset": api_dataset_count_before == 0,
+            "is_first_dataset": active_dataset_count_before == 0,
             "initial_row_count": len(row_payloads),
             "column_count": len(dataset_headers),
             "index_generated": index_generated,
@@ -2427,12 +2355,6 @@ def update_profile_dataset_column_types(
 
         _raise_if_archived(dataset)
 
-        if dataset.status == DatasetStatus.PROCESSING:
-            raise DatasetServiceError(
-                409,
-                "Column types cannot be updated while the dataset is processing.",
-            )
-
         previous_schema = normalize_column_schema(dataset.headers, dataset.column_schema)
         try:
             next_schema = normalize_column_schema(
@@ -2441,7 +2363,7 @@ def update_profile_dataset_column_types(
                 fallback_schema=dataset.column_schema,
                 reject_unknown=True,
             )
-        except CSVParseError as exc:
+        except DatasetValidationError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
         if next_schema[dataset.index_column][COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.IMAGE:
             raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
@@ -2469,8 +2391,7 @@ def update_profile_dataset_column_types(
                 "updated_columns": sorted(column_types),
             },
         )
-        if dataset.status == DatasetStatus.READY:
-            _enqueue_dataset_vector_reindex(dataset.id)
+        _enqueue_dataset_vector_reindex(dataset.id)
 
     return {
         "status": "success",
@@ -2583,7 +2504,7 @@ def _normalize_new_column_name(dataset: Dataset, name: str, *, replacing: str | 
 
     try:
         validate_headers(next_headers, "Dataset")
-    except CSVParseError as exc:
+    except DatasetValidationError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
     return normalized_name
 
@@ -2612,7 +2533,7 @@ def _normalized_column_schema_for_headers(
 ) -> dict[str, dict[str, Any]]:
     try:
         return normalize_column_schema(headers, column_schema)
-    except CSVParseError as exc:
+    except DatasetValidationError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
 
@@ -2664,9 +2585,9 @@ def add_profile_dataset_column(
     column_type: ColumnTypeSpec | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
-    """Add one column to a ready dataset and backfill existing rows."""
+    """Add one column to a active dataset and backfill existing rows."""
     with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         column_name = _normalize_new_column_name(dataset, name)
         default_cell = stringify_cell(default_value)
         next_headers = [*dataset.headers, column_name]
@@ -2677,7 +2598,7 @@ def add_profile_dataset_column(
                 fallback_schema=dataset.column_schema,
                 reject_unknown=True,
             )
-        except CSVParseError as exc:
+        except DatasetValidationError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
         default_row = {column_name: default_cell}
         _validate_choice_row_data(
@@ -2752,9 +2673,9 @@ def rename_profile_dataset_column(
     new_name: str,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
-    """Rename one column on a ready dataset while preserving row values."""
+    """Rename one column on a active dataset while preserving row values."""
     with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         old_column_name = _normalize_existing_column_name(dataset, old_name)
         _raise_if_column_participates_in_relationship(dataset, old_column_name)
         if dataset.index_generated and old_column_name == dataset.index_column:
@@ -2836,9 +2757,9 @@ def drop_profile_dataset_column(
     name: str,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
-    """Drop one non-index column from a ready dataset and stored rows."""
+    """Drop one non-index column from a active dataset and stored rows."""
     with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         column_name = _normalize_existing_column_name(dataset, name)
         _raise_if_column_participates_in_relationship(dataset, column_name)
         if column_name == dataset.index_column:
@@ -2903,7 +2824,7 @@ def _normalize_reordered_headers(dataset: Dataset, headers: list[str]) -> list[s
             [str(header or "").strip() for header in headers],
             "Dataset",
         )
-    except CSVParseError as exc:
+    except DatasetValidationError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
     missing_headers = [header for header in dataset.headers if header not in normalized_headers]
@@ -2930,9 +2851,9 @@ def reorder_profile_dataset_columns(
     headers: list[str],
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
-    """Update the display/export order for ready dataset columns."""
+    """Update the display/export order for active dataset columns."""
     with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         previous_headers = list(dataset.headers)
         next_headers = _normalize_reordered_headers(dataset, headers)
         current_schema = _normalized_column_schema_for_headers(
@@ -3119,7 +3040,7 @@ def archive_profile_dataset(
                     agent_api_key=agent_api_key,
                     metadata={"public_preview_disabled": was_public_enabled},
                 )
-                _enqueue_dataset_vector_delete(dataset.id)
+                _enqueue_dataset_vector_reindex(dataset.id)
 
     return {
         "status": "success",
@@ -3285,7 +3206,7 @@ def _get_dataset_asset_by_key(dataset: Dataset, profile: Profile, asset_key: str
 
 
 def get_profile_dataset_asset(profile: Profile, dataset_key: str, asset_key: str) -> DatasetAsset:
-    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     return _get_dataset_asset_by_key(dataset, profile, asset_key)
 
 
@@ -3339,7 +3260,7 @@ def attach_profile_dataset_image_asset(
     index_value: str | None = None,
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
-    dataset = get_ready_profile_dataset(profile, dataset_key)
+    dataset = get_active_profile_dataset(profile, dataset_key)
     _normalize_image_asset_column(dataset, column_name)
     try:
         prepared_image = prepare_dataset_image(
@@ -3353,7 +3274,7 @@ def attach_profile_dataset_image_asset(
     saved_files = []
     try:
         with transaction.atomic():
-            dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+            dataset = get_active_profile_dataset_for_update(profile, dataset_key)
             column = _normalize_image_asset_column(dataset, column_name)
             row = _row_for_image_attachment(dataset, row_id=row_id, index_value=index_value)
 
@@ -3694,14 +3615,12 @@ def _profile_row_search_dataset_queryset(
     dataset_key: str | None,
     project_key: str | None,
     section_key: str | None,
-    status: str | None,
     archived: bool | None,
     filters: dict[str, str],
 ):
     normalized_dataset_key = str(dataset_key or "").strip()
     normalized_project_key = str(project_key or "").strip()
     normalized_section_key = str(section_key or "").strip()
-    normalized_status = _normalize_dataset_status(status or DatasetStatus.READY)
 
     queryset = _dataset_summary_queryset(profile.datasets)
     if normalized_dataset_key:
@@ -3723,8 +3642,6 @@ def _profile_row_search_dataset_queryset(
             section__archived_at__isnull=True,
             section__project__archived_at__isnull=True,
         )
-    if normalized_status:
-        queryset = queryset.filter(status=normalized_status)
     if archived is not None:
         queryset = queryset.filter(archived_at__isnull=not archived)
     if filters:
@@ -3733,7 +3650,6 @@ def _profile_row_search_dataset_queryset(
         "dataset_key": normalized_dataset_key,
         "project_key": normalized_project_key,
         "section_key": normalized_section_key,
-        "status": normalized_status,
         "archived": archived,
     }
 
@@ -3743,7 +3659,6 @@ def _profile_vector_search_hits(
     *,
     query: str,
     dataset_ids: list[int],
-    dataset_status: str | None,
     dataset_archived: bool | None,
     limit: int,
     embedding_provider: EmbeddingProvider | None,
@@ -3763,7 +3678,6 @@ def _profile_vector_search_hits(
             profile,
             query_embedding.vector,
             dataset_ids=dataset_ids,
-            dataset_status=dataset_status,
             dataset_archived=dataset_archived,
             limit=limit * 3,
         )
@@ -3922,7 +3836,6 @@ def search_profile_rows(
     dataset_key: str | None = None,
     project_key: str | None = None,
     section_key: str | None = None,
-    status: str | None = None,
     archived: bool | None = False,
     sort: str | None = None,
     direction: str | None = None,
@@ -3948,7 +3861,6 @@ def search_profile_rows(
         dataset_key=dataset_key,
         project_key=project_key,
         section_key=section_key,
-        status=status,
         archived=archived,
         filters=normalized_filters,
     )
@@ -3996,7 +3908,6 @@ def search_profile_rows(
         profile,
         query=normalized_query,
         dataset_ids=dataset_ids,
-        dataset_status=dataset_filters["status"],
         dataset_archived=dataset_filters["archived"],
         limit=normalized_limit,
         embedding_provider=embedding_provider,
@@ -4085,7 +3996,7 @@ def search_profile_dataset_rows(
 ) -> dict:
     query_id = uuid4().hex
     search_started_at = perf_counter()
-    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     normalized_query = _normalize_search_query(query)
     if not normalized_query:
         raise DatasetServiceError(400, "Search query is required.")
@@ -4174,7 +4085,7 @@ def list_profile_dataset_rows(
     sort: str | None = None,
     direction: str | None = None,
 ) -> dict:
-    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     total_count = dataset.rows.count()
@@ -4231,7 +4142,7 @@ def create_profile_dataset_row(
 ) -> dict:
     with transaction.atomic():
         quota_profile = _lock_profile_for_quota(profile)
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         _enforce_dataset_row_create_quota(quota_profile, dataset)
         return create_api_dataset_row(
             profile,
@@ -4243,7 +4154,7 @@ def create_profile_dataset_row(
 
 
 def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> dict:
-    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     try:
         row = dataset.rows.prefetch_related("assets").get(id=row_id)
     except DatasetRow.DoesNotExist as exc:
@@ -4257,7 +4168,7 @@ def get_profile_dataset_row(profile: Profile, dataset_key: str, row_id: int) -> 
 
 
 def get_profile_dataset_row_by_index(profile: Profile, dataset_key: str, index_value: str) -> dict:
-    dataset = get_ready_profile_dataset_for_read(profile, dataset_key)
+    dataset = get_profile_dataset(profile, dataset_key)
     try:
         row = dataset.rows.prefetch_related("assets").get(index_value=index_value)
     except DatasetRow.DoesNotExist as exc:
@@ -4278,7 +4189,7 @@ def patch_profile_dataset_row(
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         try:
             row = dataset.rows.get(id=row_id)
         except DatasetRow.DoesNotExist as exc:
@@ -4301,7 +4212,7 @@ def patch_profile_dataset_row_by_index(
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         try:
             row = dataset.rows.get(index_value=index_value)
         except DatasetRow.DoesNotExist as exc:
@@ -4323,7 +4234,7 @@ def delete_profile_dataset_row(
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         try:
             row = dataset.rows.get(id=row_id)
         except DatasetRow.DoesNotExist as exc:
@@ -4346,7 +4257,7 @@ def delete_profile_dataset_rows(
     ordered_row_ids = normalize_row_ids(row_ids)
 
     with transaction.atomic():
-        dataset = get_ready_profile_dataset_for_update(profile, dataset_key)
+        dataset = get_active_profile_dataset_for_update(profile, dataset_key)
         return delete_api_dataset_rows(
             profile=profile,
             dataset=dataset,

@@ -42,7 +42,6 @@ from apps.core.services import (
     get_or_create_profile_for_user,
 )
 from apps.core.stripe_webhooks import EVENT_HANDLERS
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.views import DATASET_VIEW_MODE_GROUPED, DatasetListView
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
@@ -195,7 +194,7 @@ class HomeView(DatasetListView):
     dataset_list_description = (
         "Browse every active dataset your agents have created, grouped by project and section."
     )
-    dataset_search_placeholder = "Name, source file, project, or section"
+    dataset_search_placeholder = "Name, project, or section"
 
     def get_profile(self):
         if not hasattr(self, "_profile"):
@@ -632,9 +631,7 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         now = timezone.now()
         week_ago = now - timedelta(days=7)
         month_ago = now - timedelta(days=30)
-        visible_datasets = Dataset.objects.filter(archived_at__isnull=True).exclude(
-            status=DatasetStatus.PREVIEWED
-        )
+        visible_datasets = Dataset.objects.filter(archived_at__isnull=True)
 
         total_users = User.objects.count()
         profile_count = Profile.objects.count()
@@ -666,8 +663,7 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
             .annotate(
                 dataset_count=Count(
                     "datasets",
-                    filter=Q(datasets__archived_at__isnull=True)
-                    & ~Q(datasets__status=DatasetStatus.PREVIEWED),
+                    filter=Q(datasets__archived_at__isnull=True),
                 )
             )
             .order_by("-created_at")[:10]

@@ -23,7 +23,7 @@ asset references, and public preview state needed to avoid guessing.
 
 ## Row
 
-A row is one record in a ready dataset. Rows can be read, searched, created,
+A row is one record in an active dataset. Rows can be read, searched, created,
 patched, and deleted through MCP or REST. Each row has an internal `row_id`, a
 display `row_number`, and an `index_value` from the dataset index column.
 

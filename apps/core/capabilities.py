@@ -167,7 +167,7 @@ ROWSET_CAPABILITIES = (
         id="schema_mutations",
         title="Schema mutations",
         summary=(
-            "Evolve ready datasets in place by adding, renaming, dropping, or reordering "
+            "Evolve active datasets in place by adding, renaming, dropping, or reordering "
             "columns without recreating the table."
         ),
         mcp_tools=("add_column", "rename_column", "drop_column", "reorder_columns"),
@@ -200,7 +200,7 @@ ROWSET_CAPABILITIES = (
             "/api/datasets/{dataset_key}/relationships/{relationship_key}/resolve",
         ),
         notes=(
-            "Relationships point to another ready dataset in the same account.",
+            "Relationships point to another active dataset in the same account.",
             (
                 "With enforcement enabled, non-blank source values must match "
                 "target row indexes on row writes."

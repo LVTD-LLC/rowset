@@ -6,7 +6,7 @@ from apps.datasets.services import DEFAULT_VECTOR_BACKFILL_BATCH_SIZE, backfill_
 
 
 class Command(BaseCommand):
-    help = "Backfill Qdrant vectors for rows in one ready dataset."
+    help = "Backfill Qdrant vectors for rows in one active dataset."
 
     def add_arguments(self, parser):
         parser.add_argument("dataset_key")

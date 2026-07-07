@@ -2,14 +2,17 @@
 {% block title %}{{ dataset.name }} · Rowset{% endblock title %}
 {% block content %}
 <div class="fb-page">
-  <div data-controller="dataset-status" data-dataset-status-url-value="{% url 'dataset_status' dataset.key %}" data-dataset-status-status-value="{{ dataset.status }}" class="space-y-6">
+  <div class="space-y-6">
     <a href="{% url 'home' %}#datasets-workspace" class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">← All datasets</a>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0 space-y-3">
-        {% include "datasets/partials/dataset_status_panel.html" %}
+        <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Dataset</p>
         <h1 class="break-words text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ dataset.name }}</h1>
-        <p class="break-words text-sm text-slate-600 dark:text-slate-300">{{ dataset.original_filename }} · {{ dataset.row_count }} rows · {{ dataset.headers|length }} columns</p>
+        {% if dataset.archived_at %}
+          <span class="inline-flex w-fit items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200" aria-label="Dataset archived">Archived</span>
+        {% endif %}
+        <p class="break-words text-sm text-slate-600 dark:text-slate-300">{{ dataset.row_count }} rows · {{ dataset.headers|length }} columns</p>
         <p class="break-words text-sm text-slate-600 dark:text-slate-300">Created by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.created_by_actor_label }}</span> · Last updated by <span class="font-semibold text-slate-900 dark:text-slate-100">{{ dataset.updated_by_actor_label }}</span></p>
         <p class="break-words text-sm text-slate-600 dark:text-slate-300">
           Project:
@@ -29,12 +32,10 @@
         {% endif %}
       </div>
       <div class="flex flex-col gap-2 sm:flex-row">
-        {% if dataset.status == "ready" and not dataset.archived_at %}
+        {% if not dataset.archived_at %}
           <a href="{% url 'dataset_row_create' dataset.key %}" class="fb-button-primary">Create row</a>
         {% endif %}
-        {% if dataset.status == "ready" %}
-          {% include "components/dataset_export_menu.html" %}
-        {% endif %}
+        {% include "components/dataset_export_menu.html" %}
         <a href="{{ dataset.get_changes_url }}" class="fb-button-secondary">Changes</a>
         <a href="{{ dataset.get_settings_url }}" class="fb-button-secondary">Settings</a>
         {% if dataset.archived_at %}
@@ -42,8 +43,7 @@
             {% csrf_token %}
             <button type="submit" class="fb-button-primary">Unarchive</button>
           </form>
-        {% endif %}
-        {% if dataset.status == "ready" and not dataset.archived_at %}
+        {% else %}
           <form method="post" action="{% url 'dataset_archive' dataset.key %}" onsubmit="return confirm('Archive {{ dataset.name|escapejs }}? It will leave normal lists and public preview sharing will turn off.');">
             {% csrf_token %}
             <button type="submit" class="fb-button-secondary border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950/30">Archive</button>
@@ -152,7 +152,7 @@
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Showing {{ row_page_obj.start_index }}-{{ row_page_obj.end_index }} of {{ row_page_obj.paginator.count }} rows</p>
             {% endif %}
           </div>
-          {% if dataset.status == "ready" and not dataset.archived_at %}
+          {% if not dataset.archived_at %}
             <a href="{% url 'dataset_row_create' dataset.key %}" class="fb-button-primary">Create row</a>
           {% endif %}
         </div>

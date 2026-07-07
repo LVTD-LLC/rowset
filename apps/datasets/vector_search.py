@@ -15,7 +15,6 @@ from qdrant_client.http.exceptions import (
     UnexpectedResponse,
 )
 
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 
 QDRANT_CONTENT_TYPE_DATASET_ROW = "dataset_row"
@@ -140,8 +139,7 @@ def dataset_row_search_filter(dataset: Dataset) -> qdrant_models.Filter:
     vector_filter = _dataset_row_filter(dataset)
     vector_filter.must.extend(
         [
-            _payload_match("dataset_status", DatasetStatus.READY),
-            _payload_match("dataset_archived", False),
+            _payload_match("dataset_archived", dataset.archived_at is not None),
         ]
     )
     return vector_filter
@@ -151,7 +149,6 @@ def profile_dataset_row_search_filter(
     profile_id: int,
     *,
     dataset_ids: Sequence[int] | None = None,
-    dataset_status: str | None = DatasetStatus.READY,
     dataset_archived: bool | None = False,
 ) -> qdrant_models.Filter:
     must = [
@@ -166,8 +163,6 @@ def profile_dataset_row_search_filter(
                 match=qdrant_models.MatchAny(any=list(dataset_ids)),
             )
         )
-    if dataset_status:
-        must.append(_payload_match("dataset_status", dataset_status))
     if dataset_archived is not None:
         must.append(_payload_match("dataset_archived", dataset_archived))
     return qdrant_models.Filter(must=must)
@@ -223,7 +218,6 @@ def build_dataset_row_search_document(
         "profile_id": dataset.profile_id,
         "dataset_id": dataset.id,
         "dataset_key": str(dataset.key),
-        "dataset_status": dataset.status,
         "dataset_archived": dataset.archived_at is not None,
         "row_id": row.id,
         "row_number": row.row_number,
@@ -413,7 +407,6 @@ class QdrantVectorStore:
         vector: list[float],
         *,
         dataset_ids: Sequence[int] | None = None,
-        dataset_status: str | None = DatasetStatus.READY,
         dataset_archived: bool | None = False,
         limit: int = 10,
     ) -> list[DatasetRowVectorSearchHit]:
@@ -426,7 +419,6 @@ class QdrantVectorStore:
                 query_filter=profile_dataset_row_search_filter(
                     profile.id,
                     dataset_ids=dataset_ids,
-                    dataset_status=dataset_status,
                     dataset_archived=dataset_archived,
                 ),
                 limit=limit,

@@ -110,7 +110,6 @@ urlpatterns = [
         views.dataset_update_column_settings,
         name="dataset_update_column_settings",
     ),
-    path("datasets/<uuid:dataset_key>/status/", views.dataset_status, name="dataset_status"),
     path("share/datasets/<uuid:public_key>/", views.public_dataset, name="public_dataset"),
     path(
         "share/datasets/<uuid:public_key>/rows/<int:row_id>/",

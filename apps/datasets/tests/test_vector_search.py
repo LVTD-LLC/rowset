@@ -4,10 +4,10 @@ import pytest
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
+from django.utils import timezone
 from httpx import Headers
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.vector_search import (
     QDRANT_DENSE_VECTOR_NAME,
@@ -42,8 +42,6 @@ def vector_dataset(profile):
     return Dataset.objects.create(
         profile=profile,
         name="Launch Tasks",
-        original_filename="tasks.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "status", "notes", "empty"],
         column_schema={
             "task_id": {"type": "text", "description": "Stable task identifier"},
@@ -128,7 +126,6 @@ def test_build_dataset_row_search_document_has_stable_id_hash_and_payload(
         "profile_id": vector_dataset.profile_id,
         "dataset_id": vector_dataset.id,
         "dataset_key": str(vector_dataset.key),
-        "dataset_status": DatasetStatus.READY,
         "dataset_archived": False,
         "row_id": vector_row.id,
         "row_number": 1,
@@ -409,8 +406,31 @@ def test_vector_store_searches_dataset_rows_with_required_payload_filter(
         "content_type": "dataset_row",
         "profile_id": vector_dataset.profile_id,
         "dataset_id": vector_dataset.id,
-        "dataset_status": DatasetStatus.READY,
         "dataset_archived": False,
+    }
+
+
+def test_vector_store_searches_archived_dataset_rows_with_archived_payload_filter(
+    vector_dataset,
+):
+    vector_dataset.archived_at = timezone.now()
+    vector_dataset.save(update_fields=["archived_at"])
+    client = FakeQdrantClient(exists=True)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="rowset_rows_custom_embedding_d3_v1",
+        embedding_model="custom-embedding",
+        embedding_dimensions=3,
+    )
+
+    store.search_dataset_rows(vector_dataset, [0.1, 0.2, 0.3], limit=5)
+
+    assert _filter_match_values(client.query_points_call["query_filter"]) == {
+        "app": "rowset",
+        "content_type": "dataset_row",
+        "profile_id": vector_dataset.profile_id,
+        "dataset_id": vector_dataset.id,
+        "dataset_archived": True,
     }
 
 

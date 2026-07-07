@@ -6,7 +6,7 @@ keywords: Rowset rows, row CRUD, row search, dataset rows
 
 # Work with rows
 
-Rows are the working records inside a ready dataset. Agents should inspect the
+Rows are the working records inside an active dataset. Agents should inspect the
 dataset first, then read or change rows using the most stable identifier
 available.
 

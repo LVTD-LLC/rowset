@@ -5,7 +5,6 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import override_settings
 
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
@@ -34,8 +33,6 @@ def dataset(profile):
     return Dataset.objects.create(
         profile=profile,
         name="Vector Tasks",
-        original_filename="tasks.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "title"],
         column_schema={"title": {"type": "text", "description": "Task title"}},
         index_column="task_id",
@@ -110,6 +107,7 @@ class FakeVectorStore:
             {
                 "dataset_key": str(dataset.key),
                 "row_id": row.id,
+                "dataset_archived": dataset.archived_at is not None,
                 "vector": vector,
                 "embedding_model": embedding_model,
                 "embedding_dimensions": embedding_dimensions,
@@ -134,7 +132,7 @@ class FakeVectorStore:
         self.deleted_dataset_keys.append(str(dataset.key))
 
 
-def test_backfill_dataset_vectors_upserts_ready_dataset_rows_in_row_order(dataset, rows):
+def test_backfill_dataset_vectors_upserts_dataset_rows_in_row_order(dataset, rows):
     provider = FakeEmbeddingProvider()
     store = FakeVectorStore()
 
@@ -242,12 +240,18 @@ def test_reindex_dataset_vectors_task_backfills_when_enabled(
     assert calls == [("backfill", dataset.id)]
 
 
-def test_backfill_dataset_vectors_rejects_non_ready_datasets(dataset):
-    dataset.status = DatasetStatus.PREVIEWED
-    dataset.save(update_fields=["status", "updated_at"])
+def test_backfill_dataset_vectors_indexes_archived_dataset_rows(dataset, rows):
+    from django.utils import timezone
 
-    with pytest.raises(ValueError, match="ready"):
-        backfill_dataset_vectors(dataset, embedding_provider=FakeEmbeddingProvider())
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at", "updated_at"])
+    provider = FakeEmbeddingProvider()
+    store = FakeVectorStore()
+
+    result = backfill_dataset_vectors(dataset, embedding_provider=provider, vector_store=store)
+
+    assert result.indexed == 2
+    assert {upsert["dataset_archived"] for upsert in store.upserts} == {True}
 
 
 def test_backfill_dataset_vectors_command_supports_dry_run(dataset, rows):

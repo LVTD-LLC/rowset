@@ -24,7 +24,7 @@ from apps.core.analytics import (
 )
 from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import AgentApiKey, Feedback, Profile
-from apps.datasets.choices import DatasetColumnType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType
 from apps.datasets.models import Dataset, DatasetRow, Project, ProjectSection
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
@@ -168,10 +168,8 @@ def _get_or_create_feedback_section(profile: Profile, project: Project) -> Proje
 
 
 def _is_feedback_dataset_compatible(dataset: Dataset) -> bool:
-    return (
-        dataset.index_column == FEEDBACK_DATASET_INDEX_COLUMN
-        and dataset.status == DatasetStatus.READY
-        and all(header in dataset.headers for header in FEEDBACK_DATASET_HEADERS)
+    return dataset.index_column == FEEDBACK_DATASET_INDEX_COLUMN and all(
+        header in dataset.headers for header in FEEDBACK_DATASET_HEADERS
     )
 
 

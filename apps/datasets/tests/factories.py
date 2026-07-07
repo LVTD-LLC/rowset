@@ -4,13 +4,10 @@ from collections.abc import Iterable
 from itertools import count
 from typing import Any
 
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.utils import timezone
-
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import Profile
 from apps.core.services import AgentApiKeyCredential, create_agent_api_key
-from apps.datasets.choices import DatasetColumnType, DatasetStatus
+from apps.datasets.choices import DatasetColumnType
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRelationship, DatasetRow, Project
 from apps.datasets.vector_search import DatasetRowVectorSearchHit
@@ -20,10 +17,6 @@ _sequence = count(1)
 
 def next_factory_id() -> int:
     return next(_sequence)
-
-
-def csv_upload(content: str = "name,email\nAda,ada@example.com\nGrace,grace@example.com\n"):
-    return SimpleUploadedFile("people.csv", content.encode(), content_type="text/csv")
 
 
 def create_test_user(
@@ -84,26 +77,18 @@ def create_dataset(
     rows: Iterable[dict[str, Any]] | None = None,
     index_column: str | None = None,
     row_count: int | None = None,
-    status: str = DatasetStatus.READY,
     **overrides,
 ) -> Dataset:
     headers = headers or ["name", "email"]
     index_column = index_column if index_column is not None else headers[-1]
     rows = list(rows or [])
-    now = timezone.now()
     defaults = {
         "profile": profile,
         "name": name or f"Dataset {next_factory_id()}",
-        "original_filename": "Created via API",
-        "file_type": "api",
-        "status": status,
         "headers": headers,
         "index_column": index_column,
         "row_count": row_count if row_count is not None else len(rows),
     }
-    if status == DatasetStatus.READY:
-        defaults.setdefault("confirmed_at", now)
-        defaults.setdefault("processed_at", now)
     defaults.update(overrides)
     dataset = Dataset.objects.create(**defaults)
     for row_number, data in enumerate(rows, start=1):
@@ -116,9 +101,6 @@ def create_ready_dataset(profile: Profile) -> Dataset:
     return create_dataset(
         profile,
         name="People",
-        original_filename="people.csv",
-        file_type="csv",
-        source_file=csv_upload(),
         headers=["name", "email"],
         index_column="email",
         preview_rows=[{"name": "Ada", "email": "ada@example.com"}],

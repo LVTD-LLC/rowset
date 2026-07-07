@@ -105,7 +105,7 @@ Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 - Discover available datasets with `get_all_datasets`.
 - Find archived datasets with `get_archived_datasets` before restoring them.
 - Search for a specific dataset or project with `search_datasets` and `search_projects`.
-- Create new ready datasets with `create_dataset` when the user asks for an on-the-fly dataset.
+- Create new datasets with `create_dataset` when the user asks for an on-the-fly dataset.
 - Inspect one dataset with `get_dataset` before row operations. The response
   includes dataset context, semantic schema, and relationship summaries.
 - Read rows with `list_dataset_rows`, `get_dataset_row`, or `get_dataset_row_by_index`.
