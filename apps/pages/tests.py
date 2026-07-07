@@ -596,7 +596,7 @@ def test_dataset_instructions_blog_post_has_required_links_schema_and_content(cl
     assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) in content
     assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
     assert schema["@type"] == "BlogPosting"
-    assert schema["url"] == "https://testserver/blog/structure-dataset-instructions-ai-agents"
+    assert schema["url"] == "https://rowset.lvtd.dev/blog/structure-dataset-instructions-ai-agents"
     assert schema["headline"] == "How to structure dataset instructions for AI agents"
 
 
