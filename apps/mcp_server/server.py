@@ -980,7 +980,7 @@ def archive_project(
 @mcp.tool(
     name="create_dataset",
     description=(
-        "Create a ready API-backed dataset for the authenticated Rowset profile. "
+        "Create an API-backed dataset for the authenticated Rowset profile. "
         "Provide headers, rows, or both. If index_column is omitted, Rowset generates "
         "a rowset_id index column so the dataset can be used immediately."
     ),
@@ -1575,7 +1575,7 @@ def restore_dataset(
 @mcp.tool(
     name="list_dataset_rows",
     description=(
-        "Return a bounded page of rows for a active dataset. Optionally search across "
+        "Return a bounded page of rows for an active dataset. Optionally search across "
         "row values, filter by column values, and sort by row_number or a dataset header."
     ),
 )
@@ -1758,7 +1758,7 @@ def search_dataset_rows(
 
 @mcp.tool(
     name="get_dataset_row",
-    description="Return one row from a active dataset by internal row id.",
+    description="Return one row from an active dataset by internal row id.",
 )
 def get_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1774,7 +1774,7 @@ def get_dataset_row(
 
 @mcp.tool(
     name="get_dataset_row_by_index",
-    description="Return one row from a active dataset by its configured index value.",
+    description="Return one row from an active dataset by its configured index value.",
 )
 def get_dataset_row_by_index(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1790,7 +1790,7 @@ def get_dataset_row_by_index(
 
 @mcp.tool(
     name="create_dataset_row",
-    description="Create one row in a active dataset. Provide values keyed by dataset header.",
+    description="Create one row in an active dataset. Provide values keyed by dataset header.",
 )
 def create_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1812,7 +1812,7 @@ def create_dataset_row(
 @mcp.tool(
     name="attach_image_to_dataset_row",
     description=(
-        "Attach or replace one image asset in an image column for a active dataset row. "
+        "Attach or replace one image asset in an image column for an active dataset row. "
         "The target row must already exist. Provide exactly one of row_id or index_value. "
         "The row cell will store an opaque asset reference, not raw image bytes. For a "
         "local file, read the bytes in the agent environment and pass base64 or a data "
@@ -1892,7 +1892,7 @@ def get_dataset_image_asset(
 
 @mcp.tool(
     name="update_dataset_row",
-    description="Patch one row in a active dataset. Unknown headers are ignored.",
+    description="Patch one row in an active dataset. Unknown headers are ignored.",
 )
 def update_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1915,7 +1915,7 @@ def update_dataset_row(
 
 @mcp.tool(
     name="update_dataset_row_by_index",
-    description="Patch one row in a active dataset by its configured index value.",
+    description="Patch one row in an active dataset by its configured index value.",
 )
 def update_dataset_row_by_index(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
@@ -1938,7 +1938,7 @@ def update_dataset_row_by_index(
 
 @mcp.tool(
     name="delete_dataset_row",
-    description="Delete one row from a active dataset by internal row id.",
+    description="Delete one row from an active dataset by internal row id.",
 )
 def delete_dataset_row(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
