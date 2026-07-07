@@ -12,6 +12,12 @@ def test_use_case_feature_references_match_registered_capability_ids():
         assert set(use_case["rowset_features"]) <= capability_ids
 
 
+def test_capabilities_payload_includes_core_rowset_surfaces():
+    payload = rowset_capabilities_payload()
+
+    assert {capability["id"] for capability in payload["capabilities"]} >= {"rows"}
+
+
 def test_capabilities_payload_rejects_unknown_use_case_feature_references(monkeypatch):
     monkeypatch.setattr(
         capabilities,

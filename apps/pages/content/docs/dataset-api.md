@@ -62,6 +62,8 @@ Use `description`, `instructions`, and `metadata` when an agent should remember
 how to use the dataset. For example, a task board can store status rules,
 priority conventions, or review steps in dataset metadata instead of requiring
 the user to explain them on every run.
+For a reusable pattern, read [how to structure dataset instructions for AI
+agents](/blog/structure-dataset-instructions-ai-agents).
 
 To create the dataset inside an existing project, include `project_key`. To place
 it inside a project section, include both `project_key` and `section_key`. Omit

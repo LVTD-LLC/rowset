@@ -243,6 +243,7 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert "Operate" not in docs_nav
     assert reverse("docs_page", kwargs={"slug": "quickstart"}) in content
     assert reverse("docs_page", kwargs={"slug": "create-datasets"}) in content
+    assert reverse("docs_page", kwargs={"slug": "share-public-previews"}) in content
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in docs_nav
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in docs_nav
     assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) not in docs_nav
@@ -269,6 +270,7 @@ def test_docs_sidebar_lists_groups_without_disclosure_controls(client):
     assert "inert" not in sidebar
     assert "transition" not in sidebar
     assert "Start with your first agent dataset" in sidebar
+    assert "Share a public preview" in sidebar
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in sidebar
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in sidebar
     assert reverse("use_case_page", kwargs={"slug": "bug-qa-tracker"}) not in sidebar
@@ -526,6 +528,41 @@ def test_airtable_alternatives_blog_post_is_in_sitemap(client):
     assert response.status_code == 200
     assert b"/blog/airtable-alternatives" in response.content
     assert b"/alternatives/airtable/" not in response.content
+
+
+def test_dataset_instructions_blog_post_has_required_links_schema_and_content(client):
+    response = client.get(
+        reverse("blog_post", kwargs={"slug": "structure-dataset-instructions-ai-agents"})
+    )
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    text = strip_tags(content)
+    words = re.findall(r"\b[\w'-]+\b", text)
+    schema = json.loads(_json_ld_payload(content))
+
+    assert "How to structure dataset instructions for AI agents" in content
+    assert len(words) >= 1500
+    assert "The short rule" in content
+    assert "What belongs in metadata instead" in content
+    assert "A reusable instruction template" in content
+    assert "FAQ" in content
+    assert "operating contract" in text
+    assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
+    assert reverse("docs_page", kwargs={"slug": "design-schema"}) in content
+    assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) in content
+    assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
+    assert schema["@type"] == "BlogPosting"
+    assert schema["url"] == "https://rowset.lvtd.dev/blog/structure-dataset-instructions-ai-agents"
+    assert schema["headline"] == "How to structure dataset instructions for AI agents"
+
+
+def test_dataset_instructions_blog_post_is_in_sitemap(client):
+    response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    assert b"/blog/structure-dataset-instructions-ai-agents" in response.content
 
 
 def test_seo_sprint_tracks_airtable_phase_as_blog_post():
