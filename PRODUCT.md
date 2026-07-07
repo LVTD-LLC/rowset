@@ -25,7 +25,7 @@ clear ownership boundaries.
 
 - Copy a Rowset setup prompt into a trusted AI agent.
 - Let the agent authenticate through hosted MCP or REST with a bearer API key.
-- Let agents create ready datasets with headers, rows, and a stable index.
+- Let agents create datasets with headers, rows, and a stable index.
 - Let agents discover datasets, inspect schemas, and perform row operations
   through authenticated MCP or REST.
 - Share read-only public previews with humans when a browser page is enough.
@@ -68,8 +68,7 @@ API key.
 
 ## Out Of Scope
 
-- Dashboard upload/import wizards as the primary product path.
-- Rowset-managed Google Sheets connection, import, sync, or write-back.
+- Rowset-owned source connectors, sync, or write-back.
 - Public previews as a replacement for private API or MCP authentication.
 - Browser automation as the preferred agent integration path.
 - A general-purpose BI dashboard, warehouse, or ETL orchestration suite.

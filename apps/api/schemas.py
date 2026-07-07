@@ -222,9 +222,6 @@ class DatasetSummaryOut(Schema):
     metadata: JsonObject
     project: ProjectReferenceOut | None = None
     section: ProjectSectionReferenceOut | None = None
-    original_filename: str
-    file_type: str
-    status: str
     headers: list[str]
     column_schema: ColumnSchema
     index_column: str
@@ -237,8 +234,6 @@ class DatasetSummaryOut(Schema):
     public_password_protected: bool
     created_at: datetime
     updated_at: datetime
-    confirmed_at: datetime | None = None
-    processed_at: datetime | None = None
     archived_at: datetime | None = None
 
 
@@ -560,10 +555,6 @@ class ProfileRowSearchIn(Schema):
         default=None,
         description="Optional project section key to restrict searched datasets.",
     )
-    status: str | None = Field(
-        default=None,
-        description="Optional dataset status. Defaults to ready.",
-    )
     archived: bool | None = Field(
         default=False,
         description=(
@@ -583,7 +574,6 @@ class ProfileRowSearchDatasetOut(Schema):
     name: str
     project: ProjectReferenceOut | None = None
     section: ProjectSectionReferenceOut | None = None
-    status: str
     headers: list[str]
     index_column: str
     row_count: int

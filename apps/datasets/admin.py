@@ -35,7 +35,6 @@ class DatasetAdmin(admin.ModelAdmin):
         "profile",
         "project",
         "section",
-        "status",
         "row_count",
         "public_enabled",
         "archived_at",
@@ -56,7 +55,6 @@ class DatasetAdmin(admin.ModelAdmin):
         "name",
         "description",
         "instructions",
-        "original_filename",
         "project__name",
         "section__name",
         "profile__user__email",
@@ -65,7 +63,6 @@ class DatasetAdmin(admin.ModelAdmin):
         "archived_by_agent_api_key__name",
     )
     list_filter = (
-        "status",
         "project",
         "section",
         "public_enabled",
@@ -80,7 +77,6 @@ class DatasetAdmin(admin.ModelAdmin):
         "public_key",
         "headers",
         "preview_rows",
-        "parse_error",
         "created_by_agent_api_key",
         "updated_by_agent_api_key",
         "archived_by_agent_api_key",

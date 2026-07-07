@@ -79,8 +79,6 @@ def test_rest_and_mcp_create_dataset_share_ready_dataset_contract(
     rest_dataset = rest_response.json()["dataset"]
     mcp_dataset = mcp_result["dataset"]
     for payload in (rest_dataset, mcp_dataset):
-        assert payload["file_type"] == "api"
-        assert payload["status"] == "ready"
         assert payload["description"] == "Supplier catalog"
         assert payload["instructions"] == "Keep sku stable."
         assert payload["metadata"] == {"workflow": {"default_status": "draft"}}

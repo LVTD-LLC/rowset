@@ -176,16 +176,15 @@ asset endpoint:
 ## Find datasets
 
 ```http
-GET {{ api_base_url }}/datasets?query=feature&status=ready
+GET {{ api_base_url }}/datasets?query=feature&project_key=3efc2ad0-8d28-44bc-a554-cb3eab89f45a
 ```
 
 The dataset list endpoint accepts filters for `query`, `project_key`,
-`section_key`, `header_contains`, `status`, and `updated_after`. `query` matches
-dataset name, description, instructions, filename, project text, and section
-text. `header_contains` should be an exact header name. Accepted `status` values
-are `previewed`, `processing`, `ready`, and `failed`. `updated_after` accepts an
-ISO 8601 date or datetime; values without a timezone offset, including bare
-dates, are interpreted as UTC. For example, `2026-06-01` is treated as
+`section_key`, `header_contains`, and `updated_after`. `query` matches dataset
+name, description, instructions, project text, and section text.
+`header_contains` should be an exact header name. `updated_after` accepts an ISO
+8601 date or datetime; values without a timezone offset, including bare dates,
+are interpreted as UTC. For example, `2026-06-01` is treated as
 `2026-06-01T00:00:00Z`. Use these filters when an agent needs to find the right
 dataset before reading rows or making updates.
 
@@ -230,8 +229,8 @@ unknown or when multiple datasets may contain the answer.
 ```
 
 Row filters apply only to datasets that contain those headers. Dataset filters
-can restrict by `dataset_key`, `project_key`, `section_key`, `status`, and
-`archived`. Each result includes the dataset, canonical row, and match metadata.
+can restrict by `dataset_key`, `project_key`, `section_key`, and `archived`.
+Each result includes the dataset, canonical row, and match metadata.
 
 ## Search rows in one dataset
 
@@ -240,7 +239,7 @@ POST {{ api_base_url }}/datasets/{dataset_key}/search
 Content-Type: application/json
 ```
 
-Search one ready dataset with hybrid vector and lexical retrieval when vector
+Search one active dataset with hybrid vector and lexical retrieval when vector
 search is enabled. Use this when you already know the dataset key. Rowset
 returns ranked results hydrated from canonical rows; the vector database is only
 a retrieval index.
@@ -444,7 +443,7 @@ Passing `null` leaves that field unchanged.
 
 ## Change columns
 
-Use schema mutation endpoints when an agent needs to evolve an existing ready dataset in place.
+Use schema mutation endpoints when an agent needs to evolve an existing active dataset in place.
 
 Add a column and backfill existing rows with a blank or default value:
 
@@ -546,7 +545,7 @@ PATCH {{ api_base_url }}/datasets/{dataset_key}/public-preview
 Content-Type: application/json
 ```
 
-Enable or disable the read-only public preview link. Public previews can only be enabled for ready datasets.
+Enable or disable the read-only public preview link for an active dataset.
 
 ```json
 {

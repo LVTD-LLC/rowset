@@ -8,7 +8,7 @@
 - Auth: Django allauth, session auth, API-key auth, hosted MCP bearer auth.
 - Data: PostgreSQL, Redis, Django Q workers.
 - Tabular processing: Python `csv`, `json`, `sqlite3`, and `zipfile` plus
-  Polars for dataset parsing and CSV, JSONL, XLSX, SQLite, and Parquet exports.
+  Polars for CSV, JSONL, XLSX, SQLite, and Parquet exports.
 - Frontend: Django templates, HTMX, Alpine.js, Tailwind, and PostCSS-built
   static assets.
 - Local containers: Docker Compose with Postgres, Redis, backend, workers,
@@ -25,7 +25,7 @@
 - Generate migrations: `make makemigrations`
 - Apply migrations: `make migrate`
 - Run all tests in Docker: `make test`
-- Run focused tests: `make test apps/datasets/tests/test_csv_datasets.py`
+- Run focused tests: `make test apps/datasets/tests/test_dataset_creation.py`
 - Pass pytest flags: `make test -- -k dataset -q`
 - Run current local CI-equivalent checks: `make ci-local`
 - Restart workers: `make restart-worker`
@@ -47,8 +47,8 @@ contents.
 
 - `rowset/settings.py` wires Django apps, allauth, storage, logging, Redis,
   Django Q, observability, payments, and AI model labels.
-- `apps/datasets` owns dataset parsing, legacy import support, row storage,
-  exports, public previews, and dataset-specific tests.
+- `apps/datasets` owns dataset models, row storage, validation, exports, public
+  previews, and dataset-specific tests.
 - `apps/api` exposes REST endpoints and keeps API schemas/auth/service wrappers.
 - `apps/mcp_server` exposes hosted MCP tools and bearer API-key auth.
 - `apps/core` owns profiles, account state, feedback, email delivery, Stripe
@@ -67,10 +67,7 @@ contents.
 
 ## Dataset Rules
 
-- Agents normally create datasets through MCP or REST by sending headers and
-  rows. Legacy parser paths still support CSV and Parquet source text.
-- Source files in legacy parser paths are limited by `MAX_CSV_UPLOAD_BYTES` in
-  `apps/datasets/constants.py`.
+- Agents create datasets through MCP or REST by sending headers and rows.
 - Headers must be present, non-empty, and unique.
 - Index values must be non-blank and unique unless Rowset generated the index.
 - Generated index columns use `rowset_id` or the next available suffixed name.
@@ -112,7 +109,7 @@ contents.
 - Prefer `make test` over host `pytest`.
 - Use focused backend checks while iterating, then broaden to `make ci-local`
   before review when the change touches shared behavior or multiple surfaces.
-- Dataset parser, API, MCP auth, export, and public-preview changes need
+- Dataset validation, API, MCP auth, export, and public-preview changes need
   focused tests.
 - Template-only changes can be checked with Django template loading and
   `manage.py check`, but asset-related work should also build or run the frontend

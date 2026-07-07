@@ -88,7 +88,7 @@ If a tool argument fails validation, ask the agent to call
 ## Common dataset issues
 
 - Dataset not found: check that the key belongs to the authenticated Rowset account.
-- Dataset not ready: wait for processing or use a ready API-created dataset.
+- Dataset archived: restore the dataset before making row or schema changes.
 - Row not found: check `row_id` or the configured index value.
 - Column not found: call `get_dataset` and compare against current headers.
 - Choice value rejected: use one of the configured choice labels.

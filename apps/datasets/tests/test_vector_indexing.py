@@ -5,7 +5,6 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import override_settings
 
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.services import (
@@ -34,8 +33,6 @@ def dataset(profile):
     return Dataset.objects.create(
         profile=profile,
         name="Vector Tasks",
-        original_filename="tasks.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "title"],
         column_schema={"title": {"type": "text", "description": "Task title"}},
         index_column="task_id",
@@ -242,11 +239,13 @@ def test_reindex_dataset_vectors_task_backfills_when_enabled(
     assert calls == [("backfill", dataset.id)]
 
 
-def test_backfill_dataset_vectors_rejects_non_ready_datasets(dataset):
-    dataset.status = DatasetStatus.PREVIEWED
-    dataset.save(update_fields=["status", "updated_at"])
+def test_backfill_dataset_vectors_rejects_archived_datasets(dataset):
+    from django.utils import timezone
 
-    with pytest.raises(ValueError, match="ready"):
+    dataset.archived_at = timezone.now()
+    dataset.save(update_fields=["archived_at", "updated_at"])
+
+    with pytest.raises(ValueError, match="archived"):
         backfill_dataset_vectors(dataset, embedding_provider=FakeEmbeddingProvider())
 
 

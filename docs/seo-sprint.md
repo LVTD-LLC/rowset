@@ -127,7 +127,7 @@ Findings:
 
 **Honesty section:** every alternatives-style blog post must include 3-4 honest tradeoffs where the competitor is better. This is non-negotiable.
 
-**Positioning:** Rowset is not a spreadsheet replacement, no-code app builder, BI platform, or Google Sheets sync product. Keep the angle on private MCP/REST datasets for trusted agents.
+**Positioning:** Rowset is not a spreadsheet replacement, no-code app builder, BI platform, or third-party sync product. Keep the angle on private MCP/REST datasets for trusted agents.
 
 **Internal-link minimums:**
 - alternatives blog posts -> at least 2 related alternatives/content links, 1 feature/doc page, 1 pricing/signup link.

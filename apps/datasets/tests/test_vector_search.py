@@ -7,7 +7,6 @@ from django.test import override_settings
 from httpx import Headers
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-from apps.datasets.choices import DatasetStatus
 from apps.datasets.models import Dataset, DatasetRow
 from apps.datasets.vector_search import (
     QDRANT_DENSE_VECTOR_NAME,
@@ -42,8 +41,6 @@ def vector_dataset(profile):
     return Dataset.objects.create(
         profile=profile,
         name="Launch Tasks",
-        original_filename="tasks.csv",
-        status=DatasetStatus.READY,
         headers=["task_id", "status", "notes", "empty"],
         column_schema={
             "task_id": {"type": "text", "description": "Stable task identifier"},
@@ -128,7 +125,6 @@ def test_build_dataset_row_search_document_has_stable_id_hash_and_payload(
         "profile_id": vector_dataset.profile_id,
         "dataset_id": vector_dataset.id,
         "dataset_key": str(vector_dataset.key),
-        "dataset_status": DatasetStatus.READY,
         "dataset_archived": False,
         "row_id": vector_row.id,
         "row_number": 1,
@@ -409,7 +405,6 @@ def test_vector_store_searches_dataset_rows_with_required_payload_filter(
         "content_type": "dataset_row",
         "profile_id": vector_dataset.profile_id,
         "dataset_id": vector_dataset.id,
-        "dataset_status": DatasetStatus.READY,
         "dataset_archived": False,
     }
 

@@ -7,7 +7,7 @@ from django.contrib.auth.hashers import make_password
 from django.db import transaction
 
 from apps.core.models import AgentApiKey
-from apps.datasets.choices import DatasetMutationType, DatasetStatus
+from apps.datasets.choices import DatasetMutationType
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset
 from apps.datasets.services import normalize_public_page_size
@@ -92,12 +92,6 @@ def update_public_preview_settings(
         normalized_password = public_password.strip()
         if not normalized_password:
             raise PublicPreviewSettingsError(400, "Public preview password cannot be blank.")
-
-    if next_public_enabled and dataset.status != DatasetStatus.READY:
-        raise PublicPreviewSettingsError(
-            409,
-            "Public previews can only be enabled for ready datasets.",
-        )
 
     dataset.public_enabled = next_public_enabled
     if public_page_size is not None:

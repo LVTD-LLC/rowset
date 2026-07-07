@@ -78,7 +78,7 @@ JSON context that should stay with the project. Pass an empty object to
 
 ## Dataset tools
 
-Use `create_dataset` when the agent needs a new ready dataset:
+Use `create_dataset` when the agent needs a new dataset:
 
 ```text
 create_dataset
@@ -89,7 +89,7 @@ persistent operating context for future agent runs. Pass `project_key` to create
 the dataset inside a project, or pass both `project_key` and `section_key` to
 place it inside a project section.
 
-For a specific ready dataset, use:
+For a specific active dataset, use:
 
 ```text
 get_dataset
@@ -121,7 +121,7 @@ back.
 
 ## Schema tools
 
-Use schema tools when an existing ready dataset needs columns changed without
+Use schema tools when an existing active dataset needs columns changed without
 recreating it:
 
 ```text

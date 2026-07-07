@@ -81,7 +81,7 @@ Use JSON metadata for rules that machines should parse:
 
 ## Evolve schema in place
 
-Use schema mutation tools when a ready dataset needs to change:
+Use schema mutation tools when an active dataset needs to change:
 
 ```text
 add_column

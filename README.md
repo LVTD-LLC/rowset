@@ -76,8 +76,7 @@ In scope:
 
 Out of scope for the current product path:
 
-- Dashboard upload/import wizards as the primary workflow.
-- Rowset-managed Google Sheets import, sync, or write-back.
+- Rowset-owned source connectors, sync, or write-back.
 - Public previews as authentication or as a substitute for REST/MCP access.
 - Browser automation as the preferred agent integration.
 - Broad BI, warehouse, or ETL orchestration promises.
@@ -527,7 +526,7 @@ Core entities:
 | `AgentApiKey` | Scoped API key record. Stores a prefix, token hash, encrypted token ciphertext, access level, and revocation state. |
 | `Project` | User-owned grouping for related datasets. Carries description and JSON metadata. |
 | `ProjectSection` | Optional grouping inside one project. Does not affect access control. |
-| `Dataset` | The central object: headers, column schema, index column, context, rows, preview settings, project link, status, and archive state. |
+| `Dataset` | The central object: headers, column schema, index column, context, rows, preview settings, project link, and archive state. |
 | `DatasetRow` | One row of data. Stores `row_number`, `index_value`, and JSON data keyed by dataset headers. |
 | `DatasetRelationship` | Simple foreign-key-style link from one source dataset column to another dataset's index values. |
 | `DatasetAsset` | Private image asset attached to one image column on one row. Row cells store `asset:{key}` references. |
@@ -541,7 +540,7 @@ Important rules:
 - Stored row data is string-keyed by dataset headers.
 - Choice cells can be blank, but non-blank values must match configured choices.
 - Reference columns store canonical Rowset dataset or project keys.
-- Relationships point to ready datasets in the same account.
+- Relationships point to active datasets in the same account.
 - Public previews are read-only browser views, not API authentication.
 - Archived datasets keep rows and schema metadata recoverable.
 
@@ -633,7 +632,7 @@ rebuildable retrieval index.
 | `OPENROUTER_API_KEY` | Required when vector search is enabled. |
 | `OPENAI_API_KEY` | Optional key for code paths that use OpenAI directly. |
 
-Backfill an existing ready dataset after vector search is configured:
+Backfill an existing active dataset after vector search is configured:
 
 ```bash
 make manage backfill_dataset_vectors <dataset_key> --dry-run
@@ -1039,4 +1038,4 @@ should use REST or MCP with bearer API-key auth.
 - Do not hand-write migrations. Change models first, then run
   `make makemigrations`.
 - Prefer focused tests first, then broaden when changing shared services, auth,
-  data import, API, or MCP behavior.
+  dataset rows, API, or MCP behavior.

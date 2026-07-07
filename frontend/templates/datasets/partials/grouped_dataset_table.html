@@ -14,7 +14,6 @@
         <tr class="align-top transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
           <td class="min-w-72 max-w-xl">
             <a href="{{ dataset.get_absolute_url }}" class="fb-focus break-words font-semibold text-slate-950 hover:text-emerald-700 dark:text-slate-100 dark:hover:text-emerald-300">{{ dataset.name }}</a>
-            <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{{ dataset.original_filename }}</p>
             <p class="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">Created by {{ dataset.created_by_actor_label }} · Last updated by {{ dataset.updated_by_actor_label }}</p>
           </td>
           <td>{{ dataset.row_count }}</td>
