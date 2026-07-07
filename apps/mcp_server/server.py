@@ -247,9 +247,7 @@ def _dataset_service_error_code(exc: DatasetServiceError) -> str:
     if status_code == 409:
         return _message_error_code(
             message,
-            (
-                ("archived", "DATASET_ARCHIVED"),
-            ),
+            (("archived", "DATASET_ARCHIVED"),),
             "CONFLICT",
         )
     if status_code in {401, 403}:

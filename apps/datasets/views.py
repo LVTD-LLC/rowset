@@ -1436,9 +1436,8 @@ class DatasetListView(LoginRequiredMixin, ListView):
 
     def get_base_queryset(self):
         if not hasattr(self, "_base_queryset"):
-            self._base_queryset = (
-                _owned_dataset_queryset(self.get_profile())
-                .filter(archived_at__isnull=self.archived_at_isnull)
+            self._base_queryset = _owned_dataset_queryset(self.get_profile()).filter(
+                archived_at__isnull=self.archived_at_isnull
             )
         return self._base_queryset
 
@@ -1913,10 +1912,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         context["rows_heading"] = "Rows" if has_imported_rows else "Sample rows"
         context["rows_show_actor"] = has_imported_rows
         context["row_show_column_controls"] = has_imported_rows
-        context["rows_selectable"] = (
-            has_imported_rows
-            and dataset.archived_at is None
-        )
+        context["rows_selectable"] = has_imported_rows and dataset.archived_at is None
         context["hide_column_filter_section"] = True
         context["rows_colspan"] = (
             len(dataset.headers) + int(has_imported_rows) + int(context["rows_selectable"])

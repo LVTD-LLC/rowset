@@ -168,9 +168,8 @@ def _get_or_create_feedback_section(profile: Profile, project: Project) -> Proje
 
 
 def _is_feedback_dataset_compatible(dataset: Dataset) -> bool:
-    return (
-        dataset.index_column == FEEDBACK_DATASET_INDEX_COLUMN
-        and all(header in dataset.headers for header in FEEDBACK_DATASET_HEADERS)
+    return dataset.index_column == FEEDBACK_DATASET_INDEX_COLUMN and all(
+        header in dataset.headers for header in FEEDBACK_DATASET_HEADERS
     )
 
 

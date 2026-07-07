@@ -1921,8 +1921,6 @@ def _strip_invalid_xml_chars(value: str) -> str:
     return "".join(char for char in value if char in {"\t", "\n", "\r"} or ord(char) >= 0x20)
 
 
-
-
 def normalize_public_page_size(value) -> int:
     try:
         page_size = int(value)

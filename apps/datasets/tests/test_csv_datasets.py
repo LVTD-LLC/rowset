@@ -526,6 +526,7 @@ def test_infer_column_type_detects_common_semantic_types():
     assert infer_column_type("date", ["31/01/2026"]) == "text"
     assert infer_column_type("mixed", ["Ada", "10"]) == "text"
 
+
 def test_dataset_list_includes_active_datasets(auth_client, profile):
     create_ready_dataset(profile)
     Dataset.objects.create(
@@ -5083,7 +5084,7 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
     assert detail_response.json()["datasets"]["total_count"] == 2
     assert [dataset["name"] for dataset in detail_response.json()["datasets"]["datasets"]] == [
         "Draft upload",
-        "Launch contacts"
+        "Launch contacts",
     ]
 
 

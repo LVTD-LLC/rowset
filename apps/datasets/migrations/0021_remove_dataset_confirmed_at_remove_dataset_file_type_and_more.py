@@ -4,46 +4,45 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('datasets', '0020_drop_dataset_plugin_tables'),
+        ("datasets", "0020_drop_dataset_plugin_tables"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='dataset',
-            name='confirmed_at',
+            model_name="dataset",
+            name="confirmed_at",
         ),
         migrations.RemoveField(
-            model_name='dataset',
-            name='file_type',
+            model_name="dataset",
+            name="file_type",
         ),
         migrations.RemoveField(
-            model_name='dataset',
-            name='original_filename',
+            model_name="dataset",
+            name="original_filename",
         ),
         migrations.RemoveField(
-            model_name='dataset',
-            name='parse_error',
+            model_name="dataset",
+            name="parse_error",
         ),
         migrations.RemoveField(
-            model_name='dataset',
-            name='processed_at',
+            model_name="dataset",
+            name="processed_at",
         ),
         migrations.RemoveField(
-            model_name='dataset',
-            name='source_file',
+            model_name="dataset",
+            name="source_file",
         ),
         migrations.RemoveField(
-            model_name='dataset',
-            name='source_text',
+            model_name="dataset",
+            name="source_text",
         ),
         migrations.RemoveField(
-            model_name='dataset',
-            name='source_url',
+            model_name="dataset",
+            name="source_url",
         ),
         migrations.RemoveField(
-            model_name='dataset',
-            name='status',
+            model_name="dataset",
+            name="status",
         ),
     ]
