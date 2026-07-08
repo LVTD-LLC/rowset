@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-08
+
+### Added
+- Added a Rowset blog post comparing generated `rowset_id` values with business keys for agent-managed rows, plus the verified SEO brief and inbound links from related docs/blog pages.
+
 ## 2026-07-07
 
 ### Added
