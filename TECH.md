@@ -5,7 +5,7 @@
 - Backend: Django 6, Python `>=3.14,<4.0`.
 - API: Django Ninja in `apps/api`.
 - MCP: FastMCP in `apps/mcp_server`.
-- CLI: Go `rowset-cli` module in `cli/`, using the standard library HTTP client
+- CLI: Go `rowset` module in `cli/`, using the standard library HTTP client
   against the authenticated REST API.
 - Auth: Django allauth, session auth, API-key auth, hosted MCP bearer auth.
 - Data: PostgreSQL, Redis, Django Q workers.
@@ -34,7 +34,7 @@
 - Build frontend assets: `npm run build`
 - Lint frontend JS: `npm run lint`
 - Run CLI tests: `make cli-test`
-- Build the `rowset-cli` binary: `make cli-build`
+- Build the `rowset` binary: `make cli-build`
 
 ## Runtime Configuration
 

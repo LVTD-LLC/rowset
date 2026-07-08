@@ -95,7 +95,7 @@ cli-test:
 
 cli-build:
 	mkdir -p cli/bin
-	cd cli && go build -o bin/rowset-cli ./cmd/rowset
+	cd cli && go build -o bin/rowset ./cmd/rowset
 
 restart-worker:
 	$(COMPOSE_LOCAL) up -d workers --force-recreate
