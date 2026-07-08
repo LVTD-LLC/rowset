@@ -516,7 +516,7 @@ func TestCommandRoutesCoverRowsetOperations(t *testing.T) {
 	}
 }
 
-func TestRunRequiresAPIBaseAndKeyForAuthenticatedCommands(t *testing.T) {
+func TestRunUsesProductionAPIBaseByDefault(t *testing.T) {
 	t.Setenv("ROWSET_API_BASE", "")
 	t.Setenv("ROWSET_API_KEY", "")
 
@@ -528,19 +528,6 @@ func TestRunRequiresAPIBaseAndKeyForAuthenticatedCommands(t *testing.T) {
 		Stdin:  strings.NewReader(""),
 	}, []string{"user", "info"})
 
-	if err == nil {
-		t.Fatal("expected missing API base error")
-	}
-	if !strings.Contains(err.Error(), "ROWSET_API_BASE") {
-		t.Fatalf("expected ROWSET_API_BASE guidance, got %v", err)
-	}
-
-	t.Setenv("ROWSET_API_BASE", "https://rowset.example/api/")
-	err = Run(context.Background(), IO{
-		Stdout: &out,
-		Stderr: &errOut,
-		Stdin:  strings.NewReader(""),
-	}, []string{"user", "info"})
 	if err == nil {
 		t.Fatal("expected missing API key error")
 	}
