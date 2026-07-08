@@ -32,7 +32,7 @@ server. It groups Rowset features by workflow:
 - dataset relationships
 - projects
 - rows
-- image assets
+- image and audio assets
 - public previews
 - archive, restore, and exports
 

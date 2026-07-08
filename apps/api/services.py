@@ -78,11 +78,13 @@ from apps.datasets.services import (
     COLUMN_SCHEMA_TYPE_KEY,
     DATASET_REFERENCE_TARGET,
     PROJECT_REFERENCE_TARGET,
+    DatasetAudioError,
     DatasetImageError,
     DatasetRowQueryError,
     DatasetValidationError,
     apply_dataset_row_query,
     apply_dataset_rows_query,
+    audio_columns_from_schema,
     calculated_column_names,
     calculated_relationship_count_columns,
     calculated_row_values_for_rows,
@@ -90,6 +92,7 @@ from apps.datasets.services import (
     dataset_asset_key_from_ref,
     dataset_asset_ref,
     dataset_row_data_with_calculated_values,
+    decode_audio_base64,
     decode_image_base64,
     generated_index_column_name,
     generated_index_column_schema,
@@ -97,9 +100,11 @@ from apps.datasets.services import (
     infer_column_schema,
     invalid_choice_values_by_column,
     normalize_column_schema,
+    prepare_dataset_audio,
     prepare_dataset_image,
     project_section_dataset_groups,
     validate_and_canonicalize_choice_row_values,
+    validate_audio_row_values,
     validate_headers,
     validate_image_row_values,
 )
@@ -1982,6 +1987,26 @@ def _validate_image_row_data(
         raise DatasetServiceError(400, str(exc)) from exc
 
 
+def _validate_audio_row_data(
+    headers: list[str],
+    column_schema: dict,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    allow_asset_refs: bool = False,
+) -> None:
+    try:
+        validate_audio_row_values(
+            headers,
+            column_schema,
+            row_data,
+            columns=columns,
+            allow_asset_refs=allow_asset_refs,
+        )
+    except DatasetValidationError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
+
+
 def _validate_choice_rows(
     headers: list[str],
     column_schema: dict,
@@ -2008,6 +2033,15 @@ def _validate_image_rows(
 ) -> None:
     for row_data in rows:
         _validate_image_row_data(headers, column_schema, row_data)
+
+
+def _validate_audio_rows(
+    headers: list[str],
+    column_schema: dict,
+    rows: list[dict[str, str]],
+) -> None:
+    for row_data in rows:
+        _validate_audio_row_data(headers, column_schema, row_data)
 
 
 def _iter_dataset_row_data(dataset: Dataset):
@@ -2227,6 +2261,38 @@ def _raise_if_schema_has_calculated_columns(headers: list[str], column_schema: d
     )
 
 
+def _validate_existing_audio_values(dataset: Dataset, column_schema: dict) -> None:
+    audio_columns = audio_columns_from_schema(dataset.headers, column_schema)
+    if not audio_columns:
+        return
+    for row in (
+        dataset.rows.order_by("row_number", "id").only("id", "data").iterator(chunk_size=1000)
+    ):
+        row_data = row.data or {}
+        _validate_audio_row_data(
+            dataset.headers,
+            column_schema,
+            row_data,
+            columns=audio_columns,
+            allow_asset_refs=True,
+        )
+        for column in audio_columns:
+            asset_key = dataset_asset_key_from_ref(row_data.get(column, ""))
+            if (
+                asset_key
+                and not DatasetAsset.objects.filter(
+                    dataset=dataset,
+                    row=row,
+                    column_name=column,
+                    key=asset_key,
+                ).exists()
+            ):
+                raise DatasetServiceError(
+                    400,
+                    f"Column '{column}' references an audio asset that does not exist.",
+                )
+
+
 def _create_dataset_index_config(
     headers: list[str],
     index_column: str | None,
@@ -2261,11 +2327,8 @@ def _normalize_dataset_column_schema(
     except DatasetValidationError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
-    if (
-        not index_generated
-        and base_schema[index_column][COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.IMAGE
-    ):
-        raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
+    if not index_generated:
+        _raise_if_unsupported_index_column_type(base_schema[index_column][COLUMN_SCHEMA_TYPE_KEY])
 
     if index_generated:
         return {
@@ -2273,6 +2336,15 @@ def _normalize_dataset_column_schema(
             **base_schema,
         }
     return base_schema
+
+
+def _raise_if_unsupported_index_column_type(column_type: str) -> None:
+    if column_type == DatasetColumnType.IMAGE:
+        raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
+    if column_type == DatasetColumnType.AUDIO:
+        raise DatasetServiceError(400, "Audio columns cannot be used as the dataset index.")
+    if column_type == DatasetColumnType.CALCULATED:
+        raise DatasetServiceError(400, "Calculated columns cannot be used as the dataset index.")
 
 
 def create_profile_dataset(
@@ -2317,6 +2389,7 @@ def create_profile_dataset(
     _raise_if_schema_has_calculated_columns(dataset_headers, column_schema)
     _validate_choice_rows(base_headers, column_schema, normalized_rows)
     _validate_image_rows(base_headers, column_schema, normalized_rows)
+    _validate_audio_rows(base_headers, column_schema, normalized_rows)
     normalized_rows = _normalize_reference_rows(
         profile,
         base_headers,
@@ -2450,17 +2523,13 @@ def update_profile_dataset_column_types(
             )
         except DatasetValidationError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
-        index_column_type = next_schema[dataset.index_column][COLUMN_SCHEMA_TYPE_KEY]
-        if index_column_type == DatasetColumnType.IMAGE:
-            raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
-        if index_column_type == DatasetColumnType.CALCULATED:
-            raise DatasetServiceError(
-                400,
-                "Calculated columns cannot be used as the dataset index.",
-            )
+        _raise_if_unsupported_index_column_type(
+            next_schema[dataset.index_column][COLUMN_SCHEMA_TYPE_KEY]
+        )
         _validate_existing_choice_values(dataset, next_schema)
         _validate_existing_reference_values(profile, dataset, next_schema)
         _validate_existing_image_values(dataset, next_schema)
+        _validate_existing_audio_values(dataset, next_schema)
         _validate_existing_calculated_columns(profile, dataset, dataset.headers, next_schema)
         dataset.column_schema = next_schema
         dataset.updated_by_agent_api_key = agent_api_key
@@ -2743,6 +2812,12 @@ def add_profile_dataset_column(
         )
         default_cell = default_row[column_name]
         _validate_image_row_data(
+            next_headers,
+            dataset.column_schema,
+            default_row,
+            columns={column_name},
+        )
+        _validate_audio_row_data(
             next_headers,
             dataset.column_schema,
             default_row,
@@ -3365,7 +3440,7 @@ def serialize_profile_dataset_asset(profile: Profile, dataset_key: str, asset_ke
     }
 
 
-def _row_for_image_attachment(
+def _row_for_asset_attachment(
     dataset: Dataset,
     *,
     row_id: int | None = None,
@@ -3384,14 +3459,220 @@ def _row_for_image_attachment(
         raise DatasetServiceError(404, "Row not found.") from exc
 
 
-def _normalize_image_asset_column(dataset: Dataset, column_name: str) -> str:
+def _normalize_dataset_asset_column(
+    dataset: Dataset,
+    column_name: str,
+    *,
+    column_type: str,
+    asset_label: str,
+) -> str:
     column = _normalize_existing_column_name(dataset, column_name)
     normalized_schema = normalize_column_schema(dataset.headers, dataset.column_schema)
-    if normalized_schema[column][COLUMN_SCHEMA_TYPE_KEY] != DatasetColumnType.IMAGE:
-        raise DatasetServiceError(400, f"Column '{column}' is not an image column.")
+    if normalized_schema[column][COLUMN_SCHEMA_TYPE_KEY] != column_type:
+        raise DatasetServiceError(400, f"Column '{column}' is not an {asset_label} column.")
     if column == dataset.index_column:
-        raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
+        raise DatasetServiceError(
+            400,
+            f"{asset_label.title()} columns cannot be used as the dataset index.",
+        )
     return column
+
+
+def _normalize_image_asset_column(dataset: Dataset, column_name: str) -> str:
+    return _normalize_dataset_asset_column(
+        dataset,
+        column_name,
+        column_type=DatasetColumnType.IMAGE,
+        asset_label="image",
+    )
+
+
+def _normalize_audio_asset_column(dataset: Dataset, column_name: str) -> str:
+    return _normalize_dataset_asset_column(
+        dataset,
+        column_name,
+        column_type=DatasetColumnType.AUDIO,
+        asset_label="audio",
+    )
+
+
+def _dataset_asset_attachment_mutation_metadata(
+    *,
+    row: DatasetRow,
+    column: str,
+    previous_value: str,
+    next_value: str,
+    asset: DatasetAsset,
+    prepared_filename: str,
+    prepared_content_type: str,
+    prepared_byte_size: int,
+    width: int | None,
+    height: int | None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "row_id": row.id,
+        "row_number": row.row_number,
+        "changed_fields": [column],
+        "field_changes": [
+            {
+                "field": column,
+                "before": previous_value,
+                "after": next_value,
+            }
+        ],
+        "value_changes_recorded": True,
+        "asset_key": str(asset.key),
+        "asset_ref_recorded": True,
+        "filename": prepared_filename,
+        "content_type": prepared_content_type,
+        "byte_size": prepared_byte_size,
+    }
+    if width is not None:
+        metadata["width"] = width
+    if height is not None:
+        metadata["height"] = height
+    return metadata
+
+
+def _cleanup_saved_dataset_asset_files(
+    saved_files: list[tuple[str, str]],
+    *,
+    failure_message: str,
+) -> None:
+    cleanup_error = None
+    for storage_alias, name in saved_files:
+        try:
+            storages[storage_alias].delete(name)
+        except Exception as exc:
+            cleanup_error = cleanup_error or exc
+            record_dataset_asset_file_deletion_failure(storage_alias, name, exc)
+    if cleanup_error is not None:
+        raise DatasetServiceError(500, failure_message) from cleanup_error
+
+
+def _attach_prepared_dataset_asset(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    column_name: str,
+    asset_label: str,
+    prepared_filename: str,
+    prepared_content_type: str,
+    prepared_bytes: bytes,
+    prepared_byte_size: int,
+    prepared_checksum: str,
+    normalize_column,
+    thumbnail_bytes: bytes | None = None,
+    width: int | None = None,
+    height: int | None = None,
+    row_id: int | None = None,
+    index_value: str | None = None,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    dataset = get_active_profile_dataset(profile, dataset_key)
+    normalize_column(dataset, column_name)
+    label_title = asset_label.title()
+
+    saved_files = []
+    try:
+        with transaction.atomic():
+            dataset = get_active_profile_dataset_for_update(profile, dataset_key)
+            column = normalize_column(dataset, column_name)
+            row = _row_for_asset_attachment(dataset, row_id=row_id, index_value=index_value)
+
+            previous_value = str((row.data or {}).get(column, "") or "")
+            DatasetAsset.objects.filter(dataset=dataset, row=row, column_name=column).delete()
+            asset = DatasetAsset(
+                profile=profile,
+                dataset=dataset,
+                row=row,
+                created_by_agent_api_key=agent_api_key,
+                column_name=column,
+                original_filename=prepared_filename,
+                content_type=prepared_content_type,
+                byte_size=prepared_byte_size,
+                width=width,
+                height=height,
+                checksum=prepared_checksum,
+            )
+            asset.file.name = asset.file.field.generate_filename(asset, prepared_filename)
+            if thumbnail_bytes is not None:
+                asset.thumbnail.name = asset.thumbnail.field.generate_filename(
+                    asset,
+                    "thumbnail.jpg",
+                )
+            asset.save()
+
+            next_value = asset.asset_ref
+            row.data = {**(row.data or {}), column: next_value}
+            row.updated_by_agent_api_key = agent_api_key
+            row.save(update_fields=["data", "updated_by_agent_api_key", "updated_at"])
+            dataset.updated_by_agent_api_key = agent_api_key
+            dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
+            is_first_row_mutation = not profile_has_row_mutation(profile)
+            mutation_metadata = _dataset_asset_attachment_mutation_metadata(
+                row=row,
+                column=column,
+                previous_value=previous_value,
+                next_value=next_value,
+                asset=asset,
+                prepared_filename=prepared_filename,
+                prepared_content_type=prepared_content_type,
+                prepared_byte_size=prepared_byte_size,
+                width=width,
+                height=height,
+            )
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.ROW_UPDATED,
+                f"{label_title} attached to row {row.row_number}.",
+                agent_api_key=agent_api_key,
+                target_type="row",
+                target_identifier=row.id,
+                metadata=mutation_metadata,
+            )
+            track_dataset_row_mutation(
+                profile=profile,
+                dataset=dataset,
+                mutation_type=DatasetMutationType.ROW_UPDATED,
+                agent_api_key=agent_api_key,
+                is_first_row_mutation=is_first_row_mutation,
+                changed_field_count=1,
+                image_asset_attached=asset_label == "image",
+                track_activation_event_func=track_activation_event,
+            )
+            saved_file_name = asset.file.storage.save(
+                asset.file.name,
+                ContentFile(prepared_bytes),
+            )
+            saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_file_name))
+            if saved_file_name != asset.file.name:
+                raise DatasetServiceError(500, f"{label_title} upload path could not be reserved.")
+            if thumbnail_bytes is not None:
+                saved_thumbnail_name = asset.thumbnail.storage.save(
+                    asset.thumbnail.name,
+                    ContentFile(thumbnail_bytes),
+                )
+                saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_thumbnail_name))
+                if saved_thumbnail_name != asset.thumbnail.name:
+                    raise DatasetServiceError(
+                        500,
+                        f"{label_title} thumbnail path could not be reserved.",
+                    )
+    except Exception:
+        _cleanup_saved_dataset_asset_files(
+            saved_files,
+            failure_message=f"{label_title} upload failed and saved files were queued for cleanup.",
+        )
+        raise
+
+    return {
+        "status": "success",
+        "message": f"{label_title} attached.",
+        "dataset": str(dataset.key),
+        "row": serialize_dataset_row(row, dataset=dataset),
+        "asset": serialize_dataset_asset(asset, dataset=dataset, row=row),
+    }
 
 
 def attach_profile_dataset_image_asset(
@@ -3417,118 +3698,64 @@ def attach_profile_dataset_image_asset(
     except DatasetImageError as exc:
         raise DatasetServiceError(400, str(exc)) from exc
 
-    saved_files = []
+    return _attach_prepared_dataset_asset(
+        profile,
+        dataset_key,
+        column_name=column_name,
+        asset_label="image",
+        prepared_filename=prepared_image.filename,
+        prepared_content_type=prepared_image.content_type,
+        prepared_bytes=prepared_image.image_bytes,
+        prepared_byte_size=prepared_image.byte_size,
+        prepared_checksum=prepared_image.checksum,
+        normalize_column=_normalize_image_asset_column,
+        thumbnail_bytes=prepared_image.thumbnail_bytes,
+        width=prepared_image.width,
+        height=prepared_image.height,
+        row_id=row_id,
+        index_value=index_value,
+        agent_api_key=agent_api_key,
+    )
+
+
+def attach_profile_dataset_audio_asset(
+    profile: Profile,
+    dataset_key: str,
+    *,
+    column_name: str,
+    audio_base64: str,
+    filename: str | None = None,
+    content_type: str | None = None,
+    row_id: int | None = None,
+    index_value: str | None = None,
+    agent_api_key: AgentApiKey | None = None,
+) -> dict:
+    dataset = get_active_profile_dataset(profile, dataset_key)
+    _normalize_audio_asset_column(dataset, column_name)
     try:
-        with transaction.atomic():
-            dataset = get_active_profile_dataset_for_update(profile, dataset_key)
-            column = _normalize_image_asset_column(dataset, column_name)
-            row = _row_for_image_attachment(dataset, row_id=row_id, index_value=index_value)
+        prepared_audio = prepare_dataset_audio(
+            audio_bytes=decode_audio_base64(audio_base64),
+            filename=filename,
+            content_type=content_type,
+        )
+    except DatasetAudioError as exc:
+        raise DatasetServiceError(400, str(exc)) from exc
 
-            previous_value = str((row.data or {}).get(column, "") or "")
-            DatasetAsset.objects.filter(dataset=dataset, row=row, column_name=column).delete()
-            asset = DatasetAsset(
-                profile=profile,
-                dataset=dataset,
-                row=row,
-                created_by_agent_api_key=agent_api_key,
-                column_name=column,
-                original_filename=prepared_image.filename,
-                content_type=prepared_image.content_type,
-                byte_size=prepared_image.byte_size,
-                width=prepared_image.width,
-                height=prepared_image.height,
-                checksum=prepared_image.checksum,
-            )
-            asset.file.name = asset.file.field.generate_filename(asset, prepared_image.filename)
-            if prepared_image.thumbnail_bytes is not None:
-                asset.thumbnail.name = asset.thumbnail.field.generate_filename(
-                    asset,
-                    "thumbnail.jpg",
-                )
-            asset.save()
-
-            next_value = asset.asset_ref
-            row.data = {**(row.data or {}), column: next_value}
-            row.updated_by_agent_api_key = agent_api_key
-            row.save(update_fields=["data", "updated_by_agent_api_key", "updated_at"])
-            dataset.updated_by_agent_api_key = agent_api_key
-            dataset.save(update_fields=["updated_by_agent_api_key", "updated_at"])
-            is_first_row_mutation = not profile_has_row_mutation(profile)
-            record_dataset_mutation(
-                dataset,
-                DatasetMutationType.ROW_UPDATED,
-                f"Image attached to row {row.row_number}.",
-                agent_api_key=agent_api_key,
-                target_type="row",
-                target_identifier=row.id,
-                metadata={
-                    "row_id": row.id,
-                    "row_number": row.row_number,
-                    "changed_fields": [column],
-                    "field_changes": [
-                        {
-                            "field": column,
-                            "before": previous_value,
-                            "after": next_value,
-                        }
-                    ],
-                    "value_changes_recorded": True,
-                    "asset_key": str(asset.key),
-                    "asset_ref_recorded": True,
-                    "filename": prepared_image.filename,
-                    "content_type": prepared_image.content_type,
-                    "byte_size": prepared_image.byte_size,
-                    "width": prepared_image.width,
-                    "height": prepared_image.height,
-                },
-            )
-            track_dataset_row_mutation(
-                profile=profile,
-                dataset=dataset,
-                mutation_type=DatasetMutationType.ROW_UPDATED,
-                agent_api_key=agent_api_key,
-                is_first_row_mutation=is_first_row_mutation,
-                changed_field_count=1,
-                image_asset_attached=True,
-                track_activation_event_func=track_activation_event,
-            )
-            saved_file_name = asset.file.storage.save(
-                asset.file.name,
-                ContentFile(prepared_image.image_bytes),
-            )
-            saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_file_name))
-            if saved_file_name != asset.file.name:
-                raise DatasetServiceError(500, "Image upload path could not be reserved.")
-            if prepared_image.thumbnail_bytes is not None:
-                saved_thumbnail_name = asset.thumbnail.storage.save(
-                    asset.thumbnail.name,
-                    ContentFile(prepared_image.thumbnail_bytes),
-                )
-                saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_thumbnail_name))
-                if saved_thumbnail_name != asset.thumbnail.name:
-                    raise DatasetServiceError(500, "Image thumbnail path could not be reserved.")
-    except Exception:
-        cleanup_error = None
-        for storage_alias, name in saved_files:
-            try:
-                storages[storage_alias].delete(name)
-            except Exception as exc:
-                cleanup_error = cleanup_error or exc
-                record_dataset_asset_file_deletion_failure(storage_alias, name, exc)
-        if cleanup_error is not None:
-            raise DatasetServiceError(
-                500,
-                "Image upload failed and saved files were queued for cleanup.",
-            ) from cleanup_error
-        raise
-
-    return {
-        "status": "success",
-        "message": "Image attached.",
-        "dataset": str(dataset.key),
-        "row": serialize_dataset_row(row, dataset=dataset),
-        "asset": serialize_dataset_asset(asset, dataset=dataset, row=row),
-    }
+    return _attach_prepared_dataset_asset(
+        profile,
+        dataset_key,
+        column_name=column_name,
+        asset_label="audio",
+        prepared_filename=prepared_audio.filename,
+        prepared_content_type=prepared_audio.content_type,
+        prepared_bytes=prepared_audio.audio_bytes,
+        prepared_byte_size=prepared_audio.byte_size,
+        prepared_checksum=prepared_audio.checksum,
+        normalize_column=_normalize_audio_asset_column,
+        row_id=row_id,
+        index_value=index_value,
+        agent_api_key=agent_api_key,
+    )
 
 
 def _normalize_dataset_search_limit(limit: int) -> int:
@@ -4301,6 +4528,7 @@ def _row_mutation_hooks() -> RowMutationHooks:
     return RowMutationHooks(
         validate_choice_row_data=_validate_choice_row_data,
         validate_image_row_data=_validate_image_row_data,
+        validate_audio_row_data=_validate_audio_row_data,
         normalize_reference_row_data=_normalize_reference_row_data,
         validate_relationship_row_data=_validate_relationship_row_data,
         raise_if_target_row_is_referenced=_raise_if_target_row_is_referenced,

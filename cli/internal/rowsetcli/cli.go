@@ -1005,15 +1005,16 @@ func runAsset(ctx context.Context, streams IO, cfg config, args []string) error 
 
 func attachAsset(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset asset attach DATASET_KEY --column COLUMN --file PATH (--row-id ID | --index-value VALUE)")
+		return errors.New("usage: rowset asset attach DATASET_KEY --column COLUMN --file PATH (--row-id ID | --index-value VALUE) [--asset-type image|audio]")
 	}
 	fs := newFlagSet("asset attach")
 	rowID := fs.String("row-id", "", "row id")
 	indexValue := fs.String("index-value", "", "row index value")
-	column := fs.String("column", "", "image column")
-	filePath := fs.String("file", "", "image file path")
+	assetType := fs.String("asset-type", "image", "asset type: image or audio")
+	column := fs.String("column", "", "asset column")
+	filePath := fs.String("file", "", "asset file path")
 	filename := fs.String("filename", "", "original filename")
-	contentType := fs.String("content-type", "", "image content type")
+	contentType := fs.String("content-type", "", "asset content type")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -1023,13 +1024,18 @@ func attachAsset(ctx context.Context, streams IO, cfg config, args []string) err
 	if (*rowID == "" && *indexValue == "") || (*rowID != "" && *indexValue != "") {
 		return errors.New("pass exactly one of --row-id or --index-value")
 	}
+	normalizedAssetType := strings.ToLower(strings.TrimSpace(*assetType))
+	if normalizedAssetType != "image" && normalizedAssetType != "audio" {
+		return errors.New("--asset-type must be image or audio")
+	}
 	data, err := os.ReadFile(*filePath)
 	if err != nil {
-		return fmt.Errorf("read image file: %w", err)
+		return fmt.Errorf("read asset file: %w", err)
 	}
+	base64Field := normalizedAssetType + "_base64"
 	body := map[string]any{
-		"column_name":  *column,
-		"image_base64": base64.StdEncoding.EncodeToString(data),
+		"column_name": *column,
+		base64Field:   base64.StdEncoding.EncodeToString(data),
 	}
 	if flagWasSet(fs, "filename") {
 		body["filename"] = *filename
@@ -1040,11 +1046,11 @@ func attachAsset(ctx context.Context, streams IO, cfg config, args []string) err
 		body["content_type"] = *contentType
 	}
 	if *rowID != "" {
-		return doRequest(ctx, streams, cfg, http.MethodPost, apiPath("datasets", args[0], "rows", *rowID, "image"), nil, requestOptions{auth: true, body: body})
+		return doRequest(ctx, streams, cfg, http.MethodPost, apiPath("datasets", args[0], "rows", *rowID, normalizedAssetType), nil, requestOptions{auth: true, body: body})
 	}
 	values := url.Values{}
 	values.Set("index_value", *indexValue)
-	return doRequest(ctx, streams, cfg, http.MethodPost, apiPath("datasets", args[0], "rows", "by-index", "image"), values, requestOptions{auth: true, body: body})
+	return doRequest(ctx, streams, cfg, http.MethodPost, apiPath("datasets", args[0], "rows", "by-index", normalizedAssetType), values, requestOptions{auth: true, body: body})
 }
 
 func runExport(ctx context.Context, streams IO, cfg config, args []string) error {

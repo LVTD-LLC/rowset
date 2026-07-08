@@ -122,6 +122,27 @@ when sharing is enabled. Dataset exports include the `asset:{key}` reference so
 automated workflows can still use stable row data without embedding binary files
 inside CSV, JSONL, XLSX, SQLite, or Parquet exports.
 
+## Audio columns
+
+Use audio columns when a row needs a private audio file, such as an interview
+clip, voice note, call recording, or generated audio sample. Create the column
+with type `audio`, then attach the audio through MCP or REST.
+
+Row writes should leave audio cells blank. When audio is attached, Rowset stores
+the file privately and writes an opaque `asset:{key}` reference into the cell.
+Agents should treat that reference as Rowset-managed metadata, not as a URL or
+raw audio data.
+
+The target row must exist before audio can be attached. For MCP, agents read
+local audio bytes themselves and pass base64 or a data URI to
+`attach_audio_to_dataset_row`; hosted MCP cannot read a local file path from the
+agent's machine.
+
+Rowset accepts MP3, WAV, M4A, AAC, Ogg, FLAC, and WebM audio files and stores
+the bytes privately without transcoding. Audio assets appear in authenticated
+dataset views and public previews when sharing is enabled. Dataset exports
+include the `asset:{key}` reference rather than embedding binary files.
+
 ## Column descriptions
 
 Add column descriptions when a header needs extra context that should travel

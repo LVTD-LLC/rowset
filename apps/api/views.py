@@ -24,6 +24,8 @@ from apps.api.schemas import (
     DatasetApiOut,
     DatasetArchiveOut,
     DatasetAssetApiOut,
+    DatasetAudioAttachIn,
+    DatasetAudioAttachOut,
     DatasetColumnAddIn,
     DatasetColumnDropIn,
     DatasetColumnMutationOut,
@@ -81,6 +83,7 @@ from apps.api.services import (
     archive_profile_dataset,
     archive_profile_project,
     archive_profile_project_section,
+    attach_profile_dataset_audio_asset,
     attach_profile_dataset_image_asset,
     create_profile_dataset,
     create_profile_dataset_relationship,
@@ -1226,6 +1229,62 @@ def attach_dataset_row_image(
             row_id=row_id,
             column_name=payload.column_name,
             image_base64=payload.image_base64,
+            filename=payload.filename,
+            content_type=payload.content_type,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/rows/by-index/audio",
+    response=DatasetAudioAttachOut,
+    auth=[api_key_write_auth],
+    tags=["datasets"],
+)
+def attach_dataset_row_audio_by_index(
+    request: HttpRequest,
+    dataset_key: str,
+    index_value: str,
+    payload: DatasetAudioAttachIn,
+):
+    """Attach or replace one audio asset in an audio column by row index value."""
+    try:
+        return attach_profile_dataset_audio_asset(
+            request.auth,
+            dataset_key,
+            index_value=index_value,
+            column_name=payload.column_name,
+            audio_base64=payload.audio_base64,
+            filename=payload.filename,
+            content_type=payload.content_type,
+            **_agent_actor_kwargs(request),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.post(
+    "/datasets/{dataset_key}/rows/{row_id}/audio",
+    response=DatasetAudioAttachOut,
+    auth=[api_key_write_auth],
+    tags=["datasets"],
+)
+def attach_dataset_row_audio(
+    request: HttpRequest,
+    dataset_key: str,
+    row_id: int,
+    payload: DatasetAudioAttachIn,
+):
+    """Attach or replace one audio asset in an audio column for a dataset row."""
+    try:
+        return attach_profile_dataset_audio_asset(
+            request.auth,
+            dataset_key,
+            row_id=row_id,
+            column_name=payload.column_name,
+            audio_base64=payload.audio_base64,
             filename=payload.filename,
             content_type=payload.content_type,
             **_agent_actor_kwargs(request),

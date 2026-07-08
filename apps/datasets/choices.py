@@ -7,6 +7,7 @@ class DatasetColumnType(models.TextChoices):
     REFERENCE = "reference", "Reference"
     CALCULATED = "calculated", "Calculated"
     IMAGE = "image", "Image"
+    AUDIO = "audio", "Audio"
     INTEGER = "integer", "Integer"
     NUMBER = "number", "Number"
     CURRENCY = "currency", "Currency"

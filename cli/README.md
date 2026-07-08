@@ -2,7 +2,7 @@
 
 `rowset` is a Go CLI for Rowset's authenticated REST API. Command groups mirror
 the user-facing API and MCP operations: account checks, API keys, feedback,
-projects, datasets, rows, relationships, schema changes, image assets, public
+projects, datasets, rows, relationships, schema changes, image/audio assets, public
 previews, archives, restores, and exports.
 
 The CLI sends bearer auth from an environment variable. Do not pass raw API keys
@@ -119,6 +119,17 @@ rowset asset attach "{dataset_key}" \
   --column photo \
   --file ./adapter.png \
   --content-type image/png
+```
+
+Attach audio to an audio column:
+
+```bash
+rowset asset attach "{dataset_key}" \
+  --asset-type audio \
+  --row-id 7 \
+  --column clip \
+  --file ./interview.wav \
+  --content-type audio/wav
 ```
 
 Use the escape hatch for a REST path not yet represented by a friendly command:

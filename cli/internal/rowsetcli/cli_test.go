@@ -745,3 +745,29 @@ func TestAssetAttachReadsAndEncodesLocalImage(t *testing.T) {
 		},
 	}))
 }
+
+func TestAssetAttachReadsAndEncodesLocalAudio(t *testing.T) {
+	audioPath := filepath.Join(t.TempDir(), "clip.wav")
+	if err := os.WriteFile(audioPath, []byte("fake-wav"), 0o600); err != nil {
+		t.Fatalf("write audio: %v", err)
+	}
+
+	runAgainstServer(t, []string{
+		"asset", "attach", "dataset-key",
+		"--asset-type", "audio",
+		"--row-id", "7",
+		"--column", "clip",
+		"--file", audioPath,
+		"--content-type", "audio/wav",
+	}, expectJSONRequest(t, requestCapture{
+		method: http.MethodPost,
+		path:   "/api/datasets/dataset-key/rows/7/audio",
+		auth:   "Bearer test-key",
+		body: map[string]any{
+			"column_name":  "clip",
+			"audio_base64": base64.StdEncoding.EncodeToString([]byte("fake-wav")),
+			"filename":     "clip.wav",
+			"content_type": "audio/wav",
+		},
+	}))
+}

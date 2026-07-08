@@ -14,6 +14,7 @@ from apps.api.services import (
     archive_profile_dataset,
     archive_profile_project,
     archive_profile_project_section,
+    attach_profile_dataset_audio_asset,
     attach_profile_dataset_image_asset,
     create_profile_dataset,
     create_profile_dataset_relationship,
@@ -1041,7 +1042,7 @@ def create_dataset(
             default=None,
             description=(
                 "Optional mapping from header name to semantic column type or metadata. "
-                "Supported types include text, image, choice, integer, number, currency, "
+                "Supported types include text, image, audio, choice, integer, number, currency, "
                 "boolean, date, datetime, email, url, and reference. For choice "
                 "columns, pass metadata "
                 "like "
@@ -1175,7 +1176,7 @@ def update_dataset_column_types(
         Field(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
-                "include text, image, choice, integer, number, currency, boolean, "
+                "include text, image, audio, choice, integer, number, currency, boolean, "
                 "date, datetime, email, url, reference, and calculated. For choice columns, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
@@ -1224,7 +1225,7 @@ def add_column(
             default=None,
             description=(
                 "Optional semantic type or metadata for the new column. Supported types "
-                "include text, image, choice, integer, number, currency, boolean, "
+                "include text, image, audio, choice, integer, number, currency, boolean, "
                 "date, datetime, email, url, reference, and calculated. For a choice column, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
@@ -1893,6 +1894,87 @@ def attach_image_to_dataset_row(
 def get_dataset_image_asset(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
     asset_key: Annotated[str, Field(description="Image asset key returned by Rowset.")],
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile()
+    try:
+        return serialize_profile_dataset_asset(profile, dataset_key, asset_key)
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="attach_audio_to_dataset_row",
+    description=(
+        "Attach or replace one audio asset in an audio column for an active dataset row. "
+        "The target row must already exist. Provide exactly one of row_id or index_value. "
+        "The row cell will store an opaque asset reference, not raw audio bytes. For a "
+        "local file, read the bytes in the agent environment and pass base64 or a data "
+        "URI. Hosted MCP cannot read local file paths."
+    ),
+)
+def attach_audio_to_dataset_row(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    column_name: Annotated[
+        str,
+        Field(description="Audio column header to attach the asset to."),
+    ],
+    audio_base64: Annotated[
+        str,
+        Field(
+            description=(
+                "MP3, WAV, M4A, AAC, Ogg, FLAC, or WebM audio bytes encoded as "
+                "base64 or a data URI. Do not pass a local file path; read the bytes "
+                "client-side and encode them."
+            )
+        ),
+    ],
+    row_id: Annotated[
+        int | None,
+        Field(default=None, ge=1, description="Internal Rowset row id."),
+    ] = None,
+    index_value: Annotated[
+        str | None,
+        Field(default=None, description="Value from the dataset index column."),
+    ] = None,
+    filename: Annotated[
+        str | None,
+        Field(default=None, description="Optional audio filename for display metadata."),
+    ] = None,
+    content_type: Annotated[
+        str | None,
+        Field(default=None, description="Optional supplied content type, such as audio/wav."),
+    ] = None,
+) -> dict:
+    close_old_connections()
+    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
+    try:
+        return attach_profile_dataset_audio_asset(
+            profile,
+            dataset_key,
+            row_id=row_id,
+            index_value=index_value,
+            column_name=column_name,
+            audio_base64=audio_base64,
+            filename=filename,
+            content_type=content_type,
+            **_agent_actor_kwargs(profile),
+        )
+    except DatasetServiceError as exc:
+        raise _service_error_to_tool_error(exc) from exc
+
+
+@mcp.tool(
+    name="get_dataset_audio_asset",
+    description=(
+        "Return metadata plus authenticated content URLs for one audio asset. "
+        "When a dataset public preview is enabled without password protection, "
+        "the response also includes public_content_url for browser sharing."
+    ),
+)
+def get_dataset_audio_asset(
+    dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
+    asset_key: Annotated[str, Field(description="Audio asset key returned by Rowset.")],
 ) -> dict:
     close_old_connections()
     profile = _mcp_authenticated_profile()

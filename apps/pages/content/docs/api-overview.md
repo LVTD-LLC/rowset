@@ -7,7 +7,7 @@ keywords: Rowset API, API authentication, OpenAPI docs
 # API overview
 
 Rowset exposes authenticated REST endpoints for account checks, dataset creation,
-profile-wide row search, dataset rows, projects, schema changes, image assets,
+profile-wide row search, dataset rows, projects, schema changes, image/audio assets,
 exports, and public preview settings.
 
 ## Base URL
@@ -60,7 +60,7 @@ Use those generated docs when you want request/response schemas or to inspect lo
 Most users only need three docs in this reference section:
 
 - [Dataset API](/docs/dataset-api/) for creating datasets, searching rows,
-  updating schema, linking datasets, attaching image assets, exporting
+  updating schema, linking datasets, attaching image or audio assets, exporting
   snapshots, and managing public previews.
 - [MCP tool reference](/docs/mcp-tools/) for the equivalent agent-facing tool
   groups.

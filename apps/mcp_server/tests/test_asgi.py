@@ -133,6 +133,11 @@ def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     assert "Hosted MCP cannot read local file paths" in image_tool["description"]
     image_base64_schema = image_tool["inputSchema"]["properties"]["image_base64"]
     assert "base64 or a data URI" in image_base64_schema["description"]
+    audio_tool = next(tool for tool in tools if tool["name"] == "attach_audio_to_dataset_row")
+    assert "The target row must already exist" in audio_tool["description"]
+    assert "Hosted MCP cannot read local file paths" in audio_tool["description"]
+    audio_base64_schema = audio_tool["inputSchema"]["properties"]["audio_base64"]
+    assert "base64 or a data URI" in audio_base64_schema["description"]
 
 
 def test_mcp_get_user_info_uses_stateless_json_response(authenticated_mcp):
