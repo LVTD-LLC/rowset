@@ -117,3 +117,19 @@ jobs:
 
       - name: Frontend lint and build
         run: make frontend-check
+
+  cli:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+
+      - name: CLI test and build
+        run: |
+          make cli-test
+          make cli-build

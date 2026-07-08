@@ -11,7 +11,7 @@ automation.
 - Hosted Streamable HTTP MCP server for AI-agent workflows.
 - Authenticated REST API for account checks, projects, datasets, rows, exports,
   relationships, image assets, and public preview settings.
-- Go `rowset` CLI under `cli/` for the same authenticated REST operations.
+- Go `rowset-cli` under `cli/` for the same authenticated REST operations.
 - API-backed datasets with stable headers, semantic column metadata, persistent
   agent instructions, JSON metadata, and an explicit index column.
 - Row CRUD by internal Rowset row id or by dataset index value.
@@ -100,7 +100,7 @@ For host-side debugging outside Docker:
 - Python 3.14.2.
 - `uv`.
 - Node.js 24.11 or newer and npm 11 or newer.
-- Go 1.26 or newer for the `rowset` CLI.
+- Go 1.26 or newer when building the `rowset-cli` CLI from source.
 - PostgreSQL and Redis reachable from your environment.
 
 Most contributors should start with Docker Compose. The local Compose stack
@@ -250,7 +250,7 @@ codex mcp add rowset \
 For production, replace the URL with:
 
 ```text
-https://your-rowset-domain.example/mcp/
+https://rowset.lvtd.dev/mcp/
 ```
 
 Do not put the raw API key in the MCP server config. Store the key in the
@@ -340,7 +340,7 @@ http://localhost:8000/api/
 In production, it is:
 
 ```text
-https://your-rowset-domain.example/api/
+https://rowset.lvtd.dev/api/
 ```
 
 Generated API docs are served from:
@@ -430,27 +430,43 @@ through the REST API endpoints above.
 ## CLI Quick Start
 
 The Go CLI lives under `cli/` and uses the same bearer-authenticated REST API
-paths as the docs above.
+paths as the docs above. Install the latest published CLI in one command:
+
+```bash
+curl -fsSL https://github.com/LVTD-LLC/rowset/releases/latest/download/install-rowset-cli.sh | sh
+```
+
+The installed command is `rowset-cli`. It defaults to production:
+
+```text
+https://rowset.lvtd.dev/api/
+```
+
+Store your private API key and verify authentication:
+
+```bash
+export ROWSET_API_KEY="replace-with-your-copied-key"
+rowset-cli user info
+rowset-cli capabilities
+```
+
+For local development, override the API base:
 
 ```bash
 export ROWSET_API_BASE="http://localhost:8000/api/"
-export ROWSET_API_KEY="replace-with-your-copied-key"
-
-cd cli
-go run ./cmd/rowset user info
-go run ./cmd/rowset capabilities
+rowset-cli user info
 ```
 
 Create a dataset and patch a row by index:
 
 ```bash
-go run ./cmd/rowset dataset create \
+rowset-cli dataset create \
   --name Products \
   --headers sku,name,price,status \
   --index-column sku \
   --row '{"sku":"A-1","name":"Adapter","price":"19.99","status":"active"}'
 
-go run ./cmd/rowset row update-by-index "{dataset_key}" A-1 \
+rowset-cli row update-by-index "{dataset_key}" A-1 \
   --data '{"status":"retired"}'
 ```
 
@@ -483,7 +499,7 @@ See [`cli/README.md`](cli/README.md) for the full command list and examples.
 |   |-- src/js/                # Alpine component registration and browser enhancements
 |   |-- src/styles/            # Tailwind/PostCSS source CSS
 |   `-- vendors/               # Vendored frontend assets copied into the build
-|-- cli/                       # Go rowset CLI module and tests
+|-- cli/                       # Go rowset-cli module and tests
 |-- scripts/build-assets.mjs   # Frontend asset build and watch script
 |-- deployment/                # CapRover Dockerfile, entrypoint, and healthcheck
 |-- docker-compose-local.yml   # Local development stack
@@ -715,7 +731,7 @@ environment.
 | `make test apps/datasets/tests/test_csv_datasets.py` | Run a focused test file. |
 | `make test -- -k dataset -q` | Pass pytest flags through the Makefile. |
 | `make cli-test` | Run Go tests for the Rowset CLI. |
-| `make cli-build` | Build the Go `rowset` CLI package. |
+| `make cli-build` | Build the Go `rowset-cli` binary under `cli/bin/`. |
 | `make restart-worker` | Recreate the `workers` service. |
 | `npm run build` | Build frontend assets on the host. |
 | `npm run start` | Watch and rebuild frontend assets on the host. |
@@ -856,6 +872,37 @@ The active push-to-main deployment path is:
 
 - `.github/workflows/deploy.yml`
 
+The tag-based publishing path is:
+
+- `.github/workflows/publish.yml`
+
+Use a UTC dotted-day tag with an incrementing suffix:
+
+```bash
+release_tag="$(scripts/next-release-tag.sh)"
+git tag "$release_tag"
+git push origin "$release_tag"
+```
+
+For example, the first release on July 8, 2026 is `2026.07.08-0`; a second
+release that day is `2026.07.08-1`.
+
+Publishing a tag builds the app Docker image and CLI artifacts with the same
+release tag. The image is pushed to GHCR as:
+
+```text
+ghcr.io/lvtd-llc/rowset:2026.07.08-0
+```
+
+The workflow also creates or updates the matching GitHub Release with:
+
+- `rowset-cli_linux_amd64.tar.gz`
+- `rowset-cli_linux_arm64.tar.gz`
+- `rowset-cli_darwin_amd64.tar.gz`
+- `rowset-cli_darwin_arm64.tar.gz`
+- `install-rowset-cli.sh`
+- `checksums.txt`
+
 The workflow builds and publishes one prebuilt Docker image to GHCR, then
 deploys that same immutable image tag to the `rowset` and `rowset-workers`
 CapRover apps:
@@ -865,11 +912,11 @@ CapRover apps:
 Each push to `main` also publishes:
 
 - a UTC date alias such as `2026-07-01`
-- an immutable date-based release tag such as `2026-07-01.123`
+- an immutable run-number tag such as `2026-07-01.123`
 - the full Git commit SHA traceability tag
 
 The plain date tag is a daily alias and can move if there is more than one
-release on the same UTC day. Pin the date-based release tag or the SHA tag for
+release on the same UTC day. Pin the run-number tag, publish tag, or SHA tag for
 rollbacks and reproducible self-hosted deployments. CapRover production deploys
 the current build's full Git commit SHA tag.
 
