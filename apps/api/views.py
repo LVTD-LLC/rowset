@@ -33,6 +33,7 @@ from apps.api.schemas import (
     DatasetColumnTypesPatchIn,
     DatasetCreateIn,
     DatasetCreateOut,
+    DatasetDetailOut,
     DatasetImageAttachIn,
     DatasetImageAttachOut,
     DatasetListOut,
@@ -106,6 +107,7 @@ from apps.api.services import (
     search_profile_datasets,
     search_profile_projects,
     search_profile_rows,
+    serialize_dataset_detail,
     serialize_profile_archived_datasets,
     serialize_profile_dataset_asset,
     serialize_profile_project_detail,
@@ -762,6 +764,20 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 **_agent_actor_kwargs(request),
             ),
         )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
+    "/datasets/{dataset_key}",
+    response=DatasetDetailOut,
+    auth=[api_key_auth],
+    tags=["datasets"],
+)
+def get_dataset(request: HttpRequest, dataset_key: str):
+    """Return metadata, schema context, and relationship context for one dataset."""
+    try:
+        return serialize_dataset_detail(get_profile_dataset(request.auth, dataset_key))
     except DatasetServiceError as exc:
         _raise_http_error(exc)
 

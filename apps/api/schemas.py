@@ -406,6 +406,17 @@ class DatasetRelationshipListOut(Schema):
     relationships: list[DatasetRelationshipOut]
 
 
+class DatasetRelationshipContextOut(Schema):
+    outgoing: list[DatasetRelationshipOut]
+    incoming: list[DatasetRelationshipOut]
+
+
+class DatasetDetailOut(DatasetSummaryOut):
+    relationships: DatasetRelationshipContextOut
+    dataset_references: dict[str, dict[str, JsonObject]]
+    project_references: dict[str, dict[str, JsonObject]]
+
+
 class DatasetRelationshipDeleteOut(Schema):
     status: str
     message: str

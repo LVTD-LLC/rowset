@@ -5,6 +5,8 @@
 - Backend: Django 6, Python `>=3.14,<4.0`.
 - API: Django Ninja in `apps/api`.
 - MCP: FastMCP in `apps/mcp_server`.
+- CLI: Go module in `cli/`, using the standard library HTTP client against the
+  authenticated REST API.
 - Auth: Django allauth, session auth, API-key auth, hosted MCP bearer auth.
 - Data: PostgreSQL, Redis, Django Q workers.
 - Tabular processing: Python `csv`, `json`, `sqlite3`, and `zipfile` plus
@@ -31,6 +33,8 @@
 - Restart workers: `make restart-worker`
 - Build frontend assets: `npm run build`
 - Lint frontend JS: `npm run lint`
+- Run CLI tests: `make cli-test`
+- Build the CLI: `make cli-build`
 
 ## Runtime Configuration
 
@@ -111,6 +115,8 @@ contents.
   before review when the change touches shared behavior or multiple surfaces.
 - Dataset validation, API, MCP auth, export, and public-preview changes need
   focused tests.
+- CLI changes need `make cli-test` and `make cli-build`, plus backend focused
+  tests when the CLI requires a REST API surface change.
 - Template-only changes can be checked with Django template loading and
   `manage.py check`, but asset-related work should also build or run the frontend
   stack.

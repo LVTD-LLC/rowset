@@ -12,6 +12,8 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 
 .PHONY: \
 	ci-local \
+	cli-build \
+	cli-test \
 	coverage \
 	django-check \
 	format-check \
@@ -87,6 +89,13 @@ frontend-build:
 	$(NPM) run build
 
 frontend-check: frontend-lint frontend-build
+
+cli-test:
+	cd cli && go test ./...
+
+cli-build:
+	mkdir -p cli/bin
+	cd cli && go build -o bin/rowset ./cmd/rowset
 
 restart-worker:
 	$(COMPOSE_LOCAL) up -d workers --force-recreate

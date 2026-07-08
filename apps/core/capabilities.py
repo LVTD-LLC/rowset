@@ -116,7 +116,7 @@ ROWSET_CAPABILITIES = (
             "get_dataset",
             "create_dataset",
         ),
-        rest_paths=("/api/datasets", "/api/datasets/archived"),
+        rest_paths=("/api/datasets", "/api/datasets/{dataset_key}", "/api/datasets/archived"),
         notes=(
             (
                 "If no reliable business key exists, omit index_column and Rowset "
