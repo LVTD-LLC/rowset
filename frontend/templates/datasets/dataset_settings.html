@@ -231,8 +231,9 @@
                                                class="block text-sm font-semibold text-slate-900 dark:text-slate-100">Source column</label>
                                         <select id="relationship-source-column"
                                                 name="source_column"
-                                                class="fb-input mt-2 block w-full px-3 py-2 text-sm">
-                                            {% for header in dataset.headers %}
+                                                class="fb-input mt-2 block w-full px-3 py-2 text-sm"
+                                                {% if not relationship_source_column_choices %}disabled{% endif %}>
+                                            {% for header in relationship_source_column_choices %}
                                                 <option value="{{ header }}">{{ header }}</option>
                                             {% endfor %}
                                         </select>
@@ -266,15 +267,37 @@
                                 <div>
                                     <button type="submit"
                                             class="fb-button-primary"
-                                            {% if not relationship_target_dataset_choices %}disabled{% endif %}>Add relationship</button>
+                                            {% if not relationship_target_dataset_choices or not relationship_source_column_choices %}disabled{% endif %}>Add relationship</button>
                                 </div>
                             </form>
-                            {% if incoming_relationships %}
+                            {% if incoming_relationship_items %}
                                 <div class="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
                                     <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Incoming relationships</h4>
                                     <div class="mt-3 grid gap-2">
-                                        {% for relationship in incoming_relationships %}
-                                            <p class="break-words rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">{{ relationship.source_dataset.name }}.{{ relationship.source_column }} → {{ dataset.name }}.{{ relationship.target_index_column }}</p>
+                                        {% for item in incoming_relationship_items %}
+                                            <div class="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                                                <div class="min-w-0">
+                                                    <p class="break-words">{{ item.relationship.source_dataset.name }}.{{ item.relationship.source_column }} → {{ dataset.name }}.{{ item.relationship.target_index_column }}</p>
+                                                    {% if item.count_column %}
+                                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Count column · {{ item.count_column }}</p>
+                                                    {% endif %}
+                                                </div>
+                                                {% if not item.count_column %}
+                                                    <form method="post"
+                                                          action="{% url 'dataset_create_relationship_count_column' dataset.key item.relationship.key %}"
+                                                          class="grid gap-2 sm:grid-cols-[10rem_auto]">
+                                                        {% csrf_token %}
+                                                        <label class="sr-only" for="relationship-count-column-{{ forloop.counter }}">Count column</label>
+                                                        <input id="relationship-count-column-{{ forloop.counter }}"
+                                                               name="column_name"
+                                                               type="text"
+                                                               value="{{ item.suggested_count_column_name }}"
+                                                               class="fb-input w-full px-3 py-2 text-sm">
+                                                        <button type="submit"
+                                                                class="fb-button-secondary min-h-8 px-2 py-1 text-xs">Count rows</button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -298,13 +321,18 @@
                                             <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center">
                                                 <span class="min-w-0 break-words font-semibold text-slate-800 dark:text-slate-100">{{ column.name }}</span>
                                                 <label class="sr-only" for="column-type-{{ forloop.counter }}">Type for {{ column.name }}</label>
-                                                <select id="column-type-{{ forloop.counter }}"
-                                                        name="column_type"
-                                                        class="fb-input w-full px-3 py-2 text-sm">
-                                                    {% for value, label in column_type_choices %}
-                                                        <option value="{{ value }}" {% if column.type == value %}selected{% endif %}>{{ label }}</option>
-                                                    {% endfor %}
-                                                </select>
+                                                {% if column.type == "calculated" %}
+                                                    <input type="hidden" name="column_type" value="{{ column.type }}">
+                                                    <div class="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">Calculated</div>
+                                                {% else %}
+                                                    <select id="column-type-{{ forloop.counter }}"
+                                                            name="column_type"
+                                                            class="fb-input w-full px-3 py-2 text-sm">
+                                                        {% for value, label in column_type_choices %}
+                                                            <option value="{{ value }}" {% if column.type == value %}selected{% endif %}>{{ label }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                {% endif %}
                                             </div>
                                             <div>
                                                 <label for="column-description-{{ forloop.counter }}"

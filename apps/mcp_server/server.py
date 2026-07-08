@@ -1176,11 +1176,13 @@ def update_dataset_column_types(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
                 "include text, image, choice, integer, number, currency, boolean, "
-                "date, datetime, email, url, and reference. For choice columns, pass "
+                "date, datetime, email, url, reference, and calculated. For choice columns, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
                 'reference column, pass {"type": "reference", "target": "dataset"} or '
-                '{"type": "reference", "target": "project"}. Add '
+                '{"type": "reference", "target": "project"}. For a calculated count from an '
+                'incoming relationship, pass {"type": "calculated", "calculation": '
+                '"relationship_count", "relationship_key": "..."}. Add '
                 '"description" to any metadata object to give agents column context.'
             ),
         ),
@@ -1223,11 +1225,13 @@ def add_column(
             description=(
                 "Optional semantic type or metadata for the new column. Supported types "
                 "include text, image, choice, integer, number, currency, boolean, "
-                "date, datetime, email, url, and reference. For a choice column, pass "
+                "date, datetime, email, url, reference, and calculated. For a choice column, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
                 'reference column, pass {"type": "reference", "target": "dataset"} or '
-                '{"type": "reference", "target": "project"}. Add '
+                '{"type": "reference", "target": "project"}. For a calculated count from an '
+                'incoming relationship, pass {"type": "calculated", "calculation": '
+                '"relationship_count", "relationship_key": "..."}. Add '
                 '"description" to the metadata object to give agents column context.'
             ),
         ),

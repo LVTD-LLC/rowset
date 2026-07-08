@@ -12,12 +12,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import NoReverseMatch, reverse
 from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
+from django.utils.text import slugify
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.vary import vary_on_headers
 from django.views.generic import DetailView, ListView
 
 from apps.api.services import (
     DatasetServiceError,
+    add_profile_dataset_column,
     archive_profile_dataset,
     archive_profile_project_section,
     create_profile_dataset_relationship,
@@ -50,6 +52,7 @@ from apps.datasets.public_previews import (
     has_public_preview_access,
 )
 from apps.datasets.services import (
+    CALCULATION_RELATIONSHIP_COUNT,
     DATASET_ASSET_CACHE_CONTROL,
     DATASET_REFERENCE_TARGET,
     PROJECT_REFERENCE_TARGET,
@@ -61,8 +64,12 @@ from apps.datasets.services import (
     ROW_ORDERED_FILTER_TYPES,
     ROW_SORT_DESC,
     apply_dataset_row_query,
+    calculated_column_names,
+    calculated_relationship_count_columns,
+    calculated_row_values_for_rows,
     column_definitions,
     dataset_asset_key_from_ref,
+    dataset_row_data_with_calculated_values,
     dataset_row_filter_operators,
     default_dataset_row_filter_operator,
     image_columns_from_schema,
@@ -1017,6 +1024,7 @@ def _querystring_for_page(request, page_number: int, page_param: str = "page") -
 
 def _column_filter_input_type(column_type: str) -> str:
     return {
+        DatasetColumnType.CALCULATED: "number",
         DatasetColumnType.BOOLEAN: "select",
         DatasetColumnType.CHOICE: "select",
         DatasetColumnType.CURRENCY: "number",
@@ -1046,6 +1054,7 @@ def _column_filter_operator_options(column_type: str, selected_operator: str):
 
 def _column_sort_labels(column_type: str) -> tuple[str, str]:
     if column_type in {
+        DatasetColumnType.CALCULATED,
         DatasetColumnType.CURRENCY,
         DatasetColumnType.INTEGER,
         DatasetColumnType.NUMBER,
@@ -1135,7 +1144,10 @@ def _row_form_fields(
     prefix: str,
 ) -> list[dict[str, object]]:
     fields = []
+    calculated_columns = calculated_column_names(dataset.headers, dataset.column_schema)
     for index, column in enumerate(column_definitions(dataset.headers, dataset.column_schema)):
+        if column["name"] in calculated_columns:
+            continue
         column_type = column["type"]
         value = form_values.get(column["name"], "")
         is_index = column["name"] == dataset.index_column
@@ -1165,18 +1177,23 @@ def _row_form_fields(
 
 
 def _row_create_data(dataset: Dataset, post_data) -> dict[str, str]:
+    calculated_columns = calculated_column_names(dataset.headers, dataset.column_schema)
     return {
         header: post_data.get(header, "")
         for header in dataset.headers
-        if not (dataset.index_generated and header == dataset.index_column)
+        if header not in calculated_columns
+        and not (dataset.index_generated and header == dataset.index_column)
     }
 
 
 def _row_patch_data(dataset: Dataset, post_data) -> dict[str, str]:
+    calculated_columns = calculated_column_names(dataset.headers, dataset.column_schema)
     return {
         header: post_data.get(header, "")
         for header in dataset.headers
-        if header in post_data and not (dataset.index_generated and header == dataset.index_column)
+        if header in post_data
+        and header not in calculated_columns
+        and not (dataset.index_generated and header == dataset.index_column)
     }
 
 
@@ -1187,14 +1204,19 @@ def _editable_row_cells(
     *,
     allow_edit: bool,
 ) -> list[dict[str, object]]:
-    editable_headers = set(dataset.headers)
+    editable_headers = set(dataset.headers) - calculated_column_names(
+        dataset.headers,
+        dataset.column_schema,
+    )
     for index, cell in enumerate(row_cells):
         header = str(cell["header"])
         is_managed_index = dataset.index_generated and header == dataset.index_column
+        is_calculated = header not in editable_headers
         cell["input_id"] = f"row-value-{index}"
         cell["form_value"] = form_values.get(header, str(cell.get("value", "")))
         cell["is_index"] = header == dataset.index_column
         cell["is_managed_index"] = is_managed_index
+        cell["is_calculated"] = is_calculated
         cell["is_editable"] = allow_edit and header in editable_headers and not is_managed_index
     return row_cells
 
@@ -1241,10 +1263,16 @@ def _row_filter_fields(
                 "input_type": _column_filter_input_type(column_type),
                 "is_boolean": column_type == DatasetColumnType.BOOLEAN,
                 "is_choice": column_type == DatasetColumnType.CHOICE,
-                "is_number": column_type in {DatasetColumnType.INTEGER, DatasetColumnType.NUMBER},
+                "is_number": column_type
+                in {
+                    DatasetColumnType.CALCULATED,
+                    DatasetColumnType.INTEGER,
+                    DatasetColumnType.NUMBER,
+                },
                 "is_currency": column_type == DatasetColumnType.CURRENCY,
                 "is_numeric_filter": column_type
                 in {
+                    DatasetColumnType.CALCULATED,
                     DatasetColumnType.CURRENCY,
                     DatasetColumnType.INTEGER,
                     DatasetColumnType.NUMBER,
@@ -1351,19 +1379,57 @@ def _dataset_row_query_context(
 
 
 def _dataset_relationship_context(dataset: Dataset) -> dict:
-    outgoing = dataset.outgoing_relationships.select_related("target_dataset").order_by(
-        "name",
-        "id",
+    outgoing = list(
+        dataset.outgoing_relationships.select_related("target_dataset").order_by(
+            "name",
+            "id",
+        )
     )
-    incoming = dataset.incoming_relationships.select_related("source_dataset").order_by(
-        "source_dataset__name",
-        "name",
-        "id",
+    incoming = list(
+        dataset.incoming_relationships.select_related("source_dataset").order_by(
+            "source_dataset__name",
+            "name",
+            "id",
+        )
     )
+    count_columns_by_relationship = _relationship_count_columns_by_key(dataset)
+    calculated_columns = calculated_column_names(dataset.headers, dataset.column_schema)
     return {
         "outgoing_relationships": outgoing,
         "incoming_relationships": incoming,
+        "incoming_relationship_items": [
+            {
+                "relationship": relationship,
+                "count_column": count_columns_by_relationship.get(str(relationship.key), ""),
+                "suggested_count_column_name": _relationship_count_column_suggestion(
+                    relationship,
+                    dataset.headers,
+                ),
+            }
+            for relationship in incoming
+        ],
+        "relationship_source_column_choices": [
+            header for header in dataset.headers if header not in calculated_columns
+        ],
     }
+
+
+def _relationship_count_columns_by_key(dataset: Dataset) -> dict[str, str]:
+    columns_by_key = {}
+    for column in calculated_relationship_count_columns(dataset.headers, dataset.column_schema):
+        columns_by_key.setdefault(column["relationship_key"], column["name"])
+    return columns_by_key
+
+
+def _relationship_count_column_suggestion(relationship, headers: list[str]) -> str:
+    base = slugify(relationship.source_dataset.name).replace("-", "_").strip("_")
+    base = base or "related_rows"
+    candidate = f"{base}_count"
+    suffix = 2
+    while candidate in headers:
+        candidate = f"{base}_count_{suffix}"
+        suffix += 1
+    return candidate
 
 
 class DatasetListView(LoginRequiredMixin, ListView):
@@ -1825,7 +1891,16 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         row_paginator = Paginator(row_queryset, DATASET_DETAIL_ROW_PAGE_SIZE)
         row_page_obj = row_paginator.get_page(self.request.GET.get("page"))
         row_objects = list(row_page_obj.object_list)
-        row_data_items = [row.data for row in row_objects]
+        calculated_values = calculated_row_values_for_rows(dataset, row_objects)
+        row_data_by_id = {
+            row.id: dataset_row_data_with_calculated_values(
+                dataset,
+                row,
+                calculated_values_by_row_id=calculated_values,
+            )
+            for row in row_objects
+        }
+        row_data_items = [row_data_by_id[row.id] for row in row_objects]
         choice_value_accent_classes = (
             _choice_value_accent_classes_from_columns(
                 column_definition_list,
@@ -1842,13 +1917,14 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
         image_asset_lookup = _image_asset_lookup(dataset, row_objects)
         rows_with_values = []
         for row in row_objects:
+            row_data = row_data_by_id[row.id]
             row_url = reverse(
                 "dataset_row_detail",
                 kwargs={"dataset_key": dataset.key, "row_id": row.id},
             )
             cells = _row_table_cells(
                 dataset.headers,
-                row.data,
+                row_data,
                 column_schema=dataset.column_schema,
                 reference_lookup=reference_lookup,
                 image_assets=image_asset_lookup,
@@ -1859,7 +1935,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             )
             rows_with_values.append(
                 {
-                    "values": ordered_row_values(dataset.headers, row.data),
+                    "values": ordered_row_values(dataset.headers, row_data),
                     "cells": cells,
                     "has_accessible_row_link": any(
                         cell.get("is_row_detail_primary") for cell in cells
@@ -2049,10 +2125,11 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
         row = self.object
         dataset = row.dataset
         column_definition_list = column_definitions(dataset.headers, dataset.column_schema)
+        row_data = dataset_row_data_with_calculated_values(dataset, row)
         reference_lookup = _rowset_reference_lookup(
             self.request.user.profile,
             column_definition_list,
-            [row.data],
+            [row_data],
         )
         if form_values is None:
             form_values = _row_form_values(dataset, row.data)
@@ -2062,9 +2139,9 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
             dataset,
             _row_cells(
                 dataset.headers,
-                row.data,
+                row_data,
                 dataset.column_schema,
-                relationship_links=_row_relationship_links(dataset, row.data),
+                relationship_links=_row_relationship_links(dataset, row_data),
                 reference_lookup=reference_lookup,
                 row_id=row.id,
                 image_assets=_image_asset_lookup(dataset, [row]),
@@ -2178,7 +2255,11 @@ class DatasetSettingsView(LoginRequiredMixin, DetailView):
             self.object.headers,
             self.object.column_schema,
         )
-        context["column_type_choices"] = DatasetColumnType.choices
+        context["column_type_choices"] = [
+            (value, label)
+            for value, label in DatasetColumnType.choices
+            if value != DatasetColumnType.CALCULATED
+        ]
         context["metadata_json"] = json.dumps(
             self.object.metadata or {},
             ensure_ascii=False,
@@ -2434,6 +2515,45 @@ def dataset_delete_relationship(request, dataset_key, relationship_key):
 
 @login_required
 @require_POST
+def dataset_create_relationship_count_column(request, dataset_key, relationship_key):
+    dataset = get_object_or_404(
+        _owned_dataset_queryset(request.user.profile),
+        key=dataset_key,
+    )
+    try:
+        relationship = dataset.incoming_relationships.select_related("source_dataset").get(
+            profile=request.user.profile,
+            key=relationship_key,
+        )
+    except ObjectDoesNotExist as exc:
+        raise Http404("Relationship not found.") from exc
+
+    column_name = request.POST.get("column_name", "").strip() or (
+        _relationship_count_column_suggestion(relationship, dataset.headers)
+    )
+    try:
+        add_profile_dataset_column(
+            request.user.profile,
+            str(dataset.key),
+            name=column_name,
+            column_type={
+                "type": DatasetColumnType.CALCULATED,
+                "calculation": CALCULATION_RELATIONSHIP_COUNT,
+                "relationship_key": str(relationship.key),
+            },
+        )
+    except DatasetServiceError as exc:
+        if exc.status_code == 404:
+            raise Http404(exc.message) from exc
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, "Calculated count column added.")
+
+    return redirect("dataset_settings", dataset_key=dataset_key)
+
+
+@login_required
+@require_POST
 def dataset_update_metadata(request, dataset_key):
     raw_metadata = request.POST.get("metadata", "").strip()
     if raw_metadata:
@@ -2656,15 +2776,25 @@ def public_dataset(request, public_key):
         paginator = Paginator(row_queryset, dataset.public_page_size)
         page_obj = paginator.get_page(request.GET.get("page"))
         public_row_objects = list(page_obj.object_list)
+        calculated_values = calculated_row_values_for_rows(dataset, public_row_objects)
+        public_row_data_by_id = {
+            row.id: dataset_row_data_with_calculated_values(
+                dataset,
+                row,
+                calculated_values_by_row_id=calculated_values,
+            )
+            for row in public_row_objects
+        }
         image_asset_lookup = _image_asset_lookup(dataset, public_row_objects)
         for row in public_row_objects:
+            row_data = public_row_data_by_id[row.id]
             row_url = reverse(
                 "public_dataset_row_detail",
                 kwargs={"public_key": dataset.public_key, "row_id": row.id},
             )
             cells = _row_table_cells(
                 dataset.headers,
-                row.data,
+                row_data,
                 column_schema=dataset.column_schema,
                 image_assets=image_asset_lookup,
                 row_url=row_url,
@@ -2674,7 +2804,7 @@ def public_dataset(request, public_key):
             )
             public_rows_with_values.append(
                 {
-                    "values": ordered_row_values(dataset.headers, row.data),
+                    "values": ordered_row_values(dataset.headers, row_data),
                     "cells": cells,
                     "has_accessible_row_link": any(
                         cell.get("is_row_detail_primary") for cell in cells
@@ -2758,9 +2888,10 @@ def public_dataset_row_detail(request, public_key, row_id):
             dataset=dataset,
             id=row_id,
         )
+        row_data = dataset_row_data_with_calculated_values(dataset, dataset_row)
         row_cells = _row_cells(
             dataset.headers,
-            dataset_row.data,
+            row_data,
             dataset.column_schema,
             row_id=dataset_row.id,
             image_assets=_image_asset_lookup(dataset, [dataset_row]),

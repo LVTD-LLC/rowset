@@ -147,7 +147,12 @@ ROWSET_CAPABILITIES = (
         notes=(
             (
                 "column_schema supports text, choice, integer, number, currency, "
-                "boolean, date, datetime, email, url, image, and reference."
+                "boolean, date, datetime, email, url, image, reference, and calculated."
+            ),
+            (
+                'Use {"type": "calculated", "calculation": "relationship_count", '
+                '"relationship_key": "..."} on the target dataset to count source rows '
+                "from an incoming relationship."
             ),
             (
                 'Use {"type": "reference", "target": "dataset"} when a column stores '

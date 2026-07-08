@@ -10,7 +10,11 @@ from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetMutationType
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetAsset, DatasetMutation, DatasetRow
-from apps.datasets.services import dataset_asset_key_from_ref, image_columns_from_schema
+from apps.datasets.services import (
+    calculated_column_names,
+    dataset_asset_key_from_ref,
+    image_columns_from_schema,
+)
 
 ROW_MUTATION_TYPES = (
     DatasetMutationType.ROW_CREATED,
@@ -36,6 +40,11 @@ def normalize_row_patch_for_headers(data: RowWritePayload, headers: Iterable[str
     return {
         header: stringify_cell(value) for header, value in data.items() if header in allowed_headers
     }
+
+
+def _writable_dataset_headers(dataset: Dataset) -> list[str]:
+    calculated_columns = calculated_column_names(dataset.headers, dataset.column_schema)
+    return [header for header in dataset.headers if header not in calculated_columns]
 
 
 @dataclass(frozen=True)
@@ -79,7 +88,8 @@ def create_dataset_row(
 ) -> dict:
     row_number = _next_row_number(dataset)
     row_data = _create_row_data(dataset, data, row_number)
-    serialized_data = normalize_row_data_for_headers(row_data, dataset.headers)
+    writable_headers = _writable_dataset_headers(dataset)
+    serialized_data = normalize_row_data_for_headers(row_data, writable_headers)
     hooks.validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
     hooks.validate_image_row_data(dataset.headers, dataset.column_schema, serialized_data)
     serialized_data = hooks.normalize_reference_row_data(
@@ -148,7 +158,8 @@ def patch_dataset_row(
     if not connection.in_atomic_block:
         raise AssertionError("patch_dataset_row must be called inside transaction.atomic().")
 
-    row_patch = normalize_row_patch_for_headers(data, dataset.headers)
+    writable_headers = _writable_dataset_headers(dataset)
+    row_patch = normalize_row_patch_for_headers(data, writable_headers)
     patched_fields = sorted(row_patch)
     changed_image_columns = _changed_image_columns(dataset, row, row_patch, patched_fields)
     _raise_if_patch_references_image_asset(row_patch, changed_image_columns)

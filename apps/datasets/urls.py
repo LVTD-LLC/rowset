@@ -101,6 +101,11 @@ urlpatterns = [
         name="dataset_delete_relationship",
     ),
     path(
+        "datasets/<uuid:dataset_key>/settings/relationships/<uuid:relationship_key>/count-column/",
+        views.dataset_create_relationship_count_column,
+        name="dataset_create_relationship_count_column",
+    ),
+    path(
         "datasets/<uuid:dataset_key>/settings/metadata/",
         views.dataset_update_metadata,
         name="dataset_update_metadata",

@@ -83,9 +83,13 @@ from apps.datasets.services import (
     DatasetValidationError,
     apply_dataset_row_query,
     apply_dataset_rows_query,
+    calculated_column_names,
+    calculated_relationship_count_columns,
+    calculated_row_values_for_rows,
     choice_constraints_from_schema,
     dataset_asset_key_from_ref,
     dataset_asset_ref,
+    dataset_row_data_with_calculated_values,
     decode_image_base64,
     generated_index_column_name,
     generated_index_column_schema,
@@ -1514,6 +1518,11 @@ def _normalize_relationship_source_column(dataset: Dataset, source_column: str) 
             400,
             f"Relationship source_column '{normalized_column}' must match a dataset header.",
         )
+    if normalized_column in calculated_column_names(dataset.headers, dataset.column_schema):
+        raise DatasetServiceError(
+            400,
+            f"Relationship source_column '{normalized_column}' cannot be a calculated column.",
+        )
     return normalized_column
 
 
@@ -1708,6 +1717,30 @@ def _get_profile_dataset_relationship(
         raise DatasetServiceError(404, "Relationship not found.") from exc
 
 
+def _raise_if_relationship_used_by_calculated_columns(relationship: DatasetRelationship) -> None:
+    target_dataset = relationship.target_dataset
+    columns = [
+        column["name"]
+        for column in calculated_relationship_count_columns(
+            target_dataset.headers,
+            target_dataset.column_schema,
+        )
+        if column["relationship_key"] == str(relationship.key)
+    ]
+    if not columns:
+        return
+
+    column_list = ", ".join(f"'{column}'" for column in sorted(columns))
+    raise DatasetServiceError(
+        409,
+        (
+            f"Relationship '{relationship.name}' is used by calculated column "
+            f"{column_list} on dataset '{target_dataset.name}'. Drop or change the "
+            "calculated column before deleting the relationship."
+        ),
+    )
+
+
 def delete_profile_dataset_relationship(
     profile: Profile,
     dataset_key: str,
@@ -1721,6 +1754,7 @@ def delete_profile_dataset_relationship(
             source_dataset,
             relationship_key,
         )
+        _raise_if_relationship_used_by_calculated_columns(relationship)
         relationship_payload = serialize_dataset_relationship(relationship)
         relationship.delete()
         source_dataset.updated_by_agent_api_key = agent_api_key
@@ -2143,6 +2177,56 @@ def _validate_existing_image_values(dataset: Dataset, column_schema: dict) -> No
                 )
 
 
+def _calculated_column_relationship_keys(headers: list[str], column_schema: dict) -> set[UUID]:
+    keys = set()
+    for column in calculated_relationship_count_columns(headers, column_schema):
+        keys.add(UUID(column["relationship_key"]))
+    return keys
+
+
+def _validate_existing_calculated_columns(
+    profile: Profile,
+    dataset: Dataset,
+    headers: list[str],
+    column_schema: dict,
+) -> None:
+    columns = calculated_relationship_count_columns(headers, column_schema)
+    if not columns:
+        return
+
+    relationship_keys = _calculated_column_relationship_keys(headers, column_schema)
+    incoming_relationship_keys = set(
+        DatasetRelationship.objects.filter(
+            profile=profile,
+            target_dataset=dataset,
+            key__in=relationship_keys,
+        ).values_list("key", flat=True)
+    )
+    for column in columns:
+        if UUID(column["relationship_key"]) not in incoming_relationship_keys:
+            raise DatasetServiceError(
+                400,
+                (
+                    f"Calculated column '{column['name']}' relationship_key must reference "
+                    "an incoming relationship for this dataset."
+                ),
+            )
+
+
+def _raise_if_schema_has_calculated_columns(headers: list[str], column_schema: dict) -> None:
+    column_names = sorted(calculated_column_names(headers, column_schema))
+    if not column_names:
+        return
+    joined = ", ".join(column_names)
+    raise DatasetServiceError(
+        400,
+        (
+            "Calculated columns require an existing dataset relationship. Create the dataset, "
+            f"create the relationship, then add calculated column(s): {joined}."
+        ),
+    )
+
+
 def _create_dataset_index_config(
     headers: list[str],
     index_column: str | None,
@@ -2230,6 +2314,7 @@ def create_profile_dataset(
         rows=normalized_rows,
         column_types=column_types,
     )
+    _raise_if_schema_has_calculated_columns(dataset_headers, column_schema)
     _validate_choice_rows(base_headers, column_schema, normalized_rows)
     _validate_image_rows(base_headers, column_schema, normalized_rows)
     normalized_rows = _normalize_reference_rows(
@@ -2365,11 +2450,18 @@ def update_profile_dataset_column_types(
             )
         except DatasetValidationError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
-        if next_schema[dataset.index_column][COLUMN_SCHEMA_TYPE_KEY] == DatasetColumnType.IMAGE:
+        index_column_type = next_schema[dataset.index_column][COLUMN_SCHEMA_TYPE_KEY]
+        if index_column_type == DatasetColumnType.IMAGE:
             raise DatasetServiceError(400, "Image columns cannot be used as the dataset index.")
+        if index_column_type == DatasetColumnType.CALCULATED:
+            raise DatasetServiceError(
+                400,
+                "Calculated columns cannot be used as the dataset index.",
+            )
         _validate_existing_choice_values(dataset, next_schema)
         _validate_existing_reference_values(profile, dataset, next_schema)
         _validate_existing_image_values(dataset, next_schema)
+        _validate_existing_calculated_columns(profile, dataset, dataset.headers, next_schema)
         dataset.column_schema = next_schema
         dataset.updated_by_agent_api_key = agent_api_key
         dataset.save(
@@ -2600,6 +2692,48 @@ def add_profile_dataset_column(
             )
         except DatasetValidationError as exc:
             raise DatasetServiceError(400, str(exc)) from exc
+        column_is_calculated = (
+            dataset.column_schema[column_name][COLUMN_SCHEMA_TYPE_KEY]
+            == DatasetColumnType.CALCULATED
+        )
+        _validate_existing_calculated_columns(profile, dataset, next_headers, dataset.column_schema)
+        if column_is_calculated and default_value not in ("", None):
+            raise DatasetServiceError(
+                400,
+                "Calculated columns cannot define a default value.",
+            )
+
+        dataset.headers = next_headers
+        if column_is_calculated:
+            dataset.updated_by_agent_api_key = agent_api_key
+            dataset.save(
+                update_fields=[
+                    "headers",
+                    "column_schema",
+                    "updated_by_agent_api_key",
+                    "updated_at",
+                ]
+            )
+            record_dataset_mutation(
+                dataset,
+                DatasetMutationType.COLUMN_ADDED,
+                f"Column '{column_name}' added.",
+                agent_api_key=agent_api_key,
+                target_type="column",
+                target_identifier=column_name,
+                metadata={
+                    "column": column_name,
+                    "column_type": dataset.column_schema[column_name]["type"],
+                    "default_value_provided": False,
+                },
+            )
+            _enqueue_dataset_vector_reindex(dataset.id)
+            return {
+                "status": "success",
+                "message": "Column added.",
+                "dataset": serialize_dataset_summary(dataset),
+            }
+
         default_row = {column_name: default_cell}
         _validate_choice_row_data(
             next_headers,
@@ -2627,7 +2761,6 @@ def add_profile_dataset_column(
             next_data[column_name] = stringify_cell(next_data.get(column_name, default_cell))
             return next_data
 
-        dataset.headers = next_headers
         dataset.preview_rows = _transform_dataset_rows(
             dataset,
             add_column,
@@ -3102,12 +3235,25 @@ def _serialized_row_assets(row: DatasetRow, dataset: Dataset | None = None) -> l
     ]
 
 
-def serialize_dataset_row(row: DatasetRow, *, dataset: Dataset | None = None) -> dict:
+def serialize_dataset_row(
+    row: DatasetRow,
+    *,
+    dataset: Dataset | None = None,
+    calculated_values_by_row_id: dict[int, dict[str, str]] | None = None,
+) -> dict:
+    dataset = dataset or getattr(row, "dataset", None)
+    row_data = row.data or {}
+    if dataset is not None:
+        row_data = dataset_row_data_with_calculated_values(
+            dataset,
+            row,
+            calculated_values_by_row_id=calculated_values_by_row_id,
+        )
     return {
         "id": row.id,
         "row_number": row.row_number,
         "index_value": row.index_value,
-        "data": row.data,
+        "data": row_data,
         "assets": _serialized_row_assets(row, dataset),
     }
 
@@ -3527,12 +3673,13 @@ def _serialize_dataset_search_results(
     dataset: Dataset,
     ranked_candidates: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    rows_by_id = {
-        row.id: row
-        for row in dataset.rows.prefetch_related("assets").filter(
+    rows = list(
+        dataset.rows.prefetch_related("assets").filter(
             id__in=[candidate["row_id"] for candidate in ranked_candidates]
         )
-    }
+    )
+    rows_by_id = {row.id: row for row in rows}
+    calculated_values = calculated_row_values_for_rows(dataset, rows)
     results = []
     for rank, candidate in enumerate(ranked_candidates, start=1):
         row = rows_by_id.get(candidate["row_id"])
@@ -3542,7 +3689,11 @@ def _serialize_dataset_search_results(
             {
                 "rank": rank,
                 "score": candidate["score"],
-                "row": serialize_dataset_row(row, dataset=dataset),
+                "row": serialize_dataset_row(
+                    row,
+                    dataset=dataset,
+                    calculated_values_by_row_id=calculated_values,
+                ),
                 "match": {
                     "source": candidate["source"],
                     "vector_score": candidate.get("vector_score"),
@@ -3756,16 +3907,27 @@ def _profile_allowed_vector_row_ids(
 def _serialize_profile_row_search_results(
     ranked_candidates: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    rows_by_id = {
-        row.id: row
-        for row in DatasetRow.objects.select_related(
+    rows = list(
+        DatasetRow.objects.select_related(
             "dataset",
             "dataset__project",
             "dataset__section",
         )
         .prefetch_related("assets")
         .filter(id__in=[candidate["row_id"] for candidate in ranked_candidates])
-    }
+    )
+    rows_by_id = {row.id: row for row in rows}
+    calculated_values_by_dataset_id = {}
+    for row in rows:
+        dataset = row.dataset
+        calculated_values_by_dataset_id.setdefault(dataset.id, {})
+    for dataset_id in calculated_values_by_dataset_id:
+        dataset_rows = [row for row in rows if row.dataset_id == dataset_id]
+        if dataset_rows:
+            calculated_values_by_dataset_id[dataset_id] = calculated_row_values_for_rows(
+                dataset_rows[0].dataset,
+                dataset_rows,
+            )
     results = []
     for rank, candidate in enumerate(ranked_candidates, start=1):
         row = rows_by_id.get(candidate["row_id"])
@@ -3777,7 +3939,14 @@ def _serialize_profile_row_search_results(
                 "rank": rank,
                 "score": candidate["score"],
                 "dataset": serialize_dataset_reference(dataset),
-                "row": serialize_dataset_row(row, dataset=dataset),
+                "row": serialize_dataset_row(
+                    row,
+                    dataset=dataset,
+                    calculated_values_by_row_id=calculated_values_by_dataset_id.get(
+                        dataset.id,
+                        {},
+                    ),
+                ),
                 "match": {
                     "source": candidate["source"],
                     "vector_score": candidate.get("vector_score"),
@@ -4105,6 +4274,7 @@ def list_profile_dataset_rows(
     has_restrictive_query = bool(row_query["query"] or row_query["filters"])
     filtered_count = row_queryset.count() if has_restrictive_query else total_count
     rows = list(row_queryset.prefetch_related("assets")[offset : offset + limit])
+    calculated_values = calculated_row_values_for_rows(dataset, rows)
     return {
         "dataset": str(dataset.key),
         "count": filtered_count,
@@ -4116,7 +4286,14 @@ def list_profile_dataset_rows(
         "filters": row_query["filters"],
         "sort": row_query["sort"],
         "direction": row_query["direction"],
-        "rows": [serialize_dataset_row(row, dataset=dataset) for row in rows],
+        "rows": [
+            serialize_dataset_row(
+                row,
+                dataset=dataset,
+                calculated_values_by_row_id=calculated_values,
+            )
+            for row in rows
+        ],
     }
 
 
