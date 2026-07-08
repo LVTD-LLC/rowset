@@ -328,14 +328,22 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         assert "relationships" in capability_ids
         assert "dataset_context" in capability_ids
         assert "image_assets" in capability_ids
+        assert "audio_assets" in capability_ids
         assert "get_dataset before row operations" in " ".join(payload["recommended_startup"])
         image_assets = next(
             capability
             for capability in payload["capabilities"]
             if capability["id"] == "image_assets"
         )
+        audio_assets = next(
+            capability
+            for capability in payload["capabilities"]
+            if capability["id"] == "audio_assets"
+        )
         assert "attach_image_to_dataset_row" in image_assets["mcp_tools"]
         assert "hosted MCP cannot read local file paths" in " ".join(image_assets["notes"])
+        assert "attach_audio_to_dataset_row" in audio_assets["mcp_tools"]
+        assert "hosted MCP cannot read local file paths" in " ".join(audio_assets["notes"])
         assert "guardrails" in payload
 
     anyio.run(run)
@@ -1554,6 +1562,103 @@ def test_dataset_image_mcp_tools_call_dataset_services(monkeypatch):
                 "aW1hZ2U=",
                 "photo.png",
                 "image/png",
+                3,
+            ),
+            ("get_asset", 11, "ds", "asset-key"),
+        ]
+
+    anyio.run(run)
+
+
+def test_dataset_audio_mcp_tools_call_dataset_services(monkeypatch):
+    calls = []
+
+    def attach_audio(
+        authenticated_profile,
+        dataset_key,
+        *,
+        column_name,
+        audio_base64,
+        filename=None,
+        content_type=None,
+        row_id=None,
+        index_value=None,
+        agent_api_key=None,
+    ):
+        calls.append(
+            (
+                "attach",
+                authenticated_profile.id,
+                dataset_key,
+                row_id,
+                index_value,
+                column_name,
+                audio_base64,
+                filename,
+                content_type,
+                getattr(agent_api_key, "id", None),
+            )
+        )
+        return {
+            "status": "success",
+            "message": "Audio attached.",
+            "dataset": dataset_key,
+            "row": {"id": row_id, "data": {column_name: "asset:asset-key"}},
+            "asset": {"key": "asset-key", "ref": "asset:asset-key"},
+        }
+
+    def get_asset(authenticated_profile, dataset_key, asset_key):
+        calls.append(("get_asset", authenticated_profile.id, dataset_key, asset_key))
+        return {
+            "status": "success",
+            "message": "Dataset asset retrieved.",
+            "asset": {"key": asset_key, "ref": f"asset:{asset_key}"},
+        }
+
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.attach_profile_dataset_audio_asset",
+            attach_audio,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.serialize_profile_dataset_asset",
+            get_asset,
+        )
+
+        async with Client(mcp) as client:
+            attach_result = await client.call_tool(
+                "attach_audio_to_dataset_row",
+                {
+                    "dataset_key": "ds",
+                    "row_id": 7,
+                    "column_name": "audio",
+                    "audio_base64": "YXVkaW8=",
+                    "filename": "clip.wav",
+                    "content_type": "audio/wav",
+                },
+            )
+            asset_result = await client.call_tool(
+                "get_dataset_audio_asset",
+                {"dataset_key": "ds", "asset_key": "asset-key"},
+            )
+
+        assert attach_result.data["message"] == "Audio attached."
+        assert asset_result.data["asset"]["ref"] == "asset:asset-key"
+        assert calls == [
+            (
+                "attach",
+                11,
+                "ds",
+                7,
+                None,
+                "audio",
+                "YXVkaW8=",
+                "clip.wav",
+                "audio/wav",
                 3,
             ),
             ("get_asset", 11, "ds", "asset-key"),

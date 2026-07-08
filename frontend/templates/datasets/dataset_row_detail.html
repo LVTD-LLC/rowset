@@ -71,6 +71,16 @@
                           </div>
                         {% elif cell.is_missing_image %}
                           <span class="text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
+                        {% elif cell.is_audio %}
+                          <div class="max-w-xl">
+                            <audio controls preload="none" src="{{ cell.audio_url }}" class="block w-full max-w-xl"></audio>
+                            <p class="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{{ cell.value }}</p>
+                            {% if cell.audio_detail %}
+                              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ cell.audio_detail }}</p>
+                            {% endif %}
+                          </div>
+                        {% elif cell.is_missing_audio %}
+                          <span class="text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
                         {% elif cell.relationship_url %}
                           <a href="{{ cell.relationship_url }}" class="fb-focus font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" aria-label="{{ cell.relationship_label }}">{{ cell.value }}</a>
                         {% elif cell.rowset_link_url %}

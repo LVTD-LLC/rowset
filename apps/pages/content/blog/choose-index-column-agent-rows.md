@@ -153,10 +153,10 @@ Avoid:
 - `title` or `name`, because humans rewrite them
 - `description`, because it is too long and too likely to change
 - `price`, `score`, or `rating`, because those are measurements
-- image columns, because Rowset stores private image assets as managed metadata
+- image or audio columns, because Rowset stores private assets as managed metadata
 
-Rowset rejects image columns as dataset indexes. Image cells are meant to hold
-private `asset:{key}` references after an image is attached, not a stable row
+Rowset rejects image and audio columns as dataset indexes. Asset cells are meant
+to hold private `asset:{key}` references after a file is attached, not a stable row
 identifier.
 
 Also be careful with email addresses. `email` is often a strong index for a

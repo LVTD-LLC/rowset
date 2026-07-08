@@ -275,6 +275,20 @@
                       </div>
                     {% elif cell.is_missing_image %}
                       <span class="block max-w-64 truncate text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
+                    {% elif cell.is_audio %}
+                      <div class="max-w-72">
+                        <audio controls preload="none" src="{{ cell.audio_url }}" class="block w-64 max-w-full"></audio>
+                        {% if cell.is_row_detail_primary and cell.row_url %}
+                          <a href="{{ cell.row_url }}" class="fb-focus mt-1 block truncate text-sm font-semibold text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}" aria-label="{{ cell.row_detail_label }}">{{ cell.value }}</a>
+                        {% else %}
+                          <span class="mt-1 block truncate text-sm font-semibold text-slate-700 dark:text-slate-200" title="{{ cell.value }}">{{ cell.value }}</span>
+                        {% endif %}
+                        {% if cell.audio_detail %}
+                          <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ cell.audio_detail }}</span>
+                        {% endif %}
+                      </div>
+                    {% elif cell.is_missing_audio %}
+                      <span class="block max-w-64 truncate text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
                     {% elif cell.rowset_link_url %}
                       {% if cell.is_row_detail_primary and row.url %}
                         <div class="flex max-w-64 items-center gap-2">

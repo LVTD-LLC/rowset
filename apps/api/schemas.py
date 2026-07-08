@@ -19,7 +19,7 @@ from apps.datasets.types import (
 ColumnTypeIn = ColumnTypeSpec
 COLUMN_TYPE_DESCRIPTION = (
     "Semantic column type string or metadata object. Metadata supports type, "
-    "description, image columns, choice columns with choices, and reference columns with "
+    "description, image and audio columns, choice columns with choices, and reference columns with "
     'target "dataset" or "project".'
 )
 
@@ -488,6 +488,29 @@ class DatasetImageAttachIn(Schema):
 
 
 class DatasetImageAttachOut(Schema):
+    status: str
+    message: str
+    dataset: str
+    row: DatasetRowOut
+    asset: DatasetAssetOut
+
+
+class DatasetAudioAttachIn(Schema):
+    column_name: str = Field(..., min_length=1)
+    audio_base64: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "MP3, WAV, M4A, AAC, Ogg, FLAC, or WebM audio bytes encoded as base64. "
+            "For a local file, read the file bytes in the agent environment and pass "
+            "the base64 string; hosted Rowset MCP cannot read local file paths."
+        ),
+    )
+    filename: str | None = None
+    content_type: str | None = None
+
+
+class DatasetAudioAttachOut(Schema):
     status: str
     message: str
     dataset: str

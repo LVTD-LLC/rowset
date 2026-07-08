@@ -37,6 +37,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from apps.datasets.choices import DatasetColumnType
 from apps.datasets.constants import (
     MAX_COLUMN_DESCRIPTION_LENGTH,
+    MAX_DATASET_AUDIO_BYTES,
     MAX_DATASET_IMAGE_BYTES,
     MAX_DATASET_IMAGE_PIXELS,
 )
@@ -62,6 +63,10 @@ class DatasetRowQueryError(ValueError):
 
 
 class DatasetImageError(ValueError):
+    pass
+
+
+class DatasetAudioError(ValueError):
     pass
 
 
@@ -101,6 +106,32 @@ DATASET_IMAGE_ALLOWED_FORMATS = {
     "JPEG": "image/jpeg",
     "PNG": "image/png",
     "WEBP": "image/webp",
+}
+DATASET_AUDIO_CONTENT_TYPE_ALIASES = {
+    "audio/mp3": "audio/mpeg",
+    "audio/mpeg3": "audio/mpeg",
+    "audio/x-mpeg": "audio/mpeg",
+    "audio/wave": "audio/wav",
+    "audio/x-wav": "audio/wav",
+    "audio/vnd.wave": "audio/wav",
+    "audio/x-m4a": "audio/mp4",
+    "audio/m4a": "audio/mp4",
+    "audio/aac": "audio/aac",
+    "audio/x-aac": "audio/aac",
+    "audio/ogg": "audio/ogg",
+    "application/ogg": "audio/ogg",
+    "audio/flac": "audio/flac",
+    "audio/x-flac": "audio/flac",
+    "audio/webm": "audio/webm",
+}
+DATASET_AUDIO_FILENAME_EXTENSIONS = {
+    "audio/mpeg": ".mp3",
+    "audio/wav": ".wav",
+    "audio/mp4": ".m4a",
+    "audio/aac": ".aac",
+    "audio/ogg": ".ogg",
+    "audio/flac": ".flac",
+    "audio/webm": ".webm",
 }
 COLUMN_TYPE_SAMPLE_LIMIT = 200
 COLUMN_SCHEMA_TYPE_KEY = "type"
@@ -247,6 +278,9 @@ COLUMN_TYPE_ALIASES = {
     "rowset_project": DatasetColumnType.REFERENCE,
     "image_url": DatasetColumnType.IMAGE,
     "img": DatasetColumnType.IMAGE,
+    "audio_file": DatasetColumnType.AUDIO,
+    "audio_url": DatasetColumnType.AUDIO,
+    "sound": DatasetColumnType.AUDIO,
     "str": DatasetColumnType.TEXT,
     "string": DatasetColumnType.TEXT,
     "timestamp": DatasetColumnType.DATETIME,
@@ -476,6 +510,15 @@ class PreparedDatasetImage:
     byte_size: int
     width: int
     height: int
+    checksum: str
+
+
+@dataclass(frozen=True)
+class PreparedDatasetAudio:
+    filename: str
+    content_type: str
+    audio_bytes: bytes
+    byte_size: int
     checksum: str
 
 
@@ -797,6 +840,15 @@ def image_columns_from_schema(headers: list[str], column_schema: dict | None) ->
     ]
 
 
+def audio_columns_from_schema(headers: list[str], column_schema: dict | None) -> list[str]:
+    normalized_schema = normalize_column_schema(headers, column_schema)
+    return [
+        header
+        for header in headers
+        if normalized_schema[header].get(COLUMN_SCHEMA_TYPE_KEY) == DatasetColumnType.AUDIO
+    ]
+
+
 def validate_image_row_values(
     headers: list[str],
     column_schema: dict | None,
@@ -816,6 +868,28 @@ def validate_image_row_values(
             continue
         raise DatasetValidationError(
             f"Column '{header}' is an image column. Leave it blank and attach an image asset."
+        )
+
+
+def validate_audio_row_values(
+    headers: list[str],
+    column_schema: dict | None,
+    row_data: dict,
+    *,
+    columns: list[str] | set[str] | None = None,
+    allow_asset_refs: bool = False,
+) -> None:
+    selected_columns = set(columns) if columns is not None else None
+    for header in audio_columns_from_schema(headers, column_schema):
+        if selected_columns is not None and header not in selected_columns:
+            continue
+        value = str(row_data.get(header, "") or "").strip()
+        if not value:
+            continue
+        if allow_asset_refs and is_dataset_asset_ref(value):
+            continue
+        raise DatasetValidationError(
+            f"Column '{header}' is an audio column. Leave it blank and attach an audio asset."
         )
 
 
@@ -885,6 +959,23 @@ def decode_image_base64(image_base64: str) -> bytes:
         raise DatasetImageError("Image data must be valid base64.") from exc
 
 
+def decode_audio_base64(audio_base64: str) -> bytes:
+    payload = str(audio_base64 or "").strip()
+    if not payload:
+        raise DatasetAudioError("Audio data is required.")
+    if "," in payload:
+        header, encoded_payload = payload.split(",", 1)
+        normalized_header = header.lower()
+        if normalized_header.startswith("data:audio/") or normalized_header.startswith(
+            "data:application/ogg"
+        ):
+            payload = encoded_payload
+    try:
+        return base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise DatasetAudioError("Audio data must be valid base64.") from exc
+
+
 def _safe_image_filename(filename: str | None, content_type: str) -> str:
     original = str(filename or "").strip().replace("\\", "/").rsplit("/", 1)[-1]
     original = re.sub(r"[^A-Za-z0-9._ -]+", "-", original).strip(" .")
@@ -898,6 +989,45 @@ def _safe_image_filename(filename: str | None, content_type: str) -> str:
     if not Path(original).suffix:
         return f"{original}{extension}"
     return original[:255]
+
+
+def _safe_audio_filename(filename: str | None, content_type: str) -> str:
+    original = str(filename or "").strip().replace("\\", "/").rsplit("/", 1)[-1]
+    original = re.sub(r"[^A-Za-z0-9._ -]+", "-", original).strip(" .")
+    extension = DATASET_AUDIO_FILENAME_EXTENSIONS[content_type]
+    if not original:
+        return f"audio{extension}"
+    if not Path(original).suffix:
+        return f"{original}{extension}"
+    return original[:255]
+
+
+def _normalized_audio_content_type(content_type: str | None) -> str:
+    normalized = str(content_type or "").split(";", 1)[0].strip().lower()
+    return DATASET_AUDIO_CONTENT_TYPE_ALIASES.get(normalized, normalized)
+
+
+def _detect_audio_content_type(audio_bytes: bytes) -> str:
+    if len(audio_bytes) >= 12 and audio_bytes[:4] == b"RIFF" and audio_bytes[8:12] == b"WAVE":
+        return "audio/wav"
+    if len(audio_bytes) >= 2 and audio_bytes[0] == 0xFF and audio_bytes[1] & 0xF6 == 0xF0:
+        return "audio/aac"
+    if audio_bytes.startswith(b"ID3") or (
+        len(audio_bytes) >= 2 and audio_bytes[0] == 0xFF and audio_bytes[1] & 0xE0 == 0xE0
+    ):
+        return "audio/mpeg"
+    if audio_bytes.startswith(b"OggS"):
+        return "audio/ogg"
+    if audio_bytes.startswith(b"fLaC"):
+        return "audio/flac"
+    if audio_bytes.startswith(b"\x1a\x45\xdf\xa3"):
+        return "audio/webm"
+    if len(audio_bytes) >= 12 and audio_bytes[4:8] == b"ftyp":
+        brand = audio_bytes[8:12].lower()
+        compatible_brands = audio_bytes[8:64].lower()
+        if brand in {b"m4a ", b"mp42", b"isom", b"mp41"} or b"m4a" in compatible_brands:
+            return "audio/mp4"
+    return ""
 
 
 def _image_save_kwargs(image_format: str) -> dict[str, Any]:
@@ -987,6 +1117,35 @@ def prepare_dataset_image(
         width=width,
         height=height,
         checksum=hashlib.sha256(sanitized_bytes).hexdigest(),
+    )
+
+
+def prepare_dataset_audio(
+    *,
+    audio_bytes: bytes,
+    filename: str | None = None,
+    content_type: str | None = None,
+) -> PreparedDatasetAudio:
+    if not audio_bytes:
+        raise DatasetAudioError("Audio data is required.")
+    if len(audio_bytes) > MAX_DATASET_AUDIO_BYTES:
+        raise DatasetAudioError(
+            f"Audio files must be {MAX_DATASET_AUDIO_BYTES // (1024 * 1024)} MB or smaller."
+        )
+
+    detected_content_type = _detect_audio_content_type(audio_bytes)
+    if not detected_content_type:
+        raise DatasetAudioError("Audio must be an MP3, WAV, M4A, AAC, Ogg, FLAC, or WebM file.")
+    supplied_content_type = _normalized_audio_content_type(content_type)
+    if supplied_content_type and supplied_content_type != detected_content_type:
+        raise DatasetAudioError("Audio content type does not match the uploaded file.")
+
+    return PreparedDatasetAudio(
+        filename=_safe_audio_filename(filename, detected_content_type),
+        content_type=detected_content_type,
+        audio_bytes=audio_bytes,
+        byte_size=len(audio_bytes),
+        checksum=hashlib.sha256(audio_bytes).hexdigest(),
     )
 
 

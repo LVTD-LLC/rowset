@@ -61,6 +61,7 @@ from apps.datasets.services import (
     ROW_ORDERED_FILTER_TYPES,
     ROW_SORT_DESC,
     apply_dataset_row_query,
+    audio_columns_from_schema,
     column_definitions,
     dataset_asset_key_from_ref,
     dataset_row_filter_operators,
@@ -676,6 +677,25 @@ def _image_asset_cell_payload(
     }
 
 
+def _audio_asset_cell_payload(
+    asset: DatasetAsset,
+    *,
+    public_context: bool = False,
+) -> dict[str, str | bool]:
+    label = asset.original_filename or "Audio"
+    return {
+        "is_audio": True,
+        "value": label,
+        "audio_url": _dataset_asset_content_url(
+            asset,
+            public_context=public_context,
+            variant="original",
+        ),
+        "audio_content_type": asset.content_type,
+        "audio_detail": f"{asset.byte_size:,} bytes" if asset.byte_size else "",
+    }
+
+
 def _image_asset_lookup(
     dataset: Dataset,
     rows: list[DatasetRow],
@@ -687,6 +707,40 @@ def _image_asset_lookup(
         (asset.row_id, asset.column_name): asset
         for asset in DatasetAsset.objects.filter(dataset=dataset, row_id__in=row_ids)
     }
+
+
+def _apply_dataset_asset_cell_payload(
+    cell: dict[str, object],
+    *,
+    header: str,
+    value: str,
+    row_id: int | None,
+    assets: dict[tuple[int, str], DatasetAsset],
+    image_columns: set[str],
+    audio_columns: set[str],
+    public_context: bool,
+) -> bool:
+    if header in image_columns:
+        asset_key = dataset_asset_key_from_ref(value)
+        asset = assets.get((row_id, header)) if row_id is not None and asset_key else None
+        if asset and str(asset.key) == asset_key:
+            cell.update(_image_asset_cell_payload(asset, public_context=public_context))
+            return True
+        if asset_key:
+            cell["is_missing_image"] = True
+            cell["value"] = "Image unavailable"
+            return True
+    if header in audio_columns:
+        asset_key = dataset_asset_key_from_ref(value)
+        asset = assets.get((row_id, header)) if row_id is not None and asset_key else None
+        if asset and str(asset.key) == asset_key:
+            cell.update(_audio_asset_cell_payload(asset, public_context=public_context))
+            return True
+        if asset_key:
+            cell["is_missing_audio"] = True
+            cell["value"] = "Audio unavailable"
+            return True
+    return False
 
 
 def _row_cells(
@@ -709,6 +763,7 @@ def _row_cells(
     reference_lookup = reference_lookup or {}
     image_assets = image_assets or {}
     image_columns = set(image_columns_from_schema(headers, column_schema))
+    audio_columns = set(audio_columns_from_schema(headers, column_schema))
     cells = []
     for header in ordered_keys:
         value = _cell_value(row_data.get(header, ""))
@@ -717,15 +772,18 @@ def _row_cells(
             "description": descriptions.get(header, ""),
             "value": value,
         }
-        asset_key = dataset_asset_key_from_ref(value) if header in image_columns else ""
-        asset = image_assets.get((row_id, header)) if row_id is not None and asset_key else None
-        if asset and str(asset.key) == asset_key:
-            cell.update(_image_asset_cell_payload(asset, public_context=public_context))
-        elif asset_key:
-            cell["is_missing_image"] = True
-            cell["value"] = "Image unavailable"
+        has_asset_cell = _apply_dataset_asset_cell_payload(
+            cell,
+            header=header,
+            value=value,
+            row_id=row_id,
+            assets=image_assets,
+            image_columns=image_columns,
+            audio_columns=audio_columns,
+            public_context=public_context,
+        )
         relationship_link = relationship_links.get(header)
-        if cell.get("is_image") or cell.get("is_missing_image"):
+        if has_asset_cell:
             pass
         elif relationship_link and cell["value"]:
             cell["relationship_url"] = relationship_link["url"]
@@ -754,6 +812,7 @@ def _row_table_cells(
     reference_lookup = reference_lookup or {}
     image_assets = image_assets or {}
     image_columns = set(image_columns_from_schema(headers, column_schema))
+    audio_columns = set(audio_columns_from_schema(headers, column_schema))
     if choice_value_accent_classes is None:
         choice_value_accent_classes = {}
     cells = []
@@ -772,15 +831,20 @@ def _row_table_cells(
         if choice_accent_class:
             cell["is_choice"] = True
             cell["choice_accent_class"] = choice_accent_class
-        asset_key = dataset_asset_key_from_ref(display_value) if header in image_columns else ""
-        asset = image_assets.get((row_id, header)) if row_id is not None and asset_key else None
-        if asset and str(asset.key) == asset_key:
-            cell.update(_image_asset_cell_payload(asset, public_context=public_context))
-        elif asset_key:
-            cell["is_missing_image"] = True
-            cell["value"] = "Image unavailable"
-        elif display_value and (
-            reference_link := reference_lookup.get((header, display_value.strip()))
+        has_asset_cell = _apply_dataset_asset_cell_payload(
+            cell,
+            header=header,
+            value=display_value,
+            row_id=row_id,
+            assets=image_assets,
+            image_columns=image_columns,
+            audio_columns=audio_columns,
+            public_context=public_context,
+        )
+        if (
+            not has_asset_cell
+            and display_value
+            and (reference_link := reference_lookup.get((header, display_value.strip())))
         ):
             cell.update(reference_link)
         is_cell_link = bool(
@@ -1156,6 +1220,7 @@ def _row_form_fields(
                 "is_boolean": column_type == DatasetColumnType.BOOLEAN,
                 "is_choice": column_type == DatasetColumnType.CHOICE,
                 "is_image": column_type == DatasetColumnType.IMAGE,
+                "is_audio": column_type == DatasetColumnType.AUDIO,
                 "is_textarea": column_type == DatasetColumnType.TEXT and not is_index,
                 "choices": _row_form_choice_options(column, value),
                 "boolean_options": _row_form_boolean_options(value),
