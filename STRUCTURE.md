@@ -19,7 +19,7 @@
 - `frontend/src/js/` - Alpine component registration and small global browser
   enhancements.
 - `frontend/src/styles/` - app CSS and Pygments styles compiled by PostCSS.
-- `cli/` - Go `rowset-cli` CLI module, binary entry point, command/client tests,
+- `cli/` - Go `rowset` CLI module, binary entry point, command/client tests,
   and CLI-specific docs.
 - `scripts/build-assets.mjs` - frontend asset build and watch script.
 - `deployment/` - deployment entrypoint and server/worker Dockerfiles.

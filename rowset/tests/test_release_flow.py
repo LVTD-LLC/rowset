@@ -11,7 +11,7 @@ def test_publish_workflow_syncs_app_image_and_cli_version_to_release_tag():
     assert "[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]-[0-9]*" in workflow
     assert "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}" in workflow
     assert "-X github.com/LVTD-LLC/rowset/cli/internal/rowsetcli.Version=${RELEASE_TAG}" in workflow
-    assert "rowset-cli_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz" in workflow
+    assert "rowset_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz" in workflow
     assert "scripts/install-rowset-cli.sh" in workflow
 
 
@@ -19,9 +19,9 @@ def test_install_script_installs_rowset_cli_from_release_assets():
     installer = (_REPO_ROOT / "scripts" / "install-rowset-cli.sh").read_text()
 
     assert "https://github.com/LVTD-LLC/rowset/releases/latest/download" in installer
-    assert "rowset-cli_${os}_${arch}.tar.gz" in installer
+    assert "rowset_${os}_${arch}.tar.gz" in installer
     assert "ROWSET_CLI_VERSION" in installer
-    assert re.search(r'install .*"\$install_dir/rowset-cli"', installer)
+    assert re.search(r'install .*"\$install_dir/rowset"', installer)
 
 
 def test_next_release_tag_uses_dotted_day_and_increments_suffix(tmp_path):

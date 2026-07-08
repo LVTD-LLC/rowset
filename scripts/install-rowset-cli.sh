@@ -45,13 +45,13 @@ download() {
 		wget -qO "$2" "$1"
 		return
 	fi
-	printf "curl or wget is required to install rowset-cli.\n" >&2
+	printf "curl or wget is required to install rowset.\n" >&2
 	exit 1
 }
 
 os="$(detect_os)"
 arch="$(detect_arch)"
-asset="rowset-cli_${os}_${arch}.tar.gz"
+asset="rowset_${os}_${arch}.tar.gz"
 if [ "$version" = "latest" ]; then
 	if [ "$repo" = "LVTD-LLC/rowset" ]; then
 		base_url="$default_latest_url"
@@ -71,10 +71,10 @@ tar -xzf "$tmp_dir/$asset" -C "$tmp_dir"
 
 install_dir="$(choose_install_dir)"
 mkdir -p "$install_dir"
-install -m 0755 "$tmp_dir/rowset-cli" "$install_dir/rowset-cli"
+install -m 0755 "$tmp_dir/rowset" "$install_dir/rowset"
 
-printf "rowset-cli installed to %s/rowset-cli\n" "$install_dir"
+printf "rowset installed to %s/rowset\n" "$install_dir"
 case ":$PATH:" in
 	*":$install_dir:"*) ;;
-	*) printf "Add %s to PATH before running rowset-cli.\n" "$install_dir" ;;
+	*) printf "Add %s to PATH before running rowset.\n" "$install_dir" ;;
 esac

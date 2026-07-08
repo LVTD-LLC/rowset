@@ -11,7 +11,7 @@ automation.
 - Hosted Streamable HTTP MCP server for AI-agent workflows.
 - Authenticated REST API for account checks, projects, datasets, rows, exports,
   relationships, image assets, and public preview settings.
-- Go `rowset-cli` under `cli/` for the same authenticated REST operations.
+- Go `rowset` under `cli/` for the same authenticated REST operations.
 - API-backed datasets with stable headers, semantic column metadata, persistent
   agent instructions, JSON metadata, and an explicit index column.
 - Row CRUD by internal Rowset row id or by dataset index value.
@@ -100,7 +100,7 @@ For host-side debugging outside Docker:
 - Python 3.14.2.
 - `uv`.
 - Node.js 24.11 or newer and npm 11 or newer.
-- Go 1.26 or newer when building the `rowset-cli` CLI from source.
+- Go 1.26 or newer when building the `rowset` CLI from source.
 - PostgreSQL and Redis reachable from your environment.
 
 Most contributors should start with Docker Compose. The local Compose stack
@@ -436,7 +436,7 @@ paths as the docs above. Install the latest published CLI in one command:
 curl -fsSL https://github.com/LVTD-LLC/rowset/releases/latest/download/install-rowset-cli.sh | sh
 ```
 
-The installed command is `rowset-cli`. It defaults to production:
+The installed command is `rowset`. It defaults to production:
 
 ```text
 https://rowset.lvtd.dev/api/
@@ -446,27 +446,27 @@ Store your private API key and verify authentication:
 
 ```bash
 export ROWSET_API_KEY="replace-with-your-copied-key"
-rowset-cli user info
-rowset-cli capabilities
+rowset user info
+rowset capabilities
 ```
 
 For local development, override the API base:
 
 ```bash
 export ROWSET_API_BASE="http://localhost:8000/api/"
-rowset-cli user info
+rowset user info
 ```
 
 Create a dataset and patch a row by index:
 
 ```bash
-rowset-cli dataset create \
+rowset dataset create \
   --name Products \
   --headers sku,name,price,status \
   --index-column sku \
   --row '{"sku":"A-1","name":"Adapter","price":"19.99","status":"active"}'
 
-rowset-cli row update-by-index "{dataset_key}" A-1 \
+rowset row update-by-index "{dataset_key}" A-1 \
   --data '{"status":"retired"}'
 ```
 
@@ -499,7 +499,7 @@ See [`cli/README.md`](cli/README.md) for the full command list and examples.
 |   |-- src/js/                # Alpine component registration and browser enhancements
 |   |-- src/styles/            # Tailwind/PostCSS source CSS
 |   `-- vendors/               # Vendored frontend assets copied into the build
-|-- cli/                       # Go rowset-cli module and tests
+|-- cli/                       # Go rowset module and tests
 |-- scripts/build-assets.mjs   # Frontend asset build and watch script
 |-- deployment/                # CapRover Dockerfile, entrypoint, and healthcheck
 |-- docker-compose-local.yml   # Local development stack
@@ -731,7 +731,7 @@ environment.
 | `make test apps/datasets/tests/test_csv_datasets.py` | Run a focused test file. |
 | `make test -- -k dataset -q` | Pass pytest flags through the Makefile. |
 | `make cli-test` | Run Go tests for the Rowset CLI. |
-| `make cli-build` | Build the Go `rowset-cli` binary under `cli/bin/`. |
+| `make cli-build` | Build the Go `rowset` binary under `cli/bin/`. |
 | `make restart-worker` | Recreate the `workers` service. |
 | `npm run build` | Build frontend assets on the host. |
 | `npm run start` | Watch and rebuild frontend assets on the host. |
@@ -896,10 +896,10 @@ ghcr.io/lvtd-llc/rowset:2026.07.08-0
 
 The workflow also creates or updates the matching GitHub Release with:
 
-- `rowset-cli_linux_amd64.tar.gz`
-- `rowset-cli_linux_arm64.tar.gz`
-- `rowset-cli_darwin_amd64.tar.gz`
-- `rowset-cli_darwin_arm64.tar.gz`
+- `rowset_linux_amd64.tar.gz`
+- `rowset_linux_arm64.tar.gz`
+- `rowset_darwin_amd64.tar.gz`
+- `rowset_darwin_arm64.tar.gz`
 - `install-rowset-cli.sh`
 - `checksums.txt`
 

@@ -77,7 +77,7 @@ func Run(ctx context.Context, streams IO, args []string) error {
 		return err
 	}
 	if *showVersion {
-		_, _ = fmt.Fprintf(streams.Stdout, "rowset-cli %s\n", Version)
+		_, _ = fmt.Fprintf(streams.Stdout, "rowset %s\n", Version)
 		return nil
 	}
 	if *showHelp || len(global.Args()) == 0 {
@@ -128,14 +128,14 @@ func dispatch(ctx context.Context, streams IO, cfg config, args []string) error 
 
 func runUser(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 || args[0] != "info" {
-		return errors.New("usage: rowset-cli user info")
+		return errors.New("usage: rowset user info")
 	}
 	return doRequest(ctx, streams, cfg, http.MethodGet, "/user", nil, requestOptions{auth: true})
 }
 
 func runFeedback(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 || args[0] != "submit" {
-		return errors.New("usage: rowset-cli feedback submit --feedback TEXT [--page PATH] [--context JSON]")
+		return errors.New("usage: rowset feedback submit --feedback TEXT [--page PATH] [--context JSON]")
 	}
 	fs := newFlagSet("feedback submit")
 	feedback := fs.String("feedback", "", "feedback text")
@@ -166,7 +166,7 @@ func runFeedback(ctx context.Context, streams IO, cfg config, args []string) err
 
 func runAPIKey(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 || args[0] != "create" {
-		return errors.New("usage: rowset-cli api-key create --name NAME [--access-level read|read_write|admin]")
+		return errors.New("usage: rowset api-key create --name NAME [--access-level read|read_write|admin]")
 	}
 	fs := newFlagSet("api-key create")
 	name := fs.String("name", "", "API key name")
@@ -185,7 +185,7 @@ func runAPIKey(ctx context.Context, streams IO, cfg config, args []string) error
 
 func runProject(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: rowset-cli project <list|search|create|get|update|metadata|archive|section>")
+		return errors.New("usage: rowset project <list|search|create|get|update|metadata|archive|section>")
 	}
 	switch args[0] {
 	case "list":
@@ -200,7 +200,7 @@ func runProject(ctx context.Context, streams IO, cfg config, args []string) erro
 		return doRequest(ctx, streams, cfg, http.MethodGet, "/projects", values, requestOptions{auth: true})
 	case "search":
 		if len(args) < 2 {
-			return errors.New("usage: rowset-cli project search QUERY [--limit N] [--offset N]")
+			return errors.New("usage: rowset project search QUERY [--limit N] [--offset N]")
 		}
 		fs := newFlagSet("project search")
 		limit, offset := paginationFlags(fs, 100, 0)
@@ -214,7 +214,7 @@ func runProject(ctx context.Context, streams IO, cfg config, args []string) erro
 		return createProject(ctx, streams, cfg, args[1:])
 	case "get":
 		if len(args) < 2 {
-			return errors.New("usage: rowset-cli project get PROJECT_KEY [--limit N] [--offset N]")
+			return errors.New("usage: rowset project get PROJECT_KEY [--limit N] [--offset N]")
 		}
 		fs := newFlagSet("project get")
 		limit, offset := paginationFlags(fs, 100, 0)
@@ -236,7 +236,7 @@ func runProject(ctx context.Context, streams IO, cfg config, args []string) erro
 		return updateProjectMetadata(ctx, streams, cfg, args[1:])
 	case "archive":
 		if len(args) != 2 {
-			return errors.New("usage: rowset-cli project archive PROJECT_KEY")
+			return errors.New("usage: rowset project archive PROJECT_KEY")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodDelete, apiPath("projects", args[1]), nil, requestOptions{auth: true})
 	case "section":
@@ -273,7 +273,7 @@ func createProject(ctx context.Context, streams IO, cfg config, args []string) e
 
 func updateProject(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli project update PROJECT_KEY [--name NAME] [--description TEXT]")
+		return errors.New("usage: rowset project update PROJECT_KEY [--name NAME] [--description TEXT]")
 	}
 	fs := newFlagSet("project update")
 	name := fs.String("name", "", "project name")
@@ -296,7 +296,7 @@ func updateProject(ctx context.Context, streams IO, cfg config, args []string) e
 
 func updateProjectMetadata(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli project metadata PROJECT_KEY --metadata JSON")
+		return errors.New("usage: rowset project metadata PROJECT_KEY --metadata JSON")
 	}
 	fs := newFlagSet("project metadata")
 	metadataJSON := fs.String("metadata", "", "project metadata JSON object")
@@ -318,12 +318,12 @@ func updateProjectMetadata(ctx context.Context, streams IO, cfg config, args []s
 
 func runProjectSection(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: rowset-cli project section <list|create|update|archive>")
+		return errors.New("usage: rowset project section <list|create|update|archive>")
 	}
 	switch args[0] {
 	case "list":
 		if len(args) < 2 {
-			return errors.New("usage: rowset-cli project section list PROJECT_KEY [--limit N] [--offset N]")
+			return errors.New("usage: rowset project section list PROJECT_KEY [--limit N] [--offset N]")
 		}
 		fs := newFlagSet("project section list")
 		limit, offset := paginationFlags(fs, 100, 0)
@@ -333,17 +333,17 @@ func runProjectSection(ctx context.Context, streams IO, cfg config, args []strin
 		return doRequest(ctx, streams, cfg, http.MethodGet, apiPath("projects", args[1], "sections"), paginationValues(*limit, *offset), requestOptions{auth: true})
 	case "create":
 		if len(args) < 2 {
-			return errors.New("usage: rowset-cli project section create PROJECT_KEY --name NAME")
+			return errors.New("usage: rowset project section create PROJECT_KEY --name NAME")
 		}
 		return createProjectSection(ctx, streams, cfg, args[1], args[2:])
 	case "update":
 		if len(args) < 3 {
-			return errors.New("usage: rowset-cli project section update PROJECT_KEY SECTION_KEY [--name NAME] [--description TEXT]")
+			return errors.New("usage: rowset project section update PROJECT_KEY SECTION_KEY [--name NAME] [--description TEXT]")
 		}
 		return updateProjectSection(ctx, streams, cfg, args[1], args[2], args[3:])
 	case "archive":
 		if len(args) != 3 {
-			return errors.New("usage: rowset-cli project section archive PROJECT_KEY SECTION_KEY")
+			return errors.New("usage: rowset project section archive PROJECT_KEY SECTION_KEY")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodDelete, apiPath("projects", args[1], "sections", args[2]), nil, requestOptions{auth: true})
 	default:
@@ -398,14 +398,14 @@ func updateProjectSection(ctx context.Context, streams IO, cfg config, projectKe
 
 func runDataset(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: rowset-cli dataset <list|search|archived|get|create|metadata|column-types|project|archive|restore>")
+		return errors.New("usage: rowset dataset <list|search|archived|get|create|metadata|column-types|project|archive|restore>")
 	}
 	switch args[0] {
 	case "list":
 		return listDatasets(ctx, streams, cfg, args[1:])
 	case "search":
 		if len(args) < 2 {
-			return errors.New("usage: rowset-cli dataset search QUERY [filters]")
+			return errors.New("usage: rowset dataset search QUERY [filters]")
 		}
 		return listDatasets(ctx, streams, cfg, append([]string{"--query", args[1]}, args[2:]...))
 	case "archived":
@@ -417,7 +417,7 @@ func runDataset(ctx context.Context, streams IO, cfg config, args []string) erro
 		return doRequest(ctx, streams, cfg, http.MethodGet, "/datasets/archived", paginationValues(*limit, *offset), requestOptions{auth: true})
 	case "get":
 		if len(args) != 2 {
-			return errors.New("usage: rowset-cli dataset get DATASET_KEY")
+			return errors.New("usage: rowset dataset get DATASET_KEY")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodGet, apiPath("datasets", args[1]), nil, requestOptions{auth: true})
 	case "create":
@@ -430,12 +430,12 @@ func runDataset(ctx context.Context, streams IO, cfg config, args []string) erro
 		return updateDatasetProject(ctx, streams, cfg, args[1:])
 	case "archive":
 		if len(args) != 2 {
-			return errors.New("usage: rowset-cli dataset archive DATASET_KEY")
+			return errors.New("usage: rowset dataset archive DATASET_KEY")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodDelete, apiPath("datasets", args[1]), nil, requestOptions{auth: true})
 	case "restore":
 		if len(args) != 2 {
-			return errors.New("usage: rowset-cli dataset restore DATASET_KEY")
+			return errors.New("usage: rowset dataset restore DATASET_KEY")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodPost, apiPath("datasets", args[1], "restore"), nil, requestOptions{auth: true})
 	default:
@@ -530,7 +530,7 @@ func createDataset(ctx context.Context, streams IO, cfg config, args []string) e
 
 func updateDatasetMetadata(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli dataset metadata DATASET_KEY [--description TEXT] [--instructions TEXT] [--metadata JSON]")
+		return errors.New("usage: rowset dataset metadata DATASET_KEY [--description TEXT] [--instructions TEXT] [--metadata JSON]")
 	}
 	fs := newFlagSet("dataset metadata")
 	description := fs.String("description", "", "dataset description")
@@ -561,7 +561,7 @@ func updateDatasetMetadata(ctx context.Context, streams IO, cfg config, args []s
 
 func updateDatasetColumnTypes(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli dataset column-types DATASET_KEY --column-types JSON")
+		return errors.New("usage: rowset dataset column-types DATASET_KEY --column-types JSON")
 	}
 	fs := newFlagSet("dataset column-types")
 	columnTypesJSON := fs.String("column-types", "", "column type JSON object")
@@ -583,7 +583,7 @@ func updateDatasetColumnTypes(ctx context.Context, streams IO, cfg config, args 
 
 func updateDatasetProject(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli dataset project DATASET_KEY (--project-key KEY [--section-key KEY] | --clear)")
+		return errors.New("usage: rowset dataset project DATASET_KEY (--project-key KEY [--section-key KEY] | --clear)")
 	}
 	fs := newFlagSet("dataset project")
 	projectKey := fs.String("project-key", "", "project key")
@@ -608,7 +608,7 @@ func updateDatasetProject(ctx context.Context, streams IO, cfg config, args []st
 
 func runPreview(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 || args[0] != "update" || len(args) < 2 {
-		return errors.New("usage: rowset-cli preview update DATASET_KEY [--enabled true|false] [--page-size N] [--password TEXT] [--clear-password]")
+		return errors.New("usage: rowset preview update DATASET_KEY [--enabled true|false] [--page-size N] [--password TEXT] [--clear-password]")
 	}
 	fs := newFlagSet("preview update")
 	enabled := fs.String("enabled", "", "true or false")
@@ -643,14 +643,14 @@ func runPreview(ctx context.Context, streams IO, cfg config, args []string) erro
 
 func runColumn(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: rowset-cli column <add|rename|drop|reorder>")
+		return errors.New("usage: rowset column <add|rename|drop|reorder>")
 	}
 	switch args[0] {
 	case "add":
 		return addColumn(ctx, streams, cfg, args[1:])
 	case "rename":
 		if len(args) != 4 {
-			return errors.New("usage: rowset-cli column rename DATASET_KEY OLD_NAME NEW_NAME")
+			return errors.New("usage: rowset column rename DATASET_KEY OLD_NAME NEW_NAME")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodPost, apiPath("datasets", args[1], "columns", "rename"), nil, requestOptions{
 			auth: true,
@@ -658,7 +658,7 @@ func runColumn(ctx context.Context, streams IO, cfg config, args []string) error
 		})
 	case "drop":
 		if len(args) != 3 {
-			return errors.New("usage: rowset-cli column drop DATASET_KEY NAME")
+			return errors.New("usage: rowset column drop DATASET_KEY NAME")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodPost, apiPath("datasets", args[1], "columns", "drop"), nil, requestOptions{
 			auth: true,
@@ -666,7 +666,7 @@ func runColumn(ctx context.Context, streams IO, cfg config, args []string) error
 		})
 	case "reorder":
 		if len(args) < 2 {
-			return errors.New("usage: rowset-cli column reorder DATASET_KEY --headers a,b,c")
+			return errors.New("usage: rowset column reorder DATASET_KEY --headers a,b,c")
 		}
 		fs := newFlagSet("column reorder")
 		headers := fs.String("headers", "", "comma-separated headers")
@@ -687,7 +687,7 @@ func runColumn(ctx context.Context, streams IO, cfg config, args []string) error
 
 func addColumn(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli column add DATASET_KEY --name NAME")
+		return errors.New("usage: rowset column add DATASET_KEY --name NAME")
 	}
 	fs := newFlagSet("column add")
 	name := fs.String("name", "", "column name")
@@ -722,19 +722,19 @@ func addColumn(ctx context.Context, streams IO, cfg config, args []string) error
 
 func runRelationship(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: rowset-cli relationship <list|create|resolve|delete>")
+		return errors.New("usage: rowset relationship <list|create|resolve|delete>")
 	}
 	switch args[0] {
 	case "list":
 		if len(args) != 2 {
-			return errors.New("usage: rowset-cli relationship list DATASET_KEY")
+			return errors.New("usage: rowset relationship list DATASET_KEY")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodGet, apiPath("datasets", args[1], "relationships"), nil, requestOptions{auth: true})
 	case "create":
 		return createRelationship(ctx, streams, cfg, args[1:])
 	case "resolve":
 		if len(args) < 3 {
-			return errors.New("usage: rowset-cli relationship resolve DATASET_KEY RELATIONSHIP_KEY --source-index-value VALUE")
+			return errors.New("usage: rowset relationship resolve DATASET_KEY RELATIONSHIP_KEY --source-index-value VALUE")
 		}
 		fs := newFlagSet("relationship resolve")
 		sourceIndexValue := fs.String("source-index-value", "", "source row index value")
@@ -749,7 +749,7 @@ func runRelationship(ctx context.Context, streams IO, cfg config, args []string)
 		return doRequest(ctx, streams, cfg, http.MethodGet, apiPath("datasets", args[1], "relationships", args[2], "resolve"), values, requestOptions{auth: true})
 	case "delete":
 		if len(args) != 3 {
-			return errors.New("usage: rowset-cli relationship delete DATASET_KEY RELATIONSHIP_KEY")
+			return errors.New("usage: rowset relationship delete DATASET_KEY RELATIONSHIP_KEY")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodDelete, apiPath("datasets", args[1], "relationships", args[2]), nil, requestOptions{auth: true})
 	default:
@@ -759,7 +759,7 @@ func runRelationship(ctx context.Context, streams IO, cfg config, args []string)
 
 func createRelationship(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli relationship create DATASET_KEY --source-column COLUMN --target-dataset-key KEY")
+		return errors.New("usage: rowset relationship create DATASET_KEY --source-column COLUMN --target-dataset-key KEY")
 	}
 	fs := newFlagSet("relationship create")
 	sourceColumn := fs.String("source-column", "", "source column")
@@ -789,7 +789,7 @@ func createRelationship(ctx context.Context, streams IO, cfg config, args []stri
 
 func runRow(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: rowset-cli row <list|search|search-dataset|get|get-by-index|create|update|update-by-index|delete>")
+		return errors.New("usage: rowset row <list|search|search-dataset|get|get-by-index|create|update|update-by-index|delete>")
 	}
 	switch args[0] {
 	case "list":
@@ -800,36 +800,36 @@ func runRow(ctx context.Context, streams IO, cfg config, args []string) error {
 		return searchDatasetRows(ctx, streams, cfg, args[1:])
 	case "get":
 		if len(args) != 3 {
-			return errors.New("usage: rowset-cli row get DATASET_KEY ROW_ID")
+			return errors.New("usage: rowset row get DATASET_KEY ROW_ID")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodGet, apiPath("datasets", args[1], "rows", args[2]), nil, requestOptions{auth: true})
 	case "get-by-index":
 		if len(args) != 3 {
-			return errors.New("usage: rowset-cli row get-by-index DATASET_KEY INDEX_VALUE")
+			return errors.New("usage: rowset row get-by-index DATASET_KEY INDEX_VALUE")
 		}
 		values := url.Values{}
 		values.Set("index_value", args[2])
 		return doRequest(ctx, streams, cfg, http.MethodGet, apiPath("datasets", args[1], "rows", "by-index"), values, requestOptions{auth: true})
 	case "create":
 		if len(args) < 2 {
-			return errors.New("usage: rowset-cli row create DATASET_KEY --data JSON")
+			return errors.New("usage: rowset row create DATASET_KEY --data JSON")
 		}
 		return rowWrite(ctx, streams, cfg, http.MethodPost, apiPath("datasets", args[1], "rows"), nil, args[2:])
 	case "update":
 		if len(args) < 3 {
-			return errors.New("usage: rowset-cli row update DATASET_KEY ROW_ID --data JSON")
+			return errors.New("usage: rowset row update DATASET_KEY ROW_ID --data JSON")
 		}
 		return rowWrite(ctx, streams, cfg, http.MethodPatch, apiPath("datasets", args[1], "rows", args[2]), nil, args[3:])
 	case "update-by-index":
 		if len(args) < 3 {
-			return errors.New("usage: rowset-cli row update-by-index DATASET_KEY INDEX_VALUE --data JSON")
+			return errors.New("usage: rowset row update-by-index DATASET_KEY INDEX_VALUE --data JSON")
 		}
 		values := url.Values{}
 		values.Set("index_value", args[2])
 		return rowWrite(ctx, streams, cfg, http.MethodPatch, apiPath("datasets", args[1], "rows", "by-index"), values, args[3:])
 	case "delete":
 		if len(args) != 3 {
-			return errors.New("usage: rowset-cli row delete DATASET_KEY ROW_ID")
+			return errors.New("usage: rowset row delete DATASET_KEY ROW_ID")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodDelete, apiPath("datasets", args[1], "rows", args[2]), nil, requestOptions{auth: true})
 	default:
@@ -839,7 +839,7 @@ func runRow(ctx context.Context, streams IO, cfg config, args []string) error {
 
 func listRows(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli row list DATASET_KEY [--limit N] [--filters JSON]")
+		return errors.New("usage: rowset row list DATASET_KEY [--limit N] [--filters JSON]")
 	}
 	fs := newFlagSet("row list")
 	limit, offset := paginationFlags(fs, 100, 0)
@@ -860,7 +860,7 @@ func listRows(ctx context.Context, streams IO, cfg config, args []string) error 
 
 func searchRows(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli row search QUERY [filters]")
+		return errors.New("usage: rowset row search QUERY [filters]")
 	}
 	fs := newFlagSet("row search")
 	filtersJSON := fs.String("filters", "", "row filters JSON object")
@@ -928,7 +928,7 @@ func searchRows(ctx context.Context, streams IO, cfg config, args []string) erro
 
 func searchDatasetRows(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 2 {
-		return errors.New("usage: rowset-cli row search-dataset DATASET_KEY QUERY [--filters JSON] [--limit N]")
+		return errors.New("usage: rowset row search-dataset DATASET_KEY QUERY [--filters JSON] [--limit N]")
 	}
 	fs := newFlagSet("row search-dataset")
 	filtersJSON := fs.String("filters", "", "row filters JSON object")
@@ -971,19 +971,19 @@ func rowWrite(ctx context.Context, streams IO, cfg config, method string, path s
 
 func runAsset(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: rowset-cli asset <attach|get|content>")
+		return errors.New("usage: rowset asset <attach|get|content>")
 	}
 	switch args[0] {
 	case "attach":
 		return attachAsset(ctx, streams, cfg, args[1:])
 	case "get":
 		if len(args) != 3 {
-			return errors.New("usage: rowset-cli asset get DATASET_KEY ASSET_KEY")
+			return errors.New("usage: rowset asset get DATASET_KEY ASSET_KEY")
 		}
 		return doRequest(ctx, streams, cfg, http.MethodGet, apiPath("datasets", args[1], "assets", args[2]), nil, requestOptions{auth: true})
 	case "content":
 		if len(args) < 3 {
-			return errors.New("usage: rowset-cli asset content DATASET_KEY ASSET_KEY [--variant original|thumbnail] [--output PATH]")
+			return errors.New("usage: rowset asset content DATASET_KEY ASSET_KEY [--variant original|thumbnail] [--output PATH]")
 		}
 		fs := newFlagSet("asset content")
 		variant := fs.String("variant", "original", "asset variant")
@@ -1005,7 +1005,7 @@ func runAsset(ctx context.Context, streams IO, cfg config, args []string) error 
 
 func attachAsset(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 1 {
-		return errors.New("usage: rowset-cli asset attach DATASET_KEY --column COLUMN --file PATH (--row-id ID | --index-value VALUE)")
+		return errors.New("usage: rowset asset attach DATASET_KEY --column COLUMN --file PATH (--row-id ID | --index-value VALUE)")
 	}
 	fs := newFlagSet("asset attach")
 	rowID := fs.String("row-id", "", "row id")
@@ -1049,7 +1049,7 @@ func attachAsset(ctx context.Context, streams IO, cfg config, args []string) err
 
 func runExport(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 2 {
-		return errors.New("usage: rowset-cli export DATASET_KEY csv|jsonl|xlsx|sqlite [--output PATH]")
+		return errors.New("usage: rowset export DATASET_KEY csv|jsonl|xlsx|sqlite [--output PATH]")
 	}
 	format := strings.TrimPrefix(strings.ToLower(args[1]), ".")
 	switch format {
@@ -1071,7 +1071,7 @@ func runExport(ctx context.Context, streams IO, cfg config, args []string) error
 
 func runRawRequest(ctx context.Context, streams IO, cfg config, args []string) error {
 	if len(args) < 2 {
-		return errors.New("usage: rowset-cli request METHOD PATH [--json JSON | --file PATH] [--output PATH] [--no-auth]")
+		return errors.New("usage: rowset request METHOD PATH [--json JSON | --file PATH] [--output PATH] [--no-auth]")
 	}
 	method := strings.ToUpper(args[0])
 	path := args[1]
@@ -1137,7 +1137,7 @@ func doRequest(
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "rowset-cli/"+Version)
+	req.Header.Set("User-Agent", "rowset/"+Version)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -1353,7 +1353,7 @@ func prettyJSON(data []byte) []byte {
 }
 
 func printHelp(w io.Writer) {
-	_, _ = fmt.Fprint(w, `rowset-cli is the Rowset REST CLI.
+	_, _ = fmt.Fprint(w, `rowset is the Rowset REST CLI.
 
 Configuration:
   ROWSET_API_BASE   Rowset REST API base (default https://rowset.lvtd.dev/api/)

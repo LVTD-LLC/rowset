@@ -1,6 +1,6 @@
 # Rowset CLI
 
-`rowset-cli` is a Go CLI for Rowset's authenticated REST API. Command groups mirror
+`rowset` is a Go CLI for Rowset's authenticated REST API. Command groups mirror
 the user-facing API and MCP operations: account checks, API keys, feedback,
 projects, datasets, rows, relationships, schema changes, image assets, public
 previews, archives, restores, and exports.
@@ -16,7 +16,7 @@ Install the latest published CLI:
 curl -fsSL https://github.com/LVTD-LLC/rowset/releases/latest/download/install-rowset-cli.sh | sh
 ```
 
-The installed command is `rowset-cli`. It defaults to Rowset production:
+The installed command is `rowset`. It defaults to Rowset production:
 
 ```text
 https://rowset.lvtd.dev/api/
@@ -26,7 +26,7 @@ Store your private Rowset API key and verify authentication:
 
 ```bash
 export ROWSET_API_KEY="replace-with-your-copied-key"
-rowset-cli user info
+rowset user info
 ```
 
 Install a specific release:
@@ -48,14 +48,14 @@ Point the CLI at a non-production Rowset REST API base:
 
 ```bash
 export ROWSET_API_BASE="http://localhost:8000/api/"
-rowset-cli user info
+rowset user info
 ```
 
 For a non-default key variable:
 
 ```bash
 export ROWSET_PROD_API_KEY="replace-with-your-copied-key"
-rowset-cli --api-key-env ROWSET_PROD_API_KEY user info
+rowset --api-key-env ROWSET_PROD_API_KEY user info
 ```
 
 ## Examples
@@ -63,19 +63,19 @@ rowset-cli --api-key-env ROWSET_PROD_API_KEY user info
 Verify authentication:
 
 ```bash
-rowset-cli user info
+rowset user info
 ```
 
 Inspect Rowset capability groups:
 
 ```bash
-rowset-cli capabilities
+rowset capabilities
 ```
 
 Create a dataset:
 
 ```bash
-rowset-cli dataset create \
+rowset dataset create \
   --name Products \
   --headers sku,name,price,status \
   --index-column sku \
@@ -86,20 +86,20 @@ rowset-cli dataset create \
 Inspect a dataset before row work:
 
 ```bash
-rowset-cli dataset get "{dataset_key}"
+rowset dataset get "{dataset_key}"
 ```
 
 Patch a row by stable index value:
 
 ```bash
-rowset-cli row update-by-index "{dataset_key}" A-1 \
+rowset row update-by-index "{dataset_key}" A-1 \
   --data '{"status":"retired"}'
 ```
 
 Search across datasets:
 
 ```bash
-rowset-cli row search "renewal risks" \
+rowset row search "renewal risks" \
   --filters '{"status":"Ready"}' \
   --sort rank \
   --limit 10
@@ -108,13 +108,13 @@ rowset-cli row search "renewal risks" \
 Export a snapshot:
 
 ```bash
-rowset-cli export "{dataset_key}" csv --output dataset.csv
+rowset export "{dataset_key}" csv --output dataset.csv
 ```
 
 Attach an image to an image column:
 
 ```bash
-rowset-cli asset attach "{dataset_key}" \
+rowset asset attach "{dataset_key}" \
   --index-value A-1 \
   --column photo \
   --file ./adapter.png \
@@ -124,7 +124,7 @@ rowset-cli asset attach "{dataset_key}" \
 Use the escape hatch for a REST path not yet represented by a friendly command:
 
 ```bash
-rowset-cli request PATCH /datasets/{dataset_key}/public-preview \
+rowset request PATCH /datasets/{dataset_key}/public-preview \
   --json '{"public_enabled":false}'
 ```
 
@@ -145,7 +145,7 @@ rowset-cli request PATCH /datasets/{dataset_key}/public-preview \
 
 ```bash
 mkdir -p bin
-go build -o bin/rowset-cli ./cmd/rowset
+go build -o bin/rowset ./cmd/rowset
 ```
 
 From the repository root:

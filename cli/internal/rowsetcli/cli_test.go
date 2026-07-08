@@ -536,6 +536,49 @@ func TestRunUsesProductionAPIBaseByDefault(t *testing.T) {
 	}
 }
 
+func TestHelpVersionAndUsageUseRowsetCommand(t *testing.T) {
+	var versionOut bytes.Buffer
+	err := Run(context.Background(), IO{
+		Stdout: &versionOut,
+		Stderr: &bytes.Buffer{},
+		Stdin:  strings.NewReader(""),
+	}, []string{"--version"})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if got, want := versionOut.String(), "rowset dev\n"; got != want {
+		t.Fatalf("version output mismatch: got %q want %q", got, want)
+	}
+
+	var helpOut bytes.Buffer
+	err = Run(context.Background(), IO{
+		Stdout: &helpOut,
+		Stderr: &bytes.Buffer{},
+		Stdin:  strings.NewReader(""),
+	}, []string{"--help"})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if !strings.Contains(helpOut.String(), "rowset is the Rowset REST CLI.") {
+		t.Fatalf("help should name rowset command, got %q", helpOut.String())
+	}
+	if strings.Contains(helpOut.String(), "rowset-cli") {
+		t.Fatalf("help should not tell users to run rowset-cli: %q", helpOut.String())
+	}
+
+	err = Run(context.Background(), IO{
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+		Stdin:  strings.NewReader(""),
+	}, []string{"user"})
+	if err == nil {
+		t.Fatal("expected usage error")
+	}
+	if got, want := err.Error(), "usage: rowset user info"; got != want {
+		t.Fatalf("usage error mismatch: got %q want %q", got, want)
+	}
+}
+
 func TestRawRequestRejectsAuthenticatedAbsoluteURLs(t *testing.T) {
 	t.Setenv("ROWSET_API_BASE", "https://rowset.example/api/")
 	t.Setenv("ROWSET_API_KEY", "test-key")
