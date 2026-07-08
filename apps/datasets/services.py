@@ -75,6 +75,7 @@ class _DatasetRowsQueryContext:
     dataset_id: int
     headers: list[str]
     column_map: dict[str, dict[str, Any]]
+    calculated_value_expressions: dict[str, Any]
     filters: dict[str, str]
     filter_operators: dict[str, str]
 
@@ -982,47 +983,61 @@ def _calculated_relationships_by_key(dataset, relationship_keys):
     }
 
 
-def annotate_calculated_columns(queryset, dataset):
+def _relationship_count_expression(relationship: DatasetRelationship):
+    source_count = (
+        DatasetRow.objects.filter(dataset_id=relationship.source_dataset_id)
+        .annotate(
+            rowset_relationship_value=Trim(KeyTextTransform(relationship.source_column, "data"))
+        )
+        .filter(rowset_relationship_value=OuterRef("index_value"))
+        .order_by()
+        .values("rowset_relationship_value")
+        .annotate(rowset_relationship_count=Count("id"))
+        .values("rowset_relationship_count")[:1]
+    )
+    return Coalesce(
+        Subquery(source_count, output_field=IntegerField()),
+        Value(0),
+        output_field=IntegerField(),
+    )
+
+
+def calculated_column_value_expressions(dataset) -> dict[str, Any]:
     columns_by_relationship_key = _relationship_count_columns_by_relationship_key(
         dataset.headers,
         dataset.column_schema,
     )
     if not columns_by_relationship_key:
-        return queryset
+        return {}
 
     relationships = _calculated_relationships_by_key(
         dataset,
         columns_by_relationship_key.keys(),
     )
-    annotations = {}
+    expressions = {}
     for relationship_key, columns in columns_by_relationship_key.items():
         relationship = relationships.get(relationship_key)
         if relationship is None:
             for column in columns:
-                annotations[calculated_column_query_alias(column["name"])] = Value(
+                expressions[column["name"]] = Value(
                     None,
                     output_field=IntegerField(),
                 )
             continue
 
-        source_count = (
-            DatasetRow.objects.filter(dataset_id=relationship.source_dataset_id)
-            .annotate(
-                rowset_relationship_value=Trim(KeyTextTransform(relationship.source_column, "data"))
-            )
-            .filter(rowset_relationship_value=OuterRef("index_value"))
-            .order_by()
-            .values("rowset_relationship_value")
-            .annotate(rowset_relationship_count=Count("id"))
-            .values("rowset_relationship_count")[:1]
-        )
-        count_expression = Coalesce(
-            Subquery(source_count, output_field=IntegerField()),
-            Value(0),
-            output_field=IntegerField(),
-        )
+        count_expression = _relationship_count_expression(relationship)
         for column in columns:
-            annotations[calculated_column_query_alias(column["name"])] = count_expression
+            expressions[column["name"]] = count_expression
+    return expressions
+
+
+def annotate_calculated_columns(queryset, dataset):
+    annotations = {
+        calculated_column_query_alias(header): expression
+        for header, expression in calculated_column_value_expressions(dataset).items()
+    }
+    if not annotations:
+        return queryset
 
     return queryset.annotate(**annotations)
 
@@ -1768,6 +1783,7 @@ def _dataset_rows_query_contexts(
                     column["name"]: column
                     for column in column_definitions(dataset.headers, dataset.column_schema)
                 },
+                calculated_value_expressions=calculated_column_value_expressions(dataset),
                 filters=normalized_filters,
                 filter_operators=normalized_filter_operators,
             )
@@ -1782,14 +1798,10 @@ def _apply_dataset_rows_search(queryset, contexts: list[_DatasetRowsQueryContext
 
     annotations = {}
     search_filter = Q()
-    alias_by_header: dict[str, str] = {}
-    for context in contexts:
-        for header in context.headers[:ROW_SEARCH_COLUMN_LIMIT]:
-            alias = alias_by_header.get(header)
-            if alias is None:
-                alias = f"rowset_multi_search_{len(alias_by_header)}"
-                alias_by_header[header] = alias
-                annotations[alias] = KeyTextTransform(header, "data")
+    for context_index, context in enumerate(contexts):
+        for header_index, header in enumerate(context.headers[:ROW_SEARCH_COLUMN_LIMIT]):
+            alias = f"rowset_multi_search_{context_index}_{header_index}"
+            annotations[alias] = _dataset_rows_header_value_expression(context, header)
             search_filter |= Q(dataset_id=context.dataset_id) & Q(
                 **{f"{alias}__icontains": search_query}
             )
@@ -1797,6 +1809,13 @@ def _apply_dataset_rows_search(queryset, contexts: list[_DatasetRowsQueryContext
     if not search_filter:
         return queryset.none()
     return queryset.annotate(**annotations).filter(search_filter)
+
+
+def _dataset_rows_header_value_expression(context: _DatasetRowsQueryContext, header: str):
+    calculated_expression = context.calculated_value_expressions.get(header)
+    if calculated_expression is not None:
+        return Cast(calculated_expression, TextField())
+    return KeyTextTransform(header, "data")
 
 
 def _dataset_rows_filter_condition(
@@ -1837,6 +1856,44 @@ def _dataset_rows_filter_condition(
     return dataset_scope & Q(**{f"{alias}__icontains": value})
 
 
+def _annotate_dataset_rows_filter_alias(
+    queryset,
+    context: _DatasetRowsQueryContext,
+    header: str,
+    alias: str,
+):
+    number_alias = f"{alias}_number"
+    datetime_alias = f"{alias}_datetime"
+    queryset = queryset.annotate(**{alias: _dataset_rows_header_value_expression(context, header)})
+    column_type = context.column_map[header]["type"]
+    if column_type in ROW_NUMERIC_SORT_TYPES and context.filter_operators.get(header) in {
+        ROW_FILTER_ABOVE,
+        ROW_FILTER_BELOW,
+    }:
+        numeric_text_alias = f"{alias}_numeric_text"
+        queryset = queryset.annotate(
+            **{
+                numeric_text_alias: _normalized_numeric_text_expression(alias),
+                number_alias: Case(
+                    When(
+                        **{
+                            f"{numeric_text_alias}__regex": ROW_NUMERIC_SORT_PATTERN,
+                            "then": Cast(numeric_text_alias, FloatField()),
+                        }
+                    ),
+                    default=Value(None),
+                    output_field=FloatField(),
+                ),
+            }
+        )
+    if column_type in ROW_DATETIME_SORT_TYPES and context.filter_operators.get(header) in {
+        ROW_FILTER_ABOVE,
+        ROW_FILTER_BELOW,
+    }:
+        queryset = queryset.annotate(**{datetime_alias: _datetime_expression(alias)})
+    return queryset, number_alias, datetime_alias
+
+
 def _apply_dataset_rows_field_filters(queryset, contexts: list[_DatasetRowsQueryContext]):
     filter_headers: list[str] = []
     for context in contexts:
@@ -1845,45 +1902,17 @@ def _apply_dataset_rows_field_filters(queryset, contexts: list[_DatasetRowsQuery
                 filter_headers.append(header)
 
     for index, header in enumerate(filter_headers):
-        alias = f"rowset_multi_filter_{index}"
-        number_alias = f"{alias}_number"
-        datetime_alias = f"{alias}_datetime"
-        queryset = queryset.annotate(**{alias: KeyTextTransform(header, "data")})
-
-        uses_numeric_filter = any(
-            context.column_map[header]["type"] in ROW_NUMERIC_SORT_TYPES
-            and context.filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
-            for context in contexts
-            if header in context.filters
-        )
-        uses_datetime_filter = any(
-            context.column_map[header]["type"] in ROW_DATETIME_SORT_TYPES
-            and context.filter_operators.get(header) in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}
-            for context in contexts
-            if header in context.filters
-        )
-        if uses_numeric_filter:
-            numeric_text_alias = f"{alias}_numeric_text"
-            queryset = queryset.annotate(
-                **{
-                    numeric_text_alias: _normalized_numeric_text_expression(alias),
-                    number_alias: Case(
-                        When(
-                            **{
-                                f"{numeric_text_alias}__regex": ROW_NUMERIC_SORT_PATTERN,
-                                "then": Cast(numeric_text_alias, FloatField()),
-                            }
-                        ),
-                        default=Value(None),
-                        output_field=FloatField(),
-                    ),
-                }
-            )
-        if uses_datetime_filter:
-            queryset = queryset.annotate(**{datetime_alias: _datetime_expression(alias)})
-
         filter_query = Q()
-        for context in contexts:
+        for context_index, context in enumerate(contexts):
+            if header not in context.filters:
+                continue
+            alias = f"rowset_multi_filter_{index}_{context_index}"
+            queryset, number_alias, datetime_alias = _annotate_dataset_rows_filter_alias(
+                queryset,
+                context,
+                header,
+                alias,
+            )
             condition = _dataset_rows_filter_condition(
                 context,
                 header=header,
