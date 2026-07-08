@@ -19,7 +19,9 @@ Decide four things:
 - the instructions future agents should follow
 
 If there is no reliable business key, omit `index_column` and let Rowset create
-`rowset_id`.
+`rowset_id`. For the tradeoff, read [Rowset `rowset_id` vs business
+keys](/blog/rowset-id-vs-business-keys) before production agents start updating
+rows.
 
 ## Create through MCP
 

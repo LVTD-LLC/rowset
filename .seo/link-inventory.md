@@ -52,6 +52,7 @@
 | `/blog/airtable-alternatives` | https://rowset.lvtd.dev/blog/airtable-alternatives | Best Airtable alternatives for AI-agent-managed datasets | Airtable alternatives, agent workflows, datasets | landing page, agent-managed datasets blog, MCP vs REST blog |
 | `/blog/google-sheets-alternatives` | https://rowset.lvtd.dev/blog/google-sheets-alternatives | Best Google Sheets alternatives for AI-agent-managed datasets | Google Sheets alternatives, agent workflows, datasets | Airtable alternatives blog, agent-managed datasets blog, index-column guide |
 | `/blog/structure-dataset-instructions-ai-agents` | https://rowset.lvtd.dev/blog/structure-dataset-instructions-ai-agents | How to structure dataset instructions for AI agents | dataset instructions, metadata, schema, agent workflows | Dataset API docs, MCP docs, content pipeline use case |
+| `/blog/rowset-id-vs-business-keys` | https://rowset.lvtd.dev/blog/rowset-id-vs-business-keys | Rowset rowset_id vs business keys: which should agents use? | rowset_id, business keys, row identity, agent workflows | index-column guide, create-datasets docs, Google Sheets alternatives |
 
 ## SEO-Sprint-Generated Pages
 
@@ -126,3 +127,8 @@
 - Rowset dataset instructions
 - agent workflow rules
 - dataset metadata for agents
+- Rowset rowset_id vs business keys
+- generated rowset_id
+- business keys for agent-managed rows
+- Rowset generated index guide
+- row identity for agent workflows

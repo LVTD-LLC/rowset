@@ -222,6 +222,9 @@ For a new Rowset dataset, start with this pattern:
 
 If step 1 is uncertain, do not force it. Let Rowset generate `rowset_id`, then
 add a better business key later when the workflow proves one exists.
+For the narrower tradeoff between generated Rowset identity and source-system
+identity, use the guide to [Rowset `rowset_id` vs business
+keys](/blog/rowset-id-vs-business-keys).
 
 The goal is not a clever schema. The goal is a dataset an agent can operate on
 without guessing which row the user meant.

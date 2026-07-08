@@ -298,7 +298,10 @@ that job.
 The safest migration is not "replace every sheet." Start with the rows the
 agent actually needs to operate. Give that workflow a stable index column,
 dataset instructions, and private Rowset access. Keep Sheets for human analysis
-or reporting if it still helps.
+or reporting if it still helps. If the source sheet has no reliable identifier,
+read [Rowset `rowset_id` vs business
+keys](/blog/rowset-id-vs-business-keys) before deciding whether to preserve a
+source column or let Rowset generate identity.
 
 ## Product-led takeaway
 
