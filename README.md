@@ -11,6 +11,7 @@ automation.
 - Hosted Streamable HTTP MCP server for AI-agent workflows.
 - Authenticated REST API for account checks, projects, datasets, rows, exports,
   relationships, image assets, and public preview settings.
+- Go `rowset` CLI under `cli/` for the same authenticated REST operations.
 - API-backed datasets with stable headers, semantic column metadata, persistent
   agent instructions, JSON metadata, and an explicit index column.
 - Row CRUD by internal Rowset row id or by dataset index value.
@@ -32,6 +33,7 @@ automation.
 - [Getting Started](#getting-started)
 - [Agent Golden Path](#agent-golden-path)
 - [REST API Quick Start](#rest-api-quick-start)
+- [CLI Quick Start](#cli-quick-start)
 - [Architecture](#architecture)
 - [Data Model](#data-model)
 - [Environment Variables](#environment-variables)
@@ -45,7 +47,7 @@ automation.
 
 | Area | Technology |
 | --- | --- |
-| Language | Python 3.14.2 (`.python-version`, `pyproject.toml`) |
+| Language | Python 3.14.2 (`.python-version`, `pyproject.toml`) and Go for `cli/` |
 | Backend | Django 6 |
 | REST API | Django Ninja |
 | MCP | FastMCP mounted through Starlette in `rowset/asgi.py` |
@@ -98,6 +100,7 @@ For host-side debugging outside Docker:
 - Python 3.14.2.
 - `uv`.
 - Node.js 24.11 or newer and npm 11 or newer.
+- Go 1.26 or newer for the `rowset` CLI.
 - PostgreSQL and Redis reachable from your environment.
 
 Most contributors should start with Docker Compose. The local Compose stack
@@ -424,6 +427,42 @@ REST export endpoints include:
 Parquet export is available from the authenticated dashboard export menu, not
 through the REST API endpoints above.
 
+## CLI Quick Start
+
+The Go CLI lives under `cli/` and uses the same bearer-authenticated REST API
+paths as the docs above.
+
+```bash
+export ROWSET_API_BASE="http://localhost:8000/api/"
+export ROWSET_API_KEY="replace-with-your-copied-key"
+
+cd cli
+go run ./cmd/rowset user info
+go run ./cmd/rowset capabilities
+```
+
+Create a dataset and patch a row by index:
+
+```bash
+go run ./cmd/rowset dataset create \
+  --name Products \
+  --headers sku,name,price,status \
+  --index-column sku \
+  --row '{"sku":"A-1","name":"Adapter","price":"19.99","status":"active"}'
+
+go run ./cmd/rowset row update-by-index "{dataset_key}" A-1 \
+  --data '{"status":"retired"}'
+```
+
+Build or test it from the repo root:
+
+```bash
+make cli-test
+make cli-build
+```
+
+See [`cli/README.md`](cli/README.md) for the full command list and examples.
+
 ## Architecture
 
 ### Directory structure
@@ -444,6 +483,7 @@ through the REST API endpoints above.
 |   |-- src/js/                # Alpine component registration and browser enhancements
 |   |-- src/styles/            # Tailwind/PostCSS source CSS
 |   `-- vendors/               # Vendored frontend assets copied into the build
+|-- cli/                       # Go rowset CLI module and tests
 |-- scripts/build-assets.mjs   # Frontend asset build and watch script
 |-- deployment/                # CapRover Dockerfile, entrypoint, and healthcheck
 |-- docker-compose-local.yml   # Local development stack
@@ -674,6 +714,8 @@ environment.
 | `make test` | Run pytest through Docker Compose. |
 | `make test apps/datasets/tests/test_csv_datasets.py` | Run a focused test file. |
 | `make test -- -k dataset -q` | Pass pytest flags through the Makefile. |
+| `make cli-test` | Run Go tests for the Rowset CLI. |
+| `make cli-build` | Build the Go `rowset` CLI package. |
 | `make restart-worker` | Recreate the `workers` service. |
 | `npm run build` | Build frontend assets on the host. |
 | `npm run start` | Watch and rebuild frontend assets on the host. |
@@ -719,6 +761,13 @@ npm run build
 npm run lint
 ```
 
+For CLI changes:
+
+```bash
+make cli-test
+make cli-build
+```
+
 ### Verification
 
 - Current local CI-equivalent path: `make ci-local`
@@ -728,6 +777,7 @@ npm run lint
 - Django system checks: `make django-check`
 - Python lint and format checks: `make lint-python` and `make format-check`
 - Frontend checks: `make frontend-install`, then `make frontend-check`
+- CLI checks: `make cli-test` and `make cli-build`
 - Optional coverage inspection: `make coverage -- <pytest args>`
 
 ### CI

@@ -19,6 +19,8 @@
 - `frontend/src/js/` - Alpine component registration and small global browser
   enhancements.
 - `frontend/src/styles/` - app CSS and Pygments styles compiled by PostCSS.
+- `cli/` - Go `rowset` CLI module, binary entry point, command/client tests,
+  and CLI-specific docs.
 - `scripts/build-assets.mjs` - frontend asset build and watch script.
 - `deployment/` - deployment entrypoint and server/worker Dockerfiles.
 - `.github/workflows/` - CI and deploy workflows.
@@ -40,6 +42,9 @@
   `apps/pages/content/navigation.yaml` when adding a routed content page.
 - Put Django templates under the matching `frontend/templates/<area>/` folder.
 - Put shared template fragments in `frontend/templates/components/`.
+- Put Rowset CLI command parsing and REST client behavior under
+  `cli/internal/rowsetcli`; keep the executable entry point in
+  `cli/cmd/rowset`.
 - Use HTMX attributes for server round trips and Alpine.js for local-only
   browser state. Put reusable Alpine components or small shared DOM behavior in
   `frontend/src/js`.

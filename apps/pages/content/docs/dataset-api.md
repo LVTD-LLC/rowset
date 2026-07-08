@@ -188,6 +188,16 @@ are interpreted as UTC. For example, `2026-06-01` is treated as
 `2026-06-01T00:00:00Z`. Use these filters when an agent needs to find the right
 dataset before reading rows or making updates.
 
+## Inspect a dataset
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}
+```
+
+Use this before row work when a client needs the dataset headers, index column,
+semantic column schema, project context, persistent instructions, relationship
+summaries, and reference metadata without fetching rows.
+
 ## List archived datasets
 
 ```http

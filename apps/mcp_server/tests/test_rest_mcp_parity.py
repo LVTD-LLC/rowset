@@ -92,6 +92,32 @@ def test_rest_and_mcp_create_dataset_share_ready_dataset_contract(
         assert payload["row_count"] == 2
 
 
+def test_rest_and_mcp_get_dataset_share_detail_contract(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    profile = create_profile_with_api_key(django_user_model)
+    _authenticate_mcp_as(monkeypatch, profile)
+    dataset = create_ready_dataset(profile)
+
+    rest_response = client.get(
+        f"/api/datasets/{dataset.key}",
+        HTTP_AUTHORIZATION=_bearer(profile),
+    )
+
+    mcp_result = mcp_server.get_dataset(str(dataset.key))
+
+    assert rest_response.status_code == 200
+    rest_dataset = rest_response.json()
+    assert rest_dataset["key"] == mcp_result["key"] == str(dataset.key)
+    assert rest_dataset["headers"] == mcp_result["headers"] == ["name", "email"]
+    assert rest_dataset["index_column"] == mcp_result["index_column"] == "email"
+    assert rest_dataset["relationships"] == mcp_result["relationships"]
+    assert rest_dataset["dataset_references"] == mcp_result["dataset_references"]
+    assert rest_dataset["project_references"] == mcp_result["project_references"]
+
+
 def test_rest_and_mcp_list_rows_share_filter_and_sort_semantics(
     client,
     django_user_model,
