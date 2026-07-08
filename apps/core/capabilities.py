@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-CAPABILITY_VERSION = "2026-07-05"
+CAPABILITY_VERSION = "2026-07-08"
 
 
 @dataclass(frozen=True)
@@ -147,7 +147,7 @@ ROWSET_CAPABILITIES = (
         notes=(
             (
                 "column_schema supports text, choice, integer, number, currency, "
-                "boolean, date, datetime, email, url, image, and reference."
+                "boolean, date, datetime, email, url, image, audio, and reference."
             ),
             (
                 'Use {"type": "reference", "target": "dataset"} when a column stores '
@@ -311,6 +311,36 @@ ROWSET_CAPABILITIES = (
                 "The thumbnail URL is a display URL. It returns a generated thumbnail "
                 "when one is smaller, otherwise it falls back to the stored original image."
             ),
+            "Use update_dataset_public_preview only when the user asks for a browser share link.",
+        ),
+    ),
+    RowsetCapability(
+        id="audio_assets",
+        title="Audio assets",
+        summary=(
+            "Attach private MP3, WAV, M4A, AAC, Ogg, FLAC, or WebM files to audio "
+            "columns after the target dataset row exists. Rowset stores an opaque "
+            "asset reference in the row cell and returns metadata plus authenticated "
+            "content URLs."
+        ),
+        mcp_tools=("attach_audio_to_dataset_row", "get_dataset_audio_asset"),
+        rest_paths=(
+            "/api/datasets/{dataset_key}/rows/{row_id}/audio",
+            "/api/datasets/{dataset_key}/rows/by-index/audio",
+            "/api/datasets/{dataset_key}/assets/{asset_key}",
+            "/api/datasets/{dataset_key}/assets/{asset_key}/content",
+        ),
+        notes=(
+            "Create audio columns with type audio and leave audio cells blank during row writes.",
+            (
+                "For MCP, read local audio bytes yourself and pass base64 or a data URI; "
+                "hosted MCP cannot read local file paths."
+            ),
+            (
+                "Use row_id or the dataset index_value to attach the audio, then keep "
+                "the returned asset:{key} cell value as Rowset-managed metadata."
+            ),
+            "Rowset stores audio bytes privately without transcoding.",
             "Use update_dataset_public_preview only when the user asks for a browser share link.",
         ),
     ),

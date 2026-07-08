@@ -4,6 +4,7 @@ import io
 import json
 import re
 import sqlite3
+import wave
 import xml.etree.ElementTree as ET
 import zipfile
 from datetime import timedelta
@@ -45,12 +46,15 @@ from apps.datasets.models import (
     retry_dataset_asset_file_deletions,
 )
 from apps.datasets.services import (
+    DatasetAudioError,
     DatasetImageError,
     apply_dataset_row_query,
     choice_constraints_from_schema,
+    decode_audio_base64,
     decode_image_base64,
     infer_column_type,
     normalize_column_schema,
+    prepare_dataset_audio,
     prepare_dataset_image,
     rows_to_sqlite_bytes,
 )
@@ -70,6 +74,20 @@ def image_base64() -> str:
 def image_bytes() -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (3, 2), (12, 34, 56)).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def audio_base64() -> str:
+    return base64.b64encode(audio_bytes()).decode()
+
+
+def audio_bytes() -> bytes:
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(8000)
+        audio.writeframes(b"\x00\x00" * 8)
     return buffer.getvalue()
 
 
@@ -3152,6 +3170,52 @@ def test_prepare_dataset_image_skips_larger_thumbnail_for_tiny_png():
     assert prepared.thumbnail_bytes is None
 
 
+def test_prepare_dataset_audio_accepts_wav_data_uri():
+    prepared = prepare_dataset_audio(
+        audio_bytes=decode_audio_base64(f"data:audio/wav;base64,{audio_base64()}"),
+        filename="intro",
+        content_type="audio/wav",
+    )
+
+    assert prepared.filename == "intro.wav"
+    assert prepared.content_type == "audio/wav"
+    assert prepared.audio_bytes.startswith(b"RIFF")
+    assert prepared.byte_size == len(prepared.audio_bytes)
+    assert len(prepared.checksum) == 64
+
+
+def test_prepare_dataset_audio_rejects_payload_above_limit(monkeypatch):
+    monkeypatch.setattr(
+        "apps.datasets.services.MAX_DATASET_AUDIO_BYTES",
+        len(audio_bytes()) - 1,
+    )
+
+    with pytest.raises(DatasetAudioError):
+        prepare_dataset_audio(
+            audio_bytes=audio_bytes(),
+            filename="large.wav",
+            content_type="audio/wav",
+        )
+
+
+def test_prepare_dataset_audio_rejects_malformed_audio_data():
+    with pytest.raises(DatasetAudioError):
+        prepare_dataset_audio(
+            audio_bytes=decode_audio_base64(base64.b64encode(b"not really audio").decode()),
+            filename="broken.wav",
+            content_type="audio/wav",
+        )
+
+
+def test_prepare_dataset_audio_rejects_content_type_mismatch():
+    with pytest.raises(DatasetAudioError):
+        prepare_dataset_audio(
+            audio_bytes=audio_bytes(),
+            filename="clip.mp3",
+            content_type="audio/mpeg",
+        )
+
+
 def test_image_attach_records_failed_rollback_file_cleanup(profile, monkeypatch):
     dataset = Dataset.objects.create(
         profile=profile,
@@ -3480,6 +3544,103 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     assert password_asset_payload["public_thumbnail_url"] is None
 
 
+def test_dataset_api_attaches_audio_asset_and_serves_content(client, profile, monkeypatch):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Interview clips",
+            "headers": ["clip_id", "title", "audio"],
+            "index_column": "clip_id",
+            "column_types": {
+                "audio": {
+                    "type": "audio",
+                    "description": "Original interview clip",
+                }
+            },
+            "rows": [{"clip_id": "C-1", "title": "Intro", "audio": ""}],
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+
+    attach_response = client.post(
+        f"/api/datasets/{dataset.key}/rows/by-index/audio?api_key={profile.key}&index_value=C-1",
+        data={
+            "column_name": "audio",
+            "filename": "intro.wav",
+            "content_type": "audio/wav",
+            "audio_base64": audio_base64(),
+        },
+        content_type="application/json",
+    )
+
+    assert attach_response.status_code == 200
+    payload = attach_response.json()
+    asset_payload = payload["asset"]
+    asset = DatasetAsset.objects.get(key=asset_payload["key"], dataset=dataset)
+    row = dataset.rows.get(index_value="C-1")
+    row.refresh_from_db()
+    assert payload["message"] == "Audio attached."
+    assert payload["row"]["data"]["audio"] == asset.asset_ref
+    assert row.data["audio"] == asset.asset_ref
+    assert asset_payload["ref"] == asset.asset_ref
+    assert asset_payload["content_type"] == "audio/wav"
+    assert asset_payload["width"] is None
+    assert asset_payload["height"] is None
+    assert asset_payload["has_thumbnail"] is False
+    assert asset.file.name.endswith("/original.wav")
+    assert asset.thumbnail.name == ""
+    assert payload["row"]["assets"][0]["ref"] == asset.asset_ref
+    assert payload["row"]["assets"][0]["column"] == "audio"
+
+    def fail_head_file_open(*args, **kwargs):
+        raise AssertionError("HEAD requests should not read audio asset bytes.")
+
+    with monkeypatch.context() as head_monkeypatch:
+        head_monkeypatch.setattr(
+            storages[DATASET_ASSET_STORAGE_ALIAS],
+            "open",
+            fail_head_file_open,
+        )
+        head_response = client.head(
+            f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
+            f"?api_key={profile.key}&variant=original"
+        )
+    assert head_response.status_code == 200
+    assert head_response["Content-Type"] == "audio/wav"
+
+    content_response = client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
+        f"?api_key={profile.key}&variant=original"
+    )
+    assert content_response.status_code == 200
+    assert content_response["Content-Type"] == "audio/wav"
+    assert content_response["X-Content-Type-Options"] == "nosniff"
+    assert content_response["Cache-Control"] == "private, max-age=86400, immutable"
+    assert content_response.content.startswith(b"RIFF")
+
+    client.force_login(profile.user)
+    dataset_detail = client.get(dataset.get_absolute_url())
+    detail_content = dataset_detail.content.decode()
+    assert dataset_detail.status_code == 200
+    assert "intro.wav" in detail_content
+    assert "<audio" in detail_content
+    assert reverse("dataset_asset_content", args=[dataset.key, asset.key]) in detail_content
+
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+    public_response = client.get(dataset.get_public_url())
+    public_content = public_response.content.decode()
+    assert public_response.status_code == 200
+    assert "intro.wav" in public_content
+    assert "<audio" in public_content
+    assert (
+        reverse("public_dataset_asset_content", args=[dataset.public_key, asset.key])
+        in public_content
+    )
+
+
 def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profile):
     create_response = client.post(
         f"/api/datasets?api_key={profile.key}",
@@ -3557,6 +3718,78 @@ def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profil
     )
     assert clear_response.status_code == 200
     assert clear_response.json()["row"]["data"]["image"] == ""
+    assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+
+def test_dataset_api_rejects_direct_audio_values_and_clears_asset(client, profile):
+    create_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Clips",
+            "headers": ["clip_id", "audio"],
+            "index_column": "clip_id",
+            "column_types": {"audio": "audio"},
+        },
+        content_type="application/json",
+    )
+    assert create_response.status_code == 201
+    dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
+
+    invalid_create = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={"data": {"clip_id": "C-1", "audio": "https://example.com/intro.wav"}},
+        content_type="application/json",
+    )
+    assert invalid_create.status_code == 400
+    assert invalid_create.json()["detail"] == (
+        "Column 'audio' is an audio column. Leave it blank and attach an audio asset."
+    )
+
+    create_row = client.post(
+        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+        data={"data": {"clip_id": "C-1", "audio": ""}},
+        content_type="application/json",
+    )
+    assert create_row.status_code == 200
+    row_id = create_row.json()["row"]["id"]
+
+    attach_response = client.post(
+        f"/api/datasets/{dataset.key}/rows/{row_id}/audio?api_key={profile.key}",
+        data={
+            "column_name": "audio",
+            "filename": "intro.wav",
+            "content_type": "audio/wav",
+            "audio_base64": audio_base64(),
+        },
+        content_type="application/json",
+    )
+    assert attach_response.status_code == 200
+    asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
+
+    idempotent_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"audio": asset.asset_ref}},
+        content_type="application/json",
+    )
+    assert idempotent_patch.status_code == 200
+    assert idempotent_patch.json()["row"]["data"]["audio"] == asset.asset_ref
+    assert DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+    invalid_patch = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"audio": "asset:00000000-0000-0000-0000-000000000000"}},
+        content_type="application/json",
+    )
+    assert invalid_patch.status_code == 400
+    assert DatasetAsset.objects.filter(pk=asset.pk).exists()
+
+    clear_response = client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+        data={"data": {"audio": ""}},
+        content_type="application/json",
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json()["row"]["data"]["audio"] == ""
     assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
 
 
@@ -3639,6 +3872,35 @@ def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(client, pro
     assert invalid_default_response.status_code == 400
     assert invalid_default_response.json()["detail"] == (
         "Column 'photo' is an image column. Leave it blank and attach an image asset."
+    )
+
+    audio_index_response = client.post(
+        f"/api/datasets?api_key={profile.key}",
+        data={
+            "name": "Invalid audio index",
+            "headers": ["clip", "name"],
+            "index_column": "clip",
+            "column_types": {"clip": "audio"},
+        },
+        content_type="application/json",
+    )
+    assert audio_index_response.status_code == 400
+    assert audio_index_response.json()["detail"] == (
+        "Audio columns cannot be used as the dataset index."
+    )
+
+    invalid_audio_default_response = client.post(
+        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+        data={
+            "name": "clip",
+            "default_value": "https://example.com/clip.wav",
+            "column_type": "audio",
+        },
+        content_type="application/json",
+    )
+    assert invalid_audio_default_response.status_code == 400
+    assert invalid_audio_default_response.json()["detail"] == (
+        "Column 'clip' is an audio column. Leave it blank and attach an audio asset."
     )
 
 

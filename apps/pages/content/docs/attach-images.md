@@ -73,3 +73,10 @@ describe the stored Rowset asset, not necessarily the original local file.
 Images appear in authenticated dataset views and public previews when sharing is
 enabled. File exports include the stable `asset:{key}` cell reference rather
 than embedding binary image data.
+
+## Audio follows the same pattern
+
+For private audio files, create a column with type `audio` and use
+`attach_audio_to_dataset_row` or the REST `/audio` row endpoint. Rowset accepts
+MP3, WAV, M4A, AAC, Ogg, FLAC, and WebM audio bytes, stores the file privately,
+and writes the same `asset:{key}` cell reference.

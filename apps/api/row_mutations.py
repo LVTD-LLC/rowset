@@ -10,7 +10,11 @@ from apps.core.models import AgentApiKey, Profile
 from apps.datasets.choices import DatasetMutationType
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset, DatasetAsset, DatasetMutation, DatasetRow
-from apps.datasets.services import dataset_asset_key_from_ref, image_columns_from_schema
+from apps.datasets.services import (
+    audio_columns_from_schema,
+    dataset_asset_key_from_ref,
+    image_columns_from_schema,
+)
 
 ROW_MUTATION_TYPES = (
     DatasetMutationType.ROW_CREATED,
@@ -42,6 +46,7 @@ def normalize_row_patch_for_headers(data: RowWritePayload, headers: Iterable[str
 class RowMutationHooks:
     validate_choice_row_data: Callable[..., Any]
     validate_image_row_data: Callable[..., Any]
+    validate_audio_row_data: Callable[..., Any]
     normalize_reference_row_data: Callable[..., dict[str, str]]
     validate_relationship_row_data: Callable[..., Any]
     raise_if_target_row_is_referenced: Callable[[Dataset, str], None]
@@ -82,6 +87,7 @@ def create_dataset_row(
     serialized_data = normalize_row_data_for_headers(row_data, dataset.headers)
     hooks.validate_choice_row_data(dataset.headers, dataset.column_schema, serialized_data)
     hooks.validate_image_row_data(dataset.headers, dataset.column_schema, serialized_data)
+    hooks.validate_audio_row_data(dataset.headers, dataset.column_schema, serialized_data)
     serialized_data = hooks.normalize_reference_row_data(
         profile,
         dataset.headers,
@@ -150,15 +156,23 @@ def patch_dataset_row(
 
     row_patch = normalize_row_patch_for_headers(data, dataset.headers)
     patched_fields = sorted(row_patch)
-    changed_image_columns = _changed_image_columns(dataset, row, row_patch, patched_fields)
-    _raise_if_patch_references_image_asset(row_patch, changed_image_columns)
+    changed_asset_columns = _changed_asset_columns(dataset, row, row_patch, patched_fields)
+    _raise_if_patch_references_asset(row_patch, changed_asset_columns)
+    changed_image_columns = _changed_columns_for_type(changed_asset_columns, "image")
+    changed_audio_columns = _changed_columns_for_type(changed_asset_columns, "audio")
     hooks.validate_image_row_data(
         dataset.headers,
         dataset.column_schema,
         row_patch,
         columns=changed_image_columns,
     )
-    cleared_image_columns = _cleared_image_columns(row_patch, changed_image_columns)
+    hooks.validate_audio_row_data(
+        dataset.headers,
+        dataset.column_schema,
+        row_patch,
+        columns=changed_audio_columns,
+    )
+    cleared_asset_columns = _cleared_asset_columns(row_patch, changed_asset_columns)
     row_patch = hooks.normalize_reference_row_data(
         profile,
         dataset.headers,
@@ -178,7 +192,7 @@ def patch_dataset_row(
     row.data = {**current_data, **row_patch}
     index_changed = _apply_index_patch(dataset, row, row_patch, data, hooks)
     hooks.validate_relationship_row_data(dataset, row.data, columns=patched_fields)
-    _delete_cleared_image_assets(dataset, row, cleared_image_columns)
+    _delete_cleared_assets(dataset, row, cleared_asset_columns)
     row.updated_by_agent_api_key = agent_api_key
     row.save(update_fields=["data", "index_value", "updated_by_agent_api_key", "updated_at"])
     dataset.updated_by_agent_api_key = agent_api_key
@@ -330,51 +344,67 @@ def _raise_if_duplicate_index(dataset: Dataset, index_value: str) -> None:
         raise DatasetServiceError(409, f"Row with index '{index_value}' already exists.")
 
 
-def _changed_image_columns(
+def _changed_asset_columns(
     dataset: Dataset,
     row: DatasetRow,
     row_patch: RowData,
     patched_fields: list[str],
-) -> list[str]:
+) -> dict[str, str]:
     image_columns = set(image_columns_from_schema(dataset.headers, dataset.column_schema))
+    audio_columns = set(audio_columns_from_schema(dataset.headers, dataset.column_schema))
+    changed_columns = {}
+    for field in patched_fields:
+        if row_patch.get(field, "") == str((row.data or {}).get(field, "") or ""):
+            continue
+        if field in image_columns:
+            changed_columns[field] = "image"
+        elif field in audio_columns:
+            changed_columns[field] = "audio"
+    return changed_columns
+
+
+def _changed_columns_for_type(
+    changed_asset_columns: dict[str, str],
+    asset_type: str,
+) -> list[str]:
     return [
-        field
-        for field in patched_fields
-        if field in image_columns
-        and row_patch.get(field, "") != str((row.data or {}).get(field, "") or "")
+        column
+        for column, column_asset_type in changed_asset_columns.items()
+        if column_asset_type == asset_type
     ]
 
 
-def _raise_if_patch_references_image_asset(
+def _raise_if_patch_references_asset(
     row_patch: RowData,
-    changed_image_columns: list[str],
+    changed_asset_columns: dict[str, str],
 ) -> None:
-    for column in changed_image_columns:
+    for column, asset_type in changed_asset_columns.items():
         if dataset_asset_key_from_ref(row_patch.get(column, "")):
             raise DatasetServiceError(
                 400,
-                f"Column '{column}' is an image column. Attach a new image asset instead.",
+                f"Column '{column}' is an {asset_type} column. "
+                f"Attach a new {asset_type} asset instead.",
             )
 
 
-def _cleared_image_columns(
+def _cleared_asset_columns(
     row_patch: RowData,
-    changed_image_columns: list[str],
+    changed_asset_columns: dict[str, str],
 ) -> list[str]:
-    return [field for field in changed_image_columns if row_patch.get(field, "") == ""]
+    return [field for field in changed_asset_columns if row_patch.get(field, "") == ""]
 
 
-def _delete_cleared_image_assets(
+def _delete_cleared_assets(
     dataset: Dataset,
     row: DatasetRow,
-    cleared_image_columns: list[str],
+    cleared_asset_columns: list[str],
 ) -> None:
-    if not cleared_image_columns:
+    if not cleared_asset_columns:
         return
     DatasetAsset.objects.filter(
         dataset=dataset,
         row=row,
-        column_name__in=cleared_image_columns,
+        column_name__in=cleared_asset_columns,
     ).delete()
 
 

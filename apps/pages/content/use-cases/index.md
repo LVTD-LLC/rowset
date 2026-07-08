@@ -31,6 +31,6 @@ types, status rules, references, or instructions.
 - a stable index column
 - small, clear headers
 - dataset instructions that explain workflow rules
-- semantic column types for dates, URLs, emails, choices, money, images, or references
+- semantic column types for dates, URLs, emails, choices, money, images, audio, or references
 - optional project grouping when several datasets belong together
 - optional public preview only when a human needs read-only access

@@ -185,6 +185,24 @@ to retrieve asset metadata plus authenticated `content_url` and `thumbnail_url`
 values. Rowset normalizes image bytes before storage, so asset `byte_size` and
 `checksum` describe the stored Rowset file rather than the original file on disk.
 
+## Audio asset tools
+
+Use audio columns when a row needs a private audio file.
+
+```text
+attach_audio_to_dataset_row
+get_dataset_audio_asset
+```
+
+The hosted MCP server cannot read an agent's local file path. The agent must
+read local audio bytes itself and pass base64 or a data URI. Rowset writes an
+opaque `asset:{key}` reference into the row cell.
+
+`attach_audio_to_dataset_row` accepts MP3, WAV, M4A, AAC, Ogg, FLAC, or WebM
+bytes. Pass either `row_id` or the dataset `index_value`, not both. Use
+`get_dataset_audio_asset` to retrieve asset metadata plus authenticated
+`content_url` values. Rowset stores audio bytes privately without transcoding.
+
 ## Public preview tools
 
 Use public previews only when the user asks to share a read-only browser page:

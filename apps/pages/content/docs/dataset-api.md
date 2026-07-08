@@ -418,6 +418,30 @@ Rowset validates and normalizes image bytes before storage. The returned
 `byte_size` and `checksum` describe the stored Rowset image, not necessarily the
 exact source file bytes sent by the client.
 
+Audio columns store private audio assets. Create the column with type `audio`,
+leave audio cells blank during row writes, then attach the audio with the audio
+asset endpoint:
+
+```http
+POST {{ api_base_url }}/datasets/{dataset_key}/rows/{row_id}/audio
+POST {{ api_base_url }}/datasets/{dataset_key}/rows/by-index/audio?index_value={index_value}
+Content-Type: application/json
+```
+
+```json
+{
+  "column_name": "audio",
+  "filename": "interview.wav",
+  "content_type": "audio/wav",
+  "audio_base64": "UklGRiQAAABXQVZF..."
+}
+```
+
+Rowset accepts MP3, WAV, M4A, AAC, Ogg, FLAC, and WebM audio files. The
+response includes the updated row and an asset record. The row cell stores
+`asset:{key}`. Use the returned `content_url` with the same private API
+authentication when a client needs to fetch the audio bytes.
+
 ```http
 GET {{ api_base_url }}/datasets/{dataset_key}/assets/{asset_key}
 GET {{ api_base_url }}/datasets/{dataset_key}/assets/{asset_key}/content?variant=thumbnail
