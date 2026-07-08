@@ -1115,7 +1115,7 @@ func doRequest(
 	query url.Values,
 	opts requestOptions,
 ) error {
-	endpoint, err := buildEndpoint(cfg.apiBase, path, query)
+	endpoint, err := buildEndpoint(cfg.apiBase, path, query, !opts.auth)
 	if err != nil {
 		return err
 	}
@@ -1178,8 +1178,11 @@ func doRequest(
 	return err
 }
 
-func buildEndpoint(apiBase string, path string, query url.Values) (string, error) {
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+func buildEndpoint(apiBase string, path string, query url.Values, allowAbsolute bool) (string, error) {
+	if isAbsoluteHTTPURL(path) {
+		if !allowAbsolute {
+			return "", errors.New("absolute request URLs require --no-auth")
+		}
 		parsed, err := url.Parse(path)
 		if err != nil {
 			return "", err
@@ -1208,6 +1211,14 @@ func buildEndpoint(apiBase string, path string, query url.Values) (string, error
 		parsed.RawQuery = query.Encode()
 	}
 	return parsed.String(), nil
+}
+
+func isAbsoluteHTTPURL(rawURL string) bool {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	return parsed.IsAbs() && (strings.EqualFold(parsed.Scheme, "http") || strings.EqualFold(parsed.Scheme, "https"))
 }
 
 func apiPath(parts ...string) string {

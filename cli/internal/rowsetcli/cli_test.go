@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -545,6 +546,66 @@ func TestRunRequiresAPIBaseAndKeyForAuthenticatedCommands(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "ROWSET_API_KEY") {
 		t.Fatalf("expected ROWSET_API_KEY guidance, got %v", err)
+	}
+}
+
+func TestRawRequestRejectsAuthenticatedAbsoluteURLs(t *testing.T) {
+	t.Setenv("ROWSET_API_BASE", "https://rowset.example/api/")
+	t.Setenv("ROWSET_API_KEY", "test-key")
+
+	var called atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called.Store(true)
+		_, _ = w.Write([]byte(`{"status":"unexpected"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	err := Run(context.Background(), IO{
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+		Stdin:  strings.NewReader(""),
+	}, []string{"request", "GET", server.URL + "/capture"})
+	if err == nil {
+		t.Fatal("expected authenticated absolute URL request to fail")
+	}
+	if !strings.Contains(err.Error(), "--no-auth") {
+		t.Fatalf("expected --no-auth guidance, got %v", err)
+	}
+	if called.Load() {
+		t.Fatal("absolute URL server should not receive authenticated request")
+	}
+}
+
+func TestRawRequestAllowsAbsoluteURLsWithoutAuth(t *testing.T) {
+	t.Setenv("ROWSET_API_BASE", "")
+	t.Setenv("ROWSET_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("method mismatch: got %s", r.Method)
+		}
+		if r.URL.Path != "/public" {
+			t.Fatalf("path mismatch: got %s", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Fatalf("Authorization header should be empty, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	var out bytes.Buffer
+	err := Run(context.Background(), IO{
+		Stdout: &out,
+		Stderr: &bytes.Buffer{},
+		Stdin:  strings.NewReader(""),
+	}, []string{"request", "GET", server.URL + "/public", "--no-auth"})
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), `"status": "ok"`) {
+		t.Fatalf("expected pretty JSON response, got %q", out.String())
 	}
 }
 
