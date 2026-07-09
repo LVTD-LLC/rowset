@@ -1,76 +1,58 @@
 {% load django_htmx static %}
-
-<!doctype html>
-<html lang="en">
-  <head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
-    />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-
-    <!-- Other meta stuff -->
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="{% static 'vendors/images/apple-touch-icon.png' %}"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="{% static 'vendors/images/favicon-32x32.png' %}"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="{% static 'vendors/images/favicon-16x16.png' %}"
-    />
-    <link rel="shortcut icon" href="{% static 'vendors/images/favicon.ico' %}" />
-
-    {% block meta %}
-    <title>Rowset</title>
-    <meta
-      name="description"
-      content="Give AI agents MCP and REST tools to manage API-backed datasets."
-    />
-    <meta name="keywords" content="django" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://{{ request.get_host }}/" />
-
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Rowset" />
-    <meta property="og:url" content="https://{{ request.get_host }}/" />
-    <meta
-      property="og:description"
-      content="Give AI agents MCP and REST tools to manage API-backed datasets."
-    />
-    <meta
-      property="og:image"
-      content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=Rowset&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}"
-    />
-    <meta property="og:locale" content="en_US" />
-
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:creator" content="@rasulkireev" />
-    <meta name="twitter:site" content="@rasulkireev" />
-    <meta name="twitter:title" content="Rowset" />
-    <meta
-      name="twitter:description"
-      content="Give AI agents MCP and REST tools to manage API-backed datasets."
-    />
-    <meta
-      name="twitter:image"
-      content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}"
-    />
-    {% endblock meta %}
-    {% include 'components/plausible.html' %}
-    {% include 'components/posthog.html' %}
-
-    <script>
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8" />
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="theme-color" content="#fafaf7" />
+        <!-- Other meta stuff -->
+        <link rel="apple-touch-icon"
+              sizes="180x180"
+              href="{% static 'vendors/images/apple-touch-icon.png' %}" />
+        <link rel="icon"
+              type="image/png"
+              sizes="32x32"
+              href="{% static 'vendors/images/favicon-32x32.png' %}" />
+        <link rel="icon"
+              type="image/png"
+              sizes="16x16"
+              href="{% static 'vendors/images/favicon-16x16.png' %}" />
+        <link rel="shortcut icon" href="{% static 'vendors/images/favicon.ico' %}" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+              rel="stylesheet" />
+        {% block meta %}
+            <title>Rowset</title>
+            <meta name="description"
+                  content="Give trusted AI agents a private MCP and REST backend for structured datasets, row operations, exports, and read-only previews." />
+            <meta name="keywords"
+                  content="AI agent dataset backend, MCP dataset API, REST dataset backend, agent-managed rows" />
+            <meta name="robots" content="index, follow" />
+            <link rel="canonical" href="https://{{ request.get_host }}/" />
+            <meta property="og:type" content="website" />
+            <meta property="og:title" content="Rowset" />
+            <meta property="og:url" content="https://{{ request.get_host }}/" />
+            <meta property="og:description"
+                  content="Give trusted AI agents a private backend for structured rows." />
+            <meta property="og:image"
+                  content="https://osig.app/g?site=meta&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+            <meta property="og:locale" content="en_US" />
+            <meta name="twitter:card" content="summary" />
+            <meta name="twitter:creator" content="@rasulkireev" />
+            <meta name="twitter:site" content="@rasulkireev" />
+            <meta name="twitter:title" content="Rowset" />
+            <meta name="twitter:description"
+                  content="Give trusted AI agents a private backend for structured rows." />
+            <meta name="twitter:image"
+                  content="https://osig.app/g?site=x&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+        {% endblock meta %}
+        {% include 'components/plausible.html' %}
+        {% include 'components/posthog.html' %}
+        <script>
       // Set theme early to avoid a flash of incorrect theme.
       (function () {
         try {
@@ -91,58 +73,49 @@
           // no-op
         }
       })();
-    </script>
-
-    <link rel="stylesheet" href="{% static 'css/index.css' %}" />
-    {% htmx_script %}
-    <script defer src="{% static 'js/alpine-components.js' %}"></script>
-    <script defer src="{% static 'vendors/js/alpine.min.js' %}"></script>
-    <script defer src="{% static 'js/app.js' %}"></script>
-  </head>
-
-  <body
-    data-csrf-token="{{ csrf_token }}"
-    {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}
-  >
-    {% include 'components/referrer_banner.html' %}
-    {% block default_messages %}
-      {% include 'components/messages.html' with messages=messages %}
-    {% endblock default_messages %}
-
-    <div class="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100">
-      <a
-        href="#main-content"
-        class="fb-focus sr-only fixed left-4 top-4 z-50 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white focus:not-sr-only"
-      >Skip to content</a>
-
-      {% include 'components/site_header.html' with nav_variant='landing' %}
-
-      <main id="main-content" tabindex="-1">
-        {% block content %}{% endblock content %}
-      </main>
-
-      {% include 'components/site_footer.html' with nav_variant='landing' %}
-
-      {% if request.user.is_authenticated %}
-        {% include 'components/command_palette.html' %}
-      {% endif %}
-    </div>
-
-    {% include 'components/chatwoot.html' %} {% block schema %}
-    <script type="application/ld+json">
+        </script>
+        <link rel="stylesheet" href="{% static 'css/index.css' %}" />
+        {% htmx_script %}
+        <script defer src="{% static 'js/alpine-components.js' %}"></script>
+        <script defer src="{% static 'vendors/js/alpine.min.js' %}"></script>
+        <script defer src="{% static 'js/app.js' %}"></script>
+    </head>
+    <body class="font-sans"
+          data-csrf-token="{{ csrf_token }}"
+          {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}>
+        {% include 'components/referrer_banner.html' %}
+        {% block default_messages %}
+            {% include 'components/messages.html' with messages=messages %}
+        {% endblock default_messages %}
+        <div class="isolate min-h-dvh bg-[#fafaf7] text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+            <a href="#main-content"
+               class="fb-focus sr-only fixed left-4 top-4 z-50 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white focus:not-sr-only">Skip to content</a>
+            {% include 'components/site_header.html' with nav_variant='landing' %}
+            <main id="main-content" tabindex="-1">
+                {% block content %}
+                {% endblock content %}
+            </main>
+            {% include 'components/site_footer.html' with nav_variant='landing' %}
+            {% if request.user.is_authenticated %}
+                {% include 'components/command_palette.html' %}
+            {% endif %}
+        </div>
+        {% include 'components/chatwoot.html' %}
+        {% block schema %}
+            <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Rowset",
-        "description": "Give AI agents MCP and REST tools to manage API-backed datasets.",
-        "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
+        "description": "Give trusted AI agents a private MCP and REST backend for structured datasets.",
+        "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
         "url": "https://{{ request.get_host }}/",
         "author": {
           "@type": "Person",
           "name": "Rasul Kireev"
         }
       }
-    </script>
-    {% endblock schema %}
-  </body>
+            </script>
+        {% endblock schema %}
+    </body>
 </html>

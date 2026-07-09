@@ -1,150 +1,152 @@
 {% extends "base_landing.html" %}
 {% load static %}
 {% block meta %}
-    <title>Rowset - private datasets for AI agents</title>
+    <title>Rowset - dataset backends for AI agents</title>
     <meta name="description"
           content="Rowset gives trusted AI agents a private MCP and REST backend for structured datasets, row updates, exports, and read-only previews." />
     <meta name="keywords"
-          content="AI agent database, MCP dataset API, REST dataset backend, agent CRM, agent task board, feedback tracker" />
+          content="AI agent dataset backend, MCP dataset API, REST dataset backend, agent-managed rows, AI agent database" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://{{ request.get_host }}/" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Rowset - private datasets for AI agents" />
+    <meta property="og:title" content="Rowset - dataset backends for AI agents" />
     <meta property="og:url" content="https://{{ request.get_host }}/" />
     <meta property="og:description"
-          content="Give agents a stable place to create, update, export, and share structured rows." />
+          content="Give trusted agents a private MCP and REST backend for structured rows." />
     <meta property="og:image"
-          content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=Rowset&subtitle=Private%20datasets%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+          content="https://osig.app/g?site=meta&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title"
-          content="Rowset - private datasets for AI agents" />
+          content="Rowset - dataset backends for AI agents" />
     <meta name="twitter:description"
           content="A private MCP and REST backend for agent-managed datasets." />
     <meta name="twitter:image"
-          content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset&subtitle=Private%20datasets%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
+          content="https://osig.app/g?site=x&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 {% block content %}
-    <section class="rs-landing-hero relative overflow-hidden border-b border-emerald-950/10 bg-[#f7faf8] text-slate-950 dark:border-emerald-400/10 dark:bg-[#050807] dark:text-white">
+    <section id="product"
+             class="relative overflow-hidden border-b border-slate-950/10 bg-[#fafaf7] text-slate-950 dark:border-white/10 dark:bg-slate-950 dark:text-white">
         <div class="rs-grid-field absolute inset-0" aria-hidden="true"></div>
-        <div class="relative mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:min-h-[calc(100svh-8rem)] lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:px-8">
+        <div class="relative mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:min-h-[calc(100svh-4rem)] lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:px-8">
             <div class="rs-hero-copy">
-                <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Private datasets for AI agents</p>
-                <h1 class="mt-5 max-w-4xl text-4xl font-semibold leading-none text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
-                    Give AI agents a place to put structured work.
-                </h1>
-                <p class="mt-5 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300 sm:text-lg sm:leading-8">
-                    Rowset is a private MCP and REST backend for datasets agents create, update, export, and share. Start with rows. Let the agent build the workflow.
+                <p class="font-mono text-sm/6 font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    Agent-native data backend
                 </p>
-                <div class="mt-7 flex flex-col gap-3 sm:flex-row">
-                    <a href="{% url 'account_signup' %}" class="fb-button-primary">Create a dataset</a>
-                    <a href="{% url 'use_cases' %}" class="fb-button-secondary">See use cases</a>
-                    <a href="{% url 'blog_post' slug='airtable-alternatives' %}"
-                       class="fb-button-secondary">Airtable alternatives</a>
+                <h1 class="mt-5 max-w-[20ch] font-display text-5xl font-semibold tracking-tight text-balance text-slate-950 dark:text-white sm:text-6xl lg:text-7xl">
+                    Dataset backends for AI agents
+                </h1>
+                <p class="mt-6 max-w-[48ch] text-lg/8 text-pretty text-slate-700 dark:text-slate-300">
+                    Rowset gives trusted agents hosted MCP tools and a REST API for structured rows. They create datasets, keep indexes stable, update records, export snapshots, and share read-only previews when humans need to inspect the result.
+                </p>
+                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <a href="{% url 'account_signup' %}" class="fb-button-primary">Start free</a>
+                    <a href="{% url 'docs_page' slug='quickstart' %}"
+                       class="fb-button-secondary">Read quickstart</a>
                 </div>
-                <dl class="mt-8 hidden gap-4 text-sm sm:grid sm:grid-cols-3">
-                    <div class="border-l border-emerald-500/40 pl-3">
-                        <dt class="font-semibold text-slate-950 dark:text-white">MCP first</dt>
-                        <dd class="mt-1 leading-6 text-slate-600 dark:text-slate-300">
-                            Hosted tools for trusted agents.
-                        </dd>
-                    </div>
-                    <div class="border-l border-cyan-500/40 pl-3">
-                        <dt class="font-semibold text-slate-950 dark:text-white">Stable rows</dt>
-                        <dd class="mt-1 leading-6 text-slate-600 dark:text-slate-300">
-                            Headers, indexes, schema, and row CRUD.
-                        </dd>
-                    </div>
-                    <div class="border-l border-amber-500/50 pl-3">
-                        <dt class="font-semibold text-slate-950 dark:text-white">Private default</dt>
-                        <dd class="mt-1 leading-6 text-slate-600 dark:text-slate-300">
-                            Read-only previews only when enabled.
-                        </dd>
-                    </div>
-                </dl>
+                <p class="mt-5 max-w-[56ch] text-base/7 text-pretty text-slate-600 dark:text-slate-400 sm:text-sm/6">
+                    Private by default. Bearer-key authenticated. Public previews are optional, read-only, and separate from MCP or REST access.
+                </p>
             </div>
-            <div class="rs-console hidden md:block"
-                 aria-label="Rowset product interface example">
-                <div class="grid border-b border-slate-200 bg-white/70 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 sm:grid-cols-3">
-                    <div class="border-b border-emerald-500 px-4 py-3 text-emerald-700 dark:text-emerald-300 sm:border-b-0 sm:border-r">Agent run</div>
-                    <div class="hidden px-4 py-3 sm:block sm:border-r sm:border-slate-200 dark:sm:border-white/10">Dataset</div>
-                    <div class="hidden px-4 py-3 sm:block">Share</div>
-                </div>
-                <div class="grid lg:grid-cols-[0.88fr_1.12fr]">
-                    <div class="border-b border-slate-200 p-4 dark:border-white/10 lg:border-b-0 lg:border-r">
-                        <div class="flex items-center justify-between gap-3">
-                            <p class="font-mono text-xs text-emerald-700 dark:text-emerald-300">mcp://rowset</p>
-                            <span class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-200">connected</span>
-                        </div>
-                        <div class="mt-4 rounded-md border border-slate-200 bg-slate-950 p-3 font-mono text-xs leading-6 text-slate-100 dark:border-white/10">
-                            <p>create_dataset</p>
-                            <p class="text-slate-400">name: agent_tasks</p>
-                            <p class="text-slate-400">index: task_id</p>
-                            <p class="text-cyan-200">rows: 3 ready</p>
-                        </div>
-                        <div class="mt-4 grid gap-2 text-xs">
-                            <div class="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-white/10">
-                                <span class="text-slate-500 dark:text-slate-400">Auth</span>
-                                <span class="font-mono text-slate-800 dark:text-slate-200">Bearer key</span>
-                            </div>
-                            <div class="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-white/10">
-                                <span class="text-slate-500 dark:text-slate-400">Preview</span>
-                                <span class="font-mono text-amber-700 dark:text-amber-300">off</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-500 dark:text-slate-400">Export</span>
-                                <span class="font-mono text-cyan-700 dark:text-cyan-300">csv jsonl xlsx</span>
-                            </div>
-                        </div>
+            <div class="rs-product-frame rs-data-plane">
+                <div class="grid border-b border-slate-950/10 bg-white/70 text-sm font-semibold text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 sm:grid-cols-3">
+                    <div class="border-b border-emerald-600 px-4 py-3 text-emerald-700 dark:text-emerald-300 sm:border-b-0 sm:border-r sm:border-slate-950/10 dark:sm:border-white/10">
+                        Agent setup
                     </div>
-                    <div class="overflow-hidden">
-                        <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-white/10">
+                    <div class="hidden px-4 py-3 sm:block sm:border-r sm:border-slate-950/10 dark:sm:border-white/10">Rows</div>
+                    <div class="hidden px-4 py-3 sm:block">Exports</div>
+                </div>
+                <div class="grid lg:grid-cols-[0.78fr_1.22fr]">
+                    <div class="border-b border-slate-950/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-r">
+                        <div class="flex items-start justify-between gap-3">
                             <div>
-                                <p class="font-mono text-xs text-slate-500 dark:text-slate-400">dataset</p>
-                                <h2 class="text-lg font-semibold text-slate-950 dark:text-white">agent_tasks</h2>
+                                <p class="font-mono text-sm/6 text-slate-500 dark:text-slate-400">MCP URL</p>
+                                <p class="mt-1 break-all font-mono text-sm/6 text-slate-950 dark:text-slate-100">https://app.rowset.com/mcp/</p>
                             </div>
-                            <div class="rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-600 dark:border-white/10 dark:text-slate-300">task_id</div>
+                            <span class="shrink-0 rounded-md bg-emerald-50 px-2 py-1 text-sm font-semibold text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200">Private</span>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-left text-sm">
+                        <div class="mt-4 rounded-md bg-slate-950 p-4 font-mono text-sm/6 text-slate-100">
+                            <p>You are a data operator.</p>
+                            <p class="text-slate-400">Use Rowset MCP tools to manage rows.</p>
+                            <p class="text-slate-400">Prefer stable_index for updates.</p>
+                            <p class="text-emerald-300">Do not guess IDs.</p>
+                        </div>
+                        <dl class="mt-4 grid gap-3 text-sm/6">
+                            <div class="flex items-start justify-between gap-4 border-b border-slate-950/10 pb-3 dark:border-white/10">
+                                <dt class="text-slate-500 dark:text-slate-400">Auth</dt>
+                                <dd class="text-right font-mono text-slate-800 dark:text-slate-200">
+                                    Bearer key
+                                </dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4 border-b border-slate-950/10 pb-3 dark:border-white/10">
+                                <dt class="text-slate-500 dark:text-slate-400">Index</dt>
+                                <dd class="text-right font-mono text-slate-800 dark:text-slate-200">
+                                    stable_index
+                                </dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500 dark:text-slate-400">Preview</dt>
+                                <dd class="text-right font-mono text-slate-800 dark:text-slate-200">
+                                    off
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-950/10 px-4 py-3 dark:border-white/10">
+                            <div class="min-w-0">
+                                <p class="font-mono text-sm/6 text-slate-500 dark:text-slate-400">dataset</p>
+                                <h2 class="mt-1 truncate text-xl font-semibold tracking-tight text-slate-950 dark:text-white">customer_events</h2>
+                            </div>
+                            <span class="shrink-0 rounded-md border border-slate-950/10 px-2.5 py-1.5 font-mono text-sm text-slate-600 dark:border-white/10 dark:text-slate-300">4,782 rows</span>
+                        </div>
+                        <div class="-mx-4 -my-2 overflow-x-auto whitespace-nowrap px-4 py-2">
+                            <table class="w-full text-left text-sm">
+                                <caption class="sr-only">
+                                    Example Rowset dataset rows
+                                </caption>
                                 <thead>
-                                    <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
-                                        <th class="px-4 py-3">key</th>
-                                        <th class="px-4 py-3">status</th>
-                                        <th class="px-4 py-3">next action</th>
+                                    <tr class="border-b border-slate-950/10 text-slate-500 dark:border-white/10 dark:text-slate-400">
+                                        <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold">Key</th>
+                                        <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold">Plan</th>
+                                        <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold">Status</th>
+                                        <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold">Next action</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100 dark:divide-white/10">
-                                    <tr>
-                                        <td class="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-300">TASK-104</td>
-                                        <td class="px-4 py-3 text-emerald-700 dark:text-emerald-300">doing</td>
-                                        <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Draft page copy</td>
+                                <tbody>
+                                    <tr class="border-b border-slate-950/10 dark:border-white/10">
+                                        <td class="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">A182-0001</td>
+                                        <td class="px-4 py-3 text-slate-700 dark:text-slate-300">pro</td>
+                                        <td class="px-4 py-3 text-emerald-700 dark:text-emerald-300">active</td>
+                                        <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Check renewal</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-950/10 dark:border-white/10">
+                                        <td class="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">A182-0002</td>
+                                        <td class="px-4 py-3 text-slate-700 dark:text-slate-300">free</td>
+                                        <td class="px-4 py-3 text-slate-700 dark:text-slate-300">trial</td>
+                                        <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Send setup guide</td>
                                     </tr>
                                     <tr>
-                                        <td class="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-300">TASK-118</td>
-                                        <td class="px-4 py-3 text-amber-700 dark:text-amber-300">blocked</td>
+                                        <td class="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">A182-0003</td>
+                                        <td class="px-4 py-3 text-slate-700 dark:text-slate-300">team</td>
+                                        <td class="px-4 py-3 text-orange-700 dark:text-orange-300">blocked</td>
                                         <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Confirm owner</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-300">TASK-121</td>
-                                        <td class="px-4 py-3 text-cyan-700 dark:text-cyan-300">todo</td>
-                                        <td class="px-4 py-3 text-slate-700 dark:text-slate-300">Export snapshot</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                        <div class="rs-command-strip border-t border-slate-200 px-4 py-3 dark:border-white/10">
-                            <div class="rs-command-track flex gap-2 font-mono text-xs text-slate-600 dark:text-slate-300">
+                        <div class="rs-command-strip border-t border-slate-950/10 px-4 py-3 dark:border-white/10">
+                            <div class="rs-command-track flex gap-2 font-mono text-sm/6 text-slate-600 dark:text-slate-300">
+                                <span>create_dataset</span>
                                 <span>get_dataset</span>
                                 <span>update_row</span>
-                                <span>search_datasets</span>
                                 <span>export.jsonl</span>
-                                <span>update_dataset_public_preview</span>
+                                <span>public_preview.off</span>
+                                <span>create_dataset</span>
                                 <span>get_dataset</span>
                                 <span>update_row</span>
-                                <span>search_datasets</span>
                                 <span>export.jsonl</span>
-                                <span>update_dataset_public_preview</span>
+                                <span>public_preview.off</span>
                             </div>
                         </div>
                     </div>
@@ -152,102 +154,366 @@
             </div>
         </div>
     </section>
-    <section id="use-cases"
-             class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-            <div class="grid gap-6 lg:grid-cols-[0.7fr_1.3fr] lg:items-end">
-                <div>
-                    <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">Use cases</p>
-                    <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white sm:text-4xl">One backend. Many agent workflows.</h2>
+    <section class="border-b border-slate-950/10 bg-white dark:border-white/10 dark:bg-slate-950"
+             aria-label="Rowset capabilities">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <dl class="grid divide-y divide-slate-950/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-5">
+                <div class="py-5 sm:px-5 sm:first:pl-0 lg:px-6">
+                    <dt class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">MCP tools</dt>
+                    <dd class="mt-1 text-base/7 text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Create, read, update, delete rows
+                    </dd>
                 </div>
-                <p class="max-w-3xl text-base leading-7 text-slate-700 dark:text-slate-300">
-                    Rowset does not decide whether the object is a task, customer, issue, post, product, or request. Your agent creates the dataset shape and keeps it current.
-                </p>
-            </div>
-            <div class="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {% for page in use_case_pages %}
-                    <a href="{% url 'use_case_page' slug=page.slug %}"
-                       class="rs-use-case-card fb-focus group rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-500/50 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-400/50 dark:hover:bg-slate-900">
-                        <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{{ page.eyebrow }}</p>
-                        <h3 class="mt-3 text-lg font-semibold text-slate-950 dark:text-white">{{ page.title }}</h3>
-                        <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{{ page.short_summary }}</p>
-                        <span class="mt-4 inline-flex text-sm font-semibold text-slate-950 dark:text-white">View use case &rarr;</span>
-                    </a>
-                {% endfor %}
-            </div>
+                <div class="py-5 sm:px-5 lg:px-6">
+                    <dt class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">REST API</dt>
+                    <dd class="mt-1 text-base/7 text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Predictable endpoints and bearer auth
+                    </dd>
+                </div>
+                <div class="py-5 sm:px-5 lg:px-6">
+                    <dt class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">Stable index</dt>
+                    <dd class="mt-1 text-base/7 text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Business keys or generated rowset_id
+                    </dd>
+                </div>
+                <div class="py-5 sm:px-5 lg:px-6">
+                    <dt class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">Private default</dt>
+                    <dd class="mt-1 text-base/7 text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Public previews only when enabled
+                    </dd>
+                </div>
+                <div class="py-5 sm:px-5 sm:last:pr-0 lg:px-6">
+                    <dt class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">Exports</dt>
+                    <dd class="mt-1 text-base/7 text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        CSV, JSONL, XLSX, SQLite, Parquet
+                    </dd>
+                </div>
+            </dl>
         </div>
     </section>
-    <section id="workflow"
-             class="border-b border-slate-200 bg-[#fbfaf6] dark:border-slate-800 dark:bg-[#0a0b08]">
-        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+    <section class="border-b border-slate-950/10 bg-[#fafaf7] dark:border-white/10 dark:bg-slate-950">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.7fr_1.3fr] lg:px-8">
             <div>
-                <p class="fb-label-caps text-cyan-700 dark:text-cyan-300">Workflow</p>
-                <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white sm:text-4xl">The handoff is small.</h2>
-                <p class="mt-4 max-w-xl leading-7 text-slate-700 dark:text-slate-300">
-                    Sign in, copy the setup prompt, give a trusted agent a bearer key, and let it use Rowset over MCP or REST.
+                <p class="font-mono text-sm/6 font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Setup</p>
+                <h2 class="mt-3 max-w-[35ch] font-display text-4xl font-semibold tracking-tight text-balance text-slate-950 dark:text-white">
+                    Three steps to agent-ready data
+                </h2>
+                <p class="mt-4 max-w-[48ch] text-lg/8 text-pretty text-slate-700 dark:text-slate-300">
+                    The human handoff stays small. The agent owns the row work through authenticated tools.
                 </p>
-                <div class="mt-6 flex flex-wrap gap-3">
+                <div class="mt-6 flex flex-col gap-3 sm:flex-row">
                     <a href="{% url 'docs_page' slug='connect-mcp' %}"
-                       class="fb-button-secondary">MCP access</a>
+                       class="fb-button-secondary">Connect MCP</a>
                     <a href="{% url 'docs_page' slug='dataset-api' %}"
-                       class="fb-button-secondary">Dataset API</a>
+                       class="fb-button-secondary">REST API</a>
                 </div>
             </div>
-            <div class="grid gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 dark:border-white/10 dark:bg-white/10 md:grid-cols-3">
-                <div class="bg-white p-5 dark:bg-slate-950">
-                    <p class="font-mono text-sm text-emerald-700 dark:text-emerald-300">01</p>
-                    <h3 class="mt-3 font-semibold text-slate-950 dark:text-white">Connect</h3>
-                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">The agent stores <code class="font-mono text-xs">ROWSET_API_KEY</code> privately and verifies access.</p>
+            <ol role="list"
+                class="grid gap-px overflow-hidden rounded-lg bg-slate-950/10 dark:bg-white/10 md:grid-cols-3">
+                <li class="bg-white p-5 dark:bg-slate-900">
+                    <p class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">01</p>
+                    <h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Copy the setup prompt</h3>
+                    <p class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Give your agent the MCP URL, REST base URL, dataset rules, and context.
+                    </p>
+                    <div class="mt-5 rounded-md bg-slate-950 p-3 font-mono text-sm/6 text-slate-100">
+                        <p>ROWSET_API_KEY</p>
+                        <p class="text-slate-400">stored privately</p>
+                    </div>
+                </li>
+                <li class="bg-white p-5 dark:bg-slate-900">
+                    <p class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">02</p>
+                    <h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Authorize with a bearer key</h3>
+                    <p class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Keys stay scoped to your account. The agent verifies access before creating data.
+                    </p>
+                    <div class="mt-5 rounded-md border border-slate-950/10 bg-[#fafaf7] p-3 font-mono text-sm/6 text-slate-700 dark:border-white/10 dark:bg-slate-950 dark:text-slate-300">
+                        Authorization: Bearer
+                    </div>
+                </li>
+                <li class="bg-white p-5 dark:bg-slate-900">
+                    <p class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">03</p>
+                    <h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Let the agent manage rows</h3>
+                    <p class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        It creates datasets, updates rows by stable keys, exports snapshots, and keeps previews explicit.
+                    </p>
+                    <div class="mt-5 grid gap-2 font-mono text-sm/6 text-slate-700 dark:text-slate-300">
+                        <span>create_row</span>
+                        <span>update_row</span>
+                        <span>export_dataset</span>
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </section>
+    <section class="border-b border-slate-950/10 bg-white dark:border-white/10 dark:bg-slate-950">
+        <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <div class="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
+                <div>
+                    <p class="font-mono text-sm/6 font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Operational layer</p>
+                    <h2 class="mt-3 max-w-[35ch] font-display text-4xl font-semibold tracking-tight text-balance text-slate-950 dark:text-white">
+                        From file to API-backed rows
+                    </h2>
                 </div>
-                <div class="bg-white p-5 dark:bg-slate-950">
-                    <p class="font-mono text-sm text-cyan-700 dark:text-cyan-300">02</p>
-                    <h3 class="mt-3 font-semibold text-slate-950 dark:text-white">Create</h3>
-                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">It creates datasets with headers, an index column, and useful context.</p>
+                <p class="max-w-[56ch] text-lg/8 text-pretty text-slate-700 dark:text-slate-300">
+                    Rowset does not need to own source connectors. Your agent can read local files, sheets, databases, or exports with its own tools, then write the structured working set to Rowset.
+                </p>
+            </div>
+            <div class="mt-10 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:items-stretch">
+                <div class="rounded-lg border border-slate-950/10 bg-[#fafaf7] p-5 dark:border-white/10 dark:bg-slate-900">
+                    <p class="font-mono text-sm/6 font-semibold text-slate-500 dark:text-slate-400">customers.csv</p>
+                    <div class="mt-4 grid gap-2 font-mono text-sm/6 text-slate-700 dark:text-slate-300">
+                        <span>email, plan, status, signup_date</span>
+                        <span>ana@acme.co, pro, active</span>
+                        <span>dev@orbit.dev, team, blocked</span>
+                    </div>
+                    <p class="mt-5 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        The source can stay wherever it belongs.
+                    </p>
                 </div>
-                <div class="bg-white p-5 dark:bg-slate-950">
-                    <p class="font-mono text-sm text-amber-700 dark:text-amber-300">03</p>
-                    <h3 class="mt-3 font-semibold text-slate-950 dark:text-white">Operate</h3>
-                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">It reads, updates, exports, and shares rows inside your account boundary.</p>
+                <div class="hidden items-center font-mono text-sm font-semibold text-emerald-700 dark:text-emerald-300 lg:flex">-&gt;</div>
+                <div class="rounded-lg border border-slate-950/10 bg-white p-5 dark:border-white/10 dark:bg-slate-900">
+                    <p class="font-mono text-sm/6 font-semibold text-slate-500 dark:text-slate-400">Agent instruction</p>
+                    <div class="mt-4 rounded-md bg-slate-950 p-4 font-mono text-sm/6 text-slate-100">
+                        <p>Maintain customer_events.</p>
+                        <p class="text-slate-400">Add new customers.</p>
+                        <p class="text-slate-400">Update plan changes.</p>
+                        <p class="text-slate-400">Export weekly.</p>
+                    </div>
+                    <p class="mt-5 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        The agent translates context into stable row operations.
+                    </p>
+                </div>
+                <div class="hidden items-center font-mono text-sm font-semibold text-emerald-700 dark:text-emerald-300 lg:flex">-&gt;</div>
+                <div class="rounded-lg border border-slate-950/10 bg-[#fafaf7] p-5 dark:border-white/10 dark:bg-slate-900">
+                    <p class="font-mono text-sm/6 font-semibold text-slate-500 dark:text-slate-400">Rowset dataset</p>
+                    <dl class="mt-4 grid gap-3 text-sm/6">
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-950/10 pb-3 dark:border-white/10">
+                            <dt class="text-slate-500 dark:text-slate-400">Rows</dt>
+                            <dd class="font-mono text-slate-950 dark:text-white">
+                                5,231
+                            </dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-950/10 pb-3 dark:border-white/10">
+                            <dt class="text-slate-500 dark:text-slate-400">Index</dt>
+                            <dd class="font-mono text-slate-950 dark:text-white">
+                                stable_index
+                            </dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500 dark:text-slate-400">Access</dt>
+                            <dd class="font-mono text-slate-950 dark:text-white">
+                                MCP + REST
+                            </dd>
+                        </div>
+                    </dl>
+                    <p class="mt-5 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Rowset returns consistent, queryable rows.
+                    </p>
                 </div>
             </div>
         </div>
     </section>
-    <section class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_1fr] lg:px-8">
+    <section class="border-b border-slate-950/10 bg-[#fafaf7] dark:border-white/10 dark:bg-slate-950">
+        <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.72fr_1.28fr] lg:px-8">
             <div>
-                <p class="fb-label-caps text-amber-700 dark:text-amber-300">Why Rowset</p>
-                <h2 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white sm:text-4xl">Agents need state, not another fixed app.</h2>
+                <p class="font-mono text-sm/6 font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Why Rowset</p>
+                <h2 class="mt-3 max-w-[35ch] font-display text-4xl font-semibold tracking-tight text-balance text-slate-950 dark:text-white">
+                    Agents need state, not another fixed app
+                </h2>
+                <p class="mt-4 max-w-[48ch] text-lg/8 text-pretty text-slate-700 dark:text-slate-300">
+                    A dataset is enough structure for an agent to keep working without making a human operate a spreadsheet or build a backend first.
+                </p>
             </div>
-            <div class="grid gap-5 sm:grid-cols-2">
+            <dl class="grid gap-x-8 gap-y-8 sm:grid-cols-2">
                 <div>
-                    <h3 class="font-semibold text-slate-950 dark:text-white">Shape changes by job</h3>
-                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">The agent can create a better dataset when the workflow changes.</p>
+                    <dt class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Shape changes by job</dt>
+                    <dd class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        The agent creates headers, instructions, metadata, and schema details that fit the workflow.
+                    </dd>
                 </div>
                 <div>
-                    <h3 class="font-semibold text-slate-950 dark:text-white">Machine-readable truth</h3>
-                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Keys, headers, types, metadata, and URLs stay explicit.</p>
+                    <dt class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Indexes stay explicit</dt>
+                    <dd class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Use a business key when one exists. Use rowset_id when the source has no stable identifier.
+                    </dd>
                 </div>
                 <div>
-                    <h3 class="font-semibold text-slate-950 dark:text-white">Human control surface</h3>
-                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">The dashboard is for setup, review, exports, and previews.</p>
+                    <dt class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Humans keep control</dt>
+                    <dd class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        The dashboard is for setup, current state, exports, settings, and public preview review.
+                    </dd>
                 </div>
                 <div>
-                    <h3 class="font-semibold text-slate-950 dark:text-white">No public scraping path</h3>
-                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">Private MCP and REST access stay separate from public previews.</p>
+                    <dt class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Private path stays private</dt>
+                    <dd class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        MCP and REST stay authenticated. Public previews are read-only browser sharing, not an auth shortcut.
+                    </dd>
+                </div>
+            </dl>
+        </div>
+    </section>
+    <section class="border-b border-slate-950/10 bg-white dark:border-white/10 dark:bg-slate-950"
+             aria-labelledby="comparison-heading">
+        <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <div class="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
+                <div>
+                    <p class="font-mono text-sm/6 font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Decision</p>
+                    <h2 id="comparison-heading"
+                        class="mt-3 max-w-[35ch] font-display text-4xl font-semibold tracking-tight text-balance text-slate-950 dark:text-white">
+                        Why not a spreadsheet or custom backend?
+                    </h2>
+                </div>
+                <p class="max-w-[56ch] text-lg/8 text-pretty text-slate-700 dark:text-slate-300">
+                    Spreadsheets are easy to inspect but awkward for agents to mutate safely. Custom backends are durable but slow to build for a new workflow. Rowset sits in the middle.
+                </p>
+            </div>
+            <div class="-mx-4 -my-2 mt-8 overflow-x-auto whitespace-nowrap sm:-mx-6 lg:-mx-8">
+                <div class="inline-block min-w-full px-4 py-2 align-middle sm:px-6 lg:px-8">
+                    <table class="w-full text-left text-sm">
+                        <caption class="sr-only">
+                            Comparison between spreadsheets, custom backends, and Rowset
+                        </caption>
+                        <thead>
+                            <tr class="border-b border-slate-950/15 text-slate-950 dark:border-white/15 dark:text-white">
+                                <th scope="col" class="whitespace-nowrap py-3 pr-4 font-semibold">Capability</th>
+                                <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold">Spreadsheet</th>
+                                <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold">Custom backend</th>
+                                <th scope="col" class="whitespace-nowrap py-3 pl-4 font-semibold">Rowset</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-slate-950/10 dark:border-white/10">
+                                <th scope="row"
+                                    class="py-4 pr-4 font-medium text-slate-950 dark:text-white">Agent-native MCP and REST</th>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Manual</td>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Weeks of work</td>
+                                <td class="py-4 pl-4 text-emerald-700 dark:text-emerald-300">Production-ready</td>
+                            </tr>
+                            <tr class="border-b border-slate-950/10 dark:border-white/10">
+                                <th scope="row"
+                                    class="py-4 pr-4 font-medium text-slate-950 dark:text-white">Stable row handles</th>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Easy to break</td>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Custom to build</td>
+                                <td class="py-4 pl-4 text-emerald-700 dark:text-emerald-300">Built in</td>
+                            </tr>
+                            <tr class="border-b border-slate-950/10 dark:border-white/10">
+                                <th scope="row"
+                                    class="py-4 pr-4 font-medium text-slate-950 dark:text-white">Private authenticated writes</th>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Limited or manual</td>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Complex to implement</td>
+                                <td class="py-4 pl-4 text-emerald-700 dark:text-emerald-300">Bearer-key access</td>
+                            </tr>
+                            <tr class="border-b border-slate-950/10 dark:border-white/10">
+                                <th scope="row"
+                                    class="py-4 pr-4 font-medium text-slate-950 dark:text-white">Exports for handoff</th>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Manual</td>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Custom pipeline</td>
+                                <td class="py-4 pl-4 text-emerald-700 dark:text-emerald-300">CSV, JSONL, XLSX, SQLite, Parquet</td>
+                            </tr>
+                            <tr>
+                                <th scope="row"
+                                    class="py-4 pr-4 font-medium text-slate-950 dark:text-white">Human review preview</th>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Links and permissions</td>
+                                <td class="px-4 py-4 text-slate-700 dark:text-slate-300">Custom to implement</td>
+                                <td class="py-4 pl-4 text-emerald-700 dark:text-emerald-300">Optional and read-only</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </section>
-    <section class="bg-[#f7faf8] dark:bg-[#050807]">
-        <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-            <div>
-                <h2 class="text-3xl font-semibold text-slate-950 dark:text-white">Give your next agent workflow a real backend.</h2>
-                <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-700 dark:text-slate-300">Create an account, connect a trusted agent, and let it manage structured rows.</p>
+    <section class="border-b border-slate-950/10 bg-[#fafaf7] dark:border-white/10 dark:bg-slate-950">
+        <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <div class="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
+                <div>
+                    <p class="font-mono text-sm/6 font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Use cases</p>
+                    <h2 class="mt-3 max-w-[35ch] font-display text-4xl font-semibold tracking-tight text-balance text-slate-950 dark:text-white">
+                        Workflow-shaped datasets
+                    </h2>
+                </div>
+                <p class="max-w-[56ch] text-lg/8 text-pretty text-slate-700 dark:text-slate-300">
+                    Start with one row shape the agent can maintain without guessing. Expand when the workflow proves useful.
+                </p>
             </div>
-            <div class="flex flex-col gap-3 sm:flex-row">
-                <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
-                <a href="{% url 'docs_page' slug='configure-agent-access' %}"
-                   class="fb-button-secondary">View setup guide</a>
+            <div class="mt-10 grid gap-4 md:grid-cols-3">
+                <a href="{% url 'use_case_page' slug='agent-task-board' %}"
+                   class="fb-focus rounded-lg border border-slate-950/10 bg-white p-5 hover:border-emerald-600/50 dark:border-white/10 dark:bg-slate-900 dark:hover:border-emerald-400/50">
+                    <p class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">task_id</p>
+                    <h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Agent task board</h3>
+                    <p class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Shared task state across agent sessions, owners, blockers, and completion evidence.
+                    </p>
+                </a>
+                <a href="{% url 'use_case_page' slug='feedback-triage' %}"
+                   class="fb-focus rounded-lg border border-slate-950/10 bg-white p-5 hover:border-emerald-600/50 dark:border-white/10 dark:bg-slate-900 dark:hover:border-emerald-400/50">
+                    <p class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">feedback_id</p>
+                    <h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Feedback triage</h3>
+                    <p class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Deduplicate signals, preserve source links, assign themes, and export accepted rows.
+                    </p>
+                </a>
+                <a href="{% url 'use_case_page' slug='personal-crm' %}"
+                   class="fb-focus rounded-lg border border-slate-950/10 bg-white p-5 hover:border-emerald-600/50 dark:border-white/10 dark:bg-slate-900 dark:hover:border-emerald-400/50">
+                    <p class="font-mono text-sm/6 font-semibold text-emerald-700 dark:text-emerald-300">email</p>
+                    <h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Personal CRM</h3>
+                    <p class="mt-3 text-base/7 text-pretty text-slate-700 dark:text-slate-300 sm:text-sm/6">
+                        Let an agent keep follow-ups, relationship state, notes, and stale-contact reviews current.
+                    </p>
+                </a>
+            </div>
+            <div class="mt-8">
+                <a href="{% url 'use_cases' %}" class="fb-button-secondary">Browse use cases</a>
+            </div>
+        </div>
+    </section>
+    <section class="bg-slate-950 text-white">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-center lg:px-8">
+            <div>
+                <p class="font-mono text-sm/6 font-semibold uppercase tracking-wide text-emerald-300">Start with one dataset</p>
+                <h2 class="mt-3 max-w-[35ch] font-display text-4xl font-semibold tracking-tight text-balance">
+                    Give your next agent workflow a real backend
+                </h2>
+                <p class="mt-4 max-w-[48ch] text-lg/8 text-pretty text-slate-300">
+                    Create an account, connect a trusted agent, and let it manage structured rows through MCP or REST.
+                </p>
+                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <a href="{% url 'account_signup' %}"
+                       class="fb-focus inline-flex min-h-10 items-center justify-center rounded-md border border-emerald-300/40 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-300/10">Start free</a>
+                    <a href="{% url 'docs_page' slug='configure-agent-access' %}"
+                       class="fb-focus inline-flex min-h-10 items-center justify-center rounded-md border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">View setup guide</a>
+                </div>
+            </div>
+            <div class="rounded-lg border border-white/10 bg-white/5 p-5">
+                <div class="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    <p class="font-mono text-sm/6 text-slate-300">codex mcp add rowset</p>
+                    <span class="rounded-md bg-emerald-400/10 px-2 py-1 text-sm font-semibold text-emerald-200">ready</span>
+                </div>
+                <div class="mt-4 overflow-x-auto whitespace-nowrap rounded-md bg-black/30 p-4 font-mono text-sm/6 text-slate-100">
+                    <p>--url https://app.rowset.com/mcp/</p>
+                    <p class="text-slate-400">--bearer-token-env-var ROWSET_API_KEY</p>
+                </div>
+                <dl class="mt-5 grid gap-4 text-sm/6 sm:grid-cols-3">
+                    <div>
+                        <dt class="text-slate-400">First tool</dt>
+                        <dd class="mt-1 font-mono text-slate-100">
+                            get_user_info
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-slate-400">First dataset</dt>
+                        <dd class="mt-1 font-mono text-slate-100">
+                            create_dataset
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-slate-400">First handoff</dt>
+                        <dd class="mt-1 font-mono text-slate-100">
+                            export_dataset
+                        </dd>
+                    </div>
+                </dl>
             </div>
         </div>
     </section>
