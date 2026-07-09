@@ -79,6 +79,8 @@ per user per project. Sheets is excellent for ad hoc human work, but an agent
 doing repeated stateful writes needs more than a familiar grid. If your
 workflow currently lives in Sheets, use the companion guide to [Google Sheets
 alternatives for AI-agent-managed datasets](/blog/google-sheets-alternatives).
+If you are specifically comparing open-source Airtable-style tools, read
+[Baserow alternatives for AI-agent-managed datasets](/blog/baserow-alternatives).
 
 ## What an AI-agent dataset backend needs
 
@@ -202,6 +204,8 @@ work with a self-hosted no-code database. Rowset is narrower. It is a better fit
 when you do not want the overhead of an app-builder workspace and only need a
 private agent dataset with MCP/REST access, schema, instructions, and review
 controls.
+For the narrower Baserow decision, read the guide to
+[Baserow alternatives for trusted agents](/blog/baserow-alternatives).
 
 ### 4. NocoDB
 

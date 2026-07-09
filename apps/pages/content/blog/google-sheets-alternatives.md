@@ -195,6 +195,8 @@ docs describe REST APIs for database operations with token-based authentication
 Choose Baserow if your priority is open source, self-hosting, a no-code
 database UI, or app-builder workflows. Choose Rowset if you do not need a whole
 workspace and only want hosted MCP/REST datasets for trusted agents.
+For that narrower open-source database comparison, read
+[Baserow alternatives for AI-agent-managed datasets](/blog/baserow-alternatives).
 
 ### 5. NocoDB
 
