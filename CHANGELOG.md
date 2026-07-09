@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-09
+
+### Added
+- Added the Baserow alternatives article for AI-agent-managed datasets, with a verified SEO brief and inbound links from related blog/docs pages.
+
 ## 2026-07-08
 
 ### Added

@@ -115,6 +115,8 @@ database credentials, permissions, query cost, and schema safety.
 Rowset is narrower. Use it when the agent needs its own private dataset backend
 for task boards, CRMs, feedback queues, catalogs, QA trackers, content
 pipelines, or similar structured row workflows.
+If you are comparing Rowset with open-source database workspaces, read
+[Baserow alternatives for AI-agent-managed datasets](/blog/baserow-alternatives).
 
 Read [Database MCP server: when to use Rowset instead](/docs/database-mcp-server/)
 for the longer decision guide.
