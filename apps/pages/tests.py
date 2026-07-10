@@ -131,15 +131,16 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Agent setup prompt" not in content
     assert "Rowset MCP URL:" not in content
     assert "Rowset skill install:" not in content
-    assert "Give AI agents a place to put structured work." in content
-    assert "One backend. Many agent workflows." in content
-    assert "Agent CRM" in content
-    assert "Content pipeline" in content
-    assert "Bug and QA tracker" in content
+    assert "Agent-native data backend" in content
+    assert "Dataset backends for AI agents" in content
+    assert "Three steps to agent-ready data" in content
+    assert "Agent task board" in content
+    assert "Feedback triage" in content
+    assert "Personal CRM" in content
     assert reverse("use_cases") in content
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
-    assert reverse("blog_post", kwargs={"slug": "airtable-alternatives"}) in content
+    assert reverse("docs_page", kwargs={"slug": "configure-agent-access"}) in content
     assert '"@type": "SoftwareApplication"' in content
     assert '"@type": "Organization"' in content
 
