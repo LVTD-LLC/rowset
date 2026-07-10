@@ -226,7 +226,6 @@ def handle_deleted_subscription(event):
 
 
 def handle_checkout_completed(event):
-    logger.info("handle_checkout_completed webhook received", event_id=event.get("id"))
     event_id = event.get("id")
     checkout_data = event["data"]["object"]
     customer_id = checkout_data.get("customer")
@@ -239,14 +238,14 @@ def handle_checkout_completed(event):
     price_id = metadata.get("price_id")
 
     logger.info(
-        "Checkout session completed",
+        "stripe.checkout.completed",
         webhook="handle_checkout_completed",
         event_id=event_id,
         checkout_id=checkout_id,
         customer_id=customer_id,
         payment_status=payment_status,
         mode=mode,
-        metadata=metadata,
+        metadata_count=len(metadata),
     )
 
     if payment_status != "paid":
@@ -296,7 +295,7 @@ def handle_checkout_completed(event):
             checkout_id=checkout_id,
             amount=amount_total,
             currency=currency,
-            metadata=metadata,
+            metadata_count=len(metadata),
         )
     else:
         logger.info(

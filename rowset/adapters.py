@@ -8,9 +8,6 @@ from django.contrib.auth import get_user_model
 
 from apps.core.choices import EmailType
 from apps.core.utils import send_transactional_email
-from rowset.utils import get_rowset_logger
-
-logger = get_rowset_logger(__name__)
 
 User = get_user_model()
 
@@ -47,15 +44,7 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             "user_id": emailconfirmation.email_address.user.id,
         }
 
-        logger.info(
-            "[Send Confirmation Mail] Sending email",
-            signup=signup,
-            email_type=email_type,
-            user_id=emailconfirmation.email_address.user.id,
-            email=email_address,
-        )
-
-        success = send_transactional_email(
+        send_transactional_email(
             lambda: super(CustomAccountAdapter, self).send_confirmation_mail(
                 request,
                 emailconfirmation,
@@ -66,15 +55,6 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             profile=profile,
             context=context,
         )
-
-        if not success:
-            logger.warning(
-                "[Send Confirmation Mail] Email send failed after retries",
-                signup=signup,
-                email_type=email_type,
-                user_id=emailconfirmation.email_address.user.id,
-                email=email_address,
-            )
 
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):

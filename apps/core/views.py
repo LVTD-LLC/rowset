@@ -436,18 +436,20 @@ def resend_confirmation_email(request):
         if not email_address:
             messages.error(request, "No email address found for your account.")
             logger.warning(
-                "[Resend Confirmation] No email address found",
+                "email.confirmation.completed",
                 user_id=user.id,
-                user_email=user.email,
+                outcome="skipped",
+                reason="address_missing",
             )
             return redirect("settings")
 
         if email_address.verified:
             messages.info(request, "Your email is already verified.")
             logger.info(
-                "[Resend Confirmation] Email already verified",
+                "email.confirmation.completed",
                 user_id=user.id,
-                user_email=user.email,
+                outcome="skipped",
+                reason="already_verified",
             )
             return redirect("settings")
 
@@ -460,18 +462,18 @@ def resend_confirmation_email(request):
             return redirect("settings")
 
         logger.info(
-            "[Resend Confirmation] Email sent successfully",
+            "email.confirmation.completed",
             user_id=user.id,
-            user_email=user.email,
+            outcome="success",
         )
 
-    except Exception as e:
+    except Exception as exc:
         messages.error(request, "Failed to send confirmation email. Please try again later.")
         logger.error(
-            "[Resend Confirmation] Failed to send email",
+            "email.confirmation.completed",
             user_id=user.id,
-            user_email=user.email,
-            error=str(e),
+            outcome="failure",
+            error_type=type(exc).__name__,
             exc_info=True,
         )
 
@@ -520,7 +522,7 @@ def create_checkout_session(request, pk, plan):
         logger.error(
             "Stripe customer setup failed",
             profile_id=profile.id,
-            error=str(exc),
+            error_type=type(exc).__name__,
         )
         messages.error(request, "Unable to start checkout. Please try again.")
         return redirect("pricing")
@@ -571,7 +573,7 @@ def create_checkout_session(request, pk, plan):
             "Stripe checkout session creation failed",
             profile_id=profile.id,
             plan=plan,
-            error=str(exc),
+            error_type=type(exc).__name__,
         )
         messages.error(request, "Unable to start checkout. Please try again.")
         return redirect("pricing")
@@ -598,7 +600,7 @@ def create_customer_portal_session(request):
             "Stripe portal session creation failed",
             profile_id=profile.id,
             stripe_customer_id=profile.stripe_customer_id,
-            error=str(exc),
+            error_type=type(exc).__name__,
         )
         messages.error(request, "Unable to open the billing portal. Please try again.")
         return redirect("pricing")
@@ -698,7 +700,6 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
 
         logger.info(
             "Admin panel accessed",
-            email=self.request.user.email,
             profile_id=self.request.user.profile.id,
         )
 
@@ -723,7 +724,7 @@ def get_or_create_stripe_customer(profile, user):
                 "Stripe customer lookup failed",
                 profile_id=profile.id,
                 stripe_customer_id=profile.stripe_customer_id,
-                error=str(exc),
+                error_type=type(exc).__name__,
             )
 
     customer = stripe.Customer.create(
@@ -739,8 +740,6 @@ def get_or_create_stripe_customer(profile, user):
 
 @csrf_exempt
 def stripe_webhook(request):
-    logger.info("Stripe webhook received", request=request)
-
     if request.method != "POST":
         return HttpResponse(status=405)
 

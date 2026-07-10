@@ -318,11 +318,11 @@ def render_content_page(request, section_slug, page_slug):
         }
 
         return render(request, "pages/content/page.html", context)
-    except Exception as e:
+    except Exception as exc:
         logger.error(
             "Error loading content page",
             section=section_slug,
             page=page_slug,
-            error=str(e),
+            error_type=type(exc).__name__,
         )
-        raise Http404("Content page not found") from e
+        raise Http404("Content page not found") from exc

@@ -97,7 +97,7 @@ def delete_dataset_row_vectors(dataset_id: int, row_ids: list[int]) -> None:
         logger.info(
             "Skipping vector row deletion for missing dataset",
             dataset_id=dataset_id,
-            row_ids=row_ids,
+            row_count=len(row_ids),
         )
         return
 
@@ -107,7 +107,7 @@ def delete_dataset_row_vectors(dataset_id: int, row_ids: list[int]) -> None:
         logger.exception(
             "Vector row deletion failed",
             dataset_id=dataset_id,
-            row_ids=row_ids,
+            row_count=len(row_ids),
         )
     else:
         logger.info(

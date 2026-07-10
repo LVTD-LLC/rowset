@@ -115,7 +115,7 @@ def _load_skill_markdown(
         logger.warning(
             "Rowset skill file could not be loaded",
             path=str(path),
-            error=str(exc),
+            error_type=type(exc).__name__,
         )
         return _build_skill_fallback_markdown(
             skill_name=fallback_skill_name,

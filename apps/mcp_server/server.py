@@ -165,7 +165,11 @@ def _get_access_token_profile() -> Profile | None:
     try:
         profile = Profile.objects.select_related("user").get(id=profile_identifier)
     except (Profile.DoesNotExist, ValueError) as exc:
-        logger.warning("[MCP] API-key token profile could not be resolved", error=str(exc))
+        logger.warning(
+            "mcp.authentication.denied",
+            error_type=type(exc).__name__,
+            reason="profile_unresolved",
+        )
         return None
 
     agent_api_key = None
@@ -179,8 +183,9 @@ def _get_access_token_profile() -> Profile | None:
             )
         except (AgentApiKey.DoesNotExist, ValueError) as exc:
             logger.warning(
-                "[MCP] OAuth token agent API key could not be resolved",
-                error=str(exc),
+                "mcp.authentication.denied",
+                error_type=type(exc).__name__,
+                reason="agent_api_key_unresolved",
                 agent_api_key_id=agent_api_key_id,
                 profile_id=profile.id,
             )

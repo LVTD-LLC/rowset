@@ -268,10 +268,10 @@ def healthcheck(request: HttpRequest):
             cursor.execute("SELECT 1")
             cursor.fetchone()
         checks["database"] = True
-    except Exception as e:
+    except Exception as exc:
         logger.error(
             "Healthcheck failed: Database connection error",
-            error=str(e),
+            error_type=type(exc).__name__,
             exc_info=True,
         )
 
@@ -290,10 +290,10 @@ def healthcheck(request: HttpRequest):
                 expected=cache_value,
                 retrieved=retrieved_value,
             )
-    except Exception as e:
+    except Exception as exc:
         logger.error(
             "Healthcheck failed: Redis connection error",
-            error=str(e),
+            error_type=type(exc).__name__,
             exc_info=True,
         )
 
@@ -335,8 +335,12 @@ def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
         }
     except ValueError as exc:
         return {"success": False, "message": str(exc)}
-    except Exception as e:
-        logger.error("Failed to submit feedback", error=str(e), profile_id=profile.id)
+    except Exception as exc:
+        logger.error(
+            "Failed to submit feedback",
+            error_type=type(exc).__name__,
+            profile_id=profile.id,
+        )
         return {"success": False, "message": "Failed to submit feedback. Please try again."}
 
 
@@ -468,14 +472,14 @@ def user_settings(request: HttpRequest):
         data = {"profile": profile_data}
 
         return data
-    except Exception as e:
+    except Exception as exc:
         logger.error(
             "Error fetching user settings",
-            error=str(e),
+            error_type=type(exc).__name__,
             profile_id=profile.id,
             exc_info=True,
         )
-        raise HttpError(500, "An unexpected error occurred.") from e
+        raise HttpError(500, "An unexpected error occurred.") from exc
 
 
 @api.get(
