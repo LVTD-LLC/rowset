@@ -25,9 +25,8 @@
   - [Database configuration](#database-configuration)
   - [Redis configuration](#redis-configuration)
 - [Optional variables](#optional-variables)
-  - [Logfire (Monitoring)](#logfire-monitoring)
   - [Sentry (Error Tracking)](#sentry-error-tracking)
-  - [PostHog (Analytics)](#posthog-analytics)
+  - [PostHog (Analytics and Logs)](#posthog-analytics-and-logs)
   - [Chatwoot (Support Chat)](#chatwoot-support-chat)
   - [Buttondown (Email Newsletter)](#buttondown-email-newsletter)
   - [Stripe (Payments)](#stripe-payments)
@@ -348,14 +347,6 @@ These variables are essential for Rowset to function:
 
 These variables enhance functionality but aren't required:
 
-### Logfire (Monitoring)
-
-**LOGFIRE_TOKEN**
-- Token for Logfire monitoring service
-- Get your token from [Logfire](https://logfire.dev/)
-- Used for application monitoring and logging
-- Leave empty to disable Logfire
-
 ### Sentry (Error Tracking)
 
 **SENTRY_DSN**
@@ -396,13 +387,29 @@ These variables enhance functionality but aren't required:
 - Number of breadcrumbs kept with each event
 - Defaults to `100`
 
-### PostHog (Analytics)
+### PostHog (Analytics and Logs)
 
 **POSTHOG_API_KEY**
-- API key for PostHog analytics
+- PostHog project token beginning with `phc_`
 - Get your key from [PostHog](https://posthog.com/)
-- Used for product analytics and feature flags
+- Used for product analytics, feature flags, and OTLP log ingestion
 - Leave empty to disable PostHog
+
+**POSTHOG_HOST**
+- Regional PostHog ingestion host
+- Defaults to `https://us.i.posthog.com`; use `https://eu.i.posthog.com` for EU Cloud
+
+**POSTHOG_LOGS_ENABLED**
+- Enables batched OpenTelemetry log export
+- Defaults to enabled in production when `POSTHOG_API_KEY` is configured
+
+**POSTHOG_LOG_LEVEL**
+- Minimum log level exported to PostHog
+- Defaults to `INFO`
+
+**POSTHOG_SERVICE_NAME**
+- Optional service name used by PostHog's OpenTelemetry service facet
+- Defaults to `rowset-web` or `rowset-worker`
 
 ### Chatwoot (Support Chat)
 

@@ -17,9 +17,11 @@ class CoreConfig(AppConfig):
 
         import apps.core.stripe_webhooks  # noqa
 
+        import rowset.task_logging  # noqa: F401
+
         if settings.POSTHOG_API_KEY:
             posthog.api_key = settings.POSTHOG_API_KEY
-            posthog.host = "https://us.i.posthog.com"
+            posthog.host = settings.POSTHOG_HOST
 
         if settings.ENVIRONMENT == "dev":
             posthog.debug = True

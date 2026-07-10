@@ -15,7 +15,7 @@
   static assets.
 - Local containers: Docker Compose with Postgres, Redis, backend, workers,
   frontend Node 24, Mailhog, Stripe CLI, MJML, and MinIO.
-- Observability/integrations: Sentry, Logfire, PostHog, Chatwoot, Mailgun,
+- Observability/integrations: Sentry, PostHog, Chatwoot, Mailgun,
   Buttondown, Stripe, S3-compatible storage.
 
 ## Commands

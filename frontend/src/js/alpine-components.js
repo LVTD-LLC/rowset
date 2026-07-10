@@ -144,7 +144,10 @@
         try {
           const response = await fetch(url, {
             credentials: "same-origin",
-            headers: { Accept: "application/json" },
+            headers: {
+              Accept: "application/json",
+              ...Rowset.posthogSessionHeaders(),
+            },
           });
           if (!response.ok) {
             return "";
@@ -494,6 +497,7 @@
             headers: {
               "Content-Type": "application/json",
               "X-CSRFToken": csrfToken(),
+              ...Rowset.posthogSessionHeaders(),
             },
             body: JSON.stringify({ feedback, page: window.location.pathname }),
           });

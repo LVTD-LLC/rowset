@@ -47,8 +47,8 @@ class DivErrorList(ErrorList):
 def ping_healthchecks(ping_id):
     try:
         requests.get(f"https://healthchecks.cr.lvtd.dev/ping/{ping_id}", timeout=10)
-    except requests.RequestException as e:
-        logger.error("Ping failed", error=e, exc_info=True)
+    except requests.RequestException as exc:
+        logger.error("healthcheck.ping.failed", error_type=type(exc).__name__, exc_info=True)
 
 
 def get_email_delivery_provider() -> str:
@@ -77,14 +77,15 @@ def is_transient_email_error(error: Exception) -> bool:
     return isinstance(error, transient_types)
 
 
-def bump_email_delivery_metric(*, email_type: EmailType, provider: str, outcome: str) -> None:
-    metric_key = f"{email_type}:{provider}:{outcome}"
+def bump_email_delivery_metric(*, email_type: EmailType, provider: str, status: str) -> None:
+    metric_key = f"{email_type}:{provider}:{status}"
     EMAIL_DELIVERY_METRICS[metric_key] += 1
     logger.info(
         "email_delivery_metric",
         email_type=email_type,
         provider=provider,
-        outcome=outcome,
+        outcome="success" if status == "success" else "failure",
+        **{"email.delivery.status": status},
         metric_name="email_delivery_total",
         metric_value=EMAIL_DELIVERY_METRICS[metric_key],
     )
@@ -101,19 +102,20 @@ def track_email_sent(email_address: str, email_type: EmailType, profile: Profile
             email_address=email_address, email_type=email_type, profile=profile
         )
         logger.info(
-            "[Track Email Sent] Email tracked successfully",
-            email_address=email_address,
+            "email.tracking.completed",
             email_type=email_type,
             profile_id=profile.id if profile else None,
             email_sent_id=email_sent.id,
+            outcome="success",
         )
         return email_sent
-    except Exception as e:
+    except Exception as exc:
         logger.error(
-            "[Track Email Sent] Failed to track email",
-            email_address=email_address,
+            "email.tracking.completed",
             email_type=email_type,
-            error=str(e),
+            profile_id=profile.id if profile else None,
+            outcome="failure",
+            error_type=type(exc).__name__,
             exc_info=True,
         )
         return None
@@ -144,44 +146,45 @@ def send_transactional_email(
             bump_email_delivery_metric(
                 email_type=email_type,
                 provider=provider,
-                outcome="success",
+                status="success",
             )
             logger.info(
-                "email_delivery",
+                "email.delivery.completed",
                 email_type=email_type,
-                email_address=email_address,
                 provider=provider,
                 outcome="success",
+                **{"email.delivery.status": "sent"},
                 attempt=attempt,
                 max_attempts=max_attempts,
                 profile_id=profile.id if profile else None,
-                context=context,
+                flow=str(context.get("flow") or ""),
+                user_id=context.get("user_id"),
             )
             return True
         except Exception as error:
             transient = is_transient_email_error(error)
             should_retry = transient and attempt < max_attempts
-            outcome = "retrying" if should_retry else "failed"
+            delivery_status = "retrying" if should_retry else "failed"
 
             bump_email_delivery_metric(
                 email_type=email_type,
                 provider=provider,
-                outcome=outcome,
+                status=delivery_status,
             )
             log_method = logger.warning if transient else logger.error
             log_method(
-                "email_delivery",
+                "email.delivery.completed",
                 email_type=email_type,
-                email_address=email_address,
                 provider=provider,
-                outcome=outcome,
+                outcome="failure",
+                **{"email.delivery.status": delivery_status},
                 attempt=attempt,
                 max_attempts=max_attempts,
-                error_class=error.__class__.__name__,
-                error=str(error),
+                error_type=type(error).__name__,
                 transient=transient,
                 profile_id=profile.id if profile else None,
-                context=context,
+                flow=str(context.get("flow") or ""),
+                user_id=context.get("user_id"),
                 exc_info=not should_retry,
             )
 

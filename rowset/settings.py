@@ -12,10 +12,10 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import logging
 import os
+import sys
 from pathlib import Path
 
 import environ
-import logfire
 import sentry_sdk
 import structlog
 from django.core.exceptions import ImproperlyConfigured
@@ -23,7 +23,6 @@ from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from structlog_sentry import SentryProcessor
 
-from rowset.logging_utils import scrubbing_callback
 from rowset.sentry_metrics import install_sentry_metrics_middleware
 from rowset.sentry_utils import CustomLoggingIntegration, before_send
 
@@ -49,13 +48,6 @@ def _split_env_urls(value: str) -> tuple[str, ...]:
 # Options: dev, prod
 ENVIRONMENT = env("ENVIRONMENT")
 
-LOGFIRE_TOKEN = env("LOGFIRE_TOKEN", default="")
-if LOGFIRE_TOKEN:
-    logfire.configure(
-        environment=ENVIRONMENT,
-        scrubbing=logfire.ScrubbingOptions(callback=scrubbing_callback),
-    )
-
 SENTRY_DSN = env("SENTRY_DSN", default="")
 SENTRY_RELEASE = env("SENTRY_RELEASE", default="")
 SENTRY_TRACES_SAMPLE_RATE = env.float("SENTRY_TRACES_SAMPLE_RATE", default=1.0)
@@ -65,6 +57,25 @@ SENTRY_ENABLE_METRICS = env.bool("SENTRY_ENABLE_METRICS", default=True)
 SENTRY_SEND_DEFAULT_PII = env.bool("SENTRY_SEND_DEFAULT_PII", default=False)
 SENTRY_INCLUDE_LOCAL_VARIABLES = env.bool("SENTRY_INCLUDE_LOCAL_VARIABLES", default=False)
 SENTRY_MAX_BREADCRUMBS = env.int("SENTRY_MAX_BREADCRUMBS", default=100)
+
+POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
+POSTHOG_HOST = env("POSTHOG_HOST", default="https://us.i.posthog.com").rstrip("/")
+POSTHOG_LOGS_ENDPOINT = f"{POSTHOG_HOST}/i/v1/logs"
+POSTHOG_LOGS_ENABLED = env.bool(
+    "POSTHOG_LOGS_ENABLED",
+    default=ENVIRONMENT == "prod" and bool(POSTHOG_API_KEY),
+)
+POSTHOG_LOG_LEVEL = env("POSTHOG_LOG_LEVEL", default="INFO")
+POSTHOG_PROCESS_TYPE = env(
+    "APP_PROCESS_TYPE",
+    default="worker" if "qcluster" in sys.argv else "server",
+)
+POSTHOG_DEFAULT_PROCESS_NAME = "worker" if POSTHOG_PROCESS_TYPE == "worker" else "web"
+POSTHOG_SERVICE_NAME = (
+    env("POSTHOG_SERVICE_NAME", default=f"rowset-{POSTHOG_DEFAULT_PROCESS_NAME}")
+    or f"rowset-{POSTHOG_DEFAULT_PROCESS_NAME}"
+)
+POSTHOG_SERVICE_VERSION = SENTRY_RELEASE or env("RENDER_GIT_COMMIT", default="") or "unknown"
 
 
 # Quick-start development settings - unsuitable for production
@@ -146,6 +157,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "rowset.request_logging.RequestLoggingMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -524,6 +536,18 @@ LOGGING = {
     },
 }
 
+if POSTHOG_LOGS_ENABLED and POSTHOG_API_KEY:
+    LOGGING["handlers"]["posthog"] = {
+        "()": "rowset.posthog_logging.PostHogLoggingHandler",
+        "level": POSTHOG_LOG_LEVEL,
+        "endpoint": POSTHOG_LOGS_ENDPOINT,
+        "api_key": POSTHOG_API_KEY,
+        "service_name": POSTHOG_SERVICE_NAME,
+        "environment": ENVIRONMENT,
+        "service_version": POSTHOG_SERVICE_VERSION,
+    }
+    LOGGING["loggers"]["rowset"]["handlers"].append("posthog")
+
 structlog_processors = [
     structlog.contextvars.merge_contextvars,
     structlog.stdlib.filter_by_level,
@@ -546,10 +570,6 @@ if SENTRY_DSN and ENVIRONMENT == "prod":
             verbose=True,
         )
     )
-
-
-if LOGFIRE_TOKEN:
-    structlog_processors.append(logfire.StructlogProcessor())
 
 
 structlog_processors.extend(
@@ -593,10 +613,6 @@ if SENTRY_DSN and ENVIRONMENT == "prod":
         attach_stacktrace=True,
         include_local_variables=SENTRY_INCLUDE_LOCAL_VARIABLES,
     )
-
-
-POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
-
 
 CHATWOOT_BASE_URL = env("CHATWOOT_BASE_URL", default="")
 CHATWOOT_WEBSITE_TOKEN = env("CHATWOOT_WEBSITE_TOKEN", default="")

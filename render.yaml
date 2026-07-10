@@ -11,10 +11,12 @@ services:
       python manage.py collectstatic --noinput
     startCommand: python manage.py migrate && gunicorn rowset.asgi:application --bind 0.0.0.0:$PORT --workers 2 --worker-class uvicorn_worker.UvicornWorker --timeout 120
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /api/healthcheck
 
     envVars:
       - fromGroup: app-env
+      - key: APP_PROCESS_TYPE
+        value: server
       - key: POSTGRES_DB
         fromDatabase:
           name: filebridge-db
@@ -63,6 +65,8 @@ services:
 
     envVars:
       - fromGroup: app-env
+      - key: APP_PROCESS_TYPE
+        value: worker
       - key: POSTGRES_DB
         fromDatabase:
           name: filebridge-db

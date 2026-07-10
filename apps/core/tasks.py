@@ -79,7 +79,7 @@ def notify_feedback_apprise(feedback_id: int) -> str:
         logger.error(
             "Failed to send Apprise feedback notification",
             feedback_id=feedback_id,
-            error=str(exc),
+            error_type=type(exc).__name__,
             exc_info=True,
         )
         return f"Failed to send Apprise feedback notification for feedback {feedback_id}."
@@ -122,23 +122,22 @@ def try_create_posthog_alias(profile_id: int, cookies: dict, source_function: st
 
     base_log_data = {
         "profile_id": profile_id,
-        "cookies": cookies,
         "source_function": source_function,
     }
 
     profile = Profile.objects.get(id=profile_id)
     email = profile.user.email
 
-    base_log_data["email"] = email
-    base_log_data["profile_id"] = profile_id
-
     posthog_cookie = cookies.get(f"ph_{settings.POSTHOG_API_KEY}_posthog")
     if not posthog_cookie:
-        logger.warning("[Try Create Posthog Alias] No PostHog cookie found.", **base_log_data)
+        logger.warning(
+            "posthog.alias.completed",
+            **base_log_data,
+            alias_found=False,
+            outcome="success",
+            **{"operation.status": "skipped"},
+        )
         return f"No PostHog cookie found for profile {profile_id}."
-    base_log_data["posthog_cookie"] = posthog_cookie
-
-    logger.info("[Try Create Posthog Alias] Setting PostHog alias", **base_log_data)
 
     cookie_dict = json.loads(unquote(posthog_cookie))
     frontend_distinct_id = cookie_dict.get("distinct_id")
@@ -147,7 +146,15 @@ def try_create_posthog_alias(profile_id: int, cookies: dict, source_function: st
         posthog.alias(frontend_distinct_id, email)
         posthog.alias(frontend_distinct_id, str(profile_id))
 
-    logger.info("[Try Create Posthog Alias] Set PostHog alias", **base_log_data)
+    alias_log_data = {
+        **base_log_data,
+        "alias_found": bool(frontend_distinct_id),
+        "outcome": "success",
+    }
+    if not frontend_distinct_id:
+        alias_log_data["operation.status"] = "skipped"
+    logger.info("posthog.alias.completed", **alias_log_data)
+    return f"Set PostHog alias for profile {profile_id}."
 
 
 def track_event(
@@ -159,14 +166,14 @@ def track_event(
     base_log_data = {
         "profile_id": profile_id,
         "event_name": event_name,
-        "properties": properties,
+        "properties_count": len(properties),
         "source_function": source_function,
     }
 
     try:
         profile = Profile.objects.get(id=profile_id)
     except Profile.DoesNotExist:
-        logger.error("[TrackEvent] Profile not found.", **base_log_data)
+        logger.error("posthog.event.failed", **base_log_data, error_type="ProfileNotFound")
         return f"Profile with id {profile_id} not found."
 
     posthog.capture(
@@ -180,7 +187,7 @@ def track_event(
         },
     )
 
-    logger.info("[TrackEvent] Tracked event", **base_log_data)
+    logger.info("posthog.event.completed", **base_log_data, outcome="success")
 
     return f"Tracked event {event_name} for profile {profile_id}"
 
@@ -197,14 +204,14 @@ def track_activation_event(
     base_log_data = {
         "profile_id": profile_id,
         "event_name": event_name,
-        "property_keys": sorted((properties or {}).keys()),
+        "properties_count": len(properties or {}),
         "source_function": source_function,
     }
 
     try:
         profile = Profile.objects.select_related("user").get(id=profile_id)
     except Profile.DoesNotExist:
-        logger.error("[ActivationTracking] Profile not found.", **base_log_data)
+        logger.error("posthog.activation.failed", **base_log_data, error_type="ProfileNotFound")
         return f"Profile with id {profile_id} not found."
 
     posthog.capture(
@@ -221,7 +228,7 @@ def track_activation_event(
         },
     )
 
-    logger.info("[ActivationTracking] Tracked event", **base_log_data)
+    logger.info("posthog.activation.completed", **base_log_data, outcome="success")
     return f"Tracked activation event {event_name} for profile {profile_id}"
 
 
@@ -238,18 +245,18 @@ def track_state_change(
         "profile_id": profile_id,
         "from_state": from_state,
         "to_state": to_state,
-        "metadata": metadata,
+        "metadata_count": len(metadata or {}),
         "source_function": source_function,
     }
 
     try:
         profile = Profile.objects.get(id=profile_id)
     except Profile.DoesNotExist:
-        logger.error("[TrackStateChange] Profile not found.", **base_log_data)
+        logger.error("profile.state_change.failed", **base_log_data, error_type="ProfileNotFound")
         return f"Profile with id {profile_id} not found."
 
     if from_state != to_state:
-        logger.info("[TrackStateChange] Tracking state change", **base_log_data)
+        logger.info("profile.state_change.completed", **base_log_data, outcome="success")
         ProfileStateTransition.objects.create(
             profile=profile,
             from_state=from_state,

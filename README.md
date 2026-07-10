@@ -58,7 +58,7 @@ automation.
 | Frontend | Django templates, HTMX, Alpine.js, Tailwind, PostCSS |
 | Assets | Custom Node 24 build script in `scripts/build-assets.mjs` |
 | Local stack | Docker Compose with Postgres, Redis, backend, workers, frontend, Mailhog, Stripe CLI, MJML, and MinIO |
-| Observability | Sentry, Logfire, PostHog |
+| Observability | Sentry and PostHog |
 | Integrations | Mailgun, Buttondown, Stripe, Chatwoot, S3-compatible storage, Qdrant/OpenRouter for optional vector search |
 | Active deployment path | Docker images plus CapRover GitHub Actions |
 
@@ -699,8 +699,6 @@ make manage backfill_dataset_vectors <dataset_key>
 
 | Variable | Description |
 | --- | --- |
-| `LOGFIRE_TOKEN` | Enables Logfire instrumentation. |
-| `LOGFIRE_CONSOLE_SHOW_PROJECT_LINK` | Controls Logfire console link display. |
 | `SENTRY_DSN` | Enables Sentry in production. |
 | `SENTRY_RELEASE` | Optional release identifier. |
 | `SENTRY_TRACES_SAMPLE_RATE` | Sentry trace sample rate. |
@@ -710,10 +708,43 @@ make manage backfill_dataset_vectors <dataset_key>
 | `SENTRY_SEND_DEFAULT_PII` | Defaults false. Only enable if your privacy policy allows it. |
 | `SENTRY_INCLUDE_LOCAL_VARIABLES` | Defaults false to avoid capturing secrets. |
 | `SENTRY_MAX_BREADCRUMBS` | Max Sentry breadcrumbs. |
-| `POSTHOG_API_KEY` | Enables product analytics. |
+| `POSTHOG_API_KEY` | PostHog `phc_` project token for analytics and log ingestion. |
+| `POSTHOG_HOST` | PostHog regional ingestion host. Defaults to the US host. |
+| `POSTHOG_LOGS_ENABLED` | Enables batched OTLP log export; production defaults on when a token exists. |
+| `POSTHOG_LOG_LEVEL` | Minimum level exported to PostHog. Defaults to `INFO`. |
+| `POSTHOG_SERVICE_NAME` | Optional OTel service-name override for PostHog facets. |
+| `APP_PROCESS_TYPE` | Set to `worker` when process auto-detection is unavailable. |
 | `DJANGO_LOG_LEVEL` | Production logger level for the `rowset` logger. |
 | `MJML_URL` | MJML HTTP server URL, local default `http://mjml:15500`. |
 | `REDIS_DB` | Redis database number. Defaults to `0` in settings. |
+
+#### Structured application logs
+
+Rowset uses structlog key-value calls internally. Keep the event name stable and attach queryable
+scalar attributes as keyword arguments:
+
+```python
+logger.info(
+    "dataset.search.completed",
+    dataset_id=dataset.id,
+    duration_ms=duration_ms,
+    outcome="success",
+)
+```
+
+Standard-library loggers are supported too. Use Python's `extra` argument (not `extra_data`) so
+OpenTelemetry exports the values as log attributes:
+
+```python
+logger.info(
+    "dataset search completed",
+    extra={"event": "dataset.search.completed", "dataset_id": dataset.id},
+)
+```
+
+PostHog receives a string body plus flat OTel attributes in both cases. Only strings, booleans,
+integers, finite floats, enums, and UUIDs are exported. Never log credentials, request or response
+bodies, query text, email addresses, or user-owned dataset contents.
 
 ## Available Commands
 

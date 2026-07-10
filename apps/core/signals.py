@@ -27,22 +27,25 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(email_confirmed)
 def add_email_to_buttondown_on_confirm(sender, **kwargs):
+    job_id = async_task(add_email_to_buttondown, kwargs["email_address"], tag="user")
     logger.info(
-        "Adding new user to buttondown newsletter, on email confirmation",
-        kwargs=kwargs,
-        sender=sender,
+        "newsletter.subscription.queued",
+        trigger="email_confirmation",
+        outcome="success",
+        **{"job.id": str(job_id)},
     )
-    async_task(add_email_to_buttondown, kwargs["email_address"], tag="user")
 
 
 @receiver(user_signed_up)
 def email_confirmation_callback(sender, request, user, **kwargs):
     if "sociallogin" in kwargs:
-        logger.info(
-            "Adding new user to buttondown newsletter on social signup",
-            kwargs=kwargs,
-            sender=sender,
-        )
         email = kwargs["sociallogin"].user.email
         if email:
-            async_task(add_email_to_buttondown, email, tag="user")
+            job_id = async_task(add_email_to_buttondown, email, tag="user")
+            logger.info(
+                "newsletter.subscription.queued",
+                trigger="social_signup",
+                user_id=user.id,
+                outcome="success",
+                **{"job.id": str(job_id)},
+            )
