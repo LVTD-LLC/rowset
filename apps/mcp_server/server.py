@@ -75,6 +75,7 @@ from apps.core.services import (
 )
 from apps.datasets.types import ColumnTypeSpec, DatasetRowInput, JsonObject
 from apps.mcp_server.auth import mcp_auth
+from rowset.mcp_logging import RowsetMCPLoggingMiddleware
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -95,6 +96,7 @@ mcp = FastMCP(
     ),
     auth=mcp_auth,
 )
+mcp.add_middleware(RowsetMCPLoggingMiddleware())
 
 
 def _get_request_api_key() -> str:
