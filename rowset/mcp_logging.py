@@ -33,7 +33,7 @@ def _bind_access_token_actor() -> None:
     profile_identifier = access_token.subject or claims.get("profile_id")
     try:
         profile_id = int(profile_identifier)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return
 
     agent_api_key_identifier = claims.get("agent_api_key_id")
@@ -41,7 +41,7 @@ def _bind_access_token_actor() -> None:
         agent_api_key_id = (
             int(agent_api_key_identifier) if agent_api_key_identifier is not None else None
         )
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         agent_api_key_id = None
 
     bind_actor_context(

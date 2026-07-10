@@ -52,7 +52,7 @@ def _bind_session_actor(request: HttpRequest) -> None:
         return
     try:
         profile = user.profile
-    except AttributeError, ObjectDoesNotExist:
+    except (AttributeError, ObjectDoesNotExist):
         return
     bind_actor_context(profile_id=profile.id, auth_method="session")
 
