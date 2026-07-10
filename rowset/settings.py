@@ -66,6 +66,22 @@ SENTRY_SEND_DEFAULT_PII = env.bool("SENTRY_SEND_DEFAULT_PII", default=False)
 SENTRY_INCLUDE_LOCAL_VARIABLES = env.bool("SENTRY_INCLUDE_LOCAL_VARIABLES", default=False)
 SENTRY_MAX_BREADCRUMBS = env.int("SENTRY_MAX_BREADCRUMBS", default=100)
 
+POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
+POSTHOG_HOST = env("POSTHOG_HOST", default="https://us.i.posthog.com").rstrip("/")
+POSTHOG_LOGS_ENDPOINT = f"{POSTHOG_HOST}/i/v1/logs"
+POSTHOG_LOGS_ENABLED = env.bool(
+    "POSTHOG_LOGS_ENABLED",
+    default=ENVIRONMENT == "prod" and bool(POSTHOG_API_KEY),
+)
+POSTHOG_LOG_LEVEL = env("POSTHOG_LOG_LEVEL", default="INFO")
+POSTHOG_PROCESS_TYPE = env("APP_PROCESS_TYPE", default="server")
+POSTHOG_DEFAULT_PROCESS_NAME = "worker" if POSTHOG_PROCESS_TYPE == "worker" else "web"
+POSTHOG_SERVICE_NAME = (
+    env("POSTHOG_SERVICE_NAME", default=f"rowset-{POSTHOG_DEFAULT_PROCESS_NAME}")
+    or f"rowset-{POSTHOG_DEFAULT_PROCESS_NAME}"
+)
+POSTHOG_SERVICE_VERSION = SENTRY_RELEASE or env("RENDER_GIT_COMMIT", default="") or "unknown"
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -524,6 +540,18 @@ LOGGING = {
     },
 }
 
+if POSTHOG_LOGS_ENABLED and POSTHOG_API_KEY:
+    LOGGING["handlers"]["posthog"] = {
+        "()": "rowset.posthog_logging.PostHogLoggingHandler",
+        "level": POSTHOG_LOG_LEVEL,
+        "endpoint": POSTHOG_LOGS_ENDPOINT,
+        "api_key": POSTHOG_API_KEY,
+        "service_name": POSTHOG_SERVICE_NAME,
+        "environment": ENVIRONMENT,
+        "service_version": POSTHOG_SERVICE_VERSION,
+    }
+    LOGGING["loggers"]["rowset"]["handlers"].append("posthog")
+
 structlog_processors = [
     structlog.contextvars.merge_contextvars,
     structlog.stdlib.filter_by_level,
@@ -593,10 +621,6 @@ if SENTRY_DSN and ENVIRONMENT == "prod":
         attach_stacktrace=True,
         include_local_variables=SENTRY_INCLUDE_LOCAL_VARIABLES,
     )
-
-
-POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
-
 
 CHATWOOT_BASE_URL = env("CHATWOOT_BASE_URL", default="")
 CHATWOOT_WEBSITE_TOKEN = env("CHATWOOT_WEBSITE_TOKEN", default="")
