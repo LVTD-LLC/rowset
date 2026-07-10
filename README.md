@@ -30,7 +30,8 @@ automation.
 - [Tech Stack](#tech-stack)
 - [Product Boundaries](#product-boundaries)
 - [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
+- [Getting Started with Docker](#getting-started-with-docker)
+- [Native Local Development](#native-local-development)
 - [Agent Golden Path](#agent-golden-path)
 - [REST API Quick Start](#rest-api-quick-start)
 - [CLI Quick Start](#cli-quick-start)
@@ -57,7 +58,7 @@ automation.
 | Tabular work | Python `csv`, `json`, `sqlite3`, `zipfile`, plus Polars |
 | Frontend | Django templates, HTMX, Alpine.js, Tailwind, PostCSS |
 | Assets | Custom Node 24 build script in `scripts/build-assets.mjs` |
-| Local stack | Docker Compose with Postgres, Redis, backend, workers, frontend, Mailhog, Stripe CLI, MJML, and MinIO |
+| Local stack | Native macOS/Linux processes or Docker Compose |
 | Observability | Sentry and PostHog |
 | Integrations | Mailgun, Buttondown, Stripe, Chatwoot, S3-compatible storage, Qdrant/OpenRouter for optional vector search |
 | Active deployment path | Docker images plus CapRover GitHub Actions |
@@ -89,11 +90,21 @@ through MCP or REST.
 
 ## Prerequisites
 
-For the supported local workflow:
+For either supported local workflow:
 
-- Docker Desktop or Docker Engine with Docker Compose.
 - Git.
 - A shell that can run `make`.
+
+For native local development:
+
+- Python 3.14.2 and `uv`.
+- Node.js 24.11 or newer and npm 11 or newer.
+- PostgreSQL 18 with pgvector, Redis, and Mailpit available on `PATH`.
+- On macOS: `brew install postgresql@18 pgvector redis mailpit`.
+
+For Docker-based local development:
+
+- Docker Desktop or Docker Engine with Docker Compose.
 
 For host-side debugging outside Docker:
 
@@ -103,11 +114,10 @@ For host-side debugging outside Docker:
 - Go 1.26 or newer when building the `rowset` CLI from source.
 - PostgreSQL and Redis reachable from your environment.
 
-Most contributors should start with Docker Compose. The local Compose stack
-builds the Python image, installs Node dependencies in the frontend service, and
-runs Postgres and Redis for you.
+The native stack gives coding agents and contributors the shortest edit/reload
+loop. Docker Compose remains available when container parity is more important.
 
-## Getting Started
+## Getting Started with Docker
 
 ### 1. Clone the repository
 
@@ -220,6 +230,64 @@ Verify REST authentication:
 ```bash
 curl -H "Authorization: Bearer $ROWSET_API_KEY" \
   http://localhost:8000/api/user
+```
+
+## Native Local Development
+
+The native supervisor runs PostgreSQL, Redis, Mailpit, the Django development
+server, Django Q workers, and the frontend asset watcher without Docker. It uses
+the locked Python and Node dependencies and stores all service data and logs in
+the ignored `.rowset-local/` directory.
+
+Install and build everything once:
+
+```bash
+make native-setup
+```
+
+Start the complete stack in the background:
+
+```bash
+make native-start
+```
+
+The app is available at `http://localhost:8000` and captured email at
+`http://localhost:8025`. Frontend assets and Django code reload as files change.
+Useful lifecycle commands are:
+
+```bash
+make native-status
+make native-logs
+make native-manage check
+make native-test apps/datasets/tests/test_dataset_creation.py
+make native-restart
+make native-stop
+```
+
+`make native-serve` starts the stack and follows all logs. Interrupting the log
+stream leaves the services running; use `make native-stop` when finished.
+
+Native commands override the Docker-only hostnames from `.env` at process start,
+so the same ignored `.env` works for both workflows. If a standard port is in
+use, override only the conflicting port:
+
+```bash
+ROWSET_NATIVE_PORT=8010 make native-start
+ROWSET_NATIVE_POSTGRES_PORT=55432 ROWSET_NATIVE_REDIS_PORT=56379 make native-start
+```
+
+Overrides are saved in `.rowset-local/native-config` and reused by later native
+commands. To change ports on a running stack, pass the new values to
+`native-restart`.
+
+The supervisor intentionally uses local disk for private dataset assets, the
+MJML CLI for email rendering, and Mailpit for SMTP. MinIO is only needed when
+testing the optional S3 storage path. Qdrant is only needed when vector search is
+enabled. Stripe webhook forwarding is opt-in and requires an authenticated
+Stripe CLI:
+
+```bash
+ROWSET_NATIVE_STRIPE=1 make native-start
 ```
 
 ## Agent Golden Path

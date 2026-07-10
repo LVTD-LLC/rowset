@@ -39,6 +39,11 @@ browser-friendly and read-only; REST and MCP are the private programmatic paths.
 
 - Copy local env: `cp .env.example .env`
 - Start the local stack: `make serve`
+- Bootstrap the Docker-free stack: `make native-setup`
+- Start/stop the Docker-free stack: `make native-start` / `make native-stop`
+- Inspect Docker-free services: `make native-status` / `make native-logs`
+- Run Docker-free Django commands/tests: `make native-manage check` /
+  `make native-test apps/datasets/tests/test_dataset_creation.py`
 - Django shell: `make shell`
 - Django management command: `make manage <command>`
 - Create migrations after model changes: `make makemigrations`

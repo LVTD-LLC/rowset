@@ -2,6 +2,7 @@
 backup-dbs/
 media/
 private_media/
+.rowset-local/
 *.sqlite3
 
 # Javascript

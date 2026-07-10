@@ -27,6 +27,16 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 	makemigrations \
 	migrate \
 	migrations-check \
+	native-logs \
+	native-manage \
+	native-restart \
+	native-serve \
+	native-shell \
+	native-setup \
+	native-start \
+	native-status \
+	native-stop \
+	native-test \
 	restart-worker \
 	serve \
 	shell \
@@ -39,6 +49,37 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 serve:
 	$(COMPOSE_LOCAL) up -d --build
 	$(COMPOSE_LOCAL) logs -f backend
+
+native-setup:
+	./scripts/native-stack.sh setup
+
+native-start:
+	./scripts/native-stack.sh start
+
+native-serve:
+	./scripts/native-stack.sh start
+	./scripts/native-stack.sh logs
+
+native-stop:
+	./scripts/native-stack.sh stop
+
+native-restart:
+	./scripts/native-stack.sh restart
+
+native-status:
+	./scripts/native-stack.sh status
+
+native-logs:
+	./scripts/native-stack.sh logs $(TARGET_ARGS)
+
+native-manage:
+	./scripts/native-stack.sh manage $(TARGET_ARGS)
+
+native-shell:
+	./scripts/native-stack.sh manage shell_plus --ipython
+
+native-test:
+	./scripts/native-stack.sh test $(TARGET_ARGS)
 
 shell:
 	$(PYTHON_RUN) ./manage.py shell_plus --ipython

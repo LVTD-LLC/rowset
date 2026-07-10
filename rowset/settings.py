@@ -413,8 +413,8 @@ SERVER_EMAIL = "Rowset Errors <rasul@lvtd.dev>"
 
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = "mailhog"  # Use the service name from docker-compose
-    EMAIL_PORT = 1025
+    EMAIL_HOST = env("EMAIL_HOST", default="mailhog")
+    EMAIL_PORT = env.int("EMAIL_PORT", default=1025)
     EMAIL_USE_TLS = False
     EMAIL_HOST_USER = ""
     EMAIL_HOST_PASSWORD = ""
@@ -647,7 +647,8 @@ OPENROUTER_API_KEY = env("OPENROUTER_API_KEY", default="")
 OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 
 
-MJML_BACKEND_MODE = "httpserver"
+MJML_BACKEND_MODE = env("MJML_BACKEND_MODE", default="httpserver")
+MJML_EXEC_CMD = env("MJML_EXEC_CMD", default="mjml")
 MJML_URL = env("MJML_URL", default="")
 MJML_HTTPSERVERS = [
     {

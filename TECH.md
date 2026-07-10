@@ -13,8 +13,8 @@
   Polars for CSV, JSONL, XLSX, SQLite, and Parquet exports.
 - Frontend: Django templates, HTMX, Alpine.js, Tailwind, and PostCSS-built
   static assets.
-- Local containers: Docker Compose with Postgres, Redis, backend, workers,
-  frontend Node 24, Mailhog, Stripe CLI, MJML, and MinIO.
+- Local runtime: native Postgres, Redis, Django, Django Q, frontend Node 24,
+  Mailpit, and MJML CLI processes, with Docker Compose retained for parity.
 - Observability/integrations: Sentry, PostHog, Chatwoot, Mailgun,
   Buttondown, Stripe, S3-compatible storage.
 
@@ -22,6 +22,11 @@
 
 - Copy local env: `cp .env.example .env`
 - Start the app stack: `make serve`
+- Bootstrap the native stack: `make native-setup`
+- Start/stop the native stack: `make native-start` / `make native-stop`
+- Inspect the native stack: `make native-status` / `make native-logs`
+- Run native Django commands/tests: `make native-manage check` /
+  `make native-test apps/datasets/tests/test_dataset_creation.py`
 - Run Django shell_plus: `make shell`
 - Run Django management commands: `make manage <command>`
 - Generate migrations: `make makemigrations`
