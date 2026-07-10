@@ -52,8 +52,8 @@ Owns the PostHog OTLP bridge. It will:
 - exclude reserved logging internals and unsupported nested values
 - drop centrally classified sensitive fields before export
 - truncate unusually long strings to a bounded size
-- preserve exception type and traceback details only when the original log explicitly requested
-  exception information
+- preserve a queryable exception type while stripping exception messages, tracebacks, and local
+  details from the PostHog copy; the original record remains available to Sentry and Logfire
 - fail open so an exporter problem never interrupts an application request or worker job
 
 The handler is attached alongside the current console handlers. It does not replace console JSON,
@@ -134,7 +134,7 @@ Field names are stable schema, not presentation text. Shared fields include:
 | `request.id` | string | Correlation identifier for one request |
 | `request.interface` | string | `web`, `htmx`, `rest`, or `mcp` |
 | `duration_ms` | float | End-to-end duration at the logged boundary |
-| `outcome` | string | `success` or `failure` where applicable |
+| `outcome` | string | `success` or `failure` only; richer states use a separate status field |
 | `profile_id` | integer | Internal non-secret profile identifier |
 | `posthogDistinctId` | string | Profile ID used by PostHog person correlation |
 | `sessionId` | string | Non-secret PostHog browser session ID used for replay correlation |

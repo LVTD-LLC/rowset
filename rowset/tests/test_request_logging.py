@@ -112,7 +112,7 @@ def test_request_middleware_classifies_rest_requests(captured_events):
     event = captured_events.event("http.request.completed")
     assert event["request.interface"] == "rest"
     assert event["http.response.status_class"] == "4xx"
-    assert event["outcome"] == "success"
+    assert event["outcome"] == "failure"
 
 
 def test_request_middleware_uses_safe_incoming_request_id_and_replaces_unsafe_one(captured_events):

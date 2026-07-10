@@ -1,14 +1,19 @@
+import ast
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 from django.test import RequestFactory, override_settings
 
+from apps.core import signals as core_signals
 from apps.core import stripe_webhooks
 from apps.core import tasks as core_tasks
 from apps.core import utils as core_utils
 from apps.core.choices import EmailType
 from apps.core.views import stripe_webhook
 from apps.datasets import tasks as dataset_tasks
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @override_settings(POSTHOG_API_KEY="phc_test")
@@ -86,6 +91,65 @@ def test_email_tracking_log_uses_profile_identity_not_email(captured_events, mon
     assert "private@example.com" not in str(event)
 
 
+def test_email_retry_logs_binary_outcome_with_separate_delivery_status(
+    captured_events,
+    monkeypatch,
+):
+    attempts = 0
+
+    def send():
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise TimeoutError("private provider response")
+
+    core_utils.EMAIL_DELIVERY_METRICS.clear()
+    monkeypatch.setattr(core_utils, "track_email_sent", lambda *args, **kwargs: None)
+    monkeypatch.setattr(core_utils.time, "sleep", lambda _seconds: None)
+
+    success = core_utils.send_transactional_email(
+        send,
+        email_address="private@example.com",
+        email_type=EmailType.WELCOME,
+        retry_backoff_seconds=(0.0, 0.0),
+    )
+
+    events = [
+        event for event in captured_events if event.get("event") == "email.delivery.completed"
+    ]
+    assert success is True
+    assert [(event["outcome"], event["email.delivery.status"]) for event in events] == [
+        ("failure", "retrying"),
+        ("success", "sent"),
+    ]
+    assert "private provider response" not in str(events)
+    assert "private@example.com" not in str(events)
+
+
+def test_signup_signal_logs_safe_newsletter_job_context(captured_events, monkeypatch):
+    monkeypatch.setattr(core_signals, "async_task", lambda *args, **kwargs: "job-123")
+
+    core_signals.add_email_to_buttondown_on_confirm(
+        sender=object(),
+        email_address="private@example.com",
+    )
+    core_signals.email_confirmation_callback(
+        sender=object(),
+        request=object(),
+        user=SimpleNamespace(id=7),
+        sociallogin=SimpleNamespace(user=SimpleNamespace(email="private@example.com")),
+    )
+
+    events = [
+        event for event in captured_events if event.get("event") == "newsletter.subscription.queued"
+    ]
+    assert [event["trigger"] for event in events] == ["email_confirmation", "social_signup"]
+    assert all(event["outcome"] == "success" for event in events)
+    assert all(event["job.id"] == "job-123" for event in events)
+    assert "private@example.com" not in str(events)
+    assert "kwargs" not in str(events)
+
+
 def test_stripe_webhook_does_not_log_django_request_object(captured_events):
     response = stripe_webhook(RequestFactory().get("/stripe/webhook/"))
 
@@ -130,3 +194,33 @@ def test_vector_deletion_log_uses_count_instead_of_row_id_list(captured_events, 
     assert event["dataset_id"] == 9
     assert event["row_count"] == 3
     assert "row_ids" not in event
+
+
+def test_structured_log_outcomes_use_binary_query_contract():
+    invalid_literals = []
+    for source_root in (REPO_ROOT / "apps", REPO_ROOT / "rowset"):
+        for path in source_root.rglob("*.py"):
+            if "migrations" in path.parts or "tests" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(), filename=str(path))
+            for node in ast.walk(tree):
+                values = []
+                if isinstance(node, ast.Call):
+                    values.extend(
+                        keyword.value for keyword in node.keywords if keyword.arg == "outcome"
+                    )
+                elif isinstance(node, ast.Assign) and any(
+                    isinstance(target, ast.Name) and target.id == "outcome"
+                    for target in node.targets
+                ):
+                    values.append(node.value)
+                for value in values:
+                    for child in ast.walk(value):
+                        if (
+                            isinstance(child, ast.Constant)
+                            and isinstance(child.value, str)
+                            and child.value not in {"success", "failure"}
+                        ):
+                            invalid_literals.append((path.relative_to(REPO_ROOT), child.value))
+
+    assert invalid_literals == []

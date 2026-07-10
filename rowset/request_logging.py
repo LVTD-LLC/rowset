@@ -169,7 +169,7 @@ class RequestLoggingMiddleware:
             "htmx.boosted": bool(getattr(htmx, "boosted", False)),
             "htmx.history_restore_request": bool(getattr(htmx, "history_restore_request", False)),
             "duration_ms": round((time.perf_counter() - started_at) * 1_000, 2),
-            "outcome": "failure" if status_code >= 500 else "success",
+            "outcome": "failure" if status_code >= 400 else "success",
         }
         if error_type:
             attributes["error.type"] = error_type

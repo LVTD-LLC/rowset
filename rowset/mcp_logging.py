@@ -30,7 +30,7 @@ def _bind_access_token_actor() -> None:
         return
 
     claims = access_token.claims or {}
-    profile_identifier = claims.get("profile_id") or access_token.subject
+    profile_identifier = access_token.subject or claims.get("profile_id")
     try:
         profile_id = int(profile_identifier)
     except TypeError, ValueError:

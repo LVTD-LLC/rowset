@@ -75,6 +75,35 @@ def test_mcp_logging_emits_tool_name_identity_outcome_and_duration(
     assert structlog.contextvars.get_contextvars() == {}
 
 
+def test_mcp_logging_uses_canonical_token_subject_for_actor_identity(
+    captured_events,
+    monkeypatch,
+):
+    access_token = _access_token()
+    access_token.subject = "12"
+    monkeypatch.setattr("rowset.mcp_logging.get_access_token", lambda: access_token)
+    monkeypatch.setattr(
+        "rowset.mcp_logging.get_http_request",
+        lambda: SimpleNamespace(headers={}),
+    )
+    middleware = RowsetMCPLoggingMiddleware()
+    context = MiddlewareContext(
+        message=ListToolsRequest(),
+        method="tools/list",
+        type="request",
+        source="client",
+    )
+
+    async def call_next(_context):
+        return SimpleNamespace(is_error=False)
+
+    asyncio.run(middleware.on_request(context, call_next))
+
+    event = captured_events.event("mcp.request.completed")
+    assert event["profile_id"] == 12
+    assert event["posthogDistinctId"] == "12"
+
+
 def test_mcp_logging_emits_only_error_type_when_request_raises(captured_events, monkeypatch):
     monkeypatch.setattr("rowset.mcp_logging.get_access_token", lambda: None)
 

@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import logging
 import os
+import sys
 from pathlib import Path
 
 import environ
@@ -74,7 +75,10 @@ POSTHOG_LOGS_ENABLED = env.bool(
     default=ENVIRONMENT == "prod" and bool(POSTHOG_API_KEY),
 )
 POSTHOG_LOG_LEVEL = env("POSTHOG_LOG_LEVEL", default="INFO")
-POSTHOG_PROCESS_TYPE = env("APP_PROCESS_TYPE", default="server")
+POSTHOG_PROCESS_TYPE = env(
+    "APP_PROCESS_TYPE",
+    default="worker" if "qcluster" in sys.argv else "server",
+)
 POSTHOG_DEFAULT_PROCESS_NAME = "worker" if POSTHOG_PROCESS_TYPE == "worker" else "web"
 POSTHOG_SERVICE_NAME = (
     env("POSTHOG_SERVICE_NAME", default=f"rowset-{POSTHOG_DEFAULT_PROCESS_NAME}")

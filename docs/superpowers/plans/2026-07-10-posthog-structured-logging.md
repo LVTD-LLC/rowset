@@ -133,6 +133,9 @@ def sanitize_log_attributes(event_dict: Mapping[str, Any]) -> dict[str, Scalar]:
 `LoggerProvider(Resource.create(resource_attributes))`, an HTTP `OTLPLogExporter` using
 `headers={"Authorization": f"Bearer {api_key}"}`, a `BatchLogRecordProcessor`, and an OpenTelemetry
 `LoggingHandler`. Clone incoming records before changing the body or adding sanitized extras.
+Remove all original custom attributes from the clone before attaching the sanitized set. Export
+only `error.type` to PostHog; leave exception messages and tracebacks on the original record for
+Sentry and Logfire.
 
 - [ ] **Step 5: Configure settings and environment variables**
 
@@ -487,7 +490,8 @@ Apply these exact transformations:
   safe IDs already present.
 - Vector deletion: replace `row_ids=row_ids` with `row_count=len(row_ids)`.
 - Exception logs touched in these files: add `error_type=type(exc).__name__`; keep `exc_info=True`
-  only where a traceback is intentionally useful.
+  on the original record only where Sentry or Logfire benefits. The PostHog handler strips the
+  message and traceback from its clone.
 
 - [ ] **Step 4: Run focused tests and verify GREEN**
 

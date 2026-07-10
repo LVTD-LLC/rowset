@@ -36,6 +36,7 @@ def test_sanitize_log_attributes_keeps_queryable_scalars_and_drops_sensitive_val
             "cached": False,
             "outcome": Outcome.SUCCESS,
             "dataset_key": UUID("12345678-1234-5678-1234-567812345678"),
+            "name": "must-not-overwrite-log-record-name",
             "email": "person@example.com",
             "authorization": "Bearer secret",
             "posthog_cookie": "secret-cookie",
@@ -93,6 +94,55 @@ def test_build_resource_attributes_uses_posthog_facets_and_release_context():
     }
 
 
+def test_posthog_handler_builds_isolated_batched_otlp_pipeline(monkeypatch):
+    created = {}
+
+    class FakeLoggerProvider:
+        def __init__(self, *, resource):
+            created["resource"] = resource
+
+        def add_log_record_processor(self, processor):
+            created["processor"] = processor
+
+    class FakeExporter:
+        def __init__(self, **kwargs):
+            created["exporter_kwargs"] = kwargs
+
+    class FakeProcessor:
+        def __init__(self, exporter):
+            self.exporter = exporter
+
+    class FakeLoggingHandler(logging.Handler):
+        def __init__(self, *, logger_provider):
+            super().__init__()
+            created["delegate_provider"] = logger_provider
+
+        def emit(self, record):
+            pass
+
+    monkeypatch.setattr("rowset.posthog_logging.LoggerProvider", FakeLoggerProvider)
+    monkeypatch.setattr("rowset.posthog_logging.OTLPLogExporter", FakeExporter)
+    monkeypatch.setattr("rowset.posthog_logging.BatchLogRecordProcessor", FakeProcessor)
+    monkeypatch.setattr("rowset.posthog_logging.LoggingHandler", FakeLoggingHandler)
+
+    handler = PostHogLoggingHandler(
+        endpoint="https://us.i.posthog.com/i/v1/logs",
+        api_key="phc_test",
+        service_name="rowset-worker",
+        environment="prod",
+        service_version="release-123",
+    )
+
+    assert created["exporter_kwargs"] == {
+        "endpoint": "https://us.i.posthog.com/i/v1/logs",
+        "headers": {"Authorization": "Bearer phc_test"},
+    }
+    assert created["processor"].exporter.__class__ is FakeExporter
+    assert created["delegate_provider"] is handler._logger_provider
+    assert created["resource"].attributes["service.name"] == "rowset-worker"
+    assert created["resource"].attributes["deployment.environment.name"] == "prod"
+
+
 def test_posthog_handler_translates_structlog_event_for_delegate_without_mutating_original():
     delegate = CollectingHandler()
     handler = PostHogLoggingHandler(delegate=delegate)
@@ -136,6 +186,8 @@ def test_posthog_handler_translates_plain_standard_logging_records():
         None,
     )
     record.retry_count = 2
+    record.authorization = "Bearer private-token"
+    record.metadata = {"private": "dataset value"}
 
     handler.emit(record)
 
@@ -143,14 +195,18 @@ def test_posthog_handler_translates_plain_standard_logging_records():
     assert exported.getMessage() == "Cache retry 2"
     assert getattr(exported, "event.name") == "Cache retry 2"
     assert exported.retry_count == 2
+    assert not hasattr(exported, "authorization")
+    assert not hasattr(exported, "metadata")
+    assert "private-token" not in str(vars(exported))
+    assert "dataset value" not in str(vars(exported))
 
 
-def test_posthog_handler_preserves_explicit_structlog_exception_information():
+def test_posthog_handler_exports_only_exception_type_without_private_details():
     delegate = CollectingHandler()
     handler = PostHogLoggingHandler(delegate=delegate)
 
     try:
-        raise ValueError("safe failure detail")
+        raise ValueError("private dataset value")
     except ValueError:
         record = logging.LogRecord(
             "rowset.test",
@@ -164,5 +220,8 @@ def test_posthog_handler_preserves_explicit_structlog_exception_information():
         handler.emit(record)
 
     exported = delegate.records[0]
-    assert exported.exc_info is not None
-    assert exported.exc_info[0] is ValueError
+    assert exported.exc_info is None
+    assert exported.stack_info is None
+    assert getattr(exported, "error.type") == "ValueError"
+    assert "private dataset value" not in str(vars(exported))
+    assert record.msg["exc_info"] is True

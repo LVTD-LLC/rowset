@@ -438,7 +438,8 @@ def resend_confirmation_email(request):
             logger.warning(
                 "email.confirmation.completed",
                 user_id=user.id,
-                outcome="skipped",
+                outcome="success",
+                **{"operation.status": "skipped"},
                 reason="address_missing",
             )
             return redirect("settings")
@@ -448,7 +449,8 @@ def resend_confirmation_email(request):
             logger.info(
                 "email.confirmation.completed",
                 user_id=user.id,
-                outcome="skipped",
+                outcome="success",
+                **{"operation.status": "skipped"},
                 reason="already_verified",
             )
             return redirect("settings")

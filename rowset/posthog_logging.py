@@ -127,13 +127,32 @@ def sanitize_log_attributes(event_dict: Mapping[str, Any]) -> dict[str, Scalar]:
 
     for raw_key, value in event_dict.items():
         key = str(raw_key)
-        if key in _STRUCTLOG_INTERNAL_FIELDS or _is_sensitive_field(key):
+        if key in _STRUCTLOG_INTERNAL_FIELDS or key in _LOG_RECORD_FIELDS:
+            continue
+        if _is_sensitive_field(key):
             continue
         normalized = _normalize_scalar(value)
         if normalized is not None:
             attributes[key] = normalized
 
     return attributes
+
+
+def _exception_type_name(
+    record: logging.LogRecord,
+    explicit_exc_info: Any = None,
+) -> str | None:
+    if record.exc_info and record.exc_info[0]:
+        return getattr(record.exc_info[0], "__name__", None)
+    if isinstance(explicit_exc_info, tuple) and explicit_exc_info and explicit_exc_info[0]:
+        return getattr(explicit_exc_info[0], "__name__", None)
+    if isinstance(explicit_exc_info, BaseException):
+        return type(explicit_exc_info).__name__
+    if explicit_exc_info:
+        active_exception_type = sys.exc_info()[0]
+        if active_exception_type is not None:
+            return active_exception_type.__name__
+    return None
 
 
 def build_resource_attributes(
@@ -195,32 +214,31 @@ class PostHogLoggingHandler(logging.Handler):
 
     def _translate_record(self, record: logging.LogRecord) -> logging.LogRecord:
         exported_record = copy.copy(record)
+        record_extras = {
+            key: value for key, value in vars(record).items() if key not in _LOG_RECORD_FIELDS
+        }
         if isinstance(record.msg, Mapping):
             event_dict = record.msg
             event_name = _normalize_scalar(event_dict.get("event"))
             message = event_name if isinstance(event_name, str) else record.getMessage()
-            attributes = sanitize_log_attributes(event_dict)
             explicit_exc_info = event_dict.get("exc_info")
-            if not exported_record.exc_info and explicit_exc_info:
-                if isinstance(explicit_exc_info, tuple):
-                    exported_record.exc_info = explicit_exc_info
-                elif isinstance(explicit_exc_info, BaseException):
-                    exported_record.exc_info = (
-                        type(explicit_exc_info),
-                        explicit_exc_info,
-                        explicit_exc_info.__traceback__,
-                    )
-                else:
-                    exported_record.exc_info = sys.exc_info()
+            attributes = sanitize_log_attributes({**record_extras, **event_dict})
         else:
             message = record.getMessage()
-            extra = {
-                key: value for key, value in vars(record).items() if key not in _LOG_RECORD_FIELDS
-            }
-            attributes = sanitize_log_attributes({"event": message, **extra})
+            explicit_exc_info = None
+            attributes = sanitize_log_attributes({"event": message, **record_extras})
 
+        exception_type = _exception_type_name(record, explicit_exc_info)
+        if exception_type:
+            attributes.setdefault("error.type", exception_type)
+
+        for key in record_extras:
+            delattr(exported_record, key)
         exported_record.msg = message
         exported_record.args = ()
+        exported_record.exc_info = None
+        exported_record.exc_text = None
+        exported_record.stack_info = None
         for key, value in attributes.items():
             setattr(exported_record, key, value)
         return exported_record

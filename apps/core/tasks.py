@@ -134,7 +134,8 @@ def try_create_posthog_alias(profile_id: int, cookies: dict, source_function: st
             "posthog.alias.completed",
             **base_log_data,
             alias_found=False,
-            outcome="skipped",
+            outcome="success",
+            **{"operation.status": "skipped"},
         )
         return f"No PostHog cookie found for profile {profile_id}."
 
@@ -145,12 +146,14 @@ def try_create_posthog_alias(profile_id: int, cookies: dict, source_function: st
         posthog.alias(frontend_distinct_id, email)
         posthog.alias(frontend_distinct_id, str(profile_id))
 
-    logger.info(
-        "posthog.alias.completed",
+    alias_log_data = {
         **base_log_data,
-        alias_found=bool(frontend_distinct_id),
-        outcome="success" if frontend_distinct_id else "skipped",
-    )
+        "alias_found": bool(frontend_distinct_id),
+        "outcome": "success",
+    }
+    if not frontend_distinct_id:
+        alias_log_data["operation.status"] = "skipped"
+    logger.info("posthog.alias.completed", **alias_log_data)
     return f"Set PostHog alias for profile {profile_id}."
 
 
