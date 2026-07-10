@@ -44,6 +44,13 @@ def _request_id(request: HttpRequest) -> str:
     return uuid4().hex
 
 
+def _posthog_session_id(request: HttpRequest) -> str:
+    supplied = request.headers.get("X-PostHog-Session-ID", "").strip()
+    if _SAFE_REQUEST_ID.fullmatch(supplied):
+        return supplied
+    return ""
+
+
 def _request_interface(request: HttpRequest) -> str:
     if request.path.startswith("/api/"):
         return "rest"
@@ -67,7 +74,7 @@ def _bind_session_actor(request: HttpRequest) -> None:
     structlog.contextvars.bind_contextvars(user_id=user.id)
     try:
         profile = user.profile
-    except (AttributeError, ObjectDoesNotExist):
+    except AttributeError, ObjectDoesNotExist:
         return
     bind_actor_context(profile_id=profile.id, auth_method="session")
 
@@ -91,13 +98,17 @@ class RequestLoggingMiddleware:
                 "request.interface": request_interface,
             }
         )
+        session_id = _posthog_session_id(request)
+        if session_id:
+            structlog.contextvars.bind_contextvars(sessionId=session_id)
         _bind_session_actor(request)
 
         status_code = 500
-        error_type = ""
+        error_type = str(getattr(request, "_rowset_error_type", ""))
         try:
             response = self.get_response(request)
             status_code = response.status_code
+            error_type = error_type or str(getattr(request, "_rowset_error_type", ""))
             response.headers["X-Request-ID"] = request_id
             return response
         except Exception as exc:
@@ -116,6 +127,10 @@ class RequestLoggingMiddleware:
                 structlog.contextvars.clear_contextvars()
 
     @staticmethod
+    def process_exception(request: HttpRequest, exception: Exception) -> None:
+        request._rowset_error_type = type(exception).__name__
+
+    @staticmethod
     def _log_completion(
         request: HttpRequest,
         *,
@@ -131,9 +146,7 @@ class RequestLoggingMiddleware:
             "http.response.status_class": f"{status_code // 100}xx",
             "http.is_htmx": bool(htmx),
             "htmx.boosted": bool(getattr(htmx, "boosted", False)),
-            "htmx.history_restore_request": bool(
-                getattr(htmx, "history_restore_request", False)
-            ),
+            "htmx.history_restore_request": bool(getattr(htmx, "history_restore_request", False)),
             "duration_ms": round((time.perf_counter() - started_at) * 1_000, 2),
             "outcome": "failure" if status_code >= 500 else "success",
         }
@@ -142,4 +155,3 @@ class RequestLoggingMiddleware:
 
         log_method = logger.error if status_code >= 500 else logger.info
         log_method("http.request.completed", **attributes)
-

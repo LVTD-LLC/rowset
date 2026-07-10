@@ -1,5 +1,5 @@
 {% if posthog_api_key %}
-  <script>
+    <script>
     !(function (t, e) {
       var o, n, p, r;
       e.__SV ||
@@ -48,7 +48,7 @@
         (e.__SV = 1));
     })(document, window.posthog || []);
     posthog.init("{{ posthog_api_key|escapejs }}", {
-      api_host: "https://us.i.posthog.com",
+      api_host: "{{ posthog_host|escapejs }}",
       autocapture: false,
       capture_pageview: false,
       defaults: "2026-05-30",
@@ -61,5 +61,9 @@
     {% else %}
       posthog.reset();
     {% endif %}
-  </script>
+    posthog.onSessionId(function (sessionId) {
+      window.Rowset = window.Rowset || {};
+      window.Rowset.posthogSessionId = sessionId;
+    });
+    </script>
 {% endif %}

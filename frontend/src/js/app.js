@@ -59,6 +59,11 @@
     return document.body?.dataset.csrfToken || "";
   }
 
+  Rowset.posthogSessionHeaders = function posthogSessionHeaders() {
+    const sessionId = Rowset.posthogSessionId;
+    return sessionId ? { "X-PostHog-Session-ID": sessionId } : {};
+  };
+
   function configureHtmx() {
     if (!window.htmx) {
       return;
@@ -67,6 +72,7 @@
     window.htmx.config.historyRestoreAsHxRequest = false;
     document.body?.addEventListener("htmx:configRequest", (event) => {
       event.detail.headers["X-CSRFToken"] = csrfToken();
+      Object.assign(event.detail.headers, Rowset.posthogSessionHeaders());
     });
   }
 
@@ -85,7 +91,10 @@
     }
 
     const abortController = new AbortController();
-    fetch(url, { signal: abortController.signal })
+    fetch(url, {
+      signal: abortController.signal,
+      headers: Rowset.posthogSessionHeaders(),
+    })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (data) {

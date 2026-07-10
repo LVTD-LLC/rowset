@@ -29,6 +29,7 @@ def pro_subscription_status(request):
 def posthog_api_key(request):
     context = {
         "posthog_api_key": settings.POSTHOG_API_KEY,
+        "posthog_host": settings.POSTHOG_HOST,
         "posthog_distinct_id": "",
         "posthog_user_email": "",
     }
@@ -89,8 +90,8 @@ def available_social_providers(request):
         social_apps = SocialApp.objects.all()
         for social_app in social_apps:
             available_providers.add(social_app.provider)
-    except Exception as e:
-        logger.warning("Error retrieving SocialApp entries", error=str(e))
+    except Exception as exc:
+        logger.warning("Error retrieving SocialApp entries", error_type=type(exc).__name__)
 
     available_providers_list = sorted(list(available_providers))
 

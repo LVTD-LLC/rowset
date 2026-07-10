@@ -67,6 +67,7 @@ Owns request context and the canonical Django completion event. It will:
 - bind request context with `structlog.contextvars` so nested domain logs correlate naturally
 - classify requests as `web`, `htmx`, or `rest`
 - add authenticated session identity without email addresses
+- accept a bounded `X-PostHog-Session-ID` from Rowset's HTMX/fetch clients for replay correlation
 - emit method, normalized route name, status code/class, duration, and HTMX booleans
 - return the request ID in the response header
 - exclude the health-check route from canonical INFO logs
@@ -136,6 +137,7 @@ Field names are stable schema, not presentation text. Shared fields include:
 | `outcome` | string | `success` or `failure` where applicable |
 | `profile_id` | integer | Internal non-secret profile identifier |
 | `posthogDistinctId` | string | Profile ID used by PostHog person correlation |
+| `sessionId` | string | Non-secret PostHog browser session ID used for replay correlation |
 | `agent_api_key_id` | integer | Database identifier, never the key value or prefix |
 | `error.type` | string | Exception or stable failure category |
 
@@ -170,7 +172,7 @@ control.
 
 ## Current Logging Coverage Audit
 
-The current repository contains about 100 application log calls, concentrated in Stripe webhook
+The current repository contains 87 application log calls, concentrated in Stripe webhook
 handling, core tasks/views, dataset vector jobs, API authentication, and email delivery.
 
 Strong existing coverage:
@@ -220,14 +222,15 @@ attributes, and disabled configuration without network access. Boundary tests wi
 logging handler instead of mocking internal OpenTelemetry methods.
 
 Django request middleware tests will cover normal, HTMX, REST, authenticated, server-error,
-health-check, request-ID, and context-cleanup paths. FastMCP middleware tests will cover a successful
-tool call and a raised failure without logging arguments. Django Q signal tests will cover success,
-failure, duration, context binding, and exclusion of task payload/result values.
+health-check, request-ID, PostHog session-ID, and context-cleanup paths. FastMCP middleware tests will
+cover a successful tool call and a raised failure without logging arguments. Django Q signal tests
+will cover success, failure, duration, context binding, and exclusion of task payload/result values.
 
 Settings tests will prove that the exporter is attached only when enabled with a token and that the
 web/worker service name is selected correctly. Existing focused API, MCP ASGI, worker, and core tests
 will guard integration behavior. Final verification will use the Docker-backed Rowset test command,
 Ruff, Django checks under production-like settings, and a clean dependency lock check.
+Frontend verification will lint and build the HTMX/fetch session-correlation header wiring.
 
 No test sends a real log to PostHog. A live smoke log requires a configured project token and should
 be performed only in an explicitly authorized staging or production environment.

@@ -23,6 +23,7 @@ class CollectingHandler(logging.Handler):
 
 @pytest.fixture
 def captured_events():
+    structlog.contextvars.clear_contextvars()
     rowset_logger = logging.getLogger("rowset")
     handler = CollectingHandler()
     rowset_logger.addHandler(handler)
@@ -124,6 +125,34 @@ def test_request_middleware_uses_safe_incoming_request_id_and_replaces_unsafe_on
     assert len(events[1]["request.id"]) == 32
 
 
+def test_request_middleware_binds_safe_posthog_session_id(captured_events):
+    request = RequestFactory().get(
+        "/datasets/",
+        HTTP_X_POSTHOG_SESSION_ID="session-123_abc",
+    )
+    request.user = SimpleNamespace(is_authenticated=False)
+    request.resolver_match = SimpleNamespace(view_name="dataset_list", route="datasets/")
+
+    RequestLoggingMiddleware(lambda _request: HttpResponse())(request)
+
+    event = _event(captured_events, "http.request.completed")
+    assert event["sessionId"] == "session-123_abc"
+
+
+def test_request_middleware_rejects_unsafe_posthog_session_id(captured_events):
+    request = RequestFactory().get(
+        "/datasets/",
+        HTTP_X_POSTHOG_SESSION_ID="private\nsession",
+    )
+    request.user = SimpleNamespace(is_authenticated=False)
+    request.resolver_match = SimpleNamespace(view_name="dataset_list", route="datasets/")
+
+    RequestLoggingMiddleware(lambda _request: HttpResponse())(request)
+
+    event = _event(captured_events, "http.request.completed")
+    assert "sessionId" not in event
+
+
 def test_request_middleware_logs_server_error_type_and_clears_context(captured_events):
     request = _request("/broken/")
     request.resolver_match = SimpleNamespace(view_name="broken", route="broken/")
@@ -140,6 +169,19 @@ def test_request_middleware_logs_server_error_type_and_clears_context(captured_e
     assert event["error.type"] == "ValueError"
     assert "private failure message" not in str(event)
     assert structlog.contextvars.get_contextvars() == {}
+
+
+def test_request_middleware_process_exception_enriches_framework_generated_500(captured_events):
+    request = _request("/broken/")
+    request.resolver_match = SimpleNamespace(view_name="broken", route="broken/")
+    middleware = RequestLoggingMiddleware(lambda _request: HttpResponse(status=500))
+
+    middleware.process_exception(request, KeyError("private framework failure"))
+    middleware(request)
+
+    event = _event(captured_events, "http.request.completed")
+    assert event["error.type"] == "KeyError"
+    assert "private framework failure" not in str(event)
 
 
 def test_request_middleware_skips_healthcheck_log_but_returns_request_id(captured_events):
