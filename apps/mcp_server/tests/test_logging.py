@@ -23,6 +23,7 @@ class CollectingHandler(logging.Handler):
 
 @pytest.fixture
 def captured_events():
+    structlog.contextvars.clear_contextvars()
     rowset_logger = logging.getLogger("rowset")
     handler = CollectingHandler()
     rowset_logger.addHandler(handler)

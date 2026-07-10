@@ -64,9 +64,7 @@ def log_task_completion(
 
     success = bool(task.get("success", False))
     duration_ms = (
-        round((time.perf_counter() - started_at) * 1_000, 2)
-        if started_at is not None
-        else 0.0
+        round((time.perf_counter() - started_at) * 1_000, 2) if started_at is not None else 0.0
     )
     attributes: dict[str, Any] = {
         "job.success": success,
@@ -81,4 +79,3 @@ def log_task_completion(
         log_method("background_job.completed", **attributes)
     finally:
         structlog.contextvars.clear_contextvars()
-

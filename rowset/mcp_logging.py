@@ -40,7 +40,7 @@ def _bind_access_token_actor() -> None:
     profile_identifier = claims.get("profile_id") or access_token.subject
     try:
         profile_id = int(profile_identifier)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return
 
     agent_api_key_identifier = claims.get("agent_api_key_id")
@@ -48,7 +48,7 @@ def _bind_access_token_actor() -> None:
         agent_api_key_id = (
             int(agent_api_key_identifier) if agent_api_key_identifier is not None else None
         )
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         agent_api_key_id = None
 
     bind_actor_context(
@@ -72,9 +72,7 @@ class RowsetMCPLoggingMiddleware(Middleware):
             "request.interface": "mcp",
             "rpc.method": context.method or "unknown",
         }
-        tool_name = (
-            getattr(context.message, "name", "") if context.method == "tools/call" else ""
-        )
+        tool_name = getattr(context.message, "name", "") if context.method == "tools/call" else ""
         if tool_name:
             request_context["mcp.tool.name"] = str(tool_name)
         structlog.contextvars.bind_contextvars(**request_context)
@@ -103,4 +101,3 @@ class RowsetMCPLoggingMiddleware(Middleware):
                 log_method("mcp.request.completed", **attributes)
             finally:
                 structlog.contextvars.clear_contextvars()
-

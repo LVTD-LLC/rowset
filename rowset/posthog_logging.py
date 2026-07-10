@@ -215,9 +215,7 @@ class PostHogLoggingHandler(logging.Handler):
         else:
             message = record.getMessage()
             extra = {
-                key: value
-                for key, value in vars(record).items()
-                if key not in _LOG_RECORD_FIELDS
+                key: value for key, value in vars(record).items() if key not in _LOG_RECORD_FIELDS
             }
             attributes = sanitize_log_attributes({"event": message, **extra})
 
