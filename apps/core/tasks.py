@@ -177,8 +177,8 @@ def track_event(
         return f"Profile with id {profile_id} not found."
 
     posthog.capture(
-        str(profile.id),
-        event=event_name,
+        event_name,
+        distinct_id=str(profile.id),
         properties={
             "profile_id": profile.id,
             "email": profile.user.email,
@@ -215,8 +215,8 @@ def track_activation_event(
         return f"Profile with id {profile_id} not found."
 
     posthog.capture(
-        str(profile.id),
-        event=event_name,
+        event_name,
+        distinct_id=str(profile.id),
         properties={
             "profile_id": profile.id,
             "current_state": profile.state,
