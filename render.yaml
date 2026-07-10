@@ -11,7 +11,7 @@ services:
       python manage.py collectstatic --noinput
     startCommand: python manage.py migrate && gunicorn rowset.asgi:application --bind 0.0.0.0:$PORT --workers 2 --worker-class uvicorn_worker.UvicornWorker --timeout 120
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /api/healthcheck
 
     envVars:
       - fromGroup: app-env

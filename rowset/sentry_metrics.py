@@ -6,6 +6,8 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from sentry_sdk import metrics
 
+from rowset.logging_context import route_name
+
 MIDDLEWARE_PATH = "rowset.sentry_metrics.SentryMetricsMiddleware"
 
 
@@ -15,23 +17,11 @@ def install_sentry_metrics_middleware(middleware: list[str]) -> None:
     middleware.insert(0, MIDDLEWARE_PATH)
 
 
-def _route_name(request: HttpRequest) -> str:
-    resolver_match = getattr(request, "resolver_match", None)
-    if resolver_match is None:
-        return "unresolved"
-
-    if resolver_match.view_name:
-        return resolver_match.view_name
-
-    route = getattr(resolver_match, "route", "")
-    return route or "unresolved"
-
-
 def _attributes(request: HttpRequest, status_code: int) -> dict[str, Any]:
     status_class = f"{status_code // 100}xx"
     return {
         "method": request.method,
-        "route": _route_name(request),
+        "route": route_name(request),
         "status_code": status_code,
         "status_class": status_class,
     }

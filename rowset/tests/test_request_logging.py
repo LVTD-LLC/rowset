@@ -1,41 +1,15 @@
-import logging
+import asyncio
 from types import SimpleNamespace
 
 import pytest
 import structlog
 from django.http import HttpResponse
 from django.test import RequestFactory
+from django.utils.functional import SimpleLazyObject
 from django_htmx.middleware import HtmxDetails
 
 from rowset.request_logging import RequestLoggingMiddleware
 from rowset.utils import get_rowset_logger
-
-
-class CollectingHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.events: list[dict] = []
-
-    def emit(self, record: logging.LogRecord) -> None:
-        if isinstance(record.msg, dict):
-            self.events.append(record.msg.copy())
-
-
-@pytest.fixture
-def captured_events():
-    structlog.contextvars.clear_contextvars()
-    rowset_logger = logging.getLogger("rowset")
-    handler = CollectingHandler()
-    rowset_logger.addHandler(handler)
-    try:
-        yield handler.events
-    finally:
-        rowset_logger.removeHandler(handler)
-        structlog.contextvars.clear_contextvars()
-
-
-def _event(events: list[dict], event_name: str) -> dict:
-    return next(event for event in events if event.get("event") == event_name)
 
 
 def _request(path: str = "/datasets/"):
@@ -58,7 +32,7 @@ def test_request_middleware_emits_one_wide_htmx_event(captured_events):
 
     response = RequestLoggingMiddleware(lambda _request: HttpResponse(status=200))(request)
 
-    event = _event(captured_events, "http.request.completed")
+    event = captured_events.event("http.request.completed")
     assert event["request.interface"] == "htmx"
     assert event["http.request.method"] == "GET"
     assert event["http.route"] == "dataset_list"
@@ -70,6 +44,39 @@ def test_request_middleware_emits_one_wide_htmx_event(captured_events):
     assert event["outcome"] == "success"
     assert event["duration_ms"] >= 0
     assert response.headers["X-Request-ID"] == event["request.id"]
+
+
+def test_request_middleware_runs_natively_in_async_mode(captured_events):
+    request = _request()
+
+    async def async_response(_request):
+        return HttpResponse(status=202)
+
+    response = asyncio.run(RequestLoggingMiddleware(async_response)(request))
+
+    event = captured_events.event("http.request.completed")
+    assert response.status_code == 202
+    assert event["http.response.status_code"] == 202
+    assert event["outcome"] == "success"
+
+
+def test_request_middleware_does_not_resolve_unused_lazy_session_user(captured_events):
+    request = _request()
+    evaluations = 0
+
+    def load_user():
+        nonlocal evaluations
+        evaluations += 1
+        return SimpleNamespace(id=3, is_authenticated=True, profile=SimpleNamespace(id=7))
+
+    request.user = SimpleLazyObject(load_user)
+
+    RequestLoggingMiddleware(lambda _request: HttpResponse(status=200))(request)
+
+    event = captured_events.event("http.request.completed")
+    assert evaluations == 0
+    assert "user_id" not in event
+    assert "profile_id" not in event
 
 
 def test_request_middleware_binds_actor_and_correlation_context_to_nested_logs(captured_events):
@@ -87,8 +94,8 @@ def test_request_middleware_binds_actor_and_correlation_context_to_nested_logs(c
 
     RequestLoggingMiddleware(response_with_domain_log)(request)
 
-    domain_event = _event(captured_events, "dataset.operation.completed")
-    request_event = _event(captured_events, "http.request.completed")
+    domain_event = captured_events.event("dataset.operation.completed")
+    request_event = captured_events.event("http.request.completed")
     assert domain_event["request.id"] == request_event["request.id"]
     assert request_event["user_id"] == 3
     assert request_event["profile_id"] == 7
@@ -102,7 +109,7 @@ def test_request_middleware_classifies_rest_requests(captured_events):
 
     RequestLoggingMiddleware(lambda _request: HttpResponse(status=404))(request)
 
-    event = _event(captured_events, "http.request.completed")
+    event = captured_events.event("http.request.completed")
     assert event["request.interface"] == "rest"
     assert event["http.response.status_class"] == "4xx"
     assert event["outcome"] == "success"
@@ -135,7 +142,7 @@ def test_request_middleware_binds_safe_posthog_session_id(captured_events):
 
     RequestLoggingMiddleware(lambda _request: HttpResponse())(request)
 
-    event = _event(captured_events, "http.request.completed")
+    event = captured_events.event("http.request.completed")
     assert event["sessionId"] == "session-123_abc"
 
 
@@ -149,7 +156,7 @@ def test_request_middleware_rejects_unsafe_posthog_session_id(captured_events):
 
     RequestLoggingMiddleware(lambda _request: HttpResponse())(request)
 
-    event = _event(captured_events, "http.request.completed")
+    event = captured_events.event("http.request.completed")
     assert "sessionId" not in event
 
 
@@ -163,7 +170,7 @@ def test_request_middleware_logs_server_error_type_and_clears_context(captured_e
     with pytest.raises(ValueError, match="private failure message"):
         RequestLoggingMiddleware(broken_response)(request)
 
-    event = _event(captured_events, "http.request.completed")
+    event = captured_events.event("http.request.completed")
     assert event["http.response.status_code"] == 500
     assert event["outcome"] == "failure"
     assert event["error.type"] == "ValueError"
@@ -179,7 +186,7 @@ def test_request_middleware_process_exception_enriches_framework_generated_500(c
     middleware.process_exception(request, KeyError("private framework failure"))
     middleware(request)
 
-    event = _event(captured_events, "http.request.completed")
+    event = captured_events.event("http.request.completed")
     assert event["error.type"] == "KeyError"
     assert "private framework failure" not in str(event)
 

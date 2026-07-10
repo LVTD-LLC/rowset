@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from contextvars import ContextVar
 from typing import Any
 
 import structlog
@@ -12,7 +13,7 @@ from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
 
-_TASK_START_TIMES: dict[str, float] = {}
+_TASK_STARTED_AT: ContextVar[float | None] = ContextVar("rowset_task_started_at", default=None)
 
 
 def _job_id(task: dict[str, Any]) -> str:
@@ -45,8 +46,7 @@ def bind_task_context(
     **kwargs: Any,
 ) -> None:
     structlog.contextvars.clear_contextvars()
-    job_id = _job_id(task)
-    _TASK_START_TIMES[job_id] = time.perf_counter()
+    _TASK_STARTED_AT.set(time.perf_counter())
     structlog.contextvars.bind_contextvars(**_job_context(func, task))
 
 
@@ -57,8 +57,8 @@ def log_task_completion(
     task: dict[str, Any],
     **kwargs: Any,
 ) -> None:
-    job_id = _job_id(task)
-    started_at = _TASK_START_TIMES.pop(job_id, None)
+    started_at = _TASK_STARTED_AT.get()
+    _TASK_STARTED_AT.set(None)
     if not structlog.contextvars.get_contextvars():
         structlog.contextvars.bind_contextvars(**_job_context(func, task))
 

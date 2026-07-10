@@ -1,37 +1,7 @@
-import logging
-
-import pytest
 import structlog
 
 from rowset.task_logging import bind_task_context, log_task_completion
 from rowset.utils import get_rowset_logger
-
-
-class CollectingHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.events: list[dict] = []
-
-    def emit(self, record: logging.LogRecord) -> None:
-        if isinstance(record.msg, dict):
-            self.events.append(record.msg.copy())
-
-
-@pytest.fixture
-def captured_events():
-    structlog.contextvars.clear_contextvars()
-    rowset_logger = logging.getLogger("rowset")
-    handler = CollectingHandler()
-    rowset_logger.addHandler(handler)
-    try:
-        yield handler.events
-    finally:
-        rowset_logger.removeHandler(handler)
-        structlog.contextvars.clear_contextvars()
-
-
-def _event(events: list[dict], event_name: str) -> dict:
-    return next(event for event in events if event.get("event") == event_name)
 
 
 def _task() -> dict:
@@ -54,7 +24,7 @@ def test_task_completion_logs_safe_job_boundary(captured_events, monkeypatch):
     task.update({"success": True, "result": {"private": "row data"}})
     log_task_completion(sender="django_q", func=lambda: None, task=task)
 
-    event = _event(captured_events, "background_job.completed")
+    event = captured_events.event("background_job.completed")
     assert event["job.id"] == "task-1"
     assert event["job.name"] == "Index vectors"
     assert event["job.function"] == "apps.datasets.tasks.index_dataset_row_vector"
@@ -80,7 +50,7 @@ def test_task_context_correlates_nested_domain_logs(captured_events, monkeypatch
     task["success"] = True
     log_task_completion(sender="django_q", func=lambda: None, task=task)
 
-    domain_event = _event(captured_events, "vector.index.completed")
+    domain_event = captured_events.event("vector.index.completed")
     assert domain_event["job.id"] == "task-1"
     assert domain_event["job.function"] == "apps.datasets.tasks.index_dataset_row_vector"
 
@@ -99,7 +69,7 @@ def test_failed_task_logs_stable_error_type_without_result(captured_events, monk
     )
     log_task_completion(sender="django_q", func=lambda: None, task=task)
 
-    event = _event(captured_events, "background_job.completed")
+    event = captured_events.event("background_job.completed")
     assert event["job.success"] is False
     assert event["outcome"] == "failure"
     assert event["error.type"] == "TaskExecutionError"

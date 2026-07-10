@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from types import SimpleNamespace
 
 import pytest
@@ -9,33 +8,6 @@ from fastmcp.server.middleware import MiddlewareContext
 from mcp.types import CallToolRequestParams, ListToolsRequest
 
 from rowset.mcp_logging import RowsetMCPLoggingMiddleware
-
-
-class CollectingHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.events: list[dict] = []
-
-    def emit(self, record: logging.LogRecord) -> None:
-        if isinstance(record.msg, dict):
-            self.events.append(record.msg.copy())
-
-
-@pytest.fixture
-def captured_events():
-    structlog.contextvars.clear_contextvars()
-    rowset_logger = logging.getLogger("rowset")
-    handler = CollectingHandler()
-    rowset_logger.addHandler(handler)
-    try:
-        yield handler.events
-    finally:
-        rowset_logger.removeHandler(handler)
-        structlog.contextvars.clear_contextvars()
-
-
-def _event(events: list[dict]) -> dict:
-    return next(event for event in events if event.get("event") == "mcp.request.completed")
 
 
 def _access_token() -> AccessToken:
@@ -83,7 +55,7 @@ def test_mcp_logging_emits_tool_name_identity_outcome_and_duration(
 
     result = asyncio.run(middleware.on_request(context, call_next))
 
-    event = _event(captured_events)
+    event = captured_events.event("mcp.request.completed")
     assert event["request.id"] == "mcp.req-1"
     assert event["request.interface"] == "mcp"
     assert event["mcp.tool.name"] == "create_dataset"
@@ -124,7 +96,7 @@ def test_mcp_logging_emits_only_error_type_when_request_raises(captured_events, 
     with pytest.raises(ValueError, match="private MCP failure message"):
         asyncio.run(middleware.on_request(context, call_next))
 
-    event = _event(captured_events)
+    event = captured_events.event("mcp.request.completed")
     assert event["rpc.method"] == "tools/list"
     assert event["outcome"] == "failure"
     assert event["error.type"] == "ValueError"
@@ -152,6 +124,6 @@ def test_mcp_logging_treats_error_results_as_failed_outcomes(captured_events, mo
 
     asyncio.run(middleware.on_request(context, call_next))
 
-    event = _event(captured_events)
+    event = captured_events.event("mcp.request.completed")
     assert event["outcome"] == "failure"
     assert "error detail" not in str(event)

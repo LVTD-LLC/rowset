@@ -1,9 +1,6 @@
 import json
-import logging
 from types import SimpleNamespace
 
-import pytest
-import structlog
 from django.test import RequestFactory, override_settings
 
 from apps.core import stripe_webhooks
@@ -12,33 +9,6 @@ from apps.core import utils as core_utils
 from apps.core.choices import EmailType
 from apps.core.views import stripe_webhook
 from apps.datasets import tasks as dataset_tasks
-
-
-class CollectingHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.events: list[dict] = []
-
-    def emit(self, record: logging.LogRecord) -> None:
-        if isinstance(record.msg, dict):
-            self.events.append(record.msg.copy())
-
-
-@pytest.fixture
-def captured_events():
-    structlog.contextvars.clear_contextvars()
-    rowset_logger = logging.getLogger("rowset")
-    handler = CollectingHandler()
-    rowset_logger.addHandler(handler)
-    try:
-        yield handler.events
-    finally:
-        rowset_logger.removeHandler(handler)
-        structlog.contextvars.clear_contextvars()
-
-
-def _event(events: list[dict], event_name: str) -> dict:
-    return next(event for event in events if event.get("event") == event_name)
 
 
 @override_settings(POSTHOG_API_KEY="phc_test")
@@ -55,7 +25,7 @@ def test_posthog_alias_log_contains_only_safe_completion_context(captured_events
         source_function="signup",
     )
 
-    event = _event(captured_events, "posthog.alias.completed")
+    event = captured_events.event("posthog.alias.completed")
     assert event == {
         "profile_id": 7,
         "source_function": "signup",
@@ -90,7 +60,7 @@ def test_posthog_event_log_records_property_count_not_property_values(captured_e
         source_function="test",
     )
 
-    event = _event(captured_events, "posthog.event.completed")
+    event = captured_events.event("posthog.event.completed")
     assert event["properties_count"] == 2
     assert "properties" not in event
     assert "dataset contents" not in str(event)
@@ -108,7 +78,7 @@ def test_email_tracking_log_uses_profile_identity_not_email(captured_events, mon
         profile=SimpleNamespace(id=7),
     )
 
-    event = _event(captured_events, "email.tracking.completed")
+    event = captured_events.event("email.tracking.completed")
     assert event["profile_id"] == 7
     assert event["email_sent_id"] == 12
     assert event["outcome"] == "success"
@@ -140,7 +110,7 @@ def test_stripe_checkout_log_replaces_arbitrary_metadata_with_count(captured_eve
 
     stripe_webhooks.handle_checkout_completed(event)
 
-    log_event = _event(captured_events, "stripe.checkout.completed")
+    log_event = captured_events.event("stripe.checkout.completed")
     assert log_event["metadata_count"] == 2
     assert "metadata" not in log_event
     assert "dataset value" not in str(log_event)
@@ -156,7 +126,7 @@ def test_vector_deletion_log_uses_count_instead_of_row_id_list(captured_events, 
 
     dataset_tasks.delete_dataset_row_vectors(9, [11, 12, 13])
 
-    event = _event(captured_events, "Skipping vector row deletion for missing dataset")
+    event = captured_events.event("Skipping vector row deletion for missing dataset")
     assert event["dataset_id"] == 9
     assert event["row_count"] == 3
     assert "row_ids" not in event

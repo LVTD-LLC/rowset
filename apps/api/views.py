@@ -304,7 +304,7 @@ def healthcheck(request: HttpRequest):
     }
 
     if healthy:
-        logger.info("Healthcheck passed", **checks)
+        logger.debug("Healthcheck passed", **checks)
         return payload
 
     logger.error("Healthcheck failed", **checks)

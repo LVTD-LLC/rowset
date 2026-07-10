@@ -1,31 +1,24 @@
 from __future__ import annotations
 
-import re
 import time
 from typing import Any
-from uuid import uuid4
 
 import structlog
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 
-from rowset.request_logging import bind_actor_context
+from rowset.logging_context import bind_actor_context, correlation_id_or_new
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
-
-_SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
 
 
 def _request_id() -> str:
     try:
         request = get_http_request()
     except RuntimeError:
-        return uuid4().hex
-    supplied = request.headers.get("x-request-id", "").strip()
-    if _SAFE_REQUEST_ID.fullmatch(supplied):
-        return supplied
-    return uuid4().hex
+        return correlation_id_or_new(None)
+    return correlation_id_or_new(request.headers.get("x-request-id"))
 
 
 def _bind_access_token_actor() -> None:
