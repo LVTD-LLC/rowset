@@ -16,7 +16,6 @@ import sys
 from pathlib import Path
 
 import environ
-import logfire
 import sentry_sdk
 import structlog
 from django.core.exceptions import ImproperlyConfigured
@@ -24,7 +23,6 @@ from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from structlog_sentry import SentryProcessor
 
-from rowset.logging_utils import scrubbing_callback
 from rowset.sentry_metrics import install_sentry_metrics_middleware
 from rowset.sentry_utils import CustomLoggingIntegration, before_send
 
@@ -49,13 +47,6 @@ def _split_env_urls(value: str) -> tuple[str, ...]:
 
 # Options: dev, prod
 ENVIRONMENT = env("ENVIRONMENT")
-
-LOGFIRE_TOKEN = env("LOGFIRE_TOKEN", default="")
-if LOGFIRE_TOKEN:
-    logfire.configure(
-        environment=ENVIRONMENT,
-        scrubbing=logfire.ScrubbingOptions(callback=scrubbing_callback),
-    )
 
 SENTRY_DSN = env("SENTRY_DSN", default="")
 SENTRY_RELEASE = env("SENTRY_RELEASE", default="")
@@ -579,10 +570,6 @@ if SENTRY_DSN and ENVIRONMENT == "prod":
             verbose=True,
         )
     )
-
-
-if LOGFIRE_TOKEN:
-    structlog_processors.append(logfire.StructlogProcessor())
 
 
 structlog_processors.extend(

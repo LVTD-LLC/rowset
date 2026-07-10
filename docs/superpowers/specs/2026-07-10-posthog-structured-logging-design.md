@@ -11,7 +11,7 @@ exporting user-owned dataset contents, credentials, request bodies, or unnecessa
 Rowset will export logs directly from each web or worker process using the OpenTelemetry Python
 SDK's batched OTLP/HTTP log exporter. A dedicated logging handler will translate the existing
 `structlog` event dictionaries into OpenTelemetry log bodies and flat attributes while preserving
-the existing console, Sentry, and Logfire outputs.
+the existing console and Sentry outputs.
 
 The application will also emit one canonical completion event for each meaningful lifecycle
 boundary:
@@ -35,7 +35,7 @@ and failure mode before the volume justifies it.
 ### Full OpenTelemetry auto-instrumentation
 
 This would provide automatic traces and broad third-party logging. It would overlap with the
-existing Sentry and Logfire setup, export noisy framework internals, and make privacy control less
+existing Sentry setup, export noisy framework internals, and make privacy control less
 explicit. It is deferred until Rowset needs distributed traces across multiple services.
 
 ## Components
@@ -53,11 +53,11 @@ Owns the PostHog OTLP bridge. It will:
 - drop centrally classified sensitive fields before export
 - truncate unusually long strings to a bounded size
 - preserve a queryable exception type while stripping exception messages, tracebacks, and local
-  details from the PostHog copy; the original record remains available to Sentry and Logfire
+  details from the PostHog copy; the original record remains available to Sentry
 - fail open so an exporter problem never interrupts an application request or worker job
 
-The handler is attached alongside the current console handlers. It does not replace console JSON,
-Sentry, or Logfire.
+The handler is attached alongside the current console handlers. It does not replace console JSON
+or Sentry.
 
 ### `rowset/request_logging.py`
 
@@ -106,8 +106,8 @@ The integration will use explicit settings derived from environment variables:
 - `POSTHOG_SERVICE_NAME`: defaults from `APP_PROCESS_TYPE` to distinguish web and worker processes
 
 The endpoint is derived as `<POSTHOG_HOST>/i/v1/logs`. No token is included in a URL or log.
-OpenTelemetry SDK and OTLP HTTP exporter packages become direct project dependencies rather than
-remaining accidental transitive dependencies of Logfire.
+OpenTelemetry SDK and OTLP HTTP exporter packages are direct project dependencies so the logging
+pipeline does not depend on unrelated observability packages.
 
 ## Resource Attribute Contract
 

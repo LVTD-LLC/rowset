@@ -4,7 +4,7 @@
 
 **Goal:** Export privacy-safe Rowset logs to PostHog over batched OTLP and add canonical, queryable lifecycle events for HTTP/HTMX/REST, MCP, and Django Q work.
 
-**Architecture:** A custom logging handler translates existing `structlog` dictionaries into flat OpenTelemetry log records and filters sensitive/non-scalar attributes before a batched OTLP exporter sees them. Django, FastMCP, and Django Q lifecycle adapters bind correlation context and emit one wide completion event at their boundaries while existing domain logs continue to console, Sentry, Logfire, and PostHog.
+**Architecture:** A custom logging handler translates existing `structlog` dictionaries into flat OpenTelemetry log records and filters sensitive/non-scalar attributes before a batched OTLP exporter sees them. Django, FastMCP, and Django Q lifecycle adapters bind correlation context and emit one wide completion event at their boundaries while existing domain logs continue to console, Sentry, and PostHog.
 
 **Tech Stack:** Python 3.14, Django 6, structlog, OpenTelemetry Logs SDK and OTLP/HTTP exporter, FastMCP middleware, Django Q signals, pytest.
 
@@ -12,7 +12,7 @@
 
 - Use `POSTHOG_API_KEY` as the `phc_` project token; never log it or put it in the endpoint URL.
 - Default `POSTHOG_HOST` to `https://us.i.posthog.com` and send logs to `/i/v1/logs`.
-- Preserve the existing console, Sentry, and Logfire outputs.
+- Preserve the existing console and Sentry outputs.
 - Export only scalar string, boolean, integer, and finite-float attributes.
 - Never export request/response bodies, query values, dataset contents, task/tool arguments or results, credentials, cookies, emails, arbitrary properties, or metadata mappings.
 - Use `posthogDistinctId` containing the string form of `profile_id` for PostHog person correlation.
@@ -135,7 +135,7 @@ def sanitize_log_attributes(event_dict: Mapping[str, Any]) -> dict[str, Scalar]:
 `LoggingHandler`. Clone incoming records before changing the body or adding sanitized extras.
 Remove all original custom attributes from the clone before attaching the sanitized set. Export
 only `error.type` to PostHog; leave exception messages and tracebacks on the original record for
-Sentry and Logfire.
+Sentry.
 
 - [ ] **Step 5: Configure settings and environment variables**
 
@@ -490,7 +490,7 @@ Apply these exact transformations:
   safe IDs already present.
 - Vector deletion: replace `row_ids=row_ids` with `row_count=len(row_ids)`.
 - Exception logs touched in these files: add `error_type=type(exc).__name__`; keep `exc_info=True`
-  on the original record only where Sentry or Logfire benefits. The PostHog handler strips the
+  on the original record only where Sentry benefits. The PostHog handler strips the
   message and traceback from its clone.
 
 - [ ] **Step 4: Run focused tests and verify GREEN**

@@ -186,27 +186,26 @@ def test_posthog_handler_translates_structlog_event_for_delegate_without_mutatin
     assert "PRIVATE_" not in str(vars(exported))
 
 
-def test_posthog_handler_translates_plain_standard_logging_records():
+def test_posthog_handler_translates_standard_logging_extra_attributes():
     delegate = CollectingHandler()
     handler = PostHogLoggingHandler(delegate=delegate)
-    record = logging.LogRecord(
-        "rowset.test",
-        logging.WARNING,
-        __file__,
-        1,
-        "Cache retry %s",
-        (2,),
-        None,
-    )
-    record.retry_count = 2
-    record.authorization = "Bearer private-token"
-    record.metadata = {"private": "dataset value"}
+    logger = logging.Logger("rowset.test", level=logging.WARNING)
+    logger.addHandler(handler)
 
-    handler.emit(record)
+    logger.warning(
+        "Cache retry %s",
+        2,
+        extra={
+            "event": "cache.retry",
+            "retry_count": 2,
+            "authorization": "Bearer private-token",
+            "metadata": {"private": "dataset value"},
+        },
+    )
 
     exported = delegate.records[0]
     assert exported.getMessage() == "Cache retry 2"
-    assert getattr(exported, "event.name") == "Cache retry 2"
+    assert getattr(exported, "event.name") == "cache.retry"
     assert exported.retry_count == 2
     assert not hasattr(exported, "authorization")
     assert not hasattr(exported, "metadata")
