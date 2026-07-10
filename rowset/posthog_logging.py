@@ -37,8 +37,15 @@ _SENSITIVE_EXACT_FIELDS = frozenset(
         "cookies",
         "email",
         "email_address",
+        "error",
+        "error_message",
+        "exception",
+        "exception_message",
+        "exception_stacktrace",
         "feedback",
         "kwargs",
+        "local_variables",
+        "locals",
         "metadata",
         "password",
         "payload",
@@ -53,7 +60,12 @@ _SENSITIVE_EXACT_FIELDS = frozenset(
         "row_data",
         "rows",
         "secret",
+        "stack",
+        "stack_trace",
+        "stacktrace",
         "token",
+        "traceback",
+        "traceback_text",
         "user_email",
     }
 )
@@ -67,7 +79,11 @@ _SENSITIVE_FIELD_SUFFIXES = (
     "_password",
     "_payload",
     "_secret",
+    "_stack_trace",
+    "_stacktrace",
     "_token",
+    "_traceback",
+    "_traceback_text",
 )
 _STRUCTLOG_INTERNAL_FIELDS = frozenset(
     {

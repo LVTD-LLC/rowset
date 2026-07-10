@@ -151,6 +151,12 @@ def test_posthog_handler_translates_structlog_event_for_delegate_without_mutatin
         "request.id": "req-1",
         "profile_id": 7,
         "email": "private@example.com",
+        "traceback": "PRIVATE_TRACEBACK_VALUE",
+        "traceback_text": "PRIVATE_TRACEBACK_TEXT",
+        "stacktrace": "PRIVATE_STACKTRACE_VALUE",
+        "stack_trace": "PRIVATE_STACK_TRACE_VALUE",
+        "locals": "PRIVATE_LOCALS_VALUE",
+        "local_variables": "PRIVATE_LOCAL_VARIABLES_VALUE",
     }
     record = logging.LogRecord(
         "rowset.test",
@@ -171,6 +177,13 @@ def test_posthog_handler_translates_structlog_event_for_delegate_without_mutatin
     assert getattr(exported, "request.id") == "req-1"
     assert exported.profile_id == 7
     assert not hasattr(exported, "email")
+    assert not hasattr(exported, "traceback")
+    assert not hasattr(exported, "traceback_text")
+    assert not hasattr(exported, "stacktrace")
+    assert not hasattr(exported, "stack_trace")
+    assert not hasattr(exported, "locals")
+    assert not hasattr(exported, "local_variables")
+    assert "PRIVATE_" not in str(vars(exported))
 
 
 def test_posthog_handler_translates_plain_standard_logging_records():
