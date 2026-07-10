@@ -11,6 +11,7 @@ except ImportError:  # pragma: no cover - FastMCP is installed in normal Rowset 
 from apps.api.errors import DatasetServiceError
 
 _IGNORED_LOGGERS = {"ask_hn_digest"}
+_IGNORED_EVENT_LOGGERS = {"rowset.rowset.task_logging"}
 
 
 class CustomLoggingIntegration(LoggingIntegration):
@@ -19,10 +20,15 @@ class CustomLoggingIntegration(LoggingIntegration):
         # or "celery.worker.job"
         if record.name in _IGNORED_LOGGERS or record.name.split(".")[0] in _IGNORED_LOGGERS:
             return
+        if isinstance(record.msg, dict) and record.msg.get("sentry") == "sent":
+            return
         super()._handle_record(record)
 
 
 def before_send(event, hint):
+    if event.get("logger") in _IGNORED_EVENT_LOGGERS:
+        return None
+
     if "exc_info" in hint:
         exc_type, exc_value, tb = hint["exc_info"]
 

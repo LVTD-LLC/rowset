@@ -43,7 +43,7 @@ def track_activation_event(
 
     def enqueue_event() -> None:
         async_task(
-            "core.tasks.track_activation_event",
+            "apps.core.tasks.track_activation_event",
             profile_id=profile_id,
             event_name=event_name,
             properties=event_properties,
