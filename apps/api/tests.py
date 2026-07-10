@@ -21,7 +21,7 @@ from apps.core.models import Feedback
 from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetColumnType
 from apps.datasets.embeddings import EmbeddingResult
-from apps.datasets.models import Dataset, DatasetRow, Project
+from apps.datasets.models import Dataset, DatasetRelationship, DatasetRow, Project
 from apps.datasets.vector_search import DatasetRowVectorSearchHit
 
 
@@ -1860,6 +1860,122 @@ def test_search_profile_rows_skips_incompatible_filter_operator_datasets(django_
 
     assert [result["row"]["id"] for result in response["results"]] == [scored_row.id]
     assert response["results"][0]["match"]["source"] == "hybrid"
+
+
+@pytest.mark.django_db
+def test_search_profile_rows_filters_calculated_relationship_counts(django_user_model):
+    from apps.api.services import search_profile_rows
+
+    user = django_user_model.objects.create_user(
+        username="profilewidecalculatedowner",
+        email="profilewidecalculatedowner@example.com",
+        password="password123",
+    )
+    people = Dataset.objects.create(
+        profile=user.profile,
+        name="People",
+        headers=["person_id", "name"],
+        index_column="person_id",
+        row_count=2,
+    )
+    messages = Dataset.objects.create(
+        profile=user.profile,
+        name="Messages",
+        headers=["message_id", "person_id", "body"],
+        index_column="message_id",
+        row_count=3,
+    )
+    relationship = DatasetRelationship.objects.create(
+        profile=user.profile,
+        source_dataset=messages,
+        target_dataset=people,
+        name="Message person",
+        source_column="person_id",
+        target_index_column=people.index_column,
+        enforce_integrity=True,
+    )
+    people.headers = ["person_id", "name", "connection_count"]
+    people.column_schema = {
+        "person_id": {"type": DatasetColumnType.TEXT},
+        "name": {"type": DatasetColumnType.TEXT},
+        "connection_count": {
+            "type": DatasetColumnType.CALCULATED,
+            "calculation": "relationship_count",
+            "relationship_key": str(relationship.key),
+        },
+    }
+    people.save(update_fields=["headers", "column_schema"])
+    person_with_two_connections = DatasetRow.objects.create(
+        dataset=people,
+        row_number=1,
+        index_value="P-1",
+        data={"person_id": "P-1", "name": "Target person Ada"},
+    )
+    person_with_one_connection = DatasetRow.objects.create(
+        dataset=people,
+        row_number=2,
+        index_value="P-2",
+        data={"person_id": "P-2", "name": "Target person Grace"},
+    )
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=messages,
+                row_number=1,
+                index_value="M-1",
+                data={"message_id": "M-1", "person_id": "P-1", "body": "Intro"},
+            ),
+            DatasetRow(
+                dataset=messages,
+                row_number=2,
+                index_value="M-2",
+                data={"message_id": "M-2", "person_id": " P-1 ", "body": "Follow-up"},
+            ),
+            DatasetRow(
+                dataset=messages,
+                row_number=3,
+                index_value="M-3",
+                data={"message_id": "M-3", "person_id": "P-2", "body": "Check-in"},
+            ),
+        ]
+    )
+
+    response = search_profile_rows(
+        user.profile,
+        query="target person",
+        filters={"connection_count": "1"},
+        filter_operators={"connection_count": "above"},
+        limit=5,
+        embedding_provider=FakeDatasetSearchEmbeddingProvider(),
+        vector_store=FakeProfileRowSearchVectorStore(
+            [
+                DatasetRowVectorSearchHit(
+                    point_id="one-connection",
+                    score=0.99,
+                    payload={
+                        "row_id": person_with_one_connection.id,
+                        "chunk_index": 0,
+                        "content_hash": "one",
+                    },
+                ),
+                DatasetRowVectorSearchHit(
+                    point_id="two-connections",
+                    score=0.95,
+                    payload={
+                        "row_id": person_with_two_connections.id,
+                        "chunk_index": 0,
+                        "content_hash": "two",
+                    },
+                ),
+            ]
+        ),
+    )
+
+    assert [result["row"]["id"] for result in response["results"]] == [
+        person_with_two_connections.id
+    ]
+    assert response["results"][0]["row"]["data"]["connection_count"] == "2"
+    assert "connection_count" not in person_with_two_connections.data
 
 
 @pytest.mark.django_db

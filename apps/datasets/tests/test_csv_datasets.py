@@ -4600,6 +4600,238 @@ def test_dataset_relationship_api_resolves_unenforced_orphan_as_null(client, pro
     assert resolve_response.json()["target_row"] is None
 
 
+def test_dataset_relationship_count_calculated_column_reads_live_counts(client, profile):
+    people, messages = create_crm_datasets(profile)
+    DatasetRow.objects.create(
+        dataset=people,
+        row_number=2,
+        index_value="P-2",
+        data={
+            "person_id": "P-2",
+            "name": "Grace Hopper",
+            "email": "grace@example.com",
+        },
+    )
+    people.row_count = 2
+    people.save(update_fields=["row_count"])
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(
+                dataset=messages,
+                row_number=2,
+                index_value="M-2",
+                data={
+                    "message_id": "M-2",
+                    "person_id": " P-1 ",
+                    "body": "Follow-up call.",
+                },
+            ),
+            DatasetRow(
+                dataset=messages,
+                row_number=3,
+                index_value="M-3",
+                data={
+                    "message_id": "M-3",
+                    "person_id": "P-2",
+                    "body": "WhatsApp check-in.",
+                },
+            ),
+        ]
+    )
+    messages.row_count = 3
+    messages.save(update_fields=["row_count"])
+    relationship_response = client.post(
+        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+        data={
+            "name": "Connection person",
+            "source_column": "person_id",
+            "target_dataset_key": str(people.key),
+            "enforce_integrity": True,
+        },
+        content_type="application/json",
+    )
+    relationship_key = relationship_response.json()["relationship"]["key"]
+
+    add_column_response = client.post(
+        f"/api/datasets/{people.key}/columns?api_key={profile.key}",
+        data={
+            "name": "connection_count",
+            "column_type": {
+                "type": "calculated",
+                "calculation": "relationship_count",
+                "relationship_key": relationship_key,
+            },
+        },
+        content_type="application/json",
+    )
+
+    assert add_column_response.status_code == 200
+    assert add_column_response.json()["dataset"]["headers"] == [
+        "person_id",
+        "name",
+        "email",
+        "connection_count",
+    ]
+    assert add_column_response.json()["dataset"]["column_schema"]["connection_count"] == {
+        "type": "calculated",
+        "calculation": "relationship_count",
+        "relationship_key": relationship_key,
+    }
+    people.refresh_from_db()
+    assert people.rows.filter(data__has_key="connection_count").exists() is False
+
+    list_response = client.get(
+        f"/api/datasets/{people.key}/rows?api_key={profile.key}"
+        "&sort=connection_count&direction=desc"
+    )
+
+    assert list_response.status_code == 200
+    rows = list_response.json()["rows"]
+    assert [row["index_value"] for row in rows] == ["P-1", "P-2"]
+    assert rows[0]["data"]["connection_count"] == "2"
+    assert rows[1]["data"]["connection_count"] == "1"
+
+    new_connection_response = client.post(
+        f"/api/datasets/{messages.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "message_id": "M-4",
+                "person_id": "P-2",
+                "body": "Phone call.",
+            }
+        },
+        content_type="application/json",
+    )
+    assert new_connection_response.status_code == 200
+
+    row_response = client.get(
+        f"/api/datasets/{people.key}/rows/by-index?api_key={profile.key}&index_value=P-2"
+    )
+    assert row_response.status_code == 200
+    assert row_response.json()["row"]["data"]["connection_count"] == "2"
+
+    create_person_response = client.post(
+        f"/api/datasets/{people.key}/rows?api_key={profile.key}",
+        data={
+            "data": {
+                "person_id": "P-3",
+                "name": "Katherine Johnson",
+                "email": "katherine@example.com",
+                "connection_count": "99",
+            }
+        },
+        content_type="application/json",
+    )
+    assert create_person_response.status_code == 200
+    assert create_person_response.json()["row"]["data"]["connection_count"] == "0"
+    assert "connection_count" not in people.rows.get(index_value="P-3").data
+
+    export_response = client.get(f"/api/datasets/{people.key}/export.csv?api_key={profile.key}")
+    assert export_response.status_code == 200
+    csv_rows = list(csv.DictReader(io.StringIO(export_response.content.decode())))
+    assert csv_rows[0]["connection_count"] == "2"
+    assert csv_rows[1]["connection_count"] == "2"
+    assert csv_rows[2]["connection_count"] == "0"
+
+
+def test_dataset_relationship_delete_rejects_calculated_column_dependency(client, profile):
+    people, messages = create_crm_datasets(profile)
+    relationship = DatasetRelationship.objects.create(
+        profile=profile,
+        source_dataset=messages,
+        target_dataset=people,
+        name="Connection person",
+        source_column="person_id",
+        target_index_column=people.index_column,
+        enforce_integrity=True,
+    )
+    people.headers = [*people.headers, "connection_count"]
+    people.column_schema = {
+        **people.column_schema,
+        "connection_count": {
+            "type": "calculated",
+            "calculation": "relationship_count",
+            "relationship_key": str(relationship.key),
+        },
+    }
+    people.save(update_fields=["headers", "column_schema"])
+
+    response = client.delete(
+        f"/api/datasets/{messages.key}/relationships/{relationship.key}?api_key={profile.key}"
+    )
+
+    assert response.status_code == 409
+    assert "calculated column 'connection_count'" in response.json()["detail"]
+    assert DatasetRelationship.objects.filter(pk=relationship.pk).exists()
+
+
+def test_dataset_owner_can_create_relationship_count_column_from_settings(auth_client, profile):
+    people, messages = create_crm_datasets(profile)
+    relationship = DatasetRelationship.objects.create(
+        profile=profile,
+        source_dataset=messages,
+        target_dataset=people,
+        name="Connection person",
+        source_column="person_id",
+        target_index_column=people.index_column,
+        enforce_integrity=True,
+    )
+
+    response = auth_client.post(
+        reverse(
+            "dataset_create_relationship_count_column",
+            args=[people.key, relationship.key],
+        ),
+        {"column_name": "connection_count"},
+    )
+
+    assert response.status_code == 302
+    people.refresh_from_db()
+    assert people.headers == ["person_id", "name", "email", "connection_count"]
+    assert people.column_schema["connection_count"] == {
+        "type": "calculated",
+        "calculation": "relationship_count",
+        "relationship_key": str(relationship.key),
+    }
+    assert people.rows.filter(data__has_key="connection_count").exists() is False
+
+    settings_response = auth_client.get(reverse("dataset_settings", args=[people.key]))
+
+    assert settings_response.status_code == 200
+    content = settings_response.content.decode()
+    assert "Count column · connection_count" in content
+    assert "Count rows" not in content
+
+
+def test_dataset_api_rejects_calculated_column_for_non_incoming_relationship(client, profile):
+    people, messages = create_crm_datasets(profile)
+    relationship = DatasetRelationship.objects.create(
+        profile=profile,
+        source_dataset=messages,
+        target_dataset=people,
+        name="Connection person",
+        source_column="person_id",
+        target_index_column=people.index_column,
+        enforce_integrity=True,
+    )
+
+    response = client.post(
+        f"/api/datasets/{messages.key}/columns?api_key={profile.key}",
+        data={
+            "name": "connection_count",
+            "column_type": {
+                "type": "calculated",
+                "calculation": "relationship_count",
+                "relationship_key": str(relationship.key),
+            },
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert "incoming relationship for this dataset" in response.json()["detail"]
+
+
 def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(client, profile):
     people, messages = create_crm_datasets(profile)
     messages.rows.filter(index_value="M-1").update(
