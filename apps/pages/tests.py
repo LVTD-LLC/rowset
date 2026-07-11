@@ -209,6 +209,9 @@ def test_public_nav_links_to_root_content_sections(client):
     assert "Tutorials" not in footer_nav
     assert "How-to guides" not in footer_nav
     assert "Explanations" not in footer_nav
+    assert (
+        f'href="{reverse("docs_page", kwargs={"slug": "quickstart"})}"' in footer_nav
+    )
     for href in expected_hrefs:
         assert f'href="{href}"' in primary_nav
         assert f'href="{href}"' in mobile_nav
