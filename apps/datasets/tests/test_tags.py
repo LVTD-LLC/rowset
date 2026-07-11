@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 
 from apps.datasets import views
+from apps.datasets.choices import DatasetColumnType
 from apps.datasets.services import column_definitions, normalize_column_schema
 from apps.datasets.tests.factories import create_dataset
 
@@ -49,7 +50,10 @@ def test_authenticated_dataset_and_row_detail_render_tags_using_profile_color_se
         profile,
         headers=["item", "topics"],
         index_column="item",
-        column_schema={"item": {"type": "text"}, "topics": {"type": "tags"}},
+        column_schema={
+            "item": {"type": DatasetColumnType.TEXT},
+            "topics": {"type": DatasetColumnType.TAGS},
+        },
         rows=[{"item": "DOC-1", "topics": original_value}],
     )
     row = dataset.rows.get()
@@ -83,7 +87,10 @@ def test_public_dataset_and_row_detail_render_tags_as_neutral_pills(client, prof
         profile,
         headers=["item", "topics"],
         index_column="item",
-        column_schema={"item": {"type": "text"}, "topics": {"type": "tags"}},
+        column_schema={
+            "item": {"type": DatasetColumnType.TEXT},
+            "topics": {"type": DatasetColumnType.TAGS},
+        },
         rows=[{"item": "DOC-1", "topics": " Django, HTMX, ,  "}],
         public_enabled=True,
     )
