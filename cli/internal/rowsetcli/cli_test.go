@@ -264,10 +264,10 @@ func TestCommandRoutesCoverRowsetOperations(t *testing.T) {
 			args: []string{
 				"dataset", "create",
 				"--name", "Products",
-				"--headers", "sku,name,price",
+				"--headers", "sku,name,price,tags",
 				"--index-column", "sku",
-				"--row", `{"sku":"A-1","name":"Adapter","price":19.99}`,
-				"--column-types", `{"price":"currency"}`,
+				"--row", `{"sku":"A-1","name":"Adapter","price":19.99,"tags":"hardware, usb-c"}`,
+				"--column-types", `{"price":"currency","tags":"tags"}`,
 				"--project-key", "project-key",
 			},
 			want: requestCapture{
@@ -276,12 +276,12 @@ func TestCommandRoutesCoverRowsetOperations(t *testing.T) {
 				auth:   "Bearer test-key",
 				body: map[string]any{
 					"name":         "Products",
-					"headers":      []any{"sku", "name", "price"},
+					"headers":      []any{"sku", "name", "price", "tags"},
 					"index_column": "sku",
 					"rows": []any{
-						map[string]any{"sku": "A-1", "name": "Adapter", "price": 19.99},
+						map[string]any{"sku": "A-1", "name": "Adapter", "price": 19.99, "tags": "hardware, usb-c"},
 					},
-					"column_types": map[string]any{"price": "currency"},
+					"column_types": map[string]any{"price": "currency", "tags": "tags"},
 					"project_key":  "project-key",
 				},
 			},

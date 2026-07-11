@@ -1049,8 +1049,8 @@ def create_dataset(
             default=None,
             description=(
                 "Optional mapping from header name to semantic column type or metadata. "
-                "Supported types include text, image, audio, choice, integer, number, currency, "
-                "boolean, date, datetime, email, url, and reference. For choice "
+                "Supported types include text, tags, image, audio, choice, integer, number, "
+                "currency, boolean, date, datetime, email, url, and reference. For choice "
                 "columns, pass metadata "
                 "like "
                 '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}. '
@@ -1183,7 +1183,7 @@ def update_dataset_column_types(
         Field(
             description=(
                 "Mapping from dataset header to semantic type or metadata. Supported types "
-                "include text, image, audio, choice, integer, number, currency, boolean, "
+                "include text, tags, image, audio, choice, integer, number, currency, boolean, "
                 "date, datetime, email, url, reference, and calculated. For choice columns, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
@@ -1232,7 +1232,7 @@ def add_column(
             default=None,
             description=(
                 "Optional semantic type or metadata for the new column. Supported types "
-                "include text, image, audio, choice, integer, number, currency, boolean, "
+                "include text, tags, image, audio, choice, integer, number, currency, boolean, "
                 "date, datetime, email, url, reference, and calculated. For a choice column, pass "
                 '{"type": "choice", '
                 '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '

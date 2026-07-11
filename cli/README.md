@@ -77,10 +77,10 @@ Create a dataset:
 ```bash
 rowset dataset create \
   --name Products \
-  --headers sku,name,price,status \
+  --headers sku,name,price,status,tags \
   --index-column sku \
-  --column-types '{"price":"currency","status":{"type":"choice","choices":["draft","active","retired"]}}' \
-  --row '{"sku":"A-1","name":"Adapter","price":"19.99","status":"active"}'
+  --column-types '{"price":"currency","status":{"type":"choice","choices":["draft","active","retired"]},"tags":"tags"}' \
+  --row '{"sku":"A-1","name":"Adapter","price":"19.99","status":"active","tags":"hardware, usb-c"}'
 ```
 
 Inspect a dataset before row work:

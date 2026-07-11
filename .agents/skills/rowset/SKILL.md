@@ -78,9 +78,11 @@ Use this default order when the user asks Rowset to work with data:
    backend. Provide `headers`, `rows`, or both. If there is no reliable business
    key, omit `index_column` and let Rowset generate `rowset_id`.
 4. Manage semantic column metadata with `update_dataset_column_types` when the
-   user asks to improve schema types. Supported types include `text`, `integer`,
+   user asks to improve schema types. Supported types include `text`, `tags`, `integer`,
    `number`, `currency`, `boolean`, `date`, `datetime`, `email`, and `url`.
-   Choice columns accept fixed string values and can carry column descriptions.
+   Tags columns store comma-separated strings while the Rowset UI renders each
+   non-blank segment as a pill. Choice columns accept fixed string values and
+   can carry column descriptions.
 5. Use `get_all_projects`, `create_project`, `get_project`, and
    `update_dataset_project` when the user wants to organize datasets into
    project groups.

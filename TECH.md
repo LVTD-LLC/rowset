@@ -77,7 +77,7 @@ contents.
 - Generated index columns use `rowset_id` or the next available suffixed name.
 - Stored row data is string-keyed by dataset headers.
 - Semantic column metadata supports hidden column descriptions plus `text`,
-  `choice`, `integer`, `number`, `currency`, `boolean`, `date`, `datetime`,
+  `tags`, `choice`, `integer`, `number`, `currency`, `boolean`, `date`, `datetime`,
   `email`, and `url` types.
 
 ## API And MCP Rules

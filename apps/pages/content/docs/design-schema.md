@@ -14,6 +14,7 @@ give future agents enough context to read and update the right fields.
 Rowset supports these semantic types:
 
 - `text`
+- `tags`
 - `integer`
 - `number`
 - `currency`
@@ -34,6 +35,18 @@ Pass a plain string for simple types:
   "price": "currency"
 }
 ```
+
+Use `tags` when row values should remain comma-separated strings for agents and
+API clients but appear as individual pills in Rowset's UI:
+
+```json
+{
+  "topics": "tags"
+}
+```
+
+For example, `"Django, HTMX, agents"` is stored and returned unchanged. The UI
+trims each segment and ignores empty segments when rendering pills.
 
 Pass an object when the column needs more metadata:
 
