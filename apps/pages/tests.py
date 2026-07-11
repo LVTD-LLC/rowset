@@ -398,7 +398,7 @@ def test_authenticated_public_pages_use_app_header(client):
     assert "Docs" in header
     assert "Settings" in header
     assert "Search data" in header
-    assert f'action="{reverse("account_logout")}"' in header
+    assert header.count(f'action="{reverse("account_logout")}"') == 2
     assert "How it works" not in header
     assert "Sign in" not in header
     assert "Create account" not in header
