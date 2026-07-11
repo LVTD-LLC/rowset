@@ -31,12 +31,18 @@
       </div>
       <div class="mt-2 space-y-1">
         {% for project in app_navigation_projects %}
-          <details class="group" data-navigation-project="{{ project.name }}" data-search-text="{{ project.name }} {% for section in project.navigation_sections %}{{ section.name }} {% for dataset in section.navigation_datasets %}{{ dataset.name }} {% endfor %}{% endfor %}{% for dataset in project.navigation_unsectioned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" {% if project.navigation_is_current or forloop.first %}open{% endif %}>
-            <summary class="fb-focus flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-base font-medium text-slate-700 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">
+          <details class="group relative" data-navigation-project="{{ project.name }}" data-search-text="{{ project.name }} {% for section in project.navigation_sections %}{{ section.name }} {% for dataset in section.navigation_datasets %}{{ dataset.name }} {% endfor %}{% endfor %}{% for dataset in project.navigation_unsectioned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" {% if project.navigation_is_current or forloop.first %}open{% endif %}>
+            <summary class="fb-focus flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md py-0 pl-3 pr-12 text-base font-medium text-slate-700 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">
               <span class="shrink-0 text-slate-400 transition-transform group-open:rotate-90" aria-hidden="true">›</span>
               <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
               <span class="tabular-nums text-xs font-normal text-slate-400">{{ project.navigation_datasets|length }}</span>
             </summary>
+            <a href="{{ project.get_settings_url }}" aria-label="Settings for {{ project.name }}" title="Project settings" class="fb-focus absolute right-1 top-1 inline-flex size-9 items-center justify-center rounded-md {% if request.path == project.get_settings_url %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-400 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-white{% endif %} sm:top-0">
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.94 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.57 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34h.03A1.7 1.7 0 0 0 10.03 3V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.06 4.6a1.7 1.7 0 0 0 1.88-.34L17 4.2A2 2 0 1 1 19.83 7l-.06.06a1.7 1.7 0 0 0-.34 1.88v.03A1.7 1.7 0 0 0 21 10.03h.09a2 2 0 1 1 0 4H21A1.7 1.7 0 0 0 19.4 15Z"></path>
+              </svg>
+            </a>
             <div class="ml-4 border-l border-slate-950/10 pl-2 dark:border-white/10">
               <a href="{{ project.get_absolute_url }}" class="fb-focus flex min-h-10 items-center rounded-md px-3 text-base font-medium {% if request.path == project.get_absolute_url %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white{% endif %} sm:min-h-8 sm:text-sm">Project overview</a>
               {% for section in project.navigation_sections %}

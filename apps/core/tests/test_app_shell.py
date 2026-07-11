@@ -34,6 +34,8 @@ def test_authenticated_app_shell_renders_workspace_tree_and_utility_navigation(
     assert 'data-app-shell="sidebar"' in content
     assert 'aria-label="Workspace navigation"' in content
     assert f'href="{project.get_absolute_url()}"' in content
+    assert content.count(f'href="{project.get_settings_url()}"') == 2
+    assert content.count('aria-label="Settings for Product launch"') == 2
     assert f'href="{dataset.get_absolute_url()}"' in content
     assert "Product launch" in content
     assert "Sales" in content
