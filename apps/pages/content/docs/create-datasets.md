@@ -22,6 +22,9 @@ If there is no reliable business key, omit `index_column` and let Rowset create
 `rowset_id`. For the tradeoff, read [Rowset `rowset_id` vs business
 keys](/blog/rowset-id-vs-business-keys) before production agents start updating
 rows.
+If you are choosing between a Rowset-hosted agent dataset and a spreadsheet-style
+database workspace, review [NocoDB alternatives for AI-agent-managed
+datasets](/blog/nocodb-alternatives) first.
 
 ## Create through MCP
 

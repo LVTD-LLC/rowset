@@ -663,6 +663,8 @@ curl \
 
 Public previews are separate from authenticated row APIs. Use `PATCH /datasets/{dataset_key}/public-preview` or the MCP `update_dataset_public_preview` tool to configure sharing.
 
+For teams choosing between hosted agent datasets and spreadsheet-style database tools, read the comparison post on [NocoDB alternatives for AI-agent-managed datasets](/blog/nocodb-alternatives).
+
 ## Related docs
 
 - [How Rowset datasets work](/docs/datasets/)
