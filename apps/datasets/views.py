@@ -795,10 +795,7 @@ def _row_cells(
 ) -> list[dict[str, object]]:
     ordered_keys = [*headers, *[key for key in row_data if key not in headers]]
     columns = column_definitions(headers, column_schema or {})
-    descriptions = {
-        column["name"]: column["description"]
-        for column in columns
-    }
+    descriptions = {column["name"]: column["description"] for column in columns}
     column_types = {column["name"]: column["type"] for column in columns}
     relationship_links = relationship_links or {}
     reference_lookup = reference_lookup or {}

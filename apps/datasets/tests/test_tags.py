@@ -155,9 +155,7 @@ def test_rest_api_preserves_tags_schema_and_original_comma_separated_value(clien
     dataset_payload = create_response.json()["dataset"]
     assert dataset_payload["column_schema"]["topics"] == {"type": "tags"}
 
-    rows_response = client.get(
-        f"/api/datasets/{dataset_payload['key']}/rows?api_key={profile.key}"
-    )
+    rows_response = client.get(f"/api/datasets/{dataset_payload['key']}/rows?api_key={profile.key}")
 
     assert rows_response.status_code == 200
     assert rows_response.json()["rows"][0]["data"]["topics"] == original_value
