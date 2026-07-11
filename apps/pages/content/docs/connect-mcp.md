@@ -117,6 +117,8 @@ for task boards, CRMs, feedback queues, catalogs, QA trackers, content
 pipelines, or similar structured row workflows.
 If you are comparing Rowset with open-source database workspaces, read
 [Baserow alternatives for AI-agent-managed datasets](/blog/baserow-alternatives).
+If your team is choosing between spreadsheet-style backends, see
+[NocoDB alternatives for AI-agent-managed datasets](/blog/nocodb-alternatives).
 
 Read [Database MCP server: when to use Rowset instead](/docs/database-mcp-server/)
 for the longer decision guide.
@@ -127,3 +129,4 @@ for the longer decision guide.
 - [Dataset API](/docs/dataset-api/)
 - [Configure agent access](/docs/configure-agent-access/)
 - [Help agents discover Rowset](/docs/agent-discovery/)
+- [NocoDB alternatives for AI-agent-managed datasets](/blog/nocodb-alternatives)

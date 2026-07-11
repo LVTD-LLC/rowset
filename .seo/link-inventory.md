@@ -54,6 +54,7 @@
 | `/blog/structure-dataset-instructions-ai-agents` | https://rowset.lvtd.dev/blog/structure-dataset-instructions-ai-agents | How to structure dataset instructions for AI agents | dataset instructions, metadata, schema, agent workflows | Dataset API docs, MCP docs, content pipeline use case |
 | `/blog/rowset-id-vs-business-keys` | https://rowset.lvtd.dev/blog/rowset-id-vs-business-keys | Rowset rowset_id vs business keys: which should agents use? | rowset_id, business keys, row identity, agent workflows | index-column guide, create-datasets docs, Google Sheets alternatives |
 | `/blog/baserow-alternatives` | https://rowset.lvtd.dev/blog/baserow-alternatives | Best Baserow alternatives for AI-agent-managed datasets | Baserow alternatives, agent workflows, datasets | Airtable alternatives blog, Google Sheets alternatives blog, MCP docs |
+| `/blog/nocodb-alternatives` | https://rowset.lvtd.dev/blog/nocodb-alternatives | Best NocoDB alternatives for AI-agent-managed datasets | NocoDB alternatives, agent workflows, datasets | Baserow alternatives blog, Google Sheets alternatives blog |
 
 ## SEO-Sprint-Generated Pages
 
@@ -63,8 +64,8 @@
 |---|---|---|---|---|
 | `airtable` | Phase 3 | `/blog/airtable-alternatives` | landing page, agent-managed datasets blog, MCP vs REST blog | pricing, MCP docs, Dataset API, public previews, index-column guide |
 | `google-sheets` | Phase 4 | `/blog/google-sheets-alternatives` | Airtable alternatives blog, agent-managed datasets blog, index-column guide | homepage, pricing, use cases, Dataset API |
-| `baserow` | Phase 6 | `/blog/baserow-alternatives` | TBD | homepage, MCP docs, Dataset API |
-| `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | TBD | homepage, MCP docs, Dataset API |
+| `baserow` | Phase 6 | `/blog/baserow-alternatives` | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives` | homepage, MCP docs, Dataset API |
+| `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives` | homepage, MCP docs, Dataset API, pricing, mcp-rest-public-previews |
 
 ### `/how-to/[slug]` or Future `/for/[slug]`
 
@@ -138,3 +139,7 @@
 - open-source database alternative for agent datasets
 - Baserow vs Rowset for AI agents
 - agent-managed Baserow alternative
+- NocoDB alternatives
+- NocoDB alternative for trusted agents
+- open-source NocoDB alternative for agent datasets
+- NocoDB vs Rowset for AI agents
