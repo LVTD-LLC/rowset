@@ -1,3 +1,5 @@
+name: rowset
+
 services:
   db:
     image: rasulkireev/custom-postgres:18

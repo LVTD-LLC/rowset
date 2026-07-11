@@ -1000,8 +1000,8 @@ python manage.py qcluster
 
 ### Render blueprint
 
-The repository includes `render.yaml`, but the current blueprint still carries
-legacy `filebridge-*` resource names and references `requirements.txt`, while
+The repository includes `render.yaml`, but the current blueprint still
+references `requirements.txt`, while
 the repository now uses `pyproject.toml` and `uv`. Treat the Render blueprint as
 present but not the primary verified deployment path until it is updated and
 tested against the current Python 3.14/uv setup.

@@ -209,6 +209,7 @@ def test_public_nav_links_to_root_content_sections(client):
     assert "Tutorials" not in footer_nav
     assert "How-to guides" not in footer_nav
     assert "Explanations" not in footer_nav
+    assert f'href="{reverse("docs_page", kwargs={"slug": "quickstart"})}"' in footer_nav
     for href in expected_hrefs:
         assert f'href="{href}"' in primary_nav
         assert f'href="{href}"' in mobile_nav
@@ -398,11 +399,28 @@ def test_authenticated_public_pages_use_app_header(client):
     assert "Docs" in header
     assert "Settings" in header
     assert "Search data" in header
-    assert f'action="{reverse("account_logout")}"' in header
+    assert header.count("data-command-palette-trigger") == 2
+    assert header.count(f'action="{reverse("account_logout")}"') == 2
     assert "How it works" not in header
     assert "Sign in" not in header
     assert "Create account" not in header
     assert "data-command-palette" in content
+
+
+def test_superuser_public_pages_link_to_admin_in_desktop_and_mobile_nav(client):
+    user = get_user_model().objects.create_superuser(
+        username="public-header-admin",
+        email="public-header-admin@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("use_cases"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
+    assert header.count(f'href="{reverse("admin_panel")}"') == 2
 
 
 def test_how_to_use_case_page_shows_structured_example(client):

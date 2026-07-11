@@ -1,94 +1,25 @@
-{% load static %}
 {% url 'landing' as landing_url %}
 {% url 'pricing' as pricing_url %}
 {% url 'account_signup' as account_signup_url %}
 {% url 'docs_home' as docs_home_url %}
+{% url 'docs_page' slug='quickstart' as quickstart_url %}
 {% url 'blog_posts' as blog_posts_url %}
 {% url 'use_cases' as use_cases_url %}
 {% url 'privacy_policy' as privacy_policy_url %}
 {% url 'terms_of_service' as terms_of_service_url %}
-<footer class="border-t border-slate-950/10 bg-[#fafaf7] dark:border-white/10 dark:bg-slate-950">
-    <div class="mx-auto grid w-full max-w-7xl gap-10 px-4 py-10 text-base text-slate-600 dark:text-slate-400 sm:px-6 sm:text-sm lg:grid-cols-[1.1fr_1.9fr] lg:px-8">
-        <div>
-            <a href="{{ landing_url|default:'/' }}"
-               aria-label="Homepage"
-               class="fb-focus inline-flex items-center gap-2 rounded-md text-slate-950 hover:text-emerald-700 dark:text-white dark:hover:text-emerald-300">
-                <img class="h-6 w-auto"
-                     src="{% static 'vendors/images/logo.png' %}"
-                     alt="Rowset Logo" />
-                <span class="font-semibold tracking-tight">Rowset</span>
-            </a>
-            <p class="mt-4 max-w-[34ch] text-pretty leading-7 sm:leading-6">
-                Private MCP and REST datasets for trusted AI agents that need stable rows, exports, and read-only review previews.
-            </p>
-            <p class="mt-6 leading-7 sm:leading-6">
-                &copy; {% now "Y" %}
-                <a href="https://lvtd.dev?ref={{ request.get_host }}"
-                   class="font-normal text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white">LVTD, LLC</a>
-            </p>
+<footer class="border-t border-white/20 bg-[#1313a4] text-white">
+    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div class="grid gap-12 lg:grid-cols-[2fr_3fr]">
+            <div>
+                <a href="{{ landing_url|default:'/' }}" class="fb-focus inline-flex items-center gap-2" aria-label="Rowset home"><span class="grid size-7 place-items-center bg-[#ffdd3d] font-mono text-sm font-semibold text-[#1313a4]">R</span><span class="font-display text-lg font-semibold">Rowset</span></a>
+                <p class="mt-5 max-w-[35ch] text-base text-pretty text-blue-100 sm:text-sm">One free-form backend for every AI agent workflow. Private MCP, REST, and CLI access to structured data.</p>
+            </div>
+            <nav class="grid gap-8 sm:grid-cols-3" aria-label="Footer navigation">
+                <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Build</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ use_cases_url }}" class="hover:text-white">Use cases</a></li><li><a href="{{ pricing_url }}" class="hover:text-white">Pricing</a></li><li><a href="{{ account_signup_url }}" class="hover:text-white">Start free</a></li></ul></div>
+                <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Learn</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ docs_home_url }}" class="hover:text-white">Documentation</a></li><li><a href="{{ blog_posts_url }}" class="hover:text-white">Blog</a></li><li><a href="{{ quickstart_url|default:docs_home_url }}" class="hover:text-white">Quickstart</a></li></ul></div>
+                <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Company</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ privacy_policy_url }}" class="hover:text-white">Privacy</a></li><li><a href="{{ terms_of_service_url }}" class="hover:text-white">Terms</a></li><li><a href="https://github.com/rasulkireev/rowset" class="hover:text-white">GitHub</a></li></ul></div>
+            </nav>
         </div>
-        <nav class="grid gap-8 sm:grid-cols-3" aria-label="Footer navigation">
-            <div>
-                <h2 class="text-sm font-semibold leading-6 text-slate-950 dark:text-slate-100">Product</h2>
-                <ul role="list" class="mt-3 grid gap-2">
-                    <li>
-                        <a href="{{ landing_url|default:'/' }}#product"
-                           class="font-normal hover:text-slate-950 dark:hover:text-white">Overview</a>
-                    </li>
-                    {% if pricing_url %}
-                        <li>
-                            <a href="{{ pricing_url }}"
-                               class="font-normal hover:text-slate-950 dark:hover:text-white">Pricing</a>
-                        </li>
-                    {% endif %}
-                    {% if account_signup_url %}
-                        <li>
-                            <a href="{{ account_signup_url }}"
-                               class="font-normal hover:text-slate-950 dark:hover:text-white">Start free</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </div>
-            <div>
-                <h2 class="text-sm font-semibold leading-6 text-slate-950 dark:text-slate-100">Resources</h2>
-                <ul role="list" class="mt-3 grid gap-2">
-                    {% if docs_home_url %}
-                        <li>
-                            <a href="{{ docs_home_url }}"
-                               class="font-normal hover:text-slate-950 dark:hover:text-white">Docs</a>
-                        </li>
-                    {% endif %}
-                    {% if use_cases_url %}
-                        <li>
-                            <a href="{{ use_cases_url }}"
-                               class="font-normal hover:text-slate-950 dark:hover:text-white">Use Cases</a>
-                        </li>
-                    {% endif %}
-                    {% if blog_posts_url %}
-                        <li>
-                            <a href="{{ blog_posts_url }}"
-                               class="font-normal hover:text-slate-950 dark:hover:text-white">Blog</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </div>
-            <div>
-                <h2 class="text-sm font-semibold leading-6 text-slate-950 dark:text-slate-100">Company</h2>
-                <ul role="list" class="mt-3 grid gap-2">
-                    {% if privacy_policy_url %}
-                        <li>
-                            <a href="{{ privacy_policy_url }}"
-                               class="font-normal hover:text-slate-950 dark:hover:text-white">Privacy</a>
-                        </li>
-                    {% endif %}
-                    {% if terms_of_service_url %}
-                        <li>
-                            <a href="{{ terms_of_service_url }}"
-                               class="font-normal hover:text-slate-950 dark:hover:text-white">Terms</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </div>
-        </nav>
+        <div class="mt-12 flex flex-col gap-3 border-t border-white/20 pt-6 font-mono text-sm text-blue-200 sm:flex-row sm:items-center sm:justify-between"><p>&copy; {% now "Y" %} LVTD, LLC</p><p>ANY AGENT / ANY WORKFLOW / ONE BACKEND</p></div>
     </div>
 </footer>
