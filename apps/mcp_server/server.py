@@ -1054,6 +1054,8 @@ def create_dataset(
                 "columns, pass metadata "
                 "like "
                 '{"type": "choice", "choices": ["Ready to do", "Doing", "Done"]}. '
+                "Use tags for comma-separated string values; Rowset returns the original "
+                "string unchanged and renders nonblank segments as UI pills. "
                 'For a dataset or project reference column, pass {"type": "reference", '
                 '"target": "dataset"} or {"type": "reference", "target": "project"}. '
                 'Add "description" to any metadata object to give agents column context.'
@@ -1186,8 +1188,11 @@ def update_dataset_column_types(
                 "include text, tags, image, audio, choice, integer, number, currency, boolean, "
                 "date, datetime, email, url, reference, and calculated. For choice columns, pass "
                 '{"type": "choice", '
-                '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
-                'reference column, pass {"type": "reference", "target": "dataset"} or '
+                '"choices": ["Ready to do", "Doing", "Done"]}. '
+                "Use tags for comma-separated string values; Rowset returns the original "
+                "string unchanged and renders nonblank segments as UI pills. "
+                'For a dataset or project reference column, pass {"type": "reference", '
+                '"target": "dataset"} or '
                 '{"type": "reference", "target": "project"}. For a calculated count from an '
                 'incoming relationship, pass {"type": "calculated", "calculation": '
                 '"relationship_count", "relationship_key": "..."}. Add '
@@ -1235,8 +1240,11 @@ def add_column(
                 "include text, tags, image, audio, choice, integer, number, currency, boolean, "
                 "date, datetime, email, url, reference, and calculated. For a choice column, pass "
                 '{"type": "choice", '
-                '"choices": ["Ready to do", "Doing", "Done"]}. For a dataset or project '
-                'reference column, pass {"type": "reference", "target": "dataset"} or '
+                '"choices": ["Ready to do", "Doing", "Done"]}. '
+                "Use tags for comma-separated string values; Rowset returns the original "
+                "string unchanged and renders nonblank segments as UI pills. "
+                'For a dataset or project reference column, pass {"type": "reference", '
+                '"target": "dataset"} or '
                 '{"type": "reference", "target": "project"}. For a calculated count from an '
                 'incoming relationship, pass {"type": "calculated", "calculation": '
                 '"relationship_count", "relationship_key": "..."}. Add '

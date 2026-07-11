@@ -360,14 +360,17 @@ Updates semantic column metadata without changing stored row values.
       "description": "Current workflow state for the task",
       "choices": ["Ready to do", "Doing", "Done"]
     },
+    "topics": "tags",
     "price": "currency",
     "updated_at": "datetime"
   }
 }
 ```
 
-Supported types are `text`, `choice`, `integer`, `number`, `currency`, `boolean`,
-`date`, `datetime`, `email`, `url`, `reference`, and `image`. Pass a metadata
+Supported types are `text`, `tags`, `choice`, `integer`, `number`, `currency`,
+`boolean`, `date`, `datetime`, `email`, `url`, `reference`, `image`, `audio`, and
+`calculated`. Tags values remain ordinary comma-separated strings in requests
+and responses; Rowset only splits nonblank segments into pills for UI display. Pass a metadata
 object when a column needs `description`, when a `choice` column needs `type`
 and `choices`, when a `reference` column needs `target`, or when an `image`
 column needs a description. Reference targets can be `dataset` or `project`.
