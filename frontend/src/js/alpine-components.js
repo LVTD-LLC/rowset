@@ -106,6 +106,101 @@
   }
 
   document.addEventListener("alpine:init", () => {
+    Alpine.data("appShell", () => ({
+      sidebarOpen: false,
+      sidebarCollapsed: false,
+      sidebarWidth: 288,
+      sidebarQuery: "",
+      resizeCleanup: null,
+
+      init() {
+        try {
+          this.sidebarCollapsed = localStorage.getItem("rowsetSidebarCollapsed") === "true";
+          const savedWidth = Number.parseInt(localStorage.getItem("rowsetSidebarWidth") || "", 10);
+          if (Number.isFinite(savedWidth)) {
+            this.sidebarWidth = Math.min(480, Math.max(240, savedWidth));
+          }
+        } catch (_error) {
+          // Local storage is optional.
+        }
+      },
+
+      get shellStyle() {
+        const width = this.sidebarCollapsed ? 64 : this.sidebarWidth;
+        return `--app-sidebar-width: ${width}px`;
+      },
+
+      toggleSidebar() {
+        this.sidebarCollapsed = !this.sidebarCollapsed;
+        try {
+          localStorage.setItem("rowsetSidebarCollapsed", this.sidebarCollapsed.toString());
+        } catch (_error) {
+          // Local storage is optional.
+        }
+      },
+
+      matches(searchText) {
+        const query = this.sidebarQuery.trim().toLowerCase();
+        return !query || String(searchText || "").toLowerCase().includes(query);
+      },
+
+      clearSidebarFilter() {
+        this.sidebarQuery = "";
+        this.focusSidebarFilter();
+      },
+
+      focusSidebarFilter() {
+        if (this.sidebarCollapsed) {
+          this.toggleSidebar();
+        }
+        this.$nextTick(() => {
+          const input = Array.from(document.querySelectorAll("[data-sidebar-filter]")).find(
+            (element) => element.offsetParent !== null,
+          );
+          input?.focus();
+          input?.select();
+        });
+      },
+
+      handleShellKeydown(event) {
+        const key = String(event.key || "").toLowerCase();
+        if (key === "b" && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
+          event.preventDefault();
+          this.toggleSidebar();
+          return;
+        }
+        const target = event.target;
+        const isTyping = target?.matches?.("input, textarea, select, [contenteditable='true']");
+        if (event.key === "/" && !isTyping && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault();
+          this.focusSidebarFilter();
+        }
+      },
+
+      startSidebarResize(event) {
+        if (this.sidebarCollapsed) {
+          return;
+        }
+        event.preventDefault();
+        const onMove = (moveEvent) => {
+          this.sidebarWidth = Math.min(480, Math.max(240, moveEvent.clientX));
+        };
+        const onEnd = () => {
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onEnd);
+          document.body.classList.remove("select-none", "cursor-col-resize");
+          try {
+            localStorage.setItem("rowsetSidebarWidth", this.sidebarWidth.toString());
+          } catch (_error) {
+            // Local storage is optional.
+          }
+        };
+        document.body.classList.add("select-none", "cursor-col-resize");
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onEnd, { once: true });
+      },
+    }));
+
     Alpine.data("copyPanel", () => ({
       busy: false,
       label: "Copy",

@@ -35,7 +35,7 @@ def test_blog_index_renders_empty_state(client, blog_posts_dir):
     assert 'href="https://rowset.example/blog/"' in content
 
 
-def test_authenticated_blog_pages_use_app_header(client, blog_posts_dir):
+def test_authenticated_blog_pages_use_app_shell(client, blog_posts_dir):
     write_post(
         blog_posts_dir,
         "agent-managed-datasets",
@@ -62,16 +62,13 @@ def test_authenticated_blog_pages_use_app_header(client, blog_posts_dir):
 
         assert response.status_code == 200
         content = response.content.decode()
-        header = content[content.index("<header") : content.index("</header>") + len("</header>")]
-        assert f'href="{reverse("home")}"' in header
-        assert "Dashboard" in header
-        assert "Docs" in header
-        assert "Settings" in header
-        assert "Search data" in header
-        assert f'action="{reverse("account_logout")}"' in header
-        assert "How it works" not in header
-        assert "Sign in" not in header
-        assert "Create account" not in header
+        assert 'data-app-shell="sidebar"' in content
+        assert f'href="{reverse("home")}"' in content
+        assert "Overview" in content
+        assert "Docs" in content
+        assert "Settings" in content
+        assert "Search everything" in content
+        assert f'action="{reverse("account_logout")}"' in content
         assert "data-command-palette" in content
 
 

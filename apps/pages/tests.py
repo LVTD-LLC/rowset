@@ -176,16 +176,12 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     app_response = client.get(reverse("home"))
     assert app_response.status_code == 200
     app_content = app_response.content.decode()
-    app_footer = _nav_html(app_content, "Footer navigation")
+    app_help = _nav_html(app_content, "Help and support")
 
-    assert blog_href not in _nav_html(app_content, "Primary navigation")
-    assert blog_href not in _nav_html(app_content, "Mobile navigation")
-    assert blog_href in app_footer
-    assert docs_href in app_footer
-    assert use_cases_href not in _nav_html(app_content, "Primary navigation")
-    assert use_cases_href not in _nav_html(app_content, "Mobile navigation")
-    assert use_cases_href in app_footer
-    assert "Alternatives" not in app_footer
+    assert blog_href in app_help
+    assert docs_href in app_help
+    assert use_cases_href in app_help
+    assert "Alternatives" not in app_help
 
 
 def test_public_nav_links_to_root_content_sections(client):
@@ -381,7 +377,7 @@ def test_use_cases_page_links_public_use_case_pages(client):
     assert reverse("blog_post", kwargs={"slug": "airtable-alternatives"}) not in main_content
 
 
-def test_authenticated_public_pages_use_app_header(client):
+def test_authenticated_public_pages_use_app_shell(client):
     user = get_user_model().objects.create_user(
         username="public-header-auth",
         email="public-header-auth@example.com",
@@ -393,17 +389,14 @@ def test_authenticated_public_pages_use_app_header(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
-    assert f'href="{reverse("home")}"' in header
-    assert "Dashboard" in header
-    assert "Docs" in header
-    assert "Settings" in header
-    assert "Search data" in header
-    assert header.count("data-command-palette-trigger") == 2
-    assert header.count(f'action="{reverse("account_logout")}"') == 2
-    assert "How it works" not in header
-    assert "Sign in" not in header
-    assert "Create account" not in header
+    assert 'data-app-shell="sidebar"' in content
+    assert f'href="{reverse("home")}"' in content
+    assert "Overview" in content
+    assert "Docs" in content
+    assert "Settings" in content
+    assert "Search everything" in content
+    assert content.count("data-command-palette-trigger") == 2
+    assert content.count(f'action="{reverse("account_logout")}"') == 2
     assert "data-command-palette" in content
 
 
@@ -419,8 +412,7 @@ def test_superuser_public_pages_link_to_admin_in_desktop_and_mobile_nav(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
-    assert header.count(f'href="{reverse("admin_panel")}"') == 2
+    assert content.count(f'href="{reverse("admin_panel")}"') == 2
 
 
 def test_how_to_use_case_page_shows_structured_example(client):
@@ -438,7 +430,7 @@ def test_how_to_use_case_page_shows_structured_example(client):
     assert '"@type": "Article"' in content
 
 
-def test_authenticated_how_to_use_case_page_uses_app_header(client):
+def test_authenticated_how_to_use_case_page_uses_app_shell(client):
     user = get_user_model().objects.create_user(
         username="use-case-detail-auth",
         email="use-case-detail-auth@example.com",
@@ -450,15 +442,12 @@ def test_authenticated_how_to_use_case_page_uses_app_header(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
-    assert f'href="{reverse("home")}"' in header
-    assert "Dashboard" in header
-    assert "Settings" in header
-    assert "Search data" in header
-    assert f'action="{reverse("account_logout")}"' in header
-    assert "How it works" not in header
-    assert "Sign in" not in header
-    assert "Create account" not in header
+    assert 'data-app-shell="sidebar"' in content
+    assert f'href="{reverse("home")}"' in content
+    assert "Overview" in content
+    assert "Settings" in content
+    assert "Search everything" in content
+    assert f'action="{reverse("account_logout")}"' in content
 
 
 def test_unknown_use_case_returns_404(client):
@@ -496,7 +485,7 @@ def test_database_mcp_server_explanation_has_required_links_and_schema(client):
     )
 
 
-def test_authenticated_database_mcp_server_explanation_uses_app_header(client):
+def test_authenticated_database_mcp_server_explanation_uses_app_shell(client):
     user = get_user_model().objects.create_user(
         username="database-mcp-explanation-auth",
         email="database-mcp-explanation-auth@example.com",
@@ -508,15 +497,12 @@ def test_authenticated_database_mcp_server_explanation_uses_app_header(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    header = content[content.index("<header") : content.index("</header>") + len("</header>")]
-    assert f'href="{reverse("home")}"' in header
-    assert "Dashboard" in header
-    assert "Settings" in header
-    assert "Search data" in header
-    assert f'action="{reverse("account_logout")}"' in header
-    assert "How it works" not in header
-    assert "Sign in" not in header
-    assert "Create account" not in header
+    assert 'data-app-shell="sidebar"' in content
+    assert f'href="{reverse("home")}"' in content
+    assert "Overview" in content
+    assert "Settings" in content
+    assert "Search everything" in content
+    assert f'action="{reverse("account_logout")}"' in content
 
 
 @override_settings(SITE_URL="https://testserver")

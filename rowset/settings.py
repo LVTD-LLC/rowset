@@ -180,6 +180,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.core.context_processors.app_navigation",
                 "apps.core.context_processors.current_state",
                 "apps.core.context_processors.posthog_api_key",
                 "apps.core.context_processors.chatwoot_config",

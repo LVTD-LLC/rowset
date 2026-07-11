@@ -6,22 +6,24 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${ROWSET_POSTGRES_PORT:-5432}:5432"
     environment:
       - POSTGRES_DB=rowset
       - POSTGRES_USER=rowset
       - POSTGRES_PASSWORD=rowset
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rowset"]
+      # The Postgres image starts a temporary server while initializing. Wait until
+      # postgres itself is PID 1 so migrations never run against that disposable server.
+      test: ["CMD-SHELL", "test \"$$(cat /proc/1/comm)\" = postgres && pg_isready -U rowset -d rowset"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 12
 
   redis:
     image: redis:7-alpine
     command: redis-server --requirepass rowset
     ports:
-      - "6379:6379"
+      - "${ROWSET_REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     environment:
@@ -36,7 +38,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "${ROWSET_APP_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -44,6 +46,12 @@ services:
         condition: service_started
       frontend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8000/ >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     env_file:
       - .env
 
@@ -56,7 +64,7 @@ services:
     volumes:
       - .:/app
     depends_on:
-      db:
+      backend:
         condition: service_healthy
       redis:
         condition: service_started
@@ -82,8 +90,8 @@ services:
       - 1025
       - 8025
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "${ROWSET_SMTP_PORT:-1025}:1025"
+      - "${ROWSET_MAILHOG_PORT:-8025}:8025"
 
   stripe:
     image: stripe/stripe-cli:latest
@@ -104,14 +112,14 @@ services:
   mjml:
     image: danihodovic/mjml-server
     ports:
-      - "15500:15500"
+      - "${ROWSET_MJML_PORT:-15500}:15500"
   
 
   minio:
     image: minio/minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${ROWSET_MINIO_API_PORT:-9000}:9000"
+      - "${ROWSET_MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     environment:

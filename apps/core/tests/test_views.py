@@ -303,7 +303,7 @@ class TestHomeView:
         assert "Copy/paste prompt" not in content
         assert "Copy agent prompt" not in content
         assert "Rowset API key: ***" not in content
-        assert "Datasets by project" in content
+        assert "Your data workspace" in content
 
     def test_home_view_hides_agent_setup_prompt_after_dataset_exists(self, auth_client, profile):
         Dataset.objects.create(
@@ -330,7 +330,7 @@ class TestHomeView:
         assert "REST API base" not in content
         assert "Agent skill" not in content
         assert "People" in content
-        assert "Workspace summary" in content
+        assert "Recently updated" in content
 
     def test_dismiss_agent_setup_prompt_removes_prompt_from_home(self, auth_client, profile):
         response = auth_client.post(reverse("dismiss_agent_setup_prompt"))
@@ -352,8 +352,8 @@ class TestHomeView:
         assert "agent_setup_prompt" not in response.context
         assert response.context["active_agent_api_key"] is None
         assert "Connect your AI agent to Rowset" in content
-        assert "Datasets by project" in content
-        assert "Workspace summary" in content
+        assert "Setup tasks" in content
+        assert "Your prompt will appear here" in content
         assert user.__class__.objects.get(pk=user.pk).profile
 
     def test_get_or_create_profile_for_user_recovers_from_create_race(
@@ -478,11 +478,11 @@ class TestHomeView:
         profile.refresh_from_db()
         assert profile.choice_colorization_enabled is False
 
-    def test_app_header_omits_dataset_and_project_nav_links(self, auth_client):
+    def test_app_shell_renders_overview_navigation(self, auth_client):
         response = auth_client.get(reverse("settings"))
 
         content = response.content.decode()
-        assert "Dashboard" in content
+        assert "Overview" in content
 
     def test_agent_instructions_markdown_is_public_and_actionable(self, client):
         response = client.get(reverse("agent_instructions_rowset_mcp"))
