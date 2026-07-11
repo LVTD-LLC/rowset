@@ -2,7 +2,7 @@ services:
   - type: web
     # Render resource names are stable infrastructure identifiers. Rename these
     # resources in Render first, then update this blueprint in the same deploy.
-    name: filebridge-web
+    name: rowset-web
     runtime: python
     buildCommand: |
       pip install -r requirements.txt &&
@@ -19,43 +19,43 @@ services:
         value: server
       - key: POSTGRES_DB
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: database
       - key: POSTGRES_USER
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: user
       - key: POSTGRES_PASSWORD
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: password
       - key: POSTGRES_HOST
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: host
       - key: POSTGRES_PORT
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: port
       - key: REDIS_HOST
         fromService:
           type: keyvalue
-          name: filebridge-redis
+          name: rowset-redis
           property: host
       - key: REDIS_PORT
         fromService:
           type: keyvalue
-          name: filebridge-redis
+          name: rowset-redis
           property: port
       - key: REDIS_PASSWORD
         fromService:
           type: keyvalue
-          name: filebridge-redis
+          name: rowset-redis
           property: password
 
   - type: web
     # Keep this aligned with the existing worker service identifier in Render.
-    name: filebridge-workers
+    name: rowset-workers
     runtime: python
     buildCommand: |
       pip install -r requirements.txt
@@ -69,52 +69,52 @@ services:
         value: worker
       - key: POSTGRES_DB
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: database
       - key: POSTGRES_USER
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: user
       - key: POSTGRES_PASSWORD
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: password
       - key: POSTGRES_HOST
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: host
       - key: POSTGRES_PORT
         fromDatabase:
-          name: filebridge-db
+          name: rowset-db
           property: port
       - key: REDIS_HOST
         fromService:
           type: keyvalue
-          name: filebridge-redis
+          name: rowset-redis
           property: host
       - key: REDIS_PORT
         fromService:
           type: keyvalue
-          name: filebridge-redis
+          name: rowset-redis
           property: port
       - key: REDIS_PASSWORD
         fromService:
           type: keyvalue
-          name: filebridge-redis
+          name: rowset-redis
           property: password
 
   - type: keyvalue
     # Keep this aligned with the existing Redis resource identifier in Render.
-    name: filebridge-redis
+    name: rowset-redis
     plan: free
     ipAllowList: []
     maxmemoryPolicy: allkeys-lfu
 
 databases:
   # Keep this aligned with the existing Postgres resource identifier in Render.
-  - name: filebridge-db
-    databaseName: filebridge
-    user: filebridge_user
+  - name: rowset-db
+    databaseName: rowset
+    user: rowset_user
     plan: free
 
 

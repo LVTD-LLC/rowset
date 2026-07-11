@@ -4,153 +4,55 @@
 {% url 'docs_home' as docs_home_url %}
 {% url 'blog_posts' as blog_posts_url %}
 {% url 'use_cases' as use_cases_url %}
-<header class="sticky top-0 z-40 border-b border-slate-950/10 bg-[#fafaf7]/95 backdrop-blur dark:border-white/10 dark:bg-slate-950/95">
-    <div class="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+<header class="sticky top-0 z-40 border-b border-white/20 bg-[#1313a4] text-white">
+    <div class="mx-auto flex h-16 w-full max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8">
         <a href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{{ landing_url|default:'/' }}{% endif %}"
-           aria-label="Homepage"
-           class="fb-focus flex min-w-0 items-center gap-2 rounded-md">
-            <img class="h-7 w-auto"
-                 src="{% static 'vendors/images/logo.png' %}"
-                 alt="Rowset Logo" />
-            <span class="truncate text-base font-semibold tracking-tight text-slate-950 dark:text-slate-100">Rowset</span>
+           aria-label="Rowset home"
+           class="fb-focus flex min-w-0 items-center gap-2 rounded-sm">
+            <span class="grid size-7 place-items-center bg-[#ffdd3d] font-mono text-sm font-semibold text-[#1313a4]">R</span>
+            <span class="sr-only">Rowset Logo</span>
+            <span class="truncate font-display text-lg font-semibold tracking-tight">Rowset</span>
         </a>
-        <nav class="hidden items-center gap-1 lg:flex"
-             aria-label="Primary navigation">
+        <nav class="flex items-center gap-1 max-lg:hidden" aria-label="Primary navigation">
             {% if user.is_authenticated %}
-                <a href="{% url 'home' %}"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">Dashboard</a>
-                <a href="{{ docs_home_url }}"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">Docs</a>
-                <a href="{% url 'settings' %}"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">Settings</a>
-                {% if user.is_superuser %}
-                    <a href="{% url 'admin_panel' %}"
-                       class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40">Admin</a>
-                {% endif %}
+                <a href="{% url 'home' %}" class="fb-focus px-3 py-2 text-sm font-medium hover:bg-white/10">Dashboard</a>
+                <a href="{{ docs_home_url }}" class="fb-focus px-3 py-2 text-sm font-medium hover:bg-white/10">Docs</a>
+                <a href="{% url 'settings' %}" class="fb-focus px-3 py-2 text-sm font-medium hover:bg-white/10">Settings</a>
             {% else %}
-                <a href="{{ landing_url|default:'/' }}#product"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">Product</a>
-                <a href="{{ docs_home_url }}"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">Docs</a>
-                <a href="{{ blog_posts_url }}"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">Blog</a>
-                <a href="{{ use_cases_url }}"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">Use Cases</a>
-                <a href="{{ pricing_url }}"
-                   class="fb-focus rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">Pricing</a>
+                <a href="{{ use_cases_url }}" class="fb-focus px-3 py-2 text-sm font-medium hover:bg-white/10">Use Cases</a>
+                <a href="{{ docs_home_url }}" class="fb-focus px-3 py-2 text-sm font-medium hover:bg-white/10">Docs</a>
+                <a href="{{ blog_posts_url }}" class="fb-focus px-3 py-2 text-sm font-medium hover:bg-white/10">Blog</a>
+                <a href="{{ pricing_url }}" class="fb-focus px-3 py-2 text-sm font-medium hover:bg-white/10">Pricing</a>
             {% endif %}
         </nav>
-        <div class="ml-auto hidden items-center gap-2 lg:flex">
+        <div class="ml-auto flex items-center gap-2 max-lg:hidden">
             {% if user.is_authenticated %}
-                <button type="button"
-                        data-command-palette-trigger
-                        class="fb-focus flex h-10 w-64 items-center justify-between gap-3 rounded-md border border-slate-300 bg-white px-3 text-left text-sm text-slate-500 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200"
-                        aria-label="Search rows, datasets, and projects"
-                        aria-keyshortcuts="Meta+K Control+K">
-                    <span class="flex min-w-0 items-center gap-2">
-                        <svg class="h-4 w-4 flex-shrink-0"
-                             viewBox="0 0 24 24"
-                             fill="none"
-                             stroke="currentColor"
-                             stroke-width="2"
-                             aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35" />
-                            <circle cx="11" cy="11" r="7" />
-                        </svg>
-                        <span class="truncate">Search data</span>
-                    </span>
-                    <kbd class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
-                         data-command-palette-shortcut>Cmd K</kbd>
-                </button>
-                <form method="post" action="{% url 'account_logout' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="fb-button-secondary">Sign out</button>
-                </form>
+                <button type="button" data-command-palette-trigger class="fb-focus inline-flex min-h-9 items-center justify-center border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10">Search data</button>
+                <a href="{% url 'home' %}" class="inline-flex min-h-9 items-center justify-center bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Open Rowset</a>
+                <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit" class="fb-focus min-h-9 px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign out</button></form>
             {% else %}
-                <a href="{% url 'account_login' %}"
-                   class="fb-focus inline-flex min-h-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white">Sign in</a>
-                <a href="{% url 'account_signup' %}"
-                   class="fb-focus inline-flex min-h-9 items-center justify-center rounded-md border border-emerald-700/30 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15">Start free</a>
+                <a href="{% url 'account_login' %}" class="fb-focus px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign in</a>
+                <a href="{% url 'account_signup' %}" class="inline-flex min-h-9 items-center justify-center bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Create a backend</a>
             {% endif %}
         </div>
-        {% if user.is_authenticated %}
-            <button type="button"
-                    data-command-palette-trigger
-                    class="fb-focus relative ml-auto inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 lg:hidden"
-                    aria-label="Search rows, datasets, and projects"
-                    aria-keyshortcuts="Meta+K Control+K">
-                <span class="pointer-fine:hidden absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2"
-                      aria-hidden="true"></span>
-                <svg class="h-5 w-5"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2"
-                     aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35" />
-                    <circle cx="11" cy="11" r="7" />
-                </svg>
+        <div class="ml-auto lg:hidden" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
+            <button type="button" class="fb-focus relative grid size-10 place-items-center border border-white/30" aria-label="Open navigation menu" :aria-expanded="open.toString()" aria-controls="site-mobile-menu" @click.stop="open = !open">
+                <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-12 -translate-1/2" aria-hidden="true"></span>
+                <span class="grid gap-1" aria-hidden="true"><span class="h-px w-5 bg-current"></span><span class="h-px w-5 bg-current"></span><span class="h-px w-5 bg-current"></span></span>
             </button>
-        {% endif %}
-        <div class="{% if user.is_authenticated %}lg:hidden{% else %}ml-auto lg:hidden{% endif %}"
-             x-data="{ open: false }"
-             @keydown.escape.window="open = false"
-             @click.outside="open = false">
-            <button type="button"
-                    class="fb-focus relative inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                    aria-label="Open navigation menu"
-                    :aria-expanded="open.toString()"
-                    aria-controls="site-mobile-menu-{{ nav_variant }}"
-                    @click.stop="open = !open">
-                <span class="pointer-fine:hidden absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2"
-                      aria-hidden="true"></span>
-                <span class="grid gap-1" aria-hidden="true">
-                    <span class="h-px w-5 bg-current"></span>
-                    <span class="h-px w-5 bg-current"></span>
-                    <span class="h-px w-5 bg-current"></span>
-                </span>
-            </button>
-            <div id="site-mobile-menu-{{ nav_variant }}"
-                 x-cloak
-                 x-show="open"
-                 x-transition
-                 class="absolute left-3 right-3 top-16 rounded-lg border border-slate-950/10 bg-white p-2 shadow-lg ring-1 ring-black/5 dark:border-white/10 dark:bg-slate-950">
+            <div id="site-mobile-menu" x-cloak x-show="open" class="absolute left-3 right-3 top-16 border border-white/20 bg-[#1313a4] p-2">
                 <nav class="grid gap-1" aria-label="Mobile navigation">
                     {% if user.is_authenticated %}
-                        <a href="{% url 'home' %}"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Dashboard</a>
-                        <a href="{{ docs_home_url }}"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Docs</a>
-                        <a href="{% url 'settings' %}"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Settings</a>
-                        {% if user.is_superuser %}
-                            <a href="{% url 'admin_panel' %}"
-                               class="fb-focus rounded-md px-3 py-2 text-base font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40 sm:text-sm">Admin</a>
-                        {% endif %}
+                        <a href="{% url 'home' %}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Dashboard</a>
+                        <a href="{{ docs_home_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Docs</a>
+                        <a href="{% url 'settings' %}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Settings</a>
                     {% else %}
-                        <a href="{{ landing_url|default:'/' }}#product"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Product</a>
-                        <a href="{{ docs_home_url }}"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Docs</a>
-                        <a href="{{ blog_posts_url }}"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Blog</a>
-                        <a href="{{ use_cases_url }}"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Use Cases</a>
-                        <a href="{{ pricing_url }}"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Pricing</a>
-                    {% endif %}
-                    <div class="my-1 border-t border-slate-950/10 dark:border-white/10"></div>
-                    {% if user.is_authenticated %}
-                        <form method="post" action="{% url 'account_logout' %}">
-                            {% csrf_token %}
-                            <button type="submit"
-                                    class="fb-focus w-full rounded-md px-3 py-2 text-left text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Sign out</button>
-                        </form>
-                    {% else %}
-                        <a href="{% url 'account_login' %}"
-                           class="fb-focus rounded-md px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900 sm:text-sm">Sign in</a>
-                        <a href="{% url 'account_signup' %}"
-                           class="fb-focus rounded-md border border-emerald-700/30 bg-emerald-50 px-3 py-2 text-base font-semibold text-emerald-900 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15 sm:text-sm">Start free</a>
+                        <a href="{{ use_cases_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Use Cases</a>
+                        <a href="{{ docs_home_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Docs</a>
+                        <a href="{{ blog_posts_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Blog</a>
+                        <a href="{{ pricing_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Pricing</a>
+                        <a href="{% url 'account_login' %}" class="fb-focus border-t border-white/20 px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Sign in</a>
+                        <a href="{% url 'account_signup' %}" class="bg-[#ffdd3d] px-3 py-3 text-base font-semibold text-[#1313a4] sm:text-sm">Create a backend</a>
                     {% endif %}
                 </nav>
             </div>

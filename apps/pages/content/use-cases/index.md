@@ -1,16 +1,19 @@
 ---
-title: Use cases
-description: Choose a starter dataset shape for common Rowset workflows such as CRMs, task boards, feedback, content, catalogs, and QA.
-keywords: Rowset use cases, agent CRM, task board, feedback triage
+title: AI agent use cases and workflow examples
+description: Start an AI agent workflow with a proven dataset shape for CRMs, task boards, feedback, content, catalogs, research, and QA.
+keywords: AI agent examples, AI agent use cases, AI agent workflows, MCP use cases, agent CRM
 ---
 
-# Use cases
+# AI agent use cases
 
-Start here when you know the job but do not want to design a dataset from
-scratch. Each page gives a starter shape, index column, agent jobs, and the
-Rowset features that matter.
+An agent becomes more useful when its work survives the chat. These examples
+turn common jobs into persistent, searchable datasets without asking you to
+design the backend from scratch. Each guide includes a starter schema, stable
+index, agent jobs, and the Rowset features that matter.
 
-## Common starting points
+Start here when you know the job but do not want to design a dataset from scratch.
+
+## Choose a workflow
 
 - [Personal CRM](/use-cases/personal-crm/)
 - [Agent task board](/use-cases/agent-task-board/)
@@ -26,7 +29,7 @@ Use a use-case page when you need a concrete dataset shape. Use
 [Design dataset schema](/docs/design-schema/) when the main question is column
 types, status rules, references, or instructions.
 
-## What good use-case datasets have
+## What reliable agent workflows have in common
 
 - a stable index column
 - small, clear headers
