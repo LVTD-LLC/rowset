@@ -16,6 +16,7 @@
 | 2026-07-07 | How to structure dataset instructions for AI agents | how-to | `/blog/structure-dataset-instructions-ai-agents` | AI agent dataset instructions | unmeasured | n/a | MCP access, Dataset API, schema design, content pipeline, feedback triage, index-column guide | #219 |
 | 2026-07-08 | Rowset rowset_id vs business keys: which should agents use? | comparison/decision guide | `/blog/rowset-id-vs-business-keys` | Rowset rowset_id | unmeasured | n/a | Dataset API, MCP tools, schema design, index-column guide, dataset-instructions guide | #227 |
 | 2026-07-09 | Best Baserow alternatives for AI-agent-managed datasets | comparison/listicle | `/blog/baserow-alternatives` | baserow alternatives | 70 | 0 | MCP access, Dataset API, Baserow API, Airtable alternatives, Google Sheets alternatives, row identity guide | #233 |
+| 2026-07-11 | Best NocoDB alternatives for AI-agent-managed datasets | comparison/listicle | `/blog/nocodb-alternatives` | nocodb alternatives | 50 | 14 | Dataset API, MCP docs, index-column guide, Rowset rowset_id vs business keys | #TBD |
 
 ---
 
@@ -23,11 +24,11 @@
 
 | Rank | Candidate | Proposed type | Target keyword | Vol | KD | Intent | Score | Notes / angle |
 |---|---|---|---|---|---|---|---|---|
-| 1 | How to choose an index column for agent-managed rows | how-to | dataset index column | estimated | n/a | process | 16 | Shipped in this run as a product-native tutorial that supports Dataset API docs and reduces agent row-update mistakes. |
-| 2 | How to structure dataset instructions for AI agents | how-to | AI agent dataset instructions | unmeasured | n/a | process/AEO | 15 | Shipped in this run as a product-native guide for using `instructions`, `metadata`, column descriptions, and project context without duplicating API docs. |
-| 3 | Rowset `rowset_id` vs business keys | comparison | generated id vs natural key | unmeasured | n/a | decision | 14 | Shipped in this run as a focused decision guide for generated identity, business keys, exports/imports, retries, and relationships. |
-| 4 | Best Google Sheets alternatives for AI-agent-managed datasets | comparison/listicle | google sheets alternatives | 480 | 0 | commercial/informational | 18 | Shipped in this run from SEO sprint Phase 4; product-led angle is Sheets for humans vs Rowset for trusted agents operating private MCP/REST rows. |
-| 5 | Best Baserow alternatives for AI-agent-managed datasets | comparison/listicle | baserow alternatives | 70 | 0 | commercial/informational | 17 | Shipped in this run as a narrow comparison for Baserow-style database workspaces vs Rowset's private MCP/REST datasets for trusted agents. |
+| 1 | Rowset rowset_id vs business keys | comparison | generated id vs natural key | unmeasured | n/a | decision | 19 | Keep decision angle open while moving into setup and explain pages. |
+| 2 | Best Baserow alternatives for AI-agent-managed datasets | comparison/listicle | baserow alternatives | 70 | 0 | commercial/informational | 18 | Next alternatives expansion requires no duplicate of same audience; this is already queued as prior phase but keeps the lane warm. |
+| 3 | How to choose an index column for agent-managed rows | how-to | dataset index column | estimated | n/a | process | 17 | Product-native tutorial for identity stability and row mutation safety. |
+| 4 | How to connect an AI agent to the Dataset API | how-to | connect ai agent to dataset api | unmeasured | n/a | operational/setup | 16 | First direct implementation post to support trust-bound automation flows. |
+| 5 | spreadsheet database for AI agents | explanation | spreadsheet database | 170 | 20 | informational | 15 | Helps map when spreadsheet-style tools are the right fit before a trust-first recommendation. |
 
 ---
 
@@ -37,7 +38,7 @@
 |---|---|---|
 | Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys` | Relationship modeling guide; generated-index migration patterns |
 | MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents` | Sprint Phase 1 docs strengthening, Phase 2 database MCP server explanation |
-| Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives` | NocoDB blog post; spreadsheet database explanation |
+| Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives` | Spreadsheet database explanation and `/compare/rowset-vs-airtable` |
 
 ---
 

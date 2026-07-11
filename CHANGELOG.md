@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-11
+
+### Added
+- Added the NocoDB alternatives article for AI-agent-managed datasets, with a verified SEO brief, updated ledger/link inventory, and inbound links from MCP/Dataset/API docs.
+
 ## 2026-07-09
 
 ### Added
