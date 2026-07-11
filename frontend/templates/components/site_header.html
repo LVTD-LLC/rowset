@@ -46,6 +46,7 @@
                         <a href="{% url 'home' %}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Dashboard</a>
                         <a href="{{ docs_home_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Docs</a>
                         <a href="{% url 'settings' %}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Settings</a>
+                        <button type="button" data-command-palette-trigger class="fb-focus w-full px-3 py-3 text-left text-base font-medium hover:bg-white/10 sm:text-sm">Search data</button>
                         <form method="post" action="{% url 'account_logout' %}" class="border-t border-white/20">{% csrf_token %}<button type="submit" class="fb-focus w-full px-3 py-3 text-left text-base font-medium hover:bg-white/10 sm:text-sm">Sign out</button></form>
                     {% else %}
                         <a href="{{ use_cases_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Use Cases</a>
