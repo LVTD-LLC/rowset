@@ -1,0 +1,114 @@
+{% load static %}
+<div class="flex h-full min-h-0 flex-col" data-app-shell="sidebar">
+  <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-950/10 px-4 dark:border-white/10">
+    <a href="{% url 'home' %}" aria-label="Homepage" class="fb-focus flex min-w-0 items-center gap-2 rounded-md">
+      <img class="h-7 w-auto shrink-0" src="{% static 'vendors/images/logo.png' %}" alt="Rowset Logo">
+      <span class="truncate font-semibold tracking-tight text-slate-950 dark:text-slate-100" x-show="{% if mobile_sidebar %}true{% else %}!sidebarCollapsed{% endif %}">Rowset</span>
+    </a>
+    {% if mobile_sidebar %}
+      <button type="button" class="fb-focus ml-auto inline-flex size-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white" aria-label="Close navigation" @click="sidebarOpen = false">
+        <span aria-hidden="true">×</span>
+      </button>
+    {% endif %}
+  </div>
+
+  <div class="min-h-0 flex-1 overflow-y-auto px-3 py-4" x-show="{% if mobile_sidebar %}true{% else %}!sidebarCollapsed{% endif %}">
+    <div class="relative">
+      <label for="sidebar-filter-{% if mobile_sidebar %}mobile{% else %}desktop{% endif %}" class="sr-only">Filter projects, sections, and datasets</label>
+      <input id="sidebar-filter-{% if mobile_sidebar %}mobile{% else %}desktop{% endif %}" data-sidebar-filter name="sidebar_filter" type="search" x-model.debounce.100ms="sidebarQuery" placeholder="Filter workspace" aria-keyshortcuts="/" autocomplete="off" class="fb-input block min-h-11 w-full py-2 pl-3 pr-10 text-base sm:min-h-10 sm:text-sm">
+      <kbd x-show="!sidebarQuery" class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-950/10 bg-slate-50 px-1.5 py-0.5 font-mono text-[0.6875rem] text-slate-400 dark:border-white/10 dark:bg-slate-900">/</kbd>
+      <button type="button" x-cloak x-show="sidebarQuery" @click="clearSidebarFilter" class="fb-focus absolute right-2 top-1/2 size-8 -translate-y-1/2 rounded-md text-slate-400 hover:text-slate-950 dark:hover:text-white" aria-label="Clear workspace filter">×</button>
+    </div>
+
+    <nav class="mt-5" aria-label="Workspace navigation">
+      <a href="{% url 'home' %}" class="fb-focus flex min-h-11 items-center justify-between gap-3 rounded-md px-3 text-base font-medium {% if request.resolver_match.view_name == 'home' %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white{% endif %} sm:min-h-9 sm:text-sm">
+        <span>Overview</span>
+      </a>
+
+      <div class="mt-6 flex items-center justify-between gap-3 px-3">
+        <h2 class="text-xs font-semibold text-slate-500 dark:text-slate-400">Projects</h2>
+        <span class="tabular-nums text-xs text-slate-400 dark:text-slate-500">{{ app_navigation_projects|length }}</span>
+      </div>
+      <div class="mt-2 space-y-1">
+        {% for project in app_navigation_projects %}
+          <details class="group" data-navigation-project="{{ project.name }}" data-search-text="{{ project.name }} {% for section in project.navigation_sections %}{{ section.name }} {% for dataset in section.navigation_datasets %}{{ dataset.name }} {% endfor %}{% endfor %}{% for dataset in project.navigation_unsectioned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" {% if project.navigation_is_current or forloop.first %}open{% endif %}>
+            <summary class="fb-focus flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-base font-medium text-slate-700 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">
+              <span class="shrink-0 text-slate-400 transition-transform group-open:rotate-90" aria-hidden="true">›</span>
+              <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
+              <span class="tabular-nums text-xs font-normal text-slate-400">{{ project.navigation_datasets|length }}</span>
+            </summary>
+            <div class="ml-4 border-l border-slate-950/10 pl-2 dark:border-white/10">
+              <a href="{{ project.get_absolute_url }}" class="fb-focus flex min-h-10 items-center rounded-md px-3 text-base font-medium {% if request.path == project.get_absolute_url %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white{% endif %} sm:min-h-8 sm:text-sm">Project overview</a>
+              {% for section in project.navigation_sections %}
+                <details class="group/section" data-navigation-section="{{ section.name }}" data-search-text="{{ project.name }} {{ section.name }} {% for dataset in section.navigation_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" {% if section.navigation_is_current or request.resolver_match.view_name == 'home' %}open{% endif %}>
+                  <summary class="fb-focus flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-base font-medium text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-8 sm:text-sm">
+                    <span class="shrink-0 text-slate-400 transition-transform group-open/section:rotate-90" aria-hidden="true">›</span>
+                    <span class="min-w-0 flex-1 truncate">{{ section.name }}</span>
+                    <span class="tabular-nums text-xs font-normal text-slate-400">{{ section.navigation_datasets|length }}</span>
+                  </summary>
+                  <div class="ml-4 border-l border-slate-950/10 pl-2 dark:border-white/10">
+                    {% for dataset in section.navigation_datasets %}
+                      <a href="{{ dataset.get_absolute_url }}" data-search-text="{{ project.name }} {{ section.name }} {{ dataset.name }}" x-show="matches($el.dataset.searchText)" class="fb-focus flex min-h-10 items-center rounded-md px-3 text-base font-normal {% if request.path == dataset.get_absolute_url %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white{% endif %} sm:min-h-8 sm:text-sm"><span class="truncate">{{ dataset.name }}</span></a>
+                    {% empty %}
+                      <p class="px-3 py-2 text-base text-slate-400 sm:text-sm">No datasets</p>
+                    {% endfor %}
+                  </div>
+                </details>
+              {% endfor %}
+              {% if project.navigation_unsectioned_datasets %}
+                <details class="group/section" data-search-text="{{ project.name }} no section {% for dataset in project.navigation_unsectioned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" open>
+                  <summary class="fb-focus flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-base font-medium text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-8 sm:text-sm">
+                    <span class="shrink-0 text-slate-400 transition-transform group-open/section:rotate-90" aria-hidden="true">›</span>
+                    <span class="min-w-0 flex-1 truncate">No section</span>
+                    <span class="tabular-nums text-xs font-normal text-slate-400">{{ project.navigation_unsectioned_datasets|length }}</span>
+                  </summary>
+                  <div class="ml-4 border-l border-slate-950/10 pl-2 dark:border-white/10">
+                    {% for dataset in project.navigation_unsectioned_datasets %}
+                      <a href="{{ dataset.get_absolute_url }}" data-search-text="{{ project.name }} no section {{ dataset.name }}" x-show="matches($el.dataset.searchText)" class="fb-focus flex min-h-10 items-center rounded-md px-3 text-base font-normal {% if request.path == dataset.get_absolute_url %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white{% endif %} sm:min-h-8 sm:text-sm"><span class="truncate">{{ dataset.name }}</span></a>
+                    {% endfor %}
+                  </div>
+                </details>
+              {% endif %}
+            </div>
+          </details>
+        {% empty %}
+          <p class="px-3 py-2 text-base text-slate-400 sm:text-sm">No projects yet</p>
+        {% endfor %}
+        {% if app_navigation_unassigned_datasets %}
+          <details class="group" data-search-text="no project {% for dataset in app_navigation_unassigned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" open>
+            <summary class="fb-focus flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-base font-medium text-slate-700 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">
+              <span class="shrink-0 text-slate-400 transition-transform group-open:rotate-90" aria-hidden="true">›</span>
+              <span class="min-w-0 flex-1 truncate">No project</span>
+              <span class="tabular-nums text-xs font-normal text-slate-400">{{ app_navigation_unassigned_datasets|length }}</span>
+            </summary>
+            <div class="ml-4 border-l border-slate-950/10 pl-2 dark:border-white/10">
+              {% for dataset in app_navigation_unassigned_datasets %}
+                <a href="{{ dataset.get_absolute_url }}" data-search-text="no project {{ dataset.name }}" x-show="matches($el.dataset.searchText)" class="fb-focus flex min-h-10 items-center rounded-md px-3 text-base font-normal {% if request.path == dataset.get_absolute_url %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white{% endif %} sm:min-h-8 sm:text-sm"><span class="truncate">{{ dataset.name }}</span></a>
+              {% endfor %}
+            </div>
+          </details>
+        {% endif %}
+      </div>
+    </nav>
+
+    <nav class="mt-7 border-t border-slate-950/10 pt-5 dark:border-white/10" aria-label="Help and support">
+      <h2 class="px-3 text-xs font-semibold text-slate-500 dark:text-slate-400">Help and support</h2>
+      <div class="mt-2 space-y-1">
+        <a href="{% url 'docs_home' %}" class="fb-focus flex min-h-11 items-center rounded-md px-3 text-base font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">Docs</a>
+        <a href="{% url 'blog_posts' %}" class="fb-focus flex min-h-11 items-center rounded-md px-3 text-base font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">Blog</a>
+        <a href="{% url 'use_cases' %}" class="fb-focus flex min-h-11 items-center rounded-md px-3 text-base font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">Use cases</a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="shrink-0 border-t border-slate-950/10 p-3 dark:border-white/10" x-show="{% if mobile_sidebar %}true{% else %}!sidebarCollapsed{% endif %}">
+    <a href="{% url 'settings' %}" class="fb-focus flex min-h-11 min-w-0 items-center gap-3 rounded-md px-3 {% if request.resolver_match.view_name == 'settings' %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white{% endif %}">
+      <span class="min-w-0 flex-1"><span class="block truncate text-base font-medium sm:text-sm">Settings</span><span class="block truncate text-xs font-normal text-slate-400">{{ request.user.email }}</span></span>
+    </a>
+    {% if request.user.is_superuser %}<a href="{% url 'admin_panel' %}" class="fb-focus mt-1 flex min-h-10 items-center rounded-md px-3 text-base font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">Admin</a>{% endif %}
+    <form method="post" action="{% url 'account_logout' %}" class="mt-1">
+      {% csrf_token %}
+      <button type="submit" class="fb-focus min-h-10 w-full rounded-md px-3 text-left text-base font-medium text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">Sign out</button>
+    </form>
+  </div>
+</div>

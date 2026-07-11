@@ -67,6 +67,11 @@ from apps.datasets.views import (
 pytestmark = pytest.mark.django_db
 
 
+def main_content_html(response) -> str:
+    content = response.content.decode()
+    return content.split('<main id="main-content"', maxsplit=1)[1].split("</main>", maxsplit=1)[0]
+
+
 def image_base64() -> str:
     return base64.b64encode(image_bytes()).decode()
 
@@ -592,7 +597,8 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     assert "Search datasets" in content
     assert "People" in content
     assert "Research" in content
-    assert "Invoices" not in content
+    assert [item.name for item in response.context["datasets"]] == ["People"]
+    assert "Invoices" in content  # The global workspace tree remains unfiltered.
     assert reverse("archived_dataset_list") in content
     assert reverse("dataset_export", args=[dataset.key, "csv"]) not in content
     assert reverse("dataset_export", args=[dataset.key, "parquet"]) not in content
@@ -741,12 +747,10 @@ def test_dataset_list_groups_datasets_by_project(auth_client, profile):
     assert [dataset.name for dataset in groups[1]["datasets"]] == ["People", notes.name]
     assert groups[1]["dataset_count"] == 2
     assert groups[1]["row_count"] == 11
-    assert "Datasets by project" in content
+    assert "Your data workspace" in content
     assert "border-l-2 border-emerald-200" not in content
-    assert "Datasets for customer interviews." in content
-    assert "2 datasets · 11 rows" in content
     assert "No project" in content
-    assert "Datasets that are not assigned to a project." in content
+    assert "Loose contacts" in content
 
 
 def test_home_groups_project_datasets_by_section(auth_client, profile):
@@ -785,7 +789,7 @@ def test_home_groups_project_datasets_by_section(auth_client, profile):
     assert group["section_groups"][0]["datasets"][0].name == "Content ledger"
     assert group["section_groups"][1]["datasets"][0].name == "Topic backlog"
     assert "Blog" in content
-    assert "Unsectioned" in content
+    assert "No section" in content
 
 
 def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client, profile):
@@ -812,7 +816,6 @@ def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client,
         assert group["label"] == "Research"
         assert group["dataset_count"] == 101
         assert group["row_count"] == 101
-        assert "101 datasets · 101 rows" in response.content.decode()
 
 
 def test_archived_dataset_list_shows_archived_datasets_only(
@@ -861,6 +864,7 @@ def test_archived_dataset_list_shows_archived_datasets_only(
     )
 
     content = response.content.decode()
+    main_content = main_content_html(response)
     assert response.status_code == 200
     assert [dataset.key for dataset in response.context["datasets"]] == [
         archived_draft.key,
@@ -882,8 +886,8 @@ def test_archived_dataset_list_shows_archived_datasets_only(
     assert "Active datasets" in content
     assert "Archived people" in content
     assert "Research" in content
-    assert "Active only" not in content
-    assert "Archived active people" not in content
+    assert "Active only" in content  # Active workspace items remain available in the sidebar.
+    assert "Archived active people" not in main_content
     assert "Archived draft" in content
     assert "Archived other account dataset" not in content
     assert reverse("home") in content
@@ -1158,7 +1162,7 @@ def test_dataset_detail_renders_rowset_dataset_urls_as_text(
     row.save(update_fields=["data"])
 
     response = auth_client.get(source_dataset.get_absolute_url())
-    content = response.content.decode()
+    content = main_content_html(response)
 
     assert response.status_code == 200
     assert raw_url in content
@@ -1185,7 +1189,7 @@ def test_dataset_detail_keeps_row_detail_link_for_single_rowset_url_column(
     row_url = reverse("dataset_row_detail", args=[source_dataset.key, row.id])
 
     response = auth_client.get(source_dataset.get_absolute_url())
-    content = response.content.decode()
+    content = main_content_html(response)
 
     assert response.status_code == 200
     assert f'href="{row_url}"' in content
@@ -1234,7 +1238,7 @@ def test_dataset_detail_does_not_link_protocol_relative_rowset_urls(
     row.save(update_fields=["data"])
 
     response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
+    content = main_content_html(response)
 
     assert response.status_code == 200
     assert raw_url in content
@@ -1255,7 +1259,7 @@ def test_dataset_detail_falls_back_for_malformed_rowset_row_urls(
     row.save(update_fields=["data"])
 
     response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
+    content = main_content_html(response)
 
     assert response.status_code == 200
     assert raw_url in content
@@ -1336,7 +1340,7 @@ def test_dataset_detail_falls_back_for_unsupported_rowset_row_subpaths(
     row.save(update_fields=["data"])
 
     response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
+    content = main_content_html(response)
 
     assert response.status_code == 200
     assert raw_url in content
@@ -1358,7 +1362,7 @@ def test_dataset_detail_falls_back_for_stale_rowset_row_urls(
     row.save(update_fields=["data"])
 
     response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
+    content = main_content_html(response)
 
     assert response.status_code == 200
     assert raw_url in content
@@ -1379,7 +1383,7 @@ def test_dataset_detail_falls_back_for_root_relative_stale_rowset_row_urls(
     row.save(update_fields=["data"])
 
     response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
+    content = main_content_html(response)
 
     assert response.status_code == 200
     assert raw_url in content
@@ -1403,7 +1407,7 @@ def test_dataset_detail_does_not_resolve_disabled_share_urls_to_private_links(
     row.save(update_fields=["data"])
 
     response = auth_client.get(dataset.get_absolute_url())
-    content = response.content.decode()
+    content = main_content_html(response)
 
     assert response.status_code == 200
     assert raw_url in content

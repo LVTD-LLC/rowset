@@ -1,147 +1,82 @@
 {% load django_htmx static %}
-
 <!doctype html>
-<html lang="en">
+<html lang="en" class="antialiased">
   <head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
-    />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-
-    <!-- Other meta stuff -->
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="{% static 'vendors/images/apple-touch-icon.png' %}"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="{% static 'vendors/images/favicon-32x32.png' %}"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="{% static 'vendors/images/favicon-16x16.png' %}"
-    />
-    <link rel="shortcut icon" href="{% static 'vendors/images/favicon.ico' %}" />
-
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'vendors/images/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'vendors/images/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'vendors/images/favicon-16x16.png' %}">
+    <link rel="shortcut icon" href="{% static 'vendors/images/favicon.ico' %}">
     {% block meta %}
-    <title>{% block title %}Rowset{% endblock title %}</title>
-    <meta
-      name="description"
-      content="Give AI agents MCP and REST tools to manage API-backed datasets."
-    />
-    <meta name="keywords" content="django" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://{{ request.get_host }}/" />
-
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Rowset" />
-    <meta property="og:url" content="https://{{ request.get_host }}/" />
-    <meta
-      property="og:description"
-      content="Give AI agents MCP and REST tools to manage API-backed datasets."
-    />
-    <meta
-      property="og:image"
-      content="https://osig.app/g?site=meta&style=logo&font=markerfelt&title=Rowset&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}"
-    />
-    <meta property="og:locale" content="en_US" />
-
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:creator" content="@rasulkireev" />
-    <meta name="twitter:site" content="@rasulkireev" />
-    <meta name="twitter:title" content="Rowset" />
-    <meta
-      name="twitter:description"
-      content="Give AI agents MCP and REST tools to manage API-backed datasets."
-    />
-    <meta
-      name="twitter:image"
-      content="https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}"
-    />
+      <title>{% block title %}Rowset{% endblock title %}</title>
+      <meta name="description" content="Give AI agents MCP and REST tools to manage API-backed datasets.">
+      <meta name="robots" content="index, follow">
+      <link rel="canonical" href="https://{{ request.get_host }}/">
     {% endblock meta %}
     {% include 'components/plausible.html' %}
     {% include 'components/posthog.html' %}
-
     <script>
-      // Set theme early to avoid a flash of incorrect theme.
       (function () {
         try {
           var theme = localStorage.getItem("theme");
           if (!theme) {
-            theme =
-              window.matchMedia &&
-              window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light";
+            theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
           }
-          if (theme === "dark") {
-            document.documentElement.classList.add("dark");
-          } else {
-            document.documentElement.classList.remove("dark");
-          }
-        } catch (e) {
-          // no-op
-        }
+          document.documentElement.classList.toggle("dark", theme === "dark");
+        } catch (e) {}
       })();
     </script>
-
-    <link rel="stylesheet" href="{% static 'css/index.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
     {% htmx_script %}
     <script defer src="{% static 'js/alpine-components.js' %}"></script>
     <script defer src="{% static 'vendors/js/alpine.min.js' %}"></script>
     <script defer src="{% static 'js/app.js' %}"></script>
   </head>
+  <body data-csrf-token="{{ csrf_token }}" {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}>
+    {% block default_messages %}{% include 'components/messages.html' with messages=messages %}{% endblock default_messages %}
+    <div class="isolate min-h-dvh bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100" x-data="appShell" @keydown.escape.window="sidebarOpen = false" @keydown.window="handleShellKeydown($event)">
+      <a href="#main-content" class="fb-focus sr-only fixed left-4 top-4 z-50 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white focus:not-sr-only">Skip to content</a>
 
-  <body
-    data-csrf-token="{{ csrf_token }}"
-    {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}
-  >
-    {% block default_messages %}
-      {% include 'components/messages.html' with messages=messages %}
-    {% endblock default_messages %}
+      <div class="lg:grid lg:min-h-dvh lg:grid-cols-[var(--app-sidebar-width)_minmax(0,1fr)]" :style="shellStyle">
+        <aside class="relative hidden h-dvh border-r border-slate-950/10 bg-slate-50/70 dark:border-white/10 dark:bg-slate-900/40 lg:sticky lg:top-0 lg:block">
+          {% include 'components/app_sidebar.html' %}
+          <button type="button" data-sidebar-resize-handle class="absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none opacity-0 hover:opacity-100 focus-visible:opacity-100" aria-label="Resize sidebar" @pointerdown="startSidebarResize($event)" x-show="!sidebarCollapsed"><span class="mx-auto block h-full w-px bg-emerald-500/60" aria-hidden="true"></span></button>
+        </aside>
 
-    <div class="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100">
-      <a
-        href="#main-content"
-        class="fb-focus sr-only fixed left-4 top-4 z-50 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white focus:not-sr-only"
-      >Skip to content</a>
+        <div class="min-w-0">
+          <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-950/10 bg-white/95 px-4 backdrop-blur dark:border-white/10 dark:bg-slate-950/95 lg:hidden">
+            <button type="button" class="fb-focus inline-flex size-11 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white" aria-label="Open navigation" aria-controls="app-mobile-sidebar" :aria-expanded="sidebarOpen.toString()" @click="sidebarOpen = true">
+              <span class="grid gap-1" aria-hidden="true"><span class="h-px w-5 bg-current"></span><span class="h-px w-5 bg-current"></span><span class="h-px w-5 bg-current"></span></span>
+            </button>
+            <a href="{% url 'home' %}" aria-label="Homepage" class="fb-focus flex min-w-0 items-center gap-2 rounded-md">
+              <img class="h-7 w-auto shrink-0" src="{% static 'vendors/images/logo.png' %}" alt="Rowset Logo">
+              <span class="truncate font-semibold tracking-tight">Rowset</span>
+            </a>
+            <button type="button" data-command-palette-trigger class="fb-focus ml-auto inline-flex size-11 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white" aria-label="Search rows, datasets, and projects"><span aria-hidden="true">⌕</span></button>
+          </header>
 
-      {% include 'components/site_header.html' with nav_variant='app' %}
+          <header class="sticky top-0 z-20 hidden h-16 items-center gap-3 border-b border-slate-950/10 bg-white/95 px-5 backdrop-blur dark:border-white/10 dark:bg-slate-950/95 lg:flex">
+            <button type="button" class="fb-focus inline-flex size-9 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white" aria-label="Collapse sidebar" aria-keyshortcuts="Meta+B Control+B" @click="toggleSidebar" :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"><span aria-hidden="true" x-text="sidebarCollapsed ? '›' : '‹'">‹</span></button>
+            <button type="button" data-command-palette-trigger class="fb-focus ml-auto flex h-9 w-72 items-center justify-between gap-3 rounded-md border border-slate-950/10 bg-white px-3 text-left text-sm text-slate-500 hover:border-slate-950/20 hover:text-slate-700 dark:border-white/10 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-white/20 dark:hover:text-slate-200" aria-label="Search everything" aria-keyshortcuts="Meta+K Control+K"><span class="min-w-0 truncate">Search everything</span><kbd class="shrink-0 rounded border border-slate-950/10 bg-slate-50 px-1.5 py-0.5 font-mono text-[0.6875rem] dark:border-white/10 dark:bg-slate-900" data-command-palette-shortcut>Cmd K</kbd></button>
+          </header>
 
-      <main id="main-content" tabindex="-1">
-        {% block content %}{% endblock content %}
-      </main>
+          <main id="main-content" tabindex="-1" class="min-w-0">
+            {% block content %}{% endblock content %}
+          </main>
+        </div>
+      </div>
 
-      {% include 'components/site_footer.html' with nav_variant='app' %}
+      <div x-cloak x-show="sidebarOpen" class="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+        <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" @click="sidebarOpen = false"></div>
+        <aside id="app-mobile-sidebar" class="absolute inset-y-0 left-0 w-[min(88vw,20rem)] border-r border-slate-950/10 bg-slate-50 shadow-xl dark:border-white/10 dark:bg-slate-950 dark:shadow-none" @click.outside="sidebarOpen = false">
+          {% include 'components/app_sidebar.html' with mobile_sidebar=True %}
+        </aside>
+      </div>
 
-      {% if request.user.is_authenticated %}
-        {% include 'components/command_palette.html' %}
-      {% endif %}
+      {% include 'components/command_palette.html' %}
     </div>
-
-    {% include 'components/chatwoot.html' %} {% block schema %}
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Rowset",
-        "description": "Give AI agents MCP and REST tools to manage API-backed datasets.",
-        "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=markerfelt&title=Rowset&subtitle=Datasets%20for%20AI%20agents.&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
-        "url": "https://{{ request.get_host }}/",
-        "author": {
-          "@type": "Person",
-          "name": "Rasul Kireev"
-        }
-      }
-    </script>
-    {% endblock schema %}
+    {% include 'components/chatwoot.html' %}
   </body>
 </html>
