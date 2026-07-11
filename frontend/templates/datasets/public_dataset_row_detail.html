@@ -83,6 +83,8 @@
                       <span class="text-slate-500 dark:text-slate-400">{{ cell.value }}</span>
                     {% elif cell.rowset_link_url %}
                       {% include "datasets/partials/rowset_link_cell.html" %}
+                    {% elif cell.is_tags %}
+                      {% include "datasets/partials/tags_cell.html" %}
                     {% elif cell.value %}
                       <span class="whitespace-pre-wrap break-words">{{ cell.value }}</span>
                     {% else %}

@@ -386,6 +386,37 @@ def _choice_value_key(value: str) -> str:
     return value.strip().casefold()
 
 
+def _tag_items(value: object, *, colorized: bool) -> list[dict[str, str]]:
+    items = []
+    for segment in _cell_value(value).split(","):
+        label = segment.strip()
+        if not label:
+            continue
+        items.append(
+            {
+                "value": label,
+                "accent_class": _choice_value_accent_class(label) if colorized else "",
+            }
+        )
+    return items
+
+
+def _apply_tag_cell_payload(
+    cell: dict[str, object],
+    *,
+    column_type: str | None,
+    value: object,
+    colorized: bool,
+) -> None:
+    if column_type != DatasetColumnType.TAGS:
+        return
+    cell["tags"] = _tag_items(value, colorized=colorized)
+    if cell["tags"]:
+        cell["is_tags"] = True
+    else:
+        cell["value"] = ""
+
+
 def _choice_value_accent_class(value: str, used_indices: set[int] | None = None) -> str:
     accent_count = len(CHOICE_VALUE_ACCENT_CLASS_NAMES)
     accent_index = zlib.crc32(_choice_value_key(value).encode("utf-8")) % accent_count
@@ -760,12 +791,12 @@ def _row_cells(
     row_id: int | None = None,
     image_assets: dict[tuple[int, str], DatasetAsset] | None = None,
     public_context: bool = False,
+    colorize_tags: bool = False,
 ) -> list[dict[str, object]]:
     ordered_keys = [*headers, *[key for key in row_data if key not in headers]]
-    descriptions = {
-        column["name"]: column["description"]
-        for column in column_definitions(headers, column_schema or {})
-    }
+    columns = column_definitions(headers, column_schema or {})
+    descriptions = {column["name"]: column["description"] for column in columns}
+    column_types = {column["name"]: column["type"] for column in columns}
     relationship_links = relationship_links or {}
     reference_lookup = reference_lookup or {}
     image_assets = image_assets or {}
@@ -779,6 +810,12 @@ def _row_cells(
             "description": descriptions.get(header, ""),
             "value": value,
         }
+        _apply_tag_cell_payload(
+            cell,
+            column_type=column_types.get(header),
+            value=value,
+            colorized=colorize_tags,
+        )
         has_asset_cell = _apply_dataset_asset_cell_payload(
             cell,
             header=header,
@@ -815,6 +852,7 @@ def _row_table_cells(
     row_number: int | None = None,
     public_context: bool = False,
     choice_value_accent_classes: dict[str, dict[str, str]] | None = None,
+    colorize_tags: bool = False,
 ) -> list[dict[str, object]]:
     reference_lookup = reference_lookup or {}
     image_assets = image_assets or {}
@@ -822,6 +860,10 @@ def _row_table_cells(
     audio_columns = set(audio_columns_from_schema(headers, column_schema))
     if choice_value_accent_classes is None:
         choice_value_accent_classes = {}
+    column_types = {
+        column["name"]: column["type"]
+        for column in column_definitions(headers, column_schema or {})
+    }
     cells = []
     row_detail_primary_assigned = False
     for index, header in enumerate(headers):
@@ -830,6 +872,12 @@ def _row_table_cells(
             "value": display_value,
             "is_first": index == 0,
         }
+        _apply_tag_cell_payload(
+            cell,
+            column_type=column_types.get(header),
+            value=display_value,
+            colorized=colorize_tags,
+        )
         choice_accent_class = _choice_cell_accent_class(
             header,
             display_value,
@@ -1946,7 +1994,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
             dataset.headers,
             dataset.column_schema,
         )
-        colorize_choice_values = self.request.user.profile.choice_colorization_enabled
+        colorization_enabled = self.request.user.profile.choice_colorization_enabled
         row_queryset, row_query_context = _dataset_row_query_context(
             self.request,
             dataset,
@@ -1971,7 +2019,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 column_definition_list,
                 row_data_items,
             )
-            if colorize_choice_values
+            if colorization_enabled
             else {}
         )
         reference_lookup = _rowset_reference_lookup(
@@ -1997,6 +2045,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                 row_id=row.id,
                 row_number=row.row_number,
                 choice_value_accent_classes=choice_value_accent_classes,
+                colorize_tags=colorization_enabled,
             )
             rows_with_values.append(
                 {
@@ -2019,7 +2068,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                     column_definition_list,
                     preview_rows,
                 )
-                if colorize_choice_values
+                if colorization_enabled
                 else {}
             )
             reference_lookup = _rowset_reference_lookup(
@@ -2037,6 +2086,7 @@ class DatasetDetailView(LoginRequiredMixin, DetailView):
                     column_schema=dataset.column_schema,
                     reference_lookup=reference_lookup,
                     choice_value_accent_classes=choice_value_accent_classes,
+                    colorize_tags=colorization_enabled,
                 )
                 rows_with_values.append(
                     {
@@ -2210,6 +2260,7 @@ class DatasetRowDetailView(LoginRequiredMixin, DetailView):
                 reference_lookup=reference_lookup,
                 row_id=row.id,
                 image_assets=_image_asset_lookup(dataset, [row]),
+                colorize_tags=self.request.user.profile.choice_colorization_enabled,
             ),
             form_values,
             allow_edit=row_is_editable,

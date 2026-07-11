@@ -146,7 +146,7 @@ ROWSET_CAPABILITIES = (
         ),
         notes=(
             (
-                "column_schema supports text, choice, integer, number, currency, "
+                "column_schema supports text, tags, choice, integer, number, currency, "
                 "boolean, date, datetime, email, url, image, audio, reference, and calculated."
             ),
             (

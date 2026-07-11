@@ -1,0 +1,9 @@
+{% if cell.row_url %}
+  <a href="{{ cell.row_url }}" class="fb-focus flex max-w-64 flex-wrap gap-1" title="{{ cell.value }}"{% if cell.is_row_detail_primary %} aria-label="{{ cell.row_detail_label }}"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>
+    {% include "datasets/partials/tag_pills.html" %}
+  </a>
+{% else %}
+  <span class="flex max-w-64 flex-wrap gap-1" title="{{ cell.value }}">
+    {% include "datasets/partials/tag_pills.html" %}
+  </span>
+{% endif %}

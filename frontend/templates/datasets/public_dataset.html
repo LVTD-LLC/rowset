@@ -83,6 +83,8 @@
                         {% else %}
                           {% include "datasets/partials/rowset_link_cell.html" with rowset_link_width="max-w-64" %}
                         {% endif %}
+                      {% elif cell.is_tags %}
+                        {% include "datasets/partials/tags_cell.html" %}
                       {% else %}
                         {% if public_row.url %}
                           <a href="{{ public_row.url }}" class="fb-focus block max-w-64 truncate text-slate-700 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-300" title="{{ cell.value }}"{% if cell.is_row_detail_primary %} aria-label="View row {{ public_row.row_number }} details"{% else %} aria-hidden="true" tabindex="-1"{% endif %}>

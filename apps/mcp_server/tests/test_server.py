@@ -330,6 +330,12 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         assert "image_assets" in capability_ids
         assert "audio_assets" in capability_ids
         assert "get_dataset before row operations" in " ".join(payload["recommended_startup"])
+        dataset_context = next(
+            capability
+            for capability in payload["capabilities"]
+            if capability["id"] == "dataset_context"
+        )
+        assert "tags" in " ".join(dataset_context["notes"])
         image_assets = next(
             capability
             for capability in payload["capabilities"]
@@ -345,6 +351,25 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         assert "attach_audio_to_dataset_row" in audio_assets["mcp_tools"]
         assert "hosted MCP cannot read local file paths" in " ".join(audio_assets["notes"])
         assert "guardrails" in payload
+
+    anyio.run(run)
+
+
+def test_tags_column_type_is_explained_in_live_mcp_tool_schemas():
+    async def run():
+        async with Client(mcp) as client:
+            tools = {tool.name: tool for tool in await client.list_tools()}
+
+        tool_properties = (
+            ("create_dataset", "column_types"),
+            ("update_dataset_column_types", "column_types"),
+            ("add_column", "column_type"),
+        )
+        for tool_name, property_name in tool_properties:
+            description = tools[tool_name].inputSchema["properties"][property_name]["description"]
+            assert "tags" in description
+            assert "comma-separated string values" in description
+            assert "returns the original string unchanged" in description
 
     anyio.run(run)
 
@@ -1145,10 +1170,16 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                     "description": "Supplier catalog.",
                     "instructions": "Use sku as the stable identity.",
                     "metadata": {"workflow": {"default_status": "draft"}},
-                    "headers": ["sku", "name"],
-                    "rows": [{"sku": "A-1", "name": "Adapter"}],
+                    "headers": ["sku", "name", "topics"],
+                    "rows": [
+                        {
+                            "sku": "A-1",
+                            "name": "Adapter",
+                            "topics": " Django, HTMX, , django ,  ",
+                        }
+                    ],
                     "index_column": "sku",
-                    "column_types": {"sku": "text", "name": "text"},
+                    "column_types": {"sku": "text", "name": "text", "topics": "tags"},
                     "project_key": "project-key",
                     "section_key": "section-key",
                 },
@@ -1162,10 +1193,16 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
                 "Supplier catalog.",
                 "Use sku as the stable identity.",
                 {"workflow": {"default_status": "draft"}},
-                ["sku", "name"],
-                [{"sku": "A-1", "name": "Adapter"}],
+                ["sku", "name", "topics"],
+                [
+                    {
+                        "sku": "A-1",
+                        "name": "Adapter",
+                        "topics": " Django, HTMX, , django ,  ",
+                    }
+                ],
                 "sku",
-                {"sku": "text", "name": "text"},
+                {"sku": "text", "name": "text", "topics": "tags"},
                 "project-key",
                 "section-key",
             )

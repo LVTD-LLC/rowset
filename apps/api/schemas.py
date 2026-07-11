@@ -18,7 +18,8 @@ from apps.datasets.types import (
 
 ColumnTypeIn = ColumnTypeSpec
 COLUMN_TYPE_DESCRIPTION = (
-    "Semantic column type string or metadata object. Metadata supports type, "
+    "Semantic column type string or metadata object, including tags for comma-separated "
+    "values. Metadata supports type, "
     "description, image and audio columns, choice columns with choices, reference columns with "
     'target "dataset" or "project", and calculated relationship_count columns with '
     "relationship_key."

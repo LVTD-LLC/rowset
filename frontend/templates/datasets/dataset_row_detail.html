@@ -85,6 +85,8 @@
                           <a href="{{ cell.relationship_url }}" class="fb-focus font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" aria-label="{{ cell.relationship_label }}">{{ cell.value }}</a>
                         {% elif cell.rowset_link_url %}
                           {% include "datasets/partials/rowset_link_cell.html" %}
+                        {% elif cell.is_tags %}
+                          {% include "datasets/partials/tags_cell.html" %}
                         {% elif cell.value %}
                           <span class="whitespace-pre-wrap break-words">{{ cell.value }}</span>
                         {% else %}

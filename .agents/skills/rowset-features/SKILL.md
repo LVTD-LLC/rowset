@@ -37,9 +37,11 @@ spreadsheet write-back as active product capabilities.
 - Persist description, instructions, and JSON metadata with
   `update_dataset_metadata`.
 - Persist semantic column metadata with `update_dataset_column_types`.
-- Supported column types: `text`, `choice`, `integer`, `number`, `currency`,
+- Supported column types: `text`, `tags`, `choice`, `integer`, `number`, `currency`,
   `boolean`, `date`, `datetime`, `email`, and `url`.
 - Use column descriptions when an agent should not infer meaning from a header.
+- Use `tags` for comma-separated string values that should render as individual
+  pills without changing row data returned through MCP or REST.
 
 ### Schema changes
 
