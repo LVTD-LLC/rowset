@@ -27,7 +27,7 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 | 4 | Ship `/blog/google-sheets-alternatives` with an MCP/REST backend angle | Blog alternatives | completed | #209 |
 | 5 | Ship `/explanations/spreadsheet-database-for-ai-agents` | Explanation | pending | - |
 | 6 | Ship `/blog/baserow-alternatives` with honest open-source/no-code positioning | Blog alternatives | completed | #233 |
-| 7 | Ship `/blog/nocodb-alternatives` with SQL UI vs agent backend positioning | Blog alternatives | completed | #TBD |
+| 7 | Ship `/blog/nocodb-alternatives` with SQL UI vs agent backend positioning | Blog alternatives | completed | #239 |
 | 8 | Ship `/how-to/connect-ai-agent-to-dataset-api` as a strategic product-native guide | How-to guide | pending | - |
 | 9 | Ship `/compare/rowset-vs-airtable` after alternatives blog posts exist | Compare | pending | - |
 | 10 | Off-page starter submissions and backlink target list | Off-page | pending | - |
