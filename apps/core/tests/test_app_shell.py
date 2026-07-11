@@ -4,7 +4,6 @@ import pytest
 
 from apps.datasets.models import Dataset, Project, ProjectSection
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -43,12 +42,12 @@ def test_authenticated_app_shell_renders_workspace_tree_and_utility_navigation(
     assert ">Blog<" in content
     assert ">Settings<" in content
     assert 'aria-controls="app-mobile-sidebar"' in content
-    assert 'data-sidebar-filter' in content
+    assert "data-sidebar-filter" in content
     assert 'aria-keyshortcuts="/"' in content
-    assert 'data-sidebar-resize-handle' in content
+    assert "data-sidebar-resize-handle" in content
     assert 'aria-label="Collapse sidebar"' in content
     assert 'aria-keyshortcuts="Meta+B Control+B"' in content
-    assert 'data-command-palette-trigger' in content
+    assert "data-command-palette-trigger" in content
     assert "Search everything" in content
     assert "site_header.html" not in content
     assert "ui-picker.js" not in content

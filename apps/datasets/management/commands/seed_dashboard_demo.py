@@ -5,7 +5,6 @@ from django.db import transaction
 from apps.core.models import Profile
 from apps.datasets.models import Dataset, DatasetRow, Project, ProjectSection
 
-
 PROJECT_SPECS = (
     (
         "Product launch",
@@ -144,7 +143,7 @@ class Command(BaseCommand):
                     },
                 )
                 for row_number, (status, owner) in enumerate(
-                    zip(STATUSES, OWNERS), start=1
+                    zip(STATUSES, OWNERS, strict=True), start=1
                 ):
                     DatasetRow.objects.update_or_create(
                         dataset=dataset,

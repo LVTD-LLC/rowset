@@ -4,7 +4,6 @@ from django.core.management import call_command
 
 from apps.datasets.models import Dataset, DatasetRow, Project, ProjectSection
 
-
 pytestmark = pytest.mark.django_db
 
 
