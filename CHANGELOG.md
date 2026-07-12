@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-12
+
+### Added
+- Added a Rowset Dataset API setup article for connecting trusted AI agents over REST, with a verified SEO brief, updated ledger/link inventory, and inbound links from Dataset API and agent access docs.
+
 ## 2026-07-11
 
 ### Added

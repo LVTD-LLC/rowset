@@ -55,6 +55,7 @@
 | `/blog/rowset-id-vs-business-keys` | https://rowset.lvtd.dev/blog/rowset-id-vs-business-keys | Rowset rowset_id vs business keys: which should agents use? | rowset_id, business keys, row identity, agent workflows | index-column guide, create-datasets docs, Google Sheets alternatives |
 | `/blog/baserow-alternatives` | https://rowset.lvtd.dev/blog/baserow-alternatives | Best Baserow alternatives for AI-agent-managed datasets | Baserow alternatives, agent workflows, datasets | Airtable alternatives blog, Google Sheets alternatives blog, MCP docs |
 | `/blog/nocodb-alternatives` | https://rowset.lvtd.dev/blog/nocodb-alternatives | Best NocoDB alternatives for AI-agent-managed datasets | NocoDB alternatives, agent workflows, datasets | Baserow alternatives blog, Google Sheets alternatives blog |
+| `/blog/connect-ai-agent-to-dataset-api` | https://rowset.lvtd.dev/blog/connect-ai-agent-to-dataset-api | How to connect an AI agent to the Rowset Dataset API | Dataset API, REST API, agent access, agent workflows | Dataset API docs, agent access docs, agent discovery docs |
 
 ## SEO-Sprint-Generated Pages
 
@@ -143,3 +144,8 @@
 - NocoDB alternative for trusted agents
 - open-source NocoDB alternative for agent datasets
 - NocoDB vs Rowset for AI agents
+- connect an AI agent to the Rowset Dataset API
+- Rowset Dataset API setup for agents
+- REST setup checklist for AI agents
+- private REST access for trusted agents
+- agent API key handoff

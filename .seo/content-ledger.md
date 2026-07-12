@@ -17,6 +17,7 @@
 | 2026-07-08 | Rowset rowset_id vs business keys: which should agents use? | comparison/decision guide | `/blog/rowset-id-vs-business-keys` | Rowset rowset_id | unmeasured | n/a | Dataset API, MCP tools, schema design, index-column guide, dataset-instructions guide | #227 |
 | 2026-07-09 | Best Baserow alternatives for AI-agent-managed datasets | comparison/listicle | `/blog/baserow-alternatives` | baserow alternatives | 70 | 0 | MCP access, Dataset API, Baserow API, Airtable alternatives, Google Sheets alternatives, row identity guide | #233 |
 | 2026-07-11 | Best NocoDB alternatives for AI-agent-managed datasets | comparison/listicle | `/blog/nocodb-alternatives` | nocodb alternatives | 50 | 14 | Dataset API, MCP docs, index-column guide, Rowset rowset_id vs business keys | #TBD |
+| 2026-07-12 | How to connect an AI agent to the Rowset Dataset API | how-to | `/blog/connect-ai-agent-to-dataset-api` | connect AI agent to Dataset API | unmeasured | n/a | Dataset API, MCP docs, agent access, agent discovery, index-column guide, dataset-instructions guide | #TBD |
 
 ---
 
@@ -27,8 +28,8 @@
 | 1 | Rowset rowset_id vs business keys | comparison | generated id vs natural key | unmeasured | n/a | decision | 19 | Keep decision angle open while moving into setup and explain pages. |
 | 2 | Best Baserow alternatives for AI-agent-managed datasets | comparison/listicle | baserow alternatives | 70 | 0 | commercial/informational | 18 | Next alternatives expansion requires no duplicate of same audience; this is already queued as prior phase but keeps the lane warm. |
 | 3 | How to choose an index column for agent-managed rows | how-to | dataset index column | estimated | n/a | process | 17 | Product-native tutorial for identity stability and row mutation safety. |
-| 4 | How to connect an AI agent to the Dataset API | how-to | connect ai agent to dataset api | unmeasured | n/a | operational/setup | 16 | First direct implementation post to support trust-bound automation flows. |
-| 5 | spreadsheet database for AI agents | explanation | spreadsheet database | 170 | 20 | informational | 15 | Helps map when spreadsheet-style tools are the right fit before a trust-first recommendation. |
+| 4 | spreadsheet database for AI agents | explanation | spreadsheet database | 170 | 20 | informational | 15 | Helps map when spreadsheet-style tools are the right fit before a trust-first recommendation. |
+| 5 | Relationship modeling for agent-managed datasets | how-to | agent dataset relationships | unmeasured | n/a | operational/setup | 14 | Natural next product-native post after Dataset API setup; explain when one dataset should reference another. |
 
 ---
 
@@ -37,7 +38,7 @@
 | Cluster / theme | Pieces shipped | Gaps still open |
 |---|---|---|
 | Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys` | Relationship modeling guide; generated-index migration patterns |
-| MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents` | Sprint Phase 1 docs strengthening, Phase 2 database MCP server explanation |
+| MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents`, `/blog/connect-ai-agent-to-dataset-api` | Relationship modeling guide; REST/MCP setup examples with concrete datasets |
 | Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives` | Spreadsheet database explanation and `/compare/rowset-vs-airtable` |
 
 ---

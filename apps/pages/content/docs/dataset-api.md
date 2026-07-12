@@ -12,6 +12,9 @@ For the product-level concept behind these endpoints, read [What is an
 agent-managed dataset?](/blog/agent-managed-datasets). It explains why stable
 row identity, schema context, instructions, and authenticated writes matter for
 AI-agent workflows.
+If you are handing REST access to an agent for the first time, use
+[How to connect an AI agent to the Rowset Dataset API](/blog/connect-ai-agent-to-dataset-api)
+as the setup checklist before creating production rows.
 
 If you are comparing generic "dataset API" options, Rowset is intentionally
 narrow: it gives trusted agents an authenticated row store with stable indexes,

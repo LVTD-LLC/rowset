@@ -95,6 +95,11 @@ key.
 If a client only supports custom headers, set `Authorization` to `Bearer <key>`.
 Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 
+If the agent will use REST instead of MCP, follow
+[How to connect an AI agent to the Rowset Dataset API](/blog/connect-ai-agent-to-dataset-api)
+for the handoff checklist: scoped key, private secret storage, dataset
+inspection, and by-index row operations.
+
 ## Recommended agent behavior
 
 - Prefer MCP tools over browser automation.
