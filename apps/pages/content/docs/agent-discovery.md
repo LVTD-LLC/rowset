@@ -8,7 +8,10 @@ keywords: Rowset agents, llms.txt, MCP discovery, Rowset skills
 
 Rowset is designed so agents do not have to rely on stale prompt text. A trusted
 agent should discover the live MCP server, then load Rowset's current feature
-guide before creating or changing data.
+guide before creating or changing data. If the client cannot use MCP and must
+call REST directly, use
+[How to connect an AI agent to the Rowset Dataset API](/blog/connect-ai-agent-to-dataset-api)
+as the REST setup path.
 
 ## Recommended startup order
 
