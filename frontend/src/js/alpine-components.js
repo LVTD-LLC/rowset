@@ -250,6 +250,7 @@
 
         this.flashLabel(copied ? "Copied" : "Copy failed");
         this.trackCopy(copied);
+        this.dispatchCopySuccess(copied);
         this.busy = false;
       },
 
@@ -305,6 +306,15 @@
         }
 
         window.posthog.capture(eventName);
+      },
+
+      dispatchCopySuccess(copied) {
+        const eventName = this.$el.dataset.copySuccessEvent || "";
+        if (!copied || !eventName) {
+          return;
+        }
+
+        this.$dispatch(eventName, null, { composed: false, cancelable: false });
       },
     }));
 

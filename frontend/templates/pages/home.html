@@ -11,7 +11,11 @@
       <p class="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300">Create a named API key, copy the setup prompt, and paste it into a trusted agent. Your agent can then create and organize projects, sections, and datasets for you.</p>
     </section>
 
-    <div class="mt-8 grid gap-6 lg:grid-cols-[17fr_23fr] lg:items-start">
+    <div
+      class="mt-8 grid gap-6 lg:grid-cols-[17fr_23fr] lg:items-start"
+      x-data="{ promptCopied: false }"
+      @agent-setup-prompt-copied="promptCopied = true"
+    >
       <section class="overflow-hidden rounded-lg border border-slate-950/10 bg-white dark:border-white/10 dark:bg-slate-950" aria-labelledby="setup-tasks-heading">
         <div class="border-b border-slate-950/10 p-5 dark:border-white/10">
           <h2 id="setup-tasks-heading" class="fb-section-title">Setup tasks</h2>
@@ -34,7 +38,18 @@
               {% endif %}
             </div>
           </li>
-          <li class="flex gap-4 p-5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">2</span><div><h3 class="font-semibold">Copy the setup prompt</h3><p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">It contains the MCP endpoint and private bearer token.</p></div></li>
+          <li class="flex gap-4 p-5">
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-full font-semibold"
+              :class="promptCopied ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300'"
+              x-text="promptCopied ? &#x27;✓&#x27; : &#x27;2&#x27;"
+            >2</span>
+            <div>
+              <h3 class="font-semibold">Copy the setup prompt</h3>
+              <p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">It contains the MCP endpoint and private bearer token.</p>
+              <p x-cloak x-show="promptCopied" class="mt-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300" role="status">Done</p>
+            </div>
+          </li>
           <li class="flex gap-4 p-5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">3</span><div><h3 class="font-semibold">Give it to your agent</h3><p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">Ask it to verify the connection and create your first dataset.</p></div></li>
         </ol>
       </section>

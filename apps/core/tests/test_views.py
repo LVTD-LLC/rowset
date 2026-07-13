@@ -291,6 +291,30 @@ class TestHomeView:
         assert "create_dataset" in masked_prompt
         assert "update_dataset_public_preview" in masked_prompt
 
+    @override_settings(SITE_URL="https://rowset.example")
+    def test_home_view_collapses_prompt_and_completes_copy_task_after_copy_success(
+        self,
+        auth_client,
+        profile,
+    ):
+        create_agent_api_key(profile, "Codex")
+
+        response = auth_client.get(reverse("home"))
+
+        content = response.content.decode()
+        assert 'x-data="{ promptCopied: false }"' in content
+        assert '@agent-setup-prompt-copied="promptCopied = true"' in content
+        assert 'data-copy-success-event="agent-setup-prompt-copied"' in content
+        assert 'x-text="promptCopied ? &#x27;✓&#x27; : &#x27;2&#x27;"' in content
+        assert 'x-show="promptCopied"' in content
+        assert 'x-data="copyPanel"' in content
+        assert 'x-show="promptVisible"' in content
+        assert 'aria-controls="dashboard-agent-setup-help-prompt"' in content
+        assert 'id="dashboard-agent-setup-help-prompt"' in content
+        assert ':aria-expanded="promptVisible"' in content
+        prompt_toggle = 'x-text="promptVisible ? &#x27;Hide prompt&#x27; : &#x27;Show prompt&#x27;"'
+        assert prompt_toggle in content
+
     def test_home_view_hides_agent_setup_prompt_after_dismissal(self, auth_client, profile):
         profile.agent_setup_prompt_dismissed = True
         profile.save(update_fields=["agent_setup_prompt_dismissed"])

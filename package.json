@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "description": "MCP and REST datasets for AI agents.",
   "scripts": {
+    "prebuild": "npm run test:frontend",
     "build": "cross-env NODE_ENV=production node scripts/build-assets.mjs",
     "start": "node scripts/build-assets.mjs --watch",
     "watch": "node scripts/build-assets.mjs --watch",
-    "lint": "eslint \"frontend/src/**/*.js\" \"scripts/**/*.mjs\""
+    "lint": "eslint \"frontend/src/**/*.js\" \"scripts/**/*.mjs\"",
+    "test:frontend": "node --test frontend/src/js/*.test.mjs"
   },
   "repository": {
     "type": "git",
