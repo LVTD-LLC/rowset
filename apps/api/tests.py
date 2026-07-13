@@ -807,6 +807,40 @@ def test_non_admin_agent_api_key_cannot_create_new_agent_api_key(client, django_
     assert user.profile.trial_ends_at is None
 
 
+@pytest.mark.django_db
+@override_settings(SITE_URL="https://rowset.example")
+def test_expired_trial_cannot_create_agent_api_key(client, django_user_model):
+    from apps.core.models import AgentApiKey
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="expiredadminapiuser",
+        email="expiredadminapiuser@example.com",
+        password="password123",
+    )
+    ended_at = timezone.now() - timedelta(seconds=1)
+    user.profile.trial_started_at = ended_at - timedelta(days=7)
+    user.profile.trial_ends_at = ended_at
+    user.profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
+    credential = create_agent_api_key(
+        user.profile,
+        "Expired Admin Agent",
+        AgentApiKeyAccessLevel.ADMIN,
+    )
+
+    response = client.post(
+        "/api/agent-api-keys",
+        data=json.dumps({"name": "Denied Agent", "access_level": "read"}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 402
+    assert response.json()["code"] == "TRIAL_EXPIRED"
+    assert response.json()["upgrade_url"] == "https://rowset.example/pricing/"
+    assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
+
+
 def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():
     from apps.api.auth import SuperuserAPIKeyAuth
 

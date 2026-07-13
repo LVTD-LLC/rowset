@@ -73,7 +73,11 @@ from apps.core.services import (
     serialize_feedback_submission_result,
     submit_profile_feedback,
 )
-from apps.core.trials import TrialExpiredError, activate_or_require_trial_access
+from apps.core.trials import (
+    TrialExpiredError,
+    activate_or_require_trial_access,
+    require_unexpired_trial_access,
+)
 from apps.datasets.types import ColumnTypeSpec, DatasetRowInput, JsonObject
 from apps.mcp_server.auth import mcp_auth
 from rowset.mcp_logging import RowsetMCPLoggingMiddleware
@@ -376,6 +380,8 @@ def _mcp_authenticated_profile(
         )
         if activate_trial:
             activate_or_require_trial_access(profile)
+        else:
+            require_unexpired_trial_access(profile)
         return profile
     except TrialExpiredError as exc:
         raise _mcp_tool_error(

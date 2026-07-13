@@ -31,6 +31,12 @@ def get_trial_status(profile: Profile, *, at=None) -> TrialStatus:
     return TrialStatus.ACTIVE
 
 
+def require_unexpired_trial_access(profile: Profile) -> None:
+    """Allow subscribed or unstarted profiles, but reject an expired trial."""
+    if get_trial_status(profile) == TrialStatus.EXPIRED:
+        raise TrialExpiredError(profile.trial_ends_at)
+
+
 def activate_or_require_trial_access(profile: Profile) -> None:
     if profile.has_active_subscription:
         return

@@ -4,7 +4,7 @@ from ninja.security import APIKeyQuery
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import Profile
 from apps.core.services import require_agent_api_key_access, resolve_api_key_profile
-from apps.core.trials import activate_or_require_trial_access
+from apps.core.trials import activate_or_require_trial_access, require_unexpired_trial_access
 from rowset.logging_context import bind_actor_context
 from rowset.utils import get_rowset_logger
 
@@ -68,6 +68,8 @@ class APIKeyAuth(APIKeyQuery):
             return None
         if self.activate_trial:
             activate_or_require_trial_access(profile)
+        else:
+            require_unexpired_trial_access(profile)
         request.agent_api_key = agent_api_key
         bind_actor_context(
             profile_id=profile.id,

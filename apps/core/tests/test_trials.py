@@ -59,6 +59,22 @@ def test_expired_trial_raises_structured_error(profile, monkeypatch):
     assert exc_info.value.trial_ended_at == ended_at
 
 
+def test_non_activating_access_allows_unstarted_trial_but_rejects_expired_trial(profile):
+    trials.require_unexpired_trial_access(profile)
+    profile.refresh_from_db()
+    assert profile.trial_started_at is None
+
+    ended_at = timezone.now() - timedelta(seconds=1)
+    profile.trial_started_at = ended_at - timedelta(days=7)
+    profile.trial_ends_at = ended_at
+    profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
+
+    with pytest.raises(trials.TrialExpiredError) as exc_info:
+        trials.require_unexpired_trial_access(profile)
+
+    assert exc_info.value.trial_ended_at == ended_at
+
+
 def test_subscribed_profile_bypasses_trial_without_starting_it(profile):
     profile.state = ProfileStates.SUBSCRIBED
     profile.save(update_fields=["state", "updated_at"])
