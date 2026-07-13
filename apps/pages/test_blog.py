@@ -118,6 +118,25 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
     assert '"datePublished": "2026-07-03T00:00:00+00:00"' in content
 
 
+def test_blog_post_header_and_body_share_the_same_content_width(client, blog_posts_dir):
+    write_post(
+        blog_posts_dir,
+        "aligned-post",
+        {
+            "title": "An aligned blog post",
+            "description": "The article header and body begin on the same vertical line.",
+            "published_at": "2026-07-03",
+        },
+        "The article body.",
+    )
+
+    response = client.get(reverse("blog_post", kwargs={"slug": "aligned-post"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert content.count('class="mx-auto max-w-3xl px-4') == 2
+
+
 def test_blog_posts_are_sorted_by_publication_date(blog_posts_dir):
     write_post(
         blog_posts_dir,
