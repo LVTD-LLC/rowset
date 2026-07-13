@@ -8,6 +8,8 @@ keywords: Rowset relationships, linked datasets, reference columns, dataset link
 
 Use relationships when rows in one dataset point to rows in another dataset.
 Use reference columns when a cell points at a Rowset dataset or project object.
+For a practical modeling guide, read [How to model relationships between
+agent-managed datasets](/blog/relationship-modeling-agent-datasets).
 
 ## Dataset relationships
 
@@ -63,3 +65,6 @@ Use a reference column when a row should store a Rowset object key:
 
 References are useful for metadata, source tracking, and internal Rowset links.
 Relationships are better when the cell points to a row in another dataset.
+If you are deciding whether to split a workflow into multiple datasets first,
+use the [relationship-modeling guide](/blog/relationship-modeling-agent-datasets)
+before creating links.

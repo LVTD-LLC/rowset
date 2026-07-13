@@ -56,6 +56,7 @@
 | `/blog/baserow-alternatives` | https://rowset.lvtd.dev/blog/baserow-alternatives | Best Baserow alternatives for AI-agent-managed datasets | Baserow alternatives, agent workflows, datasets | Airtable alternatives blog, Google Sheets alternatives blog, MCP docs |
 | `/blog/nocodb-alternatives` | https://rowset.lvtd.dev/blog/nocodb-alternatives | Best NocoDB alternatives for AI-agent-managed datasets | NocoDB alternatives, agent workflows, datasets | Baserow alternatives blog, Google Sheets alternatives blog |
 | `/blog/connect-ai-agent-to-dataset-api` | https://rowset.lvtd.dev/blog/connect-ai-agent-to-dataset-api | How to connect an AI agent to the Rowset Dataset API | Dataset API, REST API, agent access, agent workflows | Dataset API docs, agent access docs, agent discovery docs |
+| `/blog/relationship-modeling-agent-datasets` | https://rowset.lvtd.dev/blog/relationship-modeling-agent-datasets | How to model relationships between agent-managed datasets | relationships, linked datasets, agent workflows | Link datasets docs, index-column guide, dataset-instructions guide |
 
 ## SEO-Sprint-Generated Pages
 
@@ -149,3 +150,8 @@
 - REST setup checklist for AI agents
 - private REST access for trusted agents
 - agent API key handoff
+- agent dataset relationships
+- linked datasets for AI agents
+- Rowset relationship modeling
+- relationship enforcement for agent datasets
+- model relationships between Rowset datasets
