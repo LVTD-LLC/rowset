@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-13
+
+### Added
+- Added a Rowset relationship-modeling article for agent-managed datasets, with a verified SEO brief, updated ledger/link inventory, and inbound links from relationship docs and the index-column guide.
+
 ## 2026-07-12
 
 ### Added

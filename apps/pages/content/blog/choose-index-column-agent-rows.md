@@ -178,6 +178,9 @@ For example, a personal CRM might use:
 With relationship integrity enabled, Rowset can reject non-blank relationship
 values that do not match an existing target row index. That makes the target
 dataset's index part of your data model, not just a convenience for lookup.
+For a deeper walkthrough of when to split datasets and enforce those links, read
+[How to model relationships between agent-managed
+datasets](/blog/relationship-modeling-agent-datasets).
 
 This is another reason to avoid display names as indexes. If `People.name` is
 the target index, a name change can break message links. If `People.person_id`
