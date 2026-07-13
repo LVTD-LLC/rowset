@@ -65,7 +65,10 @@
     <section id="datasets-workspace" class="mt-8" aria-labelledby="recent-datasets-heading">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><h2 id="recent-datasets-heading" class="fb-section-title">Recently updated</h2><p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">Pick up where your agents left off.</p></div>
-        <a href="{% url 'archived_dataset_list' %}" class="fb-button-secondary">View archived</a>
+        <div class="flex flex-wrap gap-2">
+          <a href="{% url 'dataset_list' %}" class="fb-button-secondary">View all datasets</a>
+          <a href="{% url 'archived_dataset_list' %}" class="fb-button-secondary">View archived</a>
+        </div>
       </div>
       <form method="get" class="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto]" role="search">
         <div><label for="dashboard-search" class="sr-only">Search datasets</label><input id="dashboard-search" name="q" type="search" value="{{ search_query }}" placeholder="Search datasets, projects, or sections" class="fb-input block w-full px-3 py-2 text-base sm:text-sm"></div>

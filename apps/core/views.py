@@ -186,6 +186,7 @@ def build_agent_setup_prompt(
 class HomeView(DatasetListView):
     login_url = "account_login"
     template_name = "pages/home.html"
+    paginate_by = 10
     default_view_mode = DATASET_VIEW_MODE_GROUPED
     view_mode_options = ((DATASET_VIEW_MODE_GROUPED, "Grouped by project/section"),)
     dataset_list_url_name = "home"
@@ -200,6 +201,21 @@ class HomeView(DatasetListView):
         if not hasattr(self, "_profile"):
             self._profile = get_or_create_profile_for_user(self.request.user)
         return self._profile
+
+    def get_grouped_ordering(self):
+        if self.get_selected_sort() == "recent":
+            return self.sort_ordering["recent"]
+        return super().get_grouped_ordering()
+
+    def paginate_queryset(self, queryset, page_size):
+        paginator = self.get_paginator(
+            queryset,
+            page_size,
+            orphans=self.get_paginate_orphans(),
+            allow_empty_first_page=self.get_allow_empty(),
+        )
+        page = paginator.page(1)
+        return paginator, page, page.object_list, page.has_other_pages()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

@@ -28,6 +28,7 @@ urlpatterns = [
         name="project_section_delete",
     ),
     path("projects/<uuid:project_key>/delete/", views.project_delete, name="project_delete"),
+    path("datasets/", views.DatasetListView.as_view(), name="dataset_list"),
     path(
         "datasets/archived/",
         views.ArchivedDatasetListView.as_view(),
