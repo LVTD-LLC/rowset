@@ -1,5 +1,7 @@
 import json
 import re
+from html import unescape
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -33,6 +35,55 @@ def test_blog_index_renders_empty_state(client, blog_posts_dir):
     content = response.content.decode()
     assert "No blog posts are available yet." in content
     assert 'href="https://rowset.example/blog"' in content
+
+
+def test_ai_reader_menu_is_absent_from_blog_index(client, blog_posts_dir):
+    response = client.get(reverse("blog_posts"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Open in ChatGPT" not in content
+    assert "Open in Claude" not in content
+    assert "Copy prompt" not in content
+    assert "Copy Markdown" not in content
+
+
+def test_ai_reader_menu_renders_for_blog_post(client, blog_posts_dir):
+    write_post(
+        blog_posts_dir,
+        "agent-managed-datasets",
+        {
+            "title": "Agent-managed datasets",
+            "description": "How AI agents keep Rowset datasets current.",
+            "published_at": "2026-07-03",
+        },
+        "Agents need stable APIs for rows.",
+    )
+    response = client.get(reverse("blog_post", kwargs={"slug": "agent-managed-datasets"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    markdown_url = "https://rowset.example/blog/agent-managed-datasets.md"
+    prompt = f"Read this Rowset page and help me understand or use it: {markdown_url}"
+    for label in ("Open in ChatGPT", "Open in Claude", "Copy prompt", "Copy Markdown"):
+        assert content.count(label) == 1
+
+    assert f'data-markdown-url="{markdown_url}"' in content
+    assert f'data-prompt="{prompt}"' in content
+    assert '<button type="button"' in content
+    assert ':aria-expanded="open.toString()"' in content
+    assert "x-cloak" in content
+    assert "@click.outside" in content
+    assert "@keydown.escape" in content
+    assert 'role="status"' in content
+    assert 'x-text="status"' in content
+    assert "x-html" not in content
+
+    provider_urls = re.findall(r'href="(https://(?:chatgpt|claude)\.[^"]+)"', content)
+    assert len(provider_urls) == 2
+    for provider_url in provider_urls:
+        decoded_query = parse_qs(urlparse(unescape(provider_url)).query)
+        assert decoded_query["q"] == [prompt]
 
 
 def test_authenticated_blog_pages_use_app_shell(client, blog_posts_dir):
@@ -130,9 +181,7 @@ def test_blog_post_markdown_is_self_describing_and_has_no_frontmatter(client, bl
         "## Why agents need it\n\nAgents need **stable APIs** for rows.",
     )
 
-    response = client.get(
-        reverse("blog_post_markdown", kwargs={"slug": "agent-managed-datasets"})
-    )
+    response = client.get(reverse("blog_post_markdown", kwargs={"slug": "agent-managed-datasets"}))
 
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "text/markdown; charset=utf-8"

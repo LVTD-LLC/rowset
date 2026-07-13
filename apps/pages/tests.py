@@ -2,7 +2,9 @@ import json
 import re
 import time
 from dataclasses import replace
+from html import unescape
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -144,6 +146,76 @@ def test_markdown_path_for_builds_route_siblings(path, expected):
     from apps.pages.public_markdown import markdown_path_for
 
     assert markdown_path_for(path) == expected
+
+
+AI_READER_ACTION_LABELS = (
+    "Open in ChatGPT",
+    "Open in Claude",
+    "Copy prompt",
+    "Copy Markdown",
+)
+
+
+def _assert_ai_reader_menu(content, markdown_url):
+    prompt = f"Read this Rowset page and help me understand or use it: {markdown_url}"
+
+    for label in AI_READER_ACTION_LABELS:
+        assert content.count(label) == 1
+
+    assert f'data-markdown-url="{markdown_url}"' in content
+    assert f'data-prompt="{prompt}"' in content
+    assert '<button type="button"' in content
+    assert ':aria-expanded="open.toString()"' in content
+    assert "x-cloak" in content
+    assert "@click.outside" in content
+    assert "@keydown.escape" in content
+    assert 'role="status"' in content
+    assert 'x-text="status"' in content
+    assert "x-html" not in content
+
+    provider_urls = re.findall(r'href="(https://(?:chatgpt|claude)\.[^"]+)"', content)
+    assert len(provider_urls) == 2
+    for provider_url in provider_urls:
+        decoded_query = parse_qs(urlparse(unescape(provider_url)).query)
+        assert decoded_query["q"] == [prompt]
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    ("url", "markdown_url"),
+    (
+        (
+            reverse("docs_page", kwargs={"slug": "quickstart"}),
+            "https://rowset.example/docs/quickstart.md",
+        ),
+        (
+            reverse("docs_page", kwargs={"slug": "database-mcp-server"}),
+            "https://rowset.example/docs/database-mcp-server.md",
+        ),
+    ),
+)
+def test_ai_reader_menu_renders_for_docs_articles(client, url, markdown_url):
+    response = client.get(url)
+
+    assert response.status_code == 200
+    _assert_ai_reader_menu(response.content.decode(), markdown_url)
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    "url",
+    (
+        reverse("use_cases"),
+        reverse("use_case_page", kwargs={"slug": "personal-crm"}),
+    ),
+)
+def test_ai_reader_menu_is_absent_from_use_case_pages(client, url):
+    response = client.get(url)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    for label in AI_READER_ACTION_LABELS:
+        assert label not in content
 
 
 def _nav_html(content, aria_label):

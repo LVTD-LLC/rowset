@@ -26,6 +26,7 @@ from apps.pages.blog import (
 )
 from apps.pages.content import render_content_page
 from apps.pages.public_markdown import (
+    build_ai_reader_context,
     markdown_response,
     render_blog_markdown,
     render_content_markdown,
@@ -209,6 +210,7 @@ def blog_post_view(request, slug):
     except (BlogPostNotFound, BlogPostValidationError) as exc:
         raise Http404("Blog post not found") from exc
 
+    path = reverse("blog_post", kwargs={"slug": blog_post.slug})
     return render(
         request,
         "blog/blog_post.html",
@@ -219,6 +221,7 @@ def blog_post_view(request, slug):
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
+            **build_ai_reader_context(path),
         },
     )
 
@@ -239,6 +242,7 @@ class DatabaseMcpServerExplanationView(TemplateView):
         context = super().get_context_data(**kwargs)
         path = reverse("docs_page", kwargs={"slug": "database-mcp-server"})
         context["mcp_url"] = build_absolute_public_url("/mcp/")
+        context.update(build_ai_reader_context(path))
         context["docs_base_template"] = (
             "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
         )

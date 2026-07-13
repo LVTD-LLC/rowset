@@ -1,12 +1,10 @@
+from urllib.parse import urlencode
+
 from django.http import Http404, HttpResponse
 from django.template import Context, Template
 
 from apps.pages.blog import BlogPost
-from apps.pages.content import (
-    get_content_root,
-    get_content_template_context,
-    load_content_page,
-)
+from rowset.utils import build_absolute_public_url
 
 MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8"
 
@@ -29,11 +27,25 @@ def markdown_path_for(path: str) -> str:
     return f"{path.rstrip('/')}.md"
 
 
+def build_ai_reader_context(path: str) -> dict[str, str]:
+    markdown_url = build_absolute_public_url(markdown_path_for(path))
+    prompt = f"Read this Rowset page and help me understand or use it: {markdown_url}"
+    query = urlencode({"q": prompt})
+    return {
+        "markdown_url": markdown_url,
+        "ai_reader_prompt": prompt,
+        "claude_url": f"https://claude.ai/new?{query}",
+        "chatgpt_url": f"https://chatgpt.com/?{query}",
+    }
+
+
 def markdown_response(content: str) -> HttpResponse:
     return HttpResponse(f"{content.rstrip()}\n", content_type=MARKDOWN_CONTENT_TYPE)
 
 
 def render_public_page_markdown(page_slug: str) -> str:
+    from apps.pages.content import get_content_root, get_content_template_context
+
     if page_slug not in PUBLIC_PAGE_SLUGS:
         raise Http404("Public page not found")
 
@@ -50,6 +62,8 @@ def render_public_page_markdown(page_slug: str) -> str:
 
 
 def render_content_markdown(section_slug: str, page_slug: str) -> str:
+    from apps.pages.content import load_content_page
+
     _, rendered_markdown = load_content_page(section_slug, page_slug)
     return rendered_markdown
 

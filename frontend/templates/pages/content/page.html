@@ -21,6 +21,9 @@
           content="{% if meta_description %}{{ meta_description }}{% else %}{{ page_title }} documentation for Rowset{% endif %}" />
 {% endblock meta %}
 {% block docs_content %}
+    {% if section.section_slug == "docs" %}
+        <div class="mb-8 flex justify-end">{% include "components/ai_reader_menu.html" %}</div>
+    {% endif %}
     {{ content|safe }}
     <nav class="not-prose mt-12 border-t-2 border-slate-950 pt-8 dark:border-white"
          aria-label="Documentation page navigation">
