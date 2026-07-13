@@ -22,7 +22,7 @@
 {% block content %}
     <article class="bg-white text-slate-950 dark:bg-neutral-950 dark:text-white">
         <header class="border-b border-slate-950/10 bg-[#ffdd3d] text-[#1313a4] dark:border-white/15">
-            <div class="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+            <div class="mx-auto max-w-3xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
                 <a href="{% url 'blog_posts' %}" class="fb-focus font-mono text-sm font-semibold">← ALL FIELD NOTES</a>
                 <div class="mt-10 flex flex-wrap gap-3 font-mono text-sm"><time datetime="{{ blog_post.published_at|date:'Y-m-d' }}">{{ blog_post.published_at|date:"M j, Y" }}</time><span>/</span><span>{{ blog_post.reading_time_minutes }} min read</span><span>/</span><span>{{ blog_post.author }}</span></div>
                 <h1 class="mt-6 max-w-[20ch] font-display text-5xl font-semibold tracking-tight text-balance sm:text-7xl">{{ blog_post.title }}</h1>
