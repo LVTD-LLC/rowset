@@ -1,18 +1,26 @@
 from django.http import Http404, HttpResponse
+from django.template import Context, Template
 
 from apps.pages.blog import BlogPost
-from apps.pages.content import load_content_page
+from apps.pages.content import (
+    get_content_root,
+    get_content_template_context,
+    load_content_page,
+)
 
 MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8"
 
-PUBLIC_PAGE_MARKDOWN = {
-    "blog": "",
-    "index": "",
-    "pricing": "",
-    "privacy-policy": "",
-    "terms-of-service": "",
-    "uses": "",
+PUBLIC_PAGE_SOURCES: dict[str, str] = {
+    "blog": "public/blog.md",
+    "database-mcp-server": "docs/database-mcp-server.md",
+    "index": "public/index.md",
+    "pricing": "public/pricing.md",
+    "privacy-policy": "public/privacy-policy.md",
+    "terms-of-service": "public/terms-of-service.md",
+    "uses": "public/uses.md",
 }
+
+PUBLIC_PAGE_SLUGS = frozenset(PUBLIC_PAGE_SOURCES) - {"database-mcp-server"}
 
 
 def markdown_path_for(path: str) -> str:
@@ -26,9 +34,18 @@ def markdown_response(content: str) -> HttpResponse:
 
 
 def render_public_page_markdown(page_slug: str) -> str:
+    if page_slug not in PUBLIC_PAGE_SLUGS:
+        raise Http404("Public page not found")
+
+    content_root = get_content_root().resolve()
+    source_path = (content_root / PUBLIC_PAGE_SOURCES[page_slug]).resolve()
+    if not source_path.is_relative_to(content_root) or not source_path.is_file():
+        raise Http404("Public page not found")
+
     try:
-        return PUBLIC_PAGE_MARKDOWN[page_slug]
-    except KeyError as exc:
+        source = source_path.read_text(encoding="utf-8")
+        return Template(source).render(Context(get_content_template_context()))
+    except Exception as exc:
         raise Http404("Public page not found") from exc
 
 

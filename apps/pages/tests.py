@@ -51,6 +51,44 @@ def test_public_markdown_routes_return_markdown(client, path):
     assert response.headers["Content-Type"] == "text/markdown; charset=utf-8"
 
 
+@pytest.mark.parametrize(
+    ("path", "expected_heading"),
+    (
+        ("/index.md", "# Rowset"),
+        ("/pricing.md", "# Rowset pricing"),
+        ("/privacy-policy.md", "# Privacy Policy"),
+        ("/terms-of-service.md", "# Terms of Service"),
+        ("/uses.md", "# Technology behind Rowset"),
+        ("/blog.md", "# Rowset field notes"),
+        ("/docs/database-mcp-server.md", "# Database MCP server"),
+    ),
+)
+def test_public_markdown_inventory_has_curated_content(client, path, expected_heading):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert expected_heading in content
+    assert not content.startswith("---")
+    assert "<html" not in content.lower()
+    assert "<nav" not in content.lower()
+    assert "{{" not in content
+
+
+def test_public_markdown_inventory_registry_reuses_canonical_sources():
+    from apps.pages.public_markdown import PUBLIC_PAGE_SOURCES
+
+    assert PUBLIC_PAGE_SOURCES == {
+        "blog": "public/blog.md",
+        "database-mcp-server": "docs/database-mcp-server.md",
+        "index": "public/index.md",
+        "pricing": "public/pricing.md",
+        "privacy-policy": "public/privacy-policy.md",
+        "terms-of-service": "public/terms-of-service.md",
+        "uses": "public/uses.md",
+    }
+
+
 def test_public_markdown_route_name_and_missing_slug(client):
     assert reverse("public_page_markdown", kwargs={"page_slug": "index"}) == "/index.md"
     assert client.get("/missing.md").status_code == 404
