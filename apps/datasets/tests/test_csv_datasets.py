@@ -1472,7 +1472,13 @@ def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
 
     filter_response = auth_client.get(
         dataset.get_absolute_url(),
-        {"filter_2": "10", "filter_3": "true"},
+        {
+            "row_q": "a",
+            "row_sort": "col_0",
+            "row_dir": "desc",
+            "filter_2": "10",
+            "filter_3": "true",
+        },
     )
     filter_content = filter_response.content.decode()
 
@@ -1481,7 +1487,11 @@ def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
     assert "Ada Lovelace" in filter_content
     assert "Katherine Johnson" in filter_content
     assert "Grace Hopper" not in filter_content
-    assert ">Clear</a>" in filter_content
+    assert ">Clear</button>" in filter_content
+    assert 'name="row_q" value="a"' in filter_content
+    assert 'name="row_sort" value="col_0"' in filter_content
+    assert 'name="row_dir" value="desc"' in filter_content
+    assert 'name="filter_3" value="true"' in filter_content
     assert "Column filters" not in filter_content
 
     sort_response = auth_client.get(

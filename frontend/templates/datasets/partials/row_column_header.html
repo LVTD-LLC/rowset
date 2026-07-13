@@ -130,7 +130,10 @@
             </div>
           </form>
           {% if column.value %}
-            <a href="{{ row_filters_reset_url }}" class="fb-focus mt-2 inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">Clear</a>
+            <form method="get" action="" class="mt-2">
+              {% include "datasets/partials/row_query_hidden_inputs.html" with current_filter_param=column.param_name preserve_row_sort=True preserve_row_direction=True %}
+              <button type="submit" class="fb-focus rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">Clear</button>
+            </form>
           {% endif %}
         </fieldset>
       </div>
