@@ -13,6 +13,13 @@ class FeedbackSource(models.TextChoices):
     MCP = "mcp", "MCP"
 
 
+class TrialStatus(models.TextChoices):
+    NOT_STARTED = "not_started", "Not started"
+    ACTIVE = "active", "Active"
+    EXPIRED = "expired", "Expired"
+    SUBSCRIBED = "subscribed", "Subscribed"
+
+
 class ProfileStates(models.TextChoices):
     STRANGER = "stranger"
     SIGNED_UP = "signed_up"

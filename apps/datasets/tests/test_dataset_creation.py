@@ -269,7 +269,7 @@ def test_create_profile_dataset_tracks_activation_without_private_payload(profil
     assert "email" not in calls[0][2]
 
 
-def test_free_account_rejects_third_active_dataset(profile):
+def test_trial_account_can_create_third_active_dataset(profile):
     for index in range(2):
         Dataset.objects.create(
             profile=profile,
@@ -280,31 +280,28 @@ def test_free_account_rejects_third_active_dataset(profile):
             row_count=0,
         )
 
-    with pytest.raises(DatasetServiceError, match="at most 2 active datasets") as exc_info:
-        create_profile_dataset(
-            profile,
-            name="Third dataset",
-            headers=["name"],
-            rows=[],
-        )
+    result = create_profile_dataset(
+        profile,
+        name="Third dataset",
+        headers=["name"],
+        rows=[],
+    )
 
-    assert exc_info.value.status_code == 403
-    assert not Dataset.objects.filter(profile=profile, name="Third dataset").exists()
+    assert Dataset.objects.filter(key=result["dataset"]["key"], profile=profile).exists()
 
 
-def test_free_account_rejects_dataset_with_more_than_50_initial_rows(profile):
+def test_trial_account_can_create_dataset_with_more_than_50_initial_rows(profile):
     rows = [{"name": str(index)} for index in range(51)]
 
-    with pytest.raises(DatasetServiceError, match="at most 50 rows") as exc_info:
-        create_profile_dataset(
-            profile,
-            name="Too many free rows",
-            headers=["name"],
-            rows=rows,
-        )
+    result = create_profile_dataset(
+        profile,
+        name="Trial dataset",
+        headers=["name"],
+        rows=rows,
+    )
 
-    assert exc_info.value.status_code == 403
-    assert not Dataset.objects.filter(profile=profile, name="Too many free rows").exists()
+    dataset = Dataset.objects.get(key=result["dataset"]["key"])
+    assert dataset.row_count == 51
 
 
 def test_paid_account_can_create_more_than_free_dataset_and_row_limits(profile):

@@ -44,6 +44,61 @@ def test_capabilities_endpoint_supports_current_api_prefix(client):
     assert response.json()["product"] == "Rowset"
 
 
+@pytest.mark.django_db
+@override_settings(SITE_URL="https://rowset.example", TRIAL_DURATION_DAYS=7)
+def test_authenticated_api_request_starts_trial(client, django_user_model):
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="trial-api-user",
+        email="trial-api-user@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(user.profile, "Trial Agent")
+
+    response = client.get(
+        "/api/user",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 200
+    user.profile.refresh_from_db()
+    assert user.profile.trial_started_at is not None
+    assert user.profile.trial_ends_at == user.profile.trial_started_at + timedelta(days=7)
+
+
+@pytest.mark.django_db
+@override_settings(SITE_URL="https://rowset.example")
+def test_expired_trial_returns_soft_upgrade_error(client, django_user_model):
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="expired-api-user",
+        email="expired-api-user@example.com",
+        password="password123",
+    )
+    ended_at = timezone.now() - timedelta(seconds=1)
+    user.profile.trial_started_at = ended_at - timedelta(days=7)
+    user.profile.trial_ends_at = ended_at
+    user.profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
+    credential = create_agent_api_key(user.profile, "Expired Agent")
+
+    response = client.get(
+        "/api/user",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 402
+    assert response.json() == {
+        "code": "TRIAL_EXPIRED",
+        "message": (
+            "Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP."
+        ),
+        "upgrade_url": "https://rowset.example/pricing/",
+        "trial_ended_at": ended_at.isoformat(),
+    }
+
+
 def test_row_mutations_normalize_row_data_for_declared_headers():
     from apps.api.row_mutations import normalize_row_data_for_headers
 
@@ -211,6 +266,8 @@ class UserInfoApiUnitTests(SimpleTestCase):
             user=user,
             state="signed_up",
             has_active_subscription=False,
+            trial_started_at=datetime(2026, 5, 15, tzinfo=UTC),
+            trial_ends_at=datetime(2026, 5, 22, tzinfo=UTC),
         )
         request = HttpRequest()
         request.auth = profile
@@ -224,6 +281,9 @@ class UserInfoApiUnitTests(SimpleTestCase):
             "id": 11,
             "state": "signed_up",
             "has_active_subscription": False,
+            "trial_status": "expired",
+            "trial_started_at": datetime(2026, 5, 15, tzinfo=UTC),
+            "trial_ends_at": datetime(2026, 5, 22, tzinfo=UTC),
         }
         assert "key" not in response
         assert "is_staff" not in response
@@ -432,15 +492,19 @@ def test_api_key_auth_returns_profile_for_valid_key():
     profile = SimpleNamespace(id=11)
     request = HttpRequest()
 
-    with patch(
-        "apps.api.auth.resolve_api_key_profile",
-        return_value=(profile, agent_api_key),
-    ) as resolver:
+    with (
+        patch(
+            "apps.api.auth.resolve_api_key_profile",
+            return_value=(profile, agent_api_key),
+        ) as resolver,
+        patch("apps.api.auth.activate_or_require_trial_access") as activate_trial,
+    ):
         response = APIKeyAuth().authenticate(request, "secret-key")
 
     assert response is profile
     assert request.agent_api_key is agent_api_key
     resolver.assert_called_once_with("secret-key")
+    activate_trial.assert_called_once_with(profile)
 
     with patch("apps.api.auth.resolve_api_key_profile", return_value=None):
         response = APIKeyAuth().authenticate(HttpRequest(), "bad-key")
@@ -458,9 +522,12 @@ def test_api_key_auth_enforces_required_access_level():
     profile = SimpleNamespace(id=11)
     request = HttpRequest()
 
-    with patch(
-        "apps.api.auth.resolve_api_key_profile",
-        return_value=(profile, read_key),
+    with (
+        patch(
+            "apps.api.auth.resolve_api_key_profile",
+            return_value=(profile, read_key),
+        ),
+        patch("apps.api.auth.activate_or_require_trial_access") as activate_trial,
     ):
         response = APIKeyAuth(AgentApiKeyAccessLevel.READ_WRITE).authenticate(
             request,
@@ -468,6 +535,7 @@ def test_api_key_auth_enforces_required_access_level():
         )
 
     assert response is None
+    activate_trial.assert_not_called()
 
 
 def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
@@ -478,10 +546,13 @@ def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
 
     bearer_request = HttpRequest()
     bearer_request.META["HTTP_AUTHORIZATION"] = "Bearer secret-key"
-    with patch(
-        "apps.api.auth.resolve_api_key_profile",
-        return_value=(profile, agent_api_key),
-    ) as resolver:
+    with (
+        patch(
+            "apps.api.auth.resolve_api_key_profile",
+            return_value=(profile, agent_api_key),
+        ) as resolver,
+        patch("apps.api.auth.activate_or_require_trial_access"),
+    ):
         response = APIKeyAuth()(bearer_request)
 
     assert response is profile
@@ -489,10 +560,13 @@ def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
 
     header_request = HttpRequest()
     header_request.META["HTTP_X_API_KEY"] = "header-key"
-    with patch(
-        "apps.api.auth.resolve_api_key_profile",
-        return_value=(profile, agent_api_key),
-    ) as resolver:
+    with (
+        patch(
+            "apps.api.auth.resolve_api_key_profile",
+            return_value=(profile, agent_api_key),
+        ) as resolver,
+        patch("apps.api.auth.activate_or_require_trial_access"),
+    ):
         response = APIKeyAuth()(header_request)
 
     assert response is profile
@@ -698,6 +772,9 @@ def test_admin_agent_api_key_can_create_new_agent_api_key(client, django_user_mo
     assert payload["api_key"].startswith("rsk_")
     assert created_key.access_level == AgentApiKeyAccessLevel.READ
     assert created_key.token_hash == hash_agent_api_key(payload["api_key"])
+    user.profile.refresh_from_db()
+    assert user.profile.trial_started_at is None
+    assert user.profile.trial_ends_at is None
 
 
 @pytest.mark.django_db
@@ -724,6 +801,43 @@ def test_non_admin_agent_api_key_cannot_create_new_agent_api_key(client, django_
     )
 
     assert response.status_code == 401
+    assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
+    user.profile.refresh_from_db()
+    assert user.profile.trial_started_at is None
+    assert user.profile.trial_ends_at is None
+
+
+@pytest.mark.django_db
+@override_settings(SITE_URL="https://rowset.example")
+def test_expired_trial_cannot_create_agent_api_key(client, django_user_model):
+    from apps.core.models import AgentApiKey
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="expiredadminapiuser",
+        email="expiredadminapiuser@example.com",
+        password="password123",
+    )
+    ended_at = timezone.now() - timedelta(seconds=1)
+    user.profile.trial_started_at = ended_at - timedelta(days=7)
+    user.profile.trial_ends_at = ended_at
+    user.profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
+    credential = create_agent_api_key(
+        user.profile,
+        "Expired Admin Agent",
+        AgentApiKeyAccessLevel.ADMIN,
+    )
+
+    response = client.post(
+        "/api/agent-api-keys",
+        data=json.dumps({"name": "Denied Agent", "access_level": "read"}),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 402
+    assert response.json()["code"] == "TRIAL_EXPIRED"
+    assert response.json()["upgrade_url"] == "https://rowset.example/pricing/"
     assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
 
 

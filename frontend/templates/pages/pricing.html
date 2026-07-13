@@ -1,6 +1,6 @@
 {% extends "base_landing.html" %}
 {% block meta %}
-    <title>Rowset pricing — start free, scale every agent workflow</title>
+    <title>Rowset pricing — start with a 7-day trial</title>
     <meta name="description" content="Simple pricing for an AI agent backend with hosted MCP, REST, CLI, semantic search, exports, and private structured datasets." />
 {% endblock meta %}
 {% block content %}
@@ -9,7 +9,7 @@
             <p class="font-mono text-sm font-semibold uppercase tracking-wide">Simple pricing</p>
             <h1 class="mt-8 max-w-[16ch] font-display text-6xl font-semibold tracking-tight text-balance sm:text-8xl">Start small. Build anything.</h1>
             <div class="mt-10 grid gap-6 border-t-2 border-[#1313a4] pt-6 lg:grid-cols-2">
-                <p class="max-w-[40ch] text-2xl text-pretty sm:text-xl">Every plan gives AI agents the same private MCP database and dataset API. Pay only when the workflow outgrows the free limits.</p>
+                <p class="max-w-[40ch] text-2xl text-pretty sm:text-xl">Start with the full Rowset product for 7 days. Upgrade when you are ready to keep your agent workflows running.</p>
                 <p class="font-mono text-sm lg:text-right">NO CREDIT CARD / CANCEL ANYTIME / EXPORT EVERYTHING</p>
             </div>
         </div>
@@ -18,21 +18,21 @@
         <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
             <div class="@container">
                 <div class="grid gap-6 @4xl:grid-cols-2">
-                    <section class="flex flex-col border-2 border-slate-950 p-6 dark:border-white" aria-labelledby="tier-free">
+                    <section class="flex flex-col border-2 border-slate-950 p-6 dark:border-white" aria-labelledby="tier-trial">
                         <div class="flex flex-1 flex-col gap-8">
-                            <div><p class="font-mono text-sm text-[#1313a4] dark:text-[#ffdd3d]">PROVE THE WORKFLOW</p><h2 id="tier-free" class="mt-3 text-4xl font-semibold tracking-tight">Free</h2><p class="mt-4 max-w-[48ch] text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Connect an agent, create real datasets, and make sure Rowset fits the way you work.</p></div>
-                            <p class="tabular-nums text-6xl font-semibold tracking-tight">$0<span class="font-sans text-base font-medium tracking-normal text-slate-500 dark:text-neutral-400"> / month</span></p>
-                            <ul role="list" class="grid gap-3 text-base sm:text-sm"><li>→ 2 private datasets</li><li>→ 50 rows per dataset</li><li>→ Hosted MCP, REST API, and CLI</li><li>→ Typed columns and stable indexes</li><li>→ Semantic search and five export formats</li><li>→ Optional read-only public previews</li></ul>
+                            <div><p class="font-mono text-sm text-[#1313a4] dark:text-[#ffdd3d]">PROVE THE WORKFLOW</p><h2 id="tier-trial" class="mt-3 text-4xl font-semibold tracking-tight">7-day trial</h2><p class="mt-4 max-w-[48ch] text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Connect an agent, create real datasets, and make sure Rowset fits the way you work.</p></div>
+                            <p class="tabular-nums text-6xl font-semibold tracking-tight">$0<span class="font-sans text-base font-medium tracking-normal text-slate-500 dark:text-neutral-400"> / 7 days</span></p>
+                            <ul role="list" class="grid gap-3 text-base sm:text-sm"><li>→ Full product access</li><li>→ Hosted MCP, REST API, and CLI</li><li>→ Private datasets and rows</li><li>→ Typed columns and stable indexes</li><li>→ Semantic search and five export formats</li><li>→ Optional read-only public previews</li></ul>
                         </div>
-                        <div class="mt-10 border-t border-slate-950/15 pt-6 dark:border-white/20">{% if user.is_authenticated %}<a href="{% url 'home' %}" class="fb-focus inline-flex min-h-12 w-full items-center justify-center border border-slate-950 px-4 py-3 font-semibold dark:border-white">Open Rowset</a>{% else %}<a href="{% url 'account_signup' %}" class="fb-focus inline-flex min-h-12 w-full items-center justify-center border border-slate-950 px-4 py-3 font-semibold dark:border-white">Create a free backend</a>{% endif %}</div>
+                        <div class="mt-10 border-t border-slate-950/15 pt-6 dark:border-white/20">{% if user.is_authenticated %}<a href="{% url 'home' %}" class="fb-focus inline-flex min-h-12 w-full items-center justify-center border border-slate-950 px-4 py-3 font-semibold dark:border-white">Open Rowset</a>{% else %}<a href="{% url 'account_signup' %}" class="fb-focus inline-flex min-h-12 w-full items-center justify-center border border-slate-950 px-4 py-3 font-semibold dark:border-white">Start your 7-day trial</a>{% endif %}</div>
                     </section>
                     <section class="flex flex-col bg-[#1313a4] p-6 text-white" aria-labelledby="tier-pro">
                         <div class="flex flex-1 flex-col gap-8">
                             <div><p class="font-mono text-sm text-[#ffdd3d]">KEEP REAL WORK MOVING</p><h2 id="tier-pro" class="mt-3 text-4xl font-semibold tracking-tight">Pro</h2><p class="mt-4 max-w-[48ch] text-base text-pretty text-blue-100 sm:text-sm">For live agent workflows that keep growing: research, operations, content, customer data, and more.</p></div>
                             <p class="tabular-nums text-6xl font-semibold tracking-tight">$50<span class="font-sans text-base font-medium tracking-normal text-blue-200"> / month</span></p>
-                            <ul role="list" class="grid gap-3 text-base sm:text-sm"><li>→ Unlimited hosted datasets</li><li>→ Unlimited rows</li><li>→ Everything in Free</li><li>→ Room for multi-dataset projects</li><li>→ One predictable bill as usage grows</li><li>→ Export whenever you need a file</li></ul>
+                            <ul role="list" class="grid gap-3 text-base sm:text-sm"><li>→ Unlimited hosted datasets</li><li>→ Unlimited rows</li><li>→ Everything in the trial</li><li>→ Room for multi-dataset projects</li><li>→ One predictable bill as usage grows</li><li>→ Export whenever you need a file</li></ul>
                         </div>
-                        <div class="mt-10 border-t border-white/20 pt-6">{% if user.is_authenticated %}{% if has_pro_subscription %}<span class="inline-flex min-h-12 w-full items-center justify-center border border-white/40 px-4 py-3 font-semibold">Current plan</span>{% else %}<a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" class="inline-flex min-h-12 w-full items-center justify-center bg-[#ffdd3d] px-4 py-3 font-semibold text-[#1313a4] hover:bg-white">Upgrade to Pro</a>{% endif %}{% else %}<a href="{% url 'account_signup' %}" class="inline-flex min-h-12 w-full items-center justify-center bg-[#ffdd3d] px-4 py-3 font-semibold text-[#1313a4] hover:bg-white">Start free, upgrade later</a>{% endif %}</div>
+                        <div class="mt-10 border-t border-white/20 pt-6">{% if user.is_authenticated %}{% if has_pro_subscription %}<span class="inline-flex min-h-12 w-full items-center justify-center border border-white/40 px-4 py-3 font-semibold">Current plan</span>{% else %}<a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" class="inline-flex min-h-12 w-full items-center justify-center bg-[#ffdd3d] px-4 py-3 font-semibold text-[#1313a4] hover:bg-white">Upgrade to Pro</a>{% endif %}{% else %}<a href="{% url 'account_signup' %}" class="inline-flex min-h-12 w-full items-center justify-center bg-[#ffdd3d] px-4 py-3 font-semibold text-[#1313a4] hover:bg-white">Start your 7-day trial</a>{% endif %}</div>
                     </section>
                 </div>
             </div>
@@ -54,7 +54,7 @@
         <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-24">
             <div><p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Questions</p><h2 class="mt-6 max-w-[18ch] text-5xl font-semibold tracking-tight text-balance">Know what you’re paying for.</h2></div>
             <dl class="divide-y divide-slate-950/15 dark:divide-white/20">
-                <div class="py-6 first:pt-0"><dt class="text-xl font-semibold">Can I use all interfaces on Free?</dt><dd class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Yes. Free includes hosted MCP, REST, CLI, exports, semantic search, and previews. Only capacity changes.</dd></div>
+                <div class="py-6 first:pt-0"><dt class="text-xl font-semibold">What is included in the trial?</dt><dd class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">The full product: hosted MCP, REST, CLI, exports, semantic search, and previews for 7 days.</dd></div>
                 <div class="py-6"><dt class="text-xl font-semibold">Is data private?</dt><dd class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Yes. Datasets are private unless you deliberately enable a read-only public preview.</dd></div>
                 <div class="py-6"><dt class="text-xl font-semibold">Can I leave?</dt><dd class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Yes. Export your datasets in five common formats whenever you need them.</dd></div>
                 <div class="py-6 last:pb-0"><dt class="text-xl font-semibold">Can I self-host?</dt><dd class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Yes. The repository includes deployment paths for teams that want to operate Rowset themselves.</dd></div>

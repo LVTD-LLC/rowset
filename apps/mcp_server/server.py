@@ -73,6 +73,11 @@ from apps.core.services import (
     serialize_feedback_submission_result,
     submit_profile_feedback,
 )
+from apps.core.trials import (
+    TrialExpiredError,
+    activate_or_require_trial_access,
+    require_unexpired_trial_access,
+)
 from apps.datasets.types import ColumnTypeSpec, DatasetRowInput, JsonObject
 from apps.mcp_server.auth import mcp_auth
 from rowset.mcp_logging import RowsetMCPLoggingMiddleware
@@ -364,6 +369,8 @@ def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
 
 def _mcp_authenticated_profile(
     required_access_level: str = AgentApiKeyAccessLevel.READ,
+    *,
+    activate_trial: bool = True,
 ) -> Profile:
     try:
         profile = _authenticate_profile()
@@ -371,7 +378,25 @@ def _mcp_authenticated_profile(
             getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None),
             required_access_level,
         )
+        if activate_trial:
+            activate_or_require_trial_access(profile)
+        else:
+            require_unexpired_trial_access(profile)
         return profile
+    except TrialExpiredError as exc:
+        raise _mcp_tool_error(
+            _mcp_error_payload(
+                code=exc.code,
+                message=str(exc),
+                retryable=False,
+                suggested_action=f"Upgrade at {exc.upgrade_url}.",
+                details={
+                    "http_status": 402,
+                    "trial_ended_at": exc.trial_ended_at.isoformat(),
+                    "upgrade_url": exc.upgrade_url,
+                },
+            )
+        ) from exc
     except PermissionError as exc:
         raise _permission_error_to_tool_error(exc) from exc
 
@@ -419,7 +444,10 @@ def create_agent_api_key_tool(
     ] = AgentApiKeyAccessLevel.READ_WRITE,
 ) -> dict:
     close_old_connections()
-    profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.ADMIN)
+    profile = _mcp_authenticated_profile(
+        AgentApiKeyAccessLevel.ADMIN,
+        activate_trial=False,
+    )
     try:
         credential = create_agent_api_key_credential(profile, name, access_level)
     except ValueError as exc:

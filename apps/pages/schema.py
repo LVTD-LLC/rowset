@@ -72,7 +72,7 @@ def software_application_schema() -> dict:
         "offers": [
             {
                 "@type": "Offer",
-                "name": "Rowset Free",
+                "name": "Rowset 7-day trial",
                 "price": "0",
                 "priceCurrency": "USD",
             },
@@ -101,14 +101,14 @@ def product_schema() -> dict:
         "offers": [
             {
                 "@type": "Offer",
-                "name": "Rowset Free",
+                "name": "Rowset 7-day trial",
                 "price": "0",
                 "priceCurrency": "USD",
                 "priceSpecification": {
                     "@type": "UnitPriceSpecification",
                     "price": "0",
                     "priceCurrency": "USD",
-                    "billingDuration": "P1M",
+                    "billingDuration": "P7D",
                 },
             },
             {

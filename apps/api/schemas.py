@@ -4,7 +4,7 @@ from ninja import Schema
 from pydantic import Field
 
 from apps.api.services import MAX_API_DATASET_CREATE_ROWS
-from apps.core.choices import AgentApiKeyAccessLevel
+from apps.core.choices import AgentApiKeyAccessLevel, TrialStatus
 from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
     MAX_DATASET_INSTRUCTIONS_LENGTH,
@@ -65,6 +65,9 @@ class UserProfileOut(Schema):
     id: int
     state: str
     has_active_subscription: bool
+    trial_status: TrialStatus
+    trial_started_at: datetime | None = None
+    trial_ends_at: datetime | None = None
 
 
 class UserInfoOut(Schema):

@@ -39,6 +39,8 @@ def profile():
         user=user,
         state="signed_up",
         has_active_subscription=False,
+        trial_started_at=None,
+        trial_ends_at=None,
         agent_api_key=agent_api_key,
     )
     setattr(profile, AGENT_API_KEY_PROFILE_ATTR, agent_api_key)
@@ -56,6 +58,10 @@ def authenticated_mcp(monkeypatch, profile):
     monkeypatch.setattr(
         "apps.mcp_server.server._get_access_token_profile",
         lambda: profile,
+    )
+    monkeypatch.setattr(
+        "apps.mcp_server.server.activate_or_require_trial_access",
+        lambda _profile: None,
     )
     return profile
 

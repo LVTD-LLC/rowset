@@ -670,6 +670,31 @@ def test_pricing_schema_uses_configured_public_url(client):
     )
 
 
+def test_pricing_offers_full_product_seven_day_trial(client):
+    response = client.get(reverse("pricing"))
+
+    content = response.content.decode()
+    assert "7-day trial" in content
+    assert "Full product access" in content
+    assert "2 private datasets" not in content
+    assert "50 rows per dataset" not in content
+    assert "outgrows the free limits" not in content
+
+    schema = json.loads(_json_ld_payload(content))
+    trial_offer = schema["offers"][0]
+    assert trial_offer["name"] == "Rowset 7-day trial"
+    assert trial_offer["priceSpecification"]["billingDuration"] == "P7D"
+
+
+def test_landing_and_footer_offer_trial_instead_of_free_tier(client):
+    response = client.get(reverse("landing"))
+
+    content = response.content.decode()
+    assert "Start your 7-day trial" in content
+    assert "Start with two free datasets" not in content
+    assert ">Start free<" not in content
+
+
 def test_use_case_pages_reject_missing_page_copy(monkeypatch):
     page_copy = dict(page_use_cases.USE_CASE_PAGE_COPY)
     page_copy.pop("personal_crm")

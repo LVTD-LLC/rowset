@@ -147,7 +147,7 @@ MCP tool discovery, REST fallback, and a private-by-default ownership boundary.
 Do not choose Rowset if your team needs visual app screens, formulas, complex
 human collaboration, plugins, or self-hosting.
 
-You can start with the free tier and review [Rowset pricing](/pricing) when the
+You can start with a 7-day trial and review [Rowset pricing](/pricing) when the
 workflow needs more hosted datasets or rows.
 
 ### 2. Baserow

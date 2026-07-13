@@ -1,9 +1,11 @@
 import json
+from datetime import timedelta
 from types import SimpleNamespace
 
 import anyio
 import pytest
 from django.test import override_settings
+from django.utils import timezone
 from fastmcp import Client
 
 from apps.api.services import DatasetServiceError
@@ -19,6 +21,14 @@ from apps.mcp_server.server import (
 from apps.mcp_server.server import (
     get_dataset_row as mcp_get_dataset_row,
 )
+
+
+@pytest.fixture(autouse=True)
+def disable_trial_activation(monkeypatch):
+    monkeypatch.setattr(
+        "apps.mcp_server.server.activate_or_require_trial_access",
+        lambda _profile: None,
+    )
 
 
 def _extract_mcp_error_payload(error: Exception) -> dict:
@@ -125,6 +135,8 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
         user=user,
         state="signed_up",
         has_active_subscription=False,
+        trial_started_at=None,
+        trial_ends_at=None,
         datasets=datasets,
     )
     if agent_api_key_access_level is not None:
@@ -178,7 +190,43 @@ def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
     ]
 
 
+@override_settings(SITE_URL="https://rowset.example")
+def test_expired_trial_returns_structured_mcp_upgrade_error(monkeypatch):
+    ended_at = timezone.now() - timedelta(seconds=1)
+
+    async def run():
+        from apps.core.trials import TrialExpiredError
+
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: (_ for _ in ()).throw(TrialExpiredError(ended_at)),
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool("get_user_info", {})
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload == {
+            "code": "TRIAL_EXPIRED",
+            "message": (
+                "Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP."
+            ),
+            "retryable": False,
+            "suggested_action": "Upgrade at https://rowset.example/pricing/.",
+            "details": {
+                "http_status": 402,
+                "trial_ended_at": ended_at.isoformat(),
+                "upgrade_url": "https://rowset.example/pricing/",
+            },
+        }
+
+    anyio.run(run)
+
+
 def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
+    trial_activations = []
+
     async def run():
         profile = _profile()
         setattr(
@@ -189,6 +237,10 @@ def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
             lambda api_key=None: profile,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.activate_or_require_trial_access",
+            trial_activations.append,
         )
 
         async with Client(mcp) as client:
@@ -206,6 +258,7 @@ def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
         )
 
     anyio.run(run)
+    assert trial_activations == []
 
 
 def test_write_mcp_tool_rejects_missing_agent_api_key_context(monkeypatch):
@@ -235,6 +288,7 @@ def test_write_mcp_tool_rejects_missing_agent_api_key_context(monkeypatch):
 
 def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkeypatch):
     calls = []
+    trial_activations = []
 
     def create_agent_api_key(profile, name, access_level):
         calls.append((profile.id, name, access_level))
@@ -260,6 +314,10 @@ def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkey
             create_agent_api_key,
         )
         monkeypatch.setattr(
+            "apps.mcp_server.server.activate_or_require_trial_access",
+            trial_activations.append,
+        )
+        monkeypatch.setattr(
             "apps.mcp_server.server.serialize_agent_api_key",
             lambda agent_api_key: {
                 "name": agent_api_key.name,
@@ -279,6 +337,41 @@ def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkey
         assert payload["agent_api_key"]["access_level"] == AgentApiKeyAccessLevel.READ
         assert payload["api_key"] == "rsk_created-secret"
         assert calls == [(11, "Reporting Agent", "read")]
+
+    anyio.run(run)
+    assert trial_activations == []
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_create_agent_api_key_mcp_tool_rejects_expired_trial(monkeypatch):
+    ended_at = timezone.now() - timedelta(seconds=1)
+
+    async def run():
+        profile = _profile()
+        profile.trial_started_at = ended_at - timedelta(days=7)
+        profile.trial_ends_at = ended_at
+        setattr(
+            profile,
+            AGENT_API_KEY_PROFILE_ATTR,
+            SimpleNamespace(id=3, access_level=AgentApiKeyAccessLevel.ADMIN),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: profile,
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool(
+                    "create_agent_api_key",
+                    {"name": "Denied Agent", "access_level": "read"},
+                )
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload["code"] == "TRIAL_EXPIRED"
+        assert payload["retryable"] is False
+        assert payload["details"]["http_status"] == 402
+        assert payload["details"]["upgrade_url"] == "https://rowset.example/pricing/"
 
     anyio.run(run)
 
