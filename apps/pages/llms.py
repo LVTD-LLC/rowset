@@ -1,16 +1,12 @@
 from django.urls import reverse
 
 from apps.pages.content import get_content_section
-from apps.pages.public_markdown import markdown_path_for
+from apps.pages.public_markdown import build_public_markdown_url
 from rowset.utils import build_absolute_public_url
 
 
-def _absolute_markdown_url(path: str) -> str:
-    return build_absolute_public_url(markdown_path_for(path))
-
-
 def _content_link(page: dict) -> str:
-    link = f"[{page['title']}]({_absolute_markdown_url(page['url'])})"
+    link = f"[{page['title']}]({build_public_markdown_url(page['url'])})"
     if page["description"]:
         return f"- {link} — {page['description']}"
     return f"- {link}"

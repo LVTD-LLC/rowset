@@ -251,7 +251,7 @@ def blog_post_markdown(request, slug):
     return markdown_response(render_blog_markdown(blog_post))
 
 
-class DatabaseMcpServerExplanationView(PublicMarkdownContextMixin, TemplateView):
+class DatabaseMcpServerExplanationView(TemplateView):
     template_name = "pages/explanations/database-mcp-server.html"
 
     def get_context_data(self, **kwargs):

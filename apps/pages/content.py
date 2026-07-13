@@ -302,8 +302,14 @@ def render_content_page(request, section_slug, page_slug):
         markdown_html = markdown.markdown(rendered_markdown, extensions=CONTENT_MARKDOWN_EXTENSIONS)
         section = get_content_section(section_slug)
         previous_page, next_page = get_previous_and_next_pages(section, page_slug)
-        page_url = build_absolute_public_url(get_section_page_url(section_slug, page_slug))
+        page_path = get_section_page_url(section_slug, page_slug)
+        page_url = build_absolute_public_url(page_path)
         current_group_id = get_current_content_group_id(section, page_slug)
+        markdown_context = (
+            build_ai_reader_context(page_path)
+            if section_slug == "docs"
+            else build_public_markdown_context(page_path)
+        )
 
         default_page_title = page_slug.replace("-", " ").title()
 
@@ -325,18 +331,18 @@ def render_content_page(request, section_slug, page_slug):
                 article_schema(
                     headline=post.get("title", default_page_title),
                     description=post.get("description", ""),
-                    path=get_section_page_url(section_slug, page_slug),
+                    path=page_path,
                 )
             ),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
-            **build_public_markdown_context(get_section_page_url(section_slug, page_slug)),
+            **markdown_context,
         }
-        if section_slug == "docs":
-            context.update(build_ai_reader_context(get_section_page_url(section_slug, page_slug)))
 
         return render(request, "pages/content/page.html", context)
+    except Http404:
+        raise
     except Exception as exc:
         logger.error(
             "Error loading content page",

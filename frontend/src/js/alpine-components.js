@@ -326,13 +326,14 @@
         }, 2000);
       },
 
-      async copyValue(value) {
+      async copyFrom(getValue) {
         if (this.busy) {
           return;
         }
 
         this.busy = true;
         try {
+          const value = await getValue();
           const copied = await Rowset.copyTextToClipboard(value);
           this.flashStatus(copied ? "Copied" : "Copy failed");
         } catch (_error) {
@@ -343,30 +344,19 @@
       },
 
       async copyPrompt() {
-        await this.copyValue(this.$el.dataset.prompt || "");
+        await this.copyFrom(() => this.$el.dataset.prompt || "");
       },
 
       async copyMarkdown() {
-        if (this.busy) {
-          return;
-        }
-
-        this.busy = true;
-        try {
+        await this.copyFrom(async () => {
           const response = await fetch(this.$el.dataset.markdownUrl || "", {
             credentials: "same-origin",
           });
           if (!response.ok) {
             throw new Error("Markdown request failed");
           }
-          const markdown = await response.text();
-          const copied = await Rowset.copyTextToClipboard(markdown);
-          this.flashStatus(copied ? "Copied" : "Copy failed");
-        } catch (_error) {
-          this.flashStatus("Copy failed");
-        } finally {
-          this.busy = false;
-        }
+          return response.text();
+        });
       },
     }));
 

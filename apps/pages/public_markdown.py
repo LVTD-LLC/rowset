@@ -27,8 +27,12 @@ def markdown_path_for(path: str) -> str:
     return f"{path.rstrip('/')}.md"
 
 
+def build_public_markdown_url(path: str) -> str:
+    return build_absolute_public_url(markdown_path_for(path))
+
+
 def build_public_markdown_context(path: str) -> dict[str, str]:
-    return {"markdown_url": build_absolute_public_url(markdown_path_for(path))}
+    return {"markdown_url": build_public_markdown_url(path)}
 
 
 def build_ai_reader_context(path: str) -> dict[str, str]:
@@ -56,7 +60,7 @@ def render_public_page_markdown(page_slug: str) -> str:
 
     content_root = get_content_root().resolve()
     source_path = (content_root / PUBLIC_PAGE_SOURCES[page_slug]).resolve()
-    if not source_path.is_relative_to(content_root) or not source_path.is_file():
+    if not source_path.is_relative_to(content_root):
         raise Http404("Public page not found")
 
     try:
