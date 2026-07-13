@@ -606,15 +606,19 @@ def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, pr
     assert "Dataset status" not in content
 
 
-def test_home_defaults_to_project_grouped_recent_order(auth_client, profile):
+def test_home_defaults_to_global_recent_order(auth_client, profile):
+    alphabetically_first_project = Project.objects.create(profile=profile, name="Alpha project")
+    alphabetically_last_project = Project.objects.create(profile=profile, name="Zulu project")
     older_dataset = Dataset.objects.create(
         profile=profile,
+        project=alphabetically_first_project,
         name="Alpha",
         headers=["id"],
         index_column="id",
     )
     newer_dataset = Dataset.objects.create(
         profile=profile,
+        project=alphabetically_last_project,
         name="Beta",
         headers=["id"],
         index_column="id",
@@ -634,8 +638,58 @@ def test_home_defaults_to_project_grouped_recent_order(auth_client, profile):
     assert response.status_code == 200
     assert response.context["selected_view_mode"] == "grouped"
     assert response.context["selected_sort"] == "recent"
-    assert [group["label"] for group in response.context["dataset_groups"]] == ["No project"]
     assert [dataset.name for dataset in response.context["datasets"]] == ["Beta", "Alpha"]
+
+
+def test_home_displays_only_ten_recent_datasets(auth_client, profile):
+    for index in range(12):
+        Dataset.objects.create(
+            profile=profile,
+            name=f"Dataset {index:02}",
+            headers=["id"],
+            index_column="id",
+        )
+
+    response = auth_client.get(reverse("home"))
+    page_two_response = auth_client.get(reverse("home"), {"page": 2})
+
+    assert response.status_code == 200
+    assert len(response.context["datasets"]) == 10
+    expected_names = [
+        f"Dataset {index:02}" for index in range(11, 1, -1)
+    ]
+    assert [dataset.name for dataset in response.context["datasets"]] == expected_names
+    assert [dataset.name for dataset in page_two_response.context["datasets"]] == expected_names
+
+
+def test_home_links_to_all_datasets(auth_client, profile):
+    Dataset.objects.create(
+        profile=profile,
+        name="People",
+        headers=["id"],
+        index_column="id",
+    )
+
+    response = auth_client.get(reverse("home"))
+
+    assert response.status_code == 200
+    assert reverse("dataset_list") in response.content.decode()
+    assert "View all datasets" in response.content.decode()
+
+
+def test_dataset_list_displays_all_active_datasets(auth_client, profile):
+    for index in range(12):
+        Dataset.objects.create(
+            profile=profile,
+            name=f"Dataset {index:02}",
+            headers=["id"],
+            index_column="id",
+        )
+
+    response = auth_client.get(reverse("dataset_list"))
+
+    assert response.status_code == 200
+    assert len(response.context["datasets"]) == 12
 
 
 def test_dataset_list_supports_created_sort(auth_client, profile):
@@ -804,8 +858,10 @@ def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client,
             row_count=1,
         )
 
-    page_one = auth_client.get(reverse("home"), {"sort": "name", "view": "grouped"})
-    page_two = auth_client.get(f"{reverse('home')}?sort=name&view=grouped&page=2")
+    page_one = auth_client.get(reverse("dataset_list"), {"sort": "name", "view": "grouped"})
+    page_two = auth_client.get(
+        f"{reverse('dataset_list')}?sort=name&view=grouped&page=2"
+    )
 
     assert page_one.status_code == 200
     assert page_two.status_code == 200
