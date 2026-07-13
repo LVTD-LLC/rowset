@@ -964,19 +964,19 @@ def test_dataset_detail_links_rows_and_truncates_cells(auth_client, profile):
     assert 'aria-hidden="true" tabindex="-1"' in content
 
 
-def test_dataset_detail_links_row_create_and_bulk_actions(auth_client, profile):
+def test_dataset_detail_omits_row_mutation_chrome(auth_client, profile):
     dataset = create_ready_dataset(profile)
-    row = dataset.rows.first()
 
     response = auth_client.get(dataset.get_absolute_url())
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert reverse("dataset_row_create", args=[dataset.key]) in content
-    assert reverse("dataset_rows_bulk_action", args=[dataset.key]) in content
-    assert "Delete selected rows" in content
-    assert f'value="{row.id}"' in content
-    assert 'x-data="rowBulkActions"' in content
+    assert reverse("dataset_row_create", args=[dataset.key]) not in content
+    assert reverse("dataset_rows_bulk_action", args=[dataset.key]) not in content
+    assert "Delete selected rows" not in content
+    assert 'x-data="rowBulkActions"' not in content
+    assert 'id="row-search"' not in content
+    assert 'id="row-sort"' not in content
 
 
 def test_dataset_detail_keeps_choice_values_plain_when_colorize_is_disabled(
@@ -1444,7 +1444,7 @@ def test_dataset_detail_paginates_rows_without_public_preview(auth_client, profi
 
     assert response.status_code == 200
     assert "Public preview:" not in content
-    assert f"Showing 1-{DATASET_DETAIL_ROW_PAGE_SIZE} of {total_rows} rows" in content
+    assert f"Showing 1-{DATASET_DETAIL_ROW_PAGE_SIZE} of {total_rows} rows" not in content
     assert "Page 1 of 2" in content
     assert 'href="?view=compact&amp;page=2"' in content
     assert "Detail row 001" in content

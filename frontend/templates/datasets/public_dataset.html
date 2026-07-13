@@ -19,8 +19,7 @@
     {% if not has_access %}
       {% include "datasets/partials/public_password_form.html" with password_submit_label="View table" %}
     {% else %}
-      {% include "datasets/partials/row_table_controls.html" %}
-      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950" aria-labelledby="public-table-heading">
+      <section class="fb-table-concept overflow-hidden" aria-labelledby="public-table-heading">
         <h2 id="public-table-heading" class="sr-only">Rows in {{ dataset.name }}</h2>
         <div class="overflow-x-auto">
           <table class="fb-table">
