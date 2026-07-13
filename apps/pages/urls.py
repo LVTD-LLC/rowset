@@ -1,5 +1,4 @@
 from django.urls import path
-from django.views.generic import TemplateView
 
 from apps.pages import views
 
@@ -42,9 +41,5 @@ urlpatterns = [
     path("docs/<slug:slug>", views.docs_page_view, name="docs_page"),
     path("blog", views.blog_posts_view, name="blog_posts"),
     path("blog/<slug:slug>", views.blog_post_view, name="blog_post"),
-    path(
-        "uses",
-        TemplateView.as_view(template_name="pages/uses.html"),
-        name="uses",
-    ),
+    path("uses", views.UsesView.as_view(), name="uses"),
 ]

@@ -83,7 +83,7 @@ review, NocoDB is not the natural default.
 
 For that pattern, start from
 [What is an agent-managed dataset?](/blog/agent-managed-datasets),
-then set up your agent with [hosted MCP access](/docs/connect-mcp/).
+then set up your agent with [hosted MCP access](/docs/connect-mcp).
 
 ## Where NocoDB is stronger than Rowset
 
@@ -121,9 +121,9 @@ When choosing between these two patterns, Rowset usually wins for:
 
 For Rowset setup specifics, use the MCP setup flow plus:
 
-- [Rowset dataset API fundamentals](/docs/dataset-api/)
-- [Designing schema for agents](/docs/design-schema/)
-- [Configuring agent access](/docs/configure-agent-access/)
+- [Rowset dataset API fundamentals](/docs/dataset-api)
+- [Designing schema for agents](/docs/design-schema)
+- [Configuring agent access](/docs/configure-agent-access)
 
 If your workflow is “agent creates rows → agent updates rows → human approves outcomes,”
 Rowset removes the workspace overhead and keeps the contract explicit.
@@ -206,8 +206,8 @@ Pair with existing guidance:
 
 - [How to choose an index column](/blog/choose-index-column-agent-rows)
 - [Rowset rowset_id vs business keys](/blog/rowset-id-vs-business-keys)
-- [Dataset API](/docs/dataset-api/)
-- [MCP docs](/docs/connect-mcp/)
+- [Dataset API](/docs/dataset-api)
+- [MCP docs](/docs/connect-mcp)
 
 ## FAQ
 

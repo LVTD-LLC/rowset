@@ -73,6 +73,6 @@ code and upgrade guidance as a non-retryable tool error.
 
 ## Related docs
 
-- [API overview](/docs/api-overview/)
-- [Connect over MCP](/docs/connect-mcp/)
-- [Dataset API](/docs/dataset-api/)
+- [API overview](/docs/api-overview)
+- [Connect over MCP](/docs/connect-mcp)
+- [Dataset API](/docs/dataset-api)

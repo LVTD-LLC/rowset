@@ -11,18 +11,21 @@
             aria-haspopup="menu"
             :aria-expanded="open.toString()"
             @click="open = !open">
-        AI reader
-        <span aria-hidden="true">▾</span>
+        Read with AI
     </button>
     <div x-cloak
          x-show="open"
          role="menu"
          class="absolute right-0 z-20 mt-2 w-56 border border-slate-300 bg-white p-1 text-sm text-slate-950 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
         <a href="{{ claude_url }}"
+           target="_blank"
+           rel="noopener"
            role="menuitem"
            class="fb-focus block px-3 py-2 font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
            @click="open = false">Read with Claude</a>
         <a href="{{ chatgpt_url }}"
+           target="_blank"
+           rel="noopener"
            role="menuitem"
            class="fb-focus block px-3 py-2 font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
            @click="open = false">Read with ChatGPT</a>

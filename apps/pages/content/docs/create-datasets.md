@@ -112,4 +112,4 @@ dataset.
 - Content pipeline: `content_queue`, indexed by `slug`
 - Product catalog: `products`, indexed by `sku`
 
-See [Use cases](/use-cases/) for starter shapes.
+See [Use cases](/use-cases) for starter shapes.

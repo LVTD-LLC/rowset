@@ -7,6 +7,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.checks import run_checks
 from django.urls import reverse
+from django.utils.html import strip_tags
 
 from apps.pages.blog import get_blog_post, list_blog_posts
 from rowset.sitemaps import BlogSitemap
@@ -79,7 +80,13 @@ def test_ai_reader_menu_renders_for_blog_post(client, blog_posts_dir):
 
     assert f'data-markdown-url="{markdown_url}"' in content
     assert f'data-prompt="{prompt}"' in content
-    assert '<button type="button"' in content
+    trigger = re.search(
+        r'<button type="button"[^>]*x-ref="trigger"[^>]*>(.*?)</button>',
+        content,
+        re.DOTALL,
+    )
+    assert trigger
+    assert strip_tags(trigger.group(1)).strip() == "Read with AI"
     assert ':aria-expanded="open.toString()"' in content
     assert "x-cloak" in content
     assert "@click.outside" in content
@@ -88,9 +95,11 @@ def test_ai_reader_menu_renders_for_blog_post(client, blog_posts_dir):
     assert 'x-text="status"' in content
     assert "x-html" not in content
 
-    provider_urls = re.findall(r'href="(https://(?:chatgpt|claude)\.[^"]+)"', content)
-    assert len(provider_urls) == 2
-    for provider_url in provider_urls:
+    provider_links = re.findall(r'<a href="(https://(?:chatgpt|claude)\.[^"]+)"([^>]*)>', content)
+    assert len(provider_links) == 2
+    for provider_url, attributes in provider_links:
+        assert 'target="_blank"' in attributes
+        assert 'rel="noopener"' in attributes
         decoded_query = parse_qs(urlparse(unescape(provider_url)).query)
         assert decoded_query["q"] == [prompt]
 

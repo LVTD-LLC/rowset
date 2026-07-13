@@ -28,6 +28,7 @@ from apps.pages.content import render_content_page
 from apps.pages.llms import render_llms_txt
 from apps.pages.public_markdown import (
     build_ai_reader_context,
+    build_public_markdown_context,
     markdown_response,
     render_blog_markdown,
     render_content_markdown,
@@ -47,7 +48,14 @@ from rowset.utils import build_absolute_public_url, get_rowset_logger
 logger = get_rowset_logger(__name__)
 
 
-class LandingPageView(TemplateView):
+class PublicMarkdownContextMixin:
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(build_public_markdown_context(getattr(self.request, "path", "/")))
+        return context
+
+
+class LandingPageView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/landing-page.html"
 
     def get(self, request, *args, **kwargs):
@@ -141,7 +149,7 @@ class AccountSignupByPasskeyView(SignupTrackingMixin, SignupByPasskeyView):
     tracking_source_name = "AccountSignupByPasskeyView"
 
 
-class PricingView(TemplateView):
+class PricingView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/pricing.html"
 
     def get_context_data(self, **kwargs):
@@ -207,6 +215,7 @@ def blog_posts_view(request):
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
+            **build_public_markdown_context(reverse("blog_posts")),
         },
     )
 
@@ -242,7 +251,7 @@ def blog_post_markdown(request, slug):
     return markdown_response(render_blog_markdown(blog_post))
 
 
-class DatabaseMcpServerExplanationView(TemplateView):
+class DatabaseMcpServerExplanationView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/explanations/database-mcp-server.html"
 
     def get_context_data(self, **kwargs):
@@ -277,9 +286,13 @@ class DatabaseMcpServerExplanationView(TemplateView):
         return context
 
 
-class PrivacyPolicyView(TemplateView):
+class PrivacyPolicyView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/privacy-policy.html"
 
 
-class TermsOfServiceView(TemplateView):
+class TermsOfServiceView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/terms-of-service.html"
+
+
+class UsesView(PublicMarkdownContextMixin, TemplateView):
+    template_name = "pages/uses.html"

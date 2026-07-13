@@ -139,5 +139,5 @@ REST:
 DELETE {{ api_base_url }}/datasets/{dataset_key}/rows/{row_id}
 ```
 
-For mistaken whole datasets, prefer [archive and restore](/docs/archive-export-troubleshoot/)
+For mistaken whole datasets, prefer [archive and restore](/docs/archive-export-troubleshoot)
 over deleting row by row.

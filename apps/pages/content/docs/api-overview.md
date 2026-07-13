@@ -59,20 +59,20 @@ Use those generated docs when you want request/response schemas or to inspect lo
 
 Most users only need three docs in this reference section:
 
-- [Dataset API](/docs/dataset-api/) for creating datasets, searching rows,
+- [Dataset API](/docs/dataset-api) for creating datasets, searching rows,
   updating schema, linking datasets, attaching image or audio assets, exporting
   snapshots, and managing public previews.
-- [MCP tool reference](/docs/mcp-tools/) for the equivalent agent-facing tool
+- [MCP tool reference](/docs/mcp-tools) for the equivalent agent-facing tool
   groups.
-- [Configure agent access](/docs/configure-agent-access/) for API-key
+- [Configure agent access](/docs/configure-agent-access) for API-key
   permissions, installable skills, and safe setup prompts.
 
 Use the smaller endpoint pages only when you need a narrow lookup:
-[User API](/docs/user-api/) verifies a key and profile details, while
-[Project API](/docs/project-api/) covers projects and sections.
+[User API](/docs/user-api) verifies a key and profile details, while
+[Project API](/docs/project-api) covers projects and sections.
 
 ## Related docs
 
-- [Connect over MCP](/docs/connect-mcp/) for agent-native tool access.
-- [Dataset API](/docs/dataset-api/) for dataset and row endpoints.
-- [MCP tool reference](/docs/mcp-tools/) for MCP tool groups.
+- [Connect over MCP](/docs/connect-mcp) for agent-native tool access.
+- [Dataset API](/docs/dataset-api) for dataset and row endpoints.
+- [MCP tool reference](/docs/mcp-tools) for MCP tool groups.

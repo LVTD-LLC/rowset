@@ -27,12 +27,17 @@ def markdown_path_for(path: str) -> str:
     return f"{path.rstrip('/')}.md"
 
 
+def build_public_markdown_context(path: str) -> dict[str, str]:
+    return {"markdown_url": build_absolute_public_url(markdown_path_for(path))}
+
+
 def build_ai_reader_context(path: str) -> dict[str, str]:
-    markdown_url = build_absolute_public_url(markdown_path_for(path))
+    context = build_public_markdown_context(path)
+    markdown_url = context["markdown_url"]
     prompt = f"Read this Rowset page and help me understand or use it: {markdown_url}"
     query = urlencode({"q": prompt})
     return {
-        "markdown_url": markdown_url,
+        **context,
         "ai_reader_prompt": prompt,
         "claude_url": f"https://claude.ai/new?{query}",
         "chatgpt_url": f"https://chatgpt.com/?{query}",

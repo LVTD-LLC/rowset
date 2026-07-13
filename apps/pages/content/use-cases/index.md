@@ -15,18 +15,18 @@ Start here when you know the job but do not want to design a dataset from scratc
 
 ## Choose a workflow
 
-- [Personal CRM](/use-cases/personal-crm/)
-- [Agent task board](/use-cases/agent-task-board/)
-- [Feedback triage](/use-cases/feedback-triage/)
-- [Content pipeline](/use-cases/content-pipeline/)
-- [Product or inventory catalog](/use-cases/product-inventory-catalog/)
-- [Bug or QA tracker](/use-cases/bug-qa-tracker/)
+- [Personal CRM](/use-cases/personal-crm)
+- [Agent task board](/use-cases/agent-task-board)
+- [Feedback triage](/use-cases/feedback-triage)
+- [Content pipeline](/use-cases/content-pipeline)
+- [Product or inventory catalog](/use-cases/product-inventory-catalog)
+- [Bug or QA tracker](/use-cases/bug-qa-tracker)
 
 ## How to choose
 
 Use a use-case page when you need a concrete dataset shape. Use
-[Create datasets](/docs/create-datasets/) when you already know the shape. Use
-[Design dataset schema](/docs/design-schema/) when the main question is column
+[Create datasets](/docs/create-datasets) when you already know the shape. Use
+[Design dataset schema](/docs/design-schema) when the main question is column
 types, status rules, references, or instructions.
 
 ## What reliable agent workflows have in common

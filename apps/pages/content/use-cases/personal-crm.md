@@ -38,6 +38,6 @@ only from trusted notes or direct user instruction.
 
 ## Connect it
 
-Use [MCP access](/docs/connect-mcp/) first. If MCP is unavailable, use the
-[Dataset API](/docs/dataset-api/) with a bearer API key. Public previews should
+Use [MCP access](/docs/connect-mcp) first. If MCP is unavailable, use the
+[Dataset API](/docs/dataset-api) with a bearer API key. Public previews should
 stay off unless you deliberately want a read-only relationship board.

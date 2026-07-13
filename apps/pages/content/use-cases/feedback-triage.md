@@ -34,6 +34,6 @@ evidence while keeping roadmap discussion focused.
 
 ## Connect it
 
-Use [MCP access](/docs/connect-mcp/) for trusted agent triage. Use the
-[Dataset API](/docs/dataset-api/) when a support or feedback script needs to
+Use [MCP access](/docs/connect-mcp) for trusted agent triage. Use the
+[Dataset API](/docs/dataset-api) when a support or feedback script needs to
 write rows directly.

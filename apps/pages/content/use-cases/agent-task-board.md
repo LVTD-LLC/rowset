@@ -34,6 +34,6 @@ as evidence, and when an agent should ask before taking action.
 
 ## Connect it
 
-Use [MCP access](/docs/connect-mcp/) for agent updates and the
-[Dataset API](/docs/dataset-api/) for scripts. Use public previews only for
+Use [MCP access](/docs/connect-mcp) for agent updates and the
+[Dataset API](/docs/dataset-api) for scripts. Use public previews only for
 read-only status sharing.

@@ -34,6 +34,6 @@ semantic column metadata so downstream scripts do not have to guess.
 
 ## Connect it
 
-Use [MCP access](/docs/connect-mcp/) for agent maintenance. Use
-[public previews](/docs/share-public-previews/) only when humans need a
+Use [MCP access](/docs/connect-mcp) for agent maintenance. Use
+[public previews](/docs/share-public-previews) only when humans need a
 read-only catalog view.

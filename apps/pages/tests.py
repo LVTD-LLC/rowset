@@ -33,6 +33,53 @@ from apps.pages.schema import (
 pytestmark = pytest.mark.django_db
 
 
+PUBLIC_CONTENT_PATH_PREFIXES = ("/blog/", "/docs/", "/use-cases/")
+PUBLIC_CONTENT_ROOT_PATHS = {
+    "/blog",
+    "/docs",
+    "/pricing",
+    "/privacy-policy",
+    "/terms-of-service",
+    "/use-cases",
+    "/uses",
+}
+
+
+def _public_source_markdown_paths():
+    return Path(settings.BASE_DIR, "apps/pages/content").rglob("*.md")
+
+
+def _public_content_links(source):
+    markdown_targets = re.findall(r"(?<!!)\[[^]]*]\(([^)\s]+)(?:\s+[^)]*)?\)", source)
+    html_targets = re.findall(r'href=["\']([^"\']+)["\']', source)
+    for target in (*markdown_targets, *html_targets):
+        parsed = urlparse(unescape(target))
+        if parsed.scheme or parsed.netloc or not parsed.path.startswith("/"):
+            continue
+        if parsed.path in PUBLIC_CONTENT_ROOT_PATHS or parsed.path.startswith(
+            PUBLIC_CONTENT_PATH_PREFIXES
+        ):
+            yield target, parsed.path
+
+
+def test_checked_in_markdown_public_content_links_use_live_extensionless_routes(client):
+    retired_routes = []
+    broken_routes = []
+
+    for markdown_path in _public_source_markdown_paths():
+        source = markdown_path.read_text(encoding="utf-8")
+        for target, path in _public_content_links(source):
+            location = str(markdown_path.relative_to(settings.BASE_DIR))
+            if path != "/" and path.endswith("/"):
+                retired_routes.append(f"{location}: {target}")
+                continue
+            if client.get(path).status_code == 404:
+                broken_routes.append(f"{location}: {target}")
+
+    assert not retired_routes, "Retired trailing-slash public routes:\n" + "\n".join(retired_routes)
+    assert not broken_routes, "Broken public content routes:\n" + "\n".join(broken_routes)
+
+
 @pytest.mark.parametrize(
     "path",
     (
@@ -96,6 +143,41 @@ def test_public_markdown_inventory_registry_reuses_canonical_sources():
 def test_public_markdown_route_name_and_missing_slug(client):
     assert reverse("public_page_markdown", kwargs={"page_slug": "index"}) == "/index.md"
     assert client.get("/missing.md").status_code == 404
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    ("path", "expected_markdown_url"),
+    (
+        ("/", "https://rowset.example/index.md"),
+        ("/pricing", "https://rowset.example/pricing.md"),
+        ("/privacy-policy", "https://rowset.example/privacy-policy.md"),
+        ("/terms-of-service", "https://rowset.example/terms-of-service.md"),
+        ("/uses", "https://rowset.example/uses.md"),
+        ("/blog", "https://rowset.example/blog.md"),
+        (
+            "/blog/agent-managed-datasets",
+            "https://rowset.example/blog/agent-managed-datasets.md",
+        ),
+        ("/use-cases", "https://rowset.example/use-cases.md"),
+        (
+            "/use-cases/personal-crm",
+            "https://rowset.example/use-cases/personal-crm.md",
+        ),
+        ("/docs/quickstart", "https://rowset.example/docs/quickstart.md"),
+        (
+            "/docs/database-mcp-server",
+            "https://rowset.example/docs/database-mcp-server.md",
+        ),
+    ),
+)
+def test_public_html_views_expose_canonical_markdown_url_in_context(
+    client, path, expected_markdown_url
+):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert response.context["markdown_url"] == expected_markdown_url
 
 
 @override_settings(SITE_URL="https://rowset.example")
@@ -224,7 +306,13 @@ def _assert_ai_reader_menu(content, markdown_url):
 
     assert f'data-markdown-url="{markdown_url}"' in content
     assert f'data-prompt="{prompt}"' in content
-    assert '<button type="button"' in content
+    trigger = re.search(
+        r'<button type="button"[^>]*x-ref="trigger"[^>]*>(.*?)</button>',
+        content,
+        re.DOTALL,
+    )
+    assert trigger
+    assert strip_tags(trigger.group(1)).strip() == "Read with AI"
     assert ':aria-expanded="open.toString()"' in content
     assert "x-cloak" in content
     assert "@click.outside" in content
@@ -233,11 +321,32 @@ def _assert_ai_reader_menu(content, markdown_url):
     assert 'x-text="status"' in content
     assert "x-html" not in content
 
-    provider_urls = re.findall(r'href="(https://(?:chatgpt|claude)\.[^"]+)"', content)
+    provider_links = re.findall(r'<a href="(https://(?:chatgpt|claude)\.[^"]+)"([^>]*)>', content)
+    assert len(provider_links) == 2
+    for _, attributes in provider_links:
+        assert 'target="_blank"' in attributes
+        assert 'rel="noopener"' in attributes
+
+    provider_urls = [url for url, _ in provider_links]
     assert len(provider_urls) == 2
     for provider_url in provider_urls:
         decoded_query = parse_qs(urlparse(unescape(provider_url)).query)
         assert decoded_query["q"] == [prompt]
+
+
+def test_ai_reader_alpine_feedback_uses_exact_copy_statuses():
+    source = Path(settings.BASE_DIR, "frontend/src/js/alpine-components.js").read_text(
+        encoding="utf-8"
+    )
+    component = source.split('Alpine.data("aiReaderMenu"', 1)[1].split(
+        'Alpine.data("commandPalette"', 1
+    )[0]
+
+    feedback_expressions = set(re.findall(r"this\.flashStatus\((.*?)\);", component))
+    assert feedback_expressions == {
+        'copied ? "Copied" : "Copy failed"',
+        '"Copy failed"',
+    }
 
 
 @override_settings(SITE_URL="https://rowset.example")

@@ -18,7 +18,7 @@ from apps.core.agent_skill import (
     ROWSET_USE_CASES_SKILL_SOURCE_URL,
 )
 from apps.core.views import AGENT_API_KEY_MASK
-from apps.pages.public_markdown import build_ai_reader_context
+from apps.pages.public_markdown import build_ai_reader_context, build_public_markdown_context
 from apps.pages.schema import article_schema, json_ld
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
@@ -331,6 +331,7 @@ def render_content_page(request, section_slug, page_slug):
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
+            **build_public_markdown_context(get_section_page_url(section_slug, page_slug)),
         }
         if section_slug == "docs":
             context.update(build_ai_reader_context(get_section_page_url(section_slug, page_slug)))

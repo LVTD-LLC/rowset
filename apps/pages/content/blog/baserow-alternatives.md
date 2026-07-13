@@ -99,9 +99,9 @@ practical pattern is covered in
 [how to structure dataset instructions for AI agents](/blog/structure-dataset-instructions-ai-agents).
 
 The third requirement is the right access path. Compatible agent clients should
-use [hosted MCP access](/docs/connect-mcp/) so they can discover tools and
+use [hosted MCP access](/docs/connect-mcp) so they can discover tools and
 schemas before acting. Scripts, jobs, and unsupported clients should use the
-[Dataset API](/docs/dataset-api/) with private bearer-token authentication. If
+[Dataset API](/docs/dataset-api) with private bearer-token authentication. If
 you are deciding between those two paths, read
 [MCP vs REST for AI agents](/blog/mcp-vs-rest-ai-agents).
 
@@ -129,10 +129,10 @@ read-only previews when humans need to review the output.
 
 Use Rowset for workflows like:
 
-- an [agent-managed personal CRM](/use-cases/personal-crm/)
-- an [agent task board](/use-cases/agent-task-board/)
-- [feedback triage](/use-cases/feedback-triage/)
-- [content operations](/use-cases/content-pipeline/)
+- an [agent-managed personal CRM](/use-cases/personal-crm)
+- an [agent task board](/use-cases/agent-task-board)
+- [feedback triage](/use-cases/feedback-triage)
+- [content operations](/use-cases/content-pipeline)
 - QA finding lists
 - product or inventory snapshots
 - research tables that an agent updates across sessions

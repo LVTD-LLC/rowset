@@ -39,7 +39,7 @@ and persistent instructions for how the data should be used.
 
 In Rowset, that usually means a user creates or finds a dataset, gives a trusted
 agent a scoped API key, and lets the agent work through [hosted MCP
-access](/docs/connect-mcp/) or the [Dataset API](/docs/dataset-api/).
+access](/docs/connect-mcp) or the [Dataset API](/docs/dataset-api).
 The human still owns the account and decides what should be shared. The agent
 gets a stable operating surface instead of a browser page to scrape.
 
@@ -118,7 +118,7 @@ MCP is useful here because the agent can discover tools and call them directly,
 instead of clicking through a human UI.
 
 REST still matters too. Some runtimes cannot configure MCP, and many scripts
-need plain HTTP. Rowset supports both paths: [MCP access](/docs/connect-mcp/)
+need plain HTTP. Rowset supports both paths: [MCP access](/docs/connect-mcp)
 for compatible agents and REST endpoints for scripts or clients.
 For the protocol decision itself, read [When should an AI agent use MCP instead
 of REST?](/blog/mcp-vs-rest-ai-agents).
@@ -129,7 +129,7 @@ The agent should not be the only way to inspect the data. Humans still need to
 review current state, revoke keys, export a file, or share a read-only preview.
 This is where Rowset intentionally stays different from a generic memory layer:
 the agent gets private API/MCP access, while the human gets a dashboard and
-optional [public previews](/docs/share-public-previews/).
+optional [public previews](/docs/share-public-previews).
 
 ## Agent-managed dataset vs spreadsheet
 
@@ -182,10 +182,10 @@ one row by index, and export a snapshot without asking the user to restate the
 workflow. That is the practical value.
 
 Rowset already has a [content pipeline use
-case](/use-cases/content-pipeline/), but the same pattern works for a [personal
-CRM](/use-cases/personal-crm/), an [agent task
-board](/use-cases/agent-task-board/), or [feedback
-triage](/use-cases/feedback-triage/).
+case](/use-cases/content-pipeline), but the same pattern works for a [personal
+CRM](/use-cases/personal-crm), an [agent task
+board](/use-cases/agent-task-board), or [feedback
+triage](/use-cases/feedback-triage).
 
 ## Where vector memory fits
 
@@ -244,6 +244,6 @@ It gives the agent a place to act, gives the human a place to review, and keeps
 the rules close to the rows.
 
 If you want to try the pattern in Rowset, start with the [getting started
-guide](/docs/quickstart/), connect an agent through
-[MCP](/docs/connect-mcp/), and ask it to create one small dataset for a real
+guide](/docs/quickstart), connect an agent through
+[MCP](/docs/connect-mcp), and ask it to create one small dataset for a real
 workflow.

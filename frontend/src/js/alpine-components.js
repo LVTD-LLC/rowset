@@ -326,7 +326,7 @@
         }, 2000);
       },
 
-      async copyValue(value, successMessage) {
+      async copyValue(value) {
         if (this.busy) {
           return;
         }
@@ -334,7 +334,7 @@
         this.busy = true;
         try {
           const copied = await Rowset.copyTextToClipboard(value);
-          this.flashStatus(copied ? successMessage : "Copy failed");
+          this.flashStatus(copied ? "Copied" : "Copy failed");
         } catch (_error) {
           this.flashStatus("Copy failed");
         } finally {
@@ -343,7 +343,7 @@
       },
 
       async copyPrompt() {
-        await this.copyValue(this.$el.dataset.prompt || "", "Prompt copied");
+        await this.copyValue(this.$el.dataset.prompt || "");
       },
 
       async copyMarkdown() {
@@ -361,9 +361,9 @@
           }
           const markdown = await response.text();
           const copied = await Rowset.copyTextToClipboard(markdown);
-          this.flashStatus(copied ? "Markdown copied" : "Copy failed");
+          this.flashStatus(copied ? "Copied" : "Copy failed");
         } catch (_error) {
-          this.flashStatus("Could not copy Markdown");
+          this.flashStatus("Copy failed");
         } finally {
           this.busy = false;
         }

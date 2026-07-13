@@ -41,8 +41,8 @@ The contract should answer five questions:
 5. When should the agent stop and ask?
 
 In Rowset, those instructions travel with the dataset and are visible through
-[hosted MCP access](/docs/connect-mcp/) and the [Dataset
-API](/docs/dataset-api/). That matters because MCP tools are designed to be
+[hosted MCP access](/docs/connect-mcp) and the [Dataset
+API](/docs/dataset-api). That matters because MCP tools are designed to be
 discoverable by models: the MCP tools specification says tools expose a name,
 description, and input schema so a model can decide when to invoke them
 ([Model Context Protocol, 2025](https://modelcontextprotocol.io/specification/2025-03-26/server/tools)).
@@ -142,7 +142,7 @@ For example:
 }
 ```
 
-Use the [schema design guide](/docs/design-schema/) when you need semantic column
+Use the [schema design guide](/docs/design-schema) when you need semantic column
 types, choice values, references, or descriptions. Use the [index-column
 guide](/blog/choose-index-column-agent-rows) when you are deciding how the agent
 should find the same row again later.
@@ -220,7 +220,7 @@ Useful metadata:
 ```
 
 This maps cleanly to Rowset's [content pipeline use
-case](/use-cases/content-pipeline/). The instructions tell the agent how to
+case](/use-cases/content-pipeline). The instructions tell the agent how to
 move editorial work. The metadata gives future automation a parseable status
 model.
 
@@ -258,7 +258,7 @@ Useful metadata:
 ```
 
 This pairs naturally with the [feedback triage use
-case](/use-cases/feedback-triage/). The important rule is that agents may
+case](/use-cases/feedback-triage). The important rule is that agents may
 interpret feedback, but they should not rewrite the original evidence.
 
 ## Example: product inventory
@@ -294,7 +294,7 @@ Useful metadata:
 ```
 
 This follows the same pattern as the [product or inventory catalog use
-case](/use-cases/product-inventory-catalog/): stable identity first, source
+case](/use-cases/product-inventory-catalog): stable identity first, source
 evidence second, safe updates third.
 
 ## Common mistakes

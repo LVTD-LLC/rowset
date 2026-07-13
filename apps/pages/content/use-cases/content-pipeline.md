@@ -16,7 +16,7 @@ Create a `content_queue` dataset indexed by `slug`.
 | slug | content_type | stage | owner | target_keyword | canonical_url | publish_date | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | mcp-dataset-api | blog | review | Scribe | MCP dataset API |  |  | Needs examples |
-| agent-crm-guide | use case | draft | Scribe | agent CRM | /use-cases/personal-crm/ |  | Outline approved |
+| agent-crm-guide | use case | draft | Scribe | agent CRM | /use-cases/personal-crm |  | Outline approved |
 | feedback-board | landing | idea | Beacon | feedback board |  |  | Use-case angle |
 
 ## Agent jobs
@@ -38,6 +38,6 @@ need to survive across agent sessions.
 
 ## Connect it
 
-Use [MCP access](/docs/connect-mcp/) for agent planning and updates. Use the
-[Dataset API](/docs/dataset-api/) when a publishing script needs a structured
+Use [MCP access](/docs/connect-mcp) for agent planning and updates. Use the
+[Dataset API](/docs/dataset-api) when a publishing script needs a structured
 queue.

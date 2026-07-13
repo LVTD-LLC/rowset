@@ -98,9 +98,9 @@ or published. For feedback triage, it might mean new, investigating, planned,
 shipped, or closed. The labels are not enough.
 
 Finally, the access surface should match the caller. Compatible agent clients
-should use [hosted MCP access](/docs/connect-mcp/) so the agent can discover
+should use [hosted MCP access](/docs/connect-mcp) so the agent can discover
 tools and schemas before acting. Scripts, jobs, and unsupported runtimes should
-use the [Dataset API](/docs/dataset-api/) with private bearer-token
+use the [Dataset API](/docs/dataset-api) with private bearer-token
 authentication. If you are choosing between those interfaces, read the guide to
 [MCP vs REST for AI agents](/blog/mcp-vs-rest-ai-agents).
 
@@ -121,10 +121,10 @@ datasets or rows.
 
 Use Rowset for workflows like:
 
-- an [agent-managed personal CRM](/use-cases/personal-crm/)
-- an [agent task board](/use-cases/agent-task-board/)
-- [feedback triage](/use-cases/feedback-triage/)
-- [content operations](/use-cases/content-pipeline/)
+- an [agent-managed personal CRM](/use-cases/personal-crm)
+- an [agent task board](/use-cases/agent-task-board)
+- [feedback triage](/use-cases/feedback-triage)
+- [content operations](/use-cases/content-pipeline)
 - QA findings
 - product or inventory snapshots
 - research tables that an agent updates across sessions
@@ -313,9 +313,9 @@ agent-managed dataset backend all solve different jobs.
 
 Rowset's credible angle is narrow: private, structured rows for trusted AI
 agents, exposed through MCP and REST, with human ownership and review controls.
-If that is the job, start with [agent access](/docs/configure-agent-access/),
-then connect an agent through [MCP](/docs/connect-mcp/) or the [Dataset
-API](/docs/dataset-api/). If the job is still a human spreadsheet, keep using
+If that is the job, start with [agent access](/docs/configure-agent-access),
+then connect an agent through [MCP](/docs/connect-mcp) or the [Dataset
+API](/docs/dataset-api). If the job is still a human spreadsheet, keep using
 Google Sheets.
 
 ## FAQ
