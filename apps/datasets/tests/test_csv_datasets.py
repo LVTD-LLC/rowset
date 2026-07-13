@@ -655,9 +655,7 @@ def test_home_displays_only_ten_recent_datasets(auth_client, profile):
 
     assert response.status_code == 200
     assert len(response.context["datasets"]) == 10
-    expected_names = [
-        f"Dataset {index:02}" for index in range(11, 1, -1)
-    ]
+    expected_names = [f"Dataset {index:02}" for index in range(11, 1, -1)]
     assert [dataset.name for dataset in response.context["datasets"]] == expected_names
     assert [dataset.name for dataset in page_two_response.context["datasets"]] == expected_names
 
@@ -859,9 +857,7 @@ def test_dataset_list_group_counts_use_filtered_totals_across_pages(auth_client,
         )
 
     page_one = auth_client.get(reverse("dataset_list"), {"sort": "name", "view": "grouped"})
-    page_two = auth_client.get(
-        f"{reverse('dataset_list')}?sort=name&view=grouped&page=2"
-    )
+    page_two = auth_client.get(f"{reverse('dataset_list')}?sort=name&view=grouped&page=2")
 
     assert page_one.status_code == 200
     assert page_two.status_code == 200
