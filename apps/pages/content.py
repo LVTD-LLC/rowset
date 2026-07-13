@@ -268,7 +268,8 @@ def get_content_template_context():
     }
 
 
-def render_content_page(request, section_slug, page_slug):
+def load_content_page(section_slug, page_slug):
+    get_content_section_config(section_slug)
     if not is_content_slug(page_slug):
         raise Http404("Content page not found")
 
@@ -283,6 +284,20 @@ def render_content_page(request, section_slug, page_slug):
             post = frontmatter.load(file)
 
         rendered_markdown = Template(post.content).render(Context(get_content_template_context()))
+        return post, rendered_markdown
+    except Exception as exc:
+        logger.error(
+            "Error loading content page",
+            section=section_slug,
+            page=page_slug,
+            error_type=type(exc).__name__,
+        )
+        raise Http404("Content page not found") from exc
+
+
+def render_content_page(request, section_slug, page_slug):
+    try:
+        post, rendered_markdown = load_content_page(section_slug, page_slug)
         markdown_html = markdown.markdown(rendered_markdown, extensions=CONTENT_MARKDOWN_EXTENSIONS)
         section = get_content_section(section_slug)
         previous_page, next_page = get_previous_and_next_pages(section, page_slug)

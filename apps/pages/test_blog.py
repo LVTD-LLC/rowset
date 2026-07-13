@@ -32,7 +32,7 @@ def test_blog_index_renders_empty_state(client, blog_posts_dir):
     assert response.status_code == 200
     content = response.content.decode()
     assert "No blog posts are available yet." in content
-    assert 'href="https://rowset.example/blog/"' in content
+    assert 'href="https://rowset.example/blog"' in content
 
 
 def test_authenticated_blog_pages_use_app_shell(client, blog_posts_dir):
@@ -116,6 +116,37 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
     assert "Rowset dataset workflow" in content
     assert '"@type": "BlogPosting"' in content
     assert '"datePublished": "2026-07-03T00:00:00+00:00"' in content
+
+
+def test_blog_post_markdown_is_self_describing_and_has_no_frontmatter(client, blog_posts_dir):
+    write_post(
+        blog_posts_dir,
+        "agent-managed-datasets",
+        {
+            "title": "Agent-managed datasets",
+            "description": "How AI agents keep Rowset datasets current.",
+            "published_at": "2026-07-03",
+        },
+        "## Why agents need it\n\nAgents need **stable APIs** for rows.",
+    )
+
+    response = client.get(
+        reverse("blog_post_markdown", kwargs={"slug": "agent-managed-datasets"})
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/markdown; charset=utf-8"
+    assert response.content.decode() == (
+        "# Agent-managed datasets\n\n"
+        "How AI agents keep Rowset datasets current.\n\n"
+        "## Why agents need it\n\n"
+        "Agents need **stable APIs** for rows.\n"
+    )
+
+
+@pytest.mark.parametrize("slug", ("missing-post", "not_valid"))
+def test_blog_post_markdown_404s_for_missing_or_invalid_slugs(client, blog_posts_dir, slug):
+    assert client.get(f"/blog/{slug}.md").status_code == 404
 
 
 def test_blog_post_header_and_body_share_the_same_content_width(client, blog_posts_dir):

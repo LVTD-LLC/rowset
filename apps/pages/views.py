@@ -25,6 +25,12 @@ from apps.pages.blog import (
     json_ld as blog_json_ld,
 )
 from apps.pages.content import render_content_page
+from apps.pages.public_markdown import (
+    markdown_response,
+    render_blog_markdown,
+    render_content_markdown,
+    render_public_page_markdown,
+)
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
@@ -170,6 +176,14 @@ def use_case_page_view(request, slug):
     return render_content_page(request, "use-cases", slug)
 
 
+def public_page_markdown(request, page_slug):
+    return markdown_response(render_public_page_markdown(page_slug))
+
+
+def content_page_markdown(request, section_slug, page_slug):
+    return markdown_response(render_content_markdown(section_slug, page_slug))
+
+
 def blog_posts_view(request):
     blog_posts = list_blog_posts()
     return render(
@@ -207,6 +221,15 @@ def blog_post_view(request, slug):
             ),
         },
     )
+
+
+def blog_post_markdown(request, slug):
+    try:
+        blog_post = get_blog_post(slug)
+    except (BlogPostNotFound, BlogPostValidationError) as exc:
+        raise Http404("Blog post not found") from exc
+
+    return markdown_response(render_blog_markdown(blog_post))
 
 
 class DatabaseMcpServerExplanationView(TemplateView):

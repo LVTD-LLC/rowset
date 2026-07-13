@@ -29,6 +29,68 @@ from apps.pages.schema import (
 pytestmark = pytest.mark.django_db
 
 
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/index.md",
+        "/pricing.md",
+        "/use-cases.md",
+        "/docs/quickstart.md",
+        "/use-cases/personal-crm.md",
+    ),
+)
+def test_public_markdown_routes_return_markdown(client, path):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/markdown; charset=utf-8"
+
+
+def test_public_markdown_route_name_and_missing_slug(client):
+    assert reverse("public_page_markdown", kwargs={"page_slug": "index"}) == "/index.md"
+    assert client.get("/missing.md").status_code == 404
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_content_markdown_renders_public_template_variables_without_frontmatter(client):
+    response = client.get(reverse("content_page_markdown", args=("docs", "quickstart")))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert not content.startswith("---")
+    assert "# Start with your first agent dataset" in content
+    assert "https://rowset.example/mcp/" in content
+    assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content
+    assert "{{" not in content
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/docs/missing.md",
+        "/use-cases/missing.md",
+        "/docs/not_valid.md",
+        "/missing/page.md",
+    ),
+)
+def test_content_markdown_routes_404_for_missing_or_invalid_slugs(client, path):
+    assert client.get(path).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    (
+        ("/", "/index.md"),
+        ("/pricing", "/pricing.md"),
+        ("/docs/quickstart/", "/docs/quickstart.md"),
+    ),
+)
+def test_markdown_path_for_builds_route_siblings(path, expected):
+    from apps.pages.public_markdown import markdown_path_for
+
+    assert markdown_path_for(path) == expected
+
+
 def _nav_html(content, aria_label):
     start = content.index(f'aria-label="{aria_label}"')
     return content[start : content.index("</nav>", start)]
@@ -349,19 +411,19 @@ def test_sitemap_response_does_not_set_noindex_header(client):
 
 
 @pytest.mark.parametrize(
-    ("path", "expected"),
+    "path",
     (
-        ("/pricing", "/pricing/"),
-        ("/privacy-policy", "/privacy-policy/"),
-        ("/terms-of-service", "/terms-of-service/"),
-        ("/uses", "/uses/"),
+        "/pricing",
+        "/privacy-policy",
+        "/terms-of-service",
+        "/uses",
     ),
 )
-def test_marketing_routes_use_django_append_slash_redirects(client, path, expected):
+def test_marketing_routes_are_extensionless(client, path):
     response = client.get(f"{path}?utm_source=test")
 
-    assert response.status_code == 301
-    assert response["Location"] == f"{expected}?utm_source=test"
+    assert response.status_code == 200
+    assert client.get(f"{path}/").status_code == 404
 
 
 def test_use_cases_page_links_public_use_case_pages(client):
@@ -641,7 +703,7 @@ def test_use_case_article_schema_includes_main_entity(client):
     content = response.content.decode()
     schema = json.loads(_json_ld_payload(content))
 
-    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm/")
+    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm")
 
 
 @override_settings(SITE_URL="https://rowset.example")
@@ -649,7 +711,7 @@ def test_use_case_item_list_schema_uses_docs_urls(client):
     schema = use_case_item_list_schema(page_use_cases.get_use_case_pages())
 
     assert schema["@type"] == "ItemList"
-    assert schema["url"] == "https://rowset.example/use-cases/"
+    assert schema["url"] == "https://rowset.example/use-cases"
     assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/use-cases/")
 
 
@@ -662,7 +724,7 @@ def test_pricing_schema_uses_configured_public_url(client):
 
     assert schema["@type"] == "Product"
     assert schema["description"] == "Private MCP and REST datasets for trusted AI agents."
-    assert schema["url"] == "https://rowset.example/pricing/"
+    assert schema["url"] == "https://rowset.example/pricing"
     assert schema["image"].startswith("https://osig.app/g?")
     assert (
         "image_url=https%3A%2F%2Frowset.example%2Fstatic%2Fvendors%2Fimages%2Flogo.png"
