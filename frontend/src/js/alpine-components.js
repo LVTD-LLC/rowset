@@ -111,15 +111,38 @@
       sidebarCollapsed: false,
       sidebarWidth: 288,
       sidebarQuery: "",
+      theme: "light",
       resizeCleanup: null,
 
       init() {
         try {
+          const savedTheme = localStorage.getItem("theme");
+          this.theme =
+            savedTheme === "dark" || savedTheme === "light"
+              ? savedTheme
+              : window.matchMedia?.("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.classList.toggle("dark", this.theme === "dark");
           this.sidebarCollapsed = localStorage.getItem("rowsetSidebarCollapsed") === "true";
           const savedWidth = Number.parseInt(localStorage.getItem("rowsetSidebarWidth") || "", 10);
           if (Number.isFinite(savedWidth)) {
             this.sidebarWidth = Math.min(480, Math.max(240, savedWidth));
           }
+        } catch (_error) {
+          // Local storage is optional.
+        }
+      },
+
+      get themeToggleLabel() {
+        return this.theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+      },
+
+      toggleTheme() {
+        this.theme = this.theme === "dark" ? "light" : "dark";
+        document.documentElement.classList.toggle("dark", this.theme === "dark");
+        try {
+          localStorage.setItem("theme", this.theme);
         } catch (_error) {
           // Local storage is optional.
         }

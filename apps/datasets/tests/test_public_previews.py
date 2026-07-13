@@ -168,6 +168,8 @@ def test_public_dataset_does_not_expose_column_descriptions(client, profile):
     assert response.status_code == 200
     content = response.content.decode()
     assert "name" in content
+    assert 'x-data="rowColumnMenu"' in content
+    assert 'name="row_sort" value="col_0"' in content
     assert "Internal scoring context for trusted agents only." not in content
 
     row = dataset.rows.first()

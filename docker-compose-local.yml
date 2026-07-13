@@ -4,7 +4,7 @@ services:
   db:
     image: rasulkireev/custom-postgres:18
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     ports:
       - "${ROWSET_POSTGRES_PORT:-5432}:5432"
     environment:
