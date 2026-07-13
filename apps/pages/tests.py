@@ -149,9 +149,9 @@ def test_markdown_path_for_builds_route_siblings(path, expected):
 
 
 AI_READER_ACTION_LABELS = (
-    "Open in ChatGPT",
-    "Open in Claude",
-    "Copy prompt",
+    "Read with Claude",
+    "Read with ChatGPT",
+    "Copy Prompt for your AI Agent",
     "Copy Markdown",
 )
 
@@ -161,6 +161,9 @@ def _assert_ai_reader_menu(content, markdown_url):
 
     for label in AI_READER_ACTION_LABELS:
         assert content.count(label) == 1
+    assert [content.index(label) for label in AI_READER_ACTION_LABELS] == sorted(
+        content.index(label) for label in AI_READER_ACTION_LABELS
+    )
 
     assert f'data-markdown-url="{markdown_url}"' in content
     assert f'data-prompt="{prompt}"' in content

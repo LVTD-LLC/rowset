@@ -42,9 +42,9 @@ def test_ai_reader_menu_is_absent_from_blog_index(client, blog_posts_dir):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Open in ChatGPT" not in content
-    assert "Open in Claude" not in content
-    assert "Copy prompt" not in content
+    assert "Read with Claude" not in content
+    assert "Read with ChatGPT" not in content
+    assert "Copy Prompt for your AI Agent" not in content
     assert "Copy Markdown" not in content
 
 
@@ -65,8 +65,17 @@ def test_ai_reader_menu_renders_for_blog_post(client, blog_posts_dir):
     content = response.content.decode()
     markdown_url = "https://rowset.example/blog/agent-managed-datasets.md"
     prompt = f"Read this Rowset page and help me understand or use it: {markdown_url}"
-    for label in ("Open in ChatGPT", "Open in Claude", "Copy prompt", "Copy Markdown"):
+    action_labels = (
+        "Read with Claude",
+        "Read with ChatGPT",
+        "Copy Prompt for your AI Agent",
+        "Copy Markdown",
+    )
+    for label in action_labels:
         assert content.count(label) == 1
+    assert [content.index(label) for label in action_labels] == sorted(
+        content.index(label) for label in action_labels
+    )
 
     assert f'data-markdown-url="{markdown_url}"' in content
     assert f'data-prompt="{prompt}"' in content
