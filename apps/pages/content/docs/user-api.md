@@ -57,7 +57,7 @@ ends, authenticated API requests return HTTP `402` with a stable upgrade respons
 {
   "code": "TRIAL_EXPIRED",
   "message": "Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP.",
-  "upgrade_url": "https://rowset.com/pricing/",
+  "upgrade_url": "https://rowset.com/pricing",
   "trial_ended_at": "2026-07-20T10:30:00Z"
 }
 ```

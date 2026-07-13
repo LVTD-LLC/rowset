@@ -123,6 +123,15 @@ def test_docs_index_markdown_reuses_rendered_quickstart(client):
     assert "{{" not in content
 
 
+def test_user_api_markdown_uses_canonical_trial_upgrade_url(client):
+    response = client.get("/docs/user-api.md")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "https://rowset.com/pricing" in content
+    assert "https://rowset.com/pricing/" not in content
+
+
 @override_settings(SITE_URL="https://rowset.example")
 def test_llms_txt_is_an_app_use_first_complete_content_index(client):
     assert resolve(reverse("llms_txt")).func.__module__ == "apps.pages.views"
