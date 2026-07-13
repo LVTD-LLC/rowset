@@ -1,4 +1,5 @@
 {% extends "base_landing.html" %}
+{% load static %}
 {% block meta %}
     <title>Rowset — the backend for AI agent workflows</title>
     <meta name="description" content="Give AI agents one free-form backend for structured data. Create, search, update, export, and share datasets through MCP, REST, or CLI." />
@@ -21,6 +22,26 @@
                     <a href="{% url 'docs_page' slug='quickstart' %}" class="fb-focus inline-flex min-h-12 items-center justify-center border border-white/40 px-4 py-3 font-semibold hover:bg-white/10">See the quickstart</a>
                 </div>
             </div>
+        </div>
+    </section>
+    <section class="border-b border-slate-950/10 bg-[#f5f5ff] text-slate-950 dark:border-white/15 dark:bg-neutral-950 dark:text-white" aria-labelledby="product-screenshot-heading">
+        <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+            <div class="grid gap-6 lg:grid-cols-[3fr_2fr] lg:items-end">
+                <div>
+                    <p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Inside Rowset</p>
+                    <h2 id="product-screenshot-heading" class="mt-6 max-w-[18ch] text-5xl font-semibold tracking-tight text-balance sm:text-6xl">See what your agents changed.</h2>
+                </div>
+                <p class="max-w-[42ch] text-xl text-pretty text-slate-600 dark:text-neutral-300">Review projects, recent datasets, row counts, and public previews from one calm control surface.</p>
+            </div>
+            <figure class="mt-10 overflow-hidden border-2 border-slate-950 bg-slate-950 p-1 dark:border-white sm:p-2">
+                <img src="{% static 'vendors/images/landing/product-dashboard.webp' %}"
+                     alt="Rowset dashboard showing projects and recently updated datasets"
+                     width="1585"
+                     height="991"
+                     loading="lazy"
+                     decoding="async"
+                     class="block h-auto w-full bg-slate-950" />
+            </figure>
         </div>
     </section>
     <section class="bg-[#ffdd3d] text-[#1313a4]">

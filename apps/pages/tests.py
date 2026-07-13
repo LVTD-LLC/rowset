@@ -11,9 +11,11 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.exceptions import ImproperlyConfigured
+from django.templatetags.static import static
 from django.test import override_settings
 from django.urls import reverse
 from django.utils.html import strip_tags
+from PIL import Image
 
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
@@ -145,6 +147,23 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert '"@type": "Organization"' in content
     assert "LVTD" not in content.partition("<title>")[2].partition("</title>")[0]
     assert f"&copy; {time.localtime().tm_year} Rowset" in content
+
+
+def test_landing_page_shows_product_dashboard_screenshot(client):
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    screenshot_url = static("vendors/images/landing/product-dashboard.webp")
+    assert f'src="{screenshot_url}"' in content
+    assert 'alt="Rowset dashboard showing projects and recently updated datasets"' in content
+    assert 'width="1585"' in content
+    assert 'height="991"' in content
+
+    screenshot_path = settings.BASE_DIR / "frontend/vendors/images/landing/product-dashboard.webp"
+    with Image.open(screenshot_path) as screenshot:
+        assert screenshot.format == "WEBP"
+        assert screenshot.size == (1585, 991)
 
 
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
