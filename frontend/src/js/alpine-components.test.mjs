@@ -14,6 +14,7 @@ function loadCopyPanel() {
         components.set(name, factory);
       },
     },
+    CustomEvent,
     document: {
       addEventListener(name, callback) {
         if (name === "alpine:init") {
@@ -36,10 +37,19 @@ function loadCopyPanel() {
 async function runCopy({ copied }) {
   const { component, rowset } = loadCopyPanel();
   const dispatched = [];
-  component.$el = {
-    dataset: { copySuccessEvent: "agent-setup-prompt-copied" },
+  const parent = new EventTarget();
+  const element = new EventTarget();
+  element.dataset = { copySuccessEvent: "agent-setup-prompt-copied" };
+  const dispatchOnElement = element.dispatchEvent.bind(element);
+  element.dispatchEvent = (event) => {
+    const result = dispatchOnElement(event);
+    if (event.bubbles) {
+      parent.dispatchEvent(event);
+    }
+    return result;
   };
-  component.$dispatch = (...args) => dispatched.push(args);
+  parent.addEventListener("agent-setup-prompt-copied", (event) => dispatched.push(event));
+  component.$el = element;
   component.$refs = {};
   component.copyText = async () => "setup prompt";
   component.flashLabel = () => {};
@@ -54,9 +64,10 @@ test("successful clipboard copy dispatches prompt completion", async () => {
   const { component, dispatched } = await runCopy({ copied: true });
 
   assert.equal(dispatched.length, 1);
-  assert.equal(dispatched[0][0], "agent-setup-prompt-copied");
-  assert.equal(dispatched[0][1], null);
-  assert.deepEqual({ ...dispatched[0][2] }, { composed: false, cancelable: false });
+  assert.equal(dispatched[0].type, "agent-setup-prompt-copied");
+  assert.equal(dispatched[0].bubbles, true);
+  assert.equal(dispatched[0].composed, false);
+  assert.equal(dispatched[0].cancelable, false);
   assert.equal(component.busy, false);
 });
 

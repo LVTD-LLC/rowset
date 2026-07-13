@@ -314,7 +314,13 @@
           return;
         }
 
-        this.$dispatch(eventName, null, { composed: false, cancelable: false });
+        this.$el.dispatchEvent(
+          new CustomEvent(eventName, {
+            bubbles: true,
+            composed: false,
+            cancelable: false,
+          }),
+        );
       },
     }));
 
