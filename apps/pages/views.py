@@ -1,7 +1,7 @@
 from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.generic import TemplateView
@@ -25,6 +25,7 @@ from apps.pages.blog import (
     json_ld as blog_json_ld,
 )
 from apps.pages.content import render_content_page
+from apps.pages.llms import render_llms_txt
 from apps.pages.public_markdown import (
     build_ai_reader_context,
     markdown_response,
@@ -183,6 +184,12 @@ def public_page_markdown(request, page_slug):
 
 def content_page_markdown(request, section_slug, page_slug):
     return markdown_response(render_content_markdown(section_slug, page_slug))
+
+
+def llms_txt(request):
+    response = HttpResponse(render_llms_txt(), content_type="text/plain; charset=utf-8")
+    response["Cache-Control"] = "public, max-age=300"
+    return response
 
 
 def blog_posts_view(request):

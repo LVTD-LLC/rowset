@@ -14,12 +14,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
-from django.urls import reverse
+from django.urls import resolve, reverse
 from django.utils.html import strip_tags
 
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
+from apps.pages.content import get_content_section
+from apps.pages.public_markdown import markdown_path_for
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
@@ -119,6 +121,52 @@ def test_docs_index_markdown_reuses_rendered_quickstart(client):
     assert "# Start with your first agent dataset" in content
     assert "https://rowset.example/mcp/" in content
     assert "{{" not in content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_llms_txt_is_an_app_use_first_complete_content_index(client):
+    assert resolve(reverse("llms_txt")).func.__module__ == "apps.pages.views"
+
+    response = client.get(reverse("llms_txt"))
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/plain; charset=utf-8"
+    assert response["Cache-Control"] == "public, max-age=300"
+    content = response.content.decode()
+
+    docs = get_content_section("docs")["pages"]
+    use_cases = get_content_section("use-cases")["pages"]
+    quickstart_url = "https://rowset.example/docs/quickstart.md"
+
+    assert docs[0]["slug"] == "quickstart"
+    assert content.index(quickstart_url) < min(
+        content.index(f"https://rowset.example{markdown_path_for(page['url'])}")
+        for page in docs
+        if page["slug"] != "quickstart"
+    )
+    for page in docs:
+        assert page["description"]
+        markdown_url = f"https://rowset.example{markdown_path_for(page['url'])}"
+        assert f"[{page['title']}]({markdown_url})" in content
+        assert page["description"] in content
+
+    for page in use_cases:
+        markdown_url = f"https://rowset.example{markdown_path_for(page['url'])}"
+        assert f"[{page['title']}]({markdown_url})" in content
+
+    assert "Use hosted MCP first" in content
+    assert "Use REST second" in content
+    assert "Do not use browser automation" in content
+    assert "human-facing, read-only" in content
+    assert "not authentication" in content
+    assert "https://rowset.example/mcp/" in content
+    assert "https://rowset.example/api" in content
+    assert "https://rowset.example/api/docs" in content
+    assert "https://rowset.example/SKILL.md" in content
+    assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
+    assert "https://rowset.example/skills/rowset-use-cases/SKILL.md" in content
+    assert "MCP tools:" not in content
+    assert "REST paths:" not in content
 
 
 @pytest.mark.parametrize(

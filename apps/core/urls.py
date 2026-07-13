@@ -22,7 +22,6 @@ urlpatterns = [
         views.agent_instructions_rowset_use_cases,
         name="agent_instructions_rowset_use_cases",
     ),
-    path("llms.txt", views.llms_txt, name="llms_txt"),
     path(
         "settings/agent-api-keys/",
         views.create_agent_api_key_view,
