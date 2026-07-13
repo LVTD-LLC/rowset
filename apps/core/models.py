@@ -14,6 +14,8 @@ logger = get_rowset_logger(__name__)
 class Profile(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     key = models.CharField(max_length=30, unique=True, default=generate_random_key)
+    trial_started_at = models.DateTimeField(null=True, blank=True)
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
     agent_setup_prompt_dismissed = models.BooleanField(default=False)
     choice_colorization_enabled = models.BooleanField(
         default=False,
@@ -39,6 +41,21 @@ class Profile(BaseModel):
         default=ProfileStates.STRANGER,
         help_text="The current state of the user's profile",
     )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(trial_started_at__isnull=True, trial_ends_at__isnull=True)
+                    | models.Q(
+                        trial_started_at__isnull=False,
+                        trial_ends_at__isnull=False,
+                        trial_ends_at__gte=models.F("trial_started_at"),
+                    )
+                ),
+                name="profile_trial_dates_both_set_or_empty",
+            ),
+        ]
 
     def track_state_change(self, to_state, metadata=None, source_function=None):
         async_task(

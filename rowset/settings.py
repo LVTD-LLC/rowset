@@ -88,6 +88,7 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 
 SITE_URL = env("SITE_URL")
+TRIAL_DURATION_DAYS = 7
 SITE_HOST = SITE_URL.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
 BLOG_POSTS_DIR = BASE_DIR / "apps" / "pages" / "content" / "blog"
 

@@ -42,6 +42,7 @@ from apps.core.services import (
     get_or_create_profile_for_user,
 )
 from apps.core.stripe_webhooks import EVENT_HANDLERS
+from apps.core.trials import get_trial_status
 from apps.datasets.views import DATASET_VIEW_MODE_GROUPED, DatasetListView
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
@@ -140,7 +141,8 @@ def user_settings_context(
     return {
         "email_verified": email_address is None or email_address.verified,
         "resend_confirmation_url": reverse("resend_confirmation"),
-        "has_subscription": profile.has_active_subscription,
+        "trial_status": get_trial_status(profile),
+        "trial_ends_at": profile.trial_ends_at,
         "passkey_count": Authenticator.objects.filter(
             user=user,
             type=Authenticator.Type.WEBAUTHN,

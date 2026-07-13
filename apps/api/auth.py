@@ -4,6 +4,7 @@ from ninja.security import APIKeyQuery
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import Profile
 from apps.core.services import require_agent_api_key_access, resolve_api_key_profile
+from apps.core.trials import activate_or_require_trial_access
 from rowset.logging_context import bind_actor_context
 from rowset.utils import get_rowset_logger
 
@@ -44,6 +45,7 @@ class APIKeyAuth(APIKeyQuery):
             )
             return None
         profile, agent_api_key = resolved
+        activate_or_require_trial_access(profile)
         try:
             require_agent_api_key_access(agent_api_key, self.required_access_level)
         except PermissionError:

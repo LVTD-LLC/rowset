@@ -2750,7 +2750,7 @@ def test_dataset_restore_rejects_other_users_dataset(client, django_user_model, 
     assert dataset.archived_at is not None
 
 
-def test_dataset_restore_rejects_free_account_over_active_dataset_limit(auth_client, profile):
+def test_trial_account_can_restore_third_active_dataset(auth_client, profile):
     create_ready_dataset(profile)
     create_ready_dataset(profile)
     archived_dataset = create_ready_dataset(profile)
@@ -2762,20 +2762,18 @@ def test_dataset_restore_rejects_free_account_over_active_dataset_limit(auth_cli
     assert response.status_code == 302
     assert response.url == archived_dataset.get_absolute_url()
     archived_dataset.refresh_from_db()
-    assert archived_dataset.archived_at is not None
+    assert archived_dataset.archived_at is None
     assert (
         Dataset.objects.filter(
             profile=profile,
             archived_at__isnull=True,
         ).count()
-        == 2
+        == 3
     )
     flash_messages = list(get_messages(response.wsgi_request))
     assert len(flash_messages) == 1
-    assert flash_messages[0].level == message_constants.ERROR
-    assert str(flash_messages[0]) == (
-        "Free accounts can have at most 2 active datasets. Upgrade for unlimited datasets."
-    )
+    assert flash_messages[0].level == message_constants.SUCCESS
+    assert str(flash_messages[0]) == "Dataset restored."
 
 
 def test_dataset_delete_removes_owned_dataset(auth_client, profile):
@@ -6778,7 +6776,7 @@ def test_create_profile_dataset_row_tracks_first_row_mutation(profile, monkeypat
     assert "Ship" not in str(calls)
 
 
-def test_free_account_rejects_51st_dataset_row(profile):
+def test_trial_account_can_create_51st_dataset_row(profile):
     result = create_profile_dataset(
         profile,
         name="Free row capped dataset",
@@ -6786,16 +6784,15 @@ def test_free_account_rejects_51st_dataset_row(profile):
         rows=[{"name": str(index)} for index in range(50)],
     )
 
-    with pytest.raises(DatasetServiceError, match="at most 50 rows per dataset") as exc_info:
-        create_profile_dataset_row(
-            profile,
-            result["dataset"]["key"],
-            {"name": "51"},
-        )
+    row_result = create_profile_dataset_row(
+        profile,
+        result["dataset"]["key"],
+        {"name": "51"},
+    )
 
     dataset = Dataset.objects.get(key=result["dataset"]["key"])
-    assert exc_info.value.status_code == 403
-    assert dataset.row_count == 50
+    assert row_result["message"] == "Row created."
+    assert dataset.row_count == 51
 
 
 def test_paid_account_can_create_51st_dataset_row(profile):

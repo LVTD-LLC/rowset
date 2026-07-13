@@ -51,6 +51,9 @@ def test_api_key_provider_accepts_named_agent_api_key(profile):
     assert access_token.claims["agent_api_key_access_level"] == AgentApiKeyAccessLevel.ADMIN
     credential.agent_api_key.refresh_from_db()
     assert credential.agent_api_key.last_used_at is not None
+    profile.refresh_from_db()
+    assert profile.trial_started_at is None
+    assert profile.trial_ends_at is None
 
 
 def test_api_key_provider_rejects_invalid_key():
@@ -101,6 +104,9 @@ def test_authenticate_profile_accepts_explicit_named_agent_api_key(profile):
 
     assert authenticated_profile == profile
     assert getattr(authenticated_profile, AGENT_API_KEY_PROFILE_ATTR) == credential.agent_api_key
+    profile.refresh_from_db()
+    assert profile.trial_started_at is not None
+    assert profile.trial_ends_at is not None
 
 
 def test_authenticate_profile_attaches_named_agent_api_key_from_access_token(

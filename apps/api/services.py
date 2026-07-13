@@ -45,6 +45,7 @@ from apps.core.analytics import (
     track_activation_event,
 )
 from apps.core.models import AgentApiKey, Profile
+from apps.core.trials import get_trial_status
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType
 from apps.datasets.constants import (
     MAX_DATASET_DESCRIPTION_LENGTH,
@@ -130,8 +131,6 @@ PROFILE_ROW_SEARCH_SORTS = {
     PROFILE_ROW_SEARCH_SORT_DATASET,
     PROFILE_ROW_SEARCH_SORT_ROW_NUMBER,
 }
-FREE_ACCOUNT_DATASET_LIMIT = 2
-FREE_ACCOUNT_ROW_LIMIT = 50
 logger = get_rowset_logger(__name__)
 
 
@@ -246,48 +245,6 @@ def _visible_profile_dataset_queryset(profile: Profile):
     return profile.datasets.filter(archived_at__isnull=True)
 
 
-def _lock_profile_for_quota(profile: Profile) -> Profile:
-    return Profile.objects.select_for_update().select_related("user").get(pk=profile.pk)
-
-
-def _enforce_dataset_create_quota(profile: Profile, initial_row_count: int) -> None:
-    if profile.has_active_subscription:
-        return
-
-    active_dataset_count = _visible_profile_dataset_queryset(profile).count()
-    if active_dataset_count >= FREE_ACCOUNT_DATASET_LIMIT:
-        raise DatasetServiceError(
-            403,
-            (
-                "Free accounts can have at most "
-                f"{FREE_ACCOUNT_DATASET_LIMIT} active datasets. Upgrade for unlimited datasets."
-            ),
-        )
-
-    if initial_row_count > FREE_ACCOUNT_ROW_LIMIT:
-        raise DatasetServiceError(
-            403,
-            (
-                "Free accounts can create datasets with at most "
-                f"{FREE_ACCOUNT_ROW_LIMIT} rows. Upgrade for unlimited rows."
-            ),
-        )
-
-
-def _enforce_dataset_row_create_quota(profile: Profile, dataset: Dataset) -> None:
-    if profile.has_active_subscription:
-        return
-
-    if dataset.row_count >= FREE_ACCOUNT_ROW_LIMIT:
-        raise DatasetServiceError(
-            403,
-            (
-                "Free accounts can store at most "
-                f"{FREE_ACCOUNT_ROW_LIMIT} rows per dataset. Upgrade for unlimited rows."
-            ),
-        )
-
-
 def _enqueue_dataset_vector_backfill(dataset_id: int) -> None:
     enqueue_vector_task("apps.datasets.tasks.backfill_dataset_vectors_task", dataset_id)
 
@@ -355,6 +312,9 @@ def serialize_user_info(profile: Profile) -> dict:
             "id": profile.id,
             "state": profile.state,
             "has_active_subscription": profile.has_active_subscription,
+            "trial_status": get_trial_status(profile),
+            "trial_started_at": profile.trial_started_at,
+            "trial_ends_at": profile.trial_ends_at,
         },
     }
 
@@ -2422,8 +2382,6 @@ def create_profile_dataset(
         row_payloads.append((row_number, index_value, serialized_data))
 
     with transaction.atomic():
-        quota_profile = _lock_profile_for_quota(profile)
-        _enforce_dataset_create_quota(quota_profile, len(row_payloads))
         dataset = Dataset.objects.create(
             profile=profile,
             project=project,
@@ -3264,7 +3222,6 @@ def restore_profile_dataset(
 ) -> dict:
     """Restore an archived dataset to normal dataset and project listings."""
     with transaction.atomic():
-        quota_profile = _lock_profile_for_quota(profile)
         dataset = _get_profile_dataset_from_queryset(
             Dataset.objects.select_for_update(),
             profile,
@@ -3273,7 +3230,6 @@ def restore_profile_dataset(
 
         message = "Dataset was not archived."
         if dataset.archived_at is not None:
-            _enforce_dataset_create_quota(quota_profile, dataset.row_count)
             message = "Dataset restored."
             dataset.archived_at = None
             dataset.archived_by_agent_api_key = None
@@ -4546,9 +4502,7 @@ def create_profile_dataset_row(
     agent_api_key: AgentApiKey | None = None,
 ) -> dict:
     with transaction.atomic():
-        quota_profile = _lock_profile_for_quota(profile)
         dataset = get_active_profile_dataset_for_update(profile, dataset_key)
-        _enforce_dataset_row_create_quota(quota_profile, dataset)
         return create_api_dataset_row(
             profile,
             dataset,

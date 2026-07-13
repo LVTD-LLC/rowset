@@ -73,6 +73,7 @@ from apps.core.services import (
     serialize_feedback_submission_result,
     submit_profile_feedback,
 )
+from apps.core.trials import TrialExpiredError, activate_or_require_trial_access
 from apps.datasets.types import ColumnTypeSpec, DatasetRowInput, JsonObject
 from apps.mcp_server.auth import mcp_auth
 from rowset.mcp_logging import RowsetMCPLoggingMiddleware
@@ -135,6 +136,7 @@ def _agent_actor_kwargs(profile: Profile) -> dict[str, AgentApiKey]:
 def _authenticate_profile(api_key: str | None = None) -> Profile:
     token_profile = _get_access_token_profile()
     if token_profile is not None:
+        activate_or_require_trial_access(token_profile)
         return token_profile
 
     key = (api_key or "").strip() or _get_request_api_key()
@@ -149,6 +151,7 @@ def _authenticate_profile(api_key: str | None = None) -> Profile:
         logger.warning("[MCP] Invalid API key")
         raise PermissionError("Invalid Rowset API key.")
     profile, agent_api_key = resolved
+    activate_or_require_trial_access(profile)
     return _attach_agent_api_key(profile, agent_api_key)
 
 
@@ -372,6 +375,20 @@ def _mcp_authenticated_profile(
             required_access_level,
         )
         return profile
+    except TrialExpiredError as exc:
+        raise _mcp_tool_error(
+            _mcp_error_payload(
+                code=exc.code,
+                message=str(exc),
+                retryable=False,
+                suggested_action=f"Upgrade at {exc.upgrade_url}.",
+                details={
+                    "http_status": 402,
+                    "trial_ended_at": exc.trial_ended_at.isoformat(),
+                    "upgrade_url": exc.upgrade_url,
+                },
+            )
+        ) from exc
     except PermissionError as exc:
         raise _permission_error_to_tool_error(exc) from exc
 

@@ -139,6 +139,7 @@ from apps.core.services import (
     serialize_feedback,
     submit_profile_feedback,
 )
+from apps.core.trials import TrialExpiredError
 from apps.datasets.services import (
     DATASET_ASSET_CACHE_CONTROL,
     iter_export_row_data,
@@ -161,6 +162,20 @@ DATASET_EXPORT_FORMATS = {
         rows_to_xlsx_bytes,
     ),
 }
+
+
+@api.exception_handler(TrialExpiredError)
+def trial_expired_error_handler(request: HttpRequest, exc: TrialExpiredError):
+    return api.create_response(
+        request,
+        {
+            "code": exc.code,
+            "message": str(exc),
+            "upgrade_url": exc.upgrade_url,
+            "trial_ended_at": exc.trial_ended_at.isoformat(),
+        },
+        status=402,
+    )
 
 
 def _raise_http_error(exc: DatasetServiceError) -> NoReturn:

@@ -186,6 +186,51 @@ def test_settings_lists_active_agent_api_keys_without_raw_secret(auth_client, pr
     assert f"{revoked_credential.agent_api_key.key_prefix}..." not in content
 
 
+def test_settings_shows_trial_not_started(auth_client):
+    response = auth_client.get(reverse("settings"))
+
+    content = response.content.decode()
+    assert response.context["trial_status"] == "not_started"
+    assert "Your 7-day trial has not started" in content
+    assert "first authenticated API or MCP action" in content
+
+
+def test_settings_shows_active_trial_deadline(auth_client, profile):
+    profile.trial_started_at = timezone.now() - timedelta(days=1)
+    profile.trial_ends_at = timezone.now() + timedelta(days=6)
+    profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
+
+    response = auth_client.get(reverse("settings"))
+
+    content = response.content.decode()
+    assert response.context["trial_status"] == "active"
+    assert "Your trial is active" in content
+    assert profile.trial_ends_at.strftime("%b %-d, %Y") in content
+
+
+def test_settings_shows_expired_trial_upgrade(auth_client, profile):
+    profile.trial_started_at = timezone.now() - timedelta(days=8)
+    profile.trial_ends_at = timezone.now() - timedelta(days=1)
+    profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
+
+    response = auth_client.get(reverse("settings"))
+
+    content = response.content.decode()
+    assert response.context["trial_status"] == "expired"
+    assert "Your trial has ended" in content
+    assert "Upgrade to restore API, CLI, and MCP access" in content
+
+
+def test_settings_shows_active_subscription(auth_client, profile):
+    profile.state = "subscribed"
+    profile.save(update_fields=["state", "updated_at"])
+
+    response = auth_client.get(reverse("settings"))
+
+    assert response.context["trial_status"] == "subscribed"
+    assert "Pro subscription active" in response.content.decode()
+
+
 @override_settings(SITE_URL="https://rowset.example")
 def test_agent_api_key_setup_prompt_endpoint_returns_selected_key_prompt(auth_client, profile):
     credential = create_agent_api_key(profile, "Reporting Agent")

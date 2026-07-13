@@ -639,6 +639,33 @@ func TestRawRequestAllowsAbsoluteURLsWithoutAuth(t *testing.T) {
 	}
 }
 
+func TestTrialExpiredErrorIncludesUpgradeGuidance(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusPaymentRequired)
+		_, _ = w.Write([]byte(`{"code":"TRIAL_EXPIRED","message":"Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP.","upgrade_url":"https://rowset.example/pricing/"}`))
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("ROWSET_API_BASE", server.URL+"/api/")
+	t.Setenv("ROWSET_API_KEY", "test-key")
+
+	err := Run(context.Background(), IO{
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+		Stdin:  strings.NewReader(""),
+	}, []string{"user", "info"})
+
+	if err == nil {
+		t.Fatal("expected trial expiration to fail")
+	}
+	if !strings.Contains(err.Error(), "TRIAL_EXPIRED") {
+		t.Fatalf("expected stable error code, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "https://rowset.example/pricing/") {
+		t.Fatalf("expected pricing upgrade link, got %v", err)
+	}
+}
+
 func TestGlobalFlagsOverrideEnvironment(t *testing.T) {
 	t.Setenv("ROWSET_API_BASE", "https://wrong.example/api/")
 	t.Setenv("ROWSET_API_KEY", "wrong-key")

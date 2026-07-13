@@ -1,9 +1,11 @@
 import json
+from datetime import timedelta
 from types import SimpleNamespace
 
 import anyio
 import pytest
 from django.test import override_settings
+from django.utils import timezone
 from fastmcp import Client
 
 from apps.api.services import DatasetServiceError
@@ -125,6 +127,8 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
         user=user,
         state="signed_up",
         has_active_subscription=False,
+        trial_started_at=None,
+        trial_ends_at=None,
         datasets=datasets,
     )
     if agent_api_key_access_level is not None:
@@ -176,6 +180,40 @@ def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
             "apps.mcp_server.server.get_user_info",
         )
     ]
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_expired_trial_returns_structured_mcp_upgrade_error(monkeypatch):
+    ended_at = timezone.now() - timedelta(seconds=1)
+
+    async def run():
+        from apps.core.trials import TrialExpiredError
+
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda api_key=None: (_ for _ in ()).throw(TrialExpiredError(ended_at)),
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool("get_user_info", {})
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload == {
+            "code": "TRIAL_EXPIRED",
+            "message": (
+                "Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP."
+            ),
+            "retryable": False,
+            "suggested_action": "Upgrade at https://rowset.example/pricing/.",
+            "details": {
+                "http_status": 402,
+                "trial_ended_at": ended_at.isoformat(),
+                "upgrade_url": "https://rowset.example/pricing/",
+            },
+        }
+
+    anyio.run(run)
 
 
 def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
