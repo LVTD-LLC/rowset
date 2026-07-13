@@ -949,6 +949,28 @@ def test_dataset_detail_orders_row_cells_by_headers(auth_client, profile):
     assert customer_id_position < name_position < plan_position
 
 
+def test_dataset_detail_renders_headers_for_sample_rows(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Sample customers",
+        headers=["sample_customer_id", "sample_plan"],
+        preview_rows=[{"sample_customer_id": "C-1001", "sample_plan": "Scale"}],
+        index_column="sample_customer_id",
+        row_count=0,
+    )
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["rows_heading"] == "Sample rows"
+    assert response.context["row_show_column_controls"] is False
+    assert re.search(r'<th scope="col">\s*sample_customer_id\s*</th>', content)
+    assert re.search(r'<th scope="col">\s*sample_plan\s*</th>', content)
+    assert "C-1001" in content
+    assert "Scale" in content
+
+
 def test_dataset_detail_links_rows_and_truncates_cells(auth_client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.first()
