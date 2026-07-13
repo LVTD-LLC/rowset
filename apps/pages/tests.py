@@ -1,5 +1,6 @@
 import json
 import re
+import struct
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -330,6 +331,34 @@ def test_landing_page_redirects_authenticated_users_to_home(client):
 
     assert response.status_code == 302
     assert response["Location"] == reverse("home")
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    "route_name",
+    ("landing", "pricing", "privacy_policy", "terms_of_service", "uses"),
+)
+def test_public_pages_use_the_hosted_rowset_social_card(client, route_name):
+    response = client.get(reverse(route_name))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    image_url = "https://rowset.example/static/vendors/images/rowset-social-card.png"
+    assert content.count(f'property="og:image" content="{image_url}"') == 1
+    assert content.count(f'name="twitter:image" content="{image_url}"') == 1
+    assert '<meta property="og:image:width" content="1200" />' in content
+    assert '<meta property="og:image:height" content="630" />' in content
+    assert '<meta name="twitter:card" content="summary_large_image" />' in content
+    assert "osig.app/g" not in content
+
+
+def test_rowset_social_card_has_open_graph_dimensions():
+    image_path = settings.BASE_DIR / "frontend/vendors/images/rowset-social-card.png"
+    image_bytes = image_path.read_bytes()
+
+    assert image_bytes[:8] == b"\x89PNG\r\n\x1a\n"
+    width, height = struct.unpack(">II", image_bytes[16:24])
+    assert (width, height) == (1200, 630)
 
 
 @override_settings(SITE_URL="https://testserver")
@@ -665,10 +694,8 @@ def test_pricing_schema_uses_configured_public_url(client):
     assert schema["@type"] == "Product"
     assert schema["description"] == "Private MCP and REST datasets for trusted AI agents."
     assert schema["url"] == "https://rowset.example/pricing/"
-    assert schema["image"].startswith("https://osig.app/g?")
-    assert (
-        "image_url=https%3A%2F%2Frowset.example%2Fstatic%2Fvendors%2Fimages%2Flogo.png"
-        in schema["image"]
+    assert schema["image"] == (
+        "https://rowset.example/static/vendors/images/rowset-social-card.png"
     )
 
 

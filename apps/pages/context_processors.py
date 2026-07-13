@@ -1,6 +1,16 @@
 from django.db import DatabaseError
+from django.templatetags.static import static
 
 from apps.pages.models import ReferrerBanner
+from rowset.utils import build_absolute_public_url
+
+
+def social_metadata(request):
+    return {
+        "rowset_social_image_url": build_absolute_public_url(
+            static("vendors/images/rowset-social-card.png")
+        )
+    }
 
 
 def _get_active_black_friday_banner():
