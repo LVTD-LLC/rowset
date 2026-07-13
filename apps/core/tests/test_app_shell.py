@@ -52,6 +52,9 @@ def test_authenticated_app_shell_renders_workspace_tree_and_utility_navigation(
     assert "data-command-palette-trigger" in content
     assert "Search everything" in content
     assert "lg:grid-cols-[var(--app-sidebar-width,18rem)_minmax(0,1fr)]" in content
+    assert content.count('@click="toggleTheme"') == 2
+    assert content.count(':aria-label="themeToggleLabel"') == 2
+    assert 'localStorage.getItem("theme")' in content
     assert "site_header.html" not in content
     assert "ui-picker.js" not in content
     assert "data-uidotsh-pick" not in content

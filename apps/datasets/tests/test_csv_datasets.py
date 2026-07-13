@@ -949,6 +949,28 @@ def test_dataset_detail_orders_row_cells_by_headers(auth_client, profile):
     assert customer_id_position < name_position < plan_position
 
 
+def test_dataset_detail_renders_headers_for_sample_rows(auth_client, profile):
+    dataset = Dataset.objects.create(
+        profile=profile,
+        name="Sample customers",
+        headers=["sample_customer_id", "sample_plan"],
+        preview_rows=[{"sample_customer_id": "C-1001", "sample_plan": "Scale"}],
+        index_column="sample_customer_id",
+        row_count=0,
+    )
+
+    response = auth_client.get(dataset.get_absolute_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["rows_heading"] == "Sample rows"
+    assert response.context["row_show_column_controls"] is False
+    assert re.search(r'<th scope="col">\s*sample_customer_id\s*</th>', content)
+    assert re.search(r'<th scope="col">\s*sample_plan\s*</th>', content)
+    assert "C-1001" in content
+    assert "Scale" in content
+
+
 def test_dataset_detail_links_rows_and_truncates_cells(auth_client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.first()
@@ -964,19 +986,19 @@ def test_dataset_detail_links_rows_and_truncates_cells(auth_client, profile):
     assert 'aria-hidden="true" tabindex="-1"' in content
 
 
-def test_dataset_detail_links_row_create_and_bulk_actions(auth_client, profile):
+def test_dataset_detail_omits_row_mutation_chrome(auth_client, profile):
     dataset = create_ready_dataset(profile)
-    row = dataset.rows.first()
 
     response = auth_client.get(dataset.get_absolute_url())
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert reverse("dataset_row_create", args=[dataset.key]) in content
-    assert reverse("dataset_rows_bulk_action", args=[dataset.key]) in content
-    assert "Delete selected rows" in content
-    assert f'value="{row.id}"' in content
-    assert 'x-data="rowBulkActions"' in content
+    assert reverse("dataset_row_create", args=[dataset.key]) not in content
+    assert reverse("dataset_rows_bulk_action", args=[dataset.key]) not in content
+    assert "Delete selected rows" not in content
+    assert 'x-data="rowBulkActions"' not in content
+    assert 'id="row-search"' not in content
+    assert 'id="row-sort"' not in content
 
 
 def test_dataset_detail_keeps_choice_values_plain_when_colorize_is_disabled(
@@ -1444,7 +1466,7 @@ def test_dataset_detail_paginates_rows_without_public_preview(auth_client, profi
 
     assert response.status_code == 200
     assert "Public preview:" not in content
-    assert f"Showing 1-{DATASET_DETAIL_ROW_PAGE_SIZE} of {total_rows} rows" in content
+    assert f"Showing 1-{DATASET_DETAIL_ROW_PAGE_SIZE} of {total_rows} rows" not in content
     assert "Page 1 of 2" in content
     assert 'href="?view=compact&amp;page=2"' in content
     assert "Detail row 001" in content
@@ -1472,7 +1494,13 @@ def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
 
     filter_response = auth_client.get(
         dataset.get_absolute_url(),
-        {"filter_2": "10", "filter_3": "true"},
+        {
+            "row_q": "a",
+            "row_sort": "col_0",
+            "row_dir": "desc",
+            "filter_2": "10",
+            "filter_3": "true",
+        },
     )
     filter_content = filter_response.content.decode()
 
@@ -1481,7 +1509,11 @@ def test_dataset_detail_filters_and_sorts_rows(auth_client, profile):
     assert "Ada Lovelace" in filter_content
     assert "Katherine Johnson" in filter_content
     assert "Grace Hopper" not in filter_content
-    assert ">Clear</a>" in filter_content
+    assert ">Clear</button>" in filter_content
+    assert 'name="row_q" value="a"' in filter_content
+    assert 'name="row_sort" value="col_0"' in filter_content
+    assert 'name="row_dir" value="desc"' in filter_content
+    assert 'name="filter_3" value="true"' in filter_content
     assert "Column filters" not in filter_content
 
     sort_response = auth_client.get(
