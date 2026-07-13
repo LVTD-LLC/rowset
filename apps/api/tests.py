@@ -94,7 +94,7 @@ def test_expired_trial_returns_soft_upgrade_error(client, django_user_model):
         "message": (
             "Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP."
         ),
-        "upgrade_url": "https://rowset.example/pricing/",
+        "upgrade_url": "https://rowset.example/pricing",
         "trial_ended_at": ended_at.isoformat(),
     }
 
@@ -837,7 +837,7 @@ def test_expired_trial_cannot_create_agent_api_key(client, django_user_model):
 
     assert response.status_code == 402
     assert response.json()["code"] == "TRIAL_EXPIRED"
-    assert response.json()["upgrade_url"] == "https://rowset.example/pricing/"
+    assert response.json()["upgrade_url"] == "https://rowset.example/pricing"
     assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
 
 

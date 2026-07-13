@@ -213,11 +213,11 @@ def test_expired_trial_returns_structured_mcp_upgrade_error(monkeypatch):
                 "Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP."
             ),
             "retryable": False,
-            "suggested_action": "Upgrade at https://rowset.example/pricing/.",
+            "suggested_action": "Upgrade at https://rowset.example/pricing.",
             "details": {
                 "http_status": 402,
                 "trial_ended_at": ended_at.isoformat(),
-                "upgrade_url": "https://rowset.example/pricing/",
+                "upgrade_url": "https://rowset.example/pricing",
             },
         }
 
@@ -371,7 +371,7 @@ def test_create_agent_api_key_mcp_tool_rejects_expired_trial(monkeypatch):
         assert payload["code"] == "TRIAL_EXPIRED"
         assert payload["retryable"] is False
         assert payload["details"]["http_status"] == 402
-        assert payload["details"]["upgrade_url"] == "https://rowset.example/pricing/"
+        assert payload["details"]["upgrade_url"] == "https://rowset.example/pricing"
 
     anyio.run(run)
 
