@@ -535,7 +535,7 @@ def test_api_key_auth_enforces_required_access_level():
         )
 
     assert response is None
-    activate_trial.assert_called_once_with(profile)
+    activate_trial.assert_not_called()
 
 
 def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
@@ -772,6 +772,9 @@ def test_admin_agent_api_key_can_create_new_agent_api_key(client, django_user_mo
     assert payload["api_key"].startswith("rsk_")
     assert created_key.access_level == AgentApiKeyAccessLevel.READ
     assert created_key.token_hash == hash_agent_api_key(payload["api_key"])
+    user.profile.refresh_from_db()
+    assert user.profile.trial_started_at is None
+    assert user.profile.trial_ends_at is None
 
 
 @pytest.mark.django_db
@@ -799,6 +802,9 @@ def test_non_admin_agent_api_key_cannot_create_new_agent_api_key(client, django_
 
     assert response.status_code == 401
     assert not AgentApiKey.objects.filter(profile=user.profile, name="Denied Agent").exists()
+    user.profile.refresh_from_db()
+    assert user.profile.trial_started_at is None
+    assert user.profile.trial_ends_at is None
 
 
 def test_superuser_api_key_auth_eager_loads_user_and_requires_superuser():

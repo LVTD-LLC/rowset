@@ -23,6 +23,14 @@ from apps.mcp_server.server import (
 )
 
 
+@pytest.fixture(autouse=True)
+def disable_trial_activation(monkeypatch):
+    monkeypatch.setattr(
+        "apps.mcp_server.server.activate_or_require_trial_access",
+        lambda _profile: None,
+    )
+
+
 def _extract_mcp_error_payload(error: Exception) -> dict:
     decoder = json.JSONDecoder()
     text = str(error)
@@ -217,6 +225,8 @@ def test_expired_trial_returns_structured_mcp_upgrade_error(monkeypatch):
 
 
 def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
+    trial_activations = []
+
     async def run():
         profile = _profile()
         setattr(
@@ -227,6 +237,10 @@ def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
             lambda api_key=None: profile,
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.activate_or_require_trial_access",
+            trial_activations.append,
         )
 
         async with Client(mcp) as client:
@@ -244,6 +258,7 @@ def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
         )
 
     anyio.run(run)
+    assert trial_activations == []
 
 
 def test_write_mcp_tool_rejects_missing_agent_api_key_context(monkeypatch):
@@ -273,6 +288,7 @@ def test_write_mcp_tool_rejects_missing_agent_api_key_context(monkeypatch):
 
 def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkeypatch):
     calls = []
+    trial_activations = []
 
     def create_agent_api_key(profile, name, access_level):
         calls.append((profile.id, name, access_level))
@@ -298,6 +314,10 @@ def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkey
             create_agent_api_key,
         )
         monkeypatch.setattr(
+            "apps.mcp_server.server.activate_or_require_trial_access",
+            trial_activations.append,
+        )
+        monkeypatch.setattr(
             "apps.mcp_server.server.serialize_agent_api_key",
             lambda agent_api_key: {
                 "name": agent_api_key.name,
@@ -319,6 +339,7 @@ def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkey
         assert calls == [(11, "Reporting Agent", "read")]
 
     anyio.run(run)
+    assert trial_activations == []
 
 
 def test_create_agent_api_key_mcp_tool_rejects_missing_agent_api_key_context(monkeypatch):

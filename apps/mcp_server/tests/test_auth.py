@@ -12,7 +12,12 @@ from apps.mcp_server.auth import (
     RowsetApiKeyAuthProvider,
     mcp_auth,
 )
-from apps.mcp_server.server import AGENT_API_KEY_PROFILE_ATTR, _authenticate_profile
+from apps.mcp_server.server import (
+    AGENT_API_KEY_PROFILE_ATTR,
+    _attach_agent_api_key,
+    _authenticate_profile,
+    _mcp_authenticated_profile,
+)
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -104,6 +109,21 @@ def test_authenticate_profile_accepts_explicit_named_agent_api_key(profile):
 
     assert authenticated_profile == profile
     assert getattr(authenticated_profile, AGENT_API_KEY_PROFILE_ATTR) == credential.agent_api_key
+    profile.refresh_from_db()
+    assert profile.trial_started_at is None
+    assert profile.trial_ends_at is None
+
+
+def test_authorized_mcp_tool_request_starts_trial(monkeypatch, profile):
+    credential = create_agent_api_key(profile, "OpenClaw")
+    monkeypatch.setattr(
+        "apps.mcp_server.server._authenticate_profile",
+        lambda api_key=None: _attach_agent_api_key(profile, credential.agent_api_key),
+    )
+
+    authenticated_profile = _mcp_authenticated_profile()
+
+    assert authenticated_profile == profile
     profile.refresh_from_db()
     assert profile.trial_started_at is not None
     assert profile.trial_ends_at is not None
