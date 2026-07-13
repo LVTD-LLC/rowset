@@ -34,6 +34,11 @@ pytestmark = pytest.mark.django_db
     (
         "/index.md",
         "/pricing.md",
+        "/privacy-policy.md",
+        "/terms-of-service.md",
+        "/docs.md",
+        "/blog.md",
+        "/uses.md",
         "/use-cases.md",
         "/docs/quickstart.md",
         "/use-cases/personal-crm.md",
@@ -61,6 +66,18 @@ def test_content_markdown_renders_public_template_variables_without_frontmatter(
     assert "# Start with your first agent dataset" in content
     assert "https://rowset.example/mcp/" in content
     assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content
+    assert "{{" not in content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_docs_index_markdown_reuses_rendered_quickstart(client):
+    response = client.get("/docs.md")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert not content.startswith("---")
+    assert "# Start with your first agent dataset" in content
+    assert "https://rowset.example/mcp/" in content
     assert "{{" not in content
 
 

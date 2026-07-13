@@ -6,8 +6,12 @@ from apps.pages.content import load_content_page
 MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8"
 
 PUBLIC_PAGE_MARKDOWN = {
+    "blog": "",
     "index": "",
     "pricing": "",
+    "privacy-policy": "",
+    "terms-of-service": "",
+    "uses": "",
 }
 
 

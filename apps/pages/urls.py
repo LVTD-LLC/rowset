@@ -6,6 +6,12 @@ from apps.pages import views
 urlpatterns = [
     path("", views.LandingPageView.as_view(), name="landing"),
     path(
+        "docs.md",
+        views.content_page_markdown,
+        {"section_slug": "docs", "page_slug": "quickstart"},
+        name="content_page_markdown",
+    ),
+    path(
         "use-cases.md",
         views.content_page_markdown,
         {"section_slug": "use-cases", "page_slug": "index"},
