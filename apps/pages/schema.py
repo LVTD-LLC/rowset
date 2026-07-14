@@ -9,7 +9,9 @@ from django.urls import reverse
 from rowset.utils import build_absolute_public_url
 
 ROWSET_NAME = "Rowset"
-ROWSET_DESCRIPTION = "Private MCP and REST datasets for trusted AI agents."
+ROWSET_DESCRIPTION = (
+    "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+)
 ROWSET_AUTHOR = "Rasul Kireev"
 
 

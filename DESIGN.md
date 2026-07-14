@@ -94,6 +94,9 @@ surface for agent setup, dataset visibility, schema review, exports, public
 preview settings, and account recovery. It should not feel like an upload
 wizard, no-code builder, or broad analytics dashboard.
 
+Public marketing surfaces make Rowset's open-source, self-hostable identity
+visible at first glance and pair it with a direct link to the canonical source.
+
 The first useful action is copying the agent setup prompt. The rest of the UI
 supports verification and control: MCP endpoint, REST base URL, recent datasets,
 schema metadata, public preview settings, and bearer API key handling.
