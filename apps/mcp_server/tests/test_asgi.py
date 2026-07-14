@@ -41,6 +41,7 @@ def profile():
         has_active_subscription=False,
         trial_started_at=None,
         trial_ends_at=None,
+        setup_completed_at=None,
         agent_api_key=agent_api_key,
     )
     setattr(profile, AGENT_API_KEY_PROFILE_ATTR, agent_api_key)
@@ -62,6 +63,10 @@ def authenticated_mcp(monkeypatch, profile):
     monkeypatch.setattr(
         "apps.mcp_server.server.activate_or_require_trial_access",
         lambda _profile: None,
+    )
+    monkeypatch.setattr(
+        "rowset.mcp_logging.mark_profile_setup_completed",
+        lambda _profile_id: None,
     )
     return profile
 
@@ -233,3 +238,30 @@ def test_mcp_tool_permission_errors_return_structured_error_envelope(
         ),
         "details": {"http_status": 401},
     }
+
+
+def test_authenticated_mcp_requests_invoke_setup_completion(authenticated_mcp, monkeypatch):
+    completed_profile_ids = []
+
+    monkeypatch.setattr(
+        "rowset.mcp_logging.mark_profile_setup_completed",
+        completed_profile_ids.append,
+    )
+
+    with TestClient(application) as client:
+        response = client.post(
+            "/mcp/",
+            headers=_authorization_headers(authenticated_mcp),
+            json=_mcp_request(
+                "initialize",
+                90,
+                {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "capabilities": {},
+                    "clientInfo": {"name": "rowset-test", "version": "0.1"},
+                },
+            ),
+        )
+
+    _assert_jsonrpc_result(response)
+    assert completed_profile_ids == [authenticated_mcp.id]

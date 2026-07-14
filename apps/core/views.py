@@ -230,8 +230,7 @@ class HomeView(DatasetListView):
         profile = self.get_profile()
         context["dashboard_stats"] = context["dataset_stats"]
         show_agent_setup_prompt = (
-            not profile.agent_setup_prompt_dismissed
-            and context["dashboard_stats"]["total_datasets"] == 0
+            not profile.agent_setup_prompt_dismissed and profile.setup_completed_at is None
         )
         context["show_agent_setup_prompt"] = show_agent_setup_prompt
         if show_agent_setup_prompt:
