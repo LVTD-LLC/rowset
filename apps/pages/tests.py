@@ -497,6 +497,8 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert reverse("docs_page", kwargs={"slug": "configure-agent-access"}) in content
     assert '"@type": "SoftwareApplication"' in content
     assert '"@type": "Organization"' in content
+    assert "LVTD" not in content.partition("<title>")[2].partition("</title>")[0]
+    assert f"&copy; {time.localtime().tm_year} Rowset" in content
 
 
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):

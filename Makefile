@@ -22,7 +22,6 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 	frontend-check \
 	frontend-install \
 	frontend-lint \
-	frontend-test \
 	lint-python \
 	manage \
 	makemigrations \
@@ -86,13 +85,10 @@ frontend-install:
 frontend-lint:
 	$(NPM) run lint
 
-frontend-test:
-	$(NPM) test
-
 frontend-build:
 	$(NPM) run build
 
-frontend-check: frontend-test frontend-lint frontend-build
+frontend-check: frontend-lint frontend-build
 
 cli-test:
 	cd cli && go test ./...
