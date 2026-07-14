@@ -3,7 +3,9 @@ import re
 import struct
 import time
 from dataclasses import replace
+from html import unescape
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -13,12 +15,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
-from django.urls import reverse
+from django.urls import resolve, reverse
 from django.utils.html import strip_tags
 
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
+from apps.pages.content import get_content_section
+from apps.pages.public_markdown import markdown_path_for
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
@@ -28,6 +32,356 @@ from apps.pages.schema import (
 )
 
 pytestmark = pytest.mark.django_db
+
+
+PUBLIC_CONTENT_PATH_PREFIXES = ("/blog/", "/docs/", "/use-cases/")
+PUBLIC_CONTENT_ROOT_PATHS = {
+    "/blog",
+    "/docs",
+    "/pricing",
+    "/privacy-policy",
+    "/terms-of-service",
+    "/use-cases",
+    "/uses",
+}
+
+
+def _public_source_markdown_paths():
+    return Path(settings.BASE_DIR, "apps/pages/content").rglob("*.md")
+
+
+def _public_content_links(source):
+    markdown_targets = re.findall(r"(?<!!)\[[^]]*]\(([^)\s]+)(?:\s+[^)]*)?\)", source)
+    html_targets = re.findall(r'href=["\']([^"\']+)["\']', source)
+    for target in (*markdown_targets, *html_targets):
+        parsed = urlparse(unescape(target))
+        if parsed.scheme or parsed.netloc or not parsed.path.startswith("/"):
+            continue
+        if parsed.path in PUBLIC_CONTENT_ROOT_PATHS or parsed.path.startswith(
+            PUBLIC_CONTENT_PATH_PREFIXES
+        ):
+            yield target, parsed.path
+
+
+def test_checked_in_markdown_public_content_links_use_live_extensionless_routes(client):
+    retired_routes = []
+    broken_routes = []
+
+    for markdown_path in _public_source_markdown_paths():
+        source = markdown_path.read_text(encoding="utf-8")
+        for target, path in _public_content_links(source):
+            location = str(markdown_path.relative_to(settings.BASE_DIR))
+            if path != "/" and path.endswith("/"):
+                retired_routes.append(f"{location}: {target}")
+                continue
+            if client.get(path).status_code == 404:
+                broken_routes.append(f"{location}: {target}")
+
+    assert not retired_routes, "Retired trailing-slash public routes:\n" + "\n".join(retired_routes)
+    assert not broken_routes, "Broken public content routes:\n" + "\n".join(broken_routes)
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/index.md",
+        "/pricing.md",
+        "/privacy-policy.md",
+        "/terms-of-service.md",
+        "/docs.md",
+        "/blog.md",
+        "/uses.md",
+        "/use-cases.md",
+        "/docs/quickstart.md",
+        "/use-cases/personal-crm.md",
+    ),
+)
+def test_public_markdown_routes_return_markdown(client, path):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/markdown; charset=utf-8"
+
+
+@pytest.mark.parametrize(
+    ("path", "expected_heading"),
+    (
+        ("/index.md", "# Rowset"),
+        ("/pricing.md", "# Rowset pricing"),
+        ("/privacy-policy.md", "# Privacy Policy"),
+        ("/terms-of-service.md", "# Terms of Service"),
+        ("/uses.md", "# Technology behind Rowset"),
+        ("/blog.md", "# Rowset field notes"),
+        ("/docs/database-mcp-server.md", "# Database MCP server"),
+    ),
+)
+def test_public_markdown_inventory_has_curated_content(client, path, expected_heading):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert expected_heading in content
+    assert not content.startswith("---")
+    assert "<html" not in content.lower()
+    assert "<nav" not in content.lower()
+    assert "{{" not in content
+
+
+def test_public_markdown_inventory_registry_reuses_canonical_sources():
+    from apps.pages.public_markdown import CURATED_PUBLIC_PAGE_SOURCES
+
+    assert CURATED_PUBLIC_PAGE_SOURCES == {
+        "blog": "public/blog.md",
+        "index": "public/index.md",
+        "pricing": "public/pricing.md",
+        "privacy-policy": "public/privacy-policy.md",
+        "terms-of-service": "public/terms-of-service.md",
+        "uses": "public/uses.md",
+    }
+
+
+def test_database_mcp_server_markdown_contains_complete_decision_guide(client):
+    response = client.get("/docs/database-mcp-server.md")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "## The decision" in content
+    assert "## Implementation checklist" in content
+    assert "## Bottom line" in content
+
+
+def test_public_markdown_route_name_and_missing_slug(client):
+    assert reverse("public_page_markdown", kwargs={"page_slug": "index"}) == "/index.md"
+    assert client.get("/missing.md").status_code == 404
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    ("path", "expected_markdown_url"),
+    (
+        ("/", "https://rowset.example/index.md"),
+        ("/pricing", "https://rowset.example/pricing.md"),
+        ("/privacy-policy", "https://rowset.example/privacy-policy.md"),
+        ("/terms-of-service", "https://rowset.example/terms-of-service.md"),
+        ("/uses", "https://rowset.example/uses.md"),
+        ("/blog", "https://rowset.example/blog.md"),
+        (
+            "/blog/agent-managed-datasets",
+            "https://rowset.example/blog/agent-managed-datasets.md",
+        ),
+        ("/use-cases", "https://rowset.example/use-cases.md"),
+        (
+            "/use-cases/personal-crm",
+            "https://rowset.example/use-cases/personal-crm.md",
+        ),
+        ("/docs/quickstart", "https://rowset.example/docs/quickstart.md"),
+        (
+            "/docs/database-mcp-server",
+            "https://rowset.example/docs/database-mcp-server.md",
+        ),
+    ),
+)
+def test_public_html_views_advertise_canonical_markdown_url(client, path, expected_markdown_url):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert response.context["markdown_url"] == expected_markdown_url
+    assert (
+        f'<link rel="alternate" type="text/markdown" href="{expected_markdown_url}"'
+        in response.content.decode()
+    )
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_content_markdown_renders_public_template_variables_without_frontmatter(client):
+    response = client.get(reverse("content_page_markdown", args=("docs", "quickstart")))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert not content.startswith("---")
+    assert "# Start with your first agent dataset" in content
+    assert "https://rowset.example/mcp/" in content
+    assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content
+    assert "{{" not in content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_docs_index_markdown_reuses_rendered_quickstart(client):
+    response = client.get("/docs.md")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert not content.startswith("---")
+    assert "# Start with your first agent dataset" in content
+    assert "https://rowset.example/mcp/" in content
+    assert "{{" not in content
+
+
+def test_user_api_markdown_uses_canonical_trial_upgrade_url(client):
+    response = client.get("/docs/user-api.md")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "https://rowset.com/pricing" in content
+    assert "https://rowset.com/pricing/" not in content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_llms_txt_is_an_app_use_first_complete_content_index(client):
+    assert resolve(reverse("llms_txt")).func.__module__ == "apps.pages.views"
+
+    response = client.get(reverse("llms_txt"))
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/plain; charset=utf-8"
+    assert response["Cache-Control"] == "public, max-age=300"
+    content = response.content.decode()
+
+    docs = get_content_section("docs")["pages"]
+    use_cases = get_content_section("use-cases")["pages"]
+    quickstart_url = "https://rowset.example/docs/quickstart.md"
+
+    assert docs[0]["slug"] == "quickstart"
+    assert content.index(quickstart_url) < min(
+        content.index(f"https://rowset.example{markdown_path_for(page['url'])}")
+        for page in docs
+        if page["slug"] != "quickstart"
+    )
+    for page in docs:
+        assert page["description"]
+        markdown_url = f"https://rowset.example{markdown_path_for(page['url'])}"
+        assert f"[{page['title']}]({markdown_url})" in content
+        assert page["description"] in content
+
+    for page in use_cases:
+        markdown_url = f"https://rowset.example{markdown_path_for(page['url'])}"
+        assert f"[{page['title']}]({markdown_url})" in content
+
+    assert "Use hosted MCP first" in content
+    assert "Use REST second" in content
+    assert "Do not use browser automation" in content
+    assert "human-facing, read-only" in content
+    assert "not authentication" in content
+    assert "https://rowset.example/mcp/" in content
+    assert "https://rowset.example/api" in content
+    assert "https://rowset.example/api/docs" in content
+    assert "https://rowset.example/SKILL.md" in content
+    assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
+    assert "https://rowset.example/skills/rowset-use-cases/SKILL.md" in content
+    assert "MCP tools:" not in content
+    assert "REST paths:" not in content
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/docs/missing.md",
+        "/use-cases/missing.md",
+        "/docs/not_valid.md",
+        "/missing/page.md",
+    ),
+)
+def test_content_markdown_routes_404_for_missing_or_invalid_slugs(client, path):
+    assert client.get(path).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    (
+        ("/", "/index.md"),
+        ("/pricing", "/pricing.md"),
+        ("/docs/quickstart/", "/docs/quickstart.md"),
+    ),
+)
+def test_markdown_path_for_builds_route_siblings(path, expected):
+    from apps.pages.public_markdown import markdown_path_for
+
+    assert markdown_path_for(path) == expected
+
+
+AI_READER_ACTION_LABELS = (
+    "Read with Claude",
+    "Read with ChatGPT",
+    "Copy Prompt for your AI Agent",
+    "Copy Markdown",
+)
+
+
+def _assert_ai_reader_menu(content, markdown_url):
+    prompt = f"Read this Rowset page and help me understand or use it: {markdown_url}"
+
+    for label in AI_READER_ACTION_LABELS:
+        assert content.count(label) == 1
+    assert [content.index(label) for label in AI_READER_ACTION_LABELS] == sorted(
+        content.index(label) for label in AI_READER_ACTION_LABELS
+    )
+
+    assert f'data-markdown-url="{markdown_url}"' in content
+    assert f'data-prompt="{prompt}"' in content
+    trigger = re.search(
+        r'<button type="button"[^>]*x-ref="trigger"[^>]*>(.*?)</button>',
+        content,
+        re.DOTALL,
+    )
+    assert trigger
+    assert strip_tags(trigger.group(1)).strip() == "Read with AI"
+    assert ':aria-expanded="open.toString()"' in content
+    assert "x-cloak" in content
+    assert "@click.outside" in content
+    assert "@keydown.escape" in content
+    assert 'role="status"' in content
+    assert 'x-text="status"' in content
+    assert "x-html" not in content
+
+    provider_links = re.findall(r'<a href="(https://(?:chatgpt|claude)\.[^"]+)"([^>]*)>', content)
+    assert len(provider_links) == 2
+    for _, attributes in provider_links:
+        assert 'target="_blank"' in attributes
+        assert 'rel="noopener"' in attributes
+
+    provider_urls = [url for url, _ in provider_links]
+    assert len(provider_urls) == 2
+    for provider_url in provider_urls:
+        decoded_query = parse_qs(urlparse(unescape(provider_url)).query)
+        assert decoded_query["q"] == [prompt]
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    ("url", "markdown_url"),
+    (
+        (
+            reverse("docs_page", kwargs={"slug": "quickstart"}),
+            "https://rowset.example/docs/quickstart.md",
+        ),
+        (
+            reverse("docs_page", kwargs={"slug": "database-mcp-server"}),
+            "https://rowset.example/docs/database-mcp-server.md",
+        ),
+    ),
+)
+def test_ai_reader_menu_renders_for_docs_articles(client, url, markdown_url):
+    response = client.get(url)
+
+    assert response.status_code == 200
+    _assert_ai_reader_menu(response.content.decode(), markdown_url)
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    "url",
+    (
+        reverse("use_cases"),
+        reverse("use_case_page", kwargs={"slug": "personal-crm"}),
+    ),
+)
+def test_ai_reader_menu_is_absent_from_use_case_pages(client, url):
+    response = client.get(url)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    for label in AI_READER_ACTION_LABELS:
+        assert label not in content
 
 
 def _nav_html(content, aria_label):
@@ -417,19 +771,19 @@ def test_sitemap_response_does_not_set_noindex_header(client):
 
 
 @pytest.mark.parametrize(
-    ("path", "expected"),
+    "path",
     (
-        ("/pricing", "/pricing/"),
-        ("/privacy-policy", "/privacy-policy/"),
-        ("/terms-of-service", "/terms-of-service/"),
-        ("/uses", "/uses/"),
+        "/pricing",
+        "/privacy-policy",
+        "/terms-of-service",
+        "/uses",
     ),
 )
-def test_marketing_routes_use_django_append_slash_redirects(client, path, expected):
+def test_marketing_routes_are_extensionless(client, path):
     response = client.get(f"{path}?utm_source=test")
 
-    assert response.status_code == 301
-    assert response["Location"] == f"{expected}?utm_source=test"
+    assert response.status_code == 200
+    assert client.get(f"{path}/").status_code == 404
 
 
 def test_use_cases_page_links_public_use_case_pages(client):
@@ -715,7 +1069,7 @@ def test_use_case_article_schema_includes_main_entity(client):
     content = response.content.decode()
     schema = json.loads(_json_ld_payload(content))
 
-    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm/")
+    assert schema["mainEntityOfPage"]["@id"].endswith("/use-cases/personal-crm")
 
 
 @override_settings(SITE_URL="https://rowset.example")
@@ -723,7 +1077,7 @@ def test_use_case_item_list_schema_uses_docs_urls(client):
     schema = use_case_item_list_schema(page_use_cases.get_use_case_pages())
 
     assert schema["@type"] == "ItemList"
-    assert schema["url"] == "https://rowset.example/use-cases/"
+    assert schema["url"] == "https://rowset.example/use-cases"
     assert schema["itemListElement"][0]["url"].startswith("https://rowset.example/use-cases/")
 
 
@@ -738,7 +1092,7 @@ def test_pricing_schema_uses_configured_public_url(client):
     assert schema["description"] == (
         "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
     )
-    assert schema["url"] == "https://rowset.example/pricing/"
+    assert schema["url"] == "https://rowset.example/pricing"
     assert schema["image"] == (
         "https://rowset.example/static/vendors/images/rowset-social-card.png"
     )

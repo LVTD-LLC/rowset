@@ -45,6 +45,7 @@
             <meta name="twitter:description"
                   content="Give trusted AI agents a private backend for structured rows." />
         {% endblock meta %}
+        {% if markdown_url %}<link rel="alternate" type="text/markdown" href="{{ markdown_url }}" />{% endif %}
         {% block social_image_meta %}
             {% include "components/social_image_meta.html" %}
         {% endblock social_image_meta %}

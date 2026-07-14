@@ -97,6 +97,6 @@ do not replace MCP or REST access.
 
 ## Related docs
 
-- [Connect over MCP](/docs/connect-mcp/)
-- [Configure agent access](/docs/configure-agent-access/)
-- [MCP tool reference](/docs/mcp-tools/)
+- [Connect over MCP](/docs/connect-mcp)
+- [Configure agent access](/docs/configure-agent-access)
+- [MCP tool reference](/docs/mcp-tools)

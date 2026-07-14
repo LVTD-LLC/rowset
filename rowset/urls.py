@@ -36,8 +36,8 @@ urlpatterns = [
     path("api/", include("apps.api.urls")),
     path("api/<path:unmatched>", api_not_found, name="api_not_found"),
     path("", include("apps.datasets.urls")),
-    path("", include("apps.pages.urls")),
     path("", include("apps.core.urls")),
+    path("", include("apps.pages.urls")),
     path(
         "sitemap.xml",
         public_sitemap,

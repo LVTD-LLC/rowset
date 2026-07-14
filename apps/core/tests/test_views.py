@@ -548,7 +548,9 @@ class TestHomeView:
         assert "Agent Task Board" in use_cases_content
 
     @override_settings(SITE_URL="https://rowset.example")
-    def test_llms_txt_is_public_and_contains_discovery_surface(self, client, profile):
+    def test_llms_txt_route_name_remains_public_and_does_not_expose_profile_key(
+        self, client, profile
+    ):
         response = client.get(reverse("llms_txt"))
 
         assert response.status_code == 200
@@ -556,10 +558,7 @@ class TestHomeView:
         assert response["Cache-Control"] == "public, max-age=300"
         content = response.content.decode()
         assert "# Rowset" in content
-        assert "get_rowset_capabilities" in content
-        assert "Dataset relationships" in content
         assert "https://rowset.example/mcp/" in content
-        assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
         assert profile.key not in content
 
     def test_agent_instructions_markdown_falls_back_when_skill_file_is_missing(

@@ -1,10 +1,13 @@
 import json
 import re
+from html import unescape
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.checks import run_checks
 from django.urls import reverse
+from django.utils.html import strip_tags
 
 from apps.pages.blog import get_blog_post, list_blog_posts
 from rowset.sitemaps import BlogSitemap
@@ -32,7 +35,73 @@ def test_blog_index_renders_empty_state(client, blog_posts_dir):
     assert response.status_code == 200
     content = response.content.decode()
     assert "No blog posts are available yet." in content
-    assert 'href="https://rowset.example/blog/"' in content
+    assert 'href="https://rowset.example/blog"' in content
+
+
+def test_ai_reader_menu_is_absent_from_blog_index(client, blog_posts_dir):
+    response = client.get(reverse("blog_posts"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Read with Claude" not in content
+    assert "Read with ChatGPT" not in content
+    assert "Copy Prompt for your AI Agent" not in content
+    assert "Copy Markdown" not in content
+
+
+def test_ai_reader_menu_renders_for_blog_post(client, blog_posts_dir):
+    write_post(
+        blog_posts_dir,
+        "agent-managed-datasets",
+        {
+            "title": "Agent-managed datasets",
+            "description": "How AI agents keep Rowset datasets current.",
+            "published_at": "2026-07-03",
+        },
+        "Agents need stable APIs for rows.",
+    )
+    response = client.get(reverse("blog_post", kwargs={"slug": "agent-managed-datasets"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    markdown_url = "https://rowset.example/blog/agent-managed-datasets.md"
+    prompt = f"Read this Rowset page and help me understand or use it: {markdown_url}"
+    action_labels = (
+        "Read with Claude",
+        "Read with ChatGPT",
+        "Copy Prompt for your AI Agent",
+        "Copy Markdown",
+    )
+    for label in action_labels:
+        assert content.count(label) == 1
+    assert [content.index(label) for label in action_labels] == sorted(
+        content.index(label) for label in action_labels
+    )
+
+    assert f'data-markdown-url="{markdown_url}"' in content
+    assert f'data-prompt="{prompt}"' in content
+    trigger = re.search(
+        r'<button type="button"[^>]*x-ref="trigger"[^>]*>(.*?)</button>',
+        content,
+        re.DOTALL,
+    )
+    assert trigger
+    assert strip_tags(trigger.group(1)).strip() == "Read with AI"
+    assert ':aria-expanded="open.toString()"' in content
+    assert "x-cloak" in content
+    assert "@click.outside" in content
+    assert "@keydown.escape" in content
+    assert 'role="status"' in content
+    assert 'x-text="status"' in content
+    assert "x-html" not in content
+
+    provider_links = re.findall(r'<a href="(https://(?:chatgpt|claude)\.[^"]+)"([^>]*)>', content)
+    assert len(provider_links) == 2
+    for provider_url, attributes in provider_links:
+        assert 'target="_blank"' in attributes
+        assert 'rel="noopener"' in attributes
+        decoded_query = parse_qs(urlparse(unescape(provider_url)).query)
+        assert decoded_query["q"] == [prompt]
 
 
 def test_authenticated_blog_pages_use_app_shell(client, blog_posts_dir):
@@ -116,6 +185,35 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
     assert "Rowset dataset workflow" in content
     assert '"@type": "BlogPosting"' in content
     assert '"datePublished": "2026-07-03T00:00:00+00:00"' in content
+
+
+def test_blog_post_markdown_is_self_describing_and_has_no_frontmatter(client, blog_posts_dir):
+    write_post(
+        blog_posts_dir,
+        "agent-managed-datasets",
+        {
+            "title": "Agent-managed datasets",
+            "description": "How AI agents keep Rowset datasets current.",
+            "published_at": "2026-07-03",
+        },
+        "## Why agents need it\n\nAgents need **stable APIs** for rows.",
+    )
+
+    response = client.get(reverse("blog_post_markdown", kwargs={"slug": "agent-managed-datasets"}))
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/markdown; charset=utf-8"
+    assert response.content.decode() == (
+        "# Agent-managed datasets\n\n"
+        "How AI agents keep Rowset datasets current.\n\n"
+        "## Why agents need it\n\n"
+        "Agents need **stable APIs** for rows.\n"
+    )
+
+
+@pytest.mark.parametrize("slug", ("missing-post", "not_valid"))
+def test_blog_post_markdown_404s_for_missing_or_invalid_slugs(client, blog_posts_dir, slug):
+    assert client.get(f"/blog/{slug}.md").status_code == 404
 
 
 def test_blog_post_header_and_body_share_the_same_content_width(client, blog_posts_dir):

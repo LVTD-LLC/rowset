@@ -29,7 +29,7 @@ instructions to act without guessing.
 
 Use REST when the agent runtime can make HTTP requests but cannot configure MCP,
 or when a backend job, script, or integration should call Rowset directly. Use
-[Rowset MCP](/docs/connect-mcp/) when the client can discover tools and schemas
+[Rowset MCP](/docs/connect-mcp) when the client can discover tools and schemas
 through a connected MCP server.
 
 ## Quick setup checklist
@@ -72,7 +72,7 @@ should follow.
 
 Use this rule:
 
-- If the agent can use MCP, start with [Connect over MCP](/docs/connect-mcp/).
+- If the agent can use MCP, start with [Connect over MCP](/docs/connect-mcp).
 - If the agent can only make HTTP calls, use the Dataset API.
 - If the workflow is a scheduled script or backend worker, REST is usually the
   clearer path.
@@ -144,10 +144,10 @@ That gives the agent a stable operating contract without exposing the key itself
 
 If your agent also supports reading URLs, include these public references:
 
-- [Dataset API](/docs/dataset-api/)
-- [Configure agent access](/docs/configure-agent-access/)
-- [Help agents discover Rowset](/docs/agent-discovery/)
-- [MCP tool reference](/docs/mcp-tools/)
+- [Dataset API](/docs/dataset-api)
+- [Configure agent access](/docs/configure-agent-access)
+- [Help agents discover Rowset](/docs/agent-discovery)
+- [MCP tool reference](/docs/mcp-tools)
 
 The agent should use the docs for current endpoint shapes and your prompt for
 workflow intent.
@@ -175,7 +175,7 @@ Useful companion guides:
 - [How to choose an index column for agent-managed rows](/blog/choose-index-column-agent-rows)
 - [Rowset rowset_id vs business keys](/blog/rowset-id-vs-business-keys)
 - [How to structure dataset instructions for AI agents](/blog/structure-dataset-instructions-ai-agents)
-- [Designing schema for agents](/docs/design-schema/)
+- [Designing schema for agents](/docs/design-schema)
 
 ## 5. Inspect before every meaningful write
 

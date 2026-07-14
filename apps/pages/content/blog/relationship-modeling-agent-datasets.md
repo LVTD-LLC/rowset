@@ -80,7 +80,7 @@ this draft?", a text column is enough.
 This is the product-led SEO reason Rowset's relationship guidance starts from
 the user job, not the schema diagram. The useful surface is not "more tables."
 It is a dataset shape an agent can operate on reliably through [hosted MCP
-access](/docs/connect-mcp/) or the [Dataset API](/docs/dataset-api/).
+access](/docs/connect-mcp) or the [Dataset API](/docs/dataset-api).
 
 ## Split datasets when rows need independent identity
 
@@ -221,7 +221,7 @@ and publication records back to the canonical piece.
 | Research notes | slug | Content | slug |
 | Review tasks | slug | Content | slug |
 
-This pairs well with Rowset's [content pipeline use case](/use-cases/content-pipeline/).
+This pairs well with Rowset's [content pipeline use case](/use-cases/content-pipeline).
 The content row owns the current stage. Related rows hold evidence and review
 work without bloating the main queue.
 
@@ -308,7 +308,7 @@ when the user has requested it or the instructions permit it.
 
 Use reference columns when a cell should point to a Rowset object such as a
 dataset or project. Use relationships when a cell points to a row inside
-another dataset. The [Link datasets docs](/docs/link-datasets/) describe both
+another dataset. The [Link datasets docs](/docs/link-datasets) describe both
 patterns.
 
 ### What is the safest default for a new relationship?

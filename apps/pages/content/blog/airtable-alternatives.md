@@ -100,13 +100,13 @@ state, editorial state, or fulfillment state. It also needs rules for what it
 may update, what it should leave alone, and when a human must review.
 
 The dataset should have private, permissioned access. For Rowset, that means
-[hosted MCP access](/docs/connect-mcp/) for compatible agent clients and the
-[Dataset API](/docs/dataset-api/) for ordinary HTTP clients, scripts, and
+[hosted MCP access](/docs/connect-mcp) for compatible agent clients and the
+[Dataset API](/docs/dataset-api) for ordinary HTTP clients, scripts, and
 workers. Both access paths keep writes behind authentication.
 
 The dataset should have a human review path. Agents should not be the only way
 to inspect the data. A user may want a dashboard, export, or [read-only public
-preview](/docs/share-public-previews/) without turning the private mutation
+preview](/docs/share-public-previews) without turning the private mutation
 path into a public app.
 
 If those are your buying criteria, a generic "best Airtable alternative" list is
@@ -130,8 +130,8 @@ for ongoing use.
 
 Use Rowset for workflows like:
 
-- an [agent-managed personal CRM](/use-cases/personal-crm/)
-- an [agent task board](/use-cases/agent-task-board/)
+- an [agent-managed personal CRM](/use-cases/personal-crm)
+- an [agent task board](/use-cases/agent-task-board)
 - feedback triage
 - content operations
 - QA findings
@@ -380,5 +380,5 @@ job is the agent-managed dataset layer.
 Start with one workflow where an agent already has permission to act: a personal
 CRM, content queue, feedback triage board, or QA tracker. Create a Rowset
 dataset, choose a stable index column, add clear instructions, and connect the
-agent through [MCP](/docs/connect-mcp/) or the [Dataset
-API](/docs/dataset-api/).
+agent through [MCP](/docs/connect-mcp) or the [Dataset
+API](/docs/dataset-api).

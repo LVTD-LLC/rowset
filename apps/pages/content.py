@@ -18,6 +18,7 @@ from apps.core.agent_skill import (
     ROWSET_USE_CASES_SKILL_SOURCE_URL,
 )
 from apps.core.views import AGENT_API_KEY_MASK
+from apps.pages.public_markdown import build_ai_reader_context, build_public_markdown_context
 from apps.pages.schema import article_schema, json_ld
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
@@ -268,7 +269,8 @@ def get_content_template_context():
     }
 
 
-def render_content_page(request, section_slug, page_slug):
+def load_content_page(section_slug, page_slug):
+    get_content_section_config(section_slug)
     if not is_content_slug(page_slug):
         raise Http404("Content page not found")
 
@@ -283,11 +285,31 @@ def render_content_page(request, section_slug, page_slug):
             post = frontmatter.load(file)
 
         rendered_markdown = Template(post.content).render(Context(get_content_template_context()))
+        return post, rendered_markdown
+    except Exception as exc:
+        logger.error(
+            "Error loading content page",
+            section=section_slug,
+            page=page_slug,
+            error_type=type(exc).__name__,
+        )
+        raise Http404("Content page not found") from exc
+
+
+def render_content_page(request, section_slug, page_slug):
+    try:
+        post, rendered_markdown = load_content_page(section_slug, page_slug)
         markdown_html = markdown.markdown(rendered_markdown, extensions=CONTENT_MARKDOWN_EXTENSIONS)
         section = get_content_section(section_slug)
         previous_page, next_page = get_previous_and_next_pages(section, page_slug)
-        page_url = build_absolute_public_url(get_section_page_url(section_slug, page_slug))
+        page_path = get_section_page_url(section_slug, page_slug)
+        page_url = build_absolute_public_url(page_path)
         current_group_id = get_current_content_group_id(section, page_slug)
+        markdown_context = (
+            build_ai_reader_context(page_path)
+            if section_slug == "docs"
+            else build_public_markdown_context(page_path)
+        )
 
         default_page_title = page_slug.replace("-", " ").title()
 
@@ -309,15 +331,18 @@ def render_content_page(request, section_slug, page_slug):
                 article_schema(
                     headline=post.get("title", default_page_title),
                     description=post.get("description", ""),
-                    path=get_section_page_url(section_slug, page_slug),
+                    path=page_path,
                 )
             ),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
+            **markdown_context,
         }
 
         return render(request, "pages/content/page.html", context)
+    except Http404:
+        raise
     except Exception as exc:
         logger.error(
             "Error loading content page",

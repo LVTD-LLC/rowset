@@ -643,7 +643,7 @@ func TestTrialExpiredErrorIncludesUpgradeGuidance(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusPaymentRequired)
-		_, _ = w.Write([]byte(`{"code":"TRIAL_EXPIRED","message":"Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP.","upgrade_url":"https://rowset.example/pricing/"}`))
+		_, _ = w.Write([]byte(`{"code":"TRIAL_EXPIRED","message":"Your Rowset trial has ended. Upgrade to continue using the API, CLI, and MCP.","upgrade_url":"https://rowset.example/pricing"}`))
 	}))
 	t.Cleanup(server.Close)
 	t.Setenv("ROWSET_API_BASE", server.URL+"/api/")
@@ -661,7 +661,8 @@ func TestTrialExpiredErrorIncludesUpgradeGuidance(t *testing.T) {
 	if !strings.Contains(err.Error(), "TRIAL_EXPIRED") {
 		t.Fatalf("expected stable error code, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "https://rowset.example/pricing/") {
+	if !strings.Contains(err.Error(), "https://rowset.example/pricing") ||
+		strings.Contains(err.Error(), "https://rowset.example/pricing/") {
 		t.Fatalf("expected pricing upgrade link, got %v", err)
 	}
 }

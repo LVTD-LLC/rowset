@@ -81,4 +81,4 @@ DELETE /api/projects/{project_key}
 PATCH /api/datasets/{dataset_key}/project
 ```
 
-Use [Project API](/docs/project-api/) for endpoint details.
+Use [Project API](/docs/project-api) for endpoint details.

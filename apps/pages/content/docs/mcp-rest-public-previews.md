@@ -58,8 +58,8 @@ MCP or REST for that.
 
 ## Related docs
 
-- [Connect over MCP](/docs/connect-mcp/)
-- [Dataset API](/docs/dataset-api/)
-- [Share a public preview](/docs/share-public-previews/)
-- [MCP tool reference](/docs/mcp-tools/)
+- [Connect over MCP](/docs/connect-mcp)
+- [Dataset API](/docs/dataset-api)
+- [Share a public preview](/docs/share-public-previews)
+- [MCP tool reference](/docs/mcp-tools)
 - [When should an AI agent use MCP instead of REST?](/blog/mcp-vs-rest-ai-agents)

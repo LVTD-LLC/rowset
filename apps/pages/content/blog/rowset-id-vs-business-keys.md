@@ -26,8 +26,8 @@ dataset is still exploratory.
 
 The choice is not cosmetic. In Rowset, the index column is the value an agent
 uses for by-index reads, updates, image attachment, and relationship lookup
-through [hosted MCP access](/docs/connect-mcp/) or the [Dataset
-API](/docs/dataset-api/). The wrong choice turns a simple row patch into a
+through [hosted MCP access](/docs/connect-mcp) or the [Dataset
+API](/docs/dataset-api). The wrong choice turns a simple row patch into a
 search problem. The right choice gives the agent one clear answer to "which row
 did the user mean?"
 
@@ -276,7 +276,7 @@ review before changing the workflow.
 
 That instruction gives the agent a local rule it can inspect before mutating
 rows. Pair it with semantic column descriptions in [dataset schema
-design](/docs/design-schema/) and use [dataset instructions for AI
+design](/docs/design-schema) and use [dataset instructions for AI
 agents](/blog/structure-dataset-instructions-ai-agents) when the workflow rules
 need more detail.
 
@@ -289,7 +289,7 @@ Use business keys when they are real. Use `rowset_id` when identity would
 otherwise be guessed. Keep the decision visible in dataset instructions. Preserve
 the index through exports. And before giving an agent write access, make sure it
 can call `get_dataset`, see the current index column, and patch rows through
-the [Dataset API](/docs/dataset-api/) or [MCP tools](/docs/mcp-tools/).
+the [Dataset API](/docs/dataset-api) or [MCP tools](/docs/mcp-tools).
 
 ## FAQ
 

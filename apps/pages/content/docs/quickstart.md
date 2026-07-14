@@ -14,7 +14,7 @@ or REST for the actual dataset work. Public previews stay off unless you
 explicitly ask to share a read-only browser page.
 
 Use this as the shortest path. After it works, use the broader
-[dataset guide](/docs/datasets/) when you need projects, relationships, image
+[dataset guide](/docs/datasets) when you need projects, relationships, image
 columns, exports, or public previews.
 
 ## Before you start
@@ -105,10 +105,10 @@ You now have a private dataset the agent can continue using in later sessions.
 
 ## Next steps
 
-- [How Rowset datasets work](/docs/datasets/) for index columns,
+- [How Rowset datasets work](/docs/datasets) for index columns,
   projects, relationships, schema, exports, and previews.
-- [Work with rows](/docs/work-with-rows/) for read, search, create, update, and
+- [Work with rows](/docs/work-with-rows) for read, search, create, update, and
   delete patterns.
-- [Connect over MCP](/docs/connect-mcp/) for a focused MCP setup guide.
-- [MCP tool reference](/docs/mcp-tools/) when an agent needs exact tool groups.
-- [Use cases](/use-cases/) for starter dataset shapes.
+- [Connect over MCP](/docs/connect-mcp) for a focused MCP setup guide.
+- [MCP tool reference](/docs/mcp-tools) when an agent needs exact tool groups.
+- [Use cases](/use-cases) for starter dataset shapes.

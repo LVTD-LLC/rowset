@@ -32,6 +32,7 @@
             </div>
         </header>
         <div class="mx-auto max-w-3xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+            <div class="mb-10 flex justify-end">{% include "components/ai_reader_menu.html" %}</div>
             <div class="prose max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-[#1313a4] prose-pre:bg-neutral-950 prose-pre:text-white dark:prose-invert dark:prose-a:text-[#ffdd3d]">{{ blog_post.html|safe }}</div>
             <nav class="mt-14 border-t-2 border-slate-950 pt-8 dark:border-white" aria-label="Related resources"><h2 class="text-2xl font-semibold tracking-tight">Keep building</h2><div class="mt-6 grid gap-3 sm:grid-cols-3"><a href="{% url 'docs_page' slug='quickstart' %}" class="fb-focus border border-slate-950/20 p-4 font-semibold hover:bg-[#f5f5ff] dark:border-white/20 dark:hover:bg-white/10">Quickstart →</a><a href="{% url 'docs_page' slug='dataset-api' %}" class="fb-focus border border-slate-950/20 p-4 font-semibold hover:bg-[#f5f5ff] dark:border-white/20 dark:hover:bg-white/10">Dataset API →</a><a href="{% url 'use_cases' %}" class="fb-focus border border-slate-950/20 p-4 font-semibold hover:bg-[#f5f5ff] dark:border-white/20 dark:hover:bg-white/10">AI agent examples →</a></div></nav>
         </div>

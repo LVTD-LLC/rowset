@@ -88,9 +88,9 @@ stable `index_column`.
 
 Useful starting points:
 
-- [Agent-managed personal CRM](/use-cases/personal-crm/)
-- [Agent task board](/use-cases/agent-task-board/)
-- [Feedback triage workflow](/use-cases/feedback-triage/)
+- [Agent-managed personal CRM](/use-cases/personal-crm)
+- [Agent task board](/use-cases/agent-task-board)
+- [Feedback triage workflow](/use-cases/feedback-triage)
 - [Index-column decision guide](/blog/choose-index-column-agent-rows)
 - [Dataset-instructions guide](/blog/structure-dataset-instructions-ai-agents)
 
@@ -120,13 +120,13 @@ If you are comparing Rowset with open-source database workspaces, read
 If your team is choosing between spreadsheet-style backends, see
 [NocoDB alternatives for AI-agent-managed datasets](/blog/nocodb-alternatives).
 
-Read [Database MCP server: when to use Rowset instead](/docs/database-mcp-server/)
+Read [Database MCP server: when to use Rowset instead](/docs/database-mcp-server)
 for the longer decision guide.
 
 ## Reference
 
-- [MCP tool reference](/docs/mcp-tools/)
-- [Dataset API](/docs/dataset-api/)
-- [Configure agent access](/docs/configure-agent-access/)
-- [Help agents discover Rowset](/docs/agent-discovery/)
+- [MCP tool reference](/docs/mcp-tools)
+- [Dataset API](/docs/dataset-api)
+- [Configure agent access](/docs/configure-agent-access)
+- [Help agents discover Rowset](/docs/agent-discovery)
 - [NocoDB alternatives for AI-agent-managed datasets](/blog/nocodb-alternatives)

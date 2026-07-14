@@ -33,7 +33,6 @@ from apps.core.agent_skill import (
     load_rowset_skill_markdown,
     load_rowset_use_cases_skill_markdown,
 )
-from apps.core.capabilities import render_rowset_llms_txt
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import (
@@ -298,27 +297,6 @@ def agent_instructions_rowset_use_cases(request):
         load_rowset_use_cases_skill_markdown(),
         content_type="text/markdown; charset=utf-8",
     )
-
-
-def llms_txt(request):
-    response = HttpResponse(
-        render_rowset_llms_txt(
-            site_url=build_absolute_public_url("/").rstrip("/"),
-            mcp_url=build_absolute_public_url("/mcp/"),
-            rest_api_base_url=build_absolute_public_url("/api/").rstrip("/"),
-            api_docs_url=build_absolute_public_url("/api/docs"),
-            setup_skill_url=build_absolute_public_url(reverse("agent_instructions_rowset_mcp")),
-            features_skill_url=build_absolute_public_url(
-                reverse("agent_instructions_rowset_features")
-            ),
-            use_cases_skill_url=build_absolute_public_url(
-                reverse("agent_instructions_rowset_use_cases")
-            ),
-        ),
-        content_type="text/plain; charset=utf-8",
-    )
-    response["Cache-Control"] = "public, max-age=300"
-    return response
 
 
 @login_required

@@ -1,7 +1,7 @@
 from allauth.account.views import SignupByPasskeyView, SignupView
 from django.conf import settings
 from django.contrib import messages
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.generic import TemplateView
@@ -25,6 +25,15 @@ from apps.pages.blog import (
     json_ld as blog_json_ld,
 )
 from apps.pages.content import render_content_page
+from apps.pages.llms import render_llms_txt
+from apps.pages.public_markdown import (
+    build_ai_reader_context,
+    build_public_markdown_context,
+    markdown_response,
+    render_blog_markdown,
+    render_content_markdown,
+    render_public_page_markdown,
+)
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
@@ -39,7 +48,14 @@ from rowset.utils import build_absolute_public_url, get_rowset_logger
 logger = get_rowset_logger(__name__)
 
 
-class LandingPageView(TemplateView):
+class PublicMarkdownContextMixin:
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(build_public_markdown_context(getattr(self.request, "path", "/")))
+        return context
+
+
+class LandingPageView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/landing-page.html"
 
     def get(self, request, *args, **kwargs):
@@ -133,7 +149,7 @@ class AccountSignupByPasskeyView(SignupTrackingMixin, SignupByPasskeyView):
     tracking_source_name = "AccountSignupByPasskeyView"
 
 
-class PricingView(TemplateView):
+class PricingView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/pricing.html"
 
     def get_context_data(self, **kwargs):
@@ -170,6 +186,20 @@ def use_case_page_view(request, slug):
     return render_content_page(request, "use-cases", slug)
 
 
+def public_page_markdown(request, page_slug):
+    return markdown_response(render_public_page_markdown(page_slug))
+
+
+def content_page_markdown(request, section_slug, page_slug):
+    return markdown_response(render_content_markdown(section_slug, page_slug))
+
+
+def llms_txt(request):
+    response = HttpResponse(render_llms_txt(), content_type="text/plain; charset=utf-8")
+    response["Cache-Control"] = "public, max-age=300"
+    return response
+
+
 def blog_posts_view(request):
     blog_posts = list_blog_posts()
     return render(
@@ -185,6 +215,7 @@ def blog_posts_view(request):
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
+            **build_public_markdown_context(reverse("blog_posts")),
         },
     )
 
@@ -195,6 +226,7 @@ def blog_post_view(request, slug):
     except (BlogPostNotFound, BlogPostValidationError) as exc:
         raise Http404("Blog post not found") from exc
 
+    path = reverse("blog_post", kwargs={"slug": blog_post.slug})
     return render(
         request,
         "blog/blog_post.html",
@@ -205,8 +237,18 @@ def blog_post_view(request, slug):
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
+            **build_ai_reader_context(path),
         },
     )
+
+
+def blog_post_markdown(request, slug):
+    try:
+        blog_post = get_blog_post(slug)
+    except (BlogPostNotFound, BlogPostValidationError) as exc:
+        raise Http404("Blog post not found") from exc
+
+    return markdown_response(render_blog_markdown(blog_post))
 
 
 class DatabaseMcpServerExplanationView(TemplateView):
@@ -216,6 +258,7 @@ class DatabaseMcpServerExplanationView(TemplateView):
         context = super().get_context_data(**kwargs)
         path = reverse("docs_page", kwargs={"slug": "database-mcp-server"})
         context["mcp_url"] = build_absolute_public_url("/mcp/")
+        context.update(build_ai_reader_context(path))
         context["docs_base_template"] = (
             "base_app.html" if self.request.user.is_authenticated else "base_landing.html"
         )
@@ -243,9 +286,13 @@ class DatabaseMcpServerExplanationView(TemplateView):
         return context
 
 
-class PrivacyPolicyView(TemplateView):
+class PrivacyPolicyView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/privacy-policy.html"
 
 
-class TermsOfServiceView(TemplateView):
+class TermsOfServiceView(PublicMarkdownContextMixin, TemplateView):
     template_name = "pages/terms-of-service.html"
+
+
+class UsesView(PublicMarkdownContextMixin, TemplateView):
+    template_name = "pages/uses.html"

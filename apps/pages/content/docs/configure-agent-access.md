@@ -129,10 +129,10 @@ inspection, and by-index row operations.
 
 ## Related docs
 
-- [Connect over MCP](/docs/connect-mcp/) explains the hosted MCP
+- [Connect over MCP](/docs/connect-mcp) explains the hosted MCP
   endpoint and bearer token setup.
-- [Help agents discover Rowset](/docs/agent-discovery/)
+- [Help agents discover Rowset](/docs/agent-discovery)
   explains `get_rowset_capabilities`, `llms.txt`, and the companion skills.
-- [API overview](/docs/api-overview/) explains REST authentication.
-- [Share a public preview](/docs/share-public-previews/) covers
+- [API overview](/docs/api-overview) explains REST authentication.
+- [Share a public preview](/docs/share-public-previews) covers
   browser sharing. It is not agent authentication.

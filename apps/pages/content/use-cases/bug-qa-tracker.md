@@ -34,6 +34,6 @@ to replay without scraping chat history.
 
 ## Connect it
 
-Use [MCP access](/docs/connect-mcp/) when agents create or update issues. Use
-the [Dataset API](/docs/dataset-api/) when automated checks write failures into
+Use [MCP access](/docs/connect-mcp) when agents create or update issues. Use
+the [Dataset API](/docs/dataset-api) when automated checks write failures into
 the tracker.

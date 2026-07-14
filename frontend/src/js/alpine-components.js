@@ -324,6 +324,65 @@
       },
     }));
 
+    Alpine.data("aiReaderMenu", () => ({
+      open: false,
+      busy: false,
+      status: "",
+      statusTimer: null,
+
+      destroy() {
+        window.clearTimeout(this.statusTimer);
+      },
+
+      flashStatus(message) {
+        window.clearTimeout(this.statusTimer);
+        this.status = message;
+        this.statusTimer = window.setTimeout(() => {
+          this.status = "";
+        }, 2000);
+      },
+
+      async copyFrom(getValue) {
+        if (this.busy) {
+          return;
+        }
+
+        this.busy = true;
+        try {
+          const value = await getValue();
+          const copied = await Rowset.copyTextToClipboard(value);
+          this.flashStatus(copied ? "Copied" : "Copy failed");
+        } catch (_error) {
+          this.flashStatus("Copy failed");
+        } finally {
+          this.busy = false;
+        }
+      },
+
+      async copyPrompt() {
+        await this.copyFrom(() => this.$el.dataset.prompt || "");
+      },
+
+      async copyMarkdown() {
+        await this.copyFrom(async () => {
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), 10000);
+          try {
+            const response = await fetch(this.$el.dataset.markdownUrl || "", {
+              credentials: "same-origin",
+              signal: controller.signal,
+            });
+            if (!response.ok) {
+              throw new Error("Markdown request failed");
+            }
+            return response.text();
+          } finally {
+            window.clearTimeout(timeout);
+          }
+        });
+      },
+    }));
+
     Alpine.data("commandPalette", () => ({
       activeIndex: -1,
       activeResultId: "",
