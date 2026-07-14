@@ -636,7 +636,9 @@ cp .env.example .env
 ### Dataset assets
 
 Leave `ROWSET_ASSET_S3_ENDPOINT_URL` blank to store private dataset image assets
-on local disk.
+on the production Compose host's `private_media_data` volume. The backend and
+workers share that volume. Django's default media storage uses the separate
+`media_data` volume.
 
 | Variable | Description |
 | --- | --- |
@@ -887,6 +889,18 @@ Start:
 ```bash
 docker compose -f docker-compose-prod.yml -p rowset up --detach --remove-orphans
 ```
+
+The production stack mounts the named `media_data` and `private_media_data`
+volumes into both the backend and workers. They survive container recreation,
+but `docker compose down -v` deletes them. Back up both local volumes with:
+
+```bash
+deployment/self-host/backup-local-media.sh /var/backups/rowset
+```
+
+The resulting archive is media-only; pair it with a PostgreSQL backup and copy
+both off the host. See [SELF_HOSTING.md](SELF_HOSTING.md#persistent-media-and-backups)
+for local-versus-S3 storage details and recovery cautions.
 
 The backend maps container port `80` to host port `8000`:
 

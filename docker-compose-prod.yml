@@ -35,6 +35,9 @@ services:
       - .env
     environment:
       APP_PROCESS_TYPE: server
+    volumes:
+      - media_data:/app/media
+      - private_media_data:/app/private_media
 
   workers:
     image: ghcr.io/lvtd-llc/rowset:latest
@@ -48,7 +51,12 @@ services:
       - .env
     environment:
       APP_PROCESS_TYPE: worker
+    volumes:
+      - media_data:/app/media
+      - private_media_data:/app/private_media
 
 volumes:
   postgres_data:
   redis_data:
+  media_data:
+  private_media_data:
