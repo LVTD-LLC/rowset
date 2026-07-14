@@ -19,6 +19,7 @@
 | 2026-07-11 | Best NocoDB alternatives for AI-agent-managed datasets | comparison/listicle | `/blog/nocodb-alternatives` | nocodb alternatives | 50 | 14 | Dataset API, MCP docs, index-column guide, Rowset rowset_id vs business keys | #TBD |
 | 2026-07-12 | How to connect an AI agent to the Rowset Dataset API | how-to | `/blog/connect-ai-agent-to-dataset-api` | connect AI agent to Dataset API | unmeasured | n/a | Dataset API, MCP docs, agent access, agent discovery, index-column guide, dataset-instructions guide | #TBD |
 | 2026-07-13 | How to model relationships between agent-managed datasets | how-to/decision guide | `/blog/relationship-modeling-agent-datasets` | agent dataset relationships | unmeasured | n/a | Relationship docs, Dataset API, MCP access, index-column guide, dataset-instructions guide, content pipeline | #TBD |
+| 2026-07-14 | AI agent memory vs structured state: what goes where? | comparison/decision guide | `/blog/ai-agent-memory-vs-state` | AI agent memory vs state | unmeasured | n/a | Agent-managed datasets, datasets docs, MCP access, Dataset API, task board, personal CRM | #262 |
 
 ---
 
@@ -26,11 +27,10 @@
 
 | Rank | Candidate | Proposed type | Target keyword | Vol | KD | Intent | Score | Notes / angle |
 |---|---|---|---|---|---|---|---|---|
-| 1 | Rowset rowset_id vs business keys | comparison | generated id vs natural key | unmeasured | n/a | decision | 19 | Keep decision angle open while moving into setup and explain pages. |
-| 2 | Best Baserow alternatives for AI-agent-managed datasets | comparison/listicle | baserow alternatives | 70 | 0 | commercial/informational | 18 | Next alternatives expansion requires no duplicate of same audience; this is already queued as prior phase but keeps the lane warm. |
-| 3 | How to choose an index column for agent-managed rows | how-to | dataset index column | estimated | n/a | process | 17 | Product-native tutorial for identity stability and row mutation safety. |
-| 4 | spreadsheet database for AI agents | explanation | spreadsheet database | 170 | 20 | informational | 15 | Helps map when spreadsheet-style tools are the right fit before a trust-first recommendation. |
-| 5 | Relationship modeling for agent-managed datasets | how-to | agent dataset relationships | unmeasured | n/a | operational/setup | shipped | Shipped 2026-07-13 as `/blog/relationship-modeling-agent-datasets`. |
+| 1 | AI agent memory vs structured state | comparison/decision guide | AI agent memory vs state | unmeasured | n/a | architecture/decision | shipped | Shipped 2026-07-14 as `/blog/ai-agent-memory-vs-state`. |
+| 2 | How to make AI-agent data updates idempotent | how-to | AI agent idempotent operations | unmeasured | n/a | operational/setup | 18 | Stable indexes, read-before-write, retries, and duplicate prevention. |
+| 3 | How to share agent-managed datasets safely | decision guide | share AI agent data | unmeasured | n/a | security/decision | 18 | Choose private MCP/REST, exports, or read-only previews by audience and risk. |
+| 4 | spreadsheet database for AI agents | explanation | spreadsheet database | 170 | 20 | informational | 15 | Reserved for the sprint-owned explanation page; do not duplicate as a blog post. |
 
 ---
 
@@ -38,7 +38,7 @@
 
 | Cluster / theme | Pieces shipped | Gaps still open |
 |---|---|---|
-| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets` | Generated-index migration patterns |
+| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state` | Generated-index migration patterns and idempotent writes |
 | MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents`, `/blog/connect-ai-agent-to-dataset-api`, `/blog/relationship-modeling-agent-datasets` | REST/MCP setup examples with concrete datasets |
 | Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives` | Spreadsheet database explanation and `/compare/rowset-vs-airtable` |
 

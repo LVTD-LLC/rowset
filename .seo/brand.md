@@ -7,8 +7,8 @@
 - **Name:** Rowset
 - **One-liner (<=20 words):** Private MCP and REST datasets for trusted AI agents.
 - **What we do:** Rowset gives AI agents a stable backend for user-owned structured rows. Users sign in, copy a setup prompt, authorize a scoped bearer API key, and let trusted agents create, inspect, update, export, and optionally share datasets through MCP or REST.
-- **Pricing structure:** Free plan plus Rowset Pro at $50/month.
-- **Free tier?** Yes - free accounts can create up to 2 datasets with up to 50 rows each. Pro unlocks unlimited hosted datasets and rows.
+- **Pricing structure:** A 7-day full-product trial at $0, then Rowset Pro at $50/month.
+- **Free tier?** No ongoing free tier. The trial includes the complete hosted product for 7 days; Pro unlocks continued use with unlimited hosted datasets and rows.
 
 ## Audience
 
