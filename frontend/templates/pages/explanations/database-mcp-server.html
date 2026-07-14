@@ -14,16 +14,11 @@
           content="https://{{ request.get_host }}{% url 'docs_page' slug='database-mcp-server' %}" />
     <meta property="og:description"
           content="A practical guide to hosted MCP datasets, direct database MCP servers, credentials, row identity, and agent-safe data workflows." />
-    <meta property="og:image"
-          content="https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
     <meta property="og:locale" content="en_US" />
-    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title"
           content="Database MCP server: when to use Rowset instead" />
     <meta name="twitter:description"
           content="How to decide between direct database MCP access and Rowset's private MCP dataset backend." />
-    <meta name="twitter:image"
-          content="https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
 {% endblock meta %}
 {% block content %}
     <article class="bg-white text-slate-950 dark:bg-slate-950 dark:text-white">

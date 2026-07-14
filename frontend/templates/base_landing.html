@@ -38,19 +38,17 @@
             <meta property="og:url" content="https://{{ request.get_host }}/" />
             <meta property="og:description"
                   content="Give trusted AI agents a private backend for structured rows." />
-            <meta property="og:image"
-                  content="https://osig.app/g?site=meta&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
             <meta property="og:locale" content="en_US" />
-            <meta name="twitter:card" content="summary" />
             <meta name="twitter:creator" content="@rasulkireev" />
             <meta name="twitter:site" content="@rasulkireev" />
             <meta name="twitter:title" content="Rowset" />
             <meta name="twitter:description"
                   content="Give trusted AI agents a private backend for structured rows." />
-            <meta name="twitter:image"
-                  content="https://osig.app/g?site=x&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
         {% endblock meta %}
         {% if markdown_url %}<link rel="alternate" type="text/markdown" href="{{ markdown_url }}" />{% endif %}
+        {% block social_image_meta %}
+            {% include "components/social_image_meta.html" %}
+        {% endblock social_image_meta %}
         {% include 'components/plausible.html' %}
         {% include 'components/posthog.html' %}
         <script>
@@ -109,7 +107,7 @@
         "@type": "WebSite",
         "name": "Rowset",
         "description": "Give trusted AI agents a private MCP and REST backend for structured datasets.",
-        "thumbnailUrl": "https://osig.app/g?site=x&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}",
+        "thumbnailUrl": "{{ rowset_social_image_url }}",
         "url": "https://{{ request.get_host }}/",
         "author": {
           "@type": "Person",

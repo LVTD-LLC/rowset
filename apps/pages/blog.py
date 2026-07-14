@@ -70,7 +70,7 @@ def is_blog_slug(value: str) -> bool:
 
 
 def default_blog_image_url() -> str:
-    return build_absolute_public_url(static("vendors/images/logo.png"))
+    return build_absolute_public_url(static("vendors/images/rowset-social-card.png"))
 
 
 def _coerce_string(value) -> str:
