@@ -154,16 +154,22 @@ def test_landing_page_shows_product_dashboard_screenshot(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    screenshot_url = static("vendors/images/landing/product-dashboard.webp")
-    assert f'src="{screenshot_url}"' in content
-    assert 'alt="Rowset dashboard showing projects and recently updated datasets"' in content
-    assert 'width="1585"' in content
-    assert 'height="991"' in content
+    light_screenshot = "vendors/images/landing/product-dashboard-light.webp"
+    dark_screenshot = "vendors/images/landing/product-dashboard-dark.webp"
+    assert f'src="{static(light_screenshot)}"' in content
+    assert f'src="{static(dark_screenshot)}"' in content
+    screenshot_alt = 'alt="Rowset dashboard showing projects and recently updated datasets"'
+    assert content.count(screenshot_alt) == 2
+    assert content.count('width="1600"') == 2
+    assert content.count('height="1000"') == 2
+    assert 'class="block h-auto w-full bg-white dark:hidden"' in content
+    assert 'class="hidden h-auto w-full bg-slate-950 dark:block"' in content
 
-    screenshot_path = settings.BASE_DIR / "frontend/vendors/images/landing/product-dashboard.webp"
-    with Image.open(screenshot_path) as screenshot:
-        assert screenshot.format == "WEBP"
-        assert screenshot.size == (1585, 991)
+    for screenshot_name in (light_screenshot, dark_screenshot):
+        screenshot_path = settings.BASE_DIR / "frontend" / screenshot_name
+        with Image.open(screenshot_path) as screenshot:
+            assert screenshot.format == "WEBP"
+            assert screenshot.size == (1600, 1000)
 
 
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
