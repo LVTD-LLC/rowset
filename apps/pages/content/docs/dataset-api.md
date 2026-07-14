@@ -50,6 +50,11 @@ Keep API keys private. Copy your real key from Settings or the dashboard agent p
 {{ api_base_url }}
 ```
 
+This is the REST base for the Rowset instance serving these docs. On a
+self-hosted deployment, it is generated from that instance's `SITE_URL`. Use a
+key created on the same instance. See the [API overview](/docs/api-overview) for
+authentication and instance configuration.
+
 Replace `{dataset_key}` with the dataset key from the dataset page or from the create-dataset response.
 
 ## Create a dataset

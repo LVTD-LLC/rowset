@@ -6,7 +6,8 @@ keywords: Rowset MCP tools, MCP reference, Rowset agent tools
 
 # MCP tool reference
 
-This page is a reference for the hosted Rowset MCP surface. Use
+This page is a reference for the Rowset MCP surface available on both Rowset
+Cloud and self-hosted instances. Use
 [Connect over MCP](/docs/connect-mcp) when you need setup steps.
 
 Do not treat this page as the exact schema source. The connected MCP server's

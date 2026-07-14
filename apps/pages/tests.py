@@ -668,6 +668,7 @@ def test_docs_pages_use_grouped_user_job_sidebar(client):
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in docs_nav
     assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) not in docs_nav
     assert reverse("docs_page", kwargs={"slug": "api-overview"}) in content
+    assert reverse("docs_page", kwargs={"slug": "use-cli"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
     assert reverse("docs_page", kwargs={"slug": "mcp-tools"}) in content
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
@@ -712,6 +713,7 @@ def test_root_content_sections_render_markdown_pages(client):
             "Start with your first agent dataset",
         ),
         (reverse("docs_page", kwargs={"slug": "connect-mcp"}), "Connect over MCP"),
+        (reverse("docs_page", kwargs={"slug": "use-cli"}), "Use Rowset from the CLI"),
         (reverse("docs_page", kwargs={"slug": "datasets"}), "How Rowset datasets work"),
     )
 
@@ -722,6 +724,25 @@ def test_root_content_sections_render_markdown_pages(client):
         content = response.content.decode()
         assert expected_title in content
         assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content or "dataset" in content
+
+
+@override_settings(SITE_URL="https://self-hosted.example")
+def test_connection_docs_render_self_hosted_instance_urls(client):
+    cases = (
+        ("connect-mcp", "https://self-hosted.example/mcp/"),
+        ("api-overview", "https://self-hosted.example/api"),
+        ("use-cli", "https://self-hosted.example/api/"),
+    )
+
+    for slug, expected in cases:
+        response = client.get(reverse("docs_page", kwargs={"slug": slug}))
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert expected in content
+        assert "self-hosted" in content
+        if slug == "use-cli":
+            assert "ROWSET_API_BASE" in content
 
 
 def test_use_cases_page_lists_use_case_pages(client):
