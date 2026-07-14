@@ -7,6 +7,9 @@ Instead of asking humans to manage upload wizards or fragile third-party sync,
 trusted agents create, inspect, update, export, and share datasets through MCP or
 REST.
 
+Rowset is open source and self-hostable. People can use the hosted product for
+the fastest setup or run the same code on infrastructure they control.
+
 The core promise is simple: sign in, copy the agent setup prompt, give a trusted
 agent an API key as a bearer token, and let it manage API-backed datasets with
 clear ownership boundaries.
@@ -52,7 +55,8 @@ MCP or REST. Rowset does not own those upstream integrations.
 Direct, technical, and calm. Rowset should feel like a practical agent
 utility, not a spreadsheet replacement or a no-code upload wizard. The voice is
 specific about what agents can do and honest about when users need an account or
-API key.
+API key. Open source and self-hosting are core identity traits, not details left
+for the footer or deployment documentation.
 
 ## In Scope
 

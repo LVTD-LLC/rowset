@@ -8,7 +8,8 @@ share structured rows without making humans operate upload wizards or fragile
 source-specific sync.
 
 The durable product direction is: private by default, agent-native by design,
-and honest about which operations are available through MCP and REST.
+open source and self-hostable, and honest about which operations are available
+through MCP and REST.
 
 ## What Should Not Drift
 
@@ -19,6 +20,7 @@ and honest about which operations are available through MCP and REST.
 - Public previews are for human review and lightweight sharing only.
 - Agents should use MCP first, REST second, and browser automation last.
 - Authenticated ownership boundaries matter more than convenience shortcuts.
+- Open source and self-hosting should be obvious anywhere Rowset introduces itself.
 - The UI should make agent setup and API outcomes visible quickly: MCP URL,
   REST base URL, dataset keys, row lookups, exports, and public preview URLs.
 

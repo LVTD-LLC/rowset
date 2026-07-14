@@ -35,6 +35,11 @@ def _nav_html(content, aria_label):
     return content[start : content.index("</nav>", start)]
 
 
+def _section_html(content, section_id):
+    start = content.index(f'<section id="{section_id}"')
+    return content[start : content.index("</section>", start)]
+
+
 def _json_ld_payload(content):
     start = content.index('<script type="application/ld+json">')
     end = content.index("</script>", start)
@@ -146,6 +151,38 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert '"@type": "Organization"' in content
     assert "LVTD" not in content.partition("<title>")[2].partition("</title>")[0]
     assert f"&copy; {time.localtime().tm_year} Rowset" in content
+
+
+def test_landing_page_presents_open_source_and_self_hosting_as_core_identity(client):
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    hero = _section_html(content, "product")
+    open_source_section = _section_html(content, "open-source")
+    primary_nav = _nav_html(content, "Primary navigation")
+    mobile_nav = _nav_html(content, "Mobile navigation")
+    footer_nav = _nav_html(content, "Footer navigation")
+    repository_href = 'href="https://github.com/LVTD-LLC/rowset"'
+    self_hosting_href = 'href="https://github.com/LVTD-LLC/rowset#deployment"'
+    meta_description = (
+        '<meta name="description" content="An open-source and self-hostable backend for AI '
+        "agent workflows. Create, search, update, export, and share structured datasets through "
+        'MCP, REST, or CLI." />'
+    )
+
+    assert "OPEN SOURCE / SELF-HOSTABLE" in hero
+    assert "open-source and self-hostable" in hero
+    assert "View source on GitHub" in hero
+    assert "Open source. Self-hostable." in open_source_section
+    assert "Run Rowset in our cloud or on your own infrastructure." in open_source_section
+    assert self_hosting_href in open_source_section
+    assert "open-source" in content.partition("<title>")[2].partition("</title>")[0]
+    assert meta_description in content
+    assert repository_href in primary_nav
+    assert repository_href in mobile_nav
+    assert repository_href in footer_nav
+    assert self_hosting_href in footer_nav
 
 
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
@@ -634,7 +671,13 @@ def test_schema_helpers_render_valid_homepage_json_ld(client):
     schema = json.loads(_json_ld_payload(content))
 
     assert {entry["@type"] for entry in schema} == {"SoftwareApplication", "Organization"}
+    software_application = next(
+        entry for entry in schema if entry["@type"] == "SoftwareApplication"
+    )
     organization = next(entry for entry in schema if entry["@type"] == "Organization")
+    assert software_application["description"] == (
+        "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+    )
     assert organization["url"].endswith("/")
 
 
@@ -692,7 +735,9 @@ def test_pricing_schema_uses_configured_public_url(client):
     schema = json.loads(_json_ld_payload(response.content.decode()))
 
     assert schema["@type"] == "Product"
-    assert schema["description"] == "Private MCP and REST datasets for trusted AI agents."
+    assert schema["description"] == (
+        "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+    )
     assert schema["url"] == "https://rowset.example/pricing/"
     assert schema["image"] == (
         "https://rowset.example/static/vendors/images/rowset-social-card.png"
