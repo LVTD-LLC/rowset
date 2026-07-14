@@ -159,6 +159,11 @@ def create_ready_dataset(profile):
     return dataset
 
 
+def complete_agent_setup(profile):
+    profile.setup_completed_at = timezone.now()
+    profile.save(update_fields=["setup_completed_at"])
+
+
 def create_choice_status_dataset(profile):
     dataset = Dataset.objects.create(
         profile=profile,
@@ -569,6 +574,7 @@ def test_dataset_list_includes_active_datasets(auth_client, profile):
 
 
 def test_dataset_list_supports_search_sort_and_omits_row_actions(auth_client, profile):
+    complete_agent_setup(profile)
     project = Project.objects.create(profile=profile, name="Research")
     dataset = create_ready_dataset(profile)
     dataset.project = project
@@ -661,6 +667,7 @@ def test_home_displays_only_ten_recent_datasets(auth_client, profile):
 
 
 def test_home_links_to_all_datasets(auth_client, profile):
+    complete_agent_setup(profile)
     Dataset.objects.create(
         profile=profile,
         name="People",
@@ -755,6 +762,7 @@ def test_home_project_sort_puts_unassigned_dataset_group_last(auth_client, profi
 
 
 def test_dataset_list_groups_datasets_by_project(auth_client, profile):
+    complete_agent_setup(profile)
     research = Project.objects.create(
         profile=profile,
         name="Research",

@@ -16,6 +16,7 @@ class Profile(BaseModel):
     key = models.CharField(max_length=30, unique=True, default=generate_random_key)
     trial_started_at = models.DateTimeField(null=True, blank=True)
     trial_ends_at = models.DateTimeField(null=True, blank=True)
+    setup_completed_at = models.DateTimeField(null=True, blank=True)
     agent_setup_prompt_dismissed = models.BooleanField(default=False)
     choice_colorization_enabled = models.BooleanField(
         default=False,

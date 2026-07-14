@@ -4,9 +4,12 @@ import time
 from typing import Any
 
 import structlog
+from asgiref.sync import sync_to_async
+from django.db import DatabaseError
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 
+from apps.core.services import mark_profile_setup_completed
 from rowset.logging_context import bind_actor_context, correlation_id_or_new
 from rowset.utils import get_rowset_logger
 
@@ -21,7 +24,7 @@ def _request_id() -> str:
     return correlation_id_or_new(request.headers.get("x-request-id"))
 
 
-def _bind_access_token_actor() -> None:
+def _bind_access_token_actor() -> int | None:
     try:
         access_token = get_access_token()
     except RuntimeError:
@@ -54,6 +57,9 @@ def _bind_access_token_actor() -> None:
         agent_api_key_access_level=str(claims.get("agent_api_key_access_level") or ""),
         auth_method="mcp_bearer",
     )
+    if agent_api_key_id is not None and not claims.get("setup_completed"):
+        return profile_id
+    return None
 
 
 class RowsetMCPLoggingMiddleware(Middleware):
@@ -73,7 +79,7 @@ class RowsetMCPLoggingMiddleware(Middleware):
         if tool_name:
             request_context["mcp.tool.name"] = str(tool_name)
         structlog.contextvars.bind_contextvars(**request_context)
-        _bind_access_token_actor()
+        setup_profile_id = _bind_access_token_actor()
 
         outcome = "success"
         error_type = ""
@@ -81,6 +87,18 @@ class RowsetMCPLoggingMiddleware(Middleware):
             result = await call_next(context)
             if bool(getattr(result, "is_error", False)):
                 outcome = "failure"
+            elif setup_profile_id is not None:
+                try:
+                    await sync_to_async(mark_profile_setup_completed, thread_sensitive=True)(
+                        setup_profile_id
+                    )
+                except DatabaseError as exc:
+                    logger.warning(
+                        "agent_setup.completion_failed",
+                        error_type=type(exc).__name__,
+                        profile_id=setup_profile_id,
+                        request_interface="mcp",
+                    )
             return result
         except Exception as exc:
             outcome = "failure"

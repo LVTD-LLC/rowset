@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 import structlog
+from django.db import DatabaseError
 from fastmcp.server.auth import AccessToken
 from fastmcp.server.middleware import MiddlewareContext
 from mcp.types import CallToolRequestParams, ListToolsRequest
@@ -30,7 +31,12 @@ def test_mcp_logging_emits_tool_name_identity_outcome_and_duration(
     captured_events,
     monkeypatch,
 ):
+    completed_profile_ids = []
     monkeypatch.setattr("rowset.mcp_logging.get_access_token", _access_token)
+    monkeypatch.setattr(
+        "rowset.mcp_logging.mark_profile_setup_completed",
+        completed_profile_ids.append,
+    )
     monkeypatch.setattr(
         "rowset.mcp_logging.get_http_request",
         lambda: SimpleNamespace(headers={"x-request-id": "mcp.req-1"}),
@@ -72,6 +78,7 @@ def test_mcp_logging_emits_tool_name_identity_outcome_and_duration(
     assert "agent_api_key_name" not in event
     assert "secret-token-that-must-not-be-logged" not in str(event)
     assert result is expected_result
+    assert completed_profile_ids == [11]
     assert structlog.contextvars.get_contextvars() == {}
 
 
@@ -79,9 +86,15 @@ def test_mcp_logging_uses_canonical_token_subject_for_actor_identity(
     captured_events,
     monkeypatch,
 ):
+    completed_profile_ids = []
     access_token = _access_token()
     access_token.subject = "12"
+    access_token.claims["setup_completed"] = True
     monkeypatch.setattr("rowset.mcp_logging.get_access_token", lambda: access_token)
+    monkeypatch.setattr(
+        "rowset.mcp_logging.mark_profile_setup_completed",
+        completed_profile_ids.append,
+    )
     monkeypatch.setattr(
         "rowset.mcp_logging.get_http_request",
         lambda: SimpleNamespace(headers={}),
@@ -102,6 +115,7 @@ def test_mcp_logging_uses_canonical_token_subject_for_actor_identity(
     event = captured_events.event("mcp.request.completed")
     assert event["profile_id"] == 12
     assert event["posthogDistinctId"] == "12"
+    assert completed_profile_ids == []
 
 
 def test_mcp_logging_emits_only_error_type_when_request_raises(captured_events, monkeypatch):
@@ -156,3 +170,34 @@ def test_mcp_logging_treats_error_results_as_failed_outcomes(captured_events, mo
     event = captured_events.event("mcp.request.completed")
     assert event["outcome"] == "failure"
     assert "error detail" not in str(event)
+
+
+def test_mcp_setup_completion_failure_preserves_successful_result(
+    captured_events,
+    monkeypatch,
+):
+    monkeypatch.setattr("rowset.mcp_logging.get_access_token", _access_token)
+    monkeypatch.setattr(
+        "rowset.mcp_logging.get_http_request",
+        lambda: SimpleNamespace(headers={}),
+    )
+
+    def fail_to_mark(_profile_id):
+        raise DatabaseError("database unavailable")
+
+    monkeypatch.setattr("rowset.mcp_logging.mark_profile_setup_completed", fail_to_mark)
+    middleware = RowsetMCPLoggingMiddleware()
+    context = MiddlewareContext(
+        message=ListToolsRequest(),
+        method="tools/list",
+        type="request",
+        source="client",
+    )
+
+    async def call_next(_context):
+        return SimpleNamespace(is_error=False)
+
+    result = asyncio.run(middleware.on_request(context, call_next))
+
+    assert result.is_error is False
+    assert captured_events.event("agent_setup.completion_failed")["error_type"] == "DatabaseError"

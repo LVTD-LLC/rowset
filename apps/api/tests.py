@@ -46,7 +46,10 @@ def test_capabilities_endpoint_supports_current_api_prefix(client):
 
 @pytest.mark.django_db
 @override_settings(SITE_URL="https://rowset.example", TRIAL_DURATION_DAYS=7)
-def test_authenticated_api_request_starts_trial(client, django_user_model):
+def test_successful_authenticated_api_request_starts_trial_and_completes_setup(
+    client,
+    django_user_model,
+):
     from apps.core.services import create_agent_api_key
 
     user = django_user_model.objects.create_user(
@@ -65,6 +68,17 @@ def test_authenticated_api_request_starts_trial(client, django_user_model):
     user.profile.refresh_from_db()
     assert user.profile.trial_started_at is not None
     assert user.profile.trial_ends_at == user.profile.trial_started_at + timedelta(days=7)
+    assert user.profile.setup_completed_at is not None
+    first_setup_completed_at = user.profile.setup_completed_at
+
+    second_response = client.get(
+        "/api/user",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert second_response.status_code == 200
+    user.profile.refresh_from_db()
+    assert user.profile.setup_completed_at == first_setup_completed_at
 
 
 @pytest.mark.django_db
@@ -97,6 +111,29 @@ def test_expired_trial_returns_soft_upgrade_error(client, django_user_model):
         "upgrade_url": "https://rowset.example/pricing",
         "trial_ended_at": ended_at.isoformat(),
     }
+    user.profile.refresh_from_db()
+    assert user.profile.setup_completed_at is None
+
+
+@pytest.mark.django_db
+def test_failed_authenticated_api_request_does_not_complete_setup(client, django_user_model):
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="failed-setup-api-user",
+        email="failed-setup-api-user@example.com",
+        password="password123",
+    )
+    credential = create_agent_api_key(user.profile, "Failed setup agent")
+
+    response = client.get(
+        "/api/datasets/not-a-dataset",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 404
+    user.profile.refresh_from_db()
+    assert user.profile.setup_completed_at is None
 
 
 def test_row_mutations_normalize_row_data_for_declared_headers():

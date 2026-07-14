@@ -49,6 +49,7 @@ class RowsetApiKeyAuthProvider(AuthProvider):
             "agent_api_key_id": agent_api_key.id,
             "agent_api_key_name": agent_api_key.name,
             "agent_api_key_access_level": agent_api_key.access_level,
+            "setup_completed": profile.setup_completed_at is not None,
         }
 
         return AccessToken(

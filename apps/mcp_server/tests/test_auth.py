@@ -54,6 +54,7 @@ def test_api_key_provider_accepts_named_agent_api_key(profile):
     assert access_token.claims["agent_api_key_id"] == credential.agent_api_key.id
     assert access_token.claims["agent_api_key_name"] == "Codex"
     assert access_token.claims["agent_api_key_access_level"] == AgentApiKeyAccessLevel.ADMIN
+    assert access_token.claims["setup_completed"] is False
     credential.agent_api_key.refresh_from_db()
     assert credential.agent_api_key.last_used_at is not None
     profile.refresh_from_db()

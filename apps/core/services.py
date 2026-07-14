@@ -88,6 +88,15 @@ class FeedbackSubmissionResult:
     row_url: str
 
 
+def mark_profile_setup_completed(profile_id: int) -> None:
+    """Record the first successful agent request for a profile exactly once."""
+    now = timezone.now()
+    Profile.objects.filter(id=profile_id, setup_completed_at__isnull=True).update(
+        setup_completed_at=now,
+        updated_at=now,
+    )
+
+
 def _active_project_by_name(profile: Profile, name: str) -> Project | None:
     return (
         Project.objects.filter(

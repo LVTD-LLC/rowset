@@ -7,6 +7,7 @@ from django.contrib.messages import get_messages
 from django.db import IntegrityError, transaction
 from django.test import RequestFactory, override_settings
 from django.urls import path, reverse
+from django.utils import timezone
 from django.views.generic import TemplateView
 
 from apps.core import agent_skill
@@ -329,7 +330,22 @@ class TestHomeView:
         assert "Rowset API key: ***" not in content
         assert "Your data workspace" in content
 
-    def test_home_view_hides_agent_setup_prompt_after_dataset_exists(self, auth_client, profile):
+    def test_home_view_hides_agent_setup_prompt_after_setup_completes(self, auth_client, profile):
+        profile.setup_completed_at = timezone.now()
+        profile.save(update_fields=["setup_completed_at"])
+
+        response = auth_client.get(reverse("home"))
+
+        content = response.content.decode()
+        assert response.context["show_agent_setup_prompt"] is False
+        assert "Connect your AI agent to Rowset" not in content
+        assert "Your data workspace" in content
+
+    def test_home_view_keeps_agent_setup_prompt_until_setup_completes(
+        self,
+        auth_client,
+        profile,
+    ):
         Dataset.objects.create(
             profile=profile,
             name="People",
@@ -340,7 +356,7 @@ class TestHomeView:
         response = auth_client.get(reverse("home"))
 
         content = response.content.decode()
-        assert response.context["show_agent_setup_prompt"] is False
+        assert response.context["show_agent_setup_prompt"] is True
         assert response.context["dashboard_stats"] == {
             "total_datasets": 1,
             "total_projects": 0,
@@ -348,13 +364,7 @@ class TestHomeView:
             "public_preview_count": 0,
         }
         assert response.context["selected_view_mode"] == "grouped"
-        assert "Copy/paste prompt" not in content
-        assert "Copy agent prompt" not in content
-        assert "MCP endpoint" not in content
-        assert "REST API base" not in content
-        assert "Agent skill" not in content
-        assert "People" in content
-        assert "Recently updated" in content
+        assert "Connect your AI agent to Rowset" in content
 
     def test_dismiss_agent_setup_prompt_removes_prompt_from_home(self, auth_client, profile):
         response = auth_client.post(reverse("dismiss_agent_setup_prompt"))
