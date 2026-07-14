@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from urllib.parse import urlencode
 
 from django.templatetags.static import static
 from django.urls import reverse
@@ -10,7 +9,9 @@ from django.urls import reverse
 from rowset.utils import build_absolute_public_url
 
 ROWSET_NAME = "Rowset"
-ROWSET_DESCRIPTION = "Private MCP and REST datasets for trusted AI agents."
+ROWSET_DESCRIPTION = (
+    "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+)
 ROWSET_AUTHOR = "Rasul Kireev"
 
 
@@ -33,18 +34,8 @@ def logo_url() -> str:
     return public_url(static("vendors/images/logo.png"))
 
 
-def social_card_url(*, site: str, title: str, subtitle: str) -> str:
-    query = urlencode(
-        {
-            "site": site,
-            "style": "logo",
-            "font": "markerfelt",
-            "title": title,
-            "subtitle": subtitle,
-            "image_url": logo_url(),
-        }
-    )
-    return f"https://osig.app/g?{query}"
+def social_card_url() -> str:
+    return public_url(static("vendors/images/rowset-social-card.png"))
 
 
 def organization_schema() -> dict:
@@ -93,11 +84,7 @@ def product_schema() -> dict:
         "name": ROWSET_NAME,
         "description": ROWSET_DESCRIPTION,
         "url": public_url(reverse("pricing")),
-        "image": social_card_url(
-            site="x",
-            title="Rowset Pricing",
-            subtitle="Agent-managed datasets",
-        ),
+        "image": social_card_url(),
         "offers": [
             {
                 "@type": "Offer",

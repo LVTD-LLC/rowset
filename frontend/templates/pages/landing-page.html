@@ -1,25 +1,40 @@
 {% extends "base_landing.html" %}
 {% load static %}
 {% block meta %}
-    <title>Rowset — the backend for AI agent workflows</title>
-    <meta name="description" content="Give AI agents one free-form backend for structured data. Create, search, update, export, and share datasets through MCP, REST, or CLI." />
-    <meta name="keywords" content="AI agent backend, MCP database, dataset API, AI agent database, AI agent infrastructure" />
+    <title>Rowset — the open-source backend for AI agent workflows</title>
+    <meta name="description" content="An open-source and self-hostable backend for AI agent workflows. Create, search, update, export, and share structured datasets through MCP, REST, or CLI." />
+    <meta name="keywords" content="open-source AI backend, self-hosted MCP server, AI agent backend, MCP database, dataset API, AI agent infrastructure" />
 {% endblock meta %}
 {% block content %}
     <section id="product" class="bg-[#1313a4] text-white">
         <p class="sr-only">Agent-native data backend. Dataset backends for AI agents.</p>
         <div class="mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-between px-4 py-10 sm:px-6 lg:px-8">
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/30 pb-4 font-mono text-sm"><span>FREE-FORM BACKEND FOR AI AGENTS</span><span>MCP / REST / CLI</span></div>
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/30 pb-4 font-mono text-sm"><span>OPEN SOURCE / SELF-HOSTABLE</span><span>MCP / REST / CLI</span></div>
             <div class="py-16 lg:py-24">
                 <h1 class="max-w-[20ch] font-display text-6xl font-semibold tracking-tight text-balance sm:text-8xl lg:text-[9.5rem]">
                     Any agent.<br />Any workflow.<br /><span class="text-[#ffdd3d]">One backend.</span>
                 </h1>
             </div>
             <div class="grid gap-6 border-t border-white/30 pt-6 lg:grid-cols-[3fr_2fr] lg:items-end">
-                <p class="max-w-[40ch] text-2xl text-pretty text-blue-100 sm:text-xl">Rowset is an MCP database and dataset API for AI agents. Give every workflow reliable, searchable, structured data—without building another backend.</p>
+                <p class="max-w-[40ch] text-2xl text-pretty text-blue-100 sm:text-xl">Rowset is the open-source and self-hostable MCP database for AI agents. Give every workflow reliable, searchable, structured data—without building another backend.</p>
                 <div class="flex flex-col gap-3 sm:flex-row lg:justify-end">
                     <a href="{% url 'account_signup' %}" class="inline-flex min-h-12 items-center justify-center bg-[#ffdd3d] px-4 py-3 font-semibold text-[#1313a4] hover:bg-white">Create a backend →</a>
-                    <a href="{% url 'docs_page' slug='quickstart' %}" class="fb-focus inline-flex min-h-12 items-center justify-center border border-white/40 px-4 py-3 font-semibold hover:bg-white/10">See the quickstart</a>
+                    <a href="https://github.com/LVTD-LLC/rowset" class="fb-focus inline-flex min-h-12 items-center justify-center border border-white/40 px-4 py-3 font-semibold hover:bg-white/10">View source on GitHub</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section id="open-source" class="bg-[#ffdd3d] text-[#1313a4]">
+        <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[3fr_2fr] lg:items-end lg:px-8 lg:py-24">
+            <div>
+                <p class="font-mono text-sm font-semibold uppercase tracking-wide">Built in the open</p>
+                <h2 class="mt-6 max-w-[18ch] font-display text-5xl font-semibold tracking-tight text-balance sm:text-7xl">Open source. Self-hostable.</h2>
+            </div>
+            <div>
+                <p class="max-w-[40ch] text-xl text-pretty">Run Rowset in our cloud or on your own infrastructure. Inspect the code, shape the roadmap, and keep deployment under your control.</p>
+                <div class="mt-8 flex flex-wrap gap-x-6 gap-y-3 font-semibold">
+                    <a href="https://github.com/LVTD-LLC/rowset" class="underline decoration-2 underline-offset-4 hover:text-white">Browse the source</a>
+                    <a href="https://github.com/LVTD-LLC/rowset#deployment" class="underline decoration-2 underline-offset-4 hover:text-white">Self-hosting guide</a>
                 </div>
             </div>
         </div>
@@ -52,7 +67,7 @@
         </div>
     </section>
     <section class="bg-[#ffdd3d] text-[#1313a4]">
-        <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <div class="mx-auto max-w-7xl border-t-2 border-[#1313a4] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
             <p class="font-mono text-sm font-semibold uppercase tracking-wide">AI agent examples</p>
             <h2 class="mt-8 max-w-[18ch] font-display text-5xl font-semibold tracking-tight text-balance sm:text-7xl">What will your agent keep moving?</h2>
             <div class="mt-12 flex flex-wrap gap-x-5 gap-y-2 font-display text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">

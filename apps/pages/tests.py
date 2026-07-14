@@ -1,5 +1,6 @@
 import json
 import re
+import struct
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -34,6 +35,11 @@ pytestmark = pytest.mark.django_db
 def _nav_html(content, aria_label):
     start = content.index(f'aria-label="{aria_label}"')
     return content[start : content.index("</nav>", start)]
+
+
+def _section_html(content, section_id):
+    start = content.index(f'<section id="{section_id}"')
+    return content[start : content.index("</section>", start)]
 
 
 def _json_ld_payload(content):
@@ -170,6 +176,38 @@ def test_landing_page_shows_product_dashboard_screenshot(client):
         with Image.open(screenshot_path) as screenshot:
             assert screenshot.format == "WEBP"
             assert screenshot.size == (1600, 1000)
+
+
+def test_landing_page_presents_open_source_and_self_hosting_as_core_identity(client):
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    hero = _section_html(content, "product")
+    open_source_section = _section_html(content, "open-source")
+    primary_nav = _nav_html(content, "Primary navigation")
+    mobile_nav = _nav_html(content, "Mobile navigation")
+    footer_nav = _nav_html(content, "Footer navigation")
+    repository_href = 'href="https://github.com/LVTD-LLC/rowset"'
+    self_hosting_href = 'href="https://github.com/LVTD-LLC/rowset#deployment"'
+    meta_description = (
+        '<meta name="description" content="An open-source and self-hostable backend for AI '
+        "agent workflows. Create, search, update, export, and share structured datasets through "
+        'MCP, REST, or CLI." />'
+    )
+
+    assert "OPEN SOURCE / SELF-HOSTABLE" in hero
+    assert "open-source and self-hostable" in hero
+    assert "View source on GitHub" in hero
+    assert "Open source. Self-hostable." in open_source_section
+    assert "Run Rowset in our cloud or on your own infrastructure." in open_source_section
+    assert self_hosting_href in open_source_section
+    assert "open-source" in content.partition("<title>")[2].partition("</title>")[0]
+    assert meta_description in content
+    assert repository_href in primary_nav
+    assert repository_href in mobile_nav
+    assert repository_href in footer_nav
+    assert self_hosting_href in footer_nav
 
 
 def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
@@ -355,6 +393,34 @@ def test_landing_page_redirects_authenticated_users_to_home(client):
 
     assert response.status_code == 302
     assert response["Location"] == reverse("home")
+
+
+@override_settings(SITE_URL="https://rowset.example")
+@pytest.mark.parametrize(
+    "route_name",
+    ("landing", "pricing", "privacy_policy", "terms_of_service", "uses"),
+)
+def test_public_pages_use_the_hosted_rowset_social_card(client, route_name):
+    response = client.get(reverse(route_name))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    image_url = "https://rowset.example/static/vendors/images/rowset-social-card.png"
+    assert content.count(f'property="og:image" content="{image_url}"') == 1
+    assert content.count(f'name="twitter:image" content="{image_url}"') == 1
+    assert '<meta property="og:image:width" content="1200" />' in content
+    assert '<meta property="og:image:height" content="630" />' in content
+    assert '<meta name="twitter:card" content="summary_large_image" />' in content
+    assert "osig.app/g" not in content
+
+
+def test_rowset_social_card_has_open_graph_dimensions():
+    image_path = settings.BASE_DIR / "frontend/vendors/images/rowset-social-card.png"
+    image_bytes = image_path.read_bytes()
+
+    assert image_bytes[:8] == b"\x89PNG\r\n\x1a\n"
+    width, height = struct.unpack(">II", image_bytes[16:24])
+    assert (width, height) == (1200, 630)
 
 
 @override_settings(SITE_URL="https://testserver")
@@ -630,7 +696,13 @@ def test_schema_helpers_render_valid_homepage_json_ld(client):
     schema = json.loads(_json_ld_payload(content))
 
     assert {entry["@type"] for entry in schema} == {"SoftwareApplication", "Organization"}
+    software_application = next(
+        entry for entry in schema if entry["@type"] == "SoftwareApplication"
+    )
     organization = next(entry for entry in schema if entry["@type"] == "Organization")
+    assert software_application["description"] == (
+        "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+    )
     assert organization["url"].endswith("/")
 
 
@@ -688,12 +760,12 @@ def test_pricing_schema_uses_configured_public_url(client):
     schema = json.loads(_json_ld_payload(response.content.decode()))
 
     assert schema["@type"] == "Product"
-    assert schema["description"] == "Private MCP and REST datasets for trusted AI agents."
+    assert schema["description"] == (
+        "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+    )
     assert schema["url"] == "https://rowset.example/pricing/"
-    assert schema["image"].startswith("https://osig.app/g?")
-    assert (
-        "image_url=https%3A%2F%2Frowset.example%2Fstatic%2Fvendors%2Fimages%2Flogo.png"
-        in schema["image"]
+    assert schema["image"] == (
+        "https://rowset.example/static/vendors/images/rowset-social-card.png"
     )
 
 
