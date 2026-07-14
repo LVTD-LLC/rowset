@@ -9,6 +9,10 @@ keywords: agent task board, AI task tracker, Rowset use case
 Use Rowset as a small task ledger when agent work needs durable state across
 runs, tools, and handoffs.
 
+Task status is structured operational state, not a memory the agent may or may
+not retrieve. See [AI agent memory vs structured
+state](/blog/ai-agent-memory-vs-state) for the architecture boundary.
+
 ## Starter shape
 
 Create an `agent_tasks` dataset indexed by `task_id`.

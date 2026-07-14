@@ -23,6 +23,11 @@ Datasets are active when created and remain editable until archived. Archived
 datasets keep their rows and schema metadata but are hidden from normal dataset
 lists.
 
+Use datasets for current operational records rather than conversational recall.
+The guide to [AI agent memory vs structured
+state](/blog/ai-agent-memory-vs-state) explains where preferences, workflow
+checkpoints, tasks, contacts, and catalog rows should live.
+
 ## Choosing an index column
 
 Pick the column your apps and agents naturally use to find a row:

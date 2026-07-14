@@ -9,6 +9,11 @@ keywords: agent CRM, personal CRM, Rowset use case
 Use Rowset when you want a trusted agent to maintain relationship context without
 turning every follow-up into a manual spreadsheet chore.
 
+Keep recalled preferences in agent memory and current contact fields in the CRM
+dataset. The guide to [AI agent memory vs structured
+state](/blog/ai-agent-memory-vs-state) shows how to choose the authoritative
+home for each fact.
+
 ## Starter shape
 
 Create a `people` dataset. Use `email` as the index when contacts have reliable
