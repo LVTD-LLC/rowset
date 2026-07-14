@@ -188,6 +188,7 @@ TEMPLATES = [
                 "apps.core.context_processors.mjml_url",
                 "apps.core.context_processors.available_social_providers",
                 "apps.pages.context_processors.referrer_banner",
+                "apps.pages.context_processors.social_metadata",
             ],
         },
     },
