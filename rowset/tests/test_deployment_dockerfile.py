@@ -21,9 +21,7 @@ def test_docker_healthcheck_uses_project_environment():
     healthcheck_lines = _dockerfile_healthcheck_lines()
     command = healthcheck_lines[-1].strip()
 
-    assert command.startswith("CMD ")
-    assert '"/opt/venv/bin/python"' in command
-    assert command.endswith('"deployment/healthcheck.py"]')
+    assert command == 'CMD ["/opt/venv/bin/python", "-m", "deployment.healthcheck"]'
 
 
 def test_docker_healthcheck_allows_server_startup_window():
