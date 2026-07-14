@@ -1,4 +1,5 @@
 {% extends "base_landing.html" %}
+{% load static %}
 {% block meta %}
     <title>Rowset — the open-source backend for AI agent workflows</title>
     <meta name="description" content="An open-source and self-hostable backend for AI agent workflows. Create, search, update, export, and share structured datasets through MCP, REST, or CLI." />
@@ -36,6 +37,33 @@
                     <a href="https://github.com/LVTD-LLC/rowset#deployment" class="underline decoration-2 underline-offset-4 hover:text-white">Self-hosting guide</a>
                 </div>
             </div>
+        </div>
+    </section>
+    <section class="border-b border-slate-950/10 bg-[#f5f5ff] text-slate-950 dark:border-white/15 dark:bg-neutral-950 dark:text-white" aria-labelledby="product-screenshot-heading">
+        <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+            <div class="grid gap-6 lg:grid-cols-[3fr_2fr] lg:items-end">
+                <div>
+                    <p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Inside Rowset</p>
+                    <h2 id="product-screenshot-heading" class="mt-6 max-w-[18ch] text-5xl font-semibold tracking-tight text-balance sm:text-6xl">See what your agents changed.</h2>
+                </div>
+                <p class="max-w-[42ch] text-xl text-pretty text-slate-600 dark:text-neutral-300">Review projects, recent datasets, row counts, and public previews from one calm control surface.</p>
+            </div>
+            <figure class="mt-10 overflow-hidden border-2 border-slate-950 bg-white p-1 dark:border-white dark:bg-slate-950 sm:p-2">
+                <img src="{% static 'vendors/images/landing/product-dashboard-light.webp' %}"
+                     alt="Rowset dashboard showing projects and recently updated datasets"
+                     width="1600"
+                     height="1000"
+                     loading="lazy"
+                     decoding="async"
+                     class="block h-auto w-full bg-white dark:hidden" />
+                <img src="{% static 'vendors/images/landing/product-dashboard-dark.webp' %}"
+                     alt="Rowset dashboard showing projects and recently updated datasets"
+                     width="1600"
+                     height="1000"
+                     loading="lazy"
+                     decoding="async"
+                     class="hidden h-auto w-full bg-slate-950 dark:block" />
+            </figure>
         </div>
     </section>
     <section class="bg-[#ffdd3d] text-[#1313a4]">

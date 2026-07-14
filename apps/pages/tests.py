@@ -14,9 +14,11 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.exceptions import ImproperlyConfigured
+from django.templatetags.static import static
 from django.test import override_settings
 from django.urls import resolve, reverse
 from django.utils.html import strip_tags
+from PIL import Image
 
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
@@ -505,6 +507,29 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert '"@type": "Organization"' in content
     assert "LVTD" not in content.partition("<title>")[2].partition("</title>")[0]
     assert f"&copy; {time.localtime().tm_year} Rowset" in content
+
+
+def test_landing_page_shows_product_dashboard_screenshot(client):
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    light_screenshot = "vendors/images/landing/product-dashboard-light.webp"
+    dark_screenshot = "vendors/images/landing/product-dashboard-dark.webp"
+    assert f'src="{static(light_screenshot)}"' in content
+    assert f'src="{static(dark_screenshot)}"' in content
+    screenshot_alt = 'alt="Rowset dashboard showing projects and recently updated datasets"'
+    assert content.count(screenshot_alt) == 2
+    assert content.count('width="1600"') == 2
+    assert content.count('height="1000"') == 2
+    assert 'class="block h-auto w-full bg-white dark:hidden"' in content
+    assert 'class="hidden h-auto w-full bg-slate-950 dark:block"' in content
+
+    for screenshot_name in (light_screenshot, dark_screenshot):
+        screenshot_path = settings.BASE_DIR / "frontend" / screenshot_name
+        with Image.open(screenshot_path) as screenshot:
+            assert screenshot.format == "WEBP"
+            assert screenshot.size == (1600, 1000)
 
 
 def test_landing_page_presents_open_source_and_self_hosting_as_core_identity(client):
