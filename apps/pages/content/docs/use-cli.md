@@ -1,6 +1,6 @@
 ---
 title: Use Rowset from the CLI
-description: Configure the Rowset CLI for Rowset Cloud or a self-hosted instance and verify API access.
+description: Configure the Rowset CLI and verify API access.
 keywords: Rowset CLI, ROWSET_API_BASE, self-hosted Rowset, command line, REST API
 ---
 
@@ -13,9 +13,7 @@ authenticated REST API available to agents and applications.
 ## Before you begin
 
 You need a Rowset account and an API key. Create the key on the Rowset instance
-you intend to use. A key created on Rowset Cloud cannot authenticate with a
-self-hosted instance, and a self-hosted key cannot authenticate with Rowset
-Cloud.
+you intend to use.
 
 ## Install the CLI
 
@@ -33,33 +31,32 @@ rowset --version
 
 ## Connect to your Rowset instance
 
-The REST API base for the Rowset instance serving these docs is:
-
-```text
-{{ api_base_url }}/
-```
-
-Store the API key privately and set the API base explicitly:
+Store the API key privately:
 
 ```bash
 export ROWSET_API_KEY="YOUR_ROWSET_API_KEY"
-export ROWSET_API_BASE="{{ api_base_url }}/"
 rowset user info
 ```
 
-Setting `ROWSET_API_BASE` makes the target instance explicit and works for both
-Rowset Cloud and self-hosted deployments. The CLI defaults to the Rowset Cloud
-API when `ROWSET_API_BASE` is unset.
+The CLI uses `https://rowset.lvtd.dev/api/` by default.
 
-For a one-off command, pass the API base as a global option before the command:
+If you want to connect to a self-hosted instance, pass the REST API base as a
+global option before the command:
 
 ```bash
-rowset --api-base "{{ api_base_url }}/" user info
+rowset --api-base "https://rowset.example.com/api/" user info
 ```
 
-For self-hosted Rowset, configure the deployment's `SITE_URL` to its public
-origin. Rowset then displays the corresponding REST base ending in `/api/`.
-Use the URL shown by that instance rather than the Rowset Cloud URL.
+To use the same self-hosted instance for every command, set `ROWSET_API_BASE`
+instead:
+
+```bash
+export ROWSET_API_BASE="https://rowset.example.com/api/"
+rowset user info
+```
+
+Use the public base URL you expose for the instance, including the `/api/`
+path. The API key must come from that instance.
 
 ## Verify access
 

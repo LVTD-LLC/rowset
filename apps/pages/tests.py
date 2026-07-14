@@ -727,11 +727,10 @@ def test_root_content_sections_render_markdown_pages(client):
 
 
 @override_settings(SITE_URL="https://self-hosted.example")
-def test_connection_docs_render_self_hosted_instance_urls(client):
+def test_connection_docs_explain_self_hosted_instance_urls(client):
     cases = (
         ("connect-mcp", "https://self-hosted.example/mcp/"),
         ("api-overview", "https://self-hosted.example/api"),
-        ("use-cli", "https://self-hosted.example/api/"),
     )
 
     for slug, expected in cases:
@@ -741,8 +740,14 @@ def test_connection_docs_render_self_hosted_instance_urls(client):
         content = response.content.decode()
         assert expected in content
         assert "self-hosted" in content
-        if slug == "use-cli":
-            assert "ROWSET_API_BASE" in content
+
+    cli_response = client.get(reverse("docs_page", kwargs={"slug": "use-cli"}))
+
+    assert cli_response.status_code == 200
+    cli_content = cli_response.content.decode()
+    assert "--api-base" in cli_content
+    assert "ROWSET_API_BASE" in cli_content
+    assert "https://rowset.example.com/api/" in cli_content
 
 
 def test_use_cases_page_lists_use_case_pages(client):

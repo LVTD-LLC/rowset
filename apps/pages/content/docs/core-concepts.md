@@ -64,9 +64,9 @@ MCP is the preferred path for compatible AI agents because the agent can
 discover tools and schemas from the live server. REST is the portable path for
 scripts, backend jobs, the Rowset CLI, and clients that cannot use MCP.
 
-MCP, REST, and CLI access work with Rowset Cloud and self-hosted instances. All
-three use private API keys created on the target instance. Public previews are
-not an authentication path.
+MCP, REST, and CLI access use private API keys. When you connect to a
+self-hosted instance, create the key on that instance. Public previews are not
+an authentication path.
 
 ## Public preview
 

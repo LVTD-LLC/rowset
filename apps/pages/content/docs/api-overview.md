@@ -16,10 +16,14 @@ exports, and public preview settings.
 {{ api_base_url }}
 ```
 
-The URL above belongs to the Rowset instance serving these docs. For a
-self-hosted deployment, Rowset builds it from the configured `SITE_URL` and
-adds `/api`. Use an API key created on that same instance; accounts and keys are
-not shared between Rowset Cloud and self-hosted deployments.
+If you use a self-hosted instance, replace this value with the public URL you
+expose for its REST API, including the `/api` path. For example:
+
+```text
+https://rowset.example.com/api
+```
+
+Create the API key on the same instance you connect to.
 
 Scripts can use this URL directly. For the Rowset CLI, see
 [Use Rowset from the CLI](/docs/use-cli).
