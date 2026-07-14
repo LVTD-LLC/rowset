@@ -50,6 +50,7 @@
             <meta name="twitter:image"
                   content="https://osig.app/g?site=x&style=logo&font=inter&title=Rowset&subtitle=Dataset%20backends%20for%20AI%20agents&image_url=https://{{ request.get_host }}{% static 'vendors/images/logo.png' %}" />
         {% endblock meta %}
+        {% if markdown_url %}<link rel="alternate" type="text/markdown" href="{{ markdown_url }}" />{% endif %}
         {% include 'components/plausible.html' %}
         {% include 'components/posthog.html' %}
         <script>

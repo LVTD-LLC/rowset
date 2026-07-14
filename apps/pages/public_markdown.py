@@ -8,17 +8,14 @@ from rowset.utils import build_absolute_public_url
 
 MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8"
 
-PUBLIC_PAGE_SOURCES: dict[str, str] = {
+CURATED_PUBLIC_PAGE_SOURCES: dict[str, str] = {
     "blog": "public/blog.md",
-    "database-mcp-server": "docs/database-mcp-server.md",
     "index": "public/index.md",
     "pricing": "public/pricing.md",
     "privacy-policy": "public/privacy-policy.md",
     "terms-of-service": "public/terms-of-service.md",
     "uses": "public/uses.md",
 }
-
-PUBLIC_PAGE_SLUGS = frozenset(PUBLIC_PAGE_SOURCES) - {"database-mcp-server"}
 
 
 def markdown_path_for(path: str) -> str:
@@ -55,11 +52,11 @@ def markdown_response(content: str) -> HttpResponse:
 def render_public_page_markdown(page_slug: str) -> str:
     from apps.pages.content import get_content_root, get_content_template_context
 
-    if page_slug not in PUBLIC_PAGE_SLUGS:
+    if page_slug not in CURATED_PUBLIC_PAGE_SOURCES:
         raise Http404("Public page not found")
 
     content_root = get_content_root().resolve()
-    source_path = (content_root / PUBLIC_PAGE_SOURCES[page_slug]).resolve()
+    source_path = (content_root / CURATED_PUBLIC_PAGE_SOURCES[page_slug]).resolve()
     if not source_path.is_relative_to(content_root):
         raise Http404("Public page not found")
 

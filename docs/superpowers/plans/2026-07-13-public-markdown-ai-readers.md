@@ -100,7 +100,7 @@ git commit -m "feat(pages): publish markdown route variants"
 
 **Interfaces:**
 - Consumes: `markdown_response()` and `markdown_path_for()` from Task 1
-- Produces: `PUBLIC_PAGE_SOURCES: dict[str, str]` mapping stable page keys to checked-in files
+- Produces: `CURATED_PUBLIC_PAGE_SOURCES: dict[str, str]` mapping stable page keys to checked-in files
 
 - [ ] **Step 1: Strengthen the failing public-page inventory test**
 

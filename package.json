@@ -6,7 +6,8 @@
     "build": "cross-env NODE_ENV=production node scripts/build-assets.mjs",
     "start": "node scripts/build-assets.mjs --watch",
     "watch": "node scripts/build-assets.mjs --watch",
-    "lint": "eslint \"frontend/src/**/*.js\" \"scripts/**/*.mjs\""
+    "lint": "eslint \"frontend/src/**/*.js\" \"frontend/tests/**/*.mjs\" \"scripts/**/*.mjs\"",
+    "test": "node --test frontend/tests/**/*.test.mjs"
   },
   "repository": {
     "type": "git",

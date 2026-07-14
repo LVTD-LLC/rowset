@@ -349,13 +349,20 @@
 
       async copyMarkdown() {
         await this.copyFrom(async () => {
-          const response = await fetch(this.$el.dataset.markdownUrl || "", {
-            credentials: "same-origin",
-          });
-          if (!response.ok) {
-            throw new Error("Markdown request failed");
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), 10000);
+          try {
+            const response = await fetch(this.$el.dataset.markdownUrl || "", {
+              credentials: "same-origin",
+              signal: controller.signal,
+            });
+            if (!response.ok) {
+              throw new Error("Markdown request failed");
+            }
+            return response.text();
+          } finally {
+            window.clearTimeout(timeout);
           }
-          return response.text();
         });
       },
     }));

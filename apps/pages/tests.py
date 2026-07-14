@@ -127,17 +127,26 @@ def test_public_markdown_inventory_has_curated_content(client, path, expected_he
 
 
 def test_public_markdown_inventory_registry_reuses_canonical_sources():
-    from apps.pages.public_markdown import PUBLIC_PAGE_SOURCES
+    from apps.pages.public_markdown import CURATED_PUBLIC_PAGE_SOURCES
 
-    assert PUBLIC_PAGE_SOURCES == {
+    assert CURATED_PUBLIC_PAGE_SOURCES == {
         "blog": "public/blog.md",
-        "database-mcp-server": "docs/database-mcp-server.md",
         "index": "public/index.md",
         "pricing": "public/pricing.md",
         "privacy-policy": "public/privacy-policy.md",
         "terms-of-service": "public/terms-of-service.md",
         "uses": "public/uses.md",
     }
+
+
+def test_database_mcp_server_markdown_contains_complete_decision_guide(client):
+    response = client.get("/docs/database-mcp-server.md")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "## The decision" in content
+    assert "## Implementation checklist" in content
+    assert "## Bottom line" in content
 
 
 def test_public_markdown_route_name_and_missing_slug(client):
@@ -171,13 +180,15 @@ def test_public_markdown_route_name_and_missing_slug(client):
         ),
     ),
 )
-def test_public_html_views_expose_canonical_markdown_url_in_context(
-    client, path, expected_markdown_url
-):
+def test_public_html_views_advertise_canonical_markdown_url(client, path, expected_markdown_url):
     response = client.get(path)
 
     assert response.status_code == 200
     assert response.context["markdown_url"] == expected_markdown_url
+    assert (
+        f'<link rel="alternate" type="text/markdown" href="{expected_markdown_url}"'
+        in response.content.decode()
+    )
 
 
 @override_settings(SITE_URL="https://rowset.example")
@@ -332,21 +343,6 @@ def _assert_ai_reader_menu(content, markdown_url):
     for provider_url in provider_urls:
         decoded_query = parse_qs(urlparse(unescape(provider_url)).query)
         assert decoded_query["q"] == [prompt]
-
-
-def test_ai_reader_alpine_feedback_uses_exact_copy_statuses():
-    source = Path(settings.BASE_DIR, "frontend/src/js/alpine-components.js").read_text(
-        encoding="utf-8"
-    )
-    component = source.split('Alpine.data("aiReaderMenu"', 1)[1].split(
-        'Alpine.data("commandPalette"', 1
-    )[0]
-
-    feedback_expressions = set(re.findall(r"this\.flashStatus\((.*?)\);", component))
-    assert feedback_expressions == {
-        'copied ? "Copied" : "Copy failed"',
-        '"Copy failed"',
-    }
 
 
 @override_settings(SITE_URL="https://rowset.example")
