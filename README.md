@@ -860,12 +860,6 @@ ReviewGate is present but temporarily disabled.
 - `backend`
 - `workers`
 
-The backend and worker images currently point at:
-
-```text
-ghcr.io/lvtd-llc/rowset:latest
-```
-
 On a server, fetch the repository files first so `docker-compose-prod.yml` and
 `.env.example` are present:
 
@@ -875,10 +869,24 @@ cd rowset
 cp .env.example .env
 ```
 
+Published Rowset images support `linux/amd64` and `linux/arm64`. Select a
+release or full Git SHA tag, then verify that its manifest contains the current
+server architecture. Docker Buildx is required for this inspection.
+
+```bash
+export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<release-or-sha-tag>
+deployment/verify-image-platforms.sh "$ROWSET_IMAGE"
+```
+
+The command rejects unsupported host architectures and image tags whose
+manifest does not contain the host platform. Set the same `ROWSET_IMAGE` value
+in `.env` so Compose starts exactly the image that passed preflight.
+
 Edit `.env` for production:
 
 - `ENVIRONMENT=prod`
 - `DEBUG=off`
+- the verified immutable `ROWSET_IMAGE`
 - strong `SECRET_KEY`
 - production `SITE_URL`
 - strong Postgres and Redis passwords
@@ -887,6 +895,7 @@ Edit `.env` for production:
 Start:
 
 ```bash
+export ROWSET_IMAGE="$(sed -n 's/^ROWSET_IMAGE=//p' .env)"
 docker compose -f docker-compose-prod.yml -p rowset up --detach --remove-orphans
 ```
 
@@ -932,8 +941,9 @@ git push origin "$release_tag"
 For example, the first release on July 8, 2026 is `2026.07.08-0`; a second
 release that day is `2026.07.08-1`.
 
-Publishing a tag builds the app Docker image and CLI artifacts with the same
-release tag. The image is pushed to GHCR as:
+Publishing a tag builds the app Docker image for `linux/amd64` and
+`linux/arm64`, publishes one multi-platform manifest, and builds CLI artifacts
+with the same release tag. The image is pushed to GHCR as:
 
 ```text
 ghcr.io/lvtd-llc/rowset:2026.07.08-0
@@ -948,11 +958,12 @@ The workflow also creates or updates the matching GitHub Release with:
 - `install-rowset-cli.sh`
 - `checksums.txt`
 
-The workflow builds and publishes one prebuilt Docker image to GHCR, then
-deploys that same immutable image tag to the `rowset` and `rowset-workers`
-CapRover apps:
+The release workflow verifies the manifest and executes the published release
+image on both architectures. The main-branch deployment workflow performs the
+same checks before deploying the full Git SHA tag to the `rowset` and
+`rowset-workers` CapRover apps:
 
-- `ghcr.io/lvtd-llc/rowset:latest`
+- `ghcr.io/lvtd-llc/rowset:<full-git-sha>`
 
 Each push to `main` also publishes:
 

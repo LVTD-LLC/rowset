@@ -93,34 +93,31 @@ This approach works best if you have a VPS or dedicated server where you can run
 
 Before starting, make sure you have:
 
-- A server with Docker and Docker Compose installed
+- A server with Docker, Docker Buildx, and Docker Compose installed
+- A `linux/amd64` or `linux/arm64` server. These are the architectures published
+  by the Rowset container image.
 - SSH access to your server
 - Basic familiarity with command line
 - API keys for AI services (Gemini, Perplexity, Jina Reader, Keywords Everywhere)
 
 ## Setup steps
 
-### 1. Create deployment directory
+### 1. Fetch the deployment files
 
-SSH into your server and create a folder for Rowset:
+SSH into your server and clone Rowset so the Compose file, environment example,
+and architecture preflight stay together:
 
 ```bash
-mkdir rowset-deployment
-cd rowset-deployment
+git clone https://github.com/LVTD-LLC/rowset.git
+cd rowset
 ```
 
-### 2. Download and configure environment file
+### 2. Configure the environment
 
-Download the example environment file from the Rowset repository:
-
-```bash
-wget /raw/main/.env.example -O .env
-```
-
-Or if you prefer curl:
+Copy the example environment file:
 
 ```bash
-curl -o .env /raw/main/.env.example
+cp .env.example .env
 ```
 
 Now edit the `.env` file to add your credentials:
@@ -144,27 +141,27 @@ The `.env.example` file includes all available configuration options with explan
 
 Save the file (in nano: Ctrl+X, then Y, then Enter).
 
-### 3. Download docker-compose file
+### 3. Verify image architecture support
 
-Download the production docker-compose configuration from the Rowset repository:
-
-```bash
-wget /raw/main/docker-compose-prod.yml -O docker-compose-prod.yml
-```
-
-Or if you prefer curl:
+Use an immutable release or full Git SHA tag and verify that its manifest
+contains the current server platform before pulling it:
 
 ```bash
-curl -o docker-compose-prod.yml /raw/main/docker-compose-prod.yml
+export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<release-or-sha-tag>
+deployment/verify-image-platforms.sh "$ROWSET_IMAGE"
 ```
-You can use the file as-is, or customize it if needed.
+
+The preflight accepts `linux/amd64` and `linux/arm64` only, and fails when the
+selected image manifest does not include the host architecture. Add the same
+`ROWSET_IMAGE` value to `.env`; both application services use it.
 
 ### 4. Start the application
 
 Run this command to start all services:
 
 ```bash
-docker-compose -f docker-compose-prod.yml -p "rowset" up --detach --remove-orphans || true
+export ROWSET_IMAGE="$(sed -n 's/^ROWSET_IMAGE=//p' .env)"
+docker compose -f docker-compose-prod.yml -p rowset up --detach --remove-orphans
 ```
 
 Docker will:
