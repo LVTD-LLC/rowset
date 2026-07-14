@@ -22,7 +22,7 @@ services:
       - .env
 
   backend:
-    image: ghcr.io/lvtd-llc/rowset:latest
+    image: ${ROWSET_IMAGE:?Set ROWSET_IMAGE to a verified release or SHA tag}
     working_dir: /app
     ports:
       - "8000:80"
@@ -40,7 +40,7 @@ services:
       - private_media_data:/app/private_media
 
   workers:
-    image: ghcr.io/lvtd-llc/rowset:latest
+    image: ${ROWSET_IMAGE:?Set ROWSET_IMAGE to a verified release or SHA tag}
     working_dir: /app
     depends_on:
       db:
