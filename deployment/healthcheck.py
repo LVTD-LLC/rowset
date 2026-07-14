@@ -6,6 +6,7 @@ import http.client
 import os
 import sys
 from urllib.parse import urlparse
+from uuid import uuid4
 
 
 def _site_host_header() -> str:
@@ -40,13 +41,14 @@ def check_server() -> None:
 
 
 def check_dependencies() -> None:
-    """Require the configured Django app, database, and cache to be ready."""
+    """Require the configured Django app, database, and Redis to be ready."""
     if not os.environ.get("DJANGO_SETTINGS_MODULE"):
         raise RuntimeError("DJANGO_SETTINGS_MODULE must be configured for dependency checks")
 
     import django
-    from django.core.cache import cache
+    from django.conf import settings
     from django.db import connection
+    from redis import Redis
 
     django.setup()
 
@@ -54,12 +56,21 @@ def check_dependencies() -> None:
         cursor.execute("SELECT 1")
         cursor.fetchone()
 
-    cache_key = "docker_healthcheck"
-    cache_value = "ok"
-    cache.set(cache_key, cache_value, timeout=10)
-    if cache.get(cache_key) != cache_value:
-        raise RuntimeError("Redis cache healthcheck round trip failed")
-    cache.delete(cache_key)
+    redis = Redis.from_url(
+        settings.REDIS_URL,
+        socket_connect_timeout=4,
+        socket_timeout=4,
+    )
+    healthcheck_key = f"docker_healthcheck:{uuid4().hex}"
+    healthcheck_value = "ok"
+    try:
+        if not redis.set(healthcheck_key, healthcheck_value, ex=10):
+            raise RuntimeError("Redis healthcheck write failed")
+        if redis.get(healthcheck_key) != healthcheck_value.encode():
+            raise RuntimeError("Redis healthcheck read failed")
+        redis.delete(healthcheck_key)
+    finally:
+        redis.close()
 
 
 def check_worker() -> None:
