@@ -15,6 +15,7 @@
   - [3. Download docker-compose file](#3-download-docker-compose-file)
   - [4. Start the application](#4-start-the-application)
   - [5. Verify deployment](#5-verify-deployment)
+- [Persistent media and backups](#persistent-media-and-backups)
 - [Expose your application](#expose-your-application)
   - [Option 1: Direct port access](#option-1-direct-port-access)
   - [Option 2: Nginx reverse proxy (recommended)](#option-2-nginx-reverse-proxy-recommended)
@@ -189,6 +190,41 @@ Check the logs to ensure no errors:
 ```bash
 docker-compose logs backend
 ```
+
+## Persistent media and backups
+
+The production Compose file keeps local uploads in two named volumes and mounts
+both volumes into the backend and workers:
+
+- `media_data` stores files written through Django's default media storage at
+  `/app/media`.
+- `private_media_data` stores private dataset image and audio assets at
+  `/app/private_media` when S3-compatible asset storage is not configured.
+
+Named volumes survive container replacement, so normal updates and
+`docker compose up -d --force-recreate` do not remove uploaded files. Never use
+`docker compose down -v` during an update: `-v` deletes the database, Redis, and
+both media volumes.
+
+For a small single-server installation, local volumes are the simplest option.
+Create a permission-restricted archive of both media paths with:
+
+```bash
+deployment/self-host/backup-local-media.sh /var/backups/rowset
+```
+
+The command starts a one-off backend container, reads both volumes, and writes a
+timestamped `.tar.gz` plus a `.sha256` checksum with mode `0600`. Copy these
+archives off the server; a backup stored only on the Rowset host does not protect
+against disk or server loss. This media-only archive does not include PostgreSQL,
+so it must be paired with a database backup for a complete restore.
+
+Use S3-compatible storage when private dataset assets should be durable outside
+the Compose host or shared across multiple hosts. Setting
+`ROWSET_ASSET_S3_ENDPOINT_URL` moves private dataset assets to that object store;
+it does not move files written through Django's default `/app/media` storage.
+Continue backing up `media_data`, and follow the object store provider's
+versioning and backup guidance for the private asset bucket.
 
 ## Expose your application
 
