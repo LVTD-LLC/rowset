@@ -320,7 +320,8 @@ These variables are essential for Rowset to function:
 **SITE_URL**
 - Full URL where your Rowset instance is accessible
 - Example: `https://yourdomain.com`
-- Used for generating absolute URLs in emails and notifications
+- Used for generated public URLs, trusted origins, and the Django Site domain
+- Running migrations synchronizes the Django Site record; no admin edit is required
 
 **ALLOW_SIGNUPS**
 - Set to `False` to pause new account creation

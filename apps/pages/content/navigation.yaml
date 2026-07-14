@@ -21,9 +21,10 @@ navigation:
         - attach-images
 
     - label: Reference
-      description: Look up endpoint details, MCP tool groups, auth behavior, and recovery paths after you know the workflow.
+      description: Configure CLI, REST, or MCP access and look up endpoint details, auth behavior, and recovery paths.
       pages:
         - api-overview
+        - use-cli
         - dataset-api
         - mcp-tools
         - configure-agent-access

@@ -1,6 +1,7 @@
 import posthog
 from django.apps import AppConfig
 from django.conf import settings
+from django.db.models.signals import post_migrate
 
 from rowset.utils import get_rowset_logger
 
@@ -14,10 +15,15 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         import apps.core.signals  # noqa
-
         import apps.core.stripe_webhooks  # noqa
-
         import rowset.task_logging  # noqa: F401
+        from apps.core.site_config import sync_site_from_settings
+
+        post_migrate.connect(
+            sync_site_from_settings,
+            sender=self,
+            dispatch_uid="rowset.sync_site_from_settings",
+        )
 
         if settings.POSTHOG_API_KEY:
             posthog.api_key = settings.POSTHOG_API_KEY

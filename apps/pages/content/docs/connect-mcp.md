@@ -1,13 +1,13 @@
 ---
 title: Connect over MCP
-description: Connect a compatible AI agent to Rowset through the hosted MCP endpoint.
+description: Connect a compatible AI agent to Rowset over MCP.
 keywords: Rowset MCP, Streamable HTTP MCP, AI agents, bearer token
 ---
 
 # Connect over MCP
 
-Use Rowset's hosted MCP server when a trusted agent needs to discover Rowset
-tools and work with private datasets without browser automation.
+Use Rowset's MCP server when a trusted agent needs to discover Rowset tools and
+work with private datasets without browser automation.
 
 If you are deciding whether your workflow belongs in Rowset, start with
 [What is an agent-managed dataset?](/blog/agent-managed-datasets). If you are
@@ -21,6 +21,15 @@ choosing between MCP and plain HTTP, read
 ```
 
 The Rowset dashboard setup prompt includes this URL and your agent API key.
+
+If you use a self-hosted instance, specify the public URL you expose for it,
+including the `/mcp/` path. For example:
+
+```text
+https://rowset.example.com/mcp/
+```
+
+Create the API key on the same instance you connect to.
 
 ## 2. Store the API key
 
