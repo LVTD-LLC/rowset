@@ -12,6 +12,7 @@ _MEDIA_MOUNTS = {
     "media_data:/app/media",
     "private_media_data:/app/private_media",
 }
+_PRODUCTION_SERVICES = {"db", "redis", "backend", "workers"}
 
 
 def _production_compose():
@@ -24,6 +25,52 @@ def test_production_compose_persists_media_in_shared_named_volumes():
     assert _MEDIA_MOUNTS <= set(compose["services"]["backend"]["volumes"])
     assert _MEDIA_MOUNTS <= set(compose["services"]["workers"]["volumes"])
     assert {"media_data", "private_media_data"} <= set(compose["volumes"])
+
+
+def test_production_compose_applies_restart_and_bounded_logging_to_every_service():
+    compose = _production_compose()
+
+    assert set(compose["services"]) == _PRODUCTION_SERVICES
+    for service in compose["services"].values():
+        assert service["restart"] == "unless-stopped"
+        assert service["logging"] == {
+            "driver": "json-file",
+            "options": {"max-size": "10m", "max-file": "3"},
+        }
+
+
+def test_production_compose_waits_for_authenticated_redis_health():
+    compose = _production_compose()
+    redis = compose["services"]["redis"]
+
+    assert redis["command"] == [
+        "sh",
+        "-c",
+        'exec redis-server --requirepass "$$REDIS_PASSWORD"',
+    ]
+    assert redis["healthcheck"]["test"] == [
+        "CMD-SHELL",
+        'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping',
+    ]
+    assert redis["healthcheck"] == {
+        "test": ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping'],
+        "interval": "5s",
+        "timeout": "3s",
+        "retries": 12,
+        "start_period": "30s",
+    }
+    for service_name in ("backend", "workers"):
+        assert compose["services"][service_name]["depends_on"] == {
+            "db": {"condition": "service_healthy"},
+            "redis": {"condition": "service_healthy"},
+        }
+
+
+def test_production_compose_uses_container_side_redis_password_expansion():
+    compose_source = (_REPO_ROOT / "docker-compose-prod.yml").read_text()
+
+    assert "${REDIS_PASSWORD}" not in compose_source
+    assert compose_source.count("$$REDIS_PASSWORD") == 2
 
 
 def test_local_media_backup_archives_both_paths_with_restricted_permissions(tmp_path):
