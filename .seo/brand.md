@@ -6,7 +6,7 @@
 
 - **Name:** Rowset
 - **One-liner (<=20 words):** Private MCP and REST datasets for trusted AI agents.
-- **What we do:** Rowset gives AI agents a stable backend for user-owned structured rows. Users sign in, copy a setup prompt, authorize a scoped bearer API key, and let trusted agents create, inspect, update, export, and optionally share datasets through MCP or REST.
+- **What we do:** Rowset gives AI agents a stable backend for user-owned structured rows. Users sign in, copy a setup prompt, authorize a scoped bearer API key, and let trusted agents create, inspect, update, export, and optionally share datasets through MCP or REST. Rowset can also be self-hosted when a team needs to operate the service in its own environment.
 - **Pricing structure:** A 7-day full-product trial at $0, then Rowset Pro at $50/month.
 - **Free tier?** No ongoing free tier. The trial includes the complete hosted product for 7 days; Pro unlocks continued use with unlimited hosted datasets and rows.
 
@@ -19,7 +19,7 @@
 - **Jobs to be done (top 3):**
   1. Give an AI agent a private place to create and maintain structured rows.
   2. Expose datasets through MCP and REST without building a custom backend.
-  3. Share read-only previews or exports when humans need to review the data.
+  3. Share read-only previews, Markdown, CSV, or Parquet exports when humans or other agents need to review the data.
 
 ## Competitors
 
@@ -55,6 +55,8 @@
 2. The setup prompt, skills, REST docs, and MCP discovery are designed for trusted AI agents.
 3. Datasets carry explicit headers, index columns, semantic metadata, instructions, and JSON metadata for agent context.
 4. Private-by-default ownership boundaries are central; public previews are optional and read-only.
+5. Public datasets can be consumed as HTML, Markdown, CSV, or Parquet without turning the private MCP/REST write path into a public interface.
+6. Rowset is open source and supports self-hosting as well as the hosted product.
 
 ## Visual Brand
 
@@ -70,7 +72,7 @@
 
 - Homepage: https://rowset.lvtd.dev/
 - Pricing: https://rowset.lvtd.dev/pricing
-- How-to guides: https://rowset.lvtd.dev/how-to/
-- Docs: https://rowset.lvtd.dev/docs/
-- Blog: https://rowset.lvtd.dev/blog/
+- Use cases: https://rowset.lvtd.dev/use-cases
+- Docs: https://rowset.lvtd.dev/docs/quickstart
+- Blog: https://rowset.lvtd.dev/blog
 - Public skill: https://rowset.lvtd.dev/SKILL.md

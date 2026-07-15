@@ -9,21 +9,21 @@
   "docs_content_dir": "apps/pages/content/docs",
   "blog_content_dir": "apps/pages/content/blog",
   "sitemap_path": "rowset/sitemaps.py",
-  "robots_path": "static/robots.txt",
+  "robots_path": "apps/pages/seo.py",
   "tailwind_config": "tailwind.config.js",
   "roadmap_path": "docs/seo-sprint.md",
-  "research_mode": "measured_refresh",
+  "research_mode": "measured_reaudit",
   "keyword_data_source": "gsc+dataforseo+plausible+posthog+exa+firecrawl+jina+webfetch",
   "connected_signal_sources": {
-    "gsc": "connected via Infisical service account",
+    "gsc": "connected via Infisical service account; Search Analytics and sitemap APIs queried",
     "ahrefs": "missing",
-    "dataforseo": "connected via Infisical",
-    "plausible": "connected via runtime credential",
-    "posthog": "connected via runtime credential; rowset project selected",
-    "exa": "connected via runtime credential",
-    "firecrawl": "connected via runtime credential",
-    "jina": "connected via runtime credential",
-    "web_fetch": "available via HTTP checks"
+    "dataforseo": "connected via Infisical; keyword overview, suggestions, SERPs, ranked keywords, and backlink summary queried",
+    "plausible": "connected via runtime credential; pages, channels, sources, goals, and organic landing pages queried",
+    "posthog": "connected via runtime credential; rowset project and 90-day events queried",
+    "exa": "connected via runtime credential; MCP database and agentic database discovery queried",
+    "firecrawl": "connected via runtime credential; current competitor page extraction verified",
+    "jina": "connected via runtime credential; MCP and Rowset page extraction verified",
+    "web_fetch": "available; sitemap, robots, metadata, schema, canonicals, and tracked URLs checked live"
   },
   "gsc_property": "https://rowset.lvtd.dev/",
   "ahrefs_project_id": null,
@@ -32,10 +32,11 @@
   "plausible_site_id": "rowset.lvtd.dev",
   "posthog_project_id": 493217,
   "created_at": "2026-07-04",
-  "updated_at": "2026-07-04",
+  "updated_at": "2026-07-15",
   "notes": [
     "Initialized from latest origin/main after fast-forwarding from c11f1de to 2d9389b.",
-    "Refreshed with GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina, and live HTTP checks on 2026-07-04.",
-    "No Ahrefs project was available; use DataForSEO KD/backlink/SERP metrics until Ahrefs is connected."
+    "Refreshed from current origin/main b93e5d6 with GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina, and live HTTP checks on 2026-07-15.",
+    "No Ahrefs project was available; use DataForSEO KD/backlink/SERP metrics until Ahrefs is connected.",
+    "The July 15 re-audit found stale SEO inventory routes after the docs/use-case migration, no sitemap listed by the GSC sitemap API, missing homepage/pricing canonicals, and a stronger mcp database keyword cluster."
   ]
 }

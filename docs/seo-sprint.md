@@ -1,20 +1,26 @@
 # Rowset SEO Sprint - Roadmap
 
-> **Canonical document.** This file is the source of truth for the multi-phase Rowset SEO sprint. Every worktree/agent picking up SEO work on this project reads this file first.
+> **Canonical document.** This file is the source of truth for Rowset's multi-phase SEO sprint. Read it with `.seo/brand.md`, `.seo/keyword-research.json`, `.seo/link-inventory.md`, and `.seo/config.json` before starting a phase.
 
 ## Mode
 
-This initialize run was refreshed on 2026-07-04 from latest `origin/main` (`2d9389b`), then re-run with connected measurement tools after PR review feedback. This roadmap now uses Google Search Console, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina Reader, and live HTTP checks where available. Ahrefs is still not connected.
+Measured re-audit completed on 2026-07-15 from `origin/main` at `b93e5d6`. The refresh used direct Google Search Console, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina Reader, production HTTP checks, and the current repository. Ahrefs is still not connected.
+
+The plan changed materially since the July 4 initialization:
+
+1. The docs and use-case information architecture moved, leaving 17 URLs in the SEO inventory returning 404.
+2. GSC still has almost no visibility and lists no submitted sitemap for the Rowset property.
+3. The strongest newly measured opportunity is the existing MCP database guide: `mcp database` has 480 US searches/month, KD 5, and $14.12 CPC.
+4. The planned Dataset API guide has already shipped as `/blog/connect-ai-agent-to-dataset-api` in PR #244.
+5. PostHog activation instrumentation now exists, but the 90-day sample is one person and cannot support conversion-weighted prioritization yet.
 
 ## How to Use This Document
 
-1. Read this entire `docs/seo-sprint.md` file.
-2. Read `.seo/brand.md`, `.seo/link-inventory.md`, `.seo/keyword-research.json`, and `.seo/config.json`.
-3. Find the next `pending` row in the Phase Status Tracker.
-4. Execute one phase per PR.
-5. In the same PR, update this tracker row to `completed` and update `.seo/link-inventory.md` when a new page ships.
-
-Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase ordering without an explicit product/SEO decision.
+1. Pick the lowest-numbered `pending` phase.
+2. Execute one phase per PR unless the phase explicitly says it is an observation gate.
+3. Re-research commercial claims and SERPs immediately before page work.
+4. Update this tracker and `.seo/link-inventory.md` in the same PR.
+5. Use canonical no-trailing-slash public URLs.
 
 ## Phase Status Tracker
 
@@ -22,321 +28,195 @@ Do not modify Reference Data, Conventions, Keyword Research Appendix, or phase o
 |---|---|---|---|---|
 | 0 | Technical foundations: robots, sitemap headers, schema helpers | Setup | completed | #190 |
 | 1 | Strengthen Dataset API, MCP docs, and use-case pages as the internal-link spine | Use-case/docs | completed | #193 |
-| 2 | Ship `/explanations/database-mcp-server` from measured MCP/database demand | Playbook | completed | #196 |
-| 3 | Ship `/blog/airtable-alternatives` with an AI-agent dataset angle | Blog alternatives | completed | #207 |
-| 4 | Ship `/blog/google-sheets-alternatives` with an MCP/REST backend angle | Blog alternatives | completed | #209 |
-| 5 | Ship `/explanations/spreadsheet-database-for-ai-agents` | Explanation | pending | - |
-| 6 | Ship `/blog/baserow-alternatives` with honest open-source/no-code positioning | Blog alternatives | completed | #233 |
-| 7 | Ship `/blog/nocodb-alternatives` with SQL UI vs agent backend positioning | Blog alternatives | completed | #239 |
-| 8 | Ship `/how-to/connect-ai-agent-to-dataset-api` as a strategic product-native guide | How-to guide | pending | - |
-| 9 | Ship `/compare/rowset-vs-airtable` after alternatives blog posts exist | Compare | pending | - |
-| 10 | Off-page starter submissions and backlink target list | Off-page | pending | - |
+| 2 | Ship the database MCP server guide | Playbook | completed | #196 |
+| 3 | Ship `/blog/airtable-alternatives` | Blog alternatives | completed | #207 |
+| 4 | Ship `/blog/google-sheets-alternatives` | Blog alternatives | completed | #209 |
+| 5 | Repair SEO route drift, sitemap submission, canonicals, and long titles | Technical refresh | pending | - |
+| 6 | Ship `/blog/baserow-alternatives` | Blog alternatives | completed | #233 |
+| 7 | Ship `/blog/nocodb-alternatives` | Blog alternatives | completed | #239 |
+| 8 | Ship `/blog/connect-ai-agent-to-dataset-api` | Product guide | completed | #244 |
+| 9 | Retarget `/docs/database-mcp-server` around the `mcp database` cluster | Existing-page boost | pending | - |
+| 10 | Ship `/blog/spreadsheet-database-for-ai-agents` | Decision guide | pending | - |
+| 11 | Build the off-page starter target list and submission backlog | Off-page | pending | - |
+| 12 | Ship `/compare/rowset-vs-airtable` only when a sales/use-case trigger exists | Compare | pending | - |
+| 13 | Review the fresh idempotency and agent-memory posts after 30 days of GSC data | Observation gate | pending | not before 2026-08-14 |
 
 **Conventions:**
-- `pending` -> `in_progress` when work starts -> `completed` in the PR that ships it.
-- PR column should be `branch <name> (PR TBD)` during work and `#NNN` after PR creation.
-- If a phase is abandoned, set status to `skipped` with a one-line reason.
+
+- `pending` -> `in_progress` when work starts -> `completed` in the shipping PR.
+- During work, use `branch <name> (PR TBD)` in the PR column.
+- Use `skipped` with a one-line reason when evidence invalidates a phase.
+- Completed history stays in place even when later phases are reprioritized around it.
 
 ## Reference Data
 
 ### Site Facts
 
 - **Domain:** https://rowset.lvtd.dev
-- **Keyword data source:** DataForSEO measured US keyword volume, KD, CPC, SERP, and backlink-strength signals; GSC/Plausible/PostHog for owned baseline.
-- **Connected signal sources:** GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina Reader, live HTTP checks, production site, and repo.
-- **GSC property:** `https://rowset.lvtd.dev/`.
-- **Ahrefs project_id:** not configured.
-- **Plausible site_id:** `rowset.lvtd.dev`.
-- **PostHog project_id:** `493217` (`rowset`).
-- **Domain Rating:** unknown; use DataForSEO KD/backlink signals until Ahrefs is connected.
+- **GSC property:** `https://rowset.lvtd.dev/`
+- **Plausible site:** `rowset.lvtd.dev`
+- **PostHog project:** `493217` (`rowset`)
+- **Authority baseline:** unknown/low; DataForSEO returned zero ranked-keyword rows and zero backlink-summary rows for the domain.
 - **Stack:** Django 6, Django templates, HTMX, Alpine.js, Tailwind/PostCSS.
-- **Marketing pages root:** `apps/pages`, `frontend/templates/pages`.
-- **Checked-in content root:** `apps/pages/content`.
+- **Content roots:** `apps/pages/content/docs`, `apps/pages/content/use-cases`, and `apps/pages/content/blog`.
 - **Sitemap generator:** `rowset/sitemaps.py`.
-- **Brand accent color:** emerald over slate/white surfaces.
-- **Fonts:** Inter / system sans.
+- **Canonical public URL style:** no trailing slash, except the homepage.
 
-### Tool Availability Snapshot
+### Tool Evidence Snapshot
 
-| Source | Status | Used for | Config saved |
-|---|---|---|---|
-| GSC | connected | owned queries + indexing | `gsc_property: https://rowset.lvtd.dev/` |
-| Ahrefs | missing | DR, KD, volume, SERP, backlinks | `ahrefs_project_id: null` |
-| DataForSEO | connected | US volume, KD, CPC, SERP, backlink strength | `dataforseo_location: United States`, `dataforseo_language: English` |
-| Plausible | connected | landing pages, channels, goals | `plausible_site_id: rowset.lvtd.dev` |
-| PostHog | connected | product events/funnel availability | `posthog_project_id: 493217` |
-| Exa | connected | competitor and adjacent-tool discovery | none |
-| Firecrawl | connected | competitor page extraction | none |
-| Jina Reader | connected | competitor/listicle extraction | none |
-| Web fetch/live HTTP | available | production verification | none |
+| Source | Status | Credential/config discovery | API/tool call | Used for | Config saved | Reason |
+|---|---|---|---|---|---|---|
+| GSC | connected | Infisical `/services/google-search-console`; property from repo config | Search Analytics and sitemap-list calls succeeded | owned queries, pages, impressions, clicks, sitemap state | `gsc_property` | 3 rows, 8 impressions, 0 clicks; no sitemap listed |
+| Ahrefs | missing | loaded tools, runtime env, `TOOLS.md`, repo config, and Infisical checked | not attempted | DR, KD, SERP, backlinks | `ahrefs_project_id: null` | no credential/project available |
+| DataForSEO | connected | Infisical `/services/dataforseo` | overview, suggestions, SERPs, ranked-keywords, and backlink calls succeeded | volume, KD, CPC, intent, SERP shape | US / English | measured the new MCP database cluster; domain calls returned zero rows |
+| Plausible | connected | runtime credential and `TOOLS.md` host | pages, channels, sources, goals, and organic-page queries succeeded | traffic and landing pages | `plausible_site_id` | Organic Search now has 6 visitors; conversion goals remain absent |
+| PostHog | connected | runtime credential and repo project ID | project lookup and 90-day HogQL query succeeded | product event availability | `posthog_project_id` | activation events exist but represent one person |
+| Exa | connected | runtime credential | MCP database and agentic database searches succeeded | competitor/source discovery | none | surfaced current MCP database tools and agent-database products |
+| Firecrawl | connected | runtime credential | RushDB extraction succeeded | competitor page extraction | none | verified current adjacent-product positioning |
+| Jina Reader | connected | runtime credential | official MCP docs and Rowset route extraction succeeded | clean extraction and route verification | none | confirmed an outdated Rowset MCP URL returns 404 |
+| Live HTTP | connected | direct production access | sitemap, robots, all 46 sitemap URLs, schema, metadata, canonicals, and 36 inventory URLs checked | technical audit | none | found 17 stale tracked URLs, 2 missing canonicals, and 12 long titles |
 
-### Existing Programmatic Surface
+### Current Public Surfaces
 
 | Surface | URL pattern | Implementation |
 |---|---|---|
-| Use cases | `/use-cases/<slug>/` | `apps/pages/content/use-cases`, shared pages content renderer/templates |
-| Docs reference | `/docs/<slug>/` | `apps/pages/content/docs`, shared pages content renderer/templates |
-| Tutorials | `/tutorials/<slug>/` | `apps/pages/content/tutorials`, shared pages content renderer/templates |
-| Explanations | `/explanations/<slug>/` | `apps/pages/content/explanations`, shared pages content renderer/templates |
-| Blog | `/blog/<slug>` | `apps/pages/content/blog`, Markdown-backed blog service/templates |
+| Docs | `/docs/<slug>` | `apps/pages/content/docs` |
+| Use cases | `/use-cases/<slug>` | `apps/pages/content/use-cases` |
+| Blog | `/blog/<slug>` | `apps/pages/content/blog` |
+| Public Markdown readers | `/docs/<slug>.md`, `/use-cases/<slug>.md`, `/blog/<slug>.md` | public Markdown renderer |
 | Sitemap | `/sitemap.xml` | `rowset/sitemaps.py` |
-| Public agent skill | `/SKILL.md` | core skill-serving path |
-| Agent overview | `/llms.txt` | generated Rowset overview for agents/search tools |
+| Public agent skill | `/SKILL.md` | public skill-serving path |
+| Agent overview | `/llms.txt` | generated Rowset overview |
 
-### Critical Files
-
-| File | What lives there |
-|---|---|
-| `PRODUCT.md` | Product/audience/positioning truth |
-| `VISION.md` | Durable product direction and non-goals |
-| `DESIGN.md` | Design system and visual rules |
-| `apps/pages/use_cases.py` | Existing use-case page copy/data |
-| `apps/pages/urls.py` | Marketing page routes |
-| `frontend/templates/pages/landing-page.html` | Homepage copy and internal links |
-| `frontend/templates/pages/pricing.html` | Pricing page copy |
-| `frontend/templates/pages/content/how_to_index.html` | How-to guide and use-case index |
-| `apps/pages/content/use-cases/**` | Markdown-backed use-case pages |
-| `frontend/templates/base_landing.html` | Shared public meta/schema fallback |
-| `rowset/sitemaps.py` | Sitemap entries |
-| `apps/pages/content/**` | Docs, tutorials, how-to guides, explanations, and blog Markdown |
+Retired `/tutorials/*`, `/how-to/*`, and most `/explanations/*` URLs must not be used as new internal-link targets. See `.seo/link-inventory.md` for replacements and redirect candidates.
 
 ## Technical Audit Snapshot
 
-Run date: 2026-07-04.
+Run date: 2026-07-15.
 
-Command:
-
-```text
-curl -sI https://rowset.lvtd.dev/robots.txt
-curl -s https://rowset.lvtd.dev/robots.txt
-curl -sI https://rowset.lvtd.dev/sitemap.xml
-```
-
-Findings:
-
-- `sitemap.xml` returns `200` and includes homepage, how-to guides, pricing, docs, and blog URLs.
-- Production `robots.txt` returns `404`. This is the main Phase 0 fix.
-- `sitemap.xml` response includes `X-Robots-Tag: noindex, noodp, noarchive`; review whether this header is inherited globally and remove it from sitemap responses if so.
-- Homepage returns `200`, has a title, meta description, canonical, one H1, and JSON-LD.
-- `/pricing` returns `200`; `/pricing/` returns the app 404 page. Decide whether to add slash redirects/canonical handling for common marketing routes.
-- Sitemap-listed docs and use-case pages spot-check as indexable pages with titles/descriptions.
-
-## Conventions
-
-**URL slugs:** lowercase, hyphenated, never underscored.
-
-**Honesty section:** every alternatives-style blog post must include 3-4 honest tradeoffs where the competitor is better. This is non-negotiable.
-
-**Positioning:** Rowset is not a spreadsheet replacement, no-code app builder, BI platform, or third-party sync product. Keep the angle on private MCP/REST datasets for trusted agents.
-
-**Internal-link minimums:**
-- alternatives blog posts -> at least 2 related alternatives/content links, 1 feature/doc page, 1 pricing/signup link.
-- `/how-to/*` -> at least 2 feature/doc links and 1 sibling guide where relevant.
-- `/compare/*` -> both related alternatives pages, pricing, and one setup/doc link.
-- `/explanations/*` -> at least 3 docs/reference pages, 2 how-to guides, 1 alternative/comparison where relevant.
-- Every new SEO page should be reachable from at least 2 existing pages.
-
-**Word counts:**
-- alternatives blog posts: at least 1,500 words with current source links.
-- `/compare/*`: at least 700 words.
-- long-form explanation pages: at least 2,500 words.
-- Existing use-case pages should be expanded only where it improves concrete workflow usefulness.
-
-**Schema:**
-- Homepage: `SoftwareApplication` or `Product`, plus `Organization` when helper exists.
-- Alternatives-style blog posts: `BlogPosting` via the blog renderer, with an FAQ section where useful.
-- How-to/compare pages: `BreadcrumbList` and `FAQPage` where an FAQ section exists.
-- Long-form explanations/blog posts: `Article` and `BreadcrumbList`.
+- `/robots.txt` returns 200, allows crawling, and references the sitemap.
+- `/sitemap.xml` returns 200, contains 46 URLs, and no longer inherits the old `X-Robots-Tag` header.
+- All 46 sitemap URLs return 200 with unique titles and descriptions and one H1.
+- Homepage schema includes `Organization` and `SoftwareApplication`.
+- Homepage and pricing are missing canonical tags.
+- Twelve titles exceed 60 characters; the longest cluster is the alternatives and technical blog posts.
+- Seventeen of 36 absolute Rowset URLs in the prior link inventory return 404 because they use retired route families or obsolete trailing slashes.
+- GSC's sitemap-list API returned zero submitted sitemaps.
 
 ## Keyword Research Appendix
 
-Values below are measured unless explicitly labeled otherwise. See `.seo/keyword-research.json` for machine-readable detail.
+Values are current DataForSEO US metrics from 2026-07-15 unless noted. Machine-readable evidence is in `.seo/keyword-research.json`.
 
 ### Owned Search and Analytics Baseline
 
-- **GSC, last 90 days:** one query/page row: `rowset` -> homepage, 1 impression, 0 clicks, average position 9. There are no meaningful striking-distance opportunities yet.
-- **Plausible, last 90 days:** 42 direct visitors, 7 referral visitors, 2 organic-social visitors, and no Organic Search rows. Top public pages include `/` (34 visitors), `/home` (15), `/tutorials/first-agent-dataset/` (9), `/how-to` (7), `/how-to/connect-mcp/` (4), and `/accounts/signup/` (4).
-- **Plausible goals:** one `Outbound Link: Click`; no signup/activation goal data available.
-- **PostHog, last 90 days:** project `rowset` is connected, but only `$set` (220) and `$identify` (2) events were present. No pageview, signup, dataset, project, checkout, or subscription events were available for conversion weighting.
-- **Implication:** market demand should come from DataForSEO for now, but Phase 0/1 should improve crawlability, internal links, and measurement before relying on conversion-weighted SEO decisions.
+- **GSC, last 90 days:** 8 impressions, 0 clicks, 3 query/page rows. `rowset` produced 6 impressions at average position 24.83. No meaningful striking-distance row exists.
+- **Plausible, last 90 days:** 6 Organic Search visitors and 10 pageviews. Organic landing pages were `/` (6 visitors), `/blog`, `/docs/dataset-api`, and `/blog/baserow-alternatives` (1 visitor each).
+- **Plausible goals:** only `Outbound Link: Click` (5 visitors, 9 events); no signup, trial, activation, checkout, or subscription goal.
+- **PostHog, last 90 days:** dataset mutation, user-info, and dataset-created events now exist, but all belong to one person and have no landing-page attribution.
+- **Implication:** use DataForSEO to order near-term work, while prioritizing crawl/indexation recovery and better conversion instrumentation.
 
-### A.1 - Alternatives Blog Post Candidates
+### Highest-Value Clusters
 
-| Keyword | Page | US volume | KD | CPC | Notes |
-|---|---|---:|---|---|---|
-| airtable alternatives | `/blog/airtable-alternatives` | 720 | 0 | $15.50 | Commercial intent. SERP is broad/listicle-heavy; Rowset needs a narrow "AI-agent dataset backend" blog angle. |
-| google sheets alternatives | `/blog/google-sheets-alternatives` | 480 | 0 | $16.63 | Broad informational intent. Target the subset that needs MCP/REST, private keys, and stable row identity. |
-| baserow alternatives | `/blog/baserow-alternatives` | 70 | 0 | $5.41 | Smaller but relevant open-source/no-code database adjacency. |
-| nocodb alternatives | `/blog/nocodb-alternatives` | 50 | 14 | $5.61 | Smaller and harder; useful after the first alternatives posts. |
-| grist alternatives | deferred | 10 | n/a | n/a | Too small for an early standalone page. |
+| Keyword | Existing/target page | US volume | KD | CPC | Decision |
+|---|---|---:|---:|---:|---|
+| `mcp database` / `database mcp` | `/docs/database-mcp-server` | 480 | 5 | $14.12 | Highest priority after technical recovery; refresh existing page and inbound links |
+| `dataset api` | `/docs/dataset-api` | 480 | 43 | $23.12 | Keep strengthening docs; too hard/ambiguous for a new broad page |
+| `idempotent api` | `/blog/idempotent-ai-agent-updates` | 260 | 25 | n/a | Freshly shipped; observe for 30 days before changing |
+| `ai agent memory` | `/blog/ai-agent-memory-vs-state` | 210 | 27 | $9.77 | Freshly shipped; observe for 30 days before changing |
+| `spreadsheet database` | `/blog/spreadsheet-database-for-ai-agents` | 170 | 22 | $14.12 | Viable decision guide after the MCP refresh |
+| `agentic database` | research later | 70 | 10 | $18.06 | Promising metric, but SERP intent is broad and authority-heavy |
+| `ai agent crm` | `/use-cases/personal-crm` | 30 | 3 | $26.41 | Useful existing-page refinement, not a separate page |
 
-### A.2 - Existing Use-Case Candidates
+The earlier spreadsheet-database CPC ($55.70) and database-MCP volume (70) are stale. Current measured values are $14.12 and 50 respectively; the larger opportunity is the `mcp database`/`database mcp` head cluster at 480.
 
-| Keyword | Existing URL / Target | US volume | KD | CPC |
-|---|---|---:|---|---|
-| dataset api | `/docs/dataset-api/` | 480 | 43 | $24.07 |
-| spreadsheet database | `/explanations/spreadsheet-database-for-ai-agents` | 170 | 20 | $55.70 |
-| database mcp server | `/explanations/database-mcp-server` | 70 | 16 | $14.92 |
-| mcp server for database | `/explanations/database-mcp-server` | 20 | 16 | n/a |
-| ai agent crm | `/how-to/personal-crm` | 30 | 3 | $22.77 |
-| agent task board | `/how-to/agent-task-board` | no measured row | n/a | n/a |
-| feedback triage ai agent | `/how-to/feedback-triage` | no measured row | n/a | n/a |
+### Alternatives Pages Already Shipped
 
-### A.3 - Compare Candidates
+| Keyword | Page | US volume | KD | CPC |
+|---|---|---:|---:|---:|
+| `airtable alternatives` | `/blog/airtable-alternatives` | 720 | 0 | $14.29 |
+| `google sheets alternatives` | `/blog/google-sheets-alternatives` | 480 | 0 | $16.63 |
+| `baserow alternatives` | `/blog/baserow-alternatives` | 70 | 0 | $8.08 |
+| `nocodb alternatives` | `/blog/nocodb-alternatives` | 50 | 14 | $7.02 |
 
-| Keyword | Page | US volume | KD | CPC | Notes |
-|---|---|---:|---|---|---|
-| airtable vs google sheets | deferred research input | 320 | 0 | $7.75 | Good demand, but Rowset is not one of the compared brands; use for positioning research, not an early page. |
-| airtable vs baserow | deferred research input | 20 | 0 | $2.95 | Low measured volume and third-party framing. |
-| rowset vs airtable | `/compare/rowset-vs-airtable` | no measured row | n/a | n/a | Useful later as sales enablement after alternatives pages exist. |
+### SERP Reality
 
-### A.4 - Playbook Candidates
+- `mcp database`: official MCP docs, Google Cloud, Oracle, an MCP directory, Medium, PyPI, and Reddit. Mixed authority plus user-generated/package results makes an existing-page boost plausible.
+- `spreadsheet database`: Grist, Baserow, Airtable, Google Sheets, Zoho, educational sites, and Reddit. The intent is mixed product/education, so the Rowset page must be an honest decision guide.
+- `agentic database`: AWS, Cockroach Labs, IBM, TileDB, and publishers dominate. Keep this as research until Rowset can own a narrower operational-state angle.
 
-| Keyword | Page | US volume | KD | Notes |
-|---|---|---:|---|---|
-| database mcp server | `/explanations/database-mcp-server` | 70 | 16 | Measured query variant from DataForSEO suggestions. |
-| connect ai agent to dataset api | `/how-to/connect-ai-agent-to-dataset-api` | no measured row | n/a | Still strategic/product-native, but not a demand-led first page. |
-| agent managed feedback board | `/how-to/agent-managed-feedback-board` | no measured row | n/a | Keep later unless product/content strategy overrides search demand. |
+### Deferred or Gated
 
-### A.5 - Striking Distance
+- `rowset vs airtable`: no measured row; build only for a real sales/user decision, not projected traffic.
+- `airtable vs google sheets`: 260 searches/month, but Rowset is not a named side.
+- `dataset api`: strong volume and CPC but KD 43 and ambiguous intent.
+- Fresh idempotency and agent-memory posts: do not rewrite before 30 days of GSC data.
 
-No meaningful opportunities yet. GSC has one Rowset impression in the last 90 days; the homepage averaged position 9 for `rowset`, but with only 1 impression and 0 clicks.
+## Quality Conventions
 
-### A.6 - Conversion-Weighted Opportunities
-
-Not available yet despite connected tools. Plausible has no Organic Search channel rows and no signup/activation goals; PostHog has no pageview or conversion events in the Rowset project. Add/verify signup, API-key creation, dataset creation, prompt-copy, checkout, and subscription events before using analytics to rank SEO pages by revenue value.
-
-### A.7 - Already-Saturated Head Terms to Avoid
-
-- `database` - too broad and too competitive.
-- `spreadsheet` - too broad and product positioning drift.
-- `dataset api` - attractive volume/CPC, but KD 43 with a backlink-heavy SERP; strengthen docs/internal links before chasing it directly.
-- `airtable vs google sheets` - measured 320 searches/month, but Rowset is not a named side of the comparison.
+- Use lowercase, hyphenated, canonical no-trailing-slash URLs.
+- Every new page needs at least two real inbound internal links in the same PR.
+- Alternative/comparison pages require an honest `choose the competitor if` section.
+- Blog/explanation pages require current source links and the renderer's `BlogPosting`/`Article` schema.
+- Comparison pages require a comparison table, clear decision criteria, and links to pricing, MCP docs, and Dataset API docs.
+- Avoid implying that Rowset is a spreadsheet replacement, arbitrary SQL MCP proxy, BI platform, or no-code app builder.
 
 ## Phases
 
-### Phase 0 - Technical Foundations
+### Phase 5 - Repair Route Drift, Sitemap State, Canonicals, and Titles
 
-**Why:** Google needs a clean crawl path before new content matters.
-
-**Scope:**
-
-1. Add a production `robots.txt` route or static file that allows crawling and references `https://rowset.lvtd.dev/sitemap.xml`.
-2. Confirm `robots.txt` returns 200 on production after deploy.
-3. Review why `sitemap.xml` is served with `X-Robots-Tag: noindex, noodp, noarchive`; remove inherited `noindex` header from sitemap responses if it is globally configured.
-4. Decide whether common marketing trailing-slash variants such as `/pricing/` should redirect to canonical no-slash routes instead of rendering a 404.
-5. Add or centralize schema helpers for `SoftwareApplication`, `Organization`, `BreadcrumbList`, `FAQPage`, and `Article` if page-generating phases would otherwise duplicate JSON-LD.
-6. Add `Organization` schema to the homepage if the helper exists.
-7. Submit sitemap in Google Search Console and Bing Webmaster Tools.
-
-**Files likely modified:**
-
-- `apps/pages/urls.py` or a static file location for `robots.txt`
-- `frontend/templates/base_landing.html` or a schema helper module/template
-- `rowset/settings.py` only if headers need targeted sitemap handling
-- `rowset/sitemaps.py` only if sitemap entries need adjustment
-
-**Verification:**
-
-```text
-curl -sI https://rowset.lvtd.dev/robots.txt
-curl -s https://rowset.lvtd.dev/robots.txt
-curl -sI https://rowset.lvtd.dev/sitemap.xml
-```
-
-### Phase 1 - Strengthen Dataset API, MCP Docs, and Use-Case Pages as the Internal-Link Spine
-
-**Why:** DataForSEO shows real demand for `dataset api` (480 US searches/month, KD 43, $24.07 CPC), but the SERP is backlink-heavy. Rowset should strengthen the pages it already owns before adding isolated programmatic pages.
+**Why now:** crawl/indexation is the bottleneck. The SEO inventory points at 17 live 404s, GSC lists no sitemap, and the two most important marketing pages lack canonicals.
 
 **Scope:**
 
-1. Add stronger internal links from homepage/how-to index into Dataset API docs, MCP docs, and the most commercially useful use cases.
-2. Add links from each use-case page to MCP docs, Dataset API, pricing/signup, and 1-2 sibling use cases.
-3. Expand the Dataset API and MCP docs where they can clearly answer `dataset api`, `database mcp server`, and agent-setup questions.
-4. Consider concise FAQ sections and `FAQPage` JSON-LD where questions are real and not keyword stuffing.
-5. Preserve product guardrails: public previews are read-only; MCP/REST remain the private paths.
+1. Replace stale internal references to retired `/how-to/*`, `/tutorials/*`, and `/explanations/*` routes with the canonical `/docs/*` and `/use-cases/*` URLs.
+2. Add permanent redirects for retired public routes that may have external links or historical crawl signals, including the old database MCP server route.
+3. Add canonical tags to the homepage and pricing page.
+4. Shorten the 12 titles over 60 characters without removing their primary query intent.
+5. Submit or verify `https://rowset.lvtd.dev/sitemap.xml` in GSC; if API submission cannot be authorized, document the exact manual step and verification date.
+6. Add a deterministic test/audit that fails when canonical inventory URLs return 404 or use the wrong slash form.
 
-**Verification:** page source has canonical, one H1, JSON-LD, and at least 3 relevant internal links per use-case page.
+**Verification:** zero stale canonical internal-link targets, homepage/pricing canonicals match their URLs, no sitemap title exceeds the agreed limit without an explicit exception, and GSC shows the submitted sitemap.
 
-### Phase 2 - Ship `/explanations/database-mcp-server`
+### Phase 9 - Boost `/docs/database-mcp-server` for the MCP Database Cluster
 
-**Why:** `database mcp server` has measured demand (70 US searches/month, KD 16, $14.92 CPC), and Exa surfaced adjacent MCP/database tools. This is more concrete than the original unmeasured "connect agent to dataset API" seed.
-
-**Scope:** explain when to use a hosted agent dataset backend instead of connecting an agent directly to a database, how Rowset's hosted MCP setup works, where a direct database MCP is better, and how to keep credentials/private data out of prompts.
-
-**Quality gate:** at least 2,500 words, Article schema, code/setup examples, links to MCP docs, Dataset API, Agent access, pricing, and relevant use cases.
-
-### Phase 3 - Ship `/blog/airtable-alternatives`
-
-**Why:** `airtable alternatives` has measured demand (720 US searches/month, KD 0, $15.50 CPC), but the SERP is broad and listicle-heavy. Rowset should target the specific sub-intent: "I need agents to maintain structured rows through an API/MCP backend."
-
-**Required sections:**
-
-- Best Airtable alternatives for AI-agent-managed datasets in 2026.
-- When Airtable is still the better choice.
-- Why Rowset is different: MCP-first, private by default, row/index/schema semantics, setup prompt.
-- Migration decision table.
-- FAQ.
-
-**Quality gate:** at least 1,500 words, current source links, honesty section, FAQ section, links to pricing, MCP docs, Dataset API, and at least 2 related alternatives/content links once available.
-
-### Phase 4 - Ship `/blog/google-sheets-alternatives`
-
-**Why:** `google sheets alternatives` has measured demand (480 US searches/month, KD 0, $16.63 CPC). Many users start with Sheets for agent-managed lists, then hit authentication, schema, row lookup, and automation reliability limits.
-
-**Angle:** not "Sheets is bad"; Rowset is for private agent workflows where MCP/REST, stable keys, and ownership boundaries matter.
-
-**Quality gate:** at least 1,500 words, current source links, honesty section, FAQ section, links to use cases and Dataset API.
-
-### Phase 5 - Ship `/explanations/spreadsheet-database-for-ai-agents`
-
-**Why:** `spreadsheet database` has measured demand (170 US searches/month, KD 20, $55.70 CPC). The CPC is strong, but this can become a positioning trap unless the page is explicit that Rowset is not a spreadsheet replacement.
-
-**Scope:** show when a spreadsheet-database tool is the right answer, when an AI-agent dataset backend is the better fit, and how Rowset fits private MCP/REST workflows.
-
-**Quality gate:** at least 2,500 words, Article schema, honest "use a spreadsheet database if..." section, links to Dataset API, MCP docs, Google Sheets alternatives blog post, and relevant use cases.
-
-### Phase 6 - Ship `/blog/baserow-alternatives`
-
-**Why:** `baserow alternatives` has measured demand (70 US searches/month, KD 0, $5.41 CPC). Baserow owns "open-source Airtable alternative" positioning; Rowset should explain the narrower agent-native backend angle.
-
-**Angle:** Baserow is stronger for no-code database UI and self-hosted app building; Rowset is stronger for trusted agents managing private datasets through MCP/REST.
-
-**Quality gate:** at least 1,500 words, honesty section, FAQ section, current Baserow feature/pricing review before writing.
-
-### Phase 7 - Ship `/blog/nocodb-alternatives`
-
-**Why:** `nocodb alternatives` has measured demand (50 US searches/month, KD 14, $5.61 CPC). NocoDB appears in open-source no-code database comparisons and has a clear contrast with Rowset.
-
-**Angle:** NocoDB is for exposing SQL databases through a spreadsheet-like UI; Rowset is for agent-owned structured datasets with MCP/REST access.
-
-**Quality gate:** at least 1,500 words, honesty section, FAQ section, current NocoDB feature/pricing review before writing.
-
-### Phase 8 - Ship `/how-to/connect-ai-agent-to-dataset-api`
-
-**Why:** exact-match demand was not measured, but this remains the most product-native educational topic: concrete setup, clear payoff, and good internal links to docs.
-
-**Scope:** long-form guide showing when to use Rowset, how to create an API key, how to configure MCP, how to verify with user info/capabilities, how to create a dataset, and how to avoid leaking keys.
-
-**Quality gate:** at least 2,500 words, code examples, Article schema, links to MCP docs, Dataset API, Agent access, and at least 2 use cases.
-
-### Phase 9 - Ship `/compare/rowset-vs-airtable`
-
-**Why:** no measured demand exists yet for `rowset vs airtable`, but it becomes useful sales enablement after `/blog/airtable-alternatives` exists.
-
-**Scope:** compare Rowset against Airtable for users deciding where trusted agents should keep structured work. Include "choose Airtable if" and "choose Rowset if" sections.
-
-**Quality gate:** at least 700 words, comparison table, links to Airtable alternatives blog post, pricing, MCP docs, and Dataset API.
-
-### Phase 10 - Off-Page Starter Submissions and Backlink Target List
-
-**Why:** Rowset will need external signals before broad alternatives pages can rank.
+**Why:** `mcp database` and `database mcp` each map to a 480-volume, KD 5, $14.12-CPC cluster. This is substantially stronger than the original `database mcp server` metric.
 
 **Scope:**
 
-1. Create `.seo/backlink-targets.json`.
-2. Research product directories, MCP directories, open-source/agent tool lists, and Airtable/Google Sheets alternative listicles.
-3. Submit or prepare submissions where appropriate: Product Hunt, AlternativeTo, SaaSHub, Indie Hackers, Crunchbase, MCP directories.
-4. Track status and target URL in the roadmap or backlink file.
+1. Rework title, description, H1/H2s, and opening copy around the natural `MCP database` decision while preserving product accuracy.
+2. Explain the boundary between a direct SQL/database MCP server and Rowset's hosted, agent-managed dataset model.
+3. Cover `mcp for database`, `database mcp server`, connection safety, stable row identity, and when a direct database tool is better.
+4. Add inbound links from `/docs/connect-mcp`, `/docs/dataset-api`, and `/blog/mcp-vs-rest-ai-agents`.
+5. Re-run the live SERP and extract the top current official/product pages before drafting.
 
-**Quality gate:** each target has URL, contact/submission path, relevance, status, and next action.
+**Quality gate:** no keyword stuffing, at least three inbound links, current primary sources, honest direct-database-MCP tradeoffs, canonical/schema/sitemap checks green.
+
+### Phase 10 - Ship `/blog/spreadsheet-database-for-ai-agents`
+
+**Why:** `spreadsheet database` has 170 US searches/month, KD 22, and $14.12 CPC. The opportunity is real but below the MCP cluster and carries positioning risk.
+
+**Scope:** write a decision guide covering spreadsheet, spreadsheet-database, and agent-dataset-backend choices. Include `use a spreadsheet database if...` and `use Rowset if...` sections.
+
+**Quality gate:** at least 1,800 useful words, current source links, `BlogPosting` schema, links from Google Sheets alternatives and agent-managed datasets, and links out to MCP/Dataset API/use-case pages.
+
+### Phase 11 - Off-Page Starter Target List
+
+**Why:** DataForSEO returned no ranked-keyword or backlink baseline for the domain. Content alone is unlikely to move broader alternatives terms.
+
+**Scope:** create `.seo/backlink-targets.json` with MCP directories, open-source/agent tool lists, database-MCP roundups, relevant product directories, and pages already linking to adjacent tools. Research and prepare submissions; do not send outreach or publish submissions without the required approval.
+
+**Quality gate:** every target has a source URL, relevance, target Rowset page, submission/contact path, status, and next action.
+
+### Phase 12 - Rowset vs Airtable, Triggered by Use Rather Than Volume
+
+**Why:** no measured demand exists for `rowset vs airtable`. This page is sales enablement, not a current traffic bet.
+
+**Start only when:** support/sales conversations repeatedly need the comparison, or branded GSC impressions appear.
+
+**Quality gate:** at least 900 useful words, current Airtable product/pricing sources, comparison table, strong honesty section, and internal links from the Airtable alternatives page and pricing.
+
+### Phase 13 - Thirty-Day Observation Gate
+
+**Not before:** 2026-08-14.
+
+Review GSC query/page data for `/blog/idempotent-ai-agent-updates` and `/blog/ai-agent-memory-vs-state`. Only schedule refreshes if impressions show a clear query/title mismatch, position 5-20 creates a striking-distance opportunity, or indexing/canonical issues appear.
