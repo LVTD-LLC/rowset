@@ -32,6 +32,11 @@ browser-friendly and read-only; REST and MCP are the private programmatic paths.
   generator.
 - Do not add new dependencies when Django, Django Ninja, FastMCP, HTMX,
   Alpine.js, or the standard library already handle the need cleanly.
+- Update `CHANGELOG.md` for notable user-facing features, behavior changes, bug
+  fixes, security changes, and meaningful operational changes. Do not add
+  entries for tests, refactors, formatting, or internal maintenance unless they
+  materially affect users or operators. Add entries under the current calendar
+  date using the existing Keep a Changelog categories.
 - Preserve user data privacy. Never print API keys, OAuth tokens, raw secrets, or
   private dataset contents into logs, docs, screenshots, or final messages.
 
