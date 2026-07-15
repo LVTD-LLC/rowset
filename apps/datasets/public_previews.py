@@ -11,10 +11,41 @@ from apps.datasets.choices import DatasetMutationType
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset
 from apps.datasets.services import normalize_public_page_size
+from rowset.utils import build_absolute_public_url
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
 PUBLIC_PREVIEW_ROBOTS_POLICY = "noindex, nofollow, noarchive"
 PUBLIC_PREVIEW_SETTINGS_UPDATED_MESSAGE = "Public preview settings updated."
+
+
+def build_public_dataset_agent_prompt(dataset: Dataset) -> str:
+    public_key = str(dataset.public_key)
+    metadata_url = build_absolute_public_url(f"/api/public/datasets/{public_key}")
+    rows_url = build_absolute_public_url(f"/api/public/datasets/{public_key}/rows")
+    access_instruction = (
+        "This dataset is password protected. Ask the user for the public password separately, "
+        "then send it only in X-Rowset-Public-Password on every request. Never put the password "
+        "in a URL or expose it in output."
+        if dataset.is_public_password_protected
+        else "No API key or public password is required for these public read endpoints."
+    )
+    return "\n".join(
+        [
+            "Read this Rowset public dataset through its read-only API.",
+            "",
+            f"Public metadata: {metadata_url}",
+            f"Public rows: {rows_url}",
+            "",
+            access_instruction,
+            "",
+            "Fetch all rows by requesting the public rows URL with limit=500 and offset=0. "
+            "Append response.rows, increase offset by the number of returned rows, and repeat "
+            "while has_more is true.",
+            "The rows endpoint also accepts query, filters, sort, and direction parameters.",
+            "Public access is read-only. Do not call authenticated or write endpoints unless the "
+            "user separately authorizes and provides private credentials.",
+        ]
+    )
 
 
 class PublicPreviewSettingsError(ValueError):

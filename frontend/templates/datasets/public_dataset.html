@@ -7,34 +7,84 @@
 
 {% block content %}
 <div class="fb-page">
-  <div class="space-y-6">
+  <div class="space-y-10">
     {% if has_access %}
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div class="min-w-0">
+      <div class="space-y-10">
+        <header>
           <p class="fb-label-caps text-emerald-600 dark:text-emerald-400">Shared Rowset dataset</p>
           <h1 class="fb-page-title mt-2 break-words">{{ dataset.name }}</h1>
-          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ dataset.row_count }} rows · {{ dataset.headers|length }} columns</p>
-        </div>
-        <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
-          {% include "components/dataset_export_menu.html" with public_export=True %}
-          <div x-data="aiReaderMenu" data-markdown-url="{{ markdown_url }}">
-            <button type="button" class="fb-button-secondary whitespace-nowrap" :disabled="busy" @click="copyMarkdown()">
-              <span x-show="!busy">Copy as Markdown</span>
-              <span x-cloak x-show="busy">Copying…</span>
-            </button>
-            <p class="mt-1 min-h-5 text-right text-sm text-slate-600 dark:text-slate-300" role="status" aria-live="polite" x-text="status"></p>
+          {% if dataset.description %}
+            <p class="mt-4 max-w-[56ch] text-base/7 text-pretty text-slate-600 dark:text-slate-300 sm:text-sm/6">{{ dataset.description }}</p>
+          {% else %}
+            <p class="mt-4 max-w-[56ch] text-base/7 text-pretty text-slate-600 dark:text-slate-300 sm:text-sm/6">A live, read-only public dataset.</p>
+          {% endif %}
+        </header>
+
+        <section class="@container" aria-label="Dataset statistics">
+          <dl class="grid grid-cols-2 border-y border-slate-950/10 py-6 dark:border-white/15 @4xl:grid-cols-4">
+            <div class="min-w-0 pb-5 pr-4 @4xl:pb-0 @4xl:pr-6">
+              <dt class="truncate text-base font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Rows</dt>
+              <dd class="mt-2 truncate tabular-nums text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">{{ dataset.row_count }}</dd>
+            </div>
+            <div class="min-w-0 border-l border-slate-950/10 pb-5 pl-4 dark:border-white/15 @4xl:px-6 @4xl:pb-0">
+              <dt class="truncate text-base font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Columns</dt>
+              <dd class="mt-2 truncate tabular-nums text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">{{ dataset.headers|length }}</dd>
+            </div>
+            <div class="min-w-0 border-t border-slate-950/10 pr-4 pt-5 dark:border-white/15 @4xl:border-l @4xl:border-t-0 @4xl:px-6 @4xl:pt-0">
+              <dt class="truncate text-base font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Index column</dt>
+              <dd class="mt-2 truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl" title="{{ dataset.index_column }}">{{ dataset.index_column }}</dd>
+            </div>
+            <div class="min-w-0 border-l border-t border-slate-950/10 pl-4 pt-5 dark:border-white/15 @4xl:border-t-0 @4xl:pl-6 @4xl:pt-0">
+              <dt class="truncate text-base font-medium text-slate-600 dark:text-slate-300 sm:text-sm">API access</dt>
+              <dd class="mt-2 truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">{% if dataset.is_public_password_protected %}Protected{% else %}Open{% endif %}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="@container" aria-label="Download and API access">
+          <div class="grid gap-8 border-t border-slate-950/10 pt-8 dark:border-white/15 @4xl:grid-cols-2 @4xl:gap-0">
+            <div class="pb-8 @4xl:pb-0 @4xl:pr-8">
+              <p class="text-base font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Download</p>
+              <h2 class="mt-2 text-lg font-semibold text-balance text-slate-950 dark:text-white">Export the complete dataset</h2>
+              <p class="mt-3 max-w-[56ch] text-base/7 text-pretty text-slate-600 dark:text-slate-300 sm:text-sm/6">Choose CSV, JSONL, Excel, SQLite, or Parquet from one menu.</p>
+              <div class="mt-5 flex flex-wrap items-center gap-4">
+                {% include "components/dataset_export_menu.html" with public_export=True %}
+                <p class="text-base sm:text-sm"><a href="{{ markdown_url }}" class="fb-focus font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">View as Markdown</a></p>
+              </div>
+            </div>
+            <div class="border-t border-slate-950/10 pt-8 dark:border-white/15 @4xl:border-l @4xl:border-t-0 @4xl:pl-8 @4xl:pt-0">
+              <p class="text-base font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Integrate</p>
+              <h2 class="mt-2 text-lg font-semibold text-balance text-slate-950 dark:text-white">Use the public API</h2>
+              <p class="mt-3 max-w-[56ch] text-base/7 text-pretty text-slate-600 dark:text-slate-300 sm:text-sm/6">Read metadata or paginate through every row. {% if dataset.is_public_password_protected %}The public password is required on each request.{% else %}No API key is required.{% endif %}</p>
+              <div class="mt-4 overflow-x-auto rounded-lg border border-slate-950/10 bg-slate-50 px-3 py-2 text-sm dark:border-white/15 dark:bg-slate-900">
+                <a href="/api/public/datasets/{{ dataset.public_key }}/rows" class="fb-focus font-mono text-slate-700 dark:text-slate-200">GET /api/public/datasets/{{ dataset.public_key }}/rows</a>
+              </div>
+              <div class="mt-5" x-data="copyPanel" data-copy-label="Copy prompt for AI agent">
+                <button type="button" class="fb-button-primary" :disabled="busy" @click="copy">
+                  <span x-ref="label" x-text="label">Copy prompt for AI agent</span>
+                </button>
+                <textarea x-ref="source" class="sr-only" aria-hidden="true" tabindex="-1" readonly>{{ public_api_agent_prompt }}</textarea>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     {% endif %}
 
     {% if not has_access %}
       {% include "datasets/partials/public_password_form.html" with password_submit_label="View table" %}
+      <div class="mx-auto max-w-md rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+        <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">Working with an AI agent? Copy a prompt with this dataset's read-only API links and setup instructions.</p>
+        <div class="mt-4">
+          {% include "datasets/partials/public_agent_prompt_button.html" %}
+        </div>
+      </div>
     {% else %}
-      <section class="fb-table-concept overflow-hidden" aria-labelledby="public-table-heading">
+      <section class="fb-table-concept" aria-labelledby="public-table-heading">
         <h2 id="public-table-heading" class="sr-only">Rows in {{ dataset.name }}</h2>
-        <div class="overflow-x-auto">
-          <table class="fb-table">
+        <div class="-mx-4 -my-2 overflow-x-auto whitespace-nowrap sm:-mx-6 lg:-mx-8">
+          <div class="inline-block min-w-full px-4 py-2 align-middle sm:px-6 lg:px-8">
+            <table class="fb-table">
             <caption class="sr-only">Public preview table for {{ dataset.name }}</caption>
             <thead class="bg-slate-50 dark:bg-slate-950">
               <tr>
@@ -111,16 +161,17 @@
                   {% endfor %}
                 </tr>
               {% empty %}
-                <tr><td colspan="{{ dataset.headers|length }}" class="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">{{ public_empty_message }}</td></tr>
+                <tr><td colspan="{{ dataset.headers|length }}" class="px-3 py-6 text-center text-base text-slate-500 dark:text-slate-400 sm:text-sm">{{ public_empty_message }}</td></tr>
               {% endfor %}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </section>
 
       {% if page_obj.paginator.num_pages > 1 %}
         <nav class="flex flex-wrap items-center justify-between gap-3" aria-label="Dataset pagination">
-          <div class="text-sm text-slate-600 dark:text-slate-300">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</div>
+          <div class="text-base text-slate-600 dark:text-slate-300 sm:text-sm">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</div>
           <div class="flex gap-2">
             {% if page_obj.has_previous %}
               <a href="{{ previous_page_url }}" class="fb-button-secondary">Previous</a>

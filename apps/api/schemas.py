@@ -242,6 +242,19 @@ class DatasetSummaryOut(Schema):
     archived_at: datetime | None = None
 
 
+class PublicDatasetSummaryOut(Schema):
+    public_key: str
+    name: str
+    description: str
+    headers: list[str]
+    column_schema: ColumnSchema
+    index_column: str
+    index_generated: bool
+    row_count: int
+    public_page_size: int
+    public_password_protected: bool
+
+
 class DatasetListOut(Schema):
     count: int
     total_count: int
@@ -477,6 +490,13 @@ class DatasetRowOut(Schema):
     assets: list[DatasetAssetOut] = Field(default_factory=list)
 
 
+class PublicDatasetRowOut(Schema):
+    id: int
+    row_number: int
+    index_value: str
+    data: dict[str, str]
+
+
 class DatasetImageAttachIn(Schema):
     column_name: str = Field(..., min_length=1)
     image_base64: str = Field(
@@ -541,6 +561,20 @@ class DatasetRowsOut(Schema):
     sort: str
     direction: str
     rows: list[DatasetRowOut]
+
+
+class PublicDatasetRowsOut(Schema):
+    dataset: str
+    count: int
+    total_count: int
+    limit: int
+    offset: int
+    has_more: bool
+    query: str
+    filters: dict[str, str] = Field(default_factory=dict)
+    sort: str
+    direction: str
+    rows: list[PublicDatasetRowOut]
 
 
 class DatasetSearchIn(Schema):

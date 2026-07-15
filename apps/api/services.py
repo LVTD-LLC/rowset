@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from time import perf_counter
@@ -1411,6 +1411,41 @@ def get_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
         profile,
         dataset_key,
     )
+
+
+PUBLIC_DATASET_PASSWORD_ERROR = "Public dataset password is required or invalid."
+
+
+def get_public_dataset(public_key: str, password: str | None = None) -> Dataset:
+    try:
+        dataset = Dataset.objects.get(
+            public_key=public_key,
+            public_enabled=True,
+            archived_at__isnull=True,
+        )
+    except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
+        raise DatasetServiceError(404, "Public dataset not found.") from exc
+    if dataset.is_public_password_protected and not dataset.public_password_matches(password or ""):
+        raise DatasetServiceError(403, PUBLIC_DATASET_PASSWORD_ERROR)
+    return dataset
+
+
+def serialize_public_dataset_summary(dataset: Dataset) -> dict:
+    return {
+        "public_key": str(dataset.public_key),
+        "name": dataset.name,
+        "description": dataset.description,
+        "headers": dataset.headers,
+        "column_schema": normalize_column_schema(
+            dataset.headers,
+            dataset.column_schema or {},
+        ),
+        "index_column": dataset.index_column,
+        "index_generated": dataset.index_generated,
+        "row_count": dataset.row_count,
+        "public_page_size": dataset.public_page_size,
+        "public_password_protected": dataset.is_public_password_protected,
+    }
 
 
 def get_active_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
@@ -3289,6 +3324,24 @@ def serialize_dataset_row(
     }
 
 
+def serialize_public_dataset_row(
+    row: DatasetRow,
+    *,
+    dataset: Dataset,
+    calculated_values_by_row_id: dict[int, dict[str, str]] | None = None,
+) -> dict:
+    return {
+        "id": row.id,
+        "row_number": row.row_number,
+        "index_value": row.index_value,
+        "data": dataset_row_data_with_calculated_values(
+            dataset,
+            row,
+            calculated_values_by_row_id=calculated_values_by_row_id,
+        ),
+    }
+
+
 def dataset_asset_content_field(asset: DatasetAsset, variant: str = "original"):
     normalized_variant = str(variant or "original").strip().lower()
     if normalized_variant == "thumbnail":
@@ -4427,9 +4480,12 @@ def search_profile_dataset_rows(
     }
 
 
-def list_profile_dataset_rows(
-    profile: Profile,
-    dataset_key: str,
+def _list_dataset_rows_payload(
+    dataset: Dataset,
+    *,
+    dataset_identifier: str,
+    row_serializer: Callable[..., dict],
+    prefetch_assets: bool,
     limit: int = 100,
     offset: int = 0,
     query: str | None = None,
@@ -4437,7 +4493,6 @@ def list_profile_dataset_rows(
     sort: str | None = None,
     direction: str | None = None,
 ) -> dict:
-    dataset = get_profile_dataset(profile, dataset_key)
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     total_count = dataset.rows.count()
@@ -4456,10 +4511,12 @@ def list_profile_dataset_rows(
 
     has_restrictive_query = bool(row_query["query"] or row_query["filters"])
     filtered_count = row_queryset.count() if has_restrictive_query else total_count
-    rows = list(row_queryset.prefetch_related("assets")[offset : offset + limit])
+    if prefetch_assets:
+        row_queryset = row_queryset.prefetch_related("assets")
+    rows = list(row_queryset[offset : offset + limit])
     calculated_values = calculated_row_values_for_rows(dataset, rows)
     return {
-        "dataset": str(dataset.key),
+        "dataset": dataset_identifier,
         "count": filtered_count,
         "total_count": total_count,
         "limit": limit,
@@ -4470,7 +4527,7 @@ def list_profile_dataset_rows(
         "sort": row_query["sort"],
         "direction": row_query["direction"],
         "rows": [
-            serialize_dataset_row(
+            row_serializer(
                 row,
                 dataset=dataset,
                 calculated_values_by_row_id=calculated_values,
@@ -4478,6 +4535,57 @@ def list_profile_dataset_rows(
             for row in rows
         ],
     }
+
+
+def list_profile_dataset_rows(
+    profile: Profile,
+    dataset_key: str,
+    limit: int = 100,
+    offset: int = 0,
+    query: str | None = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | None = None,
+    direction: str | None = None,
+) -> dict:
+    dataset = get_profile_dataset(profile, dataset_key)
+    return _list_dataset_rows_payload(
+        dataset,
+        dataset_identifier=str(dataset.key),
+        row_serializer=serialize_dataset_row,
+        prefetch_assets=True,
+        limit=limit,
+        offset=offset,
+        query=query,
+        filters=filters,
+        sort=sort,
+        direction=direction,
+    )
+
+
+def list_public_dataset_rows(
+    public_key: str,
+    *,
+    password: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    query: str | None = None,
+    filters: dict[str, Any] | None = None,
+    sort: str | None = None,
+    direction: str | None = None,
+) -> dict:
+    dataset = get_public_dataset(public_key, password=password)
+    return _list_dataset_rows_payload(
+        dataset,
+        dataset_identifier=str(dataset.public_key),
+        row_serializer=serialize_public_dataset_row,
+        prefetch_assets=False,
+        limit=limit,
+        offset=offset,
+        query=query,
+        filters=filters,
+        sort=sort,
+        direction=direction,
+    )
 
 
 def _row_mutation_hooks() -> RowMutationHooks:

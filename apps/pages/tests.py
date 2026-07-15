@@ -695,7 +695,7 @@ def test_docs_sidebar_lists_groups_without_disclosure_controls(client):
     assert "inert" not in sidebar
     assert "transition" not in sidebar
     assert "Start with your first agent dataset" in sidebar
-    assert "Share a public preview" in sidebar
+    assert "Share a dataset for read-only access" in sidebar
     assert reverse("use_case_page", kwargs={"slug": "personal-crm"}) not in sidebar
     assert reverse("use_case_page", kwargs={"slug": "agent-task-board"}) not in sidebar
     assert reverse("use_case_page", kwargs={"slug": "bug-qa-tracker"}) not in sidebar
