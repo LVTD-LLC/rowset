@@ -289,6 +289,10 @@ that an agent can operate through MCP or REST.
 
 ## Airtable vs Rowset for AI agents
 
+For the focused two-product decision, including current pricing, API limits,
+agent models, and a sidecar migration plan, read [Rowset vs
+Airtable](/vs/airtable).
+
 | Question | Airtable | Rowset |
 |---|---|---|
 | Primary product surface | Collaborative app workspace | Private agent dataset backend |

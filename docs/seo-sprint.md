@@ -38,7 +38,7 @@ The plan changed materially since the July 4 initialization:
 | 9 | Retarget `/docs/database-mcp-server` around the `mcp database` cluster | Existing-page boost | pending | - |
 | 10 | Ship `/blog/spreadsheet-database-for-ai-agents` | Decision guide | pending | - |
 | 11 | Build the off-page starter target list and submission backlog | Off-page | pending | - |
-| 12 | Ship `/compare/rowset-vs-airtable` only when a sales/use-case trigger exists | Compare | pending | - |
+| 12 | Ship `/vs/airtable` when a sales/use-case trigger exists | Compare | completed | #277 |
 | 13 | Review the fresh idempotency and agent-memory posts after 30 days of GSC data | Observation gate | pending | not before 2026-08-14 |
 
 **Conventions:**
@@ -211,7 +211,7 @@ The earlier spreadsheet-database CPC ($55.70) and database-MCP volume (70) are s
 
 **Why:** no measured demand exists for `rowset vs airtable`. This page is sales enablement, not a current traffic bet.
 
-**Start only when:** support/sales conversations repeatedly need the comparison, or branded GSC impressions appear.
+**Trigger:** Rasul requested the comparison page as the first entry in a reusable `/vs/` series on 2026-07-15.
 
 **Quality gate:** at least 900 useful words, current Airtable product/pricing sources, comparison table, strong honesty section, and internal links from the Airtable alternatives page and pricing.
 

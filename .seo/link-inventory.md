@@ -13,6 +13,7 @@
 | `/use-cases` | https://rowset.lvtd.dev/use-cases | Rowset use cases | Use-case guides, long-form guides |
 | `/uses` | https://rowset.lvtd.dev/uses | Technology behind Rowset | Technical explanations |
 | `/blog` | https://rowset.lvtd.dev/blog | Rowset blog | Long-form guides |
+| `/vs/airtable` | https://rowset.lvtd.dev/vs/airtable | Rowset vs Airtable for AI agents | Compare, alternatives, agent dataset decisions |
 | `/llms.txt` | https://rowset.lvtd.dev/llms.txt | Rowset overview for agents | AI/agent discovery |
 | `/SKILL.md` | https://rowset.lvtd.dev/SKILL.md | Rowset setup skill | Agent setup |
 
@@ -85,6 +86,7 @@
 | `google-sheets` | Phase 4 | `/blog/google-sheets-alternatives` | Airtable alternatives, agent-managed datasets, index-column guide | homepage, pricing, use cases, Dataset API |
 | `baserow` | Phase 6 | `/blog/baserow-alternatives` | Airtable alternatives, Google Sheets alternatives | homepage, MCP docs, Dataset API |
 | `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | Airtable, Google Sheets, and Baserow alternatives | homepage, MCP docs, Dataset API, pricing |
+| `rowset-vs-airtable` | Phase 12 | `/vs/airtable` | shared footer, Airtable alternatives, agent-managed datasets | Airtable alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide |
 
 ## Pending SEO Sprint Targets
 
@@ -92,7 +94,6 @@
 |---|---:|---|---|---|
 | MCP database cluster refresh | 9 | `/docs/database-mcp-server` | `/docs/connect-mcp`, `/docs/dataset-api`, `/blog/mcp-vs-rest-ai-agents` | MCP docs, Dataset API, agent access, pricing, relevant use cases |
 | Spreadsheet database decision guide | 10 | `/blog/spreadsheet-database-for-ai-agents` | Google Sheets alternatives, agent-managed datasets, Dataset API docs | spreadsheet alternatives, MCP docs, Dataset API, use cases |
-| Rowset vs Airtable | 12 | `/compare/rowset-vs-airtable` | Airtable alternatives, pricing, homepage | Airtable alternatives, pricing, MCP docs, Dataset API |
 
 ## Retired Routes Found in the July 15 Re-Audit
 

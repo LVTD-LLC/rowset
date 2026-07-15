@@ -36,7 +36,7 @@ from apps.pages.schema import (
 pytestmark = pytest.mark.django_db
 
 
-PUBLIC_CONTENT_PATH_PREFIXES = ("/blog/", "/docs/", "/use-cases/")
+PUBLIC_CONTENT_PATH_PREFIXES = ("/blog/", "/docs/", "/use-cases/", "/vs/")
 PUBLIC_CONTENT_ROOT_PATHS = {
     "/blog",
     "/changelog",
@@ -98,6 +98,7 @@ def test_checked_in_markdown_public_content_links_use_live_extensionless_routes(
         "/use-cases.md",
         "/docs/quickstart.md",
         "/use-cases/personal-crm.md",
+        "/vs/airtable.md",
     ),
 )
 def test_public_markdown_routes_return_markdown(client, path):
@@ -118,6 +119,7 @@ def test_public_markdown_routes_return_markdown(client, path):
         ("/blog.md", "# Rowset field notes"),
         ("/changelog.md", "# Changelog"),
         ("/docs/database-mcp-server.md", "# Database MCP server"),
+        ("/vs/airtable.md", "# Rowset vs Airtable"),
     ),
 )
 def test_public_markdown_inventory_has_curated_content(client, path, expected_heading):
@@ -644,6 +646,16 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert "Alternatives" not in app_help
 
 
+def test_footer_has_a_separate_compare_column(client):
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 200
+    footer_nav = _nav_html(response.content.decode(), "Footer navigation")
+    assert ">Compare</h2>" in footer_nav
+    assert f'href="{reverse("comparison_page", kwargs={"slug": "airtable"})}"' in footer_nav
+    assert ">Rowset vs Airtable</a>" in footer_nav
+
+
 def test_changelog_html_and_markdown_share_the_repository_changelog(client):
     html_response = client.get(reverse("changelog"))
     markdown_response = client.get(reverse("changelog_markdown"))
@@ -906,6 +918,7 @@ def test_sitemap_response_does_not_set_noindex_header(client):
         "/privacy-policy",
         "/terms-of-service",
         "/uses",
+        "/vs/airtable",
     ),
 )
 def test_marketing_routes_are_extensionless(client, path):
@@ -1091,6 +1104,64 @@ def test_airtable_alternatives_blog_post_is_in_sitemap(client):
     assert response.status_code == 200
     assert b"/blog/airtable-alternatives" in response.content
     assert b"/alternatives/airtable/" not in response.content
+
+
+@override_settings(SITE_URL="https://testserver")
+def test_rowset_vs_airtable_page_has_required_content_links_and_schema(client):
+    response = client.get(reverse("comparison_page", kwargs={"slug": "airtable"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    text = strip_tags(content)
+    words = re.findall(r"\b[\w'-]+\b", text)
+    schemas = json.loads(_json_ld_payload(content))
+
+    assert len(words) >= 1200
+    assert content.count("<h1") == 1
+    assert "Rowset vs Airtable: Which Fits AI Agents? (2026)" in content
+    assert "Rowset vs Airtable at a glance" in content
+    assert "AI agents: Airtable Field Agents vs external agent handoff" in content
+    assert "The practical migration path is usually a sidecar" in content
+    assert "Frequently asked questions" in content
+    assert "Airtable is the better operations app for people" in text
+    assert "Rowset is not an Airtable synchronization product" in text
+    assert reverse("pricing") in content
+    assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
+    assert reverse("blog_post", kwargs={"slug": "airtable-alternatives"}) in content
+    assert 'href="https://www.airtable.com/platform/ai-agents"' in content
+    assert (
+        'href="https://support.airtable.com/docs/managing-api-call-limits-in-airtable"' in content
+    )
+    assert [schema["@type"] for schema in schemas] == [
+        "Article",
+        "BreadcrumbList",
+        "FAQPage",
+    ]
+    assert schemas[0]["url"] == "https://testserver/vs/airtable"
+    assert schemas[0]["dateModified"] == "2026-07-15"
+    assert len(schemas[2]["mainEntity"]) == 5
+
+
+def test_rowset_vs_airtable_has_markdown_and_sitemap_entries(client):
+    markdown_response = client.get(reverse("comparison_page_markdown", kwargs={"slug": "airtable"}))
+    sitemap_response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+
+    assert markdown_response.status_code == 200
+    assert markdown_response.headers["Content-Type"] == "text/markdown; charset=utf-8"
+    assert markdown_response.content.startswith(b"# Rowset vs Airtable")
+    assert sitemap_response.status_code == 200
+    assert b"/vs/airtable" in sitemap_response.content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_llms_txt_lists_rowset_vs_airtable_markdown(client):
+    response = client.get(reverse("llms_txt"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "## Comparisons" in content
+    assert "https://rowset.example/vs/airtable.md" in content
 
 
 def test_dataset_instructions_blog_post_has_required_links_schema_and_content(client):
