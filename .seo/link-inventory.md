@@ -1,6 +1,6 @@
 # Rowset - Internal Link Inventory
 
-> Every SEO sprint phase should pick links from this inventory and update it when a new page ships.
+> Every SEO sprint phase should pick links from this inventory and update it when a new page ships. URLs were reconciled against the production sitemap and live HTTP responses on 2026-07-15. Public HTML routes use canonical no-trailing-slash URLs.
 
 ## Existing Pages
 
@@ -8,162 +8,140 @@
 
 | Slug | URL | Title / anchor candidate | Used by patterns |
 |---|---|---|---|
-| `/` | https://rowset.lvtd.dev/ | Rowset private datasets for AI agents | All |
+| `/` | https://rowset.lvtd.dev/ | Rowset datasets for AI agents | All |
 | `/pricing` | https://rowset.lvtd.dev/pricing | Rowset pricing | Compare, alternatives, long-form guides |
-| `/how-to` | https://rowset.lvtd.dev/how-to | Rowset how-to guides | Use-case guides, long-form guides |
+| `/use-cases` | https://rowset.lvtd.dev/use-cases | Rowset use cases | Use-case guides, long-form guides |
 | `/uses` | https://rowset.lvtd.dev/uses | Technology behind Rowset | Technical explanations |
-| `/blog/` | https://rowset.lvtd.dev/blog/ | Rowset Blog | Long-form guides |
+| `/blog` | https://rowset.lvtd.dev/blog | Rowset blog | Long-form guides |
 | `/llms.txt` | https://rowset.lvtd.dev/llms.txt | Rowset overview for agents | AI/agent discovery |
 | `/SKILL.md` | https://rowset.lvtd.dev/SKILL.md | Rowset setup skill | Agent setup |
 
-### Features and Docs
+### Start + Core Concepts
 
 | Slug | URL | Title | Linked by |
 |---|---|---|---|
-| `/tutorials/first-agent-dataset/` | https://rowset.lvtd.dev/tutorials/first-agent-dataset/ | Getting started with Rowset | All |
-| `/explanations/datasets/` | https://rowset.lvtd.dev/explanations/datasets/ | Working with datasets | Use-case guides, alternatives, long-form guides |
-| `/how-to/share-public-preview/` | https://rowset.lvtd.dev/how-to/share-public-preview/ | Public previews | Use-case, alternatives |
-| `/how-to/help-agents-discover-rowset/` | https://rowset.lvtd.dev/how-to/help-agents-discover-rowset/ | Agent discovery | Use-case guides, long-form guides |
-| `/how-to/connect-mcp/` | https://rowset.lvtd.dev/how-to/connect-mcp/ | MCP access | Alternatives, long-form guides |
-| `/how-to/configure-agent-access/` | https://rowset.lvtd.dev/how-to/configure-agent-access/ | Agent access | Alternatives, use-case |
-| `/docs/api-overview/` | https://rowset.lvtd.dev/docs/api-overview/ | Rowset API introduction | Alternatives, long-form guides |
-| `/docs/user-api/` | https://rowset.lvtd.dev/docs/user-api/ | User API | Setup content |
-| `/docs/project-api/` | https://rowset.lvtd.dev/docs/project-api/ | Project API | Use-case content |
-| `/docs/dataset-api/` | https://rowset.lvtd.dev/docs/dataset-api/ | Dataset API | All |
+| `/docs/quickstart` | https://rowset.lvtd.dev/docs/quickstart | Quickstart | All |
+| `/docs/core-concepts` | https://rowset.lvtd.dev/docs/core-concepts | Core concepts | Explanations, use cases |
+| `/docs/datasets` | https://rowset.lvtd.dev/docs/datasets | Working with datasets | All |
+| `/docs/create-datasets` | https://rowset.lvtd.dev/docs/create-datasets | Create datasets | Setup and use-case content |
+| `/docs/work-with-rows` | https://rowset.lvtd.dev/docs/work-with-rows | Work with rows | Reliability and API content |
+| `/docs/design-schema` | https://rowset.lvtd.dev/docs/design-schema | Design a dataset schema | Schema and workflow content |
+| `/docs/organize-projects` | https://rowset.lvtd.dev/docs/organize-projects | Organize projects | Multi-dataset use cases |
+| `/docs/link-datasets` | https://rowset.lvtd.dev/docs/link-datasets | Link datasets | Relationship content |
+| `/docs/attach-images` | https://rowset.lvtd.dev/docs/attach-images | Attach images | Asset workflows |
+| `/docs/share-public-previews` | https://rowset.lvtd.dev/docs/share-public-previews | Share public previews | Alternatives, review workflows |
+
+### MCP, REST, CLI + Agent Access
+
+| Slug | URL | Title | Linked by |
+|---|---|---|---|
+| `/docs/connect-mcp` | https://rowset.lvtd.dev/docs/connect-mcp | Connect an agent through MCP | Alternatives, long-form guides |
+| `/docs/mcp-tools` | https://rowset.lvtd.dev/docs/mcp-tools | MCP tools reference | MCP and implementation content |
+| `/docs/database-mcp-server` | https://rowset.lvtd.dev/docs/database-mcp-server | Database MCP server guide | MCP database cluster |
+| `/docs/api-overview` | https://rowset.lvtd.dev/docs/api-overview | Rowset API introduction | Alternatives, long-form guides |
+| `/docs/dataset-api` | https://rowset.lvtd.dev/docs/dataset-api | Dataset API | All |
+| `/docs/user-api` | https://rowset.lvtd.dev/docs/user-api | User API | Setup content |
+| `/docs/project-api` | https://rowset.lvtd.dev/docs/project-api | Project API | Use-case content |
+| `/docs/use-cli` | https://rowset.lvtd.dev/docs/use-cli | Rowset CLI | Setup and automation content |
+| `/docs/configure-agent-access` | https://rowset.lvtd.dev/docs/configure-agent-access | Configure agent access | Alternatives, use cases |
+| `/docs/agent-discovery` | https://rowset.lvtd.dev/docs/agent-discovery | Help agents discover Rowset | Agent setup and discovery |
+| `/docs/mcp-rest-public-previews` | https://rowset.lvtd.dev/docs/mcp-rest-public-previews | MCP, REST, and public previews | Access-path comparisons |
+| `/docs/archive-export-troubleshoot` | https://rowset.lvtd.dev/docs/archive-export-troubleshoot | Archive, export, and troubleshoot | Operations content |
 
 ### Existing Use-Case Pages
 
 | Slug | URL | Title | Linked by |
 |---|---|---|---|
-| `/how-to/personal-crm` | https://rowset.lvtd.dev/how-to/personal-crm | Agent-managed personal CRM | Use-case, alternatives |
+| `/use-cases/personal-crm` | https://rowset.lvtd.dev/use-cases/personal-crm | Agent-managed personal CRM | Use-case, alternatives |
 | `/use-cases/agent-task-board` | https://rowset.lvtd.dev/use-cases/agent-task-board | Agent task board | Use-case, alternatives |
-| `/how-to/feedback-triage` | https://rowset.lvtd.dev/how-to/feedback-triage | Feedback triage | Use-case, alternatives |
-| `/how-to/content-pipeline` | https://rowset.lvtd.dev/how-to/content-pipeline | Content pipeline | Use-case guides, long-form guides |
-| `/how-to/product-inventory-catalog` | https://rowset.lvtd.dev/how-to/product-inventory-catalog | Product or inventory catalog | Use-case, alternatives |
-| `/how-to/bug-qa-tracker` | https://rowset.lvtd.dev/how-to/bug-qa-tracker | Bug or QA tracker | Use-case guides, long-form guides |
+| `/use-cases/feedback-triage` | https://rowset.lvtd.dev/use-cases/feedback-triage | Feedback triage | Use-case, alternatives |
+| `/use-cases/content-pipeline` | https://rowset.lvtd.dev/use-cases/content-pipeline | Content pipeline | Use-case guides, long-form guides |
+| `/use-cases/product-inventory-catalog` | https://rowset.lvtd.dev/use-cases/product-inventory-catalog | Product or inventory catalog | Use-case, alternatives |
+| `/use-cases/bug-qa-tracker` | https://rowset.lvtd.dev/use-cases/bug-qa-tracker | Bug or QA tracker | Use-case guides, long-form guides |
 
 ### Blog Posts
 
-| Slug | URL | Title | Topic | Linked by |
-|---|---|---|---|---|
-| `/blog/agent-managed-datasets` | https://rowset.lvtd.dev/blog/agent-managed-datasets | What is an agent-managed dataset? | agent workflows, datasets, MCP | Dataset API docs, MCP docs |
-| `/blog/mcp-vs-rest-ai-agents` | https://rowset.lvtd.dev/blog/mcp-vs-rest-ai-agents | When should an AI agent use MCP instead of REST? | MCP, REST, agent workflows | MCP docs, Agent access docs, agent-managed datasets blog |
-| `/blog/choose-index-column-agent-rows` | https://rowset.lvtd.dev/blog/choose-index-column-agent-rows | How to choose an index column for agent-managed rows | index columns, stable row identity, agent workflows | Dataset API docs, MCP docs, agent-managed datasets blog |
-| `/blog/airtable-alternatives` | https://rowset.lvtd.dev/blog/airtable-alternatives | Best Airtable alternatives for AI-agent-managed datasets | Airtable alternatives, agent workflows, datasets | landing page, agent-managed datasets blog, MCP vs REST blog |
-| `/blog/google-sheets-alternatives` | https://rowset.lvtd.dev/blog/google-sheets-alternatives | Best Google Sheets alternatives for AI-agent-managed datasets | Google Sheets alternatives, agent workflows, datasets | Airtable alternatives blog, agent-managed datasets blog, index-column guide |
-| `/blog/structure-dataset-instructions-ai-agents` | https://rowset.lvtd.dev/blog/structure-dataset-instructions-ai-agents | How to structure dataset instructions for AI agents | dataset instructions, metadata, schema, agent workflows | Dataset API docs, MCP docs, content pipeline use case |
-| `/blog/rowset-id-vs-business-keys` | https://rowset.lvtd.dev/blog/rowset-id-vs-business-keys | Rowset rowset_id vs business keys: which should agents use? | rowset_id, business keys, row identity, agent workflows | index-column guide, create-datasets docs, Google Sheets alternatives |
-| `/blog/baserow-alternatives` | https://rowset.lvtd.dev/blog/baserow-alternatives | Best Baserow alternatives for AI-agent-managed datasets | Baserow alternatives, agent workflows, datasets | Airtable alternatives blog, Google Sheets alternatives blog, MCP docs |
-| `/blog/nocodb-alternatives` | https://rowset.lvtd.dev/blog/nocodb-alternatives | Best NocoDB alternatives for AI-agent-managed datasets | NocoDB alternatives, agent workflows, datasets | Baserow alternatives blog, Google Sheets alternatives blog |
-| `/blog/connect-ai-agent-to-dataset-api` | https://rowset.lvtd.dev/blog/connect-ai-agent-to-dataset-api | How to connect an AI agent to the Rowset Dataset API | Dataset API, REST API, agent access, agent workflows | Dataset API docs, agent access docs, agent discovery docs |
-| `/blog/relationship-modeling-agent-datasets` | https://rowset.lvtd.dev/blog/relationship-modeling-agent-datasets | How to model relationships between agent-managed datasets | relationships, linked datasets, agent workflows | Link datasets docs, index-column guide, dataset-instructions guide |
-| `/blog/ai-agent-memory-vs-state` | https://rowset.lvtd.dev/blog/ai-agent-memory-vs-state | AI agent memory vs structured state: what goes where? | agent memory, structured operational state, workflow records | Agent-managed datasets blog, datasets docs, task board, personal CRM |
-| `/blog/idempotent-ai-agent-updates` | https://rowset.lvtd.dev/blog/idempotent-ai-agent-updates | How to make AI-agent data updates idempotent | idempotency, retries, stable row identity, reconciliation | Work with rows docs, Dataset API setup blog, agent task board |
+| Slug | URL | Title | Topic |
+|---|---|---|---|
+| `/blog/agent-managed-datasets` | https://rowset.lvtd.dev/blog/agent-managed-datasets | What is an agent-managed dataset? | agent workflows, datasets, MCP |
+| `/blog/mcp-vs-rest-ai-agents` | https://rowset.lvtd.dev/blog/mcp-vs-rest-ai-agents | When should an AI agent use MCP instead of REST? | MCP, REST, access paths |
+| `/blog/choose-index-column-agent-rows` | https://rowset.lvtd.dev/blog/choose-index-column-agent-rows | Choose an index column for agent-managed rows | stable row identity |
+| `/blog/airtable-alternatives` | https://rowset.lvtd.dev/blog/airtable-alternatives | Airtable alternatives for AI-agent-managed datasets | alternatives |
+| `/blog/google-sheets-alternatives` | https://rowset.lvtd.dev/blog/google-sheets-alternatives | Google Sheets alternatives for AI-agent-managed datasets | alternatives |
+| `/blog/structure-dataset-instructions-ai-agents` | https://rowset.lvtd.dev/blog/structure-dataset-instructions-ai-agents | Structure dataset instructions for AI agents | instructions, metadata |
+| `/blog/rowset-id-vs-business-keys` | https://rowset.lvtd.dev/blog/rowset-id-vs-business-keys | Rowset ID vs business keys | row identity |
+| `/blog/baserow-alternatives` | https://rowset.lvtd.dev/blog/baserow-alternatives | Baserow alternatives for AI-agent-managed datasets | alternatives |
+| `/blog/nocodb-alternatives` | https://rowset.lvtd.dev/blog/nocodb-alternatives | NocoDB alternatives for AI-agent-managed datasets | alternatives |
+| `/blog/connect-ai-agent-to-dataset-api` | https://rowset.lvtd.dev/blog/connect-ai-agent-to-dataset-api | Connect an AI agent to the Dataset API | REST setup |
+| `/blog/relationship-modeling-agent-datasets` | https://rowset.lvtd.dev/blog/relationship-modeling-agent-datasets | Model relationships between agent-managed datasets | relationships |
+| `/blog/ai-agent-memory-vs-state` | https://rowset.lvtd.dev/blog/ai-agent-memory-vs-state | AI agent memory vs structured state | memory, operational state |
+| `/blog/idempotent-ai-agent-updates` | https://rowset.lvtd.dev/blog/idempotent-ai-agent-updates | Make AI-agent data updates idempotent | retries, reconciliation |
 
-## SEO-Sprint-Generated Pages
+## Shipped SEO Sprint Pages
 
-### Blog alternatives posts
-
-| Slug | Ships in phase | URL | Inbound links from | Outbound links to |
+| Slug | Phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
 | `airtable` | Phase 3 | `/blog/airtable-alternatives` | landing page, agent-managed datasets blog, MCP vs REST blog | pricing, MCP docs, Dataset API, public previews, index-column guide |
-| `google-sheets` | Phase 4 | `/blog/google-sheets-alternatives` | Airtable alternatives blog, agent-managed datasets blog, index-column guide | homepage, pricing, use cases, Dataset API |
-| `baserow` | Phase 6 | `/blog/baserow-alternatives` | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives` | homepage, MCP docs, Dataset API |
-| `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives` | homepage, MCP docs, Dataset API, pricing, mcp-rest-public-previews |
+| `google-sheets` | Phase 4 | `/blog/google-sheets-alternatives` | Airtable alternatives, agent-managed datasets, index-column guide | homepage, pricing, use cases, Dataset API |
+| `baserow` | Phase 6 | `/blog/baserow-alternatives` | Airtable alternatives, Google Sheets alternatives | homepage, MCP docs, Dataset API |
+| `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | Airtable, Google Sheets, and Baserow alternatives | homepage, MCP docs, Dataset API, pricing |
 
-### `/how-to/[slug]` or Future `/for/[slug]`
+## Pending SEO Sprint Targets
 
-| Slug | Ships in phase | URL | Inbound links from | Outbound links to |
-|---|---|---|---|---|
-| `ai-agent-crm` | existing/Phase 1 expansion | `/how-to/personal-crm` | homepage, how-to index | Dataset API, MCP docs, Agent access |
-| `agent-task-board` | existing/Phase 1 expansion | `/use-cases/agent-task-board` | homepage, use-case index | Dataset API, MCP docs, projects docs |
-| `feedback-triage` | existing/Phase 1 expansion | `/how-to/feedback-triage` | homepage, how-to index | public previews, Dataset API |
-| `content-pipeline` | existing/Phase 1 expansion | `/how-to/content-pipeline` | homepage, how-to index | projects docs, Dataset API |
+| Target | Phase | Proposed URL | Required inbound links | Required outbound links |
+|---|---:|---|---|---|
+| MCP database cluster refresh | 9 | `/docs/database-mcp-server` | `/docs/connect-mcp`, `/docs/dataset-api`, `/blog/mcp-vs-rest-ai-agents` | MCP docs, Dataset API, agent access, pricing, relevant use cases |
+| Spreadsheet database decision guide | 10 | `/blog/spreadsheet-database-for-ai-agents` | Google Sheets alternatives, agent-managed datasets, Dataset API docs | spreadsheet alternatives, MCP docs, Dataset API, use cases |
+| Rowset vs Airtable | 12 | `/compare/rowset-vs-airtable` | Airtable alternatives, pricing, homepage | Airtable alternatives, pricing, MCP docs, Dataset API |
 
-### `/compare/[slug]`
+## Retired Routes Found in the July 15 Re-Audit
 
-| Slug | Ships in phase | URL | Inbound links from | Outbound links to |
-|---|---|---|---|---|
-| `rowset-vs-airtable` | Phase 9 | `/compare/rowset-vs-airtable` | TBD | `/blog/airtable-alternatives`, pricing, MCP docs |
+These routes return 404 in production and must not be selected as internal-link targets. Phase 5 decides whether to add permanent redirects for external/backlink preservation.
 
-### Long-Form Explanations and How-To Guides
-
-| Slug | Ships in phase | URL | Inbound links from | Outbound links to |
-|---|---|---|---|---|
-| `database-mcp-server` | Phase 2 | `/explanations/database-mcp-server` | MCP docs, Dataset API docs | MCP docs, Dataset API, Agent access, pricing, personal CRM, agent task board, feedback triage |
-| `spreadsheet-database-for-ai-agents` | Phase 5 | `/explanations/spreadsheet-database-for-ai-agents` | TBD | Google Sheets alternatives, Dataset API, MCP docs |
-| `connect-ai-agent-to-dataset-api` | Phase 8 | `/how-to/connect-ai-agent-to-dataset-api` | TBD | MCP docs, Dataset API, Agent access |
+| Retired route family | Canonical replacement |
+|---|---|
+| `/how-to` | `/use-cases` for workflow pages; `/docs/*` for setup/reference pages |
+| `/tutorials/first-agent-dataset/` | `/docs/quickstart` |
+| `/explanations/datasets/` | `/docs/datasets` |
+| `/explanations/database-mcp-server` | `/docs/database-mcp-server` |
+| `/how-to/connect-mcp/` | `/docs/connect-mcp` |
+| `/how-to/configure-agent-access/` | `/docs/configure-agent-access` |
+| `/how-to/help-agents-discover-rowset/` | `/docs/agent-discovery` |
+| `/how-to/share-public-preview/` | `/docs/share-public-previews` |
+| `/how-to/<workflow>` | `/use-cases/<workflow>` |
+| trailing-slash `/docs/*/`, `/use-cases/*/`, and `/blog/` | canonical no-trailing-slash URL |
 
 ## Anchor-Text Variations
 
+- MCP database for AI agents
+- hosted database MCP server
+- database MCP server guide
 - Rowset private dataset backend
 - MCP dataset backend
-- REST dataset API
+- REST Dataset API
 - hosted MCP access
-- Rowset Dataset API
 - API-backed datasets
 - agent-managed dataset
 - structured rows for agents
 - private dataset layer for AI agents
 - agent-operated row store
 - agent-managed personal CRM
-- agent task board
+- AI agent task board
 - feedback triage workflow
-- public read-only previews
+- public read-only dataset previews
+- Markdown, CSV, and Parquet dataset exports
 - Rowset setup prompt
 - agent discovery guide
 - MCP vs REST for AI agents
-- when to use MCP instead of REST
-- Rowset MCP and REST access
-- agent API decision guide
 - choose an index column for agent-managed rows
 - stable row identity for agents
-- Rowset index column guide
-- generated rowset_id fallback
-- by-index row operations
+- generated `rowset_id` fallback
 - Airtable alternatives for AI-agent-managed datasets
-- Airtable alternative for trusted agents
-- agent-managed Airtable alternative
 - Google Sheets alternatives for AI-agent-managed datasets
-- Google Sheets alternative for trusted agents
-- agent-managed Google Sheets alternative
-- private row backend for AI agents
-- AI agent dataset instructions
-- dataset instructions for agents
-- Rowset dataset instructions
-- agent workflow rules
-- dataset metadata for agents
-- Rowset rowset_id vs business keys
-- generated rowset_id
-- business keys for agent-managed rows
-- Rowset generated index guide
-- row identity for agent workflows
 - Baserow alternatives for AI-agent-managed datasets
-- Baserow alternative for trusted agents
-- open-source database alternative for agent datasets
-- Baserow vs Rowset for AI agents
-- agent-managed Baserow alternative
-- NocoDB alternatives
-- NocoDB alternative for trusted agents
-- open-source NocoDB alternative for agent datasets
-- NocoDB vs Rowset for AI agents
-- connect an AI agent to the Rowset Dataset API
-- Rowset Dataset API setup for agents
-- REST setup checklist for AI agents
-- private REST access for trusted agents
-- agent API key handoff
-- agent dataset relationships
-- linked datasets for AI agents
-- Rowset relationship modeling
-- relationship enforcement for agent datasets
-- model relationships between Rowset datasets
+- NocoDB alternatives for AI-agent-managed datasets
+- AI agent dataset instructions
+- model relationships between agent-managed datasets
 - AI agent memory vs structured state
-- structured operational state for AI agents
-- agent memory and dataset decision guide
-- where AI agents should keep working data
-- canonical workflow records for agents
 - idempotent AI-agent data updates
 - retry-safe Rowset updates
-- prevent duplicate agent writes
-- AI agent idempotency pattern
-- reconcile uncertain row updates

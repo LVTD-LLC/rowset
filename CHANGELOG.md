@@ -29,6 +29,7 @@ cut date.
 - Added a decision guide on AI agent memory versus structured operational state, with a verified SEO brief, updated content ledger/link inventory, and inbound links from related blog, docs, and use-case pages.
 
 ### Changed
+- Refreshed the SEO sprint with current GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina, production-route, metadata, and schema evidence; reprioritized the roadmap around URL recovery, sitemap/canonical hygiene, and the measured `mcp database` opportunity.
 - Updated the SEO brand foundation to reflect the current 7-day trial and $50/month Pro pricing.
 
 ## 2026-07-13
