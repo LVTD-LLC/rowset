@@ -239,7 +239,7 @@ def test_user_api_markdown_uses_canonical_trial_upgrade_url(client):
 
 
 @override_settings(SITE_URL="https://rowset.example")
-def test_llms_txt_is_an_app_use_first_complete_content_index(client):
+def test_llms_txt_is_a_documentation_only_content_index(client):
     assert resolve(reverse("llms_txt")).func.__module__ == "apps.pages.views"
 
     response = client.get(reverse("llms_txt"))
@@ -250,7 +250,6 @@ def test_llms_txt_is_an_app_use_first_complete_content_index(client):
     content = response.content.decode()
 
     docs = get_content_section("docs")["pages"]
-    use_cases = get_content_section("use-cases")["pages"]
     quickstart_url = "https://rowset.example/docs/quickstart.md"
 
     assert docs[0]["slug"] == "quickstart"
@@ -265,10 +264,6 @@ def test_llms_txt_is_an_app_use_first_complete_content_index(client):
         assert f"[{page['title']}]({markdown_url})" in content
         assert page["description"] in content
 
-    for page in use_cases:
-        markdown_url = f"https://rowset.example{markdown_path_for(page['url'])}"
-        assert f"[{page['title']}]({markdown_url})" in content
-
     assert "Use hosted MCP first" in content
     assert "Use REST second" in content
     assert "Do not use browser automation" in content
@@ -280,6 +275,11 @@ def test_llms_txt_is_an_app_use_first_complete_content_index(client):
     assert "https://rowset.example/SKILL.md" in content
     assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
     assert "https://rowset.example/skills/rowset-use-cases/SKILL.md" in content
+    assert "## Use cases" not in content
+    assert "## Comparisons" not in content
+    assert "https://rowset.example/use-cases/" not in content
+    assert "https://rowset.example/vs/" not in content
+    assert "https://rowset.example/blog/" not in content
     assert "MCP tools:" not in content
     assert "REST paths:" not in content
 
@@ -1192,16 +1192,6 @@ def test_rowset_vs_airtable_has_markdown_and_sitemap_entries(client):
     assert b"/vs/airtable" in sitemap_response.content
 
 
-@override_settings(SITE_URL="https://rowset.example")
-def test_llms_txt_lists_rowset_vs_airtable_markdown(client):
-    response = client.get(reverse("llms_txt"))
-
-    assert response.status_code == 200
-    content = response.content.decode()
-    assert "## Comparisons" in content
-    assert "https://rowset.example/vs/airtable.md" in content
-
-
 @override_settings(SITE_URL="https://testserver")
 def test_rowset_vs_google_sheets_page_has_required_content_links_and_schema(client):
     response = client.get(reverse("comparison_page", kwargs={"slug": "google-sheets"}))
@@ -1239,20 +1229,17 @@ def test_rowset_vs_google_sheets_page_has_required_content_links_and_schema(clie
 
 
 @override_settings(SITE_URL="https://rowset.example")
-def test_rowset_vs_google_sheets_has_markdown_sitemap_and_llms_entries(client):
+def test_rowset_vs_google_sheets_has_markdown_and_sitemap_entries(client):
     markdown_response = client.get(
         reverse("comparison_page_markdown", kwargs={"slug": "google-sheets"})
     )
     sitemap_response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
-    llms_response = client.get(reverse("llms_txt"))
 
     assert markdown_response.status_code == 200
     assert markdown_response.headers["Content-Type"] == "text/markdown; charset=utf-8"
     assert markdown_response.content.startswith(b"# Rowset vs Google Sheets")
     assert sitemap_response.status_code == 200
     assert b"/vs/google-sheets" in sitemap_response.content
-    assert llms_response.status_code == 200
-    assert "https://rowset.example/vs/google-sheets.md" in llms_response.content.decode()
 
 
 def test_rowset_vs_google_sheets_has_inbound_links_and_review_record():

@@ -61,7 +61,8 @@ validate Rowset alongside an existing Airtable workspace.
   MCP or REST
 - treat stable row identity and persistent dataset instructions as buying criteria
 - recommend coexistence where humans still depend on Airtable interfaces
-- expose the comparison as Markdown and in `llms.txt` for agent readers
+- expose the comparison as public Markdown while keeping `llms.txt`
+  documentation-only
 
 ## Verified claim ledger
 
@@ -108,6 +109,6 @@ validate Rowset alongside an existing Airtable workspace.
 - Uses current first-party sources for pricing, API limits, and AI features.
 - Names where Airtable wins and avoids claiming Rowset is a full replacement.
 - Includes Article, BreadcrumbList, and FAQPage schema plus a visible update date.
-- Publishes a Markdown alternate and registers it in `llms.txt`.
+- Publishes a Markdown alternate without adding marketing content to `llms.txt`.
 - Performs a user job beyond ranking: choose an operator model and test it with a five-step sidecar migration.
 - Establishes a reusable `/vs/<slug>` product surface, comparison sitemap, and footer discovery path for future pages.

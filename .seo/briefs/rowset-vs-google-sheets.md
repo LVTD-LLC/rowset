@@ -107,5 +107,5 @@ Inbound links will come from the shared Compare footer,
   queue migration example, balanced choose-each-product guidance, and links to
   shipped Rowset capabilities.
 - `Article`, `BreadcrumbList`, and seven-question `FAQPage` schema are emitted by
-  the comparison template; public Markdown, sitemap, and `llms.txt` discovery
-  are covered by application tests.
+  the comparison template; public Markdown and sitemap discovery are covered by
+  application tests. `llms.txt` intentionally indexes documentation only.
