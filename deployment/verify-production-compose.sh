@@ -16,6 +16,7 @@ chmod 600 "$env_file" "$rendered_config" "$compose_errors"
 
 {
   printf 'ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:test\n'
+  printf 'ROWSET_DOMAIN=rowset.example.com\n'
   printf 'POSTGRES_USER=rowset\n'
   printf 'POSTGRES_PASSWORD=%s\n' "$sentinel"
   printf 'REDIS_PASSWORD=%s\n' "$sentinel"

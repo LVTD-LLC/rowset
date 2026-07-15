@@ -88,6 +88,21 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 
 SITE_URL = env("SITE_URL")
+ROWSET_INSECURE_HTTP = env.bool("ROWSET_INSECURE_HTTP", default=False)
+PRODUCTION_HTTPS_ENABLED = ENVIRONMENT == "prod" and not ROWSET_INSECURE_HTTP
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if PRODUCTION_HTTPS_ENABLED else None
+SECURE_SSL_REDIRECT = PRODUCTION_HTTPS_ENABLED
+SESSION_COOKIE_SECURE = PRODUCTION_HTTPS_ENABLED
+CSRF_COOKIE_SECURE = PRODUCTION_HTTPS_ENABLED
+SECURE_HSTS_SECONDS = 31_536_000 if PRODUCTION_HTTPS_ENABLED else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+DATA_UPLOAD_MAX_MEMORY_SIZE = 64_000_000
+
+# Rowset secures its own hostname without imposing HSTS policy on sibling subdomains.
+SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
+
 TRIAL_DURATION_DAYS = 7
 SITE_HOST = SITE_URL.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
 BLOG_POSTS_DIR = BASE_DIR / "apps" / "pages" / "content" / "blog"
@@ -360,7 +375,7 @@ ACCOUNT_FORMS = {
     "login": "apps.core.forms.CustomLoginForm",
 }
 ACCOUNT_ADAPTER = "rowset.adapters.CustomAccountAdapter"
-if ENVIRONMENT != "dev":
+if PRODUCTION_HTTPS_ENABLED:
     ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 # Passkey (WebAuthn) auth support via django-allauth MFA.

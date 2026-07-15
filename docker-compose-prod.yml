@@ -9,6 +9,23 @@ x-service-defaults: &service-defaults
       max-file: "3"
 
 services:
+  caddy:
+    <<: *service-defaults
+    image: caddy:2.11.4-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ROWSET_SITE_ADDRESS: ${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname}
+    volumes:
+      - ./deployment/self-host/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+
   db:
     <<: *service-defaults
     image: rasulkireev/custom-postgres:17
@@ -44,8 +61,8 @@ services:
     <<: *service-defaults
     image: ${ROWSET_IMAGE:?Set ROWSET_IMAGE to a verified release or SHA tag}
     working_dir: /app
-    ports:
-      - "8000:80"
+    expose:
+      - 80
     depends_on:
       db:
         condition: service_healthy
@@ -55,6 +72,7 @@ services:
       - .env
     environment:
       APP_PROCESS_TYPE: server
+      SITE_URL: https://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname}
     volumes:
       - media_data:/app/media
       - private_media_data:/app/private_media
@@ -72,11 +90,14 @@ services:
       - .env
     environment:
       APP_PROCESS_TYPE: worker
+      SITE_URL: https://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname}
     volumes:
       - media_data:/app/media
       - private_media_data:/app/private_media
 
 volumes:
+  caddy_data:
+  caddy_config:
   postgres_data:
   redis_data:
   media_data:

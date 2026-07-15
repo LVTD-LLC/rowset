@@ -12,7 +12,9 @@ _MEDIA_MOUNTS = {
     "media_data:/app/media",
     "private_media_data:/app/private_media",
 }
-_PRODUCTION_SERVICES = {"db", "redis", "backend", "workers"}
+_CADDYFILE = _REPO_ROOT / "deployment" / "self-host" / "Caddyfile"
+_INSECURE_OVERRIDE = _REPO_ROOT / "deployment" / "self-host" / "compose.insecure-http.yml"
+_PRODUCTION_SERVICES = {"caddy", "db", "redis", "backend", "workers"}
 
 
 def _production_compose():
@@ -25,6 +27,81 @@ def test_production_compose_persists_media_in_shared_named_volumes():
     assert _MEDIA_MOUNTS <= set(compose["services"]["backend"]["volumes"])
     assert _MEDIA_MOUNTS <= set(compose["services"]["workers"]["volumes"])
     assert {"media_data", "private_media_data"} <= set(compose["volumes"])
+
+
+def test_caddy_is_the_only_public_web_ingress():
+    compose = _production_compose()
+    services = compose["services"]
+
+    assert set(services["caddy"]["ports"]) == {"80:80", "443:443", "443:443/udp"}
+    for service_name in {"backend", "workers", "db", "redis"}:
+        assert "ports" not in services[service_name]
+    assert services["backend"]["expose"] == [80]
+
+
+def test_caddy_uses_persistent_state_and_the_checked_in_config():
+    compose = _production_compose()
+    caddy = compose["services"]["caddy"]
+
+    assert caddy["image"] == "caddy:2.11.4-alpine"
+    assert caddy["restart"] == "unless-stopped"
+    assert "./deployment/self-host/Caddyfile:/etc/caddy/Caddyfile:ro" in caddy["volumes"]
+    assert "caddy_data:/data" in caddy["volumes"]
+    assert "caddy_config:/config" in caddy["volumes"]
+    assert {"caddy_data", "caddy_config"} <= set(compose["volumes"])
+
+
+def test_production_compose_requires_one_domain_and_derives_https_site_url():
+    compose_text = (_REPO_ROOT / "docker-compose-prod.yml").read_text()
+
+    assert "${ROWSET_DOMAIN:?Set ROWSET_DOMAIN" in compose_text
+    assert "SITE_URL: https://${ROWSET_DOMAIN" in compose_text
+    assert "ROWSET_SITE_ADDRESS: ${ROWSET_DOMAIN" in compose_text
+
+
+def test_caddyfile_supports_automatic_https_streaming_and_large_assets():
+    caddyfile = _CADDYFILE.read_text()
+
+    assert "{$ROWSET_SITE_ADDRESS}" in caddyfile
+    assert "\n\tlog {" not in caddyfile
+    assert "max_size 64MB" in caddyfile
+    assert "reverse_proxy backend:80" in caddyfile
+    assert "flush_interval -1" in caddyfile
+
+
+def test_ip_only_http_mode_is_an_explicit_override():
+    override = yaml.safe_load(_INSECURE_OVERRIDE.read_text())
+
+    assert override["services"]["caddy"]["environment"]["ROWSET_SITE_ADDRESS"].startswith(
+        "http://${ROWSET_DOMAIN"
+    )
+    for service_name in {"backend", "workers"}:
+        environment = override["services"][service_name]["environment"]
+        assert environment["SITE_URL"].startswith("http://${ROWSET_DOMAIN")
+        assert environment["ROWSET_INSECURE_HTTP"] == "true"
+
+
+def test_self_hosting_docs_present_one_caddy_https_golden_path():
+    self_hosting = (_REPO_ROOT / "SELF_HOSTING.md").read_text()
+    readme = (_REPO_ROOT / "README.md").read_text()
+
+    assert "ROWSET_DOMAIN" in self_hosting
+    assert "Caddy" in self_hosting
+    assert "compose.insecure-http.yml" in self_hosting
+    assert "https://$ROWSET_DOMAIN" in self_hosting
+    assert "Nginx" not in self_hosting
+    assert "Certbot" not in self_hosting
+    assert "http://your-server-ip:8000" not in self_hosting
+    assert "SELF_HOSTING.md" in readme
+    assert "Nginx, Caddy, Traefik, or CapRover" not in readme
+    assert "http://server-ip:8000" not in readme
+
+
+def test_environment_example_names_the_self_host_domain_input():
+    environment_example = (_REPO_ROOT / ".env.example").read_text()
+
+    assert "ROWSET_DOMAIN=" in environment_example
+    assert "ROWSET_INSECURE_HTTP" not in environment_example
 
 
 def test_production_compose_applies_restart_and_bounded_logging_to_every_service():
@@ -99,7 +176,7 @@ def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics
     assert "restart: unless-stopped" in self_hosting
     assert "host restart" in self_hosting
     assert "30 MB per service" in self_hosting
-    assert "120 MB across the four-service stack" in self_hosting
+    assert "150 MB across the five-service stack" in self_hosting
     assert "config --no-env-resolution --no-interpolate" in self_hosting
     assert "Do not share `.env`" in self_hosting
 

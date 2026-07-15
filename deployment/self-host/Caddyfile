@@ -1,0 +1,9 @@
+{$ROWSET_SITE_ADDRESS} {
+	request_body {
+		max_size 64MB
+	}
+
+	reverse_proxy backend:80 {
+		flush_interval -1
+	}
+}

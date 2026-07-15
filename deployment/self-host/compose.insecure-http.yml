@@ -1,0 +1,14 @@
+services:
+  caddy:
+    environment:
+      ROWSET_SITE_ADDRESS: http://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the server IP}
+
+  backend:
+    environment:
+      SITE_URL: http://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the server IP}
+      ROWSET_INSECURE_HTTP: "true"
+
+  workers:
+    environment:
+      SITE_URL: http://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the server IP}
+      ROWSET_INSECURE_HTTP: "true"
