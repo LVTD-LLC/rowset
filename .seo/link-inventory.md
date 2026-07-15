@@ -36,7 +36,7 @@
 | Slug | URL | Title | Linked by |
 |---|---|---|---|
 | `/how-to/personal-crm` | https://rowset.lvtd.dev/how-to/personal-crm | Agent-managed personal CRM | Use-case, alternatives |
-| `/how-to/agent-task-board` | https://rowset.lvtd.dev/how-to/agent-task-board | Agent task board | Use-case, alternatives |
+| `/use-cases/agent-task-board` | https://rowset.lvtd.dev/use-cases/agent-task-board | Agent task board | Use-case, alternatives |
 | `/how-to/feedback-triage` | https://rowset.lvtd.dev/how-to/feedback-triage | Feedback triage | Use-case, alternatives |
 | `/how-to/content-pipeline` | https://rowset.lvtd.dev/how-to/content-pipeline | Content pipeline | Use-case guides, long-form guides |
 | `/how-to/product-inventory-catalog` | https://rowset.lvtd.dev/how-to/product-inventory-catalog | Product or inventory catalog | Use-case, alternatives |
@@ -76,7 +76,7 @@
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
 | `ai-agent-crm` | existing/Phase 1 expansion | `/how-to/personal-crm` | homepage, how-to index | Dataset API, MCP docs, Agent access |
-| `agent-task-board` | existing/Phase 1 expansion | `/how-to/agent-task-board` | homepage, how-to index | Dataset API, MCP docs, projects docs |
+| `agent-task-board` | existing/Phase 1 expansion | `/use-cases/agent-task-board` | homepage, use-case index | Dataset API, MCP docs, projects docs |
 | `feedback-triage` | existing/Phase 1 expansion | `/how-to/feedback-triage` | homepage, how-to index | public previews, Dataset API |
 | `content-pipeline` | existing/Phase 1 expansion | `/how-to/content-pipeline` | homepage, how-to index | projects docs, Dataset API |
 

@@ -67,7 +67,7 @@ The original element is the **identity -> desired state -> confirmation** framew
 - `/blog/choose-index-column-agent-rows`
 - `/blog/structure-dataset-instructions-ai-agents`
 - `/blog/connect-ai-agent-to-dataset-api`
-- `/how-to/agent-task-board`
+- `/use-cases/agent-task-board`
 - `/pricing`
 
 ## AI SEO final checklist

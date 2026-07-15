@@ -58,6 +58,9 @@ If identity is unclear, stop before mutation. If the desired state is relative, 
 
 The contract maps directly to Rowset's product surface. A dataset stores its index column and instructions. The agent can inspect them through [hosted MCP](/docs/connect-mcp) or the [Dataset API](/docs/dataset-api), then use the same stable identity for exact reads and writes.
 
+The [row operations guide](/docs/work-with-rows) lists the current MCP tools and
+REST paths for each lookup, create, patch, and verification step.
+
 ## 1. Choose a stable index before the agent writes
 
 An idempotent update needs a target that survives retries and future agent runs. Use a business key such as `task_id`, `sku`, `email`, `external_id`, or `slug` when the source system already has one. If no durable business key exists, let Rowset add a generated `rowset_id` and preserve it in downstream references.
@@ -194,7 +197,7 @@ Finish every mutation loop with a read. Return the row key, the fields checked, 
 
 Rowset records authenticated row mutation history, including changed-field metadata. That history helps answer who changed a row and which fields moved, but it is not a replacement for final-state verification. Audit history explains the path; the keyed row answers what is true now.
 
-For a complete worked dataset, use the [agent task board](/how-to/agent-task-board) and apply the retry contract above to every status transition. If your runtime uses HTTP rather than MCP, the [Dataset API setup guide](/blog/connect-ai-agent-to-dataset-api) covers bearer-key handling and dataset inspection.
+For a complete worked dataset, use the [agent task board](/use-cases/agent-task-board) and apply the retry contract above to every status transition. If your runtime uses HTTP rather than MCP, the [Dataset API setup guide](/blog/connect-ai-agent-to-dataset-api) covers bearer-key handling and dataset inspection.
 
 ## Common idempotency mistakes in agent workflows
 
