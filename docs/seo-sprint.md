@@ -38,7 +38,7 @@ The plan changed materially since the July 4 initialization:
 | 9 | Retarget `/docs/database-mcp-server` around the `mcp database` cluster | Existing-page boost | pending | - |
 | 10 | Ship `/blog/spreadsheet-database-for-ai-agents` | Decision guide | pending | - |
 | 11 | Build the off-page starter target list and submission backlog | Off-page | pending | - |
-| 12 | Ship `/vs/airtable` when a sales/use-case trigger exists | Compare | in_progress | branch `seo/rowset-vs-airtable` (PR TBD) |
+| 12 | Ship `/vs/airtable` when a sales/use-case trigger exists | Compare | completed | #277 |
 | 13 | Review the fresh idempotency and agent-memory posts after 30 days of GSC data | Observation gate | pending | not before 2026-08-14 |
 
 **Conventions:**
