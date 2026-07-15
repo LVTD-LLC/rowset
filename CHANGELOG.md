@@ -25,6 +25,7 @@ deployment or release cut date.
 ### Added
 - Added a homepage carousel highlighting projects that use Rowset.
 - Added a public changelog page backed by the repository changelog, with a Markdown variant and links from the shared footer and app help sidebar.
+- Added one-time three-day trial rewards for verifying email, starring Rowset on GitHub, joining the Discord community, and following Rasul on X, with pending rewards preserved until a trial starts and a post-setup sidebar link for discovery.
 
 ## 2026-07-07
 

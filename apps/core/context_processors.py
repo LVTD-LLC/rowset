@@ -15,13 +15,18 @@ logger = get_rowset_logger(__name__)
 def app_navigation(request):
     """Return the authenticated project tree used by the shared app shell."""
     if not request.user.is_authenticated or not hasattr(request.user, "profile"):
-        return {"app_navigation_projects": []}
+        return {
+            "app_navigation_projects": [],
+            "show_trial_rewards_link": False,
+        }
+
+    profile = request.user.profile
 
     active_sections = ProjectSection.objects.filter(archived_at__isnull=True).order_by("name", "id")
     active_datasets = Dataset.objects.filter(archived_at__isnull=True).order_by("name", "id")
     projects = list(
         Project.objects.filter(
-            profile=request.user.profile,
+            profile=profile,
             archived_at__isnull=True,
         )
         .prefetch_related(
@@ -54,7 +59,12 @@ def app_navigation(request):
     return {
         "app_navigation_projects": projects,
         "app_navigation_unassigned_datasets": list(
-            active_datasets.filter(profile=request.user.profile, project__isnull=True)
+            active_datasets.filter(profile=profile, project__isnull=True)
+        ),
+        "show_trial_rewards_link": bool(
+            profile.trial_started_at
+            and profile.setup_completed_at
+            and not profile.has_active_subscription
         ),
     }
 

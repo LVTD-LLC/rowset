@@ -6,6 +6,12 @@ urlpatterns = [
     # App pages
     path("home", views.HomeView.as_view(), name="home"),
     path("settings", views.UserSettingsView.as_view(), name="settings"),
+    path("trial-rewards", views.trial_rewards, name="trial_rewards"),
+    path(
+        "trial-rewards/<str:reward>/claim",
+        views.claim_trial_reward_view,
+        name="claim_trial_reward",
+    ),
     path("admin-panel", views.AdminPanelView.as_view(), name="admin_panel"),
     path(
         "SKILL.md",
