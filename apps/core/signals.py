@@ -4,8 +4,10 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django_q.tasks import async_task
 
+from apps.core.choices import TrialReward
 from apps.core.models import Profile, ProfileStates
 from apps.core.tasks import add_email_to_buttondown
+from apps.core.trials import claim_trial_reward
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -34,6 +36,13 @@ def add_email_to_buttondown_on_confirm(sender, **kwargs):
         outcome="success",
         **{"job.id": str(job_id)},
     )
+
+
+@receiver(email_confirmed, dispatch_uid="rowset.claim_email_verification_trial_reward")
+def claim_email_verification_trial_reward(sender, email_address, **kwargs):  # noqa: ARG001
+    profile = email_address.user.profile
+    if not profile.has_active_subscription:
+        claim_trial_reward(profile, TrialReward.EMAIL_VERIFIED)
 
 
 @receiver(user_signed_up)

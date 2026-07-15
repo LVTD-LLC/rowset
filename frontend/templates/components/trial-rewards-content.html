@@ -1,0 +1,28 @@
+<div id="trial-rewards-content" class="space-y-8">
+    <section class="rounded-lg border border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/40"
+             aria-label="Reward progress">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ completed_count }} of {{ reward_count }} complete</p>
+            <p class="font-mono text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">+{{ earned_days }} day{{ earned_days|pluralize }} earned</p>
+        </div>
+        <div class="mt-4 grid grid-cols-4 gap-2" aria-hidden="true">
+            {% for card in reward_cards %}
+                <span class="h-2 rounded-full {% if card.claimed %}bg-emerald-500{% else %}bg-slate-200 dark:bg-slate-700{% endif %}"></span>
+            {% endfor %}
+        </div>
+        {% if trial_status == "active" %}
+            <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">Your trial currently runs through {{ trial_ends_at|date:"M j, Y" }}.</p>
+        {% elif trial_status == "not_started" %}
+            <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">Rewards you claim now will be added when your trial starts.</p>
+        {% elif trial_status == "expired" %}
+            <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">Claiming a reward restarts access from today.</p>
+        {% else %}
+            <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">Your Pro subscription is already active.</p>
+        {% endif %}
+    </section>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {% for card in reward_cards %}
+            {% include "components/trial-reward-card.html" with card=card %}
+        {% endfor %}
+    </div>
+</div>

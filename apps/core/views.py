@@ -40,6 +40,7 @@ from apps.core.agent_skill import (
     load_rowset_skill_markdown,
     load_rowset_use_cases_skill_markdown,
 )
+from apps.core.choices import TrialReward
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import (
@@ -48,7 +49,12 @@ from apps.core.services import (
     get_or_create_profile_for_user,
 )
 from apps.core.stripe_webhooks import EVENT_HANDLERS
-from apps.core.trials import get_trial_status
+from apps.core.trials import (
+    TRIAL_REWARD_DEFINITIONS,
+    TrialRewardUnavailableError,
+    claim_trial_reward,
+    get_trial_status,
+)
 from apps.datasets.views import DATASET_VIEW_MODE_GROUPED, DatasetListView
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
@@ -290,6 +296,87 @@ class UserSettingsView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
             messages.success(request, "Design settings updated")
             return redirect("settings")
         return super().post(request, *args, **kwargs)
+
+
+def _trial_reward_cards(profile: Profile) -> list[dict]:
+    claimed_rewards = set(profile.trial_reward_claims.values_list("reward", flat=True))
+    email_verified = EmailAddress.objects.filter(user=profile.user, verified=True).exists()
+    subscribed = profile.has_active_subscription
+    return [
+        {
+            "key": definition.reward.value,
+            "title": definition.title,
+            "description": definition.description,
+            "action_label": definition.action_label,
+            "url": definition.url,
+            "days": definition.days,
+            "claimed": definition.reward.value in claimed_rewards,
+            "available": not subscribed
+            and (definition.reward != TrialReward.EMAIL_VERIFIED or email_verified),
+        }
+        for definition in TRIAL_REWARD_DEFINITIONS
+    ]
+
+
+def _trial_rewards_context(profile: Profile) -> dict:
+    reward_cards = _trial_reward_cards(profile)
+    completed_count = sum(card["claimed"] for card in reward_cards)
+    return {
+        "reward_cards": reward_cards,
+        "completed_count": completed_count,
+        "reward_count": len(reward_cards),
+        "earned_days": sum(card["days"] for card in reward_cards if card["claimed"]),
+        "trial_status": get_trial_status(profile),
+        "trial_ends_at": profile.trial_ends_at,
+    }
+
+
+@login_required
+@require_GET
+def trial_rewards(request):
+    return render(
+        request,
+        "pages/trial-rewards.html",
+        _trial_rewards_context(request.user.profile),
+    )
+
+
+@login_required
+@require_POST
+def claim_trial_reward_view(request, reward):
+    try:
+        reward = TrialReward(reward)
+    except ValueError:
+        return HttpResponseBadRequest("Unknown trial reward.")
+
+    claim_error = None
+    try:
+        result = claim_trial_reward(request.user.profile, reward)
+    except TrialRewardUnavailableError as exc:
+        result = None
+        claim_error = str(exc)
+
+    if not request.htmx:
+        if claim_error:
+            messages.error(request, claim_error)
+        elif result.created:
+            messages.success(
+                request,
+                f"Added {result.claim.days} extra days to your Rowset trial.",
+            )
+        else:
+            messages.info(request, "You already claimed this trial reward.")
+        return redirect("trial_rewards")
+
+    context = _trial_rewards_context(request.user.profile)
+    card = next(card for card in context["reward_cards"] if card["key"] == reward.value)
+    card["claim_error"] = claim_error
+    card["claim_was_pending"] = bool(result and result.claim.applied_at is None)
+    return render(
+        request,
+        "components/trial-rewards-content.html",
+        context,
+    )
 
 
 def agent_instructions_rowset_mcp(request):
