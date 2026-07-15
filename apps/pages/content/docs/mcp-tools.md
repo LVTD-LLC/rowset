@@ -6,8 +6,8 @@ keywords: Rowset MCP tools, MCP reference, Rowset agent tools
 
 # MCP tool reference
 
-This page is a reference for the hosted Rowset MCP surface. Use
-[Connect over MCP](/docs/connect-mcp) when you need setup steps.
+This page is a reference for the Rowset MCP surface. Use [Connect over
+MCP](/docs/connect-mcp) when you need setup steps.
 
 Do not treat this page as the exact schema source. The connected MCP server's
 tool discovery response is the source of truth for live tool names, descriptions,

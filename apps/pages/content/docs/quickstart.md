@@ -49,7 +49,7 @@ Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 
 ## 3. Connect the MCP server
 
-Configure the agent's MCP client with the hosted Rowset endpoint:
+Configure the agent's MCP client with the URL shown by your Rowset instance:
 
 ```bash
 codex mcp add rowset --url {{ mcp_url }} --bearer-token-env-var ROWSET_API_KEY
@@ -110,5 +110,6 @@ You now have a private dataset the agent can continue using in later sessions.
 - [Work with rows](/docs/work-with-rows) for read, search, create, update, and
   delete patterns.
 - [Connect over MCP](/docs/connect-mcp) for a focused MCP setup guide.
+- [Use Rowset from the CLI](/docs/use-cli) for terminal access through REST.
 - [MCP tool reference](/docs/mcp-tools) when an agent needs exact tool groups.
 - [Use cases](/use-cases) for starter dataset shapes.
