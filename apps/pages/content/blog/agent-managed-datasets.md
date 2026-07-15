@@ -164,9 +164,10 @@ If humans need a collaborative app, a tool like Airtable may still be the right
 surface. If agents need private row operations, use the more focused decision
 guide to [Rowset vs Airtable](/vs/airtable), or review the broader [Airtable
 alternatives for AI-agent-managed datasets](/blog/airtable-alternatives). If
-your current workflow starts in a spreadsheet, the guide to [Google Sheets
-alternatives for AI-agent-managed datasets](/blog/google-sheets-alternatives)
-covers when to keep Sheets and when to move the agent-operated rows into Rowset.
+your current workflow starts in a spreadsheet, use the focused [Rowset vs
+Google Sheets](/vs/google-sheets) decision guide, or review the broader [Google
+Sheets alternatives for AI-agent-managed
+datasets](/blog/google-sheets-alternatives).
 
 ## A concrete example
 

@@ -6,6 +6,7 @@
 {% url 'blog_posts' as blog_posts_url %}
 {% url 'use_cases' as use_cases_url %}
 {% url 'comparison_page' slug='airtable' as airtable_comparison_url %}
+{% url 'comparison_page' slug='google-sheets' as google_sheets_comparison_url %}
 {% url 'uses' as uses_url %}
 {% url 'changelog' as changelog_url %}
 {% url 'privacy_policy' as privacy_policy_url %}
@@ -20,7 +21,7 @@
             <nav class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4" aria-label="Footer navigation">
                 <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Build</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ use_cases_url }}" class="hover:text-white">Use cases</a></li><li><a href="{{ pricing_url }}" class="hover:text-white">Pricing</a></li><li><a href="{{ account_signup_url }}" class="hover:text-white">Start trial</a></li></ul></div>
                 <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Learn</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ docs_home_url }}" class="hover:text-white">Documentation</a></li><li><a href="{{ blog_posts_url }}" class="hover:text-white">Blog</a></li><li><a href="{{ changelog_url }}" class="hover:text-white">Changelog</a></li><li><a href="{{ quickstart_url|default:docs_home_url }}" class="hover:text-white">Quickstart</a></li></ul></div>
-                <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Compare</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ airtable_comparison_url }}" class="hover:text-white">Rowset vs Airtable</a></li></ul></div>
+                <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Compare</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ airtable_comparison_url }}" class="hover:text-white">Rowset vs Airtable</a></li><li><a href="{{ google_sheets_comparison_url }}" class="hover:text-white">Rowset vs Google Sheets</a></li></ul></div>
                 <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Open source</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="https://github.com/LVTD-LLC/rowset" class="hover:text-white">GitHub</a></li><li><a href="https://github.com/LVTD-LLC/rowset#deployment" class="hover:text-white">Self-hosting</a></li><li><a href="{{ uses_url }}" class="hover:text-white">Uses</a></li><li><a href="{{ privacy_policy_url }}" class="hover:text-white">Privacy</a></li><li><a href="{{ terms_of_service_url }}" class="hover:text-white">Terms</a></li></ul></div>
             </nav>
         </div>

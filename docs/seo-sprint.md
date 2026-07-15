@@ -40,6 +40,7 @@ The plan changed materially since the July 4 initialization:
 | 11 | Build the off-page starter target list and submission backlog | Off-page | pending | - |
 | 12 | Ship `/vs/airtable` when a sales/use-case trigger exists | Compare | completed | #277 |
 | 13 | Review the fresh idempotency and agent-memory posts after 30 days of GSC data | Observation gate | pending | not before 2026-08-14 |
+| 14 | Ship `/vs/google-sheets` as the next requested comparison | Compare | completed | #TBD |
 
 **Conventions:**
 
@@ -147,6 +148,7 @@ The earlier spreadsheet-database CPC ($55.70) and database-MCP volume (70) are s
 ### Deferred or Gated
 
 - `rowset vs airtable`: no measured row; build only for a real sales/user decision, not projected traffic.
+- `rowset vs google sheets`: no measured row; treat the requested page as a reusable sales and agent-decision surface, not projected traffic.
 - `airtable vs google sheets`: 260 searches/month, but Rowset is not a named side.
 - `dataset api`: strong volume and CPC but KD 43 and ambiguous intent.
 - Fresh idempotency and agent-memory posts: do not rewrite before 30 days of GSC data.
@@ -220,3 +222,14 @@ The earlier spreadsheet-database CPC ($55.70) and database-MCP volume (70) are s
 **Not before:** 2026-08-14.
 
 Review GSC query/page data for `/blog/idempotent-ai-agent-updates` and `/blog/ai-agent-memory-vs-state`. Only schedule refreshes if impressions show a clear query/title mismatch, position 5-20 creates a striking-distance opportunity, or indexing/canonical issues appear.
+
+### Phase 14 - Rowset vs Google Sheets, Requested Comparison
+
+**Why:** no measured direct-query demand exists for `rowset vs google sheets`,
+but Rasul selected Google Sheets as the next page in the reusable `/vs/` series
+on 2026-07-15. This is a product-decision and sales-enablement page.
+
+**Quality gate:** at least 1,200 useful words, current primary Google sources,
+comparison table, strong `choose Google Sheets if` section, AI SEO and
+product-led SEO review, and inbound links from the shared footer, Google Sheets
+alternatives page, and agent-managed datasets guide.

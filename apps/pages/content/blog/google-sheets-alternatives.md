@@ -22,6 +22,10 @@ humans need a familiar spreadsheet for ad hoc planning, Google Sheets is still a
 strong default. If trusted AI agents need a private place to create, inspect,
 update, export, and share structured rows through MCP or REST, use Rowset.
 
+For the direct operator-first decision, read [Rowset vs Google
+Sheets](/vs/google-sheets). It compares the spreadsheet workspace with a private
+agent dataset backend without treating either one as a universal replacement.
+
 That is the narrow comparison this guide covers. Most Google Sheets alternatives
 roundups compare spreadsheet apps, work management tools, or no-code databases.
 Those lists are useful, but they often miss the newer question: where should an
@@ -192,9 +196,10 @@ application-builder features ([Baserow](https://baserow.io/)). Its database API
 docs describe REST APIs for database operations with token-based authentication
 ([Baserow database API](https://baserow.io/user-docs/database-api)).
 
-Choose Baserow if your priority is open source, self-hosting, a no-code
-database UI, or app-builder workflows. Choose Rowset if you do not need a whole
-workspace and only want hosted MCP/REST datasets for trusted agents.
+Choose Baserow if your priority is an Airtable-style no-code database UI or
+app-builder workflow. Choose Rowset if you do not need a whole workspace and
+want private MCP/REST datasets built for trusted agents. Both products are open
+source and self-hostable.
 For that narrower open-source database comparison, read
 [Baserow alternatives for AI-agent-managed datasets](/blog/baserow-alternatives).
 
