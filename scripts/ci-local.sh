@@ -58,6 +58,7 @@ SQL
 }
 
 run_step "Clean stale test containers" cleanup_backend_runs
+run_step "Production Compose config" ./deployment/verify-production-compose.sh
 run_step "Ruff lint" make lint-python
 run_step "Ruff format check" make format-check
 run_step "Install frontend dependencies" make frontend-install

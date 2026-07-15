@@ -118,6 +118,11 @@ urlpatterns = [
     ),
     path("share/datasets/<uuid:public_key>/", views.public_dataset, name="public_dataset"),
     path(
+        "share/datasets/<uuid:public_key>/export/<str:export_format>/",
+        views.public_dataset_export,
+        name="public_dataset_export",
+    ),
+    path(
         "share/datasets/<uuid:public_key>/md",
         views.public_dataset_markdown,
         name="public_dataset_markdown",

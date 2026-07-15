@@ -121,6 +121,27 @@ and Redis before Caddy treats the application as ready.
 Caddy requests a public certificate after it can reach the configured hostname. Initial issuance
 normally completes shortly after DNS and firewall prerequisites are correct.
 
+### Lifecycle and local Docker logs
+
+All five services use `restart: unless-stopped`, so containers restart automatically after a Docker
+daemon or host restart unless an operator stopped them explicitly. Backend and workers wait for
+healthy PostgreSQL and authenticated Redis dependencies during Compose startup; Caddy waits for the
+healthy backend.
+
+Docker's local `json-file` logs rotate at three 10 MB files: approximately 30 MB per service and
+150 MB across the five-service stack, before small Docker metadata overhead. Application-level
+external logging remains separately configurable through optional observability settings.
+
+To validate or share the Compose structure without resolving `.env` values, use:
+
+```bash
+docker compose --env-file .env -f docker-compose-prod.yml -p rowset \
+  config --no-env-resolution --no-interpolate
+```
+
+Do not share `.env`, ordinary fully resolved `docker compose config` output, or container environment
+output; all can contain secrets.
+
 ## 5. Verify web, REST, and MCP
 
 Verify that HTTP redirects once to HTTPS and that HTTPS is healthy:

@@ -14,6 +14,7 @@ _MEDIA_MOUNTS = {
 }
 _CADDYFILE = _REPO_ROOT / "deployment" / "self-host" / "Caddyfile"
 _INSECURE_OVERRIDE = _REPO_ROOT / "deployment" / "self-host" / "compose.insecure-http.yml"
+_PRODUCTION_SERVICES = {"caddy", "db", "redis", "backend", "workers"}
 
 
 def _production_compose():
@@ -101,6 +102,83 @@ def test_environment_example_names_the_self_host_domain_input():
 
     assert "ROWSET_DOMAIN=" in environment_example
     assert "ROWSET_INSECURE_HTTP" not in environment_example
+
+
+def test_production_compose_applies_restart_and_bounded_logging_to_every_service():
+    compose = _production_compose()
+
+    assert set(compose["services"]) == _PRODUCTION_SERVICES
+    for service in compose["services"].values():
+        assert service["restart"] == "unless-stopped"
+        assert service["logging"] == {
+            "driver": "json-file",
+            "options": {"max-size": "10m", "max-file": "3"},
+        }
+
+
+def test_production_compose_waits_for_authenticated_redis_health():
+    compose = _production_compose()
+    redis = compose["services"]["redis"]
+
+    assert redis["command"] == [
+        "sh",
+        "-c",
+        'test -n "$$REDIS_PASSWORD" || { echo "REDIS_PASSWORD is required" >&2; exit 1; }; '
+        'exec redis-server --requirepass "$$REDIS_PASSWORD"',
+    ]
+    assert redis["healthcheck"]["test"] == [
+        "CMD-SHELL",
+        'test -n "$$REDIS_PASSWORD" && REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping',
+    ]
+    assert redis["healthcheck"] == {
+        "test": [
+            "CMD-SHELL",
+            'test -n "$$REDIS_PASSWORD" && REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping',
+        ],
+        "interval": "5s",
+        "timeout": "3s",
+        "retries": 12,
+        "start_period": "30s",
+    }
+    for service_name in ("backend", "workers"):
+        assert compose["services"][service_name]["depends_on"] == {
+            "db": {"condition": "service_healthy"},
+            "redis": {"condition": "service_healthy"},
+        }
+
+
+def test_production_compose_rejects_an_empty_redis_password():
+    compose = _production_compose()
+    redis = compose["services"]["redis"]
+
+    for command in (redis["command"][2], redis["healthcheck"]["test"][1]):
+        result = subprocess.run(
+            ["sh", "-c", command.replace("$$", "$")],
+            env={**os.environ, "REDIS_PASSWORD": ""},
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode != 0
+
+
+def test_local_ci_validates_rendered_production_compose():
+    ci_local = (_REPO_ROOT / "scripts/ci-local.sh").read_text()
+
+    assert (
+        'run_step "Production Compose config" ./deployment/verify-production-compose.sh' in ci_local
+    )
+
+
+def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics():
+    self_hosting = (_REPO_ROOT / "SELF_HOSTING.md").read_text()
+
+    assert "restart: unless-stopped" in self_hosting
+    assert "host restart" in self_hosting
+    assert "30 MB per service" in self_hosting
+    assert "150 MB across the five-service stack" in self_hosting
+    assert "config --no-env-resolution --no-interpolate" in self_hosting
+    assert "Do not share `.env`" in self_hosting
 
 
 def test_local_media_backup_archives_both_paths_with_restricted_permissions(tmp_path):
