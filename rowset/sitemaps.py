@@ -19,6 +19,7 @@ class StaticViewSitemap(sitemaps.Sitemap):
         """
         return [
             "landing",
+            "changelog",
             "uses",
             "pricing",
             "blog_posts",

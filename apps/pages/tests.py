@@ -39,6 +39,7 @@ pytestmark = pytest.mark.django_db
 PUBLIC_CONTENT_PATH_PREFIXES = ("/blog/", "/docs/", "/use-cases/")
 PUBLIC_CONTENT_ROOT_PATHS = {
     "/blog",
+    "/changelog",
     "/docs",
     "/pricing",
     "/privacy-policy",
@@ -92,6 +93,7 @@ def test_checked_in_markdown_public_content_links_use_live_extensionless_routes(
         "/terms-of-service.md",
         "/docs.md",
         "/blog.md",
+        "/changelog.md",
         "/uses.md",
         "/use-cases.md",
         "/docs/quickstart.md",
@@ -114,6 +116,7 @@ def test_public_markdown_routes_return_markdown(client, path):
         ("/terms-of-service.md", "# Terms of Service"),
         ("/uses.md", "# Technology behind Rowset"),
         ("/blog.md", "# Rowset field notes"),
+        ("/changelog.md", "# Changelog"),
         ("/docs/database-mcp-server.md", "# Database MCP server"),
     ),
 )
@@ -167,6 +170,7 @@ def test_public_markdown_route_name_and_missing_slug(client):
         ("/terms-of-service", "https://rowset.example/terms-of-service.md"),
         ("/uses", "https://rowset.example/uses.md"),
         ("/blog", "https://rowset.example/blog.md"),
+        ("/changelog", "https://rowset.example/changelog.md"),
         (
             "/blog/agent-managed-datasets",
             "https://rowset.example/blog/agent-managed-datasets.md",
@@ -602,6 +606,7 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     blog_href = f'href="{reverse("blog_posts")}"'
     docs_href = f'href="{reverse("docs_home")}"'
     use_cases_href = f'href="{reverse("use_cases")}"'
+    changelog_href = f'href="{reverse("changelog")}"'
 
     landing_response = client.get(reverse("landing"))
     assert landing_response.status_code == 200
@@ -617,6 +622,7 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert use_cases_href in _nav_html(landing_content, "Primary navigation")
     assert use_cases_href in _nav_html(landing_content, "Mobile navigation")
     assert use_cases_href in landing_footer
+    assert changelog_href in landing_footer
     assert "Alternatives" not in landing_footer
 
     user = get_user_model().objects.create_user(
@@ -634,7 +640,20 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert blog_href in app_help
     assert docs_href in app_help
     assert use_cases_href in app_help
+    assert changelog_href in app_help
     assert "Alternatives" not in app_help
+
+
+def test_changelog_html_and_markdown_share_the_repository_changelog(client):
+    html_response = client.get(reverse("changelog"))
+    markdown_response = client.get(reverse("changelog_markdown"))
+    source = Path(settings.BASE_DIR, "CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert html_response.status_code == 200
+    assert markdown_response.status_code == 200
+    assert markdown_response.content.decode() == f"{source.rstrip()}\n"
+    assert "Product updates" in html_response.content.decode()
+    assert "Added a public changelog page" in html_response.content.decode()
 
 
 def test_uses_page_lists_stack_tools_and_is_linked_from_footer(client):
@@ -829,7 +848,7 @@ def test_landing_page_redirects_authenticated_users_to_home(client):
 @override_settings(SITE_URL="https://rowset.example")
 @pytest.mark.parametrize(
     "route_name",
-    ("landing", "pricing", "privacy_policy", "terms_of_service", "uses"),
+    ("landing", "changelog", "pricing", "privacy_policy", "terms_of_service", "uses"),
 )
 def test_public_pages_use_the_hosted_rowset_social_card(client, route_name):
     response = client.get(reverse(route_name))
@@ -883,6 +902,7 @@ def test_sitemap_response_does_not_set_noindex_header(client):
     "path",
     (
         "/pricing",
+        "/changelog",
         "/privacy-policy",
         "/terms-of-service",
         "/uses",
