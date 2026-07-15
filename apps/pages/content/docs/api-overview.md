@@ -16,6 +16,18 @@ exports, and public preview settings.
 {{ api_base_url }}
 ```
 
+If you use a self-hosted instance, replace this value with the public URL you
+expose for its REST API, including the `/api` path. For example:
+
+```text
+https://rowset.example.com/api
+```
+
+Create the API key on the same instance you connect to.
+
+Scripts can use this URL directly. For the Rowset CLI, see
+[Use Rowset from the CLI](/docs/use-cli).
+
 ## Authentication
 
 Use your API key as a bearer token. After signing in, copy your key from Settings or from the dashboard agent prompt.

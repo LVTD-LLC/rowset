@@ -151,6 +151,86 @@ def test_public_dataset_view_paginates_rows(client, profile):
     assert "Grace" in page_two_content
 
 
+def test_public_dataset_markdown_returns_all_rows_and_escapes_table_cells(client, profile):
+    dataset = create_dataset(
+        profile,
+        headers=["name", "notes | status"],
+        rows=[
+            {"name": "Ada", "notes | status": "First line\nSecond | line"},
+            {"name": "Grace", "notes | status": "<ready>"},
+        ],
+        name="People <notes>",
+    )
+    dataset.public_enabled = True
+    dataset.public_page_size = 1
+    dataset.save(update_fields=["public_enabled", "public_page_size"])
+
+    response = client.get(reverse("public_dataset_markdown", args=[dataset.public_key]))
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/markdown; charset=utf-8"
+    assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+    assert response.content.decode() == (
+        "# People &lt;notes&gt;\n\n"
+        "| name | notes \\| status |\n"
+        "| --- | --- |\n"
+        "| Ada | First line<br>Second \\| line |\n"
+        "| Grace | &lt;ready&gt; |\n"
+    )
+
+
+def test_public_dataset_page_has_copy_as_markdown_button(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    response = client.get(dataset.get_public_url())
+
+    content = response.content.decode()
+    markdown_url = reverse("public_dataset_markdown", args=[dataset.public_key])
+    assert "Copy as Markdown" in content
+    assert f'data-markdown-url="http://testserver{markdown_url}"' in content
+    assert (
+        f'<link rel="alternate" type="text/markdown" href="http://testserver{markdown_url}" />'
+        in content
+    )
+
+
+def test_public_dataset_markdown_requires_public_preview(client, profile):
+    dataset = create_ready_dataset(profile)
+
+    response = client.get(reverse("public_dataset_markdown", args=[dataset.public_key]))
+
+    assert response.status_code == 404
+
+
+def test_public_dataset_markdown_uses_public_preview_password_session(
+    auth_client,
+    client,
+    profile,
+):
+    dataset = create_ready_dataset(profile)
+    auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "10",
+            "public_password": "secret-table",
+        },
+    )
+    dataset.refresh_from_db()
+    markdown_url = reverse("public_dataset_markdown", args=[dataset.public_key])
+
+    locked_response = client.get(markdown_url)
+    assert locked_response.status_code == 403
+    assert "Ada" not in locked_response.content.decode()
+
+    client.post(dataset.get_public_url(), {"password": "secret-table"})
+    unlocked_response = client.get(markdown_url)
+    assert unlocked_response.status_code == 200
+    assert "Ada" in unlocked_response.content.decode()
+
+
 def test_public_dataset_does_not_expose_column_descriptions(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True

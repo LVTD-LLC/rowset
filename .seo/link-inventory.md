@@ -36,7 +36,7 @@
 | Slug | URL | Title | Linked by |
 |---|---|---|---|
 | `/how-to/personal-crm` | https://rowset.lvtd.dev/how-to/personal-crm | Agent-managed personal CRM | Use-case, alternatives |
-| `/how-to/agent-task-board` | https://rowset.lvtd.dev/how-to/agent-task-board | Agent task board | Use-case, alternatives |
+| `/use-cases/agent-task-board` | https://rowset.lvtd.dev/use-cases/agent-task-board | Agent task board | Use-case, alternatives |
 | `/how-to/feedback-triage` | https://rowset.lvtd.dev/how-to/feedback-triage | Feedback triage | Use-case, alternatives |
 | `/how-to/content-pipeline` | https://rowset.lvtd.dev/how-to/content-pipeline | Content pipeline | Use-case guides, long-form guides |
 | `/how-to/product-inventory-catalog` | https://rowset.lvtd.dev/how-to/product-inventory-catalog | Product or inventory catalog | Use-case, alternatives |
@@ -57,6 +57,8 @@
 | `/blog/nocodb-alternatives` | https://rowset.lvtd.dev/blog/nocodb-alternatives | Best NocoDB alternatives for AI-agent-managed datasets | NocoDB alternatives, agent workflows, datasets | Baserow alternatives blog, Google Sheets alternatives blog |
 | `/blog/connect-ai-agent-to-dataset-api` | https://rowset.lvtd.dev/blog/connect-ai-agent-to-dataset-api | How to connect an AI agent to the Rowset Dataset API | Dataset API, REST API, agent access, agent workflows | Dataset API docs, agent access docs, agent discovery docs |
 | `/blog/relationship-modeling-agent-datasets` | https://rowset.lvtd.dev/blog/relationship-modeling-agent-datasets | How to model relationships between agent-managed datasets | relationships, linked datasets, agent workflows | Link datasets docs, index-column guide, dataset-instructions guide |
+| `/blog/ai-agent-memory-vs-state` | https://rowset.lvtd.dev/blog/ai-agent-memory-vs-state | AI agent memory vs structured state: what goes where? | agent memory, structured operational state, workflow records | Agent-managed datasets blog, datasets docs, task board, personal CRM |
+| `/blog/idempotent-ai-agent-updates` | https://rowset.lvtd.dev/blog/idempotent-ai-agent-updates | How to make AI-agent data updates idempotent | idempotency, retries, stable row identity, reconciliation | Work with rows docs, Dataset API setup blog, agent task board |
 
 ## SEO-Sprint-Generated Pages
 
@@ -74,7 +76,7 @@
 | Slug | Ships in phase | URL | Inbound links from | Outbound links to |
 |---|---|---|---|---|
 | `ai-agent-crm` | existing/Phase 1 expansion | `/how-to/personal-crm` | homepage, how-to index | Dataset API, MCP docs, Agent access |
-| `agent-task-board` | existing/Phase 1 expansion | `/how-to/agent-task-board` | homepage, how-to index | Dataset API, MCP docs, projects docs |
+| `agent-task-board` | existing/Phase 1 expansion | `/use-cases/agent-task-board` | homepage, use-case index | Dataset API, MCP docs, projects docs |
 | `feedback-triage` | existing/Phase 1 expansion | `/how-to/feedback-triage` | homepage, how-to index | public previews, Dataset API |
 | `content-pipeline` | existing/Phase 1 expansion | `/how-to/content-pipeline` | homepage, how-to index | projects docs, Dataset API |
 
@@ -155,3 +157,13 @@
 - Rowset relationship modeling
 - relationship enforcement for agent datasets
 - model relationships between Rowset datasets
+- AI agent memory vs structured state
+- structured operational state for AI agents
+- agent memory and dataset decision guide
+- where AI agents should keep working data
+- canonical workflow records for agents
+- idempotent AI-agent data updates
+- retry-safe Rowset updates
+- prevent duplicate agent writes
+- AI agent idempotency pattern
+- reconcile uncertain row updates

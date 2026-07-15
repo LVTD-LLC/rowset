@@ -50,6 +50,11 @@ Keep API keys private. Copy your real key from Settings or the dashboard agent p
 {{ api_base_url }}
 ```
 
+If you use a self-hosted instance, replace this value with the public URL you
+expose for its REST API, including the `/api` path. Use a key created on the
+same instance. See the [API overview](/docs/api-overview) for authentication
+details.
+
 Replace `{dataset_key}` with the dataset key from the dataset page or from the create-dataset response.
 
 ## Create a dataset

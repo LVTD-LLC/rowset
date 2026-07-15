@@ -96,7 +96,8 @@ openssl rand -base64 48
 ```
 
 Compose derives `SITE_URL=https://${ROWSET_DOMAIN}` for the web and worker containers. Do not add a
-scheme, path, or port to `ROWSET_DOMAIN` in production.
+scheme, path, or port to `ROWSET_DOMAIN` in production. Startup migrations synchronize the Django
+Site record from this URL; no admin edit is required.
 
 Review optional email, OAuth, analytics, object-storage, payments, and vector-search settings in
 `.env.example`. Leave unused integrations blank. Never commit `.env`.
