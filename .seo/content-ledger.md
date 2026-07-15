@@ -20,6 +20,7 @@
 | 2026-07-12 | How to connect an AI agent to the Rowset Dataset API | how-to | `/blog/connect-ai-agent-to-dataset-api` | connect AI agent to Dataset API | unmeasured | n/a | Dataset API, MCP docs, agent access, agent discovery, index-column guide, dataset-instructions guide | #TBD |
 | 2026-07-13 | How to model relationships between agent-managed datasets | how-to/decision guide | `/blog/relationship-modeling-agent-datasets` | agent dataset relationships | unmeasured | n/a | Relationship docs, Dataset API, MCP access, index-column guide, dataset-instructions guide, content pipeline | #TBD |
 | 2026-07-14 | AI agent memory vs structured state: what goes where? | comparison/decision guide | `/blog/ai-agent-memory-vs-state` | AI agent memory vs state | unmeasured | n/a | Agent-managed datasets, datasets docs, MCP access, Dataset API, task board, personal CRM | #262 |
+| 2026-07-15 | How to make AI-agent data updates idempotent | how-to / operational decision guide | `/blog/idempotent-ai-agent-updates` | AI agent idempotent operations | unmeasured | n/a | Work with rows, Dataset API, MCP access, index-column guide, dataset-instructions guide, task board | #263 |
 
 ---
 
@@ -28,7 +29,7 @@
 | Rank | Candidate | Proposed type | Target keyword | Vol | KD | Intent | Score | Notes / angle |
 |---|---|---|---|---|---|---|---|---|
 | 1 | AI agent memory vs structured state | comparison/decision guide | AI agent memory vs state | unmeasured | n/a | architecture/decision | shipped | Shipped 2026-07-14 as `/blog/ai-agent-memory-vs-state`. |
-| 2 | How to make AI-agent data updates idempotent | how-to | AI agent idempotent operations | unmeasured | n/a | operational/setup | 18 | Stable indexes, read-before-write, retries, and duplicate prevention. |
+| 2 | How to make AI-agent data updates idempotent | how-to | AI agent idempotent operations | unmeasured | n/a | operational/setup | shipped | Shipped 2026-07-15 as `/blog/idempotent-ai-agent-updates`. |
 | 3 | How to share agent-managed datasets safely | decision guide | share AI agent data | unmeasured | n/a | security/decision | 18 | Choose private MCP/REST, exports, or read-only previews by audience and risk. |
 | 4 | spreadsheet database for AI agents | explanation | spreadsheet database | 170 | 20 | informational | 15 | Reserved for the sprint-owned explanation page; do not duplicate as a blog post. |
 
@@ -38,7 +39,7 @@
 
 | Cluster / theme | Pieces shipped | Gaps still open |
 |---|---|---|
-| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state` | Generated-index migration patterns and idempotent writes |
+| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates` | Generated-index migration patterns and safe dataset sharing |
 | MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents`, `/blog/connect-ai-agent-to-dataset-api`, `/blog/relationship-modeling-agent-datasets` | REST/MCP setup examples with concrete datasets |
 | Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives` | Spreadsheet database explanation and `/compare/rowset-vs-airtable` |
 
