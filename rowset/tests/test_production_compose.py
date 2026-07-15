@@ -73,6 +73,17 @@ def test_production_compose_uses_container_side_redis_password_expansion():
     assert compose_source.count("$$REDIS_PASSWORD") == 2
 
 
+def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics():
+    self_hosting = (_REPO_ROOT / "SELF_HOSTING.md").read_text()
+
+    assert "restart: unless-stopped" in self_hosting
+    assert "host restart" in self_hosting
+    assert "30 MB per service" in self_hosting
+    assert "120 MB across the four-service stack" in self_hosting
+    assert "config --no-env-resolution --no-interpolate" in self_hosting
+    assert "Do not share `.env`" in self_hosting
+
+
 def test_local_media_backup_archives_both_paths_with_restricted_permissions(tmp_path):
     source_archive = tmp_path / "source.tar.gz"
     payload = tmp_path / "payload.txt"

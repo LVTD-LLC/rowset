@@ -15,6 +15,7 @@
   - [3. Download docker-compose file](#3-download-docker-compose-file)
   - [4. Start the application](#4-start-the-application)
   - [5. Verify deployment](#5-verify-deployment)
+  - [Lifecycle and local Docker logs](#lifecycle-and-local-docker-logs)
 - [Persistent media and backups](#persistent-media-and-backups)
 - [Expose your application](#expose-your-application)
   - [Option 1: Direct port access](#option-1-direct-port-access)
@@ -177,7 +178,7 @@ This takes 2-5 minutes on first deployment.
 Check that all services are running:
 
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 You should see four containers running: `db`, `redis`, `backend`, and `workers`.
@@ -185,8 +186,30 @@ You should see four containers running: `db`, `redis`, `backend`, and `workers`.
 Check the logs to ensure no errors:
 
 ```bash
-docker-compose logs backend
+docker compose logs backend
 ```
+
+### Lifecycle and local Docker logs
+
+All four services use `restart: unless-stopped`, so containers restart
+automatically after a Docker daemon or host restart unless an operator stopped
+them explicitly. Backend and workers wait for healthy PostgreSQL and Redis
+dependencies during Compose startup.
+
+Docker's local `json-file` logs rotate at three 10 MB files: approximately
+30 MB per service and 120 MB across the four-service stack, before small Docker
+metadata overhead. Application-level external logging remains separately
+configurable through the optional observability settings below.
+
+To validate or share the Compose structure without resolving `.env` values, use:
+
+```bash
+docker compose --env-file .env -f docker-compose-prod.yml -p rowset \
+  config --no-env-resolution --no-interpolate
+```
+
+Do not share `.env`, ordinary fully resolved `docker compose config` output, or
+container environment output; all can contain secrets.
 
 ## Persistent media and backups
 
