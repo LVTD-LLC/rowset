@@ -114,6 +114,43 @@ def test_public_dataset_export_requires_password_unlock(auth_client, client, pro
     assert unlocked_response["Content-Type"] == "text/csv; charset=utf-8"
 
 
+def test_public_dataset_preview_links_all_export_formats(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert 'aria-label="Export dataset"' in content
+    for export_format in PUBLIC_EXPORT_CONTENT_TYPES:
+        export_url = reverse(
+            "public_dataset_export",
+            args=[dataset.public_key, export_format],
+        )
+        assert f'href="{export_url}"' in content
+    assert str(dataset.key) not in content
+
+
+def test_locked_public_dataset_preview_hides_export_menu(auth_client, client, profile):
+    dataset = create_ready_dataset(profile)
+    auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "10",
+            "public_password": "secret-table",
+        },
+    )
+    dataset.refresh_from_db()
+
+    response = client.get(dataset.get_public_url())
+
+    assert response.status_code == 200
+    assert 'aria-label="Export dataset"' not in response.content.decode()
+
+
 def test_dataset_owner_can_enable_public_sharing(auth_client, profile):
     dataset = create_ready_dataset(profile)
 
