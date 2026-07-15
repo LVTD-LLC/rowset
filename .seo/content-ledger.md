@@ -22,6 +22,7 @@
 | 2026-07-14 | AI agent memory vs structured state: what goes where? | comparison/decision guide | `/blog/ai-agent-memory-vs-state` | AI agent memory vs state | unmeasured | n/a | Agent-managed datasets, datasets docs, MCP access, Dataset API, task board, personal CRM | #262 |
 | 2026-07-15 | How to make AI-agent data updates idempotent | how-to / operational decision guide | `/blog/idempotent-ai-agent-updates` | AI agent idempotent operations | unmeasured | n/a | Work with rows, Dataset API, MCP access, index-column guide, dataset-instructions guide, task board | #263 |
 | 2026-07-15 | Rowset vs Airtable: Which Fits AI Agents? (2026) | product comparison | `/vs/airtable` | Rowset vs Airtable | unmeasured | n/a | Airtable alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide | #277 |
+| 2026-07-15 | Rowset vs Google Sheets for AI Agents (2026) | product comparison | `/vs/google-sheets` | Rowset vs Google Sheets | unmeasured | n/a | Google Sheets alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide | #280 |
 
 ---
 
@@ -42,7 +43,7 @@
 |---|---|---|
 | Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates` | Generated-index migration patterns and safe dataset sharing |
 | MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents`, `/blog/connect-ai-agent-to-dataset-api`, `/blog/relationship-modeling-agent-datasets` | REST/MCP setup examples with concrete datasets |
-| Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives`, `/vs/airtable` | Spreadsheet database explanation |
+| Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives`, `/vs/airtable`, `/vs/google-sheets` | Spreadsheet database explanation |
 
 ---
 

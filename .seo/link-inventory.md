@@ -14,6 +14,7 @@
 | `/uses` | https://rowset.lvtd.dev/uses | Technology behind Rowset | Technical explanations |
 | `/blog` | https://rowset.lvtd.dev/blog | Rowset blog | Long-form guides |
 | `/vs/airtable` | https://rowset.lvtd.dev/vs/airtable | Rowset vs Airtable for AI agents | Compare, alternatives, agent dataset decisions |
+| `/vs/google-sheets` | https://rowset.lvtd.dev/vs/google-sheets | Rowset vs Google Sheets for AI agents | Compare, spreadsheet migrations, agent dataset decisions |
 | `/llms.txt` | https://rowset.lvtd.dev/llms.txt | Rowset overview for agents | AI/agent discovery |
 | `/SKILL.md` | https://rowset.lvtd.dev/SKILL.md | Rowset setup skill | Agent setup |
 
@@ -87,6 +88,7 @@
 | `baserow` | Phase 6 | `/blog/baserow-alternatives` | Airtable alternatives, Google Sheets alternatives | homepage, MCP docs, Dataset API |
 | `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | Airtable, Google Sheets, and Baserow alternatives | homepage, MCP docs, Dataset API, pricing |
 | `rowset-vs-airtable` | Phase 12 | `/vs/airtable` | shared footer, Airtable alternatives, agent-managed datasets | Airtable alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide |
+| `rowset-vs-google-sheets` | Phase 14 | `/vs/google-sheets` | shared footer, Google Sheets alternatives, agent-managed datasets | Google Sheets alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide |
 
 ## Pending SEO Sprint Targets
 
@@ -141,6 +143,9 @@ These routes return 404 in production and must not be selected as internal-link 
 - Google Sheets alternatives for AI-agent-managed datasets
 - Baserow alternatives for AI-agent-managed datasets
 - NocoDB alternatives for AI-agent-managed datasets
+- Rowset vs Google Sheets for AI agents
+- Google Sheets or an agent dataset backend
+- move agent-operated rows out of Google Sheets
 - AI agent dataset instructions
 - model relationships between agent-managed datasets
 - AI agent memory vs structured state
