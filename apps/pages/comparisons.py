@@ -15,6 +15,7 @@ from django.urls import reverse
 from apps.pages.content import CONTENT_MARKDOWN_EXTENSIONS, get_content_template_context
 
 COMPARISON_SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+COMPARISON_LOAD_ERRORS = (KeyError, TypeError, ValueError)
 
 
 @dataclass(frozen=True)
@@ -88,7 +89,7 @@ def list_comparison_pages() -> list[ComparisonPage]:
     for source_path in sorted(comparisons_dir.glob("*.md")):
         try:
             pages.append(load_comparison_page(source_path))
-        except KeyError, TypeError, ValueError:
+        except COMPARISON_LOAD_ERRORS:
             continue
     return pages
 
