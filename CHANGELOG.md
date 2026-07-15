@@ -18,6 +18,19 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-15
+
+### Added
+- Added a guide to idempotent AI-agent data updates, with a verified SEO brief, Rowset-specific retry contract, updated content ledger/link inventory, and inbound links from related docs, blog, and task-board pages.
+
+## 2026-07-14
+
+### Added
+- Added a decision guide on AI agent memory versus structured operational state, with a verified SEO brief, updated content ledger/link inventory, and inbound links from related blog, docs, and use-case pages.
+
+### Changed
+- Updated the SEO brand foundation to reflect the current 7-day trial and $50/month Pro pricing.
+
 ## 2026-07-13
 
 ### Added

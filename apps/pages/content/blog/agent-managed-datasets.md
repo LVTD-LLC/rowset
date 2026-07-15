@@ -63,6 +63,10 @@ agent-managed dataset is for operation. It is where the agent can add a lead,
 change a task status, attach a source URL, update a product price, or export a
 snapshot after the user asks.
 
+For the full architecture decision, read [AI agent memory vs structured
+state](/blog/ai-agent-memory-vs-state). It separates contextual recall,
+workflow checkpoints, current operational records, and audit history.
+
 This is why the boring row-level details matter. If the agent cannot identify a
 row reliably, it may update the wrong thing. If the schema is implicit, it may
 invent a column meaning. If the instructions live only in the chat, they vanish
