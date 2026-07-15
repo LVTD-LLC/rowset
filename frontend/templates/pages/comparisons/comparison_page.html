@@ -1,0 +1,52 @@
+{% extends docs_base_template %}
+{% block meta %}
+    <title>{{ comparison_page.title }}</title>
+    <meta name="description" content="{{ comparison_page.description }}" />
+    <meta name="keywords" content="{{ comparison_page.keywords|join:', ' }}" />
+    <meta name="author" content="{{ comparison_page.author }}" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="{{ canonical_url }}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="{{ comparison_page.title }}" />
+    <meta property="og:url" content="{{ canonical_url }}" />
+    <meta property="og:description" content="{{ comparison_page.description }}" />
+    <meta property="article:published_time"
+          content="{{ comparison_page.published_at|date:'c' }}" />
+    <meta property="article:modified_time"
+          content="{{ comparison_page.updated_at|date:'c' }}" />
+    <meta name="twitter:title" content="{{ comparison_page.title }}" />
+    <meta name="twitter:description"
+          content="{{ comparison_page.description }}" />
+{% endblock meta %}
+{% block content %}
+    <article class="bg-white text-slate-950 dark:bg-neutral-950 dark:text-white">
+        <header class="relative overflow-hidden border-b border-slate-950/10 bg-[#f5f5ff] dark:border-white/15 dark:bg-slate-950">
+            <div class="rs-grid-field absolute inset-0" aria-hidden="true"></div>
+            <div class="relative mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+                <p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Rowset comparison</p>
+                <h1 class="mt-6 max-w-[18ch] font-display text-5xl font-semibold tracking-tight text-balance sm:text-7xl">{{ comparison_page.title }}</h1>
+                <p class="mt-8 max-w-3xl text-xl leading-8 text-pretty text-slate-700 dark:text-slate-300">{{ comparison_page.description }}</p>
+                <div class="mt-8 flex flex-wrap items-center gap-3 font-mono text-sm text-slate-600 dark:text-slate-300">
+                    <span>Updated <time datetime="{{ comparison_page.updated_at|date:'Y-m-d' }}">{{ comparison_page.updated_at|date:"M j, Y" }}</time></span><span>/</span><span>{{ comparison_page.author }}</span>
+                </div>
+                <div class="mt-8 flex flex-wrap gap-3"><a href="{% url 'account_signup' %}" class="fb-button-primary">Start a 7-day trial</a><a href="{% url 'docs_page' slug='quickstart' %}"
+   class="fb-button-secondary">Read the quickstart</a></div>
+            </div>
+        </header>
+        <div class="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+            <div class="mb-10 flex justify-end">{% include "components/ai_reader_menu.html" %}</div>
+            <div class="prose prose-slate max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-[#1313a4] prose-table:text-sm prose-pre:bg-neutral-950 prose-pre:text-white dark:prose-invert dark:prose-a:text-[#ffdd3d]">{{ comparison_page.html|safe }}</div>
+            <aside class="mt-14 border-2 border-slate-950 bg-[#ffdd3d] p-6 text-[#1313a4] dark:border-white sm:p-8">
+                <p class="font-mono text-sm font-semibold uppercase tracking-wide">Try the narrower tool</p>
+                <h2 class="mt-4 text-3xl font-semibold tracking-tight">Give one trusted agent its own structured dataset.</h2>
+                <p class="mt-4 max-w-2xl text-base leading-7">Start with one workflow, one stable index column, and clear dataset instructions. Keep the incumbent where people still depend on its interfaces and move only the agent-owned state.</p>
+                <div class="mt-6 flex flex-wrap gap-3"><a href="{% url 'account_signup' %}"
+   class="fb-focus inline-flex min-h-12 items-center bg-[#1313a4] px-5 py-3 font-semibold text-white hover:bg-white hover:text-[#1313a4]">Start your trial</a><a href="{% url 'pricing' %}"
+   class="fb-focus inline-flex min-h-12 items-center border border-[#1313a4] px-5 py-3 font-semibold hover:bg-white">See pricing</a></div>
+            </aside>
+        </div>
+    </article>
+{% endblock content %}
+{% block schema %}
+    <script type="application/ld+json">{{ schema_json|safe }}</script>
+{% endblock schema %}
