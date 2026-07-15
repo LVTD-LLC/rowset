@@ -15,8 +15,15 @@
           <h1 class="fb-page-title mt-2 break-words">{{ dataset.name }}</h1>
           <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ dataset.row_count }} rows · {{ dataset.headers|length }} columns</p>
         </div>
-        <div class="shrink-0">
+        <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
           {% include "components/dataset_export_menu.html" with public_export=True %}
+          <div x-data="aiReaderMenu" data-markdown-url="{{ markdown_url }}">
+            <button type="button" class="fb-button-secondary whitespace-nowrap" :disabled="busy" @click="copyMarkdown()">
+              <span x-show="!busy">Copy as Markdown</span>
+              <span x-cloak x-show="busy">Copying…</span>
+            </button>
+            <p class="mt-1 min-h-5 text-right text-sm text-slate-600 dark:text-slate-300" role="status" aria-live="polite" x-text="status"></p>
+          </div>
         </div>
       </div>
     {% endif %}

@@ -2200,6 +2200,32 @@ def rows_to_csv_text(headers: list[str], rows) -> str:
     return buffer.getvalue()
 
 
+def rows_to_markdown_text(headers: list[str], rows) -> str:
+    def markdown_cell(value) -> str:
+        text = _export_value(value)
+        text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return (
+            text.replace("\\", "\\\\")
+            .replace("|", "\\|")
+            .replace("\r\n", "<br>")
+            .replace("\r", "<br>")
+            .replace("\n", "<br>")
+        )
+
+    header_row = f"| {' | '.join(markdown_cell(header) for header in headers)} |"
+    divider_row = f"| {' | '.join('---' for _header in headers)} |"
+    data_rows = (
+        f"| {' | '.join(markdown_cell(value) for value in _export_row_tuple(headers, row))} |"
+        for row in rows
+    )
+    return "\n".join((header_row, divider_row, *data_rows))
+
+
+def dataset_to_markdown_text(name: str, headers: list[str], rows) -> str:
+    safe_name = escape(_export_value(name)).replace("\r", " ").replace("\n", " ")
+    return f"# {safe_name}\n\n{rows_to_markdown_text(headers, rows)}\n"
+
+
 def rows_to_parquet_bytes(headers: list[str], rows) -> bytes:
     dataframe = pl.DataFrame(
         [_export_row(headers, row) for row in rows],
