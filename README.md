@@ -853,8 +853,9 @@ ReviewGate is present but temporarily disabled.
 
 ### Docker Compose production
 
-`docker-compose-prod.yml` runs four services:
+`docker-compose-prod.yml` runs five services:
 
+- `caddy`
 - `db`
 - `redis`
 - `backend`
@@ -887,8 +888,8 @@ Edit `.env` for production:
 - `ENVIRONMENT=prod`
 - `DEBUG=off`
 - the verified immutable `ROWSET_IMAGE`
+- `ROWSET_DOMAIN` set to a hostname whose DNS resolves to the server
 - strong `SECRET_KEY`
-- production `SITE_URL`
 - strong Postgres and Redis passwords
 - any optional provider keys you actually use
 
@@ -911,14 +912,14 @@ The resulting archive is media-only; pair it with a PostgreSQL backup and copy
 both off the host. See [SELF_HOSTING.md](SELF_HOSTING.md#persistent-media-and-backups)
 for local-versus-S3 storage details and recovery cautions.
 
-The backend maps container port `80` to host port `8000`:
+Caddy is the only public ingress on ports 80 and 443. It obtains and renews the
+certificate for `ROWSET_DOMAIN`, redirects HTTP to HTTPS, and proxies to the
+backend over the private Compose network. Compose derives the production
+`SITE_URL`; backend port 8000 is not published.
 
-```text
-http://server-ip:8000
-```
-
-Use a reverse proxy such as Nginx, Caddy, Traefik, or CapRover to terminate TLS
-and forward traffic to the backend.
+Follow [SELF_HOSTING.md](SELF_HOSTING.md) for DNS and firewall prerequisites,
+automatic HTTPS verification, REST/MCP smoke checks, backups, updates, and the
+explicit temporary IP-only diagnostic override.
 
 ### CapRover production
 

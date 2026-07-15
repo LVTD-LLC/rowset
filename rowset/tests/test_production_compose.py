@@ -81,6 +81,29 @@ def test_ip_only_http_mode_is_an_explicit_override():
         assert environment["ROWSET_INSECURE_HTTP"] == "true"
 
 
+def test_self_hosting_docs_present_one_caddy_https_golden_path():
+    self_hosting = (_REPO_ROOT / "SELF_HOSTING.md").read_text()
+    readme = (_REPO_ROOT / "README.md").read_text()
+
+    assert "ROWSET_DOMAIN" in self_hosting
+    assert "Caddy" in self_hosting
+    assert "compose.insecure-http.yml" in self_hosting
+    assert "https://$ROWSET_DOMAIN" in self_hosting
+    assert "Nginx" not in self_hosting
+    assert "Certbot" not in self_hosting
+    assert "http://your-server-ip:8000" not in self_hosting
+    assert "SELF_HOSTING.md" in readme
+    assert "Nginx, Caddy, Traefik, or CapRover" not in readme
+    assert "http://server-ip:8000" not in readme
+
+
+def test_environment_example_names_the_self_host_domain_input():
+    environment_example = (_REPO_ROOT / ".env.example").read_text()
+
+    assert "ROWSET_DOMAIN=" in environment_example
+    assert "ROWSET_INSECURE_HTTP" not in environment_example
+
+
 def test_local_media_backup_archives_both_paths_with_restricted_permissions(tmp_path):
     source_archive = tmp_path / "source.tar.gz"
     payload = tmp_path / "payload.txt"
