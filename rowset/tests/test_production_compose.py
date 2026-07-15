@@ -46,14 +46,18 @@ def test_production_compose_waits_for_authenticated_redis_health():
     assert redis["command"] == [
         "sh",
         "-c",
+        'test -n "$$REDIS_PASSWORD" || { echo "REDIS_PASSWORD is required" >&2; exit 1; }; '
         'exec redis-server --requirepass "$$REDIS_PASSWORD"',
     ]
     assert redis["healthcheck"]["test"] == [
         "CMD-SHELL",
-        'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping',
+        'test -n "$$REDIS_PASSWORD" && REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping',
     ]
     assert redis["healthcheck"] == {
-        "test": ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping'],
+        "test": [
+            "CMD-SHELL",
+            'test -n "$$REDIS_PASSWORD" && REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping',
+        ],
         "interval": "5s",
         "timeout": "3s",
         "retries": 12,
@@ -66,11 +70,27 @@ def test_production_compose_waits_for_authenticated_redis_health():
         }
 
 
-def test_production_compose_uses_container_side_redis_password_expansion():
-    compose_source = (_REPO_ROOT / "docker-compose-prod.yml").read_text()
+def test_production_compose_rejects_an_empty_redis_password():
+    compose = _production_compose()
+    redis = compose["services"]["redis"]
 
-    assert "${REDIS_PASSWORD}" not in compose_source
-    assert compose_source.count("$$REDIS_PASSWORD") == 2
+    for command in (redis["command"][2], redis["healthcheck"]["test"][1]):
+        result = subprocess.run(
+            ["sh", "-c", command.replace("$$", "$")],
+            env={**os.environ, "REDIS_PASSWORD": ""},
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode != 0
+
+
+def test_local_ci_validates_rendered_production_compose():
+    ci_local = (_REPO_ROOT / "scripts/ci-local.sh").read_text()
+
+    assert (
+        'run_step "Production Compose config" ./deployment/verify-production-compose.sh' in ci_local
+    )
 
 
 def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics():

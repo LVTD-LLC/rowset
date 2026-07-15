@@ -28,11 +28,11 @@ services:
     command:
       - sh
       - -c
-      - 'exec redis-server --requirepass "$$REDIS_PASSWORD"'
+      - 'test -n "$$REDIS_PASSWORD" || { echo "REDIS_PASSWORD is required" >&2; exit 1; }; exec redis-server --requirepass "$$REDIS_PASSWORD"'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping']
+      test: ["CMD-SHELL", 'test -n "$$REDIS_PASSWORD" && REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping']
       interval: 5s
       timeout: 3s
       retries: 12
