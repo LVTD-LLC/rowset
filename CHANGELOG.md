@@ -25,6 +25,7 @@ cut date.
 
 ### Added
 - Added a homepage carousel highlighting projects that use Rowset.
+- Added a public changelog page backed by the repository changelog, with a Markdown variant and links from the shared footer and app help sidebar.
 - Added a guide to idempotent AI-agent data updates, with a verified SEO brief, Rowset-specific retry contract, updated content ledger/link inventory, and inbound links from related docs, blog, and task-board pages.
 - Added PostHog and Djass to the public technology stack page and linked that page from the shared footer.
 
