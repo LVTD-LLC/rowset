@@ -40,7 +40,7 @@ The plan changed materially since the July 4 initialization:
 | 11 | Build the off-page starter target list and submission backlog | Off-page | pending | - |
 | 12 | Ship `/vs/airtable` when a sales/use-case trigger exists | Compare | completed | #277 |
 | 13 | Review the fresh idempotency and agent-memory posts after 30 days of GSC data | Observation gate | pending | not before 2026-08-14 |
-| 14 | Ship `/vs/google-sheets` as the next requested comparison | Compare | completed | #TBD |
+| 14 | Ship `/vs/google-sheets` as the next requested comparison | Compare | completed | #280 |
 
 **Conventions:**
 
