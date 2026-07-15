@@ -7,7 +7,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils.cache import patch_vary_headers
 from django.utils.http import content_disposition_header
 from django.views.decorators.csrf import csrf_exempt
-from ninja import NinjaAPI
+from ninja import Header, NinjaAPI
 from ninja.errors import HttpError
 from ninja.responses import Status
 
@@ -72,6 +72,8 @@ from apps.api.schemas import (
     ProjectSectionUpdateOut,
     ProjectUpdateIn,
     ProjectUpdateOut,
+    PublicDatasetRowsOut,
+    PublicDatasetSummaryOut,
     SubmitFeedbackIn,
     SubmitFeedbackOut,
     UserInfoOut,
@@ -98,8 +100,10 @@ from apps.api.services import (
     get_profile_dataset_asset,
     get_profile_dataset_row,
     get_profile_dataset_row_by_index,
+    get_public_dataset,
     list_profile_dataset_relationships,
     list_profile_dataset_rows,
+    list_public_dataset_rows,
     patch_profile_dataset_row,
     patch_profile_dataset_row_by_index,
     rename_profile_dataset_column,
@@ -115,6 +119,7 @@ from apps.api.services import (
     serialize_profile_dataset_asset,
     serialize_profile_project_detail,
     serialize_profile_project_sections,
+    serialize_public_dataset_summary,
     serialize_user_info,
     update_profile_dataset_column_types,
     update_profile_dataset_metadata,
@@ -785,6 +790,64 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 section_key=payload.section_key,
                 **_agent_actor_kwargs(request),
             ),
+        )
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
+    "/public/datasets/{public_key}",
+    response=PublicDatasetSummaryOut,
+    auth=None,
+    tags=["public datasets"],
+)
+def get_public_dataset_metadata(
+    request: HttpRequest,
+    public_key: str,
+    password: str | None = Header(
+        default=None,
+        alias="X-Rowset-Public-Password",
+    ),
+):
+    """Return safe metadata for an enabled public dataset."""
+    try:
+        dataset = get_public_dataset(public_key, password=password)
+        return serialize_public_dataset_summary(dataset)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
+
+
+@api.get(
+    "/public/datasets/{public_key}/rows",
+    response=PublicDatasetRowsOut,
+    auth=None,
+    tags=["public datasets"],
+)
+def list_public_rows(
+    request: HttpRequest,
+    public_key: str,
+    limit: int = 100,
+    offset: int = 0,
+    query: str | None = None,
+    filters: str | None = None,
+    sort: str | None = None,
+    direction: str | None = None,
+    password: str | None = Header(
+        default=None,
+        alias="X-Rowset-Public-Password",
+    ),
+):
+    """Return a bounded page of rows from an enabled public dataset."""
+    try:
+        return list_public_dataset_rows(
+            public_key,
+            password=password,
+            limit=limit,
+            offset=offset,
+            query=query,
+            filters=_parse_row_filters(filters),
+            sort=sort,
+            direction=direction,
         )
     except DatasetServiceError as exc:
         _raise_http_error(exc)

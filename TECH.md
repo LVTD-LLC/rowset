@@ -83,6 +83,9 @@ contents.
 ## API And MCP Rules
 
 - REST endpoints use bearer API-key auth as the preferred private API path.
+- Enabled public datasets expose separate read-only metadata and row endpoints keyed by
+  `public_key`; unprotected datasets need no credential, while protected requests require
+  `X-Rowset-Public-Password` on every request.
 - Query-string API keys and `X-API-Key` exist for compatibility only.
 - Hosted MCP uses bearer API-key auth. Configure MCP clients with
   `Authorization: Bearer <key>`, usually through a bearer-token environment
@@ -91,6 +94,8 @@ contents.
   token; the custom header should still be `Authorization: Bearer <key>`.
 - REST and MCP row operations must enforce the authenticated profile's ownership
   boundary.
+- Public JSON responses must omit private dataset keys, ownership context, internal
+  instructions and metadata, relationships, and authenticated asset URLs.
 - Keep service-layer errors clear and convert them at the boundary: HTTP errors
   for REST and value errors for MCP tools.
 

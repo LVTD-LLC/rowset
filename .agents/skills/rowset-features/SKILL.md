@@ -97,9 +97,13 @@ boundaries.
 ### Public previews
 
 - Use `update_dataset_public_preview` only when the user asks to share a
-  read-only browser page.
-- Public previews are not authentication and are not a replacement for MCP or
-  REST access.
+  read-only dataset.
+- Enabled public datasets have a browser preview and dedicated read-only JSON
+  metadata and row endpoints.
+- Unprotected public datasets need no credential. Password-protected public API
+  requests require `X-Rowset-Public-Password` on every request.
+- Public access is not a replacement for authenticated MCP or REST when data is
+  private or any write is required.
 
 ### Archive, restore, and exports
 

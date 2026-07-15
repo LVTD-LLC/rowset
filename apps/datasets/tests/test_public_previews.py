@@ -2,12 +2,15 @@ import csv
 import io
 
 import pytest
+from django.contrib.auth.hashers import make_password
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType
 from apps.datasets.public_previews import (
     PublicPreviewSettingsError,
+    build_public_dataset_agent_prompt,
     update_public_preview_settings,
 )
 from apps.datasets.tests.factories import (
@@ -25,6 +28,79 @@ PUBLIC_EXPORT_CONTENT_TYPES = {
     "sqlite": "application/vnd.sqlite3",
     "parquet": "application/vnd.apache.parquet",
 }
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_public_dataset_agent_prompt_contains_only_public_endpoint_instructions(profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    prompt = build_public_dataset_agent_prompt(dataset)
+
+    assert f"https://rowset.example/api/public/datasets/{dataset.public_key}" in prompt
+    assert f"https://rowset.example/api/public/datasets/{dataset.public_key}/rows" in prompt
+    assert "limit=500" in prompt
+    assert "offset" in prompt
+    assert "has_more" in prompt
+    assert "No API key or public password is required" in prompt
+    assert "SKILL.md" not in prompt
+    assert "openapi.json" not in prompt
+    assert "/api/capabilities" not in prompt
+    assert "/docs/" not in prompt
+    assert str(dataset.key) not in prompt
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_public_dataset_agent_prompt_requires_protected_password_separately(profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.public_password_hash = make_password("share-secret")
+    dataset.save(update_fields=["public_enabled", "public_password_hash"])
+
+    prompt = build_public_dataset_agent_prompt(dataset)
+
+    assert "Ask the user for the public password separately" in prompt
+    assert "X-Rowset-Public-Password" in prompt
+    assert "on every request" in prompt
+    assert "share-secret" not in prompt
+    assert dataset.name not in prompt
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_unlocked_public_dataset_page_copies_ai_agent_prompt(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Copy prompt for AI agent" in content
+    assert 'x-data="copyPanel"' in content
+    assert 'x-ref="source"' in content
+    assert f"https://rowset.example/api/public/datasets/{dataset.public_key}/rows" in content
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_locked_public_dataset_page_copies_safe_ai_agent_prompt(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.public_password_hash = make_password("share-secret")
+    dataset.save(update_fields=["public_enabled", "public_password_hash"])
+
+    response = client.get(dataset.get_public_url())
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Password required" in content
+    assert "Copy prompt for AI agent" in content
+    assert "X-Rowset-Public-Password" in content
+    assert dataset.name not in content
+    assert str(dataset.key) not in content
+    assert "share-secret" not in content
+    assert "ada@example.com" not in content
 
 
 def test_dataset_public_sharing_is_off_by_default(client, profile):
@@ -308,7 +384,7 @@ def test_public_dataset_markdown_returns_all_rows_and_escapes_table_cells(client
     )
 
 
-def test_public_dataset_page_has_copy_as_markdown_button(client, profile):
+def test_public_dataset_page_links_to_markdown_version(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True
     dataset.save(update_fields=["public_enabled"])
@@ -317,8 +393,10 @@ def test_public_dataset_page_has_copy_as_markdown_button(client, profile):
 
     content = response.content.decode()
     markdown_url = reverse("public_dataset_markdown", args=[dataset.public_key])
-    assert "Copy as Markdown" in content
-    assert f'data-markdown-url="http://testserver{markdown_url}"' in content
+    assert "View as Markdown" in content
+    assert f'href="http://testserver{markdown_url}"' in content
+    assert "Copy as Markdown" not in content
+    assert f'data-markdown-url="http://testserver{markdown_url}"' not in content
     assert (
         f'<link rel="alternate" type="text/markdown" href="http://testserver{markdown_url}" />'
         in content
@@ -390,6 +468,27 @@ def test_public_dataset_does_not_expose_column_descriptions(client, profile):
     row_detail_content = row_detail_response.content.decode()
     assert "name" in row_detail_content
     assert "Internal scoring context for trusted agents only." not in row_detail_content
+
+
+def test_public_dataset_dashboard_does_not_render_dataset_metadata(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.description = "A public description for people viewing this dataset."
+    dataset.instructions = "Private operating instructions for trusted agents."
+    dataset.metadata = {"private_note": "Never expose this arbitrary metadata."}
+    dataset.save(update_fields=["public_enabled", "description", "instructions", "metadata"])
+
+    response = client.get(dataset.get_public_url())
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Dataset statistics" in content
+    assert "A public description for people viewing this dataset." in content
+    assert dataset.index_column in content
+    assert "Dataset metadata" not in content
+    assert "Public identifier" not in content
+    assert "Private operating instructions for trusted agents." not in content
+    assert "Never expose this arbitrary metadata." not in content
 
 
 def test_public_dataset_view_filters_and_sorts_rows(client, profile):

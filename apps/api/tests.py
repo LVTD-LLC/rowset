@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from django.contrib.auth.hashers import make_password
 from django.db import OperationalError
 from django.http import HttpRequest
 from django.test import RequestFactory, SimpleTestCase, override_settings
@@ -22,6 +23,7 @@ from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetColumnType
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRelationship, DatasetRow, Project
+from apps.datasets.tests.factories import configure_filterable_dataset, create_dataset
 from apps.datasets.vector_search import DatasetRowVectorSearchHit
 
 
@@ -42,6 +44,255 @@ def test_capabilities_endpoint_supports_current_api_prefix(client):
 
     assert response.status_code == 200
     assert response.json()["product"] == "Rowset"
+
+
+def test_capabilities_endpoint_advertises_public_dataset_read_paths(client):
+    response = client.get("/api/capabilities")
+
+    assert response.status_code == 200
+    public_capability = next(
+        capability
+        for capability in response.json()["capabilities"]
+        if capability["id"] == "public_previews"
+    )
+    assert "/api/public/datasets/{public_key}" in public_capability["rest_paths"]
+    assert "/api/public/datasets/{public_key}/rows" in public_capability["rest_paths"]
+
+
+@pytest.mark.django_db
+def test_public_dataset_metadata_is_available_without_api_key(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        username="publicmetadataowner",
+        email="publicmetadataowner@example.com",
+        password="password123",
+    )
+    dataset = create_dataset(
+        user.profile,
+        name="Public customers",
+        description="Customer names approved for publication.",
+        headers=["customer_id", "name"],
+        index_column="customer_id",
+        column_schema={"customer_id": {"type": "text"}, "name": {"type": "text"}},
+        rows=[{"customer_id": "C-1", "name": "Ada"}],
+        public_enabled=True,
+        public_page_size=25,
+        instructions="Private agent handling instructions.",
+        metadata={"private_workflow": True},
+    )
+
+    response = client.get(f"/api/public/datasets/{dataset.public_key}")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "public_key": str(dataset.public_key),
+        "name": "Public customers",
+        "description": "Customer names approved for publication.",
+        "headers": ["customer_id", "name"],
+        "column_schema": {
+            "customer_id": {"type": "text"},
+            "name": {"type": "text"},
+        },
+        "index_column": "customer_id",
+        "index_generated": False,
+        "row_count": 1,
+        "public_page_size": 25,
+        "public_password_protected": False,
+    }
+    body = response.content.decode()
+    assert str(dataset.key) not in body
+    assert "Private agent handling instructions" not in body
+    assert "private_workflow" not in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("state", ["disabled", "archived"])
+def test_public_dataset_metadata_requires_active_public_sharing(
+    client,
+    django_user_model,
+    state,
+):
+    user = django_user_model.objects.create_user(
+        username=f"publicmetadatastate{state}",
+        email=f"publicmetadatastate{state}@example.com",
+        password="password123",
+    )
+    dataset = create_dataset(
+        user.profile,
+        public_enabled=state == "archived",
+        archived_at=timezone.now() if state == "archived" else None,
+    )
+
+    response = client.get(f"/api/public/datasets/{dataset.public_key}")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_public_dataset_metadata_does_not_accept_private_dataset_key(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        username="publicprivatekeyowner",
+        email="publicprivatekeyowner@example.com",
+        password="password123",
+    )
+    dataset = create_dataset(user.profile, public_enabled=True)
+
+    response = client.get(f"/api/public/datasets/{dataset.key}")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("header", "expected_status"),
+    [(None, 403), ("wrong-password", 403), ("share-secret", 200)],
+)
+def test_public_dataset_metadata_requires_the_public_password_header(
+    client,
+    django_user_model,
+    header,
+    expected_status,
+):
+    user = django_user_model.objects.create_user(
+        username=f"publicpassword{expected_status}{bool(header)}",
+        email=f"publicpassword{expected_status}{bool(header)}@example.com",
+        password="password123",
+    )
+    dataset = create_dataset(
+        user.profile,
+        public_enabled=True,
+        public_password_hash=make_password("share-secret"),
+    )
+    request_kwargs = {}
+    if header is not None:
+        request_kwargs["HTTP_X_ROWSET_PUBLIC_PASSWORD"] = header
+
+    response = client.get(
+        f"/api/public/datasets/{dataset.public_key}",
+        **request_kwargs,
+    )
+
+    assert response.status_code == expected_status
+    if expected_status == 403:
+        assert response.json() == {"detail": "Public dataset password is required or invalid."}
+
+
+@pytest.mark.django_db
+def test_public_dataset_rows_can_be_fully_retrieved_with_pagination(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        username="publicpaginationowner",
+        email="publicpaginationowner@example.com",
+        password="password123",
+    )
+    dataset = create_dataset(
+        user.profile,
+        headers=["person_id", "name"],
+        index_column="person_id",
+        rows=[
+            {"person_id": "P-1", "name": "Ada"},
+            {"person_id": "P-2", "name": "Grace"},
+            {"person_id": "P-3", "name": "Katherine"},
+        ],
+        public_enabled=True,
+    )
+
+    first = client.get(
+        f"/api/public/datasets/{dataset.public_key}/rows",
+        {"limit": 2, "offset": 0},
+    )
+    second = client.get(
+        f"/api/public/datasets/{dataset.public_key}/rows",
+        {"limit": 2, "offset": 2},
+    )
+
+    assert first.status_code == 200
+    assert first.json()["dataset"] == str(dataset.public_key)
+    assert first.json()["count"] == 3
+    assert first.json()["total_count"] == 3
+    assert first.json()["has_more"] is True
+    assert [row["index_value"] for row in first.json()["rows"]] == ["P-1", "P-2"]
+    assert second.status_code == 200
+    assert second.json()["has_more"] is False
+    assert [row["index_value"] for row in second.json()["rows"]] == ["P-3"]
+    assert [
+        row["index_value"] for page in (first.json(), second.json()) for row in page["rows"]
+    ] == ["P-1", "P-2", "P-3"]
+
+
+@pytest.mark.django_db
+def test_public_dataset_rows_reuse_filter_and_sort_rules(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        username="publicfilterowner",
+        email="publicfilterowner@example.com",
+        password="password123",
+    )
+    dataset = configure_filterable_dataset(create_dataset(user.profile, public_enabled=True))
+
+    response = client.get(
+        f"/api/public/datasets/{dataset.public_key}/rows",
+        {
+            "filters": json.dumps({"active": "true"}),
+            "sort": "name",
+            "direction": "desc",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["filters"] == {"active": "true"}
+    assert response.json()["sort"] == "name"
+    assert response.json()["direction"] == "desc"
+    assert [row["data"]["name"] for row in response.json()["rows"]] == [
+        "Katherine Johnson",
+        "Ada Lovelace",
+    ]
+    assert all("assets" not in row for row in response.json()["rows"])
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("state", ["disabled", "archived"])
+def test_public_dataset_rows_require_active_public_sharing(client, django_user_model, state):
+    user = django_user_model.objects.create_user(
+        username=f"publicrowstate{state}",
+        email=f"publicrowstate{state}@example.com",
+        password="password123",
+    )
+    dataset = create_dataset(
+        user.profile,
+        public_enabled=state == "archived",
+        archived_at=timezone.now() if state == "archived" else None,
+    )
+
+    response = client.get(f"/api/public/datasets/{dataset.public_key}/rows")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_public_dataset_rows_require_the_public_password_on_every_request(
+    client,
+    django_user_model,
+):
+    user = django_user_model.objects.create_user(
+        username="publicrowpasswordowner",
+        email="publicrowpasswordowner@example.com",
+        password="password123",
+    )
+    dataset = create_dataset(
+        user.profile,
+        rows=[{"name": "Ada", "email": "ada@example.com"}],
+        public_enabled=True,
+        public_password_hash=make_password("share-secret"),
+    )
+    url = f"/api/public/datasets/{dataset.public_key}/rows"
+
+    missing = client.get(url)
+    incorrect = client.get(url, HTTP_X_ROWSET_PUBLIC_PASSWORD="wrong-password")
+    correct = client.get(url, HTTP_X_ROWSET_PUBLIC_PASSWORD="share-secret")
+    next_request_without_header = client.get(url)
+
+    assert missing.status_code == 403
+    assert incorrect.status_code == 403
+    assert correct.status_code == 200
+    assert next_request_without_header.status_code == 403
 
 
 @pytest.mark.django_db

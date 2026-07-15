@@ -31,7 +31,7 @@ clear ownership boundaries.
 - Let agents create datasets with headers, rows, and a stable index.
 - Let agents discover datasets, inspect schemas, and perform row operations
   through authenticated MCP or REST.
-- Share read-only public previews with humans when a browser page is enough.
+- Share enabled datasets through a read-only browser preview or public JSON API.
 - Export CSV, JSONL, XLSX, SQLite, or Parquet snapshots when a consumer needs a
   file rather than row access.
 - Manage public preview settings through API and MCP.
@@ -64,7 +64,7 @@ for the footer or deployment documentation.
   settings.
 - Hosted MCP tools with bearer API-key auth.
 - Agent-created datasets, row storage, schema metadata, and row CRUD.
-- Public read-only dataset previews with optional password protection.
+- Public read-only dataset previews and JSON reads with optional password protection.
 - User-facing docs for setup, datasets, API access, MCP access, and agent access.
 - A small human UI for agent handoff, settings, recent datasets, exports, and
   preview review.
@@ -73,7 +73,7 @@ for the footer or deployment documentation.
 ## Out Of Scope
 
 - Rowset-owned source connectors, sync, or write-back.
-- Public previews as a replacement for private API or MCP authentication.
+- Public dataset access as a replacement for private reads or authenticated write access.
 - Browser automation as the preferred agent integration path.
 - A general-purpose BI dashboard, warehouse, or ETL orchestration suite.
 - Client-side exposure of API keys or other secrets.
@@ -103,8 +103,8 @@ for the footer or deployment documentation.
 - Dataset APIs are predictable: stable keys, bounded pagination, clear errors,
   and ownership enforcement.
 - Sensitive data stays private by default.
-- Docs and UI make the right path obvious: public preview for humans, REST/MCP
-  for systems and agents.
+- Docs and UI make the right path obvious: deliberate public reads for shared data,
+  authenticated REST/MCP for private reads and all writes.
 - Changes to dataset behavior remain covered by focused tests.
 
 ## Accessibility & Inclusion

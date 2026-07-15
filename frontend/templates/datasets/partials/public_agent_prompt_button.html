@@ -1,0 +1,6 @@
+<div x-data="copyPanel" data-copy-label="Copy prompt for AI agent">
+  <button type="button" class="fb-button-secondary whitespace-nowrap" :disabled="busy" @click="copy">
+    <span x-ref="label" x-text="label">Copy prompt for AI agent</span>
+  </button>
+  <textarea x-ref="source" class="sr-only" aria-hidden="true" tabindex="-1" readonly>{{ public_api_agent_prompt }}</textarea>
+</div>

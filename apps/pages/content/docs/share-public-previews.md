@@ -1,12 +1,14 @@
 ---
-title: Share a public preview
-description: Share a read-only dataset preview without requiring an API client.
+title: Share a dataset for read-only access
+description: Share a dataset through a browser preview or public JSON API.
 keywords: Rowset public preview, dataset sharing, password protected preview
 ---
 
-# Share a public preview
+# Share a dataset for read-only access
 
-Public previews let someone view a read-only dataset page without using the authenticated REST API.
+Public sharing gives people a browser preview and gives applications or AI
+agents a dedicated read-only JSON API. Both use the same explicit public setting
+and optional password.
 
 ## When to use a public preview
 
@@ -15,8 +17,10 @@ Use public previews for:
 - quick review by a teammate or client
 - sharing a small live table without building an app
 - giving non-technical users a browser-friendly view
+- letting an application or agent retrieve deliberately public rows
 
-Use the authenticated Dataset API instead when a system needs to read or mutate rows programmatically.
+Use authenticated REST or MCP when data must remain private or a client needs to
+write rows.
 
 ## Enable a preview
 
@@ -35,21 +39,42 @@ Content-Type: application/json
 }
 ```
 
-The response includes the public preview URL.
+The response includes the public preview URL and public key.
 
-If the data is not meant for casual forwarding, add a password. Anyone with the link and password can view the preview.
+If the data is not meant for unrestricted access, add a password. Anyone with
+the link and password can view the preview or call the public read API.
+
+## Read the shared dataset as JSON
+
+An unprotected public dataset needs no API key:
+
+```http
+GET {{ api_base_url }}/public/datasets/{public_key}
+GET {{ api_base_url }}/public/datasets/{public_key}/rows?limit=500&offset=0
+```
+
+For a protected dataset, send the password on every request:
+
+```http
+X-Rowset-Public-Password: optional-public-password
+```
+
+The rows response includes `has_more` and `offset`, so clients can request every
+page. See the [Dataset API](/docs/dataset-api) for the complete pagination loop,
+filters, and response boundaries.
 
 ## Security notes
 
-- Public previews are read-only.
+- Public browser and JSON access are read-only.
 - Password protection is optional, but recommended for anything private.
 - Disable the preview when the sharing window is over.
-- Do not use public previews as an API-auth replacement for agents or applications.
+- Do not use public access for private data or as a replacement for authenticated writes.
 
 ## Public preview vs API
 
-- **Public preview**: browser page, read-only, optional password.
-- **Dataset API**: authenticated HTTP endpoints, supports row reads/writes and exports.
+- **Public browser preview**: human-readable table, read-only, optional password.
+- **Public Dataset API**: safe metadata and paginated rows, read-only, optional password.
+- **Authenticated Dataset API**: private reads, row writes, lookup, exports, assets, and relationships.
 
 ## Related docs
 

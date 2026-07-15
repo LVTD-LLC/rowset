@@ -57,6 +57,49 @@ details.
 
 Replace `{dataset_key}` with the dataset key from the dataset page or from the create-dataset response.
 
+## Read a public dataset without an API key
+
+Enabled public datasets have separate read-only endpoints for applications and
+AI agents. Replace `{public_key}` with the key from the public preview URL.
+
+Read safe public metadata:
+
+```http
+GET {{ api_base_url }}/public/datasets/{public_key}
+```
+
+Read a page of rows:
+
+```http
+GET {{ api_base_url }}/public/datasets/{public_key}/rows?limit=500&offset=0
+```
+
+For a password-protected dataset, send the public password on every request:
+
+```http
+GET {{ api_base_url }}/public/datasets/{public_key}/rows?limit=500&offset=0
+X-Rowset-Public-Password: optional-public-password
+```
+
+Omit the header when the dataset is not password protected. Never put the
+public password in the URL or query string.
+
+To retrieve every row:
+
+1. Start with `offset=0` and a `limit` up to 500.
+2. Append every item in `rows` to the local result.
+3. If `has_more` is `true`, increase `offset` by the number of rows returned.
+4. Repeat until `has_more` is `false`.
+
+The rows endpoint also accepts `query`, JSON-object `filters`, `sort`, and
+`direction`, using the same semantics as authenticated row listing. Public
+responses omit the private dataset key, owner and project context, internal
+instructions and metadata, relationships, asset metadata, and authenticated
+asset URLs.
+
+Public access is read-only. Use bearer-key authentication for private reads,
+row lookup, exports, assets, relationships, and every write operation.
+
 ## Create a dataset
 
 ```http

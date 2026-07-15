@@ -48,6 +48,7 @@ from apps.datasets.choices import DatasetColumnType
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project, ProjectSection
 from apps.datasets.public_previews import (
     PUBLIC_PREVIEW_ROBOTS_POLICY,
+    build_public_dataset_agent_prompt,
     grant_public_preview_access,
     has_public_preview_access,
 )
@@ -2955,6 +2956,7 @@ def public_dataset(request, public_key):
             "dataset": dataset,
             "has_access": has_access,
             "password_error": password_error,
+            "public_api_agent_prompt": build_public_dataset_agent_prompt(dataset),
             "markdown_url": request.build_absolute_uri(
                 reverse("public_dataset_markdown", kwargs={"public_key": dataset.public_key})
             ),

@@ -353,14 +353,22 @@ ROWSET_CAPABILITIES = (
         id="public_previews",
         title="Public previews",
         summary=(
-            "Enable, disable, password-protect, or resize read-only browser previews "
-            "for humans who need a link instead of authenticated API access."
+            "Enable, disable, password-protect, or resize read-only public datasets "
+            "for browser review and dedicated public JSON reads."
         ),
         mcp_tools=("update_dataset_public_preview",),
-        rest_paths=("/api/datasets/{dataset_key}/public-preview",),
+        rest_paths=(
+            "/api/datasets/{dataset_key}/public-preview",
+            "/api/public/datasets/{public_key}",
+            "/api/public/datasets/{public_key}/rows",
+        ),
         notes=(
-            "Public previews are not authentication and do not replace private MCP or REST access.",
-            "Only enable public preview when the user asks to share a browser-readable table.",
+            "Public datasets do not replace authenticated MCP or REST for private reads or writes.",
+            (
+                "Unprotected public datasets need no credential; password-protected public API "
+                "requests require X-Rowset-Public-Password on every request."
+            ),
+            "Only enable public access when the user asks to share a read-only dataset.",
         ),
     ),
     RowsetCapability(
@@ -492,7 +500,7 @@ ROWSET_GUARDRAILS = (
         "Ask before destructive actions such as deleting rows, archiving datasets, "
         "or clearing preview passwords."
     ),
-    "Use public previews only for read-only browser sharing.",
+    "Use public datasets only for deliberate read-only browser or JSON sharing.",
     (
         "Do not claim dashboard upload wizards, Rowset-owned Google Sheets sync, "
         "or spreadsheet write-back are active product paths."
