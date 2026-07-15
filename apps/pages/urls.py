@@ -5,6 +5,7 @@ from apps.pages import views
 urlpatterns = [
     path("", views.LandingPageView.as_view(), name="landing"),
     path("llms.txt", views.llms_txt, name="llms_txt"),
+    path("changelog.md", views.changelog_markdown, name="changelog_markdown"),
     path(
         "docs.md",
         views.content_page_markdown,
@@ -38,6 +39,7 @@ urlpatterns = [
         name="terms_of_service",
     ),
     path("pricing", views.PricingView.as_view(), name="pricing"),
+    path("changelog", views.changelog_view, name="changelog"),
     path("docs", views.docs_home_view, name="docs_home"),
     path("docs/<slug:slug>", views.docs_page_view, name="docs_page"),
     path("blog", views.blog_posts_view, name="blog_posts"),

@@ -1,5 +1,7 @@
 from urllib.parse import urlencode
 
+import markdown
+from django.conf import settings
 from django.http import Http404, HttpResponse
 from django.template import Context, Template
 
@@ -7,6 +9,7 @@ from apps.pages.blog import BlogPost
 from rowset.utils import build_absolute_public_url
 
 MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8"
+MARKDOWN_EXTENSIONS = ["fenced_code", "tables"]
 
 CURATED_PUBLIC_PAGE_SOURCES: dict[str, str] = {
     "blog": "public/blog.md",
@@ -47,6 +50,19 @@ def build_ai_reader_context(path: str) -> dict[str, str]:
 
 def markdown_response(content: str) -> HttpResponse:
     return HttpResponse(f"{content.rstrip()}\n", content_type=MARKDOWN_CONTENT_TYPE)
+
+
+def render_changelog_markdown() -> str:
+    changelog_path = settings.BASE_DIR / "CHANGELOG.md"
+
+    try:
+        return changelog_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise Http404("Changelog not found") from exc
+
+
+def render_changelog_html() -> str:
+    return markdown.markdown(render_changelog_markdown(), extensions=MARKDOWN_EXTENSIONS)
 
 
 def render_public_page_markdown(page_slug: str) -> str:

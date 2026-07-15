@@ -32,6 +32,8 @@ from apps.pages.public_markdown import (
     build_public_markdown_context,
     markdown_response,
     render_blog_markdown,
+    render_changelog_html,
+    render_changelog_markdown,
     render_content_markdown,
     render_public_page_markdown,
 )
@@ -223,6 +225,26 @@ def llms_txt(request):
     response = HttpResponse(render_llms_txt(), content_type="text/plain; charset=utf-8")
     response["Cache-Control"] = "public, max-age=300"
     return response
+
+
+def changelog_view(request):
+    path = reverse("changelog")
+    return render(
+        request,
+        "pages/changelog.html",
+        {
+            "changelog_html": render_changelog_html(),
+            "canonical_url": build_absolute_public_url(path),
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
+            **build_public_markdown_context(path),
+        },
+    )
+
+
+def changelog_markdown(request):
+    return markdown_response(render_changelog_markdown())
 
 
 def blog_posts_view(request):
