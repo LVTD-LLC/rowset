@@ -18,6 +18,8 @@ print(json.dumps({
     "hsts_seconds": settings.SECURE_HSTS_SECONDS,
     "hsts_include_subdomains": settings.SECURE_HSTS_INCLUDE_SUBDOMAINS,
     "hsts_preload": settings.SECURE_HSTS_PRELOAD,
+    "data_upload_max_memory_size": settings.DATA_UPLOAD_MAX_MEMORY_SIZE,
+    "silenced_system_checks": settings.SILENCED_SYSTEM_CHECKS,
     "site_url": settings.SITE_URL,
 }))
 """
@@ -51,8 +53,10 @@ def test_production_https_settings_trust_caddy_and_secure_django():
         "session_secure": True,
         "csrf_secure": True,
         "hsts_seconds": 31536000,
-        "hsts_include_subdomains": True,
-        "hsts_preload": True,
+        "hsts_include_subdomains": False,
+        "hsts_preload": False,
+        "data_upload_max_memory_size": 64_000_000,
+        "silenced_system_checks": ["security.W005", "security.W021"],
         "site_url": "https://rowset.example.com",
     }
 

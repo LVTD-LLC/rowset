@@ -1,9 +1,4 @@
 {$ROWSET_SITE_ADDRESS} {
-	log {
-		output stdout
-		format json
-	}
-
 	request_body {
 		max_size 64MB
 	}
