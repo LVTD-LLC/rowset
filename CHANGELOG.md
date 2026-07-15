@@ -22,6 +22,7 @@ cut date.
 
 ### Added
 - Added a guide to idempotent AI-agent data updates, with a verified SEO brief, Rowset-specific retry contract, updated content ledger/link inventory, and inbound links from related docs, blog, and task-board pages.
+- Added PostHog and Djass to the public technology stack page and linked that page from the shared footer.
 
 ## 2026-07-14
 

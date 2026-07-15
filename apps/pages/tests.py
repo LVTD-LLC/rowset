@@ -603,6 +603,23 @@ def test_shared_site_chrome_links_to_blog_from_navbar_and_footer(client):
     assert "Alternatives" not in app_help
 
 
+def test_uses_page_lists_stack_tools_and_is_linked_from_footer(client):
+    uses_response = client.get(reverse("uses"))
+    landing_response = client.get(reverse("landing"))
+    markdown_response = client.get("/uses.md")
+
+    assert uses_response.status_code == 200
+    assert landing_response.status_code == 200
+    assert markdown_response.status_code == 200
+    assert 'href="https://posthog.com/"' in uses_response.content.decode()
+    assert 'href="https://djass.dev/"' in uses_response.content.decode()
+    assert "[PostHog](https://posthog.com/)" in markdown_response.content.decode()
+    assert "[Djass](https://djass.dev/)" in markdown_response.content.decode()
+    footer_nav = _nav_html(landing_response.content.decode(), "Footer navigation")
+    assert f'href="{reverse("uses")}"' in footer_nav
+    assert ">Uses</a>" in footer_nav
+
+
 def test_public_nav_links_to_root_content_sections(client):
     response = client.get(reverse("landing"))
 
