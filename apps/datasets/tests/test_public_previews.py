@@ -46,6 +46,7 @@ def test_public_dataset_exports_supported_formats(client, profile, export_format
     assert response.status_code == 200
     assert response["Content-Type"] == content_type
     assert response["Content-Disposition"].endswith(f'.{export_format}"')
+    assert response["X-Robots-Tag"] == "noindex, nofollow, noarchive"
 
 
 def test_public_dataset_export_contains_all_rows_despite_preview_query(client, profile):

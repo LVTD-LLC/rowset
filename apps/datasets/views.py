@@ -2852,7 +2852,9 @@ def public_dataset_export(request, public_key, export_format):
     )
     if not _has_public_dataset_access(request, dataset):
         raise Http404("Dataset export not found.")
-    return _dataset_export_response(dataset, export_format)
+    response = _dataset_export_response(dataset, export_format)
+    response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+    return response
 
 
 def _handle_public_password_access(
