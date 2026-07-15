@@ -22,6 +22,7 @@ cut date.
 
 ### Fixed
 - Prevented missing browser assets and unknown URLs from cascading into database-backed error rendering, and added a canonical `/favicon.ico` route.
+- Kept the shared public-page footer anchored to the bottom of the viewport when page content is short.
 
 ### Added
 - Added a homepage carousel highlighting projects that use Rowset.

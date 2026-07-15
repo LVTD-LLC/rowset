@@ -509,6 +509,15 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert f"&copy; {time.localtime().tm_year} Rowset" in content
 
 
+def test_public_layout_keeps_footer_at_viewport_bottom(client):
+    response = client.get(reverse("pricing"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert 'class="isolate flex min-h-dvh flex-col ' in content
+    assert '<main id="main-content" tabindex="-1" class="flex-1">' in content
+
+
 def test_landing_page_shows_product_dashboard_screenshot(client):
     response = client.get(reverse("landing"))
 

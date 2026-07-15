@@ -86,11 +86,11 @@
         {% block default_messages %}
             {% include 'components/messages.html' with messages=messages %}
         {% endblock default_messages %}
-        <div class="isolate min-h-dvh bg-white text-slate-950 dark:bg-neutral-950 dark:text-white">
+        <div class="isolate flex min-h-dvh flex-col bg-white text-slate-950 dark:bg-neutral-950 dark:text-white">
             <a href="#main-content"
                class="fb-focus sr-only fixed left-4 top-4 z-50 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white focus:not-sr-only">Skip to content</a>
             {% include 'components/site_header.html' with nav_variant='landing' %}
-            <main id="main-content" tabindex="-1">
+            <main id="main-content" tabindex="-1" class="flex-1">
                 {% block content %}
                 {% endblock content %}
             </main>
