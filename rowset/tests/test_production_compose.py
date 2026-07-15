@@ -62,6 +62,7 @@ def test_caddyfile_supports_automatic_https_streaming_and_large_assets():
     caddyfile = _CADDYFILE.read_text()
 
     assert "{$ROWSET_SITE_ADDRESS}" in caddyfile
+    assert "\n\tlog {" not in caddyfile
     assert "max_size 64MB" in caddyfile
     assert "reverse_proxy backend:80" in caddyfile
     assert "flush_interval -1" in caddyfile
