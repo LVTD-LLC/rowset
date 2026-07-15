@@ -346,6 +346,38 @@
     background: rgb(255 255 255 / 0.72);
   }
 
+  .rs-logo-carousel {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  }
+
+  .rs-logo-track,
+  .rs-logo-group {
+    display: flex;
+    width: max-content;
+    align-items: center;
+  }
+
+  .rs-logo-track {
+    animation: rs-command-marquee 30s linear infinite;
+  }
+
+  .rs-logo-group {
+    flex: none;
+    min-width: 64rem;
+    justify-content: space-around;
+  }
+
+  .rs-logo-group > * {
+    flex: none;
+  }
+
+  .rs-logo-carousel:hover .rs-logo-track,
+  .rs-logo-carousel:focus-within .rs-logo-track {
+    animation-play-state: paused;
+  }
+
   .dark .rs-command-track span {
     border-color: rgb(255 255 255 / 0.12);
     background: rgb(255 255 255 / 0.04);
@@ -433,8 +465,19 @@
     .rs-grid-field,
     .rs-product-frame,
     .rs-product-frame::after,
-    .rs-command-track {
+    .rs-command-track,
+    .rs-logo-track {
       animation: none;
+    }
+
+    .rs-logo-carousel {
+      overflow-x: auto;
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+
+    .rs-logo-group[aria-hidden="true"] {
+      display: none;
     }
   }
 }

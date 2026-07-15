@@ -532,6 +532,31 @@ def test_landing_page_shows_product_dashboard_screenshot(client):
             assert screenshot.size == (1600, 1000)
 
 
+def test_landing_page_links_to_projects_using_rowset(client):
+    response = client.get(reverse("landing"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    projects = (
+        ("djass.dev", "djass.svg"),
+        ("awesome.lvtd.dev", "awesome.svg"),
+        ("builtwithdjango.com", "builtwithdjango.png"),
+        ("gettjalerts.com", "gettjalerts.png"),
+        ("gettalentleads.com", "gettalentleads.png"),
+        ("pagefresh.lvtd.dev", "pagefresh.svg"),
+        ("pgsandbox-mcp.lvtd.dev", "pgsandbox-mcp.svg"),
+    )
+
+    assert "Projects that use Rowset" in content
+    assert "data-uidotsh" not in content
+    assert "ui-picker.js" not in content
+    for hostname, icon_name in projects:
+        assert content.count(f'href="https://{hostname}/"') == 2
+        assert content.count(f'aria-label="Visit {hostname} in a new tab"') == 1
+        icon_path = f"vendors/images/landing/customer-icons/{icon_name}"
+        assert content.count(f'src="{static(icon_path)}"') == 2
+
+
 def test_landing_page_presents_open_source_and_self_hosting_as_core_identity(client):
     response = client.get(reverse("landing"))
 

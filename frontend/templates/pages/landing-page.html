@@ -24,6 +24,21 @@
             </div>
         </div>
     </section>
+    <section class="border-b border-slate-950/10 bg-white text-slate-950 dark:border-white/15 dark:bg-neutral-950 dark:text-white" aria-labelledby="social-proof-heading">
+        <div class="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-10 lg:px-8">
+            <h2 id="social-proof-heading" class="font-mono text-sm font-semibold uppercase tracking-wide whitespace-nowrap">Projects that use Rowset</h2>
+            <div class="rs-logo-carousel py-2" aria-label="Projects that use Rowset">
+                <div class="rs-logo-track">
+                    <div class="rs-logo-group">
+                        {% for site in social_proof_sites %}<a href="https://{{ site.name }}/" target="_blank" rel="noopener noreferrer" class="fb-focus flex size-16 shrink-0 items-center justify-center transition hover:scale-110" title="{{ site.name }}" aria-label="Visit {{ site.name }} in a new tab"><img src="{% static site.icon %}" alt="" width="64" height="64" decoding="async" class="size-16 shrink-0 object-contain" /></a>{% endfor %}
+                    </div>
+                    <div class="rs-logo-group" aria-hidden="true">
+                        {% for site in social_proof_sites %}<a href="https://{{ site.name }}/" target="_blank" rel="noopener noreferrer" tabindex="-1" class="flex size-16 shrink-0 items-center justify-center transition hover:scale-110"><img src="{% static site.icon %}" alt="" width="64" height="64" decoding="async" class="size-16 shrink-0 object-contain" /></a>{% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
     <section id="open-source" class="bg-[#ffdd3d] text-[#1313a4]">
         <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[3fr_2fr] lg:items-end lg:px-8 lg:py-24">
             <div>
