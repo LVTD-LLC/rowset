@@ -13,9 +13,7 @@ _MEDIA_MOUNTS = {
     "private_media_data:/app/private_media",
 }
 _CADDYFILE = _REPO_ROOT / "deployment" / "self-host" / "Caddyfile"
-_INSECURE_OVERRIDE = (
-    _REPO_ROOT / "deployment" / "self-host" / "compose.insecure-http.yml"
-)
+_INSECURE_OVERRIDE = _REPO_ROOT / "deployment" / "self-host" / "compose.insecure-http.yml"
 
 
 def _production_compose():
