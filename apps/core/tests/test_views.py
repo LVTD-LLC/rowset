@@ -4,7 +4,7 @@ import pytest
 from allauth.account.models import EmailAddress
 from django.contrib import messages as message_constants
 from django.contrib.messages import get_messages
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, OperationalError, transaction
 from django.test import RequestFactory, override_settings
 from django.urls import path, reverse
 from django.utils import timezone
@@ -31,6 +31,7 @@ urlpatterns = [
 ]
 
 handler500 = "apps.core.views.server_error"
+handler404 = "apps.core.views.page_not_found"
 
 
 @pytest.mark.django_db
@@ -140,6 +141,21 @@ def test_server_error_redirect_works_with_project_urlconf(client, monkeypatch):
     assert len(flash_messages) == 1
     assert flash_messages[0].level == message_constants.ERROR
     assert str(flash_messages[0]) == "Something went wrong. You have been redirected."
+
+
+@pytest.mark.django_db
+@override_settings(ROOT_URLCONF="rowset.urls", DEBUG=False)
+def test_page_not_found_does_not_load_the_session(auth_client, monkeypatch):
+    def fail_session_load(_session):
+        raise OperationalError("the connection is closed")
+
+    monkeypatch.setattr("django.contrib.sessions.backends.db.SessionStore.load", fail_session_load)
+    auth_client.raise_request_exception = False
+
+    response = auth_client.get("/missing-page")
+
+    assert response.status_code == 404
+    assert b"Page not found" in response.content
 
 
 @pytest.mark.django_db

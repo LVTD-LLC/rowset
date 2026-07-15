@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from apps.api.views import api_not_found
-from apps.pages.seo import public_sitemap, robots_txt
+from apps.pages.seo import favicon, public_sitemap, robots_txt
 from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView
 
 urlpatterns = [
@@ -32,6 +32,7 @@ urlpatterns = [
     path("accounts/signup/", AccountSignupView.as_view(), name="account_signup"),
     path("accounts/", include("allauth.urls")),
     path("anymail/", include("anymail.urls")),
+    path("favicon.ico", favicon, name="favicon"),
     path("robots.txt", robots_txt, name="robots_txt"),
     path("api/", include("apps.api.urls")),
     path("api/<path:unmatched>", api_not_found, name="api_not_found"),
@@ -46,3 +47,4 @@ urlpatterns = [
 ]
 
 handler500 = "apps.core.views.server_error"
+handler404 = "apps.core.views.page_not_found"

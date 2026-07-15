@@ -814,6 +814,13 @@ def test_robots_txt_allows_crawling_and_links_sitemap(client):
     )
 
 
+def test_favicon_redirects_to_collected_static_asset(client):
+    response = client.get("/favicon.ico")
+
+    assert response.status_code == 301
+    assert response["Location"].endswith("/static/vendors/images/favicon.ico")
+
+
 def test_sitemap_response_does_not_set_noindex_header(client):
     response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
 
