@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.core.models import AgentApiKey, EmailSent, Feedback
+from apps.core.models import AgentApiKey, EmailSent, Feedback, TrialRewardClaim
 
 
 @admin.register(AgentApiKey)
@@ -25,6 +25,18 @@ class AgentApiKeyAdmin(admin.ModelAdmin):
 
 
 admin.site.register(EmailSent)
+
+
+@admin.register(TrialRewardClaim)
+class TrialRewardClaimAdmin(admin.ModelAdmin):
+    list_display = ("profile", "reward", "days", "applied_at", "created_at")
+    list_filter = ("reward", "applied_at", "created_at")
+    search_fields = ("profile__user__email",)
+    raw_id_fields = ("profile",)
+    readonly_fields = ("created_at", "updated_at", "applied_at")
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(Feedback)

@@ -3,6 +3,7 @@ import re
 import struct
 import time
 from dataclasses import replace
+from datetime import timedelta
 from html import unescape
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -654,6 +655,37 @@ def test_changelog_html_and_markdown_share_the_repository_changelog(client):
     assert markdown_response.content.decode() == f"{source.rstrip()}\n"
     assert "Product updates" in html_response.content.decode()
     assert "Added a public changelog page" in html_response.content.decode()
+
+
+def test_app_sidebar_shows_trial_rewards_after_agent_setup_completes(client):
+    rewards_href = f'href="{reverse("trial_rewards")}"'
+    user = get_user_model().objects.create_user(
+        username="sidebar-trial-rewards",
+        email="sidebar-trial-rewards@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    initial_response = client.get(reverse("home"))
+    initial_help = _nav_html(initial_response.content.decode(), "Help and support")
+    assert rewards_href not in initial_help
+
+    profile = user.profile
+    profile.trial_started_at = profile.created_at
+    profile.trial_ends_at = profile.created_at + timedelta(days=7)
+    profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
+
+    started_response = client.get(reverse("home"))
+    started_help = _nav_html(started_response.content.decode(), "Help and support")
+    assert rewards_href not in started_help
+
+    profile.setup_completed_at = profile.created_at
+    profile.save(update_fields=["setup_completed_at", "updated_at"])
+
+    completed_response = client.get(reverse("home"))
+    completed_help = _nav_html(completed_response.content.decode(), "Help and support")
+    assert rewards_href in completed_help
+    assert "Earn trial days" in completed_help
 
 
 def test_uses_page_lists_stack_tools_and_is_linked_from_footer(client):

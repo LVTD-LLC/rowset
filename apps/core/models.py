@@ -4,7 +4,13 @@ from django.db import models
 from django_q.tasks import async_task
 
 from apps.core.base_models import BaseModel
-from apps.core.choices import AgentApiKeyAccessLevel, EmailType, FeedbackSource, ProfileStates
+from apps.core.choices import (
+    AgentApiKeyAccessLevel,
+    EmailType,
+    FeedbackSource,
+    ProfileStates,
+    TrialReward,
+)
 from apps.core.model_utils import generate_random_key
 from rowset.utils import get_rowset_logger
 
@@ -137,6 +143,29 @@ class AgentApiKey(BaseModel):
 
     def __str__(self):
         return f"{self.name} ({self.profile.user.email})"
+
+
+class TrialRewardClaim(BaseModel):
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name="trial_reward_claims",
+    )
+    reward = models.CharField(max_length=32, choices=TrialReward.choices)
+    days = models.PositiveSmallIntegerField(default=3)
+    applied_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profile", "reward"],
+                name="unique_trial_reward_per_profile",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.profile.user.email}: {self.get_reward_display()}"
 
 
 class ProfileStateTransition(BaseModel):

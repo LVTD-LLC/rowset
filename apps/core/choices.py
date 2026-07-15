@@ -20,6 +20,13 @@ class TrialStatus(models.TextChoices):
     SUBSCRIBED = "subscribed", "Subscribed"
 
 
+class TrialReward(models.TextChoices):
+    EMAIL_VERIFIED = "email_verified", "Email verified"
+    GITHUB_STAR = "github_star", "GitHub star"
+    DISCORD_JOIN = "discord_join", "Discord community"
+    X_FOLLOW = "x_follow", "X follow"
+
+
 class ProfileStates(models.TextChoices):
     STRANGER = "stranger"
     SIGNED_UP = "signed_up"

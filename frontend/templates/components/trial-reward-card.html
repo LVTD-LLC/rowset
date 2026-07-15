@@ -1,0 +1,47 @@
+<article id="trial-reward-{{ card.key }}"
+         class="flex min-h-64 flex-col rounded-lg border p-5 {% if card.claimed %}border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/20{% else %}border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950{% endif %}"
+         aria-labelledby="trial-reward-{{ card.key }}-title">
+    <div class="flex items-start justify-between gap-4">
+        <h2 id="trial-reward-{{ card.key }}-title" class="fb-section-title">{{ card.title }}</h2>
+        <span class="shrink-0 rounded-md px-2.5 py-1 font-mono text-xs font-semibold {% if card.claimed %}border border-emerald-200 text-emerald-700 dark:border-emerald-900 dark:text-emerald-300{% else %}bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300{% endif %}">
+            {% if card.claimed %}
+                ✓ Claimed
+            {% else %}
+                +{{ card.days }} day{{ card.days|pluralize }}
+            {% endif %}
+        </span>
+    </div>
+    <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ card.description }}</p>
+    {% if card.claim_error %}
+        <p class="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+           role="alert">{{ card.claim_error }}</p>
+    {% elif card.claim_was_pending %}
+        <p class="mt-4 text-sm font-semibold text-emerald-700 dark:text-emerald-300"
+           role="status">Claimed. These {{ card.days }} days will be added when your trial starts.</p>
+    {% endif %}
+    <div class="mt-auto flex flex-wrap items-center gap-2 pt-6">
+        {% if card.claimed %}
+            <span class="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Reward added</span>
+        {% else %}
+            {% if card.available %}
+                <form method="post"
+                      action="{% url 'claim_trial_reward' reward=card.key %}"
+                      hx-post="{% url 'claim_trial_reward' reward=card.key %}"
+                      hx-target="#trial-rewards-content"
+                      hx-swap="outerHTML"
+                      hx-disabled-elt="find button"
+                      {% if card.url %} x-data data-reward-url="{{ card.url }}" @submit="window.open($el.dataset.rewardUrl, '_blank', 'noopener,noreferrer')" {% endif %}>
+                    {% csrf_token %}
+                    <button type="submit" class="fb-button-primary">
+                        {{ card.action_label }}
+                        {% if card.url %}<span class="sr-only">— opens in a new tab</span>{% endif %}
+                    </button>
+                </form>
+            {% elif card.key == "email_verified" %}
+                <a href="{% url 'settings' %}" class="fb-button-secondary">Verify in settings</a>
+            {% else %}
+                <span class="text-sm text-slate-500 dark:text-slate-400">Unavailable with an active subscription</span>
+            {% endif %}
+        {% endif %}
+    </div>
+</article>

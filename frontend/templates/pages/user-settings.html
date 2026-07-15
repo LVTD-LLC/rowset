@@ -37,7 +37,10 @@
       </div>
       {% if trial_status != "subscribed" %}
       <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" aria-label="Billing plans">
-        <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Rowset Pro · $50/month</p>
+        <div>
+          <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Rowset Pro · $50/month</p>
+          <a href="{% url 'trial_rewards' %}" class="fb-focus mt-1 inline-block rounded text-sm font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">Earn up to 12 extra trial days</a>
+        </div>
         <a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" class="fb-button-primary">Upgrade</a>
       </div>
       {% endif %}
