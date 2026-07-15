@@ -72,6 +72,7 @@ from apps.datasets.services import (
     dataset_asset_key_from_ref,
     dataset_row_data_with_calculated_values,
     dataset_row_filter_operators,
+    dataset_to_markdown_text,
     default_dataset_row_filter_operator,
     image_columns_from_schema,
     iter_export_row_data,
@@ -2939,6 +2940,9 @@ def public_dataset(request, public_key):
             "dataset": dataset,
             "has_access": has_access,
             "password_error": password_error,
+            "markdown_url": request.build_absolute_uri(
+                reverse("public_dataset_markdown", kwargs={"public_key": dataset.public_key})
+            ),
             "public_preview_robots_policy": PUBLIC_PREVIEW_ROBOTS_POLICY,
             "page_obj": page_obj,
             "public_rows_with_values": public_rows_with_values,
@@ -2960,6 +2964,35 @@ def public_dataset(request, public_key):
             **row_query_context,
         },
     )
+    response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
+    return response
+
+
+@require_http_methods(["GET", "HEAD"])
+def public_dataset_markdown(request, public_key):
+    dataset = get_object_or_404(
+        Dataset,
+        public_key=public_key,
+        public_enabled=True,
+        archived_at__isnull=True,
+    )
+    if not _has_public_dataset_access(request, dataset):
+        response = HttpResponse(
+            "Unlock this password-protected dataset in the public preview first.\n",
+            status=403,
+            content_type="text/plain; charset=utf-8",
+        )
+    elif request.method == "HEAD":
+        response = HttpResponse(content_type="text/markdown; charset=utf-8")
+    else:
+        response = HttpResponse(
+            dataset_to_markdown_text(
+                dataset.name,
+                dataset.headers,
+                iter_export_row_data(dataset),
+            ),
+            content_type="text/markdown; charset=utf-8",
+        )
     response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
     return response
 
