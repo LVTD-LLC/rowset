@@ -202,7 +202,10 @@ it is the step that turns raw API calls into controlled row operations.
 ## 6. Use by-index operations for durable row updates
 
 When the dataset has a stable index, prefer by-index operations for lookup and
-updates.
+update. If the agent may retry after timeouts, follow the
+[idempotent update contract](/blog/idempotent-ai-agent-updates): identify the
+row by index, patch absolute values, and read the row before replaying an
+uncertain write.
 
 That means the agent can say "update `sku=ADAPTER-001`" or "patch
 `email=ada@example.com`" instead of searching a list response for a row that

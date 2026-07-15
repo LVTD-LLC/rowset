@@ -36,6 +36,11 @@ Define the allowed statuses up front: `todo`, `doing`, `blocked`, `review`, and
 `done` are usually enough. Add instructions for who may move a task, what counts
 as evidence, and when an agent should ask before taking action.
 
+Because task agents often retry after tool or network failures, pair the board
+with the [idempotent AI-agent update pattern](/blog/idempotent-ai-agent-updates).
+Use `task_id` as the stable identity, write absolute status values, and verify
+the row before replaying an uncertain update.
+
 ## Connect it
 
 Use [MCP access](/docs/connect-mcp) for agent updates and the

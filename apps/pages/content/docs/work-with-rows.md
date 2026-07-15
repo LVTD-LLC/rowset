@@ -112,6 +112,11 @@ REST:
 PATCH {{ api_base_url }}/datasets/{dataset_key}/rows/by-index?index_value=TASK-001
 ```
 
+For retry-prone agent workflows, use a stable index, patch absolute final
+values, and read the row after an uncertain response. The
+[idempotent AI-agent updates guide](/blog/idempotent-ai-agent-updates) includes
+a complete create-or-update and timeout-recovery pattern.
+
 Patch by row id:
 
 ```text

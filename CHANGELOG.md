@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-15
+
+### Added
+- Added a guide to idempotent AI-agent data updates, with a verified SEO brief, Rowset-specific retry contract, updated content ledger/link inventory, and inbound links from related docs, blog, and task-board pages.
+
 ## 2026-07-14
 
 ### Added

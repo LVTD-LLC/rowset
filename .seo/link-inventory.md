@@ -58,6 +58,7 @@
 | `/blog/connect-ai-agent-to-dataset-api` | https://rowset.lvtd.dev/blog/connect-ai-agent-to-dataset-api | How to connect an AI agent to the Rowset Dataset API | Dataset API, REST API, agent access, agent workflows | Dataset API docs, agent access docs, agent discovery docs |
 | `/blog/relationship-modeling-agent-datasets` | https://rowset.lvtd.dev/blog/relationship-modeling-agent-datasets | How to model relationships between agent-managed datasets | relationships, linked datasets, agent workflows | Link datasets docs, index-column guide, dataset-instructions guide |
 | `/blog/ai-agent-memory-vs-state` | https://rowset.lvtd.dev/blog/ai-agent-memory-vs-state | AI agent memory vs structured state: what goes where? | agent memory, structured operational state, workflow records | Agent-managed datasets blog, datasets docs, task board, personal CRM |
+| `/blog/idempotent-ai-agent-updates` | https://rowset.lvtd.dev/blog/idempotent-ai-agent-updates | How to make AI-agent data updates idempotent | idempotency, retries, stable row identity, reconciliation | Work with rows docs, Dataset API setup blog, agent task board |
 
 ## SEO-Sprint-Generated Pages
 
@@ -161,3 +162,8 @@
 - agent memory and dataset decision guide
 - where AI agents should keep working data
 - canonical workflow records for agents
+- idempotent AI-agent data updates
+- retry-safe Rowset updates
+- prevent duplicate agent writes
+- AI agent idempotency pattern
+- reconcile uncertain row updates
