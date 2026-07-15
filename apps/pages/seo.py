@@ -1,9 +1,15 @@
 from django.contrib.sitemaps.views import sitemap
-from django.http import HttpResponse
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.http import HttpResponse, HttpResponsePermanentRedirect
 from django.views.decorators.cache import cache_control
 
 from rowset.sitemaps import sitemaps
 from rowset.utils import build_absolute_public_url
+
+
+@cache_control(public=True, max_age=86400)
+def favicon(_request):
+    return HttpResponsePermanentRedirect(staticfiles_storage.url("vendors/images/favicon.ico"))
 
 
 @cache_control(public=True, max_age=86400)

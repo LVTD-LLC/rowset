@@ -16,8 +16,15 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q, Sum
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseNotFound,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -75,6 +82,11 @@ def server_error(request: HttpRequest):
     if getattr(request, "htmx", False):
         return HttpResponseClientRedirect(target_url)
     return redirect(target_url)
+
+
+def page_not_found(_request: HttpRequest, exception: Exception):  # noqa: ARG001
+    """Render 404s without request context or database-backed context processors."""
+    return HttpResponseNotFound(render_to_string("404.html"))
 
 
 def stripe_request_options():
