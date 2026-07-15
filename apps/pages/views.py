@@ -24,6 +24,7 @@ from apps.pages.blog import (
 from apps.pages.blog import (
     json_ld as blog_json_ld,
 )
+from apps.pages.comparisons import get_comparison_page, render_comparison_markdown
 from apps.pages.content import render_content_page
 from apps.pages.llms import render_llms_txt
 from apps.pages.public_markdown import (
@@ -37,6 +38,7 @@ from apps.pages.public_markdown import (
 from apps.pages.schema import (
     article_schema,
     breadcrumb_list_schema,
+    faq_page_schema,
     json_ld,
     organization_schema,
     product_schema,
@@ -272,6 +274,40 @@ def blog_post_markdown(request, slug):
         raise Http404("Blog post not found") from exc
 
     return markdown_response(render_blog_markdown(blog_post))
+
+
+def comparison_page_view(request, slug):
+    comparison_page = get_comparison_page(slug)
+    path = comparison_page.get_absolute_url()
+    return render(
+        request,
+        "pages/comparisons/comparison_page.html",
+        {
+            "comparison_page": comparison_page,
+            "canonical_url": build_absolute_public_url(path),
+            "docs_base_template": (
+                "base_app.html" if request.user.is_authenticated else "base_landing.html"
+            ),
+            "schema_json": json_ld(
+                [
+                    article_schema(
+                        headline=comparison_page.title,
+                        description=comparison_page.description,
+                        path=path,
+                        date_published=comparison_page.published_at.isoformat(),
+                        date_modified=comparison_page.updated_at.isoformat(),
+                    ),
+                    breadcrumb_list_schema((("Home", "/"), (comparison_page.title, path))),
+                    faq_page_schema(comparison_page.faqs),
+                ]
+            ),
+            **build_ai_reader_context(path),
+        },
+    )
+
+
+def comparison_page_markdown(request, slug):
+    return markdown_response(render_comparison_markdown(get_comparison_page(slug)))
 
 
 class DatabaseMcpServerExplanationView(TemplateView):

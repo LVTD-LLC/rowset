@@ -2,6 +2,7 @@ from django.contrib import sitemaps
 from django.urls import reverse
 
 from apps.pages.blog import list_blog_posts
+from apps.pages.comparisons import list_comparison_pages
 from apps.pages.content import CONTENT_SECTIONS, get_content_section
 
 
@@ -71,8 +72,26 @@ class BlogSitemap(sitemaps.Sitemap):
         return item.updated_at
 
 
+class ComparisonSitemap(sitemaps.Sitemap):
+    """Generate sitemap entries for checked-in competitor comparisons."""
+
+    priority = 0.9
+    protocol = "https"
+    changefreq = "monthly"
+
+    def items(self):
+        return list_comparison_pages()
+
+    def location(self, item):
+        return item.get_absolute_url()
+
+    def lastmod(self, item):
+        return item.updated_at
+
+
 sitemaps = {
     "static": StaticViewSitemap,
     "blog": BlogSitemap,
+    "comparisons": ComparisonSitemap,
     "content": ContentSitemap,
 }

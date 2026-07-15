@@ -5,6 +5,7 @@
 {% url 'docs_page' slug='quickstart' as quickstart_url %}
 {% url 'blog_posts' as blog_posts_url %}
 {% url 'use_cases' as use_cases_url %}
+{% url 'comparison_page' slug='airtable' as airtable_comparison_url %}
 {% url 'uses' as uses_url %}
 {% url 'privacy_policy' as privacy_policy_url %}
 {% url 'terms_of_service' as terms_of_service_url %}
@@ -15,9 +16,10 @@
                 <a href="{{ landing_url|default:'/' }}" class="fb-focus inline-flex items-center gap-2" aria-label="Rowset home"><span class="grid size-7 place-items-center bg-[#ffdd3d] font-mono text-sm font-semibold text-[#1313a4]">R</span><span class="font-display text-lg font-semibold">Rowset</span></a>
                 <p class="mt-5 max-w-[35ch] text-base text-pretty text-blue-100 sm:text-sm">The open-source, self-hostable backend for AI agent workflows. Private MCP, REST, and CLI access to structured data.</p>
             </div>
-            <nav class="grid gap-8 sm:grid-cols-3" aria-label="Footer navigation">
+            <nav class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4" aria-label="Footer navigation">
                 <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Build</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ use_cases_url }}" class="hover:text-white">Use cases</a></li><li><a href="{{ pricing_url }}" class="hover:text-white">Pricing</a></li><li><a href="{{ account_signup_url }}" class="hover:text-white">Start trial</a></li></ul></div>
                 <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Learn</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ docs_home_url }}" class="hover:text-white">Documentation</a></li><li><a href="{{ blog_posts_url }}" class="hover:text-white">Blog</a></li><li><a href="{{ quickstart_url|default:docs_home_url }}" class="hover:text-white">Quickstart</a></li></ul></div>
+                <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Compare</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="{{ airtable_comparison_url }}" class="hover:text-white">Rowset vs Airtable</a></li></ul></div>
                 <div><h2 class="font-mono text-sm font-semibold uppercase tracking-wide text-[#ffdd3d]">Open source</h2><ul role="list" class="mt-4 grid gap-3 text-base text-blue-100 sm:text-sm"><li><a href="https://github.com/LVTD-LLC/rowset" class="hover:text-white">GitHub</a></li><li><a href="https://github.com/LVTD-LLC/rowset#deployment" class="hover:text-white">Self-hosting</a></li><li><a href="{{ uses_url }}" class="hover:text-white">Uses</a></li><li><a href="{{ privacy_policy_url }}" class="hover:text-white">Privacy</a></li><li><a href="{{ terms_of_service_url }}" class="hover:text-white">Terms</a></li></ul></div>
             </nav>
         </div>
