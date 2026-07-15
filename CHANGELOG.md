@@ -4,10 +4,8 @@ All notable changes to this project will be documented in this file.
 Entries are grouped by calendar date, newest first, and use the change types from
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioned releases,
 when used, still try to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-The date grouping also places older bullets under the most accurate change type
-for that date while preserving their original text. Dates represent when the
-changelog entry landed in git history, not a production deployment or release
-cut date.
+Dates represent when the changelog entry landed in git history, not a production
+deployment or release cut date.
 
 ## Types of changes
 
@@ -27,105 +25,37 @@ cut date.
 ### Added
 - Added a homepage carousel highlighting projects that use Rowset.
 - Added a public changelog page backed by the repository changelog, with a Markdown variant and links from the shared footer and app help sidebar.
-- Added a guide to idempotent AI-agent data updates, with a verified SEO brief, Rowset-specific retry contract, updated content ledger/link inventory, and inbound links from related docs, blog, and task-board pages.
-- Added PostHog and Djass to the public technology stack page and linked that page from the shared footer.
-
-## 2026-07-14
-
-### Added
-- Added a decision guide on AI agent memory versus structured operational state, with a verified SEO brief, updated content ledger/link inventory, and inbound links from related blog, docs, and use-case pages.
-
-### Changed
-- Refreshed the SEO sprint with current GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina, production-route, metadata, and schema evidence; reprioritized the roadmap around URL recovery, sitemap/canonical hygiene, and the measured `mcp database` opportunity.
-- Updated the SEO brand foundation to reflect the current 7-day trial and $50/month Pro pricing.
-
-## 2026-07-13
-
-### Added
-- Added a Rowset relationship-modeling article for agent-managed datasets, with a verified SEO brief, updated ledger/link inventory, and inbound links from relationship docs and the index-column guide.
-
-## 2026-07-12
-
-### Added
-- Added a Rowset Dataset API setup article for connecting trusted AI agents over REST, with a verified SEO brief, updated ledger/link inventory, and inbound links from Dataset API and agent access docs.
-
-## 2026-07-11
-
-### Added
-- Added the NocoDB alternatives article for AI-agent-managed datasets, with a verified SEO brief, updated ledger/link inventory, and inbound links from MCP/Dataset/API docs.
-
-## 2026-07-09
-
-### Added
-- Added the Baserow alternatives article for AI-agent-managed datasets, with a verified SEO brief and inbound links from related blog/docs pages.
-
-## 2026-07-08
-
-### Added
-- Added a Rowset blog post comparing generated `rowset_id` values with business keys for agent-managed rows, plus the verified SEO brief and inbound links from related docs/blog pages.
 
 ## 2026-07-07
-
-### Added
-- Added a Rowset blog post on structuring dataset instructions for AI agents, with a verified SEO brief and inbound links from Dataset API, MCP setup, and content-pipeline pages.
 
 ### Changed
 - Simplified the docs sidebar by keeping advanced docs routable but removing them from the default navigation, and tightened core docs copy around dataset, API, setup, and troubleshooting paths.
 
 ## 2026-07-06
 
-### Added
-- Added Markdown-backed use-case pages under `/use-cases/` with a standalone Use Cases navbar link.
-- Added the Google Sheets alternatives article as a Markdown blog post for AI-agent-managed datasets, with a verified SEO brief and inbound links from related blog posts.
-
 ### Changed
 - Simplified the docs sidebar to Getting started, Features, and Reference, and removed use cases from the docs navigation.
-- Changed `/docs/` into a permanent redirect to the quickstart and grouped the docs sidebar by Start, Build, Use Cases, Reference, and Operate on every docs page.
-- Reworked public Rowset docs into a docs-first, user-job information architecture with grouped Start, Build, Use Cases, Reference, and Operate pages, plus redirects from the older tutorial/how-to/explanation paths.
-
-## 2026-07-05
-
-### Added
-- Added the Airtable alternatives article as a Markdown blog post for AI-agent-managed datasets, with current source links and inbound links from related blog posts.
-- Added a Rowset blog post on choosing stable index columns for agent-managed rows, with inbound links from dataset docs, MCP docs, and existing agent workflow posts.
-- Added a Rowset blog post explaining when AI-agent workflows should use MCP versus REST, with inbound links from MCP, Agent access, and the agent-managed-datasets article.
-
-### Changed
-- Moved the Airtable alternatives SEO target from a bespoke `/alternatives/airtable/` page to `/blog/airtable-alternatives` and redirected the old URL.
-
-## 2026-07-04
-
-### Added
-- Added the `/playbooks/database-mcp-server` SEO playbook with Article/Breadcrumb schema, sitemap coverage, and internal links from MCP and Dataset API docs.
-- Added the first SEO content article, defining agent-managed datasets and linking it into the MCP and Dataset API docs.
-- Added the Rowset SEO sprint foundation with a measured GSC/Plausible/PostHog/DataForSEO-backed roadmap, brand context, keyword research cache, and internal-link inventory for phased organic-search work.
+- Reworked the public docs around user tasks, redirected `/docs/` to the quickstart, and preserved links from older documentation routes.
 
 ## 2026-07-03
 
 ### Fixed
-- Added a dynamic `/robots.txt` view, canonical redirects for key trailing-slashed marketing URLs, sitemap responses without app-level `X-Robots-Tag`, and reusable JSON-LD schema helpers.
 - MCP row listing and row search tools now tolerate agent-supplied `null` pagination values and JSON-string row filters, avoiding Pydantic validation failures before the request reaches Rowset's structured service errors.
 
 ## 2026-07-02
 
 ### Changed
-- Strengthened the SEO internal-link spine between homepage, use-case pages, Dataset API docs, MCP docs, pricing, and commercially useful use cases.
 - Dataset browser views now render URL-looking string cell values as plain text instead of auto-converting them into Rowset or external links. Explicit dataset relationship/reference columns, row-detail links, and image links still render as links; arbitrary URL strings can be copied from the cell text and link rendering can be reintroduced later with safer, explicit column-level behavior.
-- Extracted public-preview settings and session-token helpers out of the API service kernel while preserving REST, MCP, and browser-preview behavior.
 
 ### Fixed
 - Agent feedback submissions now append to the configured Rowset feedback dataset instead of each submitter's own dataset.
 - Dataset detail pages now ignore non-URL JSON-array-looking cell values before Rowset link normalization, avoiding 500s for result rows with values such as `[]`.
 - Production Docker healthchecks now run through the project virtualenv and allow enough startup time for GHCR image rollouts.
 
-### Removed
-- Removed forced quality and typing scaffolding from CI, local checks, docs, and Makefile targets.
-
 ## 2026-07-01
 
 ### Added
 - Added Rowset Pro billing copy/configuration for a single $50/month plan and enforced free-account dataset quotas through shared REST/MCP services.
-- Added shared Rowset dataset test factories, split public-preview tests out of the large dataset test module, and added REST/MCP parity characterization tests for shared dataset behavior.
 - Added Docker health checks for the CapRover server and worker process types so non-persistent app deploys can use health-gated rolling updates instead of routing to containers before they are ready.
 - Added Qdrant-backed dataset row vector search with PydanticAI/OpenRouter embedding generation, hybrid vector/lexical ranking, REST `POST /api/datasets/{dataset_key}/search`, and hosted MCP `search_dataset_rows`.
 - Added vector indexing and cleanup workers for API/MCP dataset creation, row create/update/delete, dataset archive, and an operator `backfill_dataset_vectors` management command.
@@ -133,7 +63,6 @@ cut date.
 ### Changed
 - Production deploy now builds one server/worker image in GitHub Actions, publishes it to GHCR with `latest`, UTC date, date-run, and full Git SHA tags, then deploys that image to both CapRover apps with per-app deploy tokens.
 - CI and `make ci-local` now enforce Ruff lint, Ruff format, and frontend lint/build checks.
-- Applied the Ruff formatting baseline so future style checks can run without format churn.
 - Agent feedback submissions through REST and MCP now require read/write API keys because feedback submissions create private Rowset/CX/Feedback dataset rows.
 - Stripe checkout, customer, and billing portal requests can now include `STRIPE_CONTEXT` for Stripe Organization API keys.
 
@@ -141,7 +70,6 @@ cut date.
 - Dataset detail pages now ignore malformed Rowset-looking URL values that Python parses as invalid IPv6 URLs instead of failing the page render.
 - Generated-index row patches now accept an unchanged generated index value, avoiding validation failures when agents send full-row update payloads.
 - Local CI backend checks now run with DB/Redis dependencies only, avoiding frontend container churn between backend test groups.
-- The Ruff lint baseline now passes by applying mechanical import and pyupgrade fixes and documenting two existing complexity exceptions.
 - Choice-column row writes now accept unambiguous case, whitespace, hyphen, or underscore variants and store the schema's canonical choice label.
 - Canonical legacy `/api/v1` REST requests now resolve to the current API surface, unknown or trailing-slash API paths return JSON 404s without rendering landing-page context, and referrer banner lookup failures no longer turn bad-path traffic into Sentry database errors.
 
@@ -252,7 +180,6 @@ cut date.
 ### Added
 - Sentry setup now includes release metadata, configurable tracing/profiling/log settings, logging breadcrumbs/events, and the `before_send` hook by default.
 - `ALLOW_SIGNUPS` environment flag (default `True`) to pause new email/social registrations while keeping existing user logins available.
-- Superuser-only admin blog API for creating, listing, reading, updating, patching, deleting, reviewing, and publishing blog posts when the blog app is generated.
 
 ### Changed
 - Email verification during signup is now non-blocking: new users land on the dashboard, receive a confirmation-link email, and see an in-app reminder until verified.
