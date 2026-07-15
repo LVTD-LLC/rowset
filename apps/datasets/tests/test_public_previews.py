@@ -1,5 +1,9 @@
+import csv
+import io
+
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.datasets.choices import DatasetColumnType, DatasetMutationType
 from apps.datasets.public_previews import (
@@ -14,6 +18,14 @@ from apps.datasets.tests.factories import (
 
 pytestmark = pytest.mark.django_db
 
+PUBLIC_EXPORT_CONTENT_TYPES = {
+    "csv": "text/csv; charset=utf-8",
+    "jsonl": "application/x-ndjson; charset=utf-8",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "sqlite": "application/vnd.sqlite3",
+    "parquet": "application/vnd.apache.parquet",
+}
+
 
 def test_dataset_public_sharing_is_off_by_default(client, profile):
     dataset = create_ready_dataset(profile)
@@ -21,6 +33,85 @@ def test_dataset_public_sharing_is_off_by_default(client, profile):
     response = client.get(dataset.get_public_url())
 
     assert response.status_code == 404
+
+
+@pytest.mark.parametrize(("export_format", "content_type"), PUBLIC_EXPORT_CONTENT_TYPES.items())
+def test_public_dataset_exports_supported_formats(client, profile, export_format, content_type):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    response = client.get(f"{dataset.get_public_url()}export/{export_format}/")
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == content_type
+    assert response["Content-Disposition"].endswith(f'.{export_format}"')
+
+
+def test_public_dataset_export_contains_all_rows_despite_preview_query(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.public_page_size = 1
+    dataset.save(update_fields=["public_enabled", "public_page_size"])
+
+    response = client.get(
+        f"{dataset.get_public_url()}export/csv/",
+        {"row_q": "Ada", "page": "1"},
+    )
+
+    assert response.status_code == 200
+    exported = list(csv.DictReader(io.StringIO(response.content.decode())))
+    assert exported == [
+        {"name": "Ada", "email": "ada@example.com"},
+        {"name": "Grace", "email": "grace@example.com"},
+    ]
+
+
+@pytest.mark.parametrize("dataset_state", ["disabled", "archived"])
+def test_public_dataset_export_requires_active_public_preview(client, profile, dataset_state):
+    dataset = create_ready_dataset(profile)
+    if dataset_state == "archived":
+        dataset.public_enabled = True
+        dataset.archived_at = timezone.now()
+        dataset.save(update_fields=["public_enabled", "archived_at"])
+
+    response = client.get(f"{dataset.get_public_url()}export/csv/")
+
+    assert response.status_code == 404
+
+
+def test_public_dataset_export_rejects_unsupported_format(client, profile):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+
+    response = client.get(f"{dataset.get_public_url()}export/xml/")
+
+    assert response.status_code == 404
+
+
+def test_public_dataset_export_requires_password_unlock(auth_client, client, profile):
+    dataset = create_ready_dataset(profile)
+    auth_client.post(
+        reverse("dataset_update_public_settings", args=[dataset.key]),
+        {
+            "public_enabled": "on",
+            "public_page_size": "10",
+            "public_password": "secret-table",
+        },
+    )
+    dataset.refresh_from_db()
+    export_url = f"{dataset.get_public_url()}export/csv/"
+
+    locked_response = client.get(export_url)
+    assert locked_response.status_code == 404
+
+    unlock_response = client.post(dataset.get_public_url(), {"password": "secret-table"})
+    assert unlock_response.status_code == 302
+
+    unlocked_response = client.get(export_url)
+    assert unlocked_response.status_code == 200
+    assert unlocked_response["Content-Type"] == "text/csv; charset=utf-8"
 
 
 def test_dataset_owner_can_enable_public_sharing(auth_client, profile):

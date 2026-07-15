@@ -2842,6 +2842,19 @@ def _has_public_dataset_access(request, dataset: Dataset) -> bool:
     return has_public_preview_access(request.session, dataset)
 
 
+@require_http_methods(["GET", "HEAD"])
+def public_dataset_export(request, public_key, export_format):
+    dataset = get_object_or_404(
+        Dataset,
+        public_key=public_key,
+        public_enabled=True,
+        archived_at__isnull=True,
+    )
+    if not _has_public_dataset_access(request, dataset):
+        raise Http404("Dataset export not found.")
+    return _dataset_export_response(dataset, export_format)
+
+
 def _handle_public_password_access(
     request,
     dataset: Dataset,
