@@ -149,6 +149,10 @@ If your agent also supports reading URLs, include these public references:
 - [Help agents discover Rowset](/docs/agent-discovery)
 - [MCP tool reference](/docs/mcp-tools)
 
+If the workflow will hand data to another agent, service, or reviewer, read
+[how to share AI-agent data safely](/blog/share-ai-agent-data-safely) before
+choosing between a private key, export, or public preview.
+
 The agent should use the docs for current endpoint shapes and your prompt for
 workflow intent.
 
