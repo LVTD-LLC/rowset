@@ -513,7 +513,11 @@ class DatasetMutation(BaseModel):
             models.Index(
                 fields=["dataset", "-created_at"],
                 name="dataset_mut_dataset_time_idx",
-            )
+            ),
+            models.Index(
+                fields=["-created_at", "-id"],
+                name="dataset_mut_time_idx",
+            ),
         ]
 
     def __str__(self):

@@ -1,0 +1,264 @@
+<div id="admin-dashboard" class="@container space-y-10">
+    <header class="flex flex-col gap-5 @3xl:flex-row @3xl:items-end @3xl:justify-between">
+        <div>
+            <p class="text-base font-semibold text-emerald-700 dark:text-emerald-300 sm:text-sm">Internal overview</p>
+            <h1 class="fb-page-title mt-2 text-balance">How Rowset is doing</h1>
+            <p class="mt-3 max-w-[68ch] text-pretty text-base/7 text-slate-600 dark:text-slate-300 sm:text-sm/6">Product health first, with growth and operations close at hand.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <p class="htmx-indicator text-base text-slate-500 dark:text-slate-400 sm:text-sm"
+               aria-hidden="true">Updating…</p>
+            <span id="dashboard-status"
+                  class="sr-only"
+                  role="status"
+                  aria-live="polite"></span>
+            <div class="inline-flex rounded-lg border border-slate-950/10 p-1 dark:border-white/10"
+                 aria-label="Dashboard period">
+                {% for option in period_options %}
+                    <button type="button"
+                            class="fb-focus rounded-md px-3 py-1.5 text-sm font-medium {% if period_days == option %}bg-slate-950 text-white dark:bg-slate-100 dark:text-slate-950{% else %}text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white{% endif %}"
+                            hx-get="{% url 'admin_panel' %}?period={{ option }}"
+                            hx-target="#admin-dashboard"
+                            hx-swap="outerHTML"
+                            hx-push-url="true"
+                            hx-indicator=".htmx-indicator"
+                            hx-sync="closest #admin-dashboard:replace"
+                            hx-on::before-request="document.getElementById('dashboard-status').textContent = 'Updating dashboard'"
+                            aria-pressed="{% if period_days == option %}true{% else %}false{% endif %}">{{ option }} days</button>
+                {% endfor %}
+            </div>
+        </div>
+    </header>
+    <section aria-labelledby="product-health-heading">
+        <div class="flex flex-col gap-1">
+            <h2 id="product-health-heading" class="fb-section-title">Product health</h2>
+            <p class="text-base text-slate-500 dark:text-slate-400 sm:text-sm">The four signals that best describe the last {{ period_days }} days.</p>
+        </div>
+        <dl class="mt-5 grid grid-cols-1 border-y border-slate-950/10 dark:border-white/10 @md:grid-cols-2 @4xl:grid-cols-4">
+            {% for card in product_health_cards %}
+                <div class="border-t border-slate-950/10 py-5 first:border-t-0 dark:border-white/10 @md:[&:nth-child(-n+2)]:border-t-0 @md:[&:nth-child(2n)]:border-l @md:[&:nth-child(2n)]:pl-6 @md:[&:nth-child(2n+1)]:pr-6 @4xl:border-t-0 @4xl:px-6 @4xl:first:pl-0 @4xl:last:pr-0 @4xl:[&:not(:first-child)]:border-l">
+                    <dt class="truncate text-base font-medium text-slate-600 dark:text-slate-300 sm:text-sm">{{ card.label }}</dt>
+                    <dd class="mt-2 flex items-baseline gap-2">
+                        <p class="tabular-nums text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ card.value }}</p>
+                        <p class="text-base font-medium {% if card.trend.direction == 'up' %}text-emerald-700 dark:text-emerald-300{% elif card.trend.direction == 'down' %}text-rose-700 dark:text-rose-300{% else %}text-slate-500 dark:text-slate-400{% endif %} sm:text-sm">
+                            {% if card.trend.direction == 'up' %}
+                                ↑
+                            {% elif card.trend.direction == 'down' %}
+                                ↓
+                            {% endif %}
+                            {{ card.trend.label }}
+                        </p>
+                    </dd>
+                    <p class="mt-1 text-base text-slate-500 dark:text-slate-400 sm:text-sm">vs previous {{ period_days }} days</p>
+                </div>
+            {% endfor %}
+        </dl>
+    </section>
+    <div class="grid grid-cols-1 gap-6 @5xl:grid-cols-[2fr_1fr]">
+        <section class="rounded-lg border border-slate-950/10 p-5 dark:border-white/10"
+                 aria-labelledby="growth-heading">
+            <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-start @2xl:justify-between">
+                <div>
+                    <h2 id="growth-heading" class="fb-section-title">Growth &amp; activity</h2>
+                    <p class="mt-1 text-base text-slate-500 dark:text-slate-400 sm:text-sm">Daily movement across acquisition, activation, and agent work.</p>
+                </div>
+                <ul class="flex flex-wrap gap-x-4 gap-y-2 text-base text-slate-600 dark:text-slate-300 sm:text-sm"
+                    role="list">
+                    <li class="flex items-center gap-2"><span class="size-2 shrink-0 rounded-sm bg-sky-500" aria-hidden="true"></span>Signups</li>
+                    <li class="flex items-center gap-2"><span class="size-2 shrink-0 rounded-sm bg-emerald-500" aria-hidden="true"></span>Setups</li>
+                    <li class="flex items-center gap-2"><span class="size-2 shrink-0 rounded-sm bg-slate-500 dark:bg-slate-300"
+      aria-hidden="true"></span>Mutations</li>
+                </ul>
+            </div>
+            <div class="mt-6 overflow-x-auto pb-2">
+                <div class="flex h-56 min-w-[36rem] items-end gap-1 border-b border-slate-950/10 px-1 dark:border-white/10"
+                     role="img"
+                     aria-label="Daily signups, setup completions, and dataset mutations for the last {{ period_days }} days">
+                    {% for day in growth_series %}
+                        <div class="group fb-focus relative flex h-full min-w-2 flex-1 flex-col-reverse gap-px"
+                             tabindex="0"
+                             aria-label="{{ day.label }}. New users: {{ day.signups }}. Setup completions: {{ day.setups }}. Dataset mutations: {{ day.mutations }}."
+                             title="{{ day.label }}: {{ day.signups }} signups, {{ day.setups }} setups, {{ day.mutations }} mutations">
+                            {% if day.signups %}
+                                <div class="h-(--bar-height) min-h-0 rounded-t-sm bg-sky-500"
+                                     style="--bar-height: {{ day.signup_height_percent }}%"></div>
+                            {% endif %}
+                            {% if day.setups %}
+                                <div class="h-(--bar-height) min-h-0 rounded-t-sm bg-emerald-500"
+                                     style="--bar-height: {{ day.setup_height_percent }}%"></div>
+                            {% endif %}
+                            {% if day.mutations %}
+                                <div class="h-(--bar-height) min-h-0 rounded-t-sm bg-slate-500 dark:bg-slate-300"
+                                     style="--bar-height: {{ day.mutation_height_percent }}%"></div>
+                            {% endif %}
+                            <div class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-44 -translate-x-1/2 rounded-md bg-slate-950 p-2 text-sm text-white shadow-lg group-hover:block group-focus-within:block dark:bg-slate-100 dark:text-slate-950 dark:shadow-none">
+                                <p class="font-medium">{{ day.label }}</p>
+                                <p class="mt-1">{{ day.signups }} signups · {{ day.setups }} setups · {{ day.mutations }} mutations</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-2 flex min-w-[36rem] justify-between text-xs text-slate-500 dark:text-slate-400"
+                     aria-hidden="true">
+                    {% for day in growth_series %}
+                        {% if forloop.first or forloop.last %}<span>{{ day.label }}</span>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        <section class="rounded-lg border border-amber-950/15 bg-amber-50/50 p-5 dark:border-amber-200/15 dark:bg-amber-950/10"
+                 aria-labelledby="attention-heading">
+            <h2 id="attention-heading" class="fb-section-title">Needs attention</h2>
+            <p class="mt-1 text-base text-slate-600 dark:text-slate-300 sm:text-sm">Potential follow-ups, not system errors.</p>
+            <dl class="mt-5 divide-y divide-amber-950/10 dark:divide-amber-100/10">
+                <div class="flex items-center justify-between gap-4 pb-3">
+                    <dt class="text-base text-slate-700 dark:text-slate-200 sm:text-sm">Stalled onboarding</dt>
+                    <dd class="tabular-nums text-lg font-semibold text-slate-950 dark:text-slate-100">
+                        {{ attention.stalled_onboarding }}
+                    </dd>
+                </div>
+                <div class="flex items-center justify-between gap-4 py-3">
+                    <dt class="text-base text-slate-700 dark:text-slate-200 sm:text-sm">Keys never used</dt>
+                    <dd class="tabular-nums text-lg font-semibold text-slate-950 dark:text-slate-100">
+                        {{ attention.unused_agent_keys }}
+                    </dd>
+                </div>
+                <div class="flex items-center justify-between gap-4 py-3">
+                    <dt class="text-base text-slate-700 dark:text-slate-200 sm:text-sm">Keys inactive 30+ days</dt>
+                    <dd class="tabular-nums text-lg font-semibold text-slate-950 dark:text-slate-100">
+                        {{ attention.stale_agent_keys }}
+                    </dd>
+                </div>
+                <div class="flex items-center justify-between gap-4 py-3">
+                    <dt class="text-base text-slate-700 dark:text-slate-200 sm:text-sm">Trials expiring soon</dt>
+                    <dd class="tabular-nums text-lg font-semibold text-slate-950 dark:text-slate-100">
+                        {{ attention.trials_expiring }}
+                    </dd>
+                </div>
+                <div class="flex items-center justify-between gap-4 pt-3">
+                    <dt class="text-base text-slate-700 dark:text-slate-200 sm:text-sm">New feedback</dt>
+                    <dd class="tabular-nums text-lg font-semibold text-slate-950 dark:text-slate-100">
+                        {{ attention.new_feedback }}
+                    </dd>
+                </div>
+            </dl>
+        </section>
+    </div>
+    <div class="grid grid-cols-1 gap-6 @4xl:grid-cols-2">
+        <section class="rounded-lg border border-slate-950/10 p-5 dark:border-white/10"
+                 aria-labelledby="activation-heading">
+            <h2 id="activation-heading" class="fb-section-title">Activation funnel</h2>
+            <p class="mt-1 text-base text-slate-500 dark:text-slate-400 sm:text-sm">All-time progression for non-staff accounts.</p>
+            <ol class="mt-6 space-y-5" role="list">
+                {% for stage in activation_funnel %}
+                    <li>
+                        <div class="flex items-baseline justify-between gap-4">
+                            <p class="text-base font-medium text-slate-700 dark:text-slate-200 sm:text-sm">{{ stage.label }}</p>
+                            <p class="tabular-nums text-base text-slate-500 dark:text-slate-400 sm:text-sm">{{ stage.count }} · {{ stage.percent }}%</p>
+                        </div>
+                        <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-950/5 dark:bg-white/10">
+                            <div class="h-full w-(--progress) rounded-full bg-emerald-600 dark:bg-emerald-400"
+                                 style="--progress: {{ stage.percent }}%"></div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ol>
+        </section>
+        <section class="rounded-lg border border-slate-950/10 p-5 dark:border-white/10"
+                 aria-labelledby="growth-summary-heading">
+            <h2 id="growth-summary-heading" class="fb-section-title">Growth</h2>
+            <p class="mt-1 text-base text-slate-500 dark:text-slate-400 sm:text-sm">The broader account and commercial picture.</p>
+            <dl class="mt-6 grid grid-cols-2 gap-x-6 gap-y-8">
+                <div>
+                    <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Total users</dt>
+                    <dd class="mt-2 tabular-nums text-3xl font-semibold tracking-tight">
+                        {{ growth.total_users }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Setup rate</dt>
+                    <dd class="mt-2 tabular-nums text-3xl font-semibold tracking-tight">
+                        {{ growth.setup_rate }}%
+                    </dd>
+                </div>
+                <div>
+                    <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Active trials</dt>
+                    <dd class="mt-2 tabular-nums text-3xl font-semibold tracking-tight">
+                        {{ growth.active_trials }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Subscribers</dt>
+                    <dd class="mt-2 tabular-nums text-3xl font-semibold tracking-tight">
+                        {{ growth.subscribers }}
+                    </dd>
+                </div>
+            </dl>
+        </section>
+    </div>
+    <section aria-labelledby="operations-heading">
+        <div>
+            <h2 id="operations-heading" class="fb-section-title">Operations</h2>
+            <p class="mt-1 text-base text-slate-500 dark:text-slate-400 sm:text-sm">Current inventory and sharing footprint.</p>
+        </div>
+        <dl class="mt-5 grid grid-cols-2 gap-x-6 gap-y-6 border-y border-slate-950/10 py-5 dark:border-white/10 @3xl:grid-cols-5">
+            <div>
+                <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Total datasets</dt>
+                <dd class="mt-1 tabular-nums text-2xl font-semibold tracking-tight">
+                    {{ operations.datasets }}
+                </dd>
+            </div>
+            <div>
+                <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Total projects</dt>
+                <dd class="mt-1 tabular-nums text-2xl font-semibold tracking-tight">
+                    {{ operations.projects }}
+                </dd>
+            </div>
+            <div>
+                <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Rows stored</dt>
+                <dd class="mt-1 tabular-nums text-2xl font-semibold tracking-tight">
+                    {{ operations.rows_stored }}
+                </dd>
+            </div>
+            <div>
+                <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Public previews</dt>
+                <dd class="mt-1 tabular-nums text-2xl font-semibold tracking-tight">
+                    {{ operations.public_previews }}
+                </dd>
+            </div>
+            <div>
+                <dt class="truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">Active keys</dt>
+                <dd class="mt-1 tabular-nums text-2xl font-semibold tracking-tight">
+                    {{ operations.active_agent_keys }}
+                </dd>
+            </div>
+        </dl>
+    </section>
+    <section aria-labelledby="activity-heading">
+        <div class="flex flex-col gap-1 @2xl:flex-row @2xl:items-end @2xl:justify-between">
+            <div>
+                <h2 id="activity-heading" class="fb-section-title">Recent activity</h2>
+                <p class="mt-1 text-base text-slate-500 dark:text-slate-400 sm:text-sm">Accounts, feedback, and dataset work in one stream.</p>
+            </div>
+            <p class="text-base text-slate-400 dark:text-slate-500 sm:text-sm">Updated {{ generated_at|date:"M j, H:i" }}</p>
+        </div>
+        <ul class="mt-5 divide-y divide-slate-950/5 border-y border-slate-950/10 dark:divide-white/10 dark:border-white/10"
+            role="list">
+            {% for event in activity_feed %}
+                <li>
+                    <a href="{{ event.url }}"
+                       class="fb-focus flex min-w-0 flex-col gap-2 py-4 hover:bg-slate-950/3 dark:hover:bg-white/5 @2xl:flex-row @2xl:items-center">
+                        <p class="w-24 shrink-0 font-mono text-sm text-slate-500 dark:text-slate-400">{{ event.kind }}</p>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-base font-medium text-slate-950 dark:text-slate-100 sm:text-sm">{{ event.title }}</p>
+                            <p class="mt-1 truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">{{ event.detail }}</p>
+                        </div>
+                        <p class="shrink-0 text-base text-slate-400 dark:text-slate-500 sm:text-sm">{{ event.timestamp|timesince }} ago</p>
+                    </a>
+                </li>
+            {% empty %}
+                <li class="py-8 text-center text-base text-slate-500 dark:text-slate-400 sm:text-sm">No activity yet.</li>
+            {% endfor %}
+        </ul>
+    </section>
+</div>
