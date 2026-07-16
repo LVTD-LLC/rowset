@@ -34,7 +34,7 @@ services:
       context: .
       dockerfile: Dockerfile-python
     working_dir: /app
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "python manage.py migrate && gunicorn rowset.asgi:application --bind 0.0.0.0:8000 --workers 1 --worker-class uvicorn_worker.UvicornWorker --timeout 120"
     volumes:
       - .:/app
     ports:
