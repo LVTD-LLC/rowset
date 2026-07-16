@@ -22,3 +22,9 @@ def auth_client(client, user):
 def profile(user):
     provision_profile_api_key(user.profile)
     return user.profile
+
+
+@pytest.fixture
+def api_client(client, profile):
+    client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {profile.key}"
+    return client

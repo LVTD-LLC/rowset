@@ -55,8 +55,8 @@ The command stores the environment variable name. Make sure the agent runtime
 can read the full `ROWSET_API_KEY` value before the client starts.
 
 If your client only supports custom headers, set `Authorization` to
-`Bearer {{ api_key_placeholder }}`. Use `X-API-Key` only for REST clients that
-cannot send bearer tokens.
+`Bearer {{ api_key_placeholder }}`. Private REST requests use the same bearer
+authentication format.
 
 ## 4. Verify the connection
 

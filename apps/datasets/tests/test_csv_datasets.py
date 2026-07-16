@@ -3018,22 +3018,19 @@ def test_dataset_export_allows_active_dataset(auth_client, profile):
     assert response["Content-Type"].startswith("text/csv")
 
 
-def test_dataset_api_crud_and_export(client, profile):
+def test_dataset_api_crud_and_export(api_client, profile):
     dataset = create_ready_dataset(profile)
-    api_key = profile.key
 
-    list_response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={api_key}")
+    list_response = api_client.get(f"/api/datasets/{dataset.key}/rows")
     assert list_response.status_code == 200
     assert list_response.json()["count"] == 2
 
-    public_key_list_response = client.get(
-        f"/api/datasets/{dataset.public_key}/rows?api_key={api_key}"
-    )
+    public_key_list_response = api_client.get(f"/api/datasets/{dataset.public_key}/rows")
     assert public_key_list_response.status_code == 200
     assert public_key_list_response.json()["dataset"] == str(dataset.key)
 
-    create_response = client.post(
-        f"/api/datasets/{dataset.public_key}/rows?api_key={api_key}",
+    create_response = api_client.post(
+        f"/api/datasets/{dataset.public_key}/rows",
         data={"data": {"name": "Katherine", "email": "kat@example.com"}},
         content_type="application/json",
     )
@@ -3042,29 +3039,28 @@ def test_dataset_api_crud_and_export(client, profile):
     row_id = create_response.json()["row"]["id"]
     assert create_response.json()["row"]["index_value"] == "kat@example.com"
 
-    missing_index_patch_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/by-index"
-        f"?api_key={api_key}&index_value=missing@example.com",
+    missing_index_patch_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?index_value=missing@example.com",
         data={"data": {"name": "Missing"}},
         content_type="application/json",
     )
     assert missing_index_patch_response.status_code == 404
 
-    conflicting_index_patch_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=kat@example.com",
+    conflicting_index_patch_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?index_value=kat@example.com",
         data={"data": {"email": "ada@example.com"}},
         content_type="application/json",
     )
     assert conflicting_index_patch_response.status_code == 409
 
-    get_by_index_response = client.get(
-        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=kat@example.com"
+    get_by_index_response = api_client.get(
+        f"/api/datasets/{dataset.key}/rows/by-index?index_value=kat@example.com"
     )
     assert get_by_index_response.status_code == 200
     assert get_by_index_response.json()["row"]["data"]["name"] == "Katherine"
 
-    patch_by_index_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/by-index?api_key={api_key}&index_value=kat@example.com",
+    patch_by_index_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?index_value=kat@example.com",
         data={"data": {"name": "Katherine Johnson", "email": "katherine.johnson@example.com"}},
         content_type="application/json",
     )
@@ -3073,15 +3069,14 @@ def test_dataset_api_crud_and_export(client, profile):
     assert patch_by_index_response.json()["row"]["index_value"] == "katherine.johnson@example.com"
     assert patch_by_index_response.json()["row"]["data"]["name"] == "Katherine Johnson"
 
-    get_updated_index_response = client.get(
-        f"/api/datasets/{dataset.key}/rows/by-index"
-        f"?api_key={api_key}&index_value=katherine.johnson@example.com"
+    get_updated_index_response = api_client.get(
+        f"/api/datasets/{dataset.key}/rows/by-index?index_value=katherine.johnson@example.com"
     )
     assert get_updated_index_response.status_code == 200
     assert get_updated_index_response.json()["row"]["id"] == row_id
 
-    patch_response = client.patch(
-        f"/api/datasets/{dataset.public_key}/rows/{row_id}?api_key={api_key}",
+    patch_response = api_client.patch(
+        f"/api/datasets/{dataset.public_key}/rows/{row_id}",
         data={"data": {"email": "katherine@example.com", "ignored": "nope"}},
         content_type="application/json",
     )
@@ -3092,25 +3087,23 @@ def test_dataset_api_crud_and_export(client, profile):
         "email": "katherine@example.com",
     }
 
-    export_response = client.get(f"/api/datasets/{dataset.key}/export.csv?api_key={api_key}")
+    export_response = api_client.get(f"/api/datasets/{dataset.key}/export.csv")
     assert export_response.status_code == 200
     exported = list(csv.DictReader(io.StringIO(export_response.content.decode())))
     assert exported[0] == {"name": "Ada", "email": "ada@example.com"}
 
-    delete_response = client.delete(
-        f"/api/datasets/{dataset.public_key}/rows/{row_id}?api_key={api_key}"
-    )
+    delete_response = api_client.delete(f"/api/datasets/{dataset.public_key}/rows/{row_id}")
     assert delete_response.status_code == 200
     assert delete_response.json()["dataset"] == str(dataset.key)
     assert not DatasetRow.objects.filter(id=row_id).exists()
 
 
-def test_dataset_api_exports_archived_dataset(client, profile):
+def test_dataset_api_exports_archived_dataset(api_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.archived_at = timezone.now()
     dataset.save(update_fields=["archived_at", "updated_at"])
 
-    response = client.get(f"/api/datasets/{dataset.key}/export.csv?api_key={profile.key}")
+    response = api_client.get(f"/api/datasets/{dataset.key}/export.csv")
 
     assert response.status_code == 200
     exported = list(csv.DictReader(io.StringIO(response.content.decode())))
@@ -3428,9 +3421,9 @@ def test_dataset_asset_delete_records_failed_file_cleanup(
     assert deletion.last_error == ""
 
 
-def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, monkeypatch):
-    create_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_attaches_image_asset_and_serves_content(api_client, profile, monkeypatch):
+    create_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Product photos",
             "headers": ["sku", "name", "photo"],
@@ -3450,8 +3443,8 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     assert create_response.json()["dataset"]["public_url"] is None
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
 
-    attach_response = client.post(
-        f"/api/datasets/{dataset.key}/rows/by-index/image?api_key={profile.key}&index_value=A-1",
+    attach_response = api_client.post(
+        f"/api/datasets/{dataset.key}/rows/by-index/image?index_value=A-1",
         data={
             "column_name": "photo",
             "filename": "adapter.png",
@@ -3495,9 +3488,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     def fail_public_head_work(*args, **kwargs):
         raise AssertionError("Public preview HEAD should not build row display state.")
 
-    metadata_response = client.get(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
-    )
+    metadata_response = api_client.get(f"/api/datasets/{dataset.key}/assets/{asset.key}")
     assert metadata_response.status_code == 200
     assert metadata_response.json()["asset"]["ref"] == asset.asset_ref
     assert metadata_response.json()["asset"]["has_thumbnail"] is False
@@ -3506,8 +3497,9 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     )
     assert metadata_response.json()["asset"]["public_content_url"] is None
 
-    unauthenticated_head_response = client.head(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
+    unauthenticated_head_response = api_client.head(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original",
+        HTTP_AUTHORIZATION="",
     )
     assert unauthenticated_head_response.status_code == 401
 
@@ -3517,26 +3509,22 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
             "open",
             fail_head_file_open,
         )
-        original_head_response = client.head(
-            f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
-            f"?api_key={profile.key}&variant=original"
+        original_head_response = api_client.head(
+            f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
         )
     assert original_head_response.status_code == 200
     assert original_head_response["Content-Type"] == "image/png"
 
-    list_response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={profile.key}")
+    list_response = api_client.get(f"/api/datasets/{dataset.key}/rows")
     assert list_response.status_code == 200
     assert list_response.json()["rows"][0]["assets"][0]["ref"] == asset.asset_ref
 
-    row_response = client.get(
-        f"/api/datasets/{dataset.key}/rows/by-index?api_key={profile.key}&index_value=A-1"
-    )
+    row_response = api_client.get(f"/api/datasets/{dataset.key}/rows/by-index?index_value=A-1")
     assert row_response.status_code == 200
     assert row_response.json()["row"]["assets"][0]["ref"] == asset.asset_ref
 
-    original_response = client.get(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
-        f"?api_key={profile.key}&variant=original"
+    original_response = api_client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
     )
     assert original_response.status_code == 200
     assert original_response["Content-Type"] == "image/png"
@@ -3544,17 +3532,16 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     assert original_response["Cache-Control"] == "private, max-age=86400, immutable"
     assert original_response.content.startswith(b"\x89PNG")
 
-    thumbnail_response = client.get(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
-        f"?api_key={profile.key}&variant=thumbnail"
+    thumbnail_response = api_client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=thumbnail"
     )
     assert thumbnail_response.status_code == 200
     assert thumbnail_response["Content-Type"] == "image/png"
     assert thumbnail_response["Cache-Control"] == "private, max-age=86400, immutable"
     assert thumbnail_response.content.startswith(b"\x89PNG")
 
-    client.force_login(profile.user)
-    dataset_detail = client.get(dataset.get_absolute_url())
+    api_client.force_login(profile.user)
+    dataset_detail = api_client.get(dataset.get_absolute_url())
     detail_content = dataset_detail.content.decode()
     assert dataset_detail.status_code == 200
     assert "adapter.png" in detail_content
@@ -3562,9 +3549,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
 
     dataset.public_enabled = True
     dataset.save(update_fields=["public_enabled"])
-    public_metadata_response = client.get(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
-    )
+    public_metadata_response = api_client.get(f"/api/datasets/{dataset.key}/assets/{asset.key}")
     public_asset_payload = public_metadata_response.json()["asset"]
     assert public_asset_payload["public_enabled"] is True
     assert public_asset_payload["public_content_url"].endswith(
@@ -3578,9 +3563,9 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
             "apps.datasets.views._dataset_row_query_context",
             fail_public_head_work,
         )
-        public_head_response = client.head(dataset.get_public_url())
+        public_head_response = api_client.head(dataset.get_public_url())
     assert public_head_response.status_code == 200
-    public_response = client.get(dataset.get_public_url())
+    public_response = api_client.get(dataset.get_public_url())
     public_content = public_response.content.decode()
     assert public_response.status_code == 200
     assert "adapter.png" in public_content
@@ -3588,7 +3573,7 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
         reverse("public_dataset_asset_content", args=[dataset.public_key, asset.key])
         in public_content
     )
-    public_asset_response = client.get(
+    public_asset_response = api_client.get(
         f"{reverse('public_dataset_asset_content', args=[dataset.public_key, asset.key])}"
         "?variant=thumbnail"
     )
@@ -3600,14 +3585,14 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
             "open",
             fail_head_file_open,
         )
-        public_asset_head_response = client.head(
+        public_asset_head_response = api_client.head(
             f"{reverse('public_dataset_asset_content', args=[dataset.public_key, asset.key])}"
             "?variant=thumbnail"
         )
     assert public_asset_head_response.status_code == 200
     assert public_asset_head_response["Content-Type"] == "image/png"
 
-    public_row_response = client.get(
+    public_row_response = api_client.get(
         reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
     )
     assert public_row_response.status_code == 200
@@ -3617,20 +3602,18 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
             "apps.datasets.views._row_cells",
             fail_public_head_work,
         )
-        public_row_head_response = client.head(
+        public_row_head_response = api_client.head(
             reverse("public_dataset_row_detail", args=[dataset.public_key, row.id])
         )
     assert public_row_head_response.status_code == 200
 
-    password_response = client.patch(
-        f"/api/datasets/{dataset.key}/public-preview?api_key={profile.key}",
+    password_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/public-preview",
         data={"public_enabled": True, "public_password": "secret-table"},
         content_type="application/json",
     )
     assert password_response.status_code == 200
-    password_metadata_response = client.get(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}?api_key={profile.key}"
-    )
+    password_metadata_response = api_client.get(f"/api/datasets/{dataset.key}/assets/{asset.key}")
     password_asset_payload = password_metadata_response.json()["asset"]
     assert password_asset_payload["public_enabled"] is True
     assert password_asset_payload["public_password_protected"] is True
@@ -3638,9 +3621,9 @@ def test_dataset_api_attaches_image_asset_and_serves_content(client, profile, mo
     assert password_asset_payload["public_thumbnail_url"] is None
 
 
-def test_dataset_api_attaches_audio_asset_and_serves_content(client, profile, monkeypatch):
-    create_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_attaches_audio_asset_and_serves_content(api_client, profile, monkeypatch):
+    create_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Interview clips",
             "headers": ["clip_id", "title", "audio"],
@@ -3658,8 +3641,8 @@ def test_dataset_api_attaches_audio_asset_and_serves_content(client, profile, mo
     assert create_response.status_code == 201
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
 
-    attach_response = client.post(
-        f"/api/datasets/{dataset.key}/rows/by-index/audio?api_key={profile.key}&index_value=C-1",
+    attach_response = api_client.post(
+        f"/api/datasets/{dataset.key}/rows/by-index/audio?index_value=C-1",
         data={
             "column_name": "audio",
             "filename": "intro.wav",
@@ -3697,16 +3680,14 @@ def test_dataset_api_attaches_audio_asset_and_serves_content(client, profile, mo
             "open",
             fail_head_file_open,
         )
-        head_response = client.head(
-            f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
-            f"?api_key={profile.key}&variant=original"
+        head_response = api_client.head(
+            f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
         )
     assert head_response.status_code == 200
     assert head_response["Content-Type"] == "audio/wav"
 
-    content_response = client.get(
-        f"/api/datasets/{dataset.key}/assets/{asset.key}/content"
-        f"?api_key={profile.key}&variant=original"
+    content_response = api_client.get(
+        f"/api/datasets/{dataset.key}/assets/{asset.key}/content?variant=original"
     )
     assert content_response.status_code == 200
     assert content_response["Content-Type"] == "audio/wav"
@@ -3714,8 +3695,8 @@ def test_dataset_api_attaches_audio_asset_and_serves_content(client, profile, mo
     assert content_response["Cache-Control"] == "private, max-age=86400, immutable"
     assert content_response.content.startswith(b"RIFF")
 
-    client.force_login(profile.user)
-    dataset_detail = client.get(dataset.get_absolute_url())
+    api_client.force_login(profile.user)
+    dataset_detail = api_client.get(dataset.get_absolute_url())
     detail_content = dataset_detail.content.decode()
     assert dataset_detail.status_code == 200
     assert "intro.wav" in detail_content
@@ -3724,7 +3705,7 @@ def test_dataset_api_attaches_audio_asset_and_serves_content(client, profile, mo
 
     dataset.public_enabled = True
     dataset.save(update_fields=["public_enabled"])
-    public_response = client.get(dataset.get_public_url())
+    public_response = api_client.get(dataset.get_public_url())
     public_content = public_response.content.decode()
     assert public_response.status_code == 200
     assert "intro.wav" in public_content
@@ -3735,9 +3716,9 @@ def test_dataset_api_attaches_audio_asset_and_serves_content(client, profile, mo
     )
 
 
-def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profile):
-    create_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_rejects_direct_image_values_and_clears_asset(api_client, profile):
+    create_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Receipts",
             "headers": ["receipt_id", "image"],
@@ -3749,8 +3730,8 @@ def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profil
     assert create_response.status_code == 201
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
 
-    invalid_create = client.post(
-        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+    invalid_create = api_client.post(
+        f"/api/datasets/{dataset.key}/rows",
         data={"data": {"receipt_id": "R-1", "image": "https://example.com/receipt.png"}},
         content_type="application/json",
     )
@@ -3759,16 +3740,16 @@ def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profil
         "Column 'image' is an image column. Leave it blank and attach an image asset."
     )
 
-    create_row = client.post(
-        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+    create_row = api_client.post(
+        f"/api/datasets/{dataset.key}/rows",
         data={"data": {"receipt_id": "R-1", "image": ""}},
         content_type="application/json",
     )
     assert create_row.status_code == 200
     row_id = create_row.json()["row"]["id"]
 
-    attach_response = client.post(
-        f"/api/datasets/{dataset.key}/rows/{row_id}/image?api_key={profile.key}",
+    attach_response = api_client.post(
+        f"/api/datasets/{dataset.key}/rows/{row_id}/image",
         data={
             "column_name": "image",
             "filename": "receipt.png",
@@ -3780,8 +3761,8 @@ def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profil
     assert attach_response.status_code == 200
     asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
 
-    idempotent_patch = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+    idempotent_patch = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}",
         data={"data": {"image": asset.asset_ref}},
         content_type="application/json",
     )
@@ -3789,24 +3770,24 @@ def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profil
     assert idempotent_patch.json()["row"]["data"]["image"] == asset.asset_ref
     assert DatasetAsset.objects.filter(pk=asset.pk).exists()
 
-    invalid_patch = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+    invalid_patch = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}",
         data={"data": {"image": "asset:00000000-0000-0000-0000-000000000000"}},
         content_type="application/json",
     )
     assert invalid_patch.status_code == 400
     assert DatasetAsset.objects.filter(pk=asset.pk).exists()
 
-    invalid_clear = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+    invalid_clear = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}",
         data={"data": {"receipt_id": "", "image": ""}},
         content_type="application/json",
     )
     assert invalid_clear.status_code == 400
     assert DatasetAsset.objects.filter(pk=asset.pk).exists()
 
-    clear_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+    clear_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}",
         data={"data": {"image": ""}},
         content_type="application/json",
     )
@@ -3815,9 +3796,9 @@ def test_dataset_api_rejects_direct_image_values_and_clears_asset(client, profil
     assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
 
 
-def test_dataset_api_rejects_direct_audio_values_and_clears_asset(client, profile):
-    create_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_rejects_direct_audio_values_and_clears_asset(api_client, profile):
+    create_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Clips",
             "headers": ["clip_id", "audio"],
@@ -3829,8 +3810,8 @@ def test_dataset_api_rejects_direct_audio_values_and_clears_asset(client, profil
     assert create_response.status_code == 201
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
 
-    invalid_create = client.post(
-        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+    invalid_create = api_client.post(
+        f"/api/datasets/{dataset.key}/rows",
         data={"data": {"clip_id": "C-1", "audio": "https://example.com/intro.wav"}},
         content_type="application/json",
     )
@@ -3839,16 +3820,16 @@ def test_dataset_api_rejects_direct_audio_values_and_clears_asset(client, profil
         "Column 'audio' is an audio column. Leave it blank and attach an audio asset."
     )
 
-    create_row = client.post(
-        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+    create_row = api_client.post(
+        f"/api/datasets/{dataset.key}/rows",
         data={"data": {"clip_id": "C-1", "audio": ""}},
         content_type="application/json",
     )
     assert create_row.status_code == 200
     row_id = create_row.json()["row"]["id"]
 
-    attach_response = client.post(
-        f"/api/datasets/{dataset.key}/rows/{row_id}/audio?api_key={profile.key}",
+    attach_response = api_client.post(
+        f"/api/datasets/{dataset.key}/rows/{row_id}/audio",
         data={
             "column_name": "audio",
             "filename": "intro.wav",
@@ -3860,8 +3841,8 @@ def test_dataset_api_rejects_direct_audio_values_and_clears_asset(client, profil
     assert attach_response.status_code == 200
     asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
 
-    idempotent_patch = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+    idempotent_patch = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}",
         data={"data": {"audio": asset.asset_ref}},
         content_type="application/json",
     )
@@ -3869,16 +3850,16 @@ def test_dataset_api_rejects_direct_audio_values_and_clears_asset(client, profil
     assert idempotent_patch.json()["row"]["data"]["audio"] == asset.asset_ref
     assert DatasetAsset.objects.filter(pk=asset.pk).exists()
 
-    invalid_patch = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+    invalid_patch = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}",
         data={"data": {"audio": "asset:00000000-0000-0000-0000-000000000000"}},
         content_type="application/json",
     )
     assert invalid_patch.status_code == 400
     assert DatasetAsset.objects.filter(pk=asset.pk).exists()
 
-    clear_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row_id}?api_key={profile.key}",
+    clear_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row_id}",
         data={"data": {"audio": ""}},
         content_type="application/json",
     )
@@ -3887,9 +3868,9 @@ def test_dataset_api_rejects_direct_audio_values_and_clears_asset(client, profil
     assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
 
 
-def test_dataset_api_renames_and_drops_image_column_assets(client, profile):
-    create_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_renames_and_drops_image_column_assets(api_client, profile):
+    create_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Catalog images",
             "headers": ["sku", "photo"],
@@ -3903,8 +3884,8 @@ def test_dataset_api_renames_and_drops_image_column_assets(client, profile):
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"], profile=profile)
     row = dataset.rows.get(index_value="A-1")
 
-    attach_response = client.post(
-        f"/api/datasets/{dataset.key}/rows/{row.id}/image?api_key={profile.key}",
+    attach_response = api_client.post(
+        f"/api/datasets/{dataset.key}/rows/{row.id}/image",
         data={
             "column_name": "photo",
             "filename": "adapter.png",
@@ -3916,8 +3897,8 @@ def test_dataset_api_renames_and_drops_image_column_assets(client, profile):
     assert attach_response.status_code == 200
     asset = DatasetAsset.objects.get(key=attach_response.json()["asset"]["key"])
 
-    rename_response = client.post(
-        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+    rename_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/rename",
         data={"old_name": "photo", "new_name": "hero_image"},
         content_type="application/json",
     )
@@ -3928,8 +3909,8 @@ def test_dataset_api_renames_and_drops_image_column_assets(client, profile):
     assert row.data["hero_image"] == asset.asset_ref
     assert "photo" not in row.data
 
-    drop_response = client.post(
-        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+    drop_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/drop",
         data={"name": "hero_image"},
         content_type="application/json",
     )
@@ -3937,9 +3918,9 @@ def test_dataset_api_renames_and_drops_image_column_assets(client, profile):
     assert not DatasetAsset.objects.filter(pk=asset.pk).exists()
 
 
-def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(client, profile):
-    image_index_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(api_client, profile):
+    image_index_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Invalid image index",
             "headers": ["photo", "name"],
@@ -3954,8 +3935,8 @@ def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(client, pro
     )
 
     dataset = create_ready_dataset(profile)
-    invalid_default_response = client.post(
-        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+    invalid_default_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns",
         data={
             "name": "photo",
             "default_value": "https://example.com/photo.png",
@@ -3968,8 +3949,8 @@ def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(client, pro
         "Column 'photo' is an image column. Leave it blank and attach an image asset."
     )
 
-    audio_index_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    audio_index_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Invalid audio index",
             "headers": ["clip", "name"],
@@ -3983,8 +3964,8 @@ def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(client, pro
         "Audio columns cannot be used as the dataset index."
     )
 
-    invalid_audio_default_response = client.post(
-        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+    invalid_audio_default_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns",
         data={
             "name": "clip",
             "default_value": "https://example.com/clip.wav",
@@ -3998,14 +3979,12 @@ def test_dataset_api_rejects_image_index_and_nonblank_image_defaults(client, pro
     )
 
 
-def test_dataset_api_filters_and_sorts_rows(client, profile):
+def test_dataset_api_filters_and_sorts_rows(api_client, profile):
     dataset = configure_filterable_dataset(create_ready_dataset(profile))
-    api_key = profile.key
 
-    filtered_response = client.get(
+    filtered_response = api_client.get(
         f"/api/datasets/{dataset.key}/rows",
         {
-            "api_key": api_key,
             "filters": json.dumps({"active": "true"}),
             "sort": "name",
             "direction": "desc",
@@ -4024,10 +4003,9 @@ def test_dataset_api_filters_and_sorts_rows(client, profile):
         "Ada Lovelace",
     ]
 
-    search_response = client.get(
+    search_response = api_client.get(
         f"/api/datasets/{dataset.key}/rows",
         {
-            "api_key": api_key,
             "query": "grace",
             "sort": "score",
         },
@@ -4037,26 +4015,25 @@ def test_dataset_api_filters_and_sorts_rows(client, profile):
     assert search_response.json()["count"] == 1
     assert search_response.json()["rows"][0]["data"]["name"] == "Grace Hopper"
 
-    invalid_sort_response = client.get(
+    invalid_sort_response = api_client.get(
         f"/api/datasets/{dataset.key}/rows",
-        {"api_key": api_key, "sort": "missing"},
+        {"sort": "missing"},
     )
     assert invalid_sort_response.status_code == 400
     assert "Row sort" in invalid_sort_response.json()["detail"]
 
-    invalid_filter_response = client.get(
+    invalid_filter_response = api_client.get(
         f"/api/datasets/{dataset.key}/rows",
         {
-            "api_key": api_key,
             "filters": json.dumps({"missing": "value"}),
         },
     )
     assert invalid_filter_response.status_code == 400
     assert "not in this dataset" in invalid_filter_response.json()["detail"]
 
-    malformed_filters_response = client.get(
+    malformed_filters_response = api_client.get(
         f"/api/datasets/{dataset.key}/rows",
-        {"api_key": api_key, "filters": "not-json"},
+        {"filters": "not-json"},
     )
     assert malformed_filters_response.status_code == 400
     assert "filters must be a JSON object" in malformed_filters_response.json()["detail"]
@@ -4186,11 +4163,10 @@ def test_dataset_row_service_handles_supported_non_iso_datetime_formats(profile)
     ]
 
 
-def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):
+def test_dataset_api_exports_jsonl_xlsx_and_sqlite(api_client, profile):
     dataset = create_ready_dataset(profile)
-    api_key = profile.key
 
-    jsonl_response = client.get(f"/api/datasets/{dataset.key}/export.jsonl?api_key={api_key}")
+    jsonl_response = api_client.get(f"/api/datasets/{dataset.key}/export.jsonl")
     assert jsonl_response.status_code == 200
     assert jsonl_response["Content-Type"] == "application/x-ndjson; charset=utf-8"
     assert [json.loads(line) for line in jsonl_response.content.decode().splitlines()] == [
@@ -4198,7 +4174,7 @@ def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):
         {"name": "Grace", "email": "grace@example.com"},
     ]
 
-    xlsx_response = client.get(f"/api/datasets/{dataset.key}/export.xlsx?api_key={api_key}")
+    xlsx_response = api_client.get(f"/api/datasets/{dataset.key}/export.xlsx")
     assert xlsx_response.status_code == 200
     assert (
         xlsx_response["Content-Type"]
@@ -4211,7 +4187,7 @@ def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):
         "ada@example.com",
     ]
 
-    sqlite_response = client.get(f"/api/datasets/{dataset.key}/export.sqlite?api_key={api_key}")
+    sqlite_response = api_client.get(f"/api/datasets/{dataset.key}/export.sqlite")
     assert sqlite_response.status_code == 200
     assert sqlite_response["Content-Type"] == "application/vnd.sqlite3"
     assert sqlite_rows(sqlite_response.content)[0] == {
@@ -4220,7 +4196,7 @@ def test_dataset_api_exports_jsonl_xlsx_and_sqlite(client, profile):
     }
 
 
-def test_dataset_api_archives_and_restores_dataset(client, profile):
+def test_dataset_api_archives_and_restores_dataset(api_client, profile):
     project = Project.objects.create(profile=profile, name="Cleanup")
     dataset = create_ready_dataset(profile)
     dataset.project = project
@@ -4228,7 +4204,7 @@ def test_dataset_api_archives_and_restores_dataset(client, profile):
     dataset.save(update_fields=["project", "public_enabled"])
     public_url = reverse("public_dataset", args=[dataset.public_key])
 
-    archive_response = client.delete(f"/api/datasets/{dataset.key}?api_key={profile.key}")
+    archive_response = api_client.delete(f"/api/datasets/{dataset.key}")
 
     assert archive_response.status_code == 200
     assert archive_response.json()["message"] == "Dataset archived."
@@ -4237,23 +4213,23 @@ def test_dataset_api_archives_and_restores_dataset(client, profile):
     assert dataset.public_enabled is False
     assert DatasetRow.objects.filter(dataset=dataset).count() == 2
 
-    list_response = client.get(f"/api/datasets?api_key={profile.key}")
+    list_response = api_client.get("/api/datasets")
     assert list_response.status_code == 200
     assert list_response.json()["datasets"] == []
 
-    project_response = client.get(f"/api/projects/{project.key}?api_key={profile.key}")
+    project_response = api_client.get(f"/api/projects/{project.key}")
     assert project_response.status_code == 200
     assert project_response.json()["project"]["dataset_count"] == 0
     assert project_response.json()["datasets"]["datasets"] == []
 
-    public_response = client.get(public_url)
+    public_response = api_client.get(public_url)
     assert public_response.status_code == 404
 
-    already_archived_response = client.delete(f"/api/datasets/{dataset.key}?api_key={profile.key}")
+    already_archived_response = api_client.delete(f"/api/datasets/{dataset.key}")
     assert already_archived_response.status_code == 200
     assert already_archived_response.json()["message"] == "Dataset was already archived."
 
-    restore_response = client.post(f"/api/datasets/{dataset.key}/restore?api_key={profile.key}")
+    restore_response = api_client.post(f"/api/datasets/{dataset.key}/restore")
 
     assert restore_response.status_code == 200
     assert restore_response.json()["message"] == "Dataset restored."
@@ -4261,13 +4237,11 @@ def test_dataset_api_archives_and_restores_dataset(client, profile):
     assert dataset.archived_at is None
     assert dataset.public_enabled is False
 
-    already_restored_response = client.post(
-        f"/api/datasets/{dataset.key}/restore?api_key={profile.key}"
-    )
+    already_restored_response = api_client.post(f"/api/datasets/{dataset.key}/restore")
     assert already_restored_response.status_code == 200
     assert already_restored_response.json()["message"] == "Dataset was not archived."
 
-    restored_list_response = client.get(f"/api/datasets?api_key={profile.key}")
+    restored_list_response = api_client.get("/api/datasets")
     assert restored_list_response.status_code == 200
     assert [item["key"] for item in restored_list_response.json()["datasets"]] == [str(dataset.key)]
     assert list(dataset.mutations.values_list("mutation_type", flat=True)) == [
@@ -4276,13 +4250,13 @@ def test_dataset_api_archives_and_restores_dataset(client, profile):
     ]
 
 
-def test_archiving_already_archived_dataset_records_public_preview_disable(client, profile):
+def test_archiving_already_archived_dataset_records_public_preview_disable(api_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.archived_at = timezone.now()
     dataset.public_enabled = True
     dataset.save(update_fields=["archived_at", "public_enabled"])
 
-    response = client.delete(f"/api/datasets/{dataset.key}?api_key={profile.key}")
+    response = api_client.delete(f"/api/datasets/{dataset.key}")
 
     assert response.status_code == 200
     assert response.json()["message"] == "Dataset archived."
@@ -4298,14 +4272,14 @@ def test_archiving_already_archived_dataset_records_public_preview_disable(clien
     }
 
 
-def test_dataset_api_lists_archived_datasets_separately(client, profile):
+def test_dataset_api_lists_archived_datasets_separately(api_client, profile):
     active_dataset = create_ready_dataset(profile)
     archived_dataset = create_ready_dataset(profile)
     archived_dataset.name = "Archived people"
     archived_dataset.archived_at = timezone.now()
     archived_dataset.save(update_fields=["name", "archived_at"])
 
-    archived_response = client.get(f"/api/datasets/archived?api_key={profile.key}")
+    archived_response = api_client.get("/api/datasets/archived")
 
     assert archived_response.status_code == 200
     assert archived_response.json()["total_count"] == 1
@@ -4315,7 +4289,7 @@ def test_dataset_api_lists_archived_datasets_separately(client, profile):
     assert archived_response.json()["datasets"][0]["name"] == "Archived people"
     assert archived_response.json()["datasets"][0]["archived_at"] is not None
 
-    active_response = client.get(f"/api/datasets?api_key={profile.key}")
+    active_response = api_client.get("/api/datasets")
     assert active_response.status_code == 200
     assert [item["key"] for item in active_response.json()["datasets"]] == [str(active_dataset.key)]
 
@@ -4391,12 +4365,12 @@ def test_named_agent_api_key_attribution_is_visible_in_dataset_ui(client, profil
     assert "Last updated by OpenClaw" in home_content
 
 
-def test_row_update_mutation_records_field_diffs_and_renders_history(client, profile):
+def test_row_update_mutation_records_field_diffs_and_renders_history(api_client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.get(row_number=1)
 
-    patch_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    patch_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={
             "data": {
                 "email": "ada+updated@example.com",
@@ -4428,9 +4402,9 @@ def test_row_update_mutation_records_field_diffs_and_renders_history(client, pro
         "index_changed": True,
     }
 
-    client.force_login(profile.user)
-    detail_content = client.get(dataset.get_absolute_url()).content.decode()
-    changes_content = client.get(dataset.get_changes_url()).content.decode()
+    api_client.force_login(profile.user)
+    detail_content = api_client.get(dataset.get_absolute_url()).content.decode()
+    changes_content = api_client.get(dataset.get_changes_url()).content.decode()
 
     assert "Row 1 updated." not in detail_content
     assert "Row 1 updated." in changes_content
@@ -4500,12 +4474,12 @@ def test_dataset_changes_hides_legacy_placeholder_diff_labels(auth_client, profi
     assert "New value" not in changes_content
 
 
-def test_row_update_mutation_omits_noop_fields(client, profile):
+def test_row_update_mutation_omits_noop_fields(api_client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.get(row_number=1)
 
-    patch_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    patch_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={"data": {"email": "ada@example.com", "name": "Ada"}},
         content_type="application/json",
     )
@@ -4549,11 +4523,11 @@ def test_row_update_service_null_patch_clears_cell(profile):
     }
 
 
-def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(client, profile):
+def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(api_client, profile):
     people, messages = create_crm_datasets(profile)
 
-    create_response = client.post(
-        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+    create_response = api_client.post(
+        f"/api/datasets/{messages.key}/relationships",
         data={
             "name": "Message person",
             "source_column": "person_id",
@@ -4574,27 +4548,26 @@ def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(clien
     assert relationship.source_dataset == messages
     assert relationship.target_dataset == people
 
-    list_response = client.get(f"/api/datasets/{messages.key}/relationships?api_key={profile.key}")
+    list_response = api_client.get(f"/api/datasets/{messages.key}/relationships")
     assert list_response.status_code == 200
     assert [item["key"] for item in list_response.json()["relationships"]] == [relationship_key]
 
-    resolve_response = client.get(
+    resolve_response = api_client.get(
         f"/api/datasets/{messages.key}/relationships/{relationship_key}/resolve"
-        f"?api_key={profile.key}&source_index_value=M-1"
+        "?source_index_value=M-1"
     )
     assert resolve_response.status_code == 200
     assert resolve_response.json()["target_index_value"] == "P-1"
     assert resolve_response.json()["target_row"]["data"]["name"] == "Ada Lovelace"
 
-    invalid_key_response = client.get(
-        f"/api/datasets/{messages.key}/relationships/not-a-key/resolve"
-        f"?api_key={profile.key}&source_index_value=M-1"
+    invalid_key_response = api_client.get(
+        f"/api/datasets/{messages.key}/relationships/not-a-key/resolve?source_index_value=M-1"
     )
     assert invalid_key_response.status_code == 400
     assert invalid_key_response.json()["detail"] == "Invalid relationship key."
 
-    invalid_row_response = client.post(
-        f"/api/datasets/{messages.key}/rows?api_key={profile.key}",
+    invalid_row_response = api_client.post(
+        f"/api/datasets/{messages.key}/rows",
         data={
             "data": {
                 "message_id": "M-2",
@@ -4608,8 +4581,8 @@ def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(clien
     assert "references a missing row" in invalid_row_response.json()["detail"]
     assert messages.rows.filter(index_value="M-2").exists() is False
 
-    blank_row_response = client.post(
-        f"/api/datasets/{messages.key}/rows?api_key={profile.key}",
+    blank_row_response = api_client.post(
+        f"/api/datasets/{messages.key}/rows",
         data={
             "data": {
                 "message_id": "M-2",
@@ -4621,8 +4594,8 @@ def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(clien
     )
     assert blank_row_response.status_code == 200
 
-    delete_response = client.delete(
-        f"/api/datasets/{messages.key}/relationships/{relationship_key}?api_key={profile.key}"
+    delete_response = api_client.delete(
+        f"/api/datasets/{messages.key}/relationships/{relationship_key}"
     )
     assert delete_response.status_code == 200
     assert not DatasetRelationship.objects.filter(key=relationship_key).exists()
@@ -4630,7 +4603,7 @@ def test_dataset_relationship_api_creates_lists_resolves_and_enforces_rows(clien
     assert delete_mutation.metadata["enforce_integrity"] is True
 
 
-def test_dataset_relationship_api_rejects_existing_unmatched_values(client, profile):
+def test_dataset_relationship_api_rejects_existing_unmatched_values(api_client, profile):
     people, messages = create_crm_datasets(profile)
     messages.rows.create(
         row_number=2,
@@ -4644,8 +4617,8 @@ def test_dataset_relationship_api_rejects_existing_unmatched_values(client, prof
     messages.row_count = 2
     messages.save(update_fields=["row_count"])
 
-    response = client.post(
-        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{messages.key}/relationships",
         data={
             "source_column": "person_id",
             "target_dataset_key": str(people.key),
@@ -4659,7 +4632,7 @@ def test_dataset_relationship_api_rejects_existing_unmatched_values(client, prof
     assert not DatasetRelationship.objects.filter(source_dataset=messages).exists()
 
 
-def test_dataset_relationship_api_resolves_unenforced_orphan_as_null(client, profile):
+def test_dataset_relationship_api_resolves_unenforced_orphan_as_null(api_client, profile):
     people, messages = create_crm_datasets(profile)
     messages.rows.create(
         row_number=2,
@@ -4672,8 +4645,8 @@ def test_dataset_relationship_api_resolves_unenforced_orphan_as_null(client, pro
     )
     messages.row_count = 2
     messages.save(update_fields=["row_count"])
-    create_response = client.post(
-        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+    create_response = api_client.post(
+        f"/api/datasets/{messages.key}/relationships",
         data={
             "source_column": "person_id",
             "target_dataset_key": str(people.key),
@@ -4684,9 +4657,9 @@ def test_dataset_relationship_api_resolves_unenforced_orphan_as_null(client, pro
     assert create_response.status_code == 201
     relationship_key = create_response.json()["relationship"]["key"]
 
-    resolve_response = client.get(
+    resolve_response = api_client.get(
         f"/api/datasets/{messages.key}/relationships/{relationship_key}/resolve"
-        f"?api_key={profile.key}&source_index_value=M-2"
+        "?source_index_value=M-2"
     )
 
     assert resolve_response.status_code == 200
@@ -4694,7 +4667,7 @@ def test_dataset_relationship_api_resolves_unenforced_orphan_as_null(client, pro
     assert resolve_response.json()["target_row"] is None
 
 
-def test_dataset_relationship_count_calculated_column_reads_live_counts(client, profile):
+def test_dataset_relationship_count_calculated_column_reads_live_counts(api_client, profile):
     people, messages = create_crm_datasets(profile)
     DatasetRow.objects.create(
         dataset=people,
@@ -4734,8 +4707,8 @@ def test_dataset_relationship_count_calculated_column_reads_live_counts(client, 
     )
     messages.row_count = 3
     messages.save(update_fields=["row_count"])
-    relationship_response = client.post(
-        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+    relationship_response = api_client.post(
+        f"/api/datasets/{messages.key}/relationships",
         data={
             "name": "Connection person",
             "source_column": "person_id",
@@ -4746,8 +4719,8 @@ def test_dataset_relationship_count_calculated_column_reads_live_counts(client, 
     )
     relationship_key = relationship_response.json()["relationship"]["key"]
 
-    add_column_response = client.post(
-        f"/api/datasets/{people.key}/columns?api_key={profile.key}",
+    add_column_response = api_client.post(
+        f"/api/datasets/{people.key}/columns",
         data={
             "name": "connection_count",
             "column_type": {
@@ -4774,9 +4747,8 @@ def test_dataset_relationship_count_calculated_column_reads_live_counts(client, 
     people.refresh_from_db()
     assert people.rows.filter(data__has_key="connection_count").exists() is False
 
-    list_response = client.get(
-        f"/api/datasets/{people.key}/rows?api_key={profile.key}"
-        "&sort=connection_count&direction=desc"
+    list_response = api_client.get(
+        f"/api/datasets/{people.key}/rows?sort=connection_count&direction=desc"
     )
 
     assert list_response.status_code == 200
@@ -4785,8 +4757,8 @@ def test_dataset_relationship_count_calculated_column_reads_live_counts(client, 
     assert rows[0]["data"]["connection_count"] == "2"
     assert rows[1]["data"]["connection_count"] == "1"
 
-    new_connection_response = client.post(
-        f"/api/datasets/{messages.key}/rows?api_key={profile.key}",
+    new_connection_response = api_client.post(
+        f"/api/datasets/{messages.key}/rows",
         data={
             "data": {
                 "message_id": "M-4",
@@ -4798,14 +4770,12 @@ def test_dataset_relationship_count_calculated_column_reads_live_counts(client, 
     )
     assert new_connection_response.status_code == 200
 
-    row_response = client.get(
-        f"/api/datasets/{people.key}/rows/by-index?api_key={profile.key}&index_value=P-2"
-    )
+    row_response = api_client.get(f"/api/datasets/{people.key}/rows/by-index?index_value=P-2")
     assert row_response.status_code == 200
     assert row_response.json()["row"]["data"]["connection_count"] == "2"
 
-    create_person_response = client.post(
-        f"/api/datasets/{people.key}/rows?api_key={profile.key}",
+    create_person_response = api_client.post(
+        f"/api/datasets/{people.key}/rows",
         data={
             "data": {
                 "person_id": "P-3",
@@ -4820,7 +4790,7 @@ def test_dataset_relationship_count_calculated_column_reads_live_counts(client, 
     assert create_person_response.json()["row"]["data"]["connection_count"] == "0"
     assert "connection_count" not in people.rows.get(index_value="P-3").data
 
-    export_response = client.get(f"/api/datasets/{people.key}/export.csv?api_key={profile.key}")
+    export_response = api_client.get(f"/api/datasets/{people.key}/export.csv")
     assert export_response.status_code == 200
     csv_rows = list(csv.DictReader(io.StringIO(export_response.content.decode())))
     assert csv_rows[0]["connection_count"] == "2"
@@ -4828,7 +4798,7 @@ def test_dataset_relationship_count_calculated_column_reads_live_counts(client, 
     assert csv_rows[2]["connection_count"] == "0"
 
 
-def test_dataset_relationship_delete_rejects_calculated_column_dependency(client, profile):
+def test_dataset_relationship_delete_rejects_calculated_column_dependency(api_client, profile):
     people, messages = create_crm_datasets(profile)
     relationship = DatasetRelationship.objects.create(
         profile=profile,
@@ -4850,9 +4820,7 @@ def test_dataset_relationship_delete_rejects_calculated_column_dependency(client
     }
     people.save(update_fields=["headers", "column_schema"])
 
-    response = client.delete(
-        f"/api/datasets/{messages.key}/relationships/{relationship.key}?api_key={profile.key}"
-    )
+    response = api_client.delete(f"/api/datasets/{messages.key}/relationships/{relationship.key}")
 
     assert response.status_code == 409
     assert "calculated column 'connection_count'" in response.json()["detail"]
@@ -4897,7 +4865,7 @@ def test_dataset_owner_can_create_relationship_count_column_from_settings(auth_c
     assert "Count rows" not in content
 
 
-def test_dataset_api_rejects_calculated_column_for_non_incoming_relationship(client, profile):
+def test_dataset_api_rejects_calculated_column_for_non_incoming_relationship(api_client, profile):
     people, messages = create_crm_datasets(profile)
     relationship = DatasetRelationship.objects.create(
         profile=profile,
@@ -4909,8 +4877,8 @@ def test_dataset_api_rejects_calculated_column_for_non_incoming_relationship(cli
         enforce_integrity=True,
     )
 
-    response = client.post(
-        f"/api/datasets/{messages.key}/columns?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{messages.key}/columns",
         data={
             "name": "connection_count",
             "column_type": {
@@ -4926,7 +4894,7 @@ def test_dataset_api_rejects_calculated_column_for_non_incoming_relationship(cli
     assert "incoming relationship for this dataset" in response.json()["detail"]
 
 
-def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(client, profile):
+def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(api_client, profile):
     people, messages = create_crm_datasets(profile)
     messages.rows.filter(index_value="M-1").update(
         data={
@@ -4935,8 +4903,8 @@ def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(client,
             "body": "Intro call completed.",
         }
     )
-    create_response = client.post(
-        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+    create_response = api_client.post(
+        f"/api/datasets/{messages.key}/relationships",
         data={
             "source_column": "person_id",
             "target_dataset_key": str(people.key),
@@ -4947,19 +4915,17 @@ def test_dataset_relationship_api_blocks_target_row_delete_when_enforced(client,
     assert create_response.status_code == 201
     person_row = people.rows.get(index_value="P-1")
 
-    delete_response = client.delete(
-        f"/api/datasets/{people.key}/rows/{person_row.id}?api_key={profile.key}"
-    )
+    delete_response = api_client.delete(f"/api/datasets/{people.key}/rows/{person_row.id}")
 
     assert delete_response.status_code == 409
     assert "referenced by relationship" in delete_response.json()["detail"]
     assert people.rows.filter(index_value="P-1").exists()
 
 
-def test_dataset_relationship_api_blocks_target_index_change_when_enforced(client, profile):
+def test_dataset_relationship_api_blocks_target_index_change_when_enforced(api_client, profile):
     people, messages = create_crm_datasets(profile)
-    create_response = client.post(
-        f"/api/datasets/{messages.key}/relationships?api_key={profile.key}",
+    create_response = api_client.post(
+        f"/api/datasets/{messages.key}/relationships",
         data={
             "source_column": "person_id",
             "target_dataset_key": str(people.key),
@@ -4970,8 +4936,8 @@ def test_dataset_relationship_api_blocks_target_index_change_when_enforced(clien
     assert create_response.status_code == 201
     person_row = people.rows.get(index_value="P-1")
 
-    patch_response = client.patch(
-        f"/api/datasets/{people.key}/rows/{person_row.id}?api_key={profile.key}",
+    patch_response = api_client.patch(
+        f"/api/datasets/{people.key}/rows/{person_row.id}",
         data={
             "data": {
                 "person_id": "P-2",
@@ -5155,14 +5121,14 @@ def test_choice_constraints_from_normalized_schema_allows_none():
     assert choice_constraints_from_schema(["status"], None, normalized=True) == {}
 
 
-def test_dataset_api_dataset_reference_columns_accept_archived_datasets(client, profile):
+def test_dataset_api_dataset_reference_columns_accept_archived_datasets(api_client, profile):
     target = create_ready_dataset(profile)
     target.name = "Review Gate First Implementation Tasks"
     target.archived_at = timezone.now()
     target.save(update_fields=["name", "archived_at"])
 
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Review Gate Sprint History",
             "headers": ["sprint_id", "task_dataset"],
@@ -5195,11 +5161,11 @@ def test_dataset_api_dataset_reference_columns_accept_archived_datasets(client, 
     assert reference["row_count"] == 2
 
 
-def test_dataset_api_dataset_reference_columns_reject_missing_datasets(client, profile):
+def test_dataset_api_dataset_reference_columns_reject_missing_datasets(api_client, profile):
     missing_key = "38698383-f515-4b60-b426-4f4ae3bc94ce"
 
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Review Gate Sprint History",
             "headers": ["sprint_id", "task_dataset"],
@@ -5227,13 +5193,13 @@ def test_dataset_api_dataset_reference_columns_reject_missing_datasets(client, p
     )
 
 
-def test_dataset_api_project_reference_columns_accept_archived_projects(client, profile):
+def test_dataset_api_project_reference_columns_accept_archived_projects(api_client, profile):
     target = Project.objects.create(profile=profile, name="Review Gate")
     target.archived_at = timezone.now()
     target.save(update_fields=["archived_at"])
 
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Review Gate Sprint History",
             "headers": ["sprint_id", "owning_project"],
@@ -5266,11 +5232,11 @@ def test_dataset_api_project_reference_columns_accept_archived_projects(client, 
     assert reference["dataset_count"] == 0
 
 
-def test_dataset_api_project_reference_columns_reject_missing_projects(client, profile):
+def test_dataset_api_project_reference_columns_reject_missing_projects(api_client, profile):
     missing_key = "38698383-f515-4b60-b426-4f4ae3bc94ce"
 
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Review Gate Sprint History",
             "headers": ["sprint_id", "owning_project"],
@@ -5299,7 +5265,7 @@ def test_dataset_api_project_reference_columns_reject_missing_projects(client, p
 
 
 def test_dataset_api_project_reference_columns_reject_other_profile_projects(
-    client,
+    api_client,
     profile,
     django_user_model,
 ):
@@ -5324,8 +5290,8 @@ def test_dataset_api_project_reference_columns_reject_other_profile_projects(
         row_count=0,
     )
 
-    response = client.post(
-        f"/api/datasets/{source.key}/rows?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{source.key}/rows",
         data={
             "data": {
                 "sprint_id": "RG-SPRINT-001",
@@ -5343,7 +5309,7 @@ def test_dataset_api_project_reference_columns_reject_other_profile_projects(
     assert not source.rows.exists()
 
 
-def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, profile):
+def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(api_client, profile):
     target = create_ready_dataset(profile)
     source = Dataset.objects.create(
         profile=profile,
@@ -5360,8 +5326,8 @@ def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, p
         row_count=0,
     )
 
-    create_response = client.post(
-        f"/api/datasets/{source.key}/rows?api_key={profile.key}",
+    create_response = api_client.post(
+        f"/api/datasets/{source.key}/rows",
         data={
             "data": {
                 "sprint_id": "RG-SPRINT-001",
@@ -5375,8 +5341,8 @@ def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, p
     row = source.rows.get(index_value="RG-SPRINT-001")
     assert row.data["task_dataset"] == str(target.key)
 
-    invalid_patch = client.patch(
-        f"/api/datasets/{source.key}/rows/{row.id}?api_key={profile.key}",
+    invalid_patch = api_client.patch(
+        f"/api/datasets/{source.key}/rows/{row.id}",
         data={"data": {"task_dataset": "38698383-f515-4b60-b426-4f4ae3bc94ce"}},
         content_type="application/json",
     )
@@ -5390,7 +5356,7 @@ def test_dataset_api_dataset_reference_columns_canonicalize_row_writes(client, p
     assert row.data["task_dataset"] == str(target.key)
 
 
-def test_dataset_api_project_reference_columns_canonicalize_row_writes(client, profile):
+def test_dataset_api_project_reference_columns_canonicalize_row_writes(api_client, profile):
     target = Project.objects.create(profile=profile, name="Launch")
     source = Dataset.objects.create(
         profile=profile,
@@ -5407,8 +5373,8 @@ def test_dataset_api_project_reference_columns_canonicalize_row_writes(client, p
         row_count=0,
     )
 
-    create_response = client.post(
-        f"/api/datasets/{source.key}/rows?api_key={profile.key}",
+    create_response = api_client.post(
+        f"/api/datasets/{source.key}/rows",
         data={
             "data": {
                 "sprint_id": "RG-SPRINT-001",
@@ -5422,8 +5388,8 @@ def test_dataset_api_project_reference_columns_canonicalize_row_writes(client, p
     row = source.rows.get(index_value="RG-SPRINT-001")
     assert row.data["owning_project"] == str(target.key)
 
-    invalid_patch = client.patch(
-        f"/api/datasets/{source.key}/rows/{row.id}?api_key={profile.key}",
+    invalid_patch = api_client.patch(
+        f"/api/datasets/{source.key}/rows/{row.id}",
         data={"data": {"owning_project": "38698383-f515-4b60-b426-4f4ae3bc94ce"}},
         content_type="application/json",
     )
@@ -5437,7 +5403,7 @@ def test_dataset_api_project_reference_columns_canonicalize_row_writes(client, p
     assert row.data["owning_project"] == str(target.key)
 
 
-def test_dataset_api_project_reference_index_canonicalizes_row_writes(client, profile):
+def test_dataset_api_project_reference_index_canonicalizes_row_writes(api_client, profile):
     target = Project.objects.create(profile=profile, name="Launch")
     source = Dataset.objects.create(
         profile=profile,
@@ -5454,8 +5420,8 @@ def test_dataset_api_project_reference_index_canonicalizes_row_writes(client, pr
         row_count=0,
     )
 
-    response = client.post(
-        f"/api/datasets/{source.key}/rows?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{source.key}/rows",
         data={
             "data": {
                 "owning_project": target.get_absolute_url(),
@@ -5471,9 +5437,9 @@ def test_dataset_api_project_reference_index_canonicalizes_row_writes(client, pr
     assert row.data["owning_project"] == str(target.key)
 
 
-def test_dataset_api_enforces_choice_values(client, profile):
-    create_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_enforces_choice_values(api_client, profile):
+    create_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Task board",
             "headers": ["task_id", "status", "title"],
@@ -5506,8 +5472,8 @@ def test_dataset_api_enforces_choice_values(client, profile):
         "choices": ["Ready to do", "Doing", "Done"],
     }
 
-    invalid_create = client.post(
-        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+    invalid_create = api_client.post(
+        f"/api/datasets/{dataset.key}/rows",
         data={
             "data": {
                 "task_id": "T-2",
@@ -5524,8 +5490,8 @@ def test_dataset_api_enforces_choice_values(client, profile):
     )
     assert dataset.rows.filter(index_value="T-2").exists() is False
 
-    valid_create = client.post(
-        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+    valid_create = api_client.post(
+        f"/api/datasets/{dataset.key}/rows",
         data={
             "data": {
                 "task_id": "T-2",
@@ -5540,8 +5506,8 @@ def test_dataset_api_enforces_choice_values(client, profile):
     assert valid_create.json()["row"]["data"]["status"] == "Doing"
 
     row = dataset.rows.get(index_value="T-1")
-    invalid_patch = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    invalid_patch = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={"data": {"status": "Blocked"}},
         content_type="application/json",
     )
@@ -5553,8 +5519,8 @@ def test_dataset_api_enforces_choice_values(client, profile):
     row.refresh_from_db()
     assert row.data["status"] == "Ready to do"
 
-    valid_patch = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    valid_patch = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={"data": {"status": " done "}},
         content_type="application/json",
     )
@@ -5562,8 +5528,8 @@ def test_dataset_api_enforces_choice_values(client, profile):
     assert valid_patch.status_code == 200
     assert valid_patch.json()["row"]["data"]["status"] == "Done"
 
-    enum_style_patch = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    enum_style_patch = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={"data": {"status": "_ready_to_do-"}},
         content_type="application/json",
     )
@@ -5572,9 +5538,9 @@ def test_dataset_api_enforces_choice_values(client, profile):
     assert enum_style_patch.json()["row"]["data"]["status"] == "Ready to do"
 
 
-def test_dataset_api_rejects_choice_column_without_choices(client, profile):
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_rejects_choice_column_without_choices(api_client, profile):
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Task board",
             "headers": ["task_id", "status"],
@@ -5589,11 +5555,11 @@ def test_dataset_api_rejects_choice_column_without_choices(client, profile):
     assert response.json()["detail"] == "Choice column 'status' requires at least one choice."
 
 
-def test_dataset_api_rejects_existing_values_when_setting_choice_schema(client, profile):
+def test_dataset_api_rejects_existing_values_when_setting_choice_schema(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/column-types",
         data={
             "column_types": {
                 "name": {
@@ -5611,12 +5577,12 @@ def test_dataset_api_rejects_existing_values_when_setting_choice_schema(client, 
     )
 
 
-def test_dataset_api_choice_schema_ignores_stale_preview_rows(client, profile):
+def test_dataset_api_choice_schema_ignores_stale_preview_rows(api_client, profile):
     dataset = create_ready_dataset(profile)
     row = dataset.rows.get(index_value="ada@example.com")
 
-    patch_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    patch_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={"data": {"name": "Ada Lovelace"}},
         content_type="application/json",
     )
@@ -5626,8 +5592,8 @@ def test_dataset_api_choice_schema_ignores_stale_preview_rows(client, profile):
     assert dataset.preview_rows == [{"name": "Ada", "email": "ada@example.com"}]
     assert dataset.rows.get(index_value="ada@example.com").data["name"] == "Ada Lovelace"
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/column-types",
         data={
             "column_types": {
                 "name": {
@@ -5646,11 +5612,11 @@ def test_dataset_api_choice_schema_ignores_stale_preview_rows(client, profile):
     }
 
 
-def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
+def test_dataset_api_adds_choice_column_and_validates_default(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.post(
-        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns",
         data={
             "name": "visibility_level",
             "default_value": " shared ",
@@ -5677,8 +5643,8 @@ def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
         {"name": "Grace", "email": "grace@example.com", "visibility_level": "shared"},
     ]
 
-    invalid_response = client.post(
-        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+    invalid_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns",
         data={
             "name": "workflow_state",
             "default_value": "blocked",
@@ -5696,9 +5662,9 @@ def test_dataset_api_adds_choice_column_and_validates_default(client, profile):
     )
 
 
-def test_project_api_creates_lists_and_returns_project_datasets(client, profile):
-    create_project_response = client.post(
-        f"/api/projects?api_key={profile.key}",
+def test_project_api_creates_lists_and_returns_project_datasets(api_client, profile):
+    create_project_response = api_client.post(
+        "/api/projects",
         data={
             "name": "Launch",
             "description": "Launch datasets",
@@ -5721,8 +5687,8 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
         },
     }
 
-    create_dataset_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    create_dataset_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Launch contacts",
             "project_key": project_key,
@@ -5744,14 +5710,14 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
         index_column="email",
     )
 
-    list_response = client.get(f"/api/projects?api_key={profile.key}")
+    list_response = api_client.get("/api/projects")
     assert list_response.status_code == 200
     assert list_response.json()["projects"][0]["dataset_count"] == 2
     assert list_response.json()["projects"][0]["metadata"]["github_repo"] == (
         "https://github.com/acme/launch"
     )
 
-    detail_response = client.get(f"/api/projects/{project_key}?api_key={profile.key}")
+    detail_response = api_client.get(f"/api/projects/{project_key}")
     assert detail_response.status_code == 200
     assert detail_response.json()["project"]["name"] == "Launch"
     assert detail_response.json()["project"]["metadata"]["source_thread"]["url"] == (
@@ -5775,15 +5741,15 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
     } <= set(project_dataset)
 
 
-def test_project_api_updates_project_details(client, profile):
+def test_project_api_updates_project_details(api_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
         description="Launch datasets",
     )
 
-    response = client.patch(
-        f"/api/projects/{project.key}?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/projects/{project.key}",
         data={"name": "Launch operations", "description": ""},
         content_type="application/json",
     )
@@ -5798,7 +5764,7 @@ def test_project_api_updates_project_details(client, profile):
     assert project.description == ""
 
 
-def test_project_api_archives_project_and_hides_it_from_project_endpoints(client, profile):
+def test_project_api_archives_project_and_hides_it_from_project_endpoints(api_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
@@ -5812,7 +5778,7 @@ def test_project_api_archives_project_and_hides_it_from_project_endpoints(client
         index_column="email",
     )
 
-    response = client.delete(f"/api/projects/{project.key}?api_key={profile.key}")
+    response = api_client.delete(f"/api/projects/{project.key}")
 
     assert response.status_code == 200
     payload = response.json()
@@ -5825,40 +5791,40 @@ def test_project_api_archives_project_and_hides_it_from_project_endpoints(client
     assert dataset.archived_at is None
     assert dataset.project == project
 
-    list_response = client.get(f"/api/projects?api_key={profile.key}")
+    list_response = api_client.get("/api/projects")
     assert list_response.status_code == 200
     assert list_response.json()["projects"] == []
 
-    search_response = client.get(f"/api/projects?query=Launch&api_key={profile.key}")
+    search_response = api_client.get("/api/projects?query=Launch")
     assert search_response.status_code == 200
     assert search_response.json()["projects"] == []
 
-    detail_response = client.get(f"/api/projects/{project.key}?api_key={profile.key}")
+    detail_response = api_client.get(f"/api/projects/{project.key}")
     assert detail_response.status_code == 404
     assert detail_response.json()["detail"] == "Project not found."
 
-    dataset_list_response = client.get(f"/api/datasets?api_key={profile.key}")
+    dataset_list_response = api_client.get("/api/datasets")
     assert dataset_list_response.status_code == 200
     assert dataset_list_response.json()["datasets"][0]["key"] == str(dataset.key)
     assert dataset_list_response.json()["datasets"][0]["project"] is None
 
-    duplicate_name_response = client.post(
-        f"/api/projects?api_key={profile.key}",
+    duplicate_name_response = api_client.post(
+        "/api/projects",
         data={"name": "Launch"},
         content_type="application/json",
     )
     assert duplicate_name_response.status_code == 201
 
 
-def test_project_api_rejects_null_project_name(client, profile):
+def test_project_api_rejects_null_project_name(api_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
         description="Launch datasets",
     )
 
-    response = client.patch(
-        f"/api/projects/{project.key}?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/projects/{project.key}",
         data={"name": None},
         content_type="application/json",
     )
@@ -5871,15 +5837,15 @@ def test_project_api_rejects_null_project_name(client, profile):
     assert project.name == "Launch"
 
 
-def test_project_api_rejects_blank_project_name_at_schema_boundary(client, profile):
+def test_project_api_rejects_blank_project_name_at_schema_boundary(api_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
         description="Launch datasets",
     )
 
-    response = client.patch(
-        f"/api/projects/{project.key}?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/projects/{project.key}",
         data={"name": ""},
         content_type="application/json",
     )
@@ -5889,11 +5855,11 @@ def test_project_api_rejects_blank_project_name_at_schema_boundary(client, profi
     assert project.name == "Launch"
 
 
-def test_project_api_rejects_case_insensitive_duplicate_names(client, profile):
+def test_project_api_rejects_case_insensitive_duplicate_names(api_client, profile):
     Project.objects.create(profile=profile, name="Launch")
 
-    response = client.post(
-        f"/api/projects?api_key={profile.key}",
+    response = api_client.post(
+        "/api/projects",
         data={"name": "launch"},
         content_type="application/json",
     )
@@ -5903,15 +5869,15 @@ def test_project_api_rejects_case_insensitive_duplicate_names(client, profile):
     assert Project.objects.filter(profile=profile).count() == 1
 
 
-def test_project_api_updates_project_metadata(client, profile):
+def test_project_api_updates_project_metadata(api_client, profile):
     project = Project.objects.create(
         profile=profile,
         name="Launch",
         metadata={"github_repo": "https://github.com/acme/old"},
     )
 
-    response = client.patch(
-        f"/api/projects/{project.key}/metadata?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/projects/{project.key}/metadata",
         data={
             "metadata": {
                 "github_repo": "https://github.com/acme/launch",
@@ -5934,11 +5900,11 @@ def test_project_api_updates_project_metadata(client, profile):
     }
 
 
-def test_project_api_rejects_non_object_project_metadata(client, profile):
+def test_project_api_rejects_non_object_project_metadata(api_client, profile):
     project = Project.objects.create(profile=profile, name="Launch")
 
-    response = client.patch(
-        f"/api/projects/{project.key}/metadata?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/projects/{project.key}/metadata",
         data={"metadata": ["not", "an", "object"]},
         content_type="application/json",
     )
@@ -5949,11 +5915,11 @@ def test_project_api_rejects_non_object_project_metadata(client, profile):
     assert project.metadata == {}
 
 
-def test_project_api_rejects_null_project_metadata(client, profile):
+def test_project_api_rejects_null_project_metadata(api_client, profile):
     project = Project.objects.create(profile=profile, name="Launch")
 
-    response = client.patch(
-        f"/api/projects/{project.key}/metadata?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/projects/{project.key}/metadata",
         data={"metadata": None},
         content_type="application/json",
     )
@@ -5964,12 +5930,12 @@ def test_project_api_rejects_null_project_metadata(client, profile):
     assert project.metadata == {}
 
 
-def test_dataset_api_updates_project_assignment(client, profile):
+def test_dataset_api_updates_project_assignment(api_client, profile):
     project = Project.objects.create(profile=profile, name="Customers")
     dataset = create_ready_dataset(profile)
 
-    attach_response = client.patch(
-        f"/api/datasets/{dataset.key}/project?api_key={profile.key}",
+    attach_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/project",
         data={"project_key": str(project.key)},
         content_type="application/json",
     )
@@ -5979,8 +5945,8 @@ def test_dataset_api_updates_project_assignment(client, profile):
     dataset.refresh_from_db()
     assert dataset.project == project
 
-    detach_response = client.patch(
-        f"/api/datasets/{dataset.key}/project?api_key={profile.key}",
+    detach_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/project",
         data={"project_key": None},
         content_type="application/json",
     )
@@ -5991,12 +5957,12 @@ def test_dataset_api_updates_project_assignment(client, profile):
     assert dataset.project is None
 
 
-def test_project_section_api_creates_section_and_assigns_dataset(client, profile):
+def test_project_section_api_creates_section_and_assigns_dataset(api_client, profile):
     assert hasattr(dataset_models, "ProjectSection")
     project = Project.objects.create(profile=profile, name="Rowset")
 
-    section_response = client.post(
-        f"/api/projects/{project.key}/sections?api_key={profile.key}",
+    section_response = api_client.post(
+        f"/api/projects/{project.key}/sections",
         data={
             "name": "Blog",
             "description": "Content operations datasets.",
@@ -6012,8 +5978,8 @@ def test_project_section_api_creates_section_and_assigns_dataset(client, profile
     assert section_payload["metadata"] == {"goal": "content-led growth"}
     assert section_payload["dataset_count"] == 0
 
-    dataset_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    dataset_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Content ledger",
             "headers": ["slug", "status"],
@@ -6031,7 +5997,7 @@ def test_project_section_api_creates_section_and_assigns_dataset(client, profile
     assert dataset_payload["section"]["key"] == section_payload["key"]
     assert dataset_payload["section"]["name"] == "Blog"
 
-    detail_response = client.get(f"/api/projects/{project.key}?api_key={profile.key}")
+    detail_response = api_client.get(f"/api/projects/{project.key}")
 
     assert detail_response.status_code == 200
     detail_payload = detail_response.json()
@@ -6050,7 +6016,7 @@ def test_project_section_api_creates_section_and_assigns_dataset(client, profile
     )
 
 
-def test_dataset_api_rejects_section_from_another_project(client, profile):
+def test_dataset_api_rejects_section_from_another_project(api_client, profile):
     assert hasattr(dataset_models, "ProjectSection")
     ProjectSection = dataset_models.ProjectSection
     project = Project.objects.create(profile=profile, name="Rowset")
@@ -6062,8 +6028,8 @@ def test_dataset_api_rejects_section_from_another_project(client, profile):
     )
     dataset = create_ready_dataset(profile)
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/project?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/project",
         data={"project_key": str(project.key), "section_key": str(section.key)},
         content_type="application/json",
     )
@@ -6075,7 +6041,7 @@ def test_dataset_api_rejects_section_from_another_project(client, profile):
     assert dataset.section is None
 
 
-def test_project_section_api_archives_section_and_unsections_datasets(client, profile):
+def test_project_section_api_archives_section_and_unsections_datasets(api_client, profile):
     assert hasattr(dataset_models, "ProjectSection")
     ProjectSection = dataset_models.ProjectSection
     project = Project.objects.create(profile=profile, name="Rowset")
@@ -6085,9 +6051,7 @@ def test_project_section_api_archives_section_and_unsections_datasets(client, pr
     dataset.section = section
     dataset.save(update_fields=["project", "section"])
 
-    response = client.delete(
-        f"/api/projects/{project.key}/sections/{section.key}?api_key={profile.key}"
-    )
+    response = api_client.delete(f"/api/projects/{project.key}/sections/{section.key}")
 
     assert response.status_code == 200
     payload = response.json()
@@ -6100,13 +6064,13 @@ def test_project_section_api_archives_section_and_unsections_datasets(client, pr
     assert dataset.project == project
     assert dataset.section is None
 
-    list_response = client.get(f"/api/projects/{project.key}/sections?api_key={profile.key}")
+    list_response = api_client.get(f"/api/projects/{project.key}/sections")
 
     assert list_response.status_code == 200
     assert list_response.json()["sections"] == []
 
 
-def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(client, profile):
+def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(api_client, profile):
     project = Project.objects.create(profile=profile, name="Rowset")
     first = create_ready_dataset(profile)
     first.name = "Signals"
@@ -6117,7 +6081,7 @@ def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(cl
     second.project = project
     second.save(update_fields=["name", "project"])
 
-    response = client.get(f"/api/projects/{project.key}?api_key={profile.key}&limit=1")
+    response = api_client.get(f"/api/projects/{project.key}?limit=1")
 
     assert response.status_code == 200
     payload = response.json()
@@ -6130,7 +6094,7 @@ def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(cl
     assert payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == str(second.key)
 
 
-def test_project_detail_api_includes_empty_page_unsectioned_group(client, profile):
+def test_project_detail_api_includes_empty_page_unsectioned_group(api_client, profile):
     assert hasattr(dataset_models, "ProjectSection")
     ProjectSection = dataset_models.ProjectSection
     project = Project.objects.create(profile=profile, name="Rowset")
@@ -6149,7 +6113,7 @@ def test_project_detail_api_includes_empty_page_unsectioned_group(client, profil
     sectioned.section = blog
     sectioned.save(update_fields=["name", "project", "section"])
 
-    response = client.get(f"/api/projects/{project.key}?api_key={profile.key}&limit=1")
+    response = api_client.get(f"/api/projects/{project.key}?limit=1")
 
     assert response.status_code == 200
     payload = response.json()
@@ -6165,11 +6129,11 @@ def test_project_detail_api_includes_empty_page_unsectioned_group(client, profil
     assert payload["dataset_groups"][1]["datasets"]["datasets"] == []
 
 
-def test_dataset_api_rejects_invalid_project_assignment_dataset_key(client, profile):
+def test_dataset_api_rejects_invalid_project_assignment_dataset_key(api_client, profile):
     project = Project.objects.create(profile=profile, name="Customers")
 
-    response = client.patch(
-        f"/api/datasets/not-a-uuid/project?api_key={profile.key}",
+    response = api_client.patch(
+        "/api/datasets/not-a-uuid/project",
         data={"project_key": str(project.key)},
         content_type="application/json",
     )
@@ -6178,7 +6142,7 @@ def test_dataset_api_rejects_invalid_project_assignment_dataset_key(client, prof
     assert response.json()["detail"] == "Dataset not found."
 
 
-def test_dataset_api_rejects_other_users_project_assignment(client, django_user_model, profile):
+def test_dataset_api_rejects_other_users_project_assignment(api_client, django_user_model, profile):
     dataset = create_ready_dataset(profile)
     other_user = django_user_model.objects.create_user(
         username="project-owner",
@@ -6187,8 +6151,8 @@ def test_dataset_api_rejects_other_users_project_assignment(client, django_user_
     )
     other_project = Project.objects.create(profile=other_user.profile, name="Other")
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/project?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/project",
         data={"project_key": str(other_project.key)},
         content_type="application/json",
     )
@@ -6199,15 +6163,15 @@ def test_dataset_api_rejects_other_users_project_assignment(client, django_user_
     assert dataset.project is None
 
 
-def test_dataset_api_updates_dataset_metadata(client, profile):
+def test_dataset_api_updates_dataset_metadata(api_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.description = "Initial task board."
     dataset.instructions = "Use todo, doing, and done."
     dataset.metadata = {"status_order": ["todo", "doing", "done"]}
     dataset.save(update_fields=["description", "instructions", "metadata"])
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/metadata?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/metadata",
         data={
             "description": "Agent task board for launch work.",
             "instructions": (
@@ -6268,11 +6232,11 @@ def test_dataset_api_updates_dataset_metadata(client, profile):
     ]
 
 
-def test_dataset_api_rejects_non_object_dataset_metadata(client, profile):
+def test_dataset_api_rejects_non_object_dataset_metadata(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/metadata?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/metadata",
         data={"metadata": ["not", "an", "object"]},
         content_type="application/json",
     )
@@ -6283,15 +6247,15 @@ def test_dataset_api_rejects_non_object_dataset_metadata(client, profile):
     assert dataset.metadata == {}
 
 
-def test_dataset_api_treats_null_dataset_metadata_fields_as_omitted(client, profile):
+def test_dataset_api_treats_null_dataset_metadata_fields_as_omitted(api_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.description = "Initial task board."
     dataset.instructions = "Use todo, doing, and done."
     dataset.metadata = {"status_order": ["todo", "doing", "done"]}
     dataset.save(update_fields=["description", "instructions", "metadata"])
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/metadata?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/metadata",
         data={
             "description": None,
             "instructions": "Keep status transitions explicit.",
@@ -6313,15 +6277,15 @@ def test_dataset_api_treats_null_dataset_metadata_fields_as_omitted(client, prof
     assert mutation.metadata["changed_fields"] == ["instructions"]
 
 
-def test_dataset_api_reports_no_dataset_metadata_changes(client, profile):
+def test_dataset_api_reports_no_dataset_metadata_changes(api_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.description = "Initial task board."
     dataset.instructions = "Use todo, doing, and done."
     dataset.metadata = {"status_order": ["todo", "doing", "done"]}
     dataset.save(update_fields=["description", "instructions", "metadata"])
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/metadata?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/metadata",
         data={
             "description": "Initial task board.",
             "instructions": "Use todo, doing, and done.",
@@ -6337,11 +6301,11 @@ def test_dataset_api_reports_no_dataset_metadata_changes(client, profile):
     ).exists()
 
 
-def test_dataset_api_updates_column_types(client, profile):
+def test_dataset_api_updates_column_types(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/column-types",
         data={
             "column_types": {
                 "email": {
@@ -6379,7 +6343,7 @@ def test_dataset_api_updates_column_types(client, profile):
     }
 
 
-def test_dataset_api_updates_column_types_to_project_reference(client, profile):
+def test_dataset_api_updates_column_types_to_project_reference(api_client, profile):
     target = Project.objects.create(profile=profile, name="Launch")
     dataset = Dataset.objects.create(
         profile=profile,
@@ -6402,8 +6366,8 @@ def test_dataset_api_updates_column_types_to_project_reference(client, profile):
         },
     )
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/column-types",
         data={
             "column_types": {
                 "owning_project": {
@@ -6428,7 +6392,7 @@ def test_dataset_api_updates_column_types_to_project_reference(client, profile):
 
 
 def test_dataset_api_rejects_project_reference_column_type_for_other_profile_value(
-    client,
+    api_client,
     profile,
     django_user_model,
 ):
@@ -6459,8 +6423,8 @@ def test_dataset_api_rejects_project_reference_column_type_for_other_profile_val
         },
     )
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/column-types",
         data={
             "column_types": {
                 "owning_project": {
@@ -6481,7 +6445,7 @@ def test_dataset_api_rejects_project_reference_column_type_for_other_profile_val
     assert dataset.column_schema["owning_project"] == {"type": DatasetColumnType.TEXT}
 
 
-def test_dataset_api_rejects_image_type_for_unowned_existing_asset_ref(client, profile):
+def test_dataset_api_rejects_image_type_for_unowned_existing_asset_ref(api_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.headers = ["name", "email", "photo"]
     dataset.save(update_fields=["headers", "updated_at"])
@@ -6492,8 +6456,8 @@ def test_dataset_api_rejects_image_type_for_unowned_existing_asset_ref(client, p
     }
     row.save(update_fields=["data", "updated_at"])
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/column-types",
         data={"column_types": {"photo": "image"}},
         content_type="application/json",
     )
@@ -6504,11 +6468,11 @@ def test_dataset_api_rejects_image_type_for_unowned_existing_asset_ref(client, p
     )
 
 
-def test_dataset_api_adds_column_and_backfills_existing_rows(client, profile):
+def test_dataset_api_adds_column_and_backfills_existing_rows(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.post(
-        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns",
         data={
             "name": "visibility_level",
             "default_value": "internal",
@@ -6532,7 +6496,7 @@ def test_dataset_api_adds_column_and_backfills_existing_rows(client, profile):
     ]
 
 
-def test_dataset_api_add_column_backfills_rows_across_bulk_update_chunks(client, profile):
+def test_dataset_api_add_column_backfills_rows_across_bulk_update_chunks(api_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Large People",
@@ -6552,8 +6516,8 @@ def test_dataset_api_add_column_backfills_rows_across_bulk_update_chunks(client,
         ]
     )
 
-    response = client.post(
-        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns",
         data={"name": "verification_ref", "default_value": "pending"},
         content_type="application/json",
     )
@@ -6571,11 +6535,11 @@ def test_dataset_api_add_column_backfills_rows_across_bulk_update_chunks(client,
     }
 
 
-def test_dataset_api_renames_column_and_preserves_values(client, profile):
+def test_dataset_api_renames_column_and_preserves_values(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.post(
-        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/rename",
         data={"old_name": "name", "new_name": "full_name"},
         content_type="application/json",
     )
@@ -6594,7 +6558,7 @@ def test_dataset_api_renames_column_and_preserves_values(client, profile):
     }
 
 
-def test_dataset_api_schema_mutations_preserve_column_descriptions(client, profile):
+def test_dataset_api_schema_mutations_preserve_column_descriptions(api_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.column_schema = {
         "name": {
@@ -6608,8 +6572,8 @@ def test_dataset_api_schema_mutations_preserve_column_descriptions(client, profi
     }
     dataset.save(update_fields=["column_schema"])
 
-    rename_response = client.post(
-        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+    rename_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/rename",
         data={"old_name": "name", "new_name": "full_name"},
         content_type="application/json",
     )
@@ -6625,8 +6589,8 @@ def test_dataset_api_schema_mutations_preserve_column_descriptions(client, profi
         "description": "Person name used in greetings.",
     }
 
-    reorder_response = client.post(
-        f"/api/datasets/{dataset.key}/columns/reorder?api_key={profile.key}",
+    reorder_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/reorder",
         data={"headers": ["email", "full_name"]},
         content_type="application/json",
     )
@@ -6644,8 +6608,8 @@ def test_dataset_api_schema_mutations_preserve_column_descriptions(client, profi
         },
     }
 
-    drop_response = client.post(
-        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+    drop_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/drop",
         data={"name": "full_name"},
         content_type="application/json",
     )
@@ -6660,7 +6624,7 @@ def test_dataset_api_schema_mutations_preserve_column_descriptions(client, profi
     }
 
 
-def test_dataset_api_rename_only_stringifies_renamed_value(client, profile):
+def test_dataset_api_rename_only_stringifies_renamed_value(api_client, profile):
     dataset = Dataset.objects.create(
         profile=profile,
         name="Mixed",
@@ -6675,8 +6639,8 @@ def test_dataset_api_rename_only_stringifies_renamed_value(client, profile):
         data={"name": 10, "email": "ada@example.com", "score": 99},
     )
 
-    response = client.post(
-        f"/api/datasets/{dataset.key}/columns/rename?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/rename",
         data={"old_name": "name", "new_name": "full_name"},
         content_type="application/json",
     )
@@ -6690,11 +6654,11 @@ def test_dataset_api_rename_only_stringifies_renamed_value(client, profile):
     }
 
 
-def test_dataset_api_drops_non_index_column(client, profile):
+def test_dataset_api_drops_non_index_column(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.post(
-        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/drop",
         data={"name": "name"},
         content_type="application/json",
     )
@@ -6707,11 +6671,11 @@ def test_dataset_api_drops_non_index_column(client, profile):
     assert dataset.rows.first().data == {"email": "ada@example.com"}
 
 
-def test_dataset_api_rejects_dropping_index_column(client, profile):
+def test_dataset_api_rejects_dropping_index_column(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.post(
-        f"/api/datasets/{dataset.key}/columns/drop?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/drop",
         data={"name": "email"},
         content_type="application/json",
     )
@@ -6722,11 +6686,11 @@ def test_dataset_api_rejects_dropping_index_column(client, profile):
     assert dataset.headers == ["name", "email"]
 
 
-def test_dataset_api_reorders_columns(client, profile):
+def test_dataset_api_reorders_columns(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.post(
-        f"/api/datasets/{dataset.key}/columns/reorder?api_key={profile.key}",
+    response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns/reorder",
         data={"headers": ["email", "name"]},
         content_type="application/json",
     )
@@ -6742,11 +6706,11 @@ def test_dataset_api_reorders_columns(client, profile):
 
 
 def test_dataset_mutation_history_records_row_update_diffs_without_schema_backfill_values(
-    client,
+    api_client,
     profile,
 ):
-    create_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    create_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Sensitive contacts",
             "headers": ["email", "name"],
@@ -6759,23 +6723,21 @@ def test_dataset_mutation_history_records_row_update_diffs_without_schema_backfi
     dataset = Dataset.objects.get(key=create_response.json()["dataset"]["key"])
     row = dataset.rows.get()
 
-    add_column_response = client.post(
-        f"/api/datasets/{dataset.key}/columns?api_key={profile.key}",
+    add_column_response = api_client.post(
+        f"/api/datasets/{dataset.key}/columns",
         data={"name": "private_note", "default_value": "secret-default"},
         content_type="application/json",
     )
     assert add_column_response.status_code == 200
 
-    patch_row_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    patch_row_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={"data": {"name": "New Private"}},
         content_type="application/json",
     )
     assert patch_row_response.status_code == 200
 
-    delete_row_response = client.delete(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}"
-    )
+    delete_row_response = api_client.delete(f"/api/datasets/{dataset.key}/rows/{row.id}")
     assert delete_row_response.status_code == 200
 
     mutations = DatasetMutation.objects.filter(dataset=dataset)
@@ -6829,11 +6791,11 @@ def test_dataset_mutation_history_preserves_zero_target_identifier(profile):
     assert mutation.target_identifier == "0"
 
 
-def test_dataset_api_rejects_unknown_column_type_header(client, profile):
+def test_dataset_api_rejects_unknown_column_type_header(api_client, profile):
     dataset = create_ready_dataset(profile)
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/column-types?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/column-types",
         data={"column_types": {"missing": "text"}},
         content_type="application/json",
     )
@@ -6918,7 +6880,7 @@ def test_paid_account_can_create_51st_dataset_row(profile):
     assert dataset.row_count == 51
 
 
-def test_dataset_api_rejects_patch_to_generated_index(client, profile):
+def test_dataset_api_rejects_patch_to_generated_index(api_client, profile):
     dataset = create_ready_dataset(profile)
     dataset.index_column = "rowset_id"
     dataset.index_generated = True
@@ -6929,8 +6891,8 @@ def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     row.data = {"rowset_id": "1", **row.data}
     row.save(update_fields=["index_value", "data"])
 
-    response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={"data": {"rowset_id": "custom"}},
         content_type="application/json",
     )
@@ -6938,8 +6900,8 @@ def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     assert response.status_code == 400
     assert "managed by Rowset" in response.json()["detail"]
 
-    by_index_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/by-index?api_key={profile.key}&index_value=1",
+    by_index_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?index_value=1",
         data={"data": {"rowset_id": "custom"}},
         content_type="application/json",
     )
@@ -6947,8 +6909,8 @@ def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     assert by_index_response.status_code == 400
     assert "managed by Rowset" in by_index_response.json()["detail"]
 
-    idempotent_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/{row.id}?api_key={profile.key}",
+    idempotent_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/{row.id}",
         data={"data": {"rowset_id": "1", "name": "Ada Updated"}},
         content_type="application/json",
     )
@@ -6957,8 +6919,8 @@ def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     assert idempotent_response.json()["row"]["index_value"] == "1"
     assert idempotent_response.json()["row"]["data"]["name"] == "Ada Updated"
 
-    idempotent_by_index_response = client.patch(
-        f"/api/datasets/{dataset.key}/rows/by-index?api_key={profile.key}&index_value=1",
+    idempotent_by_index_response = api_client.patch(
+        f"/api/datasets/{dataset.key}/rows/by-index?index_value=1",
         data={"data": {"rowset_id": "1", "name": "Ada By Index"}},
         content_type="application/json",
     )
@@ -6968,7 +6930,7 @@ def test_dataset_api_rejects_patch_to_generated_index(client, profile):
     assert idempotent_by_index_response.json()["row"]["data"]["name"] == "Ada By Index"
 
 
-def test_dataset_api_rejects_other_users_dataset(client, django_user_model, profile):
+def test_dataset_api_rejects_other_users_dataset(api_client, django_user_model, profile):
     dataset = create_ready_dataset(profile)
     other_user = django_user_model.objects.create_user(
         username="other",
@@ -6977,12 +6939,16 @@ def test_dataset_api_rejects_other_users_dataset(client, django_user_model, prof
     )
     other_credential = create_agent_api_key(other_user.profile, "Other Agent")
 
-    response = client.get(f"/api/datasets/{dataset.key}/rows?api_key={other_credential.raw_key}")
+    response = api_client.get(
+        f"/api/datasets/{dataset.key}/rows",
+        HTTP_AUTHORIZATION=f"Bearer {other_credential.raw_key}",
+    )
 
     assert response.status_code == 404
 
-    public_key_response = client.get(
-        f"/api/datasets/{dataset.public_key}/rows?api_key={other_credential.raw_key}"
+    public_key_response = api_client.get(
+        f"/api/datasets/{dataset.public_key}/rows",
+        HTTP_AUTHORIZATION=f"Bearer {other_credential.raw_key}",
     )
 
     assert public_key_response.status_code == 404

@@ -90,9 +90,9 @@ def test_dataset_api_creates_ready_dataset_with_explicit_index(client, profile):
     }
 
 
-def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile):
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_creates_ready_dataset_with_generated_index(api_client, profile):
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Scratch tasks",
             "rows": [
@@ -116,8 +116,8 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
     assert dataset.index_generated is True
     assert dataset.rows.first().data == {"rowset_id": "1", "task": "Draft"}
 
-    create_response = client.post(
-        f"/api/datasets/{dataset.key}/rows?api_key={profile.key}",
+    create_response = api_client.post(
+        f"/api/datasets/{dataset.key}/rows",
         data={"data": {"rowset_id": "custom", "task": "Ship"}},
         content_type="application/json",
     )
@@ -127,9 +127,9 @@ def test_dataset_api_creates_ready_dataset_with_generated_index(client, profile)
     assert create_response.json()["row"]["data"] == {"rowset_id": "2", "task": "Ship"}
 
 
-def test_dataset_api_rejects_non_object_initial_dataset_metadata(client, profile):
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_rejects_non_object_initial_dataset_metadata(api_client, profile):
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Invalid metadata",
             "headers": ["name"],
@@ -143,9 +143,9 @@ def test_dataset_api_rejects_non_object_initial_dataset_metadata(client, profile
     assert not Dataset.objects.filter(profile=profile, name="Invalid metadata").exists()
 
 
-def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_accepts_explicit_column_types_on_create(api_client, profile):
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Products",
             "headers": ["sku", "price"],
@@ -179,9 +179,9 @@ def test_dataset_api_accepts_explicit_column_types_on_create(client, profile):
     }
 
 
-def test_dataset_api_rejects_duplicate_index_on_create(client, profile):
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_rejects_duplicate_index_on_create(api_client, profile):
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Duplicate products",
             "headers": ["sku", "name"],
@@ -199,9 +199,9 @@ def test_dataset_api_rejects_duplicate_index_on_create(client, profile):
     assert not Dataset.objects.filter(profile=profile, name="Duplicate products").exists()
 
 
-def test_dataset_api_rejects_too_many_initial_rows(client, profile):
-    response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+def test_dataset_api_rejects_too_many_initial_rows(api_client, profile):
+    response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Too many rows",
             "headers": ["name"],
