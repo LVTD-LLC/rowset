@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from apps.core.choices import ProfileStates
 from apps.core.models import AgentApiKey, Feedback, Profile
-from apps.datasets.models import Dataset, DatasetMutation, Project
+from apps.datasets.models import Dataset, Project
 
 ADMIN_DASHBOARD_PERIODS = (7, 30)
 
@@ -37,14 +37,13 @@ def _daily_counts(queryset, field: str, start) -> dict:
     }
 
 
-def _growth_series(nonstaff_users, profiles, mutations, now, period_days: int) -> list[dict]:
+def _growth_series(nonstaff_users, profiles, now, period_days: int) -> list[dict]:
     local_now = timezone.localtime(now)
     start = local_now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
         days=period_days - 1
     )
     signups = _daily_counts(nonstaff_users, "date_joined", start)
     setups = _daily_counts(profiles, "setup_completed_at", start)
-    mutation_counts = _daily_counts(mutations, "created_at", start)
     today = local_now.date()
     first_day = today - timedelta(days=period_days - 1)
     series = []
@@ -56,17 +55,13 @@ def _growth_series(nonstaff_users, profiles, mutations, now, period_days: int) -
                 "label": day.strftime("%b %-d"),
                 "signups": signups.get(day, 0),
                 "setups": setups.get(day, 0),
-                "mutations": mutation_counts.get(day, 0),
             }
         )
 
-    scale = max(
-        (item["signups"] + item["setups"] + item["mutations"] for item in series),
-        default=0,
-    )
+    scale = max((item["signups"] + item["setups"] for item in series), default=0)
     scale = max(scale, 1)
     for item in series:
-        for metric in ("signups", "setups", "mutations"):
+        for metric in ("signups", "setups"):
             value = item[metric]
             item[f"{metric.removesuffix('s')}_height_percent"] = (
                 max(round(value / scale * 100), 2) if value else 0
@@ -93,22 +88,8 @@ def _activation_funnel(user_stats, profile_stats) -> list[dict]:
     ]
 
 
-def _activity_feed(nonstaff_users, feedback, mutations) -> list[dict]:
+def _activity_feed(nonstaff_users, feedback) -> list[dict]:
     events = []
-    for mutation in (
-        mutations.select_related("dataset")
-        .only("id", "dataset", "summary", "actor_label", "created_at", "dataset__name")
-        .order_by("-created_at", "-id")[:12]
-    ):
-        events.append(
-            {
-                "kind": "mutation",
-                "title": mutation.summary,
-                "detail": f"{mutation.dataset.name} · {mutation.actor_label}",
-                "timestamp": mutation.created_at,
-                "url": reverse("admin:datasets_datasetmutation_change", args=[mutation.pk]),
-            }
-        )
     for item in (
         feedback.select_related("profile__user")
         .only("id", "feedback", "created_at", "profile", "profile__user__email")
@@ -157,10 +138,20 @@ def build_admin_dashboard_context(period_days: int, now=None) -> dict:
         profile__user__is_superuser=False,
         revoked_at__isnull=True,
     )
-    visible_datasets = Dataset.objects.filter(archived_at__isnull=True)
-    visible_projects = Project.objects.filter(archived_at__isnull=True)
-    mutations = DatasetMutation.objects.all()
-    feedback = Feedback.objects.all()
+    visible_datasets = Dataset.objects.filter(
+        profile__user__is_staff=False,
+        profile__user__is_superuser=False,
+        archived_at__isnull=True,
+    )
+    visible_projects = Project.objects.filter(
+        profile__user__is_staff=False,
+        profile__user__is_superuser=False,
+        archived_at__isnull=True,
+    )
+    feedback = Feedback.objects.filter(
+        Q(profile__isnull=True)
+        | Q(profile__user__is_staff=False, profile__user__is_superuser=False)
+    )
 
     user_stats = nonstaff_users.aggregate(
         total=Count("id"),
@@ -212,12 +203,6 @@ def build_admin_dashboard_context(period_days: int, now=None) -> dict:
         unused=Count("id", filter=Q(last_used_at__isnull=True)),
         stale=Count("id", filter=Q(last_used_at__lt=now - timedelta(days=30))),
     )
-    mutation_stats = mutations.aggregate(
-        current=Count("id", filter=Q(created_at__gte=current_start, created_at__lt=now)),
-        previous=Count(
-            "id", filter=Q(created_at__gte=previous_start, created_at__lt=current_start)
-        ),
-    )
     feedback_stats = feedback.aggregate(
         current=Count("id", filter=Q(created_at__gte=current_start)), total=Count("id")
     )
@@ -225,7 +210,6 @@ def build_admin_dashboard_context(period_days: int, now=None) -> dict:
         "new_users": (user_stats["current"], user_stats["previous"]),
         "setup_completed": (profile_stats["setup_current"], profile_stats["setup_previous"]),
         "active_agents": (key_stats["current"], key_stats["previous"]),
-        "mutations": (mutation_stats["current"], mutation_stats["previous"]),
     }
     product_health = {key: values[0] for key, values in metrics.items()}
     product_health_cards = [
@@ -238,7 +222,6 @@ def build_admin_dashboard_context(period_days: int, now=None) -> dict:
             ("new_users", "New users"),
             ("setup_completed", "Setup completed"),
             ("active_agents", "Active agents"),
-            ("mutations", "Mutations"),
         )
     ]
 
@@ -272,7 +255,6 @@ def build_admin_dashboard_context(period_days: int, now=None) -> dict:
         "growth_series": _growth_series(
             nonstaff_users,
             profiles,
-            mutations,
             now,
             period_days,
         ),
@@ -286,11 +268,11 @@ def build_admin_dashboard_context(period_days: int, now=None) -> dict:
         },
         "operations": operations,
         "attention": attention,
-        "activity_feed": _activity_feed(nonstaff_users, feedback, mutations),
+        "activity_feed": _activity_feed(nonstaff_users, feedback),
         "generated_at": now,
         # Compatibility context for integrations that still read the original totals.
-        "total_users": User.objects.count(),
-        "profile_count": Profile.objects.count(),
+        "total_users": user_stats["total"],
+        "profile_count": profiles.count(),
         "total_feedback": feedback_stats["total"],
         "total_datasets": operations["datasets"],
         "total_projects": operations["projects"],

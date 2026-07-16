@@ -12,11 +12,11 @@ from django.views.generic import TemplateView
 
 from apps.core import agent_skill
 from apps.core.admin_dashboard import build_admin_dashboard_context
+from apps.core.choices import ProfileStates
 from apps.core.models import AgentApiKey, Feedback, Profile
 from apps.core.services import create_agent_api_key, get_or_create_profile_for_user
 from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_customer, server_error
-from apps.datasets.choices import DatasetMutationType
-from apps.datasets.models import Dataset, DatasetMutation, Project
+from apps.datasets.models import Dataset, Project
 from rowset.utils import build_absolute_public_url
 
 
@@ -806,24 +806,13 @@ class TestHomeView:
             key_prefix="rsk_unused",
             token_hash="b" * 64,
         )
-        dataset = Dataset.objects.create(
+        Dataset.objects.create(
             profile=activated_user.profile,
             created_by_agent_api_key=active_key,
             name="Agent research",
             headers=["topic"],
             row_count=14,
             public_enabled=True,
-        )
-        mutation = DatasetMutation.objects.create(
-            dataset=dataset,
-            profile=activated_user.profile,
-            agent_api_key=active_key,
-            actor_label=active_key.name,
-            mutation_type=DatasetMutationType.ROW_CREATED,
-            summary="Created 14 rows",
-        )
-        DatasetMutation.objects.filter(pk=mutation.pk).update(
-            created_at=now - timezone.timedelta(hours=1)
         )
         feedback = Feedback.objects.create(
             profile=activated_user.profile,
@@ -841,7 +830,6 @@ class TestHomeView:
             "new_users": 2,
             "setup_completed": 1,
             "active_agents": 1,
-            "mutations": 1,
         }
         assert response.context["activation_funnel"][0]["count"] == 3
         assert response.context["activation_funnel"][-1]["count"] == 1
@@ -850,7 +838,7 @@ class TestHomeView:
         assert response.context["attention"]["stalled_onboarding"] == 1
         assert response.context["attention"]["unused_agent_keys"] == 1
         assert response.context["attention"]["new_feedback"] == 1
-        assert response.context["activity_feed"][0]["kind"] == "mutation"
+        assert response.context["activity_feed"][0]["kind"] == "feedback"
         content = response.content.decode()
         assert "Product health" in content
         assert "Activation funnel" in content
@@ -884,29 +872,104 @@ class TestHomeView:
         assert response.context["growth"]["active_trials"] == 1
         assert response.context["attention"]["trials_expiring"] == 1
 
-    def test_admin_dashboard_activity_feed_keeps_latest_source_dominant_events(
-        self, django_user_model
-    ):
-        user = django_user_model.objects.create_user(
-            username="mutation-heavy-user",
-            email="mutation-heavy@example.com",
+    def test_admin_dashboard_excludes_staff_and_superuser_owned_data(self, django_user_model):
+        now = timezone.now()
+        regular_user = django_user_model.objects.create_user(
+            username="regular-dashboard-user",
+            email="regular-dashboard@example.com",
             password="strong-test-pass-123",
         )
-        dataset = Dataset.objects.create(profile=user.profile, name="Busy dataset", headers=["id"])
-        for number in range(12):
-            DatasetMutation.objects.create(
-                dataset=dataset,
-                profile=user.profile,
-                mutation_type=DatasetMutationType.ROW_CREATED,
-                summary=f"Mutation {number}",
+        staff_user = django_user_model.objects.create_user(
+            username="staff-dashboard-user",
+            email="staff-dashboard@example.com",
+            password="strong-test-pass-123",
+            is_staff=True,
+        )
+        superuser = django_user_model.objects.create_superuser(
+            username="super-dashboard-user",
+            email="super-dashboard@example.com",
+            password="strong-test-pass-123",
+        )
+
+        for user in (regular_user, staff_user, superuser):
+            profile = user.profile
+            profile.setup_completed_at = now - timezone.timedelta(hours=1)
+            profile.trial_started_at = now - timezone.timedelta(days=1)
+            profile.trial_ends_at = now + timezone.timedelta(days=2)
+            profile.state = ProfileStates.SUBSCRIBED
+            profile.save(
+                update_fields=[
+                    "setup_completed_at",
+                    "trial_started_at",
+                    "trial_ends_at",
+                    "state",
+                    "updated_at",
+                ]
             )
 
-        context = build_admin_dashboard_context(7)
+        users_and_rows = (
+            (regular_user, 2, "r"),
+            (staff_user, 50, "s"),
+            (superuser, 100, "a"),
+        )
+        for user, row_count, token_character in users_and_rows:
+            key = AgentApiKey.objects.create(
+                profile=user.profile,
+                name=f"{user.username} agent",
+                key_prefix=f"rsk_{token_character}",
+                token_hash=token_character * 64,
+                last_used_at=now - timezone.timedelta(minutes=30),
+            )
+            project = Project.objects.create(profile=user.profile, name=f"{user.username} project")
+            Dataset.objects.create(
+                profile=user.profile,
+                project=project,
+                created_by_agent_api_key=key,
+                name=f"{user.username} dataset",
+                headers=["id"],
+                row_count=row_count,
+                public_enabled=True,
+            )
+            Feedback.objects.create(
+                profile=user.profile,
+                feedback=f"{user.username} feedback",
+                page="/admin-panel",
+            )
+        Feedback.objects.create(feedback="Anonymous feedback", page="/admin-panel")
 
-        assert len(context["activity_feed"]) == 12
-        assert {item["title"] for item in context["activity_feed"]} == {
-            f"Mutation {number}" for number in range(12)
+        context = build_admin_dashboard_context(7, now=now + timezone.timedelta(minutes=1))
+
+        assert context["product_health"] == {
+            "new_users": 1,
+            "setup_completed": 1,
+            "active_agents": 1,
         }
+        assert [stage["count"] for stage in context["activation_funnel"]] == [1, 1, 1, 1]
+        assert context["growth"] == {
+            "total_users": 1,
+            "setup_rate": 100,
+            "active_trials": 1,
+            "subscribers": 1,
+        }
+        assert context["operations"] == {
+            "datasets": 1,
+            "projects": 1,
+            "rows_stored": 2,
+            "public_previews": 1,
+            "active_agent_keys": 1,
+        }
+        assert context["attention"]["trials_expiring"] == 1
+        assert context["attention"]["new_feedback"] == 2
+        assert context["total_users"] == 1
+        assert context["profile_count"] == 1
+        assert context["total_feedback"] == 2
+        activity_text = " ".join(
+            f"{item['title']} {item['detail']}" for item in context["activity_feed"]
+        )
+        assert "regular-dashboard-user feedback" in activity_text
+        assert "Anonymous feedback" in activity_text
+        assert "staff-dashboard" not in activity_text
+        assert "super-dashboard" not in activity_text
 
     def test_admin_dashboard_activity_feed_orders_sources_before_slicing(self, django_user_model):
         now = timezone.now()
