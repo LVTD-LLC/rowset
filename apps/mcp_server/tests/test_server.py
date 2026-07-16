@@ -437,6 +437,10 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         assert "ask the user which interface to configure" in startup
         assert "authenticated user-info request" in startup
         assert "start the trial" in startup
+        assert "suggest two to four project, section, and dataset structures" in startup
+        assert "Ask before creating anything" in startup
+        assert "daily Rowset tips automation" in startup
+        assert "explicit agreement" in startup
         dataset_context = next(
             capability
             for capability in payload["capabilities"]

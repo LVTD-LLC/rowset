@@ -551,7 +551,12 @@ class TestHomeView:
         assert "GET <Rowset REST API base>/user" in content
         assert "marks onboarding complete" in content
         assert "starts the Rowset trial" in content
-        assert "a first dataset or perform another Rowset task unless the user asks" in content
+        assert "Do not create a first dataset" in content
+        assert "unless the user explicitly chooses one" in content
+        assert "Suggest two to four tailored project, section, and dataset structures" in content
+        assert "daily Rowset tips automation" in content
+        assert "Only create the automation after explicit agreement" in content
+        assert "runs in the user's agent account" in content
         assert "Public previews are read-only sharing surfaces" in content
 
     def test_companion_agent_instruction_markdown_is_public(self, client):
@@ -660,6 +665,11 @@ class TestHomeView:
         assert "get_user_info over MCP" in prompt
         assert "rowset user info through the CLI" in prompt
         assert "completes onboarding, and starts the trial" in prompt
+        assert "suggest two to four useful project, section, and dataset structures" in prompt
+        assert "Do not create or change Rowset data until the user chooses" in prompt
+        assert "https://rowset.example/trial-rewards" in prompt
+        assert "simple daily automation" in prompt
+        assert "Only create the automation after the user explicitly agrees" in prompt
         assert "codex mcp add" not in prompt.lower()
 
         masked_prompt = build_agent_setup_prompt(request, mask_api_key=True)

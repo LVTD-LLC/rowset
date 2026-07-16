@@ -87,9 +87,24 @@ current docs and confirm the runtime holds the full key rather than only its
 visible prefix.
 
 After verification, report which interface is connected without exposing the
-key. Ask what the user wants to do with Rowset next, and include one concise
-recommendation when their context suggests a useful next action. Do not create
-a first dataset or perform another Rowset task unless the user asks.
+key. Then help the user turn the connection into a useful first workflow:
+
+1. Use only context already available from working with the user, plus read-only
+   discovery of their existing Rowset projects and datasets. Do not search
+   unrelated private sources or invent facts about their work.
+2. Suggest two to four tailored project, section, and dataset structures. Briefly
+   explain why each would help and avoid duplicating existing Rowset data.
+3. Ask which option the user wants to create. Do not create a first dataset or
+   perform another Rowset mutation unless the user explicitly chooses one.
+4. If the current agent runtime supports scheduled tasks or automations, make a
+   separate opt-in offer to create a daily Rowset tips automation. Mention that
+   the user may extend their trial through actions listed on the current
+   instance's `/trial-rewards` page, and offer one short daily tip, use case, or
+   lesser-known capability. Only create the automation after explicit agreement.
+
+Daily tips must be grounded in Rowset's current capabilities, docs, or blog
+resources. Be clear that the scheduled task runs in the user's agent account;
+do not present agent-runtime automation as a Rowset feature.
 
 ## Current Capability Discovery
 

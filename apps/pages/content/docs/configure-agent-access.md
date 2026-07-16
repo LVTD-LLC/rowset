@@ -96,6 +96,13 @@ Make authenticated user-info the final setup action: `get_user_info` over MCP,
 `rowset user info` through the CLI, or `GET /api/user` through REST. That request
 verifies the connection, completes onboarding, and starts the trial.
 
+After verification, the setup prompt asks the agent to use context it already
+has about the user's work and read-only Rowset discovery to propose a few useful
+project, section, and dataset structures. The agent asks which option to create
+before changing data. In runtimes with scheduled tasks, it also offers a
+separate opt-in daily Rowset tips automation; that automation runs in the agent
+account, not in Rowset.
+
 ## Recommended agent behavior
 
 - Recommend MCP, CLI, or REST for the current context and ask before configuring it.

@@ -58,8 +58,14 @@ ROWSET_RECOMMENDED_STARTUP = (
         "interface to verify access, complete onboarding, and start the trial."
     ),
     (
-        "Report the verified connection and ask what the user wants to do next, with a "
-        "contextual recommendation when useful."
+        "Report the verified connection, inspect existing Rowset structure read-only, and "
+        "suggest two to four project, section, and dataset structures based on context the "
+        "agent already has about the user's work. Ask before creating anything."
+    ),
+    (
+        "When the agent runtime supports scheduled tasks, separately offer an opt-in daily "
+        "Rowset tips automation. Create it only after explicit agreement and ground tips in "
+        "current Rowset resources."
     ),
 )
 

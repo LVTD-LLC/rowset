@@ -185,6 +185,7 @@ def build_agent_setup_prompt(
     cli_docs_url = build_absolute_public_url("/docs/use-cli.md")
     docs_url = build_absolute_public_url(reverse("docs_home"))
     blog_url = build_absolute_public_url(reverse("blog_posts"))
+    trial_rewards_url = build_absolute_public_url(reverse("trial_rewards"))
     if profile is None:
         profile = get_or_create_profile_for_user(request.user)
     if mask_api_key:
@@ -208,7 +209,7 @@ def build_agent_setup_prompt(
             f"Rowset current API docs: {api_docs_url}",
             f"Rowset current capabilities: {rest_api_base_url}capabilities",
             "",
-            ROWSET_AGENT_SETUP_INSTRUCTIONS,
+            ROWSET_AGENT_SETUP_INSTRUCTIONS.format(trial_rewards_url=trial_rewards_url),
         ]
     )
 
