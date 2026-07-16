@@ -97,7 +97,7 @@ def _activity_feed(nonstaff_users, feedback, mutations) -> list[dict]:
     events = []
     for mutation in (
         mutations.select_related("dataset")
-        .only("id", "summary", "actor_label", "created_at", "dataset__name")
+        .only("id", "dataset", "summary", "actor_label", "created_at", "dataset__name")
         .order_by("-created_at", "-id")[:12]
     ):
         events.append(
