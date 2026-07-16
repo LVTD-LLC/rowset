@@ -16,6 +16,11 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-17
+
+### Changed
+- Enabled colorized choice values and tags by default for new user profiles.
+
 ## 2026-07-16
 
 ### Added
