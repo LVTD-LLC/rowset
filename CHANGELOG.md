@@ -20,6 +20,10 @@ deployment or release cut date.
 
 ### Changed
 - Enabled colorized choice values and tags by default for new user profiles.
+- Limited internal admin dashboard metrics and activity to regular users while excluding staff and superuser-owned data.
+
+### Removed
+- Removed dataset mutation counts from the internal admin dashboard's health cards, activity chart, and recent-activity feed.
 
 ## 2026-07-16
 

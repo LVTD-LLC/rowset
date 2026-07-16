@@ -32,11 +32,11 @@
     <section aria-labelledby="product-health-heading">
         <div class="flex flex-col gap-1">
             <h2 id="product-health-heading" class="fb-section-title">Product health</h2>
-            <p class="text-base text-slate-500 dark:text-slate-400 sm:text-sm">The four signals that best describe the last {{ period_days }} days.</p>
+            <p class="text-base text-slate-500 dark:text-slate-400 sm:text-sm">The signals that best describe the last {{ period_days }} days.</p>
         </div>
-        <dl class="mt-5 grid grid-cols-1 border-y border-slate-950/10 dark:border-white/10 @md:grid-cols-2 @4xl:grid-cols-4">
+        <dl class="mt-5 grid grid-cols-1 border-y border-slate-950/10 dark:border-white/10 @md:grid-cols-3">
             {% for card in product_health_cards %}
-                <div class="border-t border-slate-950/10 py-5 first:border-t-0 dark:border-white/10 @md:[&:nth-child(-n+2)]:border-t-0 @md:[&:nth-child(2n)]:border-l @md:[&:nth-child(2n)]:pl-6 @md:[&:nth-child(2n+1)]:pr-6 @4xl:border-t-0 @4xl:px-6 @4xl:first:pl-0 @4xl:last:pr-0 @4xl:[&:not(:first-child)]:border-l">
+                <div class="border-t border-slate-950/10 py-5 first:border-t-0 dark:border-white/10 @md:border-t-0 @md:px-6 @md:first:pl-0 @md:last:pr-0 @md:[&:not(:first-child)]:border-l">
                     <dt class="truncate text-base font-medium text-slate-600 dark:text-slate-300 sm:text-sm">{{ card.label }}</dt>
                     <dd class="mt-2 flex items-baseline gap-2">
                         <p class="tabular-nums text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ card.value }}</p>
@@ -66,19 +66,17 @@
                     role="list">
                     <li class="flex items-center gap-2"><span class="size-2 shrink-0 rounded-sm bg-sky-500" aria-hidden="true"></span>Signups</li>
                     <li class="flex items-center gap-2"><span class="size-2 shrink-0 rounded-sm bg-emerald-500" aria-hidden="true"></span>Setups</li>
-                    <li class="flex items-center gap-2"><span class="size-2 shrink-0 rounded-sm bg-slate-500 dark:bg-slate-300"
-      aria-hidden="true"></span>Mutations</li>
                 </ul>
             </div>
             <div class="mt-6 overflow-x-auto pb-2">
                 <div class="flex h-56 min-w-[36rem] items-end gap-1 border-b border-slate-950/10 px-1 dark:border-white/10"
                      role="img"
-                     aria-label="Daily signups, setup completions, and dataset mutations for the last {{ period_days }} days">
+                     aria-label="Daily signups and setup completions for the last {{ period_days }} days">
                     {% for day in growth_series %}
                         <div class="group fb-focus relative flex h-full min-w-2 flex-1 flex-col-reverse gap-px"
                              tabindex="0"
-                             aria-label="{{ day.label }}. New users: {{ day.signups }}. Setup completions: {{ day.setups }}. Dataset mutations: {{ day.mutations }}."
-                             title="{{ day.label }}: {{ day.signups }} signups, {{ day.setups }} setups, {{ day.mutations }} mutations">
+                             aria-label="{{ day.label }}. New users: {{ day.signups }}. Setup completions: {{ day.setups }}."
+                             title="{{ day.label }}: {{ day.signups }} signups, {{ day.setups }} setups">
                             {% if day.signups %}
                                 <div class="h-(--bar-height) min-h-0 rounded-t-sm bg-sky-500"
                                      style="--bar-height: {{ day.signup_height_percent }}%"></div>
@@ -87,13 +85,9 @@
                                 <div class="h-(--bar-height) min-h-0 rounded-t-sm bg-emerald-500"
                                      style="--bar-height: {{ day.setup_height_percent }}%"></div>
                             {% endif %}
-                            {% if day.mutations %}
-                                <div class="h-(--bar-height) min-h-0 rounded-t-sm bg-slate-500 dark:bg-slate-300"
-                                     style="--bar-height: {{ day.mutation_height_percent }}%"></div>
-                            {% endif %}
                             <div class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-44 -translate-x-1/2 rounded-md bg-slate-950 p-2 text-sm text-white shadow-lg group-hover:block group-focus-within:block dark:bg-slate-100 dark:text-slate-950 dark:shadow-none">
                                 <p class="font-medium">{{ day.label }}</p>
-                                <p class="mt-1">{{ day.signups }} signups · {{ day.setups }} setups · {{ day.mutations }} mutations</p>
+                                <p class="mt-1">{{ day.signups }} signups · {{ day.setups }} setups</p>
                             </div>
                         </div>
                     {% endfor %}
