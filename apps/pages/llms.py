@@ -1,6 +1,5 @@
 from django.urls import reverse
 
-from apps.pages.comparisons import list_comparison_pages
 from apps.pages.content import get_content_section
 from apps.pages.public_markdown import build_public_markdown_url
 from rowset.utils import build_absolute_public_url
@@ -15,7 +14,6 @@ def _content_link(page: dict) -> str:
 
 def render_llms_txt() -> str:
     docs = get_content_section("docs")["pages"]
-    use_cases = get_content_section("use-cases")["pages"]
     quickstart = next(page for page in docs if page["slug"] == "quickstart")
     other_docs = [page for page in docs if page["slug"] != "quickstart"]
 
@@ -46,22 +44,6 @@ def render_llms_txt() -> str:
         "",
     ]
     lines.extend(_content_link(page) for page in other_docs)
-    lines.extend(
-        [
-            "",
-            "## Use cases",
-            "",
-        ]
-    )
-    lines.extend(_content_link(page) for page in use_cases)
-    comparisons = list_comparison_pages()
-    if comparisons:
-        lines.extend(["", "## Comparisons", ""])
-        lines.extend(
-            f"- [{page.title}]({build_public_markdown_url(page.get_absolute_url())}) — "
-            f"{page.description}"
-            for page in comparisons
-        )
     lines.extend(
         [
             "",

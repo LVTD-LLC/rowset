@@ -24,6 +24,7 @@ from PIL import Image
 from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
+from apps.pages.comparisons import get_comparison_page
 from apps.pages.content import get_content_section
 from apps.pages.public_markdown import markdown_path_for
 from apps.pages.schema import (
@@ -100,6 +101,7 @@ def test_checked_in_markdown_public_content_links_use_live_extensionless_routes(
         "/docs/quickstart.md",
         "/use-cases/personal-crm.md",
         "/vs/airtable.md",
+        "/vs/google-sheets.md",
     ),
 )
 def test_public_markdown_routes_return_markdown(client, path):
@@ -121,6 +123,7 @@ def test_public_markdown_routes_return_markdown(client, path):
         ("/changelog.md", "# Changelog"),
         ("/docs/database-mcp-server.md", "# Database MCP server"),
         ("/vs/airtable.md", "# Rowset vs Airtable"),
+        ("/vs/google-sheets.md", "# Rowset vs Google Sheets"),
     ),
 )
 def test_public_markdown_inventory_has_curated_content(client, path, expected_heading):
@@ -236,7 +239,7 @@ def test_user_api_markdown_uses_canonical_trial_upgrade_url(client):
 
 
 @override_settings(SITE_URL="https://rowset.example")
-def test_llms_txt_is_an_app_use_first_complete_content_index(client):
+def test_llms_txt_is_a_documentation_only_content_index(client):
     assert resolve(reverse("llms_txt")).func.__module__ == "apps.pages.views"
 
     response = client.get(reverse("llms_txt"))
@@ -247,7 +250,6 @@ def test_llms_txt_is_an_app_use_first_complete_content_index(client):
     content = response.content.decode()
 
     docs = get_content_section("docs")["pages"]
-    use_cases = get_content_section("use-cases")["pages"]
     quickstart_url = "https://rowset.example/docs/quickstart.md"
 
     assert docs[0]["slug"] == "quickstart"
@@ -262,10 +264,6 @@ def test_llms_txt_is_an_app_use_first_complete_content_index(client):
         assert f"[{page['title']}]({markdown_url})" in content
         assert page["description"] in content
 
-    for page in use_cases:
-        markdown_url = f"https://rowset.example{markdown_path_for(page['url'])}"
-        assert f"[{page['title']}]({markdown_url})" in content
-
     assert "Use hosted MCP first" in content
     assert "Use REST second" in content
     assert "Do not use browser automation" in content
@@ -277,6 +275,11 @@ def test_llms_txt_is_an_app_use_first_complete_content_index(client):
     assert "https://rowset.example/SKILL.md" in content
     assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
     assert "https://rowset.example/skills/rowset-use-cases/SKILL.md" in content
+    assert "## Use cases" not in content
+    assert "## Comparisons" not in content
+    assert "https://rowset.example/use-cases/" not in content
+    assert "https://rowset.example/vs/" not in content
+    assert "https://rowset.example/blog/" not in content
     assert "MCP tools:" not in content
     assert "REST paths:" not in content
 
@@ -655,6 +658,8 @@ def test_footer_has_a_separate_compare_column(client):
     assert ">Compare</h2>" in footer_nav
     assert f'href="{reverse("comparison_page", kwargs={"slug": "airtable"})}"' in footer_nav
     assert ">Rowset vs Airtable</a>" in footer_nav
+    assert f'href="{reverse("comparison_page", kwargs={"slug": "google-sheets"})}"' in footer_nav
+    assert ">Rowset vs Google Sheets</a>" in footer_nav
 
 
 def test_changelog_html_and_markdown_share_the_repository_changelog(client):
@@ -951,6 +956,7 @@ def test_sitemap_response_does_not_set_noindex_header(client):
         "/terms-of-service",
         "/uses",
         "/vs/airtable",
+        "/vs/google-sheets",
     ),
 )
 def test_marketing_routes_are_extensionless(client, path):
@@ -1186,14 +1192,70 @@ def test_rowset_vs_airtable_has_markdown_and_sitemap_entries(client):
     assert b"/vs/airtable" in sitemap_response.content
 
 
-@override_settings(SITE_URL="https://rowset.example")
-def test_llms_txt_lists_rowset_vs_airtable_markdown(client):
-    response = client.get(reverse("llms_txt"))
+@override_settings(SITE_URL="https://testserver")
+def test_rowset_vs_google_sheets_page_has_required_content_links_and_schema(client):
+    response = client.get(reverse("comparison_page", kwargs={"slug": "google-sheets"}))
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "## Comparisons" in content
-    assert "https://rowset.example/vs/airtable.md" in content
+    text = strip_tags(content)
+    source_words = re.findall(r"\b[\w'-]+\b", get_comparison_page("google-sheets").content)
+    schemas = json.loads(_json_ld_payload(content))
+
+    assert len(source_words) >= 1200
+    assert content.count("<h1") == 1
+    assert "Rowset vs Google Sheets for AI Agents (2026)" in content
+    assert "Rowset vs Google Sheets at a glance" in content
+    assert "AI in Sheets vs external agent handoff" in content
+    assert "The safest migration keeps Sheets where people need it" in content
+    assert "Frequently asked questions" in content
+    assert "Google Sheets is a cloud spreadsheet for human collaboration" in text
+    assert "Does Google Sheets support MCP?" in content
+    assert "Rowset does not provide managed Google Sheets synchronization" in text
+    assert reverse("pricing") in content
+    assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
+    assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
+    assert reverse("blog_post", kwargs={"slug": "google-sheets-alternatives"}) in content
+    assert 'href="https://workspace.google.com/products/sheets/"' in content
+    assert 'href="https://developers.google.com/workspace/sheets/api/limits"' in content
+    assert [schema["@type"] for schema in schemas] == [
+        "Article",
+        "BreadcrumbList",
+        "FAQPage",
+    ]
+    assert schemas[0]["url"] == "https://testserver/vs/google-sheets"
+    assert schemas[0]["dateModified"] == "2026-07-15"
+    assert len(schemas[2]["mainEntity"]) == 7
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_rowset_vs_google_sheets_has_markdown_and_sitemap_entries(client):
+    markdown_response = client.get(
+        reverse("comparison_page_markdown", kwargs={"slug": "google-sheets"})
+    )
+    sitemap_response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+
+    assert markdown_response.status_code == 200
+    assert markdown_response.headers["Content-Type"] == "text/markdown; charset=utf-8"
+    assert markdown_response.content.startswith(b"# Rowset vs Google Sheets")
+    assert sitemap_response.status_code == 200
+    assert b"/vs/google-sheets" in sitemap_response.content
+
+
+def test_rowset_vs_google_sheets_has_inbound_links_and_review_record():
+    alternatives = Path(
+        settings.BASE_DIR, "apps/pages/content/blog/google-sheets-alternatives.md"
+    ).read_text(encoding="utf-8")
+    agent_datasets = Path(
+        settings.BASE_DIR, "apps/pages/content/blog/agent-managed-datasets.md"
+    ).read_text(encoding="utf-8")
+    brief = Path(settings.BASE_DIR, ".seo/briefs/rowset-vs-google-sheets.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "/vs/google-sheets" in alternatives
+    assert "/vs/google-sheets" in agent_datasets
+    assert "## AI SEO and product-led SEO review" in brief
 
 
 def test_dataset_instructions_blog_post_has_required_links_schema_and_content(client):

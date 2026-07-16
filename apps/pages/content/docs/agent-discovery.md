@@ -52,7 +52,9 @@ Rowset also publishes a generated text page for agents and search tools:
 
 The page includes the MCP endpoint, REST API base, generated API docs link,
 skill URLs, capability groups, use-case guides, and privacy guardrails. It does
-not include user API keys or private dataset contents.
+not include user API keys or private dataset contents. Its content index lists
+documentation only; blog posts, comparison pages, and use-case marketing pages
+are intentionally omitted.
 
 ## Installable skills
 
