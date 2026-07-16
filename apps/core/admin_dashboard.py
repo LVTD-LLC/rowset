@@ -111,7 +111,7 @@ def _activity_feed(nonstaff_users, feedback, mutations) -> list[dict]:
         )
     for item in (
         feedback.select_related("profile__user")
-        .only("id", "feedback", "created_at", "profile__user__email")
+        .only("id", "feedback", "created_at", "profile", "profile__user__email")
         .order_by("-created_at", "-id")[:12]
     ):
         submitter = item.profile.user.email if item.profile else "Anonymous"
