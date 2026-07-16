@@ -12,8 +12,8 @@
     {% block meta %}
       <title>{% block title %}Rowset{% endblock title %}</title>
       <meta name="description" content="Give AI agents MCP and REST tools to manage API-backed datasets.">
-      <meta name="robots" content="index, follow">
-      <link rel="canonical" href="https://{{ request.get_host }}/">
+      <meta name="robots" content="{{ search_robots_policy }}">
+      <link rel="canonical" href="{{ canonical_url }}">
     {% endblock meta %}
     {% if markdown_url %}<link rel="alternate" type="text/markdown" href="{{ markdown_url }}">{% endif %}
     {% block social_image_meta %}

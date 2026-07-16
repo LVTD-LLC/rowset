@@ -934,15 +934,23 @@ def test_rowset_social_card_has_open_graph_dimensions():
     assert (width, height) == (1200, 630)
 
 
-@override_settings(SITE_URL="https://testserver")
-def test_robots_txt_allows_crawling_and_links_sitemap(client):
+@override_settings(SITE_URL="https://rowset.lvtd.dev")
+def test_hosted_robots_txt_allows_crawling_and_links_sitemap(client):
     response = client.get(reverse("robots_txt"), secure=True, HTTP_HOST="testserver")
 
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
     assert response.content.decode() == (
-        "User-agent: *\nAllow: /\nSitemap: https://testserver/sitemap.xml\n\n"
+        "User-agent: *\nAllow: /\nSitemap: https://rowset.lvtd.dev/sitemap.xml\n\n"
     )
+
+
+@override_settings(SITE_URL="https://self-hosted.example")
+def test_self_hosted_robots_txt_allows_crawlers_to_observe_noindex_without_sitemap(client):
+    response = client.get(reverse("robots_txt"))
+
+    assert response.status_code == 200
+    assert response.content.decode() == "User-agent: *\nAllow: /\n\n"
 
 
 def test_favicon_redirects_to_collected_static_asset(client):
@@ -952,8 +960,69 @@ def test_favicon_redirects_to_collected_static_asset(client):
     assert response["Location"].endswith("/static/vendors/images/favicon.ico")
 
 
-def test_sitemap_response_does_not_set_noindex_header(client):
+@override_settings(SITE_URL="https://rowset.lvtd.dev")
+def test_hosted_sitemap_response_does_not_set_noindex_header(client):
     response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+
+    assert response.status_code == 200
+    assert "X-Robots-Tag" not in response.headers
+
+
+@override_settings(SITE_URL="https://self-hosted.example")
+def test_self_hosted_sitemap_response_is_noindex(client):
+    response = client.get("/sitemap.xml")
+
+    assert response.status_code == 200
+    assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/",
+        "/docs/quickstart",
+    ),
+)
+@override_settings(SITE_URL="https://self-hosted.example")
+def test_self_hosted_public_html_is_noindex_with_hosted_canonical(client, path):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert '<meta name="robots" content="noindex, nofollow, noarchive"' in content
+    assert f'<link rel="canonical" href="https://rowset.lvtd.dev{path}"' in content
+    assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+
+
+@override_settings(SITE_URL="https://rowset.lvtd.dev")
+def test_hosted_public_html_remains_indexable(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert '<meta name="robots" content="index, follow"' in content
+    assert '<link rel="canonical" href="https://rowset.lvtd.dev/"' in content
+    assert "X-Robots-Tag" not in response.headers
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/docs/quickstart.md",
+        "/llms.txt",
+    ),
+)
+@override_settings(SITE_URL="https://self-hosted.example")
+def test_self_hosted_non_html_public_pages_are_noindex(client, path):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+
+
+@override_settings(SITE_URL="https://rowset.lvtd.dev")
+def test_hosted_non_html_public_page_remains_indexable(client):
+    response = client.get("/docs/quickstart.md")
 
     assert response.status_code == 200
     assert "X-Robots-Tag" not in response.headers
@@ -1144,7 +1213,7 @@ def test_airtable_alternatives_blog_post_has_required_links_schema_and_content(c
     assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
     assert schema["@type"] == "BlogPosting"
 
-    assert schema["url"] == "https://testserver/blog/airtable-alternatives"
+    assert schema["url"] == "https://rowset.lvtd.dev/blog/airtable-alternatives"
     assert schema["headline"] == "Best Airtable alternatives for AI-agent-managed datasets"
 
 
