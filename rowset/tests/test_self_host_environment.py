@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).parents[2]
+_INIT = _REPO_ROOT / "deployment/self-host/init-env.sh"
 _VALIDATE = _REPO_ROOT / "deployment/self-host/validate-env.sh"
 _CANARY = "canary-value-that-must-never-appear-" + "x" * 64
 _SECRET_KEYS = ("SECRET_KEY", "POSTGRES_PASSWORD", "REDIS_PASSWORD")
@@ -53,6 +54,28 @@ def _run_validate(
         arguments,
         cwd=_REPO_ROOT,
         env={**_clean_environment(), **(environment or {})},
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def _parse_env(path: Path) -> dict[str, str]:
+    return dict(
+        line.split("=", 1)
+        for line in path.read_text().splitlines()
+        if line and not line.startswith("#")
+    )
+
+
+def _run_init(
+    path: Path,
+    environment: dict[str, str],
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(_INIT), str(path)],
+        cwd=_REPO_ROOT,
+        env={**_clean_environment(), **environment},
         text=True,
         capture_output=True,
         check=False,
@@ -243,3 +266,171 @@ def test_validator_rejects_empty_or_multiline_secret_files(tmp_path, contents):
     assert "single nonblank line" in result.stderr
     if contents.strip():
         assert contents.strip() not in result.stdout + result.stderr
+
+
+def test_initializer_generates_distinct_secrets_and_private_file(tmp_path):
+    env_file = tmp_path / ".env"
+    environment = {
+        "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+        "ROWSET_DOMAIN": "rowset.example.com",
+    }
+
+    result = _run_init(env_file, environment)
+
+    assert result.returncode == 0
+    assert result.stdout == "Production environment initialized.\n"
+    assert result.stderr == ""
+    values = _parse_env(env_file)
+    assert values["ROWSET_IMAGE"] == environment["ROWSET_IMAGE"]
+    assert values["ROWSET_DOMAIN"] == environment["ROWSET_DOMAIN"]
+    assert len(values["SECRET_KEY"]) >= 50
+    assert len(values["POSTGRES_PASSWORD"]) >= 32
+    assert len(values["REDIS_PASSWORD"]) >= 32
+    assert len({values[key] for key in _SECRET_KEYS}) == 3
+    assert stat.S_IMODE(env_file.stat().st_mode) == 0o600
+    for key in _SECRET_KEYS:
+        assert values[key] not in result.stdout + result.stderr
+
+
+def test_initializer_preserves_every_existing_byte_on_rerun(tmp_path):
+    env_file = tmp_path / ".env"
+    environment = {
+        "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+        "ROWSET_DOMAIN": "rowset.example.com",
+    }
+    assert _run_init(env_file, environment).returncode == 0
+    before = env_file.read_bytes()
+
+    result = _run_init(
+        env_file,
+        {
+            "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v2",
+            "ROWSET_DOMAIN": "different.example.com",
+            "SECRET_KEY": "replacement-" + "z" * 64,
+        },
+    )
+
+    assert result.returncode == 0
+    assert env_file.read_bytes() == before
+
+
+def test_initializer_accepts_direct_secret_inputs_without_disclosure(tmp_path):
+    env_file = tmp_path / ".env"
+    expected = {
+        "SECRET_KEY": "direct-secret-canary-" + "s" * 64,
+        "POSTGRES_PASSWORD": "direct-postgres-canary-" + "p" * 48,
+        "REDIS_PASSWORD": "direct-redis-canary-" + "r" * 48,
+    }
+    environment = {
+        "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+        "ROWSET_DOMAIN": "rowset.example.com",
+        **expected,
+    }
+
+    result = _run_init(env_file, environment)
+
+    assert result.returncode == 0
+    assert {key: _parse_env(env_file)[key] for key in expected} == expected
+    for value in expected.values():
+        assert value not in result.stdout + result.stderr
+
+
+def test_initializer_accepts_secret_files_without_disclosure(tmp_path):
+    env_file = tmp_path / ".env"
+    injected = {}
+    expected = {}
+    for key, marker in (
+        ("SECRET_KEY", "s"),
+        ("POSTGRES_PASSWORD", "p"),
+        ("REDIS_PASSWORD", "r"),
+    ):
+        value = f"{marker}-file-canary-" + marker * 64
+        secret_file = tmp_path / f"{key}.secret"
+        secret_file.write_text(value + "\n")
+        secret_file.chmod(0o600)
+        injected[f"{key}_FILE"] = str(secret_file)
+        expected[key] = value
+    environment = {
+        "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+        "ROWSET_DOMAIN": "rowset.example.com",
+        **injected,
+    }
+
+    result = _run_init(env_file, environment)
+
+    assert result.returncode == 0
+    assert {key: _parse_env(env_file)[key] for key in expected} == expected
+    for value in expected.values():
+        assert value not in result.stdout + result.stderr
+
+
+def test_initializer_conflict_does_not_alter_existing_file(tmp_path):
+    env_file = tmp_path / ".env"
+    original = b"# existing configuration that must survive\nENVIRONMENT=prod\n"
+    env_file.write_bytes(original)
+    env_file.chmod(0o600)
+    secret_file = tmp_path / "secret"
+    secret_file.write_text(_CANARY + "\n")
+    secret_file.chmod(0o600)
+    environment = {
+        "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+        "ROWSET_DOMAIN": "rowset.example.com",
+        "SECRET_KEY": "direct-" + "s" * 64,
+        "SECRET_KEY_FILE": str(secret_file),
+    }
+
+    result = _run_init(env_file, environment)
+
+    assert result.returncode != 0
+    assert "SECRET_KEY" in result.stderr
+    assert "both direct and file inputs" in result.stderr
+    assert env_file.read_bytes() == original
+    assert _CANARY not in result.stdout + result.stderr
+
+
+def test_initializer_does_not_replace_an_existing_unsafe_secret(tmp_path):
+    values = _safe_values()
+    values["SECRET_KEY"] = "super-secret-key"
+    env_file = tmp_path / ".env"
+    _write_env(env_file, values)
+    before = env_file.read_bytes()
+
+    result = _run_init(
+        env_file,
+        {
+            "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+            "ROWSET_DOMAIN": "rowset.example.com",
+        },
+    )
+
+    assert result.returncode != 0
+    assert "SECRET_KEY" in result.stderr
+    assert env_file.read_bytes() == before
+
+
+@pytest.mark.parametrize("missing_key", ["ROWSET_IMAGE", "ROWSET_DOMAIN"])
+def test_initializer_requires_non_secret_deployment_inputs(tmp_path, missing_key):
+    env_file = tmp_path / ".env"
+    environment = {
+        "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+        "ROWSET_DOMAIN": "rowset.example.com",
+    }
+    del environment[missing_key]
+
+    result = _run_init(env_file, environment)
+
+    assert result.returncode != 0
+    assert missing_key in result.stderr
+    assert not env_file.exists()
+
+
+def test_initializer_repairs_permissions_without_changing_contents(tmp_path):
+    env_file = tmp_path / ".env"
+    _write_env(env_file, _safe_values(), mode=0o640)
+    before = env_file.read_bytes()
+
+    result = _run_init(env_file, {})
+
+    assert result.returncode == 0
+    assert env_file.read_bytes() == before
+    assert stat.S_IMODE(env_file.stat().st_mode) == 0o600

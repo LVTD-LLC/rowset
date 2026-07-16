@@ -5,17 +5,11 @@ fail() {
     exit 1
 }
 
-validate_environment_file() {
+validate_environment_file_structure() {
     env_file=$1
 
     test -f "$env_file" || fail ENV_FILE "must be a regular file"
     test -r "$env_file" || fail ENV_FILE "must be readable"
-
-    env_mode=$(stat -c '%a' "$env_file" 2>/dev/null) || fail ENV_FILE "permissions cannot be read"
-    test "$env_mode" = "600" || fail ENV_FILE "must have mode 0600"
-
-    env_owner=$(stat -c '%u' "$env_file" 2>/dev/null) || fail ENV_FILE "owner cannot be read"
-    test "$env_owner" = "$(id -u)" || fail ENV_FILE "must be owned by the invoking user"
 
     if awk '
         /^[[:space:]]*$/ || /^[[:space:]]*#/ { next }
@@ -40,6 +34,17 @@ validate_environment_file() {
         ' "$env_file"
     )
     test -z "$duplicate_key" || fail "$duplicate_key" "is assigned more than once"
+}
+
+validate_environment_file() {
+    env_file=$1
+    validate_environment_file_structure "$env_file"
+
+    env_mode=$(stat -c '%a' "$env_file" 2>/dev/null) || fail ENV_FILE "permissions cannot be read"
+    test "$env_mode" = "600" || fail ENV_FILE "must have mode 0600"
+
+    env_owner=$(stat -c '%u' "$env_file" 2>/dev/null) || fail ENV_FILE "owner cannot be read"
+    test "$env_owner" = "$(id -u)" || fail ENV_FILE "must be owned by the invoking user"
 }
 
 environment_file_value() {
@@ -152,7 +157,8 @@ validate_secret() {
     test "${#secret_value}" -ge "$minimum_length" || \
         fail "$secret_key" "must contain at least $minimum_length characters"
     case "$secret_value" in
-        *"$(printf '\nX')"*) fail "$secret_key" "must be a single line" ;;
+        *'
+'*) fail "$secret_key" "must be a single line" ;;
     esac
 }
 
