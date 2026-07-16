@@ -5763,6 +5763,16 @@ def test_project_api_creates_lists_and_returns_project_datasets(client, profile)
         "Draft upload",
         "Launch contacts",
     ]
+    project_dataset = detail_response.json()["datasets"]["datasets"][0]
+    assert {
+        "instructions",
+        "metadata",
+        "headers",
+        "column_schema",
+        "index_column",
+        "public_enabled",
+        "public_key",
+    } <= set(project_dataset)
 
 
 def test_project_api_updates_project_details(client, profile):

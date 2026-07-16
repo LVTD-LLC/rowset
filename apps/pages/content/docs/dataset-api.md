@@ -239,6 +239,12 @@ are interpreted as UTC. For example, `2026-06-01` is treated as
 `2026-06-01T00:00:00Z`. Use these filters when an agent needs to find the right
 dataset before reading rows or making updates.
 
+List results are compact discovery cards: dataset key, name, description,
+project and section references, column and row counts, and update/archive
+timestamps. They deliberately omit headers, semantic schema, instructions,
+metadata, index settings, and public-preview configuration. After selecting a
+dataset, inspect it with the endpoint below before operating on rows.
+
 ## Inspect a dataset
 
 ```http
@@ -255,9 +261,9 @@ summaries, and reference metadata without fetching rows.
 GET {{ api_base_url }}/datasets/archived
 ```
 
-Returns archived datasets for the authenticated profile with the same metadata
-shape as the normal dataset list. Use this when you need to find a dataset key
-before restoring it. Preview-only archived drafts are omitted.
+Returns archived dataset cards for the authenticated profile with the same
+compact shape as the normal dataset list. Use this when you need to find a
+dataset key before restoring it. Preview-only archived drafts are omitted.
 
 ## List rows
 

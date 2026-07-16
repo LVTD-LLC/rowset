@@ -97,6 +97,7 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
         },
         index_column="email",
         index_generated=False,
+        column_count=2,
         row_count=42,
         public_enabled=False,
         public_key="4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
@@ -126,7 +127,12 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
             assert fields == ("project", "section")
             return self
 
+        def annotate(self, **annotations):
+            assert set(annotations) == {"column_count"}
+            return self
+
         def only(self, *fields):
+            assert "headers" not in fields
             return DatasetQuerySet()
 
     datasets = DatasetManager()
@@ -539,7 +545,7 @@ def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model
     assert row.data["feedback"] == "MCP feedback should be saved."
 
 
-def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
+def test_get_all_datasets_mcp_tool_returns_compact_dataset_cards(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -553,20 +559,21 @@ def test_get_all_datasets_mcp_tool_returns_dataset_metadata(monkeypatch):
         assert payload["count"] == 1
         assert payload["total_count"] == 1
         assert payload["has_more"] is False
-        assert payload["datasets"][0]["key"] == "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7"
-        assert payload["datasets"][0]["name"] == "Customers"
-        assert payload["datasets"][0]["description"] == "Customers eligible for launch outreach."
-        assert payload["datasets"][0]["instructions"] == (
-            "Use email as the stable identity. Do not rewrite names from guesses."
-        )
-        assert payload["datasets"][0]["metadata"] == {"workflow": {"default_status": "new"}}
-        assert payload["datasets"][0]["column_schema"]["email"]["description"] == (
-            "Primary contact address for the customer."
-        )
-        assert payload["datasets"][0]["row_count"] == 42
-        assert payload["datasets"][0]["public_enabled"] is False
-        assert payload["datasets"][0]["public_url"] is None
-        assert "rows" not in payload["datasets"][0]
+        assert payload["datasets"][0] == {
+            "key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
+            "name": "Customers",
+            "description": "Customers eligible for launch outreach.",
+            "project": {
+                "key": "3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
+                "name": "Launch",
+                "description": "Launch datasets",
+            },
+            "section": None,
+            "column_count": 2,
+            "row_count": 42,
+            "updated_at": "2026-05-14T00:01:00Z",
+            "archived_at": None,
+        }
 
     anyio.run(run)
 
@@ -641,10 +648,15 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
             "Use email as the stable identity. Do not rewrite names from guesses."
         )
         assert payload["metadata"] == {"workflow": {"default_status": "new"}}
+        assert payload["headers"] == ["email", "name"]
         assert payload["column_schema"]["email"]["description"] == (
             "Primary contact address for the customer."
         )
+        assert payload["index_column"] == "email"
+        assert payload["index_generated"] is False
         assert payload["public_enabled"] is False
+        assert payload["public_key"] == "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9"
+        assert payload["public_page_size"] == 10
         assert payload["public_url"] is None
         assert payload["relationships"] == {"outgoing": [], "incoming": []}
         assert "rows" not in payload

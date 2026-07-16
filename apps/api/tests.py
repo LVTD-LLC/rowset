@@ -39,6 +39,27 @@ def test_openapi_dataset_asset_thumbnail_url_is_required_string(client):
     }
 
 
+def test_openapi_dataset_list_uses_compact_dataset_cards(client):
+    response = client.get("/api/openapi.json")
+
+    assert response.status_code == 200
+    schemas = response.json()["components"]["schemas"]
+    assert set(schemas["DatasetCardOut"]["properties"]) == {
+        "key",
+        "name",
+        "description",
+        "project",
+        "section",
+        "column_count",
+        "row_count",
+        "updated_at",
+        "archived_at",
+    }
+    assert schemas["DatasetListOut"]["properties"]["datasets"]["items"] == {
+        "$ref": "#/components/schemas/DatasetCardOut"
+    }
+
+
 def test_capabilities_endpoint_supports_current_api_prefix(client):
     response = client.get("/api/capabilities")
 
@@ -591,7 +612,7 @@ class UserInfoApiUnitTests(SimpleTestCase):
 
 class DatasetListApiUnitTests(SimpleTestCase):
     @override_settings(SITE_URL="https://rowset.example")
-    def test_list_datasets_returns_profile_dataset_metadata_without_rows(self):
+    def test_list_datasets_returns_compact_dataset_cards(self):
         project = SimpleNamespace(
             key="3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
             name="Launch",
@@ -614,6 +635,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
             },
             index_column="email",
             index_generated=False,
+            column_count=2,
             row_count=42,
             public_enabled=True,
             public_key="4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
@@ -630,7 +652,8 @@ class DatasetListApiUnitTests(SimpleTestCase):
         queryset.__getitem__ = Mock(return_value=[dataset])
         datasets = Mock()
         active_datasets = datasets.filter.return_value
-        active_datasets.select_related.return_value.only.return_value = queryset
+        card_queryset = active_datasets.select_related.return_value.annotate.return_value
+        card_queryset.only.return_value = queryset
         request = HttpRequest()
         request.auth = SimpleNamespace(datasets=datasets)
 
@@ -646,42 +669,23 @@ class DatasetListApiUnitTests(SimpleTestCase):
                 "key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
                 "name": "Customers",
                 "description": "Customers eligible for launch outreach.",
-                "instructions": (
-                    "Use email as the stable identity. Do not rewrite names from guesses."
-                ),
-                "metadata": {"workflow": {"default_status": "new"}},
                 "project": {
                     "key": "3efc2ad0-8d28-44bc-a554-cb3eab89f45a",
                     "name": "Launch",
                     "description": "Launch datasets",
                 },
                 "section": None,
-                "headers": ["email", "name"],
-                "column_schema": {
-                    "email": {
-                        "type": "email",
-                        "description": "Primary contact address for the customer.",
-                    },
-                    "name": {"type": "text"},
-                },
-                "index_column": "email",
-                "index_generated": False,
+                "column_count": 2,
                 "row_count": 42,
-                "public_enabled": True,
-                "public_key": "4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
-                "public_url": (
-                    "https://rowset.example/share/datasets/4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9/"
-                ),
-                "public_page_size": 25,
-                "public_password_protected": True,
-                "created_at": "2026-05-14T00:00:00Z",
                 "updated_at": "2026-05-14T00:01:00Z",
                 "archived_at": None,
             }
         ]
         datasets.filter.assert_called_once_with(archived_at__isnull=True)
         active_datasets.select_related.assert_called_once_with("project", "section")
-        active_datasets.select_related.return_value.only.assert_called_once()
+        active_datasets.select_related.return_value.annotate.assert_called_once()
+        only_fields = card_queryset.only.call_args.args
+        assert "headers" not in only_fields
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
     @override_settings(SITE_URL="https://rowset.example")
@@ -700,6 +704,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
             },
             index_column="email",
             index_generated=False,
+            column_count=2,
             row_count=42,
             public_enabled=False,
             public_key="4b7b8e47-15a5-4bd5-82cb-8c4f4fd40ce9",
@@ -716,7 +721,8 @@ class DatasetListApiUnitTests(SimpleTestCase):
         queryset.__getitem__ = Mock(return_value=[dataset])
         datasets = Mock()
         archived_datasets = datasets.filter.return_value
-        archived_datasets.select_related.return_value.only.return_value = queryset
+        card_queryset = archived_datasets.select_related.return_value.annotate.return_value
+        card_queryset.only.return_value = queryset
         request = HttpRequest()
         request.auth = SimpleNamespace(datasets=datasets)
 
@@ -724,11 +730,22 @@ class DatasetListApiUnitTests(SimpleTestCase):
 
         assert response["count"] == 1
         assert response["total_count"] == 1
-        assert response["datasets"][0]["name"] == "Archived customers"
-        assert response["datasets"][0]["archived_at"] == "2026-05-15T00:00:00Z"
+        assert response["datasets"][0] == {
+            "key": "6b0fe8f5-89e5-4cb1-a40d-6aa912ba31d7",
+            "name": "Archived customers",
+            "description": "Archived customer list.",
+            "project": None,
+            "section": None,
+            "column_count": 2,
+            "row_count": 42,
+            "updated_at": "2026-05-14T00:01:00Z",
+            "archived_at": "2026-05-15T00:00:00Z",
+        }
         datasets.filter.assert_called_once_with(archived_at__isnull=False)
         archived_datasets.select_related.assert_called_once_with("project", "section")
-        archived_datasets.select_related.return_value.only.assert_called_once()
+        archived_datasets.select_related.return_value.annotate.assert_called_once()
+        only_fields = card_queryset.only.call_args.args
+        assert "headers" not in only_fields
         queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
 
 
@@ -1347,7 +1364,10 @@ def test_archived_ready_dataset_supports_direct_row_reads_but_not_writes(django_
 
 @pytest.mark.django_db
 @override_settings(SITE_URL="https://rowset.example")
-def test_search_profile_datasets_filters_metadata_without_rows(django_user_model):
+def test_search_profile_datasets_filters_metadata_without_rows(
+    django_user_model,
+    django_assert_num_queries,
+):
     from apps.api.services import search_profile_datasets
 
     user = django_user_model.objects.create_user(
@@ -1406,19 +1426,73 @@ def test_search_profile_datasets_filters_metadata_without_rows(django_user_model
         index_column="suggestion_id",
     )
 
-    response = search_profile_datasets(
-        user.profile,
-        query="feature",
-        project_key=str(project.key),
-        header_contains="suggestion_id",
-        updated_after=(timezone.now() - timedelta(days=1)).isoformat(),
-    )
+    with django_assert_num_queries(3):
+        response = search_profile_datasets(
+            user.profile,
+            query="feature",
+            project_key=str(project.key),
+            header_contains="suggestion_id",
+            updated_after=(timezone.now() - timedelta(days=1)).isoformat(),
+        )
 
     assert response["count"] == 1
     assert response["total_count"] == 1
     assert response["datasets"][0]["key"] == str(matching_dataset.key)
     assert response["datasets"][0]["project"]["key"] == str(project.key)
-    assert "rows" not in response["datasets"][0]
+    assert response["datasets"][0]["column_count"] == 3
+    assert set(response["datasets"][0]) == {
+        "key",
+        "name",
+        "description",
+        "project",
+        "section",
+        "column_count",
+        "row_count",
+        "updated_at",
+        "archived_at",
+    }
+
+
+@pytest.mark.django_db
+def test_dataset_list_http_response_contains_only_compact_cards(client, django_user_model):
+    from apps.core.services import create_agent_api_key
+
+    user = django_user_model.objects.create_user(
+        username="datasetcardhttp",
+        email="datasetcardhttp@example.com",
+        password="password123",
+    )
+    dataset = Dataset.objects.create(
+        profile=user.profile,
+        name="Compact card",
+        description="Short selection context.",
+        instructions="Full context belongs in dataset detail.",
+        metadata={"workflow": "private"},
+        headers=["id", "status"],
+        index_column="id",
+    )
+    credential = create_agent_api_key(user.profile, "Dataset discovery")
+
+    response = client.get(
+        "/api/datasets",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
+    )
+
+    assert response.status_code == 200
+    card = response.json()["datasets"][0]
+    assert card["key"] == str(dataset.key)
+    assert card["column_count"] == 2
+    assert set(card) == {
+        "key",
+        "name",
+        "description",
+        "project",
+        "section",
+        "column_count",
+        "row_count",
+        "updated_at",
+        "archived_at",
+    }
 
 
 @pytest.mark.django_db
