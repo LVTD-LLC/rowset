@@ -23,6 +23,7 @@ You need:
 
 - a VPS or dedicated server running Linux on `amd64` or `arm64`
 - Docker Engine, Docker Buildx, and Docker Compose v2
+- anonymous pull access to the public `ghcr.io/lvtd-llc/rowset` package
 - a domain or subdomain whose DNS you control
 - SSH access with permission to run Docker
 - inbound TCP ports 80 and 443 open; UDP 443 is optional but enables HTTP/3
@@ -71,6 +72,11 @@ deployment/verify-image-platforms.sh "$ROWSET_IMAGE"
 ```
 
 The preflight fails if the image does not publish the current server architecture.
+Official releases are promoted only after CI removes its GHCR credentials and proves that every
+advertised tag can be inspected and pulled anonymously for both supported architectures. If this
+step reports `denied` or `unauthorized`, the package visibility has regressed and must be restored
+to public before the release can be used for self-hosting. Git SHA tags are promoted from a
+run-scoped candidate only after that check and cannot be replaced with a different image digest.
 
 ## 3. Configure the environment
 

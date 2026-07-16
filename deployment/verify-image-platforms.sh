@@ -2,12 +2,18 @@
 set -eu
 
 usage() {
-    echo "Usage: $0 IMAGE [linux/amd64|linux/arm64 ...]" >&2
+    echo "Usage: $0 [--manifest-file FILE] IMAGE [linux/amd64|linux/arm64 ...]" >&2
     exit 2
 }
 
-[ "$#" -ge 1 ] || usage
+manifest_file=""
+if [ "${1:-}" = "--manifest-file" ]; then
+    [ "$#" -ge 3 ] || usage
+    manifest_file="$2"
+    shift 2
+fi
 
+[ "$#" -ge 1 ] || usage
 image="$1"
 shift
 
@@ -23,7 +29,7 @@ if [ "$#" -eq 0 ]; then
     esac
 fi
 
-if ! docker buildx version >/dev/null 2>&1; then
+if [ -z "$manifest_file" ] && ! docker buildx version >/dev/null 2>&1; then
     echo "Docker Buildx is required to inspect image platforms." >&2
     exit 1
 fi
@@ -38,7 +44,14 @@ for platform in "$@"; do
     esac
 done
 
-manifest="$(docker buildx imagetools inspect "$image")"
+if [ -n "$manifest_file" ]; then
+    if ! manifest="$(cat "$manifest_file")"; then
+        echo "Could not read image manifest from $manifest_file." >&2
+        exit 1
+    fi
+else
+    manifest="$(docker buildx imagetools inspect "$image")"
+fi
 
 for platform in "$@"; do
     if ! printf '%s\n' "$manifest" | grep -Eq "Platform:[[:space:]]+$platform([[:space:]]|$)"; then

@@ -19,6 +19,7 @@ deployment or release cut date.
 ## 2026-07-16
 
 ### Added
+- Added a release gate that removes GHCR credentials, anonymously inspects and pulls both supported architectures before tag promotion, and prevents an immutable Git SHA tag from being overwritten with a different digest.
 - Added a decision guide for sharing AI-agent data through scoped private access, authenticated exports, or read-only public previews.
 
 ### Security
