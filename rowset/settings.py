@@ -45,6 +45,70 @@ def _split_env_urls(value: str) -> tuple[str, ...]:
     return tuple(urls)
 
 
+def _production_configuration_error(variable: str, reason: str) -> None:
+    raise ImproperlyConfigured(f"Invalid {variable}: {reason}.")
+
+
+def _validate_production_secret(
+    variable: str,
+    value: str,
+    *,
+    minimum_length: int,
+    development_default: str,
+) -> None:
+    if value == development_default:
+        _production_configuration_error(variable, "uses an unsafe development default")
+    if len(value) < minimum_length:
+        _production_configuration_error(
+            variable,
+            f"must contain at least {minimum_length} characters",
+        )
+    if "\n" in value or "\r" in value:
+        _production_configuration_error(variable, "must be a single line")
+
+
+def _validate_production_configuration() -> None:
+    if DEBUG:
+        _production_configuration_error("DEBUG", "must be off")
+    if not ROWSET_INSECURE_HTTP and not SITE_URL.startswith("https://"):
+        _production_configuration_error("SITE_URL", "must use https")
+
+    _validate_production_secret(
+        "SECRET_KEY",
+        SECRET_KEY,
+        minimum_length=50,
+        development_default="super-secret-key",
+    )
+    _validate_production_secret(
+        "POSTGRES_PASSWORD",
+        POSTGRES_PASSWORD,
+        minimum_length=32,
+        development_default="rowset",
+    )
+    _validate_production_secret(
+        "REDIS_PASSWORD",
+        REDIS_PASSWORD,
+        minimum_length=32,
+        development_default="rowset",
+    )
+
+    if len({SECRET_KEY, POSTGRES_PASSWORD, REDIS_PASSWORD}) != 3:
+        _production_configuration_error("SECRETS", "must be distinct")
+
+    for fallback in SECRET_KEY_FALLBACKS:
+        _validate_production_secret(
+            "SECRET_KEY_FALLBACKS",
+            fallback,
+            minimum_length=50,
+            development_default="super-secret-key",
+        )
+        if fallback == SECRET_KEY:
+            _production_configuration_error(
+                "SECRET_KEY_FALLBACKS",
+                "must not repeat the active key",
+            )
+
+
 # Options: dev, prod
 ENVIRONMENT = env("ENVIRONMENT")
 
@@ -83,6 +147,7 @@ POSTHOG_SERVICE_VERSION = SENTRY_RELEASE or env("RENDER_GIT_COMMIT", default="")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
+SECRET_KEY_FALLBACKS = env.list("SECRET_KEY_FALLBACKS", default=[])
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")
@@ -450,6 +515,9 @@ REDIS_PORT = env("REDIS_PORT", default="6379")
 REDIS_PASSWORD = env("REDIS_PASSWORD", default="")
 REDIS_DB = env("REDIS_DB", default="0")
 REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+
+if ENVIRONMENT == "prod":
+    _validate_production_configuration()
 
 Q_CLUSTER = {
     "name": "rowset-q",

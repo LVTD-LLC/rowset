@@ -4,6 +4,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$ROOT/docker-compose-prod.yml"
 sentinel="rowset-compose-secret-$$-${RANDOM}"
+django_secret="${sentinel}-django-$(printf 'd%.0s' {1..50})"
+postgres_secret="${sentinel}-postgres-$(printf 'p%.0s' {1..32})"
+redis_secret="${sentinel}-redis-$(printf 'r%.0s' {1..32})"
 env_file="$(mktemp)"
 rendered_config="$(mktemp)"
 compose_errors="$(mktemp)"
@@ -15,13 +18,22 @@ trap cleanup EXIT
 chmod 600 "$env_file" "$rendered_config" "$compose_errors"
 
 {
-  printf 'ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:test\n'
+  printf 'ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:5b65d16f0a7a\n'
   printf 'ROWSET_DOMAIN=rowset.example.com\n'
+  printf 'ENVIRONMENT=prod\n'
+  printf 'DEBUG=off\n'
+  printf 'SECRET_KEY=%s\n' "$django_secret"
+  printf 'POSTGRES_DB=rowset\n'
   printf 'POSTGRES_USER=rowset\n'
-  printf 'POSTGRES_PASSWORD=%s\n' "$sentinel"
-  printf 'REDIS_PASSWORD=%s\n' "$sentinel"
-  printf 'SECRET_KEY=%s\n' "$sentinel"
+  printf 'POSTGRES_HOST=db\n'
+  printf 'POSTGRES_PORT=5432\n'
+  printf 'POSTGRES_PASSWORD=%s\n' "$postgres_secret"
+  printf 'REDIS_HOST=redis\n'
+  printf 'REDIS_PORT=6379\n'
+  printf 'REDIS_PASSWORD=%s\n' "$redis_secret"
 } >"$env_file"
+
+"$ROOT/deployment/self-host/validate-env.sh" "$env_file" >/dev/null
 
 if ! docker compose --env-file "$env_file" -f "$COMPOSE_FILE" \
   config --no-env-resolution >"$rendered_config" 2>"$compose_errors"; then

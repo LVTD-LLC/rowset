@@ -21,11 +21,12 @@ print(json.dumps({
     "data_upload_max_memory_size": settings.DATA_UPLOAD_MAX_MEMORY_SIZE,
     "silenced_system_checks": settings.SILENCED_SYSTEM_CHECKS,
     "site_url": settings.SITE_URL,
+    "secret_key_fallbacks": settings.SECRET_KEY_FALLBACKS,
 }))
 """
 
 
-def _probe_settings(*, environment, site_url, insecure_http=False):
+def _settings_environment(*, environment, site_url, insecure_http=False, **overrides):
     process_environment = {
         **os.environ,
         "DJANGO_SETTINGS_MODULE": "rowset.settings",
@@ -33,14 +34,37 @@ def _probe_settings(*, environment, site_url, insecure_http=False):
         "DEBUG": "off",
         "SITE_URL": site_url,
         "ROWSET_INSECURE_HTTP": "true" if insecure_http else "false",
+        "SECRET_KEY": "active-secret-" + "s" * 64,
+        "POSTGRES_PASSWORD": "postgres-secret-" + "p" * 48,
+        "REDIS_PASSWORD": "redis-secret-" + "r" * 48,
+        "SECRET_KEY_FALLBACKS": "",
     }
-    result = subprocess.run(
+    process_environment.update(overrides)
+    return process_environment
+
+
+def _run_settings(*, environment, site_url, insecure_http=False, **overrides):
+    return subprocess.run(
         [sys.executable, "-c", _PROBE],
-        env=process_environment,
+        env=_settings_environment(
+            environment=environment,
+            site_url=site_url,
+            insecure_http=insecure_http,
+            **overrides,
+        ),
         text=True,
         capture_output=True,
-        check=True,
     )
+
+
+def _probe_settings(*, environment, site_url, insecure_http=False, **overrides):
+    result = _run_settings(
+        environment=environment,
+        site_url=site_url,
+        insecure_http=insecure_http,
+        **overrides,
+    )
+    result.check_returncode()
     return json.loads(result.stdout.splitlines()[-1])
 
 
@@ -58,6 +82,7 @@ def test_production_https_settings_trust_caddy_and_secure_django():
         "data_upload_max_memory_size": 64_000_000,
         "silenced_system_checks": ["security.W005", "security.W021"],
         "site_url": "https://rowset.example.com",
+        "secret_key_fallbacks": [],
     }
 
 
@@ -79,6 +104,76 @@ def test_http_modes_do_not_force_https(environment, site_url, insecure_http):
     assert security["session_secure"] is False
     assert security["csrf_secure"] is False
     assert security["hsts_seconds"] == 0
+
+
+@pytest.mark.parametrize(
+    ("overrides", "variable"),
+    [
+        ({"DEBUG": "on"}, "DEBUG"),
+        ({"SECRET_KEY": "super-secret-key"}, "SECRET_KEY"),
+        ({"SECRET_KEY": "s" * 49}, "SECRET_KEY"),
+        ({"POSTGRES_PASSWORD": "rowset"}, "POSTGRES_PASSWORD"),
+        ({"POSTGRES_PASSWORD": "p" * 31}, "POSTGRES_PASSWORD"),
+        ({"REDIS_PASSWORD": "rowset"}, "REDIS_PASSWORD"),
+        ({"REDIS_PASSWORD": "r" * 31}, "REDIS_PASSWORD"),
+        (
+            {
+                "SECRET_KEY": "shared-secret-" + "s" * 64,
+                "POSTGRES_PASSWORD": "shared-secret-" + "s" * 64,
+            },
+            "SECRETS",
+        ),
+    ],
+)
+def test_unsafe_production_configuration_fails_without_disclosing_values(overrides, variable):
+    result = _run_settings(
+        environment="prod",
+        site_url="https://rowset.example.com",
+        **overrides,
+    )
+
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert variable in result.stderr
+    for value in overrides.values():
+        if value not in {"on", "rowset", "super-secret-key"}:
+            assert value not in result.stdout + result.stderr
+
+
+def test_production_requires_https_without_the_diagnostic_override():
+    result = _run_settings(environment="prod", site_url="http://rowset.example.com")
+
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "SITE_URL" in result.stderr
+    assert "http://rowset.example.com" not in result.stdout + result.stderr
+
+
+def test_production_accepts_a_strong_secret_key_fallback():
+    fallback = "previous-secret-" + "f" * 64
+
+    security = _probe_settings(
+        environment="prod",
+        site_url="https://rowset.example.com",
+        SECRET_KEY_FALLBACKS=fallback,
+    )
+
+    assert security["secret_key_fallbacks"] == [fallback]
+
+
+@pytest.mark.parametrize("fallback", ["super-secret-key", "f" * 49])
+def test_production_rejects_unsafe_secret_key_fallbacks_without_disclosure(fallback):
+    result = _run_settings(
+        environment="prod",
+        site_url="https://rowset.example.com",
+        SECRET_KEY_FALLBACKS=fallback,
+    )
+
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "SECRET_KEY_FALLBACKS" in result.stderr
+    if fallback != "super-secret-key":
+        assert fallback not in result.stdout + result.stderr
 
 
 @override_settings(

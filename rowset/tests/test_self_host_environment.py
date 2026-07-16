@@ -7,6 +7,7 @@ import pytest
 
 _REPO_ROOT = Path(__file__).parents[2]
 _INIT = _REPO_ROOT / "deployment/self-host/init-env.sh"
+_START = _REPO_ROOT / "deployment/self-host/start.sh"
 _VALIDATE = _REPO_ROOT / "deployment/self-host/validate-env.sh"
 _CANARY = "canary-value-that-must-never-appear-" + "x" * 64
 _SECRET_KEYS = ("SECRET_KEY", "POSTGRES_PASSWORD", "REDIS_PASSWORD")
@@ -197,6 +198,29 @@ def test_validator_rejects_non_private_permissions(tmp_path):
     assert result.returncode != 0
     assert "ENV_FILE" in result.stderr
     assert "mode 0600" in result.stderr
+
+
+def test_validator_supports_bsd_stat_for_permissions_and_owner(tmp_path):
+    env_file = tmp_path / ".env"
+    _write_env(env_file, _safe_values())
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    stat_command = fake_bin / "stat"
+    stat_command.write_text(
+        "#!/bin/sh\n"
+        'if test "$1" = "-c"; then exit 1; fi\n'
+        'if test "$2" = "%Lp"; then printf "600\\n"; exit 0; fi\n'
+        'if test "$2" = "%u"; then id -u; exit 0; fi\n'
+        "exit 1\n"
+    )
+    stat_command.chmod(0o755)
+
+    result = _run_validate(
+        env_file,
+        environment={"PATH": f"{fake_bin}:{os.environ['PATH']}"},
+    )
+
+    assert result.returncode == 0
 
 
 def test_validator_rejects_reused_secrets_without_disclosing_canary(tmp_path):
@@ -434,3 +458,63 @@ def test_initializer_repairs_permissions_without_changing_contents(tmp_path):
     assert result.returncode == 0
     assert env_file.read_bytes() == before
     assert stat.S_IMODE(env_file.stat().st_mode) == 0o600
+
+
+def _fake_docker(tmp_path: Path) -> tuple[Path, Path]:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    docker_log = tmp_path / "docker.log"
+    docker = fake_bin / "docker"
+    docker.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$DOCKER_LOG"\n')
+    docker.chmod(0o755)
+    return fake_bin, docker_log
+
+
+def _run_start(env_file: Path, fake_bin: Path, docker_log: Path):
+    return subprocess.run(
+        [str(_START), str(env_file)],
+        cwd=_REPO_ROOT,
+        env={
+            **_clean_environment(),
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "DOCKER_LOG": str(docker_log),
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def test_start_wrapper_does_not_invoke_docker_when_validation_fails(tmp_path):
+    env_file = tmp_path / ".env"
+    values = _safe_values()
+    values["SECRET_KEY"] = _CANARY
+    values["DEBUG"] = "on"
+    _write_env(env_file, values)
+    fake_bin, docker_log = _fake_docker(tmp_path)
+
+    result = _run_start(env_file, fake_bin, docker_log)
+
+    assert result.returncode != 0
+    assert not docker_log.exists()
+    assert "DEBUG" in result.stderr
+    assert _CANARY not in result.stdout + result.stderr
+
+
+def test_start_wrapper_validates_then_invokes_production_compose(tmp_path):
+    env_file = tmp_path / ".env"
+    values = _safe_values()
+    values["SECRET_KEY"] = _CANARY
+    _write_env(env_file, values)
+    fake_bin, docker_log = _fake_docker(tmp_path)
+
+    result = _run_start(env_file, fake_bin, docker_log)
+
+    assert result.returncode == 0
+    assert result.stdout == "Production environment is valid.\n"
+    assert result.stderr == ""
+    assert docker_log.read_text().strip() == (
+        f"compose --env-file {env_file} -f {_REPO_ROOT / 'docker-compose-prod.yml'} "
+        "-p rowset up -d --remove-orphans"
+    )
+    assert _CANARY not in result.stdout + result.stderr + docker_log.read_text()

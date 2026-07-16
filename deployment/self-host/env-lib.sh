@@ -5,6 +5,16 @@ fail() {
     exit 1
 }
 
+file_mode() {
+    mode_path=$1
+    stat -c '%a' "$mode_path" 2>/dev/null || stat -f '%Lp' "$mode_path" 2>/dev/null
+}
+
+file_owner() {
+    owner_path=$1
+    stat -c '%u' "$owner_path" 2>/dev/null || stat -f '%u' "$owner_path" 2>/dev/null
+}
+
 validate_environment_file_structure() {
     env_file=$1
 
@@ -40,10 +50,10 @@ validate_environment_file() {
     env_file=$1
     validate_environment_file_structure "$env_file"
 
-    env_mode=$(stat -c '%a' "$env_file" 2>/dev/null) || fail ENV_FILE "permissions cannot be read"
+    env_mode=$(file_mode "$env_file") || fail ENV_FILE "permissions cannot be read"
     test "$env_mode" = "600" || fail ENV_FILE "must have mode 0600"
 
-    env_owner=$(stat -c '%u' "$env_file" 2>/dev/null) || fail ENV_FILE "owner cannot be read"
+    env_owner=$(file_owner "$env_file") || fail ENV_FILE "owner cannot be read"
     test "$env_owner" = "$(id -u)" || fail ENV_FILE "must be owned by the invoking user"
 }
 

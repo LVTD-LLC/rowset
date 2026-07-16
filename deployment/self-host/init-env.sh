@@ -96,7 +96,7 @@ set_environment_assignment() {
 existing_file=
 if test -e "$destination"; then
     validate_environment_file_structure "$destination"
-    destination_owner=$(stat -c '%u' "$destination" 2>/dev/null) || \
+    destination_owner=$(file_owner "$destination") || \
         fail ENV_FILE "owner cannot be read"
     test "$destination_owner" = "$(id -u)" || \
         fail ENV_FILE "must be owned by the invoking user"

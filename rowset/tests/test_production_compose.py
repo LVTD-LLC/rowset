@@ -164,10 +164,22 @@ def test_production_compose_rejects_an_empty_redis_password():
 
 def test_local_ci_validates_rendered_production_compose():
     ci_local = (_REPO_ROOT / "scripts/ci-local.sh").read_text()
+    compose_verifier = (_REPO_ROOT / "deployment/verify-production-compose.sh").read_text()
 
     assert (
         'run_step "Production Compose config" ./deployment/verify-production-compose.sh' in ci_local
     )
+    assert '"$ROOT/deployment/self-host/validate-env.sh" "$env_file"' in compose_verifier
+
+
+def test_supported_start_command_validates_before_invoking_compose():
+    start_script = (_REPO_ROOT / "deployment/self-host/start.sh").read_text()
+
+    validation = '"$script_dir/validate-env.sh" "$environment_file"'
+    compose = "exec docker compose --env-file"
+    assert validation in start_script
+    assert compose in start_script
+    assert start_script.index(validation) < start_script.index(compose)
 
 
 def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics():
