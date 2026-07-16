@@ -16,14 +16,10 @@ fi
 
 destination=${1:-"$root/.env"}
 temporary_file=
-assignments_file=
 
 cleanup() {
     if test -n "$temporary_file"; then
         rm -f "$temporary_file"
-    fi
-    if test -n "$assignments_file"; then
-        rm -f "$assignments_file"
     fi
 }
 trap cleanup EXIT
@@ -67,30 +63,6 @@ secret_or_generate() {
         return
     fi
     od -An -N48 -tx1 /dev/urandom | tr -d ' \n'
-}
-
-set_environment_assignment() {
-    assignment_key=$1
-    assignment_value=$2
-    input_file=$3
-    output_file=$4
-    awk -v assignment_key="$assignment_key" -v assignment_value="$assignment_value" '
-        {
-            separator = index($0, "=")
-            key = separator ? substr($0, 1, separator - 1) : ""
-            if (key == assignment_key) {
-                print assignment_key "=" assignment_value
-                replaced = 1
-            } else {
-                print
-            }
-        }
-        END {
-            if (!replaced) {
-                print assignment_key "=" assignment_value
-            }
-        }
-    ' "$input_file" > "$output_file"
 }
 
 existing_file=
@@ -140,35 +112,63 @@ temporary_file=$(mktemp "$destination_dir/.rowset-env.XXXXXX")
 chmod 600 "$temporary_file"
 
 if test -n "$existing_file"; then
-    cp "$existing_file" "$temporary_file"
+    render_source=$existing_file
 else
-    cp "$template" "$temporary_file"
+    render_source=$template
 fi
 
-assignments_file=$(mktemp "$destination_dir/.rowset-env-assignments.XXXXXX")
-cp "$temporary_file" "$assignments_file"
+seen_rowset_image=0
+seen_rowset_domain=0
+seen_environment=0
+seen_debug=0
+seen_secret_key=0
+seen_postgres_db=0
+seen_postgres_user=0
+seen_postgres_host=0
+seen_postgres_port=0
+seen_postgres_password=0
+seen_redis_host=0
+seen_redis_port=0
+seen_redis_password=0
 
-set_assignment() {
-    set_environment_assignment "$1" "$2" "$assignments_file" "$temporary_file"
-    cp "$temporary_file" "$assignments_file"
-}
+while IFS= read -r line || test -n "$line"; do
+    case "$line" in
+        ROWSET_IMAGE=*) printf 'ROWSET_IMAGE=%s\n' "$init_rowset_image"; seen_rowset_image=1 ;;
+        ROWSET_DOMAIN=*) printf 'ROWSET_DOMAIN=%s\n' "$init_rowset_domain"; seen_rowset_domain=1 ;;
+        ENVIRONMENT=*) printf 'ENVIRONMENT=%s\n' "$init_environment"; seen_environment=1 ;;
+        DEBUG=*) printf 'DEBUG=%s\n' "$init_debug"; seen_debug=1 ;;
+        SECRET_KEY=*) printf 'SECRET_KEY=%s\n' "$init_secret_key"; seen_secret_key=1 ;;
+        POSTGRES_DB=*) printf 'POSTGRES_DB=%s\n' "$init_postgres_db"; seen_postgres_db=1 ;;
+        POSTGRES_USER=*) printf 'POSTGRES_USER=%s\n' "$init_postgres_user"; seen_postgres_user=1 ;;
+        POSTGRES_HOST=*) printf 'POSTGRES_HOST=%s\n' "$init_postgres_host"; seen_postgres_host=1 ;;
+        POSTGRES_PORT=*) printf 'POSTGRES_PORT=%s\n' "$init_postgres_port"; seen_postgres_port=1 ;;
+        POSTGRES_PASSWORD=*)
+            printf 'POSTGRES_PASSWORD=%s\n' "$init_postgres_password"
+            seen_postgres_password=1
+            ;;
+        REDIS_HOST=*) printf 'REDIS_HOST=%s\n' "$init_redis_host"; seen_redis_host=1 ;;
+        REDIS_PORT=*) printf 'REDIS_PORT=%s\n' "$init_redis_port"; seen_redis_port=1 ;;
+        REDIS_PASSWORD=*) printf 'REDIS_PASSWORD=%s\n' "$init_redis_password"; seen_redis_password=1 ;;
+        *) printf '%s\n' "$line" ;;
+    esac
+done < "$render_source" > "$temporary_file"
 
-set_assignment ROWSET_IMAGE "$init_rowset_image"
-set_assignment ROWSET_DOMAIN "$init_rowset_domain"
-set_assignment ENVIRONMENT "$init_environment"
-set_assignment DEBUG "$init_debug"
-set_assignment SECRET_KEY "$init_secret_key"
-set_assignment POSTGRES_DB "$init_postgres_db"
-set_assignment POSTGRES_USER "$init_postgres_user"
-set_assignment POSTGRES_HOST "$init_postgres_host"
-set_assignment POSTGRES_PORT "$init_postgres_port"
-set_assignment POSTGRES_PASSWORD "$init_postgres_password"
-set_assignment REDIS_HOST "$init_redis_host"
-set_assignment REDIS_PORT "$init_redis_port"
-set_assignment REDIS_PASSWORD "$init_redis_password"
+test "$seen_rowset_image" = 1 || printf 'ROWSET_IMAGE=%s\n' "$init_rowset_image" >> "$temporary_file"
+test "$seen_rowset_domain" = 1 || printf 'ROWSET_DOMAIN=%s\n' "$init_rowset_domain" >> "$temporary_file"
+test "$seen_environment" = 1 || printf 'ENVIRONMENT=%s\n' "$init_environment" >> "$temporary_file"
+test "$seen_debug" = 1 || printf 'DEBUG=%s\n' "$init_debug" >> "$temporary_file"
+test "$seen_secret_key" = 1 || printf 'SECRET_KEY=%s\n' "$init_secret_key" >> "$temporary_file"
+test "$seen_postgres_db" = 1 || printf 'POSTGRES_DB=%s\n' "$init_postgres_db" >> "$temporary_file"
+test "$seen_postgres_user" = 1 || printf 'POSTGRES_USER=%s\n' "$init_postgres_user" >> "$temporary_file"
+test "$seen_postgres_host" = 1 || printf 'POSTGRES_HOST=%s\n' "$init_postgres_host" >> "$temporary_file"
+test "$seen_postgres_port" = 1 || printf 'POSTGRES_PORT=%s\n' "$init_postgres_port" >> "$temporary_file"
+test "$seen_postgres_password" = 1 || \
+    printf 'POSTGRES_PASSWORD=%s\n' "$init_postgres_password" >> "$temporary_file"
+test "$seen_redis_host" = 1 || printf 'REDIS_HOST=%s\n' "$init_redis_host" >> "$temporary_file"
+test "$seen_redis_port" = 1 || printf 'REDIS_PORT=%s\n' "$init_redis_port" >> "$temporary_file"
+test "$seen_redis_password" = 1 || \
+    printf 'REDIS_PASSWORD=%s\n' "$init_redis_password" >> "$temporary_file"
 
-rm -f "$assignments_file"
-assignments_file=
 chmod 600 "$temporary_file"
 "$script_dir/validate-env.sh" "$temporary_file" >/dev/null
 mv "$temporary_file" "$destination"
