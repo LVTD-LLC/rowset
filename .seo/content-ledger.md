@@ -23,7 +23,7 @@
 | 2026-07-15 | How to make AI-agent data updates idempotent | how-to / operational decision guide | `/blog/idempotent-ai-agent-updates` | AI agent idempotent operations | unmeasured | n/a | Work with rows, Dataset API, MCP access, index-column guide, dataset-instructions guide, task board | #263 |
 | 2026-07-15 | Rowset vs Airtable: Which Fits AI Agents? (2026) | product comparison | `/vs/airtable` | Rowset vs Airtable | unmeasured | n/a | Airtable alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide | #277 |
 | 2026-07-15 | Rowset vs Google Sheets for AI Agents (2026) | product comparison | `/vs/google-sheets` | Rowset vs Google Sheets | unmeasured | n/a | Google Sheets alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide | #280 |
-| 2026-07-16 | How to share AI-agent data safely | security decision guide | `/blog/share-ai-agent-data-safely` | share AI agent data | unmeasured | n/a | MCP access, Dataset API, agent access, public previews, exports, relationship modeling, feedback triage | #TBD |
+| 2026-07-16 | How to share AI-agent data safely | security decision guide | `/blog/share-ai-agent-data-safely` | share AI agent data | unmeasured | n/a | MCP access, Dataset API, agent access, public previews, exports, relationship modeling, feedback triage | #281 |
 
 ---
 
