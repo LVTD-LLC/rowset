@@ -206,6 +206,7 @@ For local development, the setup values are:
 ```text
 Rowset MCP URL: http://localhost:8000/mcp/
 Rowset REST API base: http://localhost:8000/api/
+Rowset setup skill: http://localhost:8000/skills/rowset-setup/SKILL.md
 Rowset skill: http://localhost:8000/SKILL.md
 ```
 

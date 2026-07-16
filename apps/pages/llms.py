@@ -58,6 +58,10 @@ def render_llms_txt() -> str:
             "",
             (
                 "- Setup skill: "
+                f"{build_absolute_public_url(reverse('agent_instructions_rowset_setup'))}"
+            ),
+            (
+                "- Platform interaction skill: "
                 f"{build_absolute_public_url(reverse('agent_instructions_rowset_mcp'))}"
             ),
             (

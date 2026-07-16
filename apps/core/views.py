@@ -34,9 +34,10 @@ from django.views.generic import TemplateView, UpdateView
 from django_htmx.http import HttpResponseClientRedirect
 
 from apps.core.agent_skill import (
+    ROWSET_AGENT_SETUP_INSTRUCTIONS,
     ROWSET_SKILL_INSTALL_COMMAND,
-    build_rowset_agent_setup_instructions,
     load_rowset_features_skill_markdown,
+    load_rowset_setup_skill_markdown,
     load_rowset_skill_markdown,
     load_rowset_use_cases_skill_markdown,
 )
@@ -180,6 +181,7 @@ def build_agent_setup_prompt(
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
+    setup_instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_setup"))
     llms_txt_url = build_absolute_public_url(reverse("llms_txt"))
     api_docs_url = build_absolute_public_url("/api/docs")
     cli_docs_url = build_absolute_public_url("/docs/use-cli.md")
@@ -201,6 +203,7 @@ def build_agent_setup_prompt(
             f"Rowset REST API base: {rest_api_base_url}",
             f"Rowset CLI guide: {cli_docs_url}",
             f"Rowset API key: {api_key}",
+            f"Rowset setup skill: {setup_instructions_url}",
             f"Rowset skill: {instructions_url}",
             f"Rowset skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
             f"Rowset current docs index: {llms_txt_url}",
@@ -208,8 +211,9 @@ def build_agent_setup_prompt(
             f"Rowset blog: {blog_url}",
             f"Rowset current API docs: {api_docs_url}",
             f"Rowset current capabilities: {rest_api_base_url}capabilities",
+            f"Rowset trial rewards: {trial_rewards_url}",
             "",
-            build_rowset_agent_setup_instructions(trial_rewards_url=trial_rewards_url),
+            ROWSET_AGENT_SETUP_INSTRUCTIONS,
         ]
     )
 
@@ -390,6 +394,13 @@ def claim_trial_reward_view(request, reward):
 
 def agent_instructions_rowset_mcp(request):
     return HttpResponse(load_rowset_skill_markdown(), content_type="text/markdown; charset=utf-8")
+
+
+def agent_instructions_rowset_setup(request):
+    return HttpResponse(
+        load_rowset_setup_skill_markdown(),
+        content_type="text/markdown; charset=utf-8",
+    )
 
 
 def agent_instructions_rowset_features(request):

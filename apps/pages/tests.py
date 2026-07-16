@@ -39,10 +39,12 @@ pytestmark = pytest.mark.django_db
 
 
 @override_settings(SITE_URL="https://rowset.example")
-def test_content_agent_setup_prompt_formats_trial_rewards_url():
+def test_content_agent_setup_prompt_includes_setup_skill_and_trial_rewards_url():
     prompt = build_content_agent_setup_prompt()
 
-    assert "See https://rowset.example/trial-rewards" in prompt
+    assert "Rowset setup skill: https://rowset.example/skills/rowset-setup/SKILL.md" in prompt
+    assert "Rowset trial rewards: https://rowset.example/trial-rewards" in prompt
+    assert "post-verification activation handoff" in prompt
     assert "{trial_rewards_url}" not in prompt
 
 
@@ -282,6 +284,7 @@ def test_llms_txt_is_a_documentation_only_content_index(client):
     assert "https://rowset.example/api" in content
     assert "https://rowset.example/api/docs" in content
     assert "https://rowset.example/SKILL.md" in content
+    assert "https://rowset.example/skills/rowset-setup/SKILL.md" in content
     assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
     assert "https://rowset.example/skills/rowset-use-cases/SKILL.md" in content
     assert "## Use cases" not in content

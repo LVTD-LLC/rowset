@@ -8,10 +8,14 @@ logger = get_rowset_logger(__name__)
 
 ROWSET_SKILL_INSTALL_COMMAND = "npx skills add LVTD-LLC/rowset"
 ROWSET_SKILL_REPOSITORY_PATH = ".agents/skills/rowset/SKILL.md"
+ROWSET_SETUP_SKILL_REPOSITORY_PATH = ".agents/skills/rowset-setup/SKILL.md"
 ROWSET_FEATURES_SKILL_REPOSITORY_PATH = ".agents/skills/rowset-features/SKILL.md"
 ROWSET_USE_CASES_SKILL_REPOSITORY_PATH = ".agents/skills/rowset-use-cases/SKILL.md"
 ROWSET_SKILL_SOURCE_URL = (
     f"https://raw.githubusercontent.com/LVTD-LLC/rowset/main/{ROWSET_SKILL_REPOSITORY_PATH}"
+)
+ROWSET_SETUP_SKILL_SOURCE_URL = (
+    f"https://raw.githubusercontent.com/LVTD-LLC/rowset/main/{ROWSET_SETUP_SKILL_REPOSITORY_PATH}"
 )
 ROWSET_FEATURES_SKILL_SOURCE_URL = (
     "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
@@ -21,38 +25,19 @@ ROWSET_USE_CASES_SKILL_SOURCE_URL = (
     "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
     f"{ROWSET_USE_CASES_SKILL_REPOSITORY_PATH}"
 )
-ROWSET_AGENT_SETUP_INSTRUCTIONS_TEMPLATE = (
-    "Read or install the Rowset skill before acting, then consult the current "
-    "capabilities and documentation resources above. Rowset supports MCP, CLI, "
-    "and REST API access. Evaluate which interface best fits your runtime and "
-    "the user's likely workflow; do not assume one interface is preferred. "
-    "Explain your recommendation briefly and ask the user which interface to "
-    "configure before changing their environment or client settings. Store the "
-    "full API key in a private environment variable named ROWSET_API_KEY or an "
-    "equivalent secret store. Never expose or commit it. Follow the live docs "
-    "for the approved interface instead of relying on hardcoded client-specific "
-    "commands or static endpoint lists. Make an authenticated user-info request "
-    "the final setup step: use get_user_info over MCP, rowset user info through "
-    "the CLI, or GET <Rowset REST API base>/user with Authorization: Bearer "
-    "<ROWSET_API_KEY>. This verifies the connection, completes onboarding, and "
-    "starts the trial. After verification succeeds, use context you already "
-    "have from working with the user, plus read-only discovery of their existing "
-    "Rowset projects and datasets, to suggest two to four useful project, section, "
-    "and dataset structures tailored to their actual work. Explain briefly why each "
-    "would help, avoid inventing facts or duplicating existing data, and ask which "
-    "option they want to create. Do not create or change Rowset data until the user "
-    "chooses. Then, if this agent runtime supports scheduled tasks or automations, "
-    "make a separate opt-in offer: 'Did you know you can extend your Rowset trial by "
-    "completing specific actions? See {trial_rewards_url}. Would you like me to create "
-    "a simple daily automation that sends you one short Rowset tip, use case, or "
-    "feature you may not know about?' Only create the automation after the user "
-    "explicitly agrees. Ground every daily tip in Rowset's current capabilities, "
-    "documentation, or blog resources, and do not imply the automation is a Rowset "
-    "feature when it runs in the user's agent account."
+ROWSET_AGENT_SETUP_INSTRUCTIONS = (
+    "Read or install the Rowset setup skill before acting. Follow it end to end, "
+    "including its post-verification activation handoff; do not stop after the "
+    "connection succeeds. Use the Rowset skill for ongoing platform interaction "
+    "after setup."
 )
 ROWSET_SKILL_FALLBACK_DESCRIPTION = (
-    "Use when a user asks to connect an AI agent to Rowset, configure Rowset MCP "
-    "CLI, or REST access, or manage Rowset datasets."
+    "Use when an authenticated agent needs to discover Rowset capabilities or "
+    "manage Rowset projects, datasets, relationships, rows, exports, and previews."
+)
+ROWSET_SETUP_SKILL_FALLBACK_DESCRIPTION = (
+    "Use when a user asks to connect an AI agent to Rowset, choose or configure "
+    "MCP, CLI, or REST access, verify authentication, or complete first-run setup."
 )
 ROWSET_FEATURES_SKILL_FALLBACK_DESCRIPTION = (
     "Use when a user asks what Rowset can do, which features are available, "
@@ -64,12 +49,12 @@ ROWSET_USE_CASES_SKILL_FALLBACK_DESCRIPTION = (
 )
 
 
-def build_rowset_agent_setup_instructions(*, trial_rewards_url: str) -> str:
-    return ROWSET_AGENT_SETUP_INSTRUCTIONS_TEMPLATE.format(trial_rewards_url=trial_rewards_url)
-
-
 def rowset_skill_path() -> Path:
     return Path(settings.BASE_DIR) / ROWSET_SKILL_REPOSITORY_PATH
+
+
+def rowset_setup_skill_path() -> Path:
+    return Path(settings.BASE_DIR) / ROWSET_SETUP_SKILL_REPOSITORY_PATH
 
 
 def rowset_features_skill_path() -> Path:
@@ -135,6 +120,16 @@ def _load_skill_markdown(
 
 def load_rowset_skill_markdown() -> str:
     return _load_skill_markdown(rowset_skill_path(), ROWSET_SKILL_SOURCE_URL)
+
+
+def load_rowset_setup_skill_markdown() -> str:
+    return _load_skill_markdown(
+        rowset_setup_skill_path(),
+        ROWSET_SETUP_SKILL_SOURCE_URL,
+        fallback_skill_name="rowset-setup",
+        fallback_description=ROWSET_SETUP_SKILL_FALLBACK_DESCRIPTION,
+        fallback_title="Rowset Setup",
+    )
 
 
 def load_rowset_features_skill_markdown() -> str:

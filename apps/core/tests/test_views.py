@@ -307,7 +307,8 @@ class TestHomeView:
         assert "private bearer token" in content
         assert "Rowset current docs index" in masked_prompt
         assert "Rowset current capabilities" in masked_prompt
-        assert "ask the user which interface to configure" in masked_prompt
+        assert "Rowset setup skill" in masked_prompt
+        assert "post-verification activation handoff" in masked_prompt
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_home_view_collapses_prompt_and_completes_copy_task_after_copy_success(
@@ -542,26 +543,30 @@ class TestHomeView:
         assert "# Rowset" in content
         assert "Use Rowset as a stable backend for user-owned structured datasets." in content
         assert "MCP, the Rowset CLI, or the REST API" in content
-        assert "Ask the user which interface to configure" in content
-        assert "Do not silently install a CLI" in content
-        assert "Do not copy a setup command from memory" in content
-        assert "get_user_info" in content
         assert "get_rowset_capabilities" in content
-        assert "rowset user info" in content
-        assert "GET <Rowset REST API base>/user" in content
-        assert "marks onboarding complete" in content
-        assert "starts the Rowset trial" in content
-        assert "Do not create a first dataset" in content
-        assert "unless the user explicitly chooses one" in content
-        assert "Suggest two to four tailored project, section, and dataset structures" in content
-        assert "daily Rowset tips automation" in content
-        assert "Only create the automation after explicit agreement" in content
-        assert "runs in the user's agent account" in content
+        assert "working with Rowset after access" in content
+        assert "Search before creating duplicates" in content
         assert "Public previews are read-only sharing surfaces" in content
+        assert "Suggest two to four tailored" not in content
+        assert "daily Rowset tips automation" not in content
 
     def test_companion_agent_instruction_markdown_is_public(self, client):
+        setup_response = client.get(reverse("agent_instructions_rowset_setup"))
         features_response = client.get(reverse("agent_instructions_rowset_features"))
         use_cases_response = client.get(reverse("agent_instructions_rowset_use_cases"))
+
+        assert setup_response.status_code == 200
+        assert setup_response["Content-Type"] == "text/markdown; charset=utf-8"
+        setup_content = setup_response.content.decode()
+        assert "name: rowset-setup" in setup_content
+        assert "Ask the user which interface to configure" in setup_content
+        assert "get_user_info" in setup_content
+        assert "marks onboarding complete" in setup_content
+        assert (
+            "Suggest two to four tailored project, section, and dataset structures" in setup_content
+        )
+        assert "daily Rowset tips automation" in setup_content
+        assert "runs in the user's agent account" in setup_content
 
         assert features_response.status_code == 200
         assert features_response["Content-Type"] == "text/markdown; charset=utf-8"
@@ -616,6 +621,11 @@ class TestHomeView:
     ):
         monkeypatch.setattr(
             agent_skill,
+            "rowset_setup_skill_path",
+            lambda: tmp_path / "missing-setup.md",
+        )
+        monkeypatch.setattr(
+            agent_skill,
             "rowset_features_skill_path",
             lambda: tmp_path / "missing-features.md",
         )
@@ -625,8 +635,16 @@ class TestHomeView:
             lambda: tmp_path / "missing-use-cases.md",
         )
 
+        setup_response = client.get(reverse("agent_instructions_rowset_setup"))
         features_response = client.get(reverse("agent_instructions_rowset_features"))
         use_cases_response = client.get(reverse("agent_instructions_rowset_use_cases"))
+
+        assert setup_response.status_code == 200
+        setup_content = setup_response.content.decode()
+        assert "name: rowset-setup" in setup_content
+        assert "connect an AI agent to Rowset" in setup_content
+        assert "# Rowset Setup" in setup_content
+        assert "rowset-setup/SKILL.md" in setup_content
 
         assert features_response.status_code == 200
         features_content = features_response.content.decode()
@@ -652,6 +670,7 @@ class TestHomeView:
         assert "Rowset MCP URL: https://rowset.example/mcp/" in prompt
         assert "Rowset REST API base: https://rowset.example/api/" in prompt
         assert "Rowset CLI guide: https://rowset.example/docs/use-cli.md" in prompt
+        assert "Rowset setup skill: https://rowset.example/skills/rowset-setup/SKILL.md" in prompt
         assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
         assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in prompt
         assert "Rowset current docs index: https://rowset.example/llms.txt" in prompt
@@ -659,17 +678,12 @@ class TestHomeView:
         assert "Rowset blog: https://rowset.example/blog" in prompt
         assert "Rowset current API docs: https://rowset.example/api/docs" in prompt
         assert "Rowset current capabilities: https://rowset.example/api/capabilities" in prompt
+        assert "Rowset trial rewards: https://rowset.example/trial-rewards" in prompt
         assert "Rowset API key: rsk_explicit" in prompt
-        assert "Rowset supports MCP, CLI, and REST API access" in prompt
-        assert "ask the user which interface to configure" in prompt
-        assert "get_user_info over MCP" in prompt
-        assert "rowset user info through the CLI" in prompt
-        assert "completes onboarding, and starts the trial" in prompt
-        assert "suggest two to four useful project, section, and dataset structures" in prompt
-        assert "Do not create or change Rowset data until the user chooses" in prompt
-        assert "https://rowset.example/trial-rewards" in prompt
-        assert "simple daily automation" in prompt
-        assert "Only create the automation after the user explicitly agrees" in prompt
+        assert "Read or install the Rowset setup skill before acting" in prompt
+        assert "post-verification activation handoff" in prompt
+        assert "Use the Rowset skill for ongoing platform interaction" in prompt
+        assert "suggest two to four useful project" not in prompt
         assert "codex mcp add" not in prompt.lower()
 
         masked_prompt = build_agent_setup_prompt(request, mask_api_key=True)
