@@ -61,7 +61,6 @@ and ports 80/443 reach Caddy.
 ```bash
 git clone https://github.com/LVTD-LLC/rowset.git
 cd rowset
-cp .env.example .env
 ```
 
 Choose a release or full Git SHA tag. Do not use a mutable `latest` tag.
@@ -75,38 +74,62 @@ The preflight fails if the image does not publish the current server architectur
 
 ## 3. Configure the environment
 
-Edit `.env` and set at least:
-
-```dotenv
-ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<release-or-sha-tag>
-ROWSET_DOMAIN=rowset.example.com
-ENVIRONMENT=prod
-DEBUG=off
-SECRET_KEY=<long-random-value>
-POSTGRES_PASSWORD=<long-random-value>
-REDIS_PASSWORD=<long-random-value>
-```
-
-Generate independent values instead of reusing passwords:
+Set the two non-secret deployment inputs, then run the production initializer:
 
 ```bash
-python -c "import secrets; print(secrets.token_urlsafe(64))"
-openssl rand -base64 48
-openssl rand -base64 48
+export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<release-or-full-sha-tag>
+export ROWSET_DOMAIN=rowset.example.com
+deployment/self-host/init-env.sh
+deployment/self-host/validate-env.sh
 ```
+
+The initializer starts from `deployment/self-host/env.example`, generates independent strong Django,
+PostgreSQL, and Redis secrets, and stores the result in `.env` with mode `0600`. It is idempotent:
+rerunning it preserves every existing nonblank value and never rotates a secret. The validator
+rejects missing values, unsafe development defaults, malformed hostnames or image tags, reused
+secrets, and files that are not private. Both commands report variable names and remediation only;
+they never print secret values.
+
+Only one initializer may run for a destination at a time. If a prior process was forcibly killed,
+remove the adjacent `.env.lock` directory after confirming no initializer is still running.
+
+To supply secrets from a private shell or secret files during first initialization, use direct
+variables or the matching file variables:
+
+```bash
+export SECRET_KEY_FILE=/run/secrets/rowset-django
+export POSTGRES_PASSWORD_FILE=/run/secrets/rowset-postgres
+export REDIS_PASSWORD_FILE=/run/secrets/rowset-redis
+deployment/self-host/init-env.sh
+unset SECRET_KEY_FILE POSTGRES_PASSWORD_FILE REDIS_PASSWORD_FILE
+```
+
+`SECRET_KEY`, `POSTGRES_PASSWORD`, and `REDIS_PASSWORD` are the direct-variable alternatives. Do not
+set a direct variable and its `*_FILE` variable together. Secret files must be readable regular files
+containing one nonblank line. The initializer resolves either form into the protected application
+environment file without displaying the value.
+Injected secrets must use only letters, numbers, dots, underscores, tildes, and hyphens. This
+URL-safe alphabet prevents dotenv, Compose, and Redis URL parsing from changing validated bytes.
 
 Compose derives `SITE_URL=https://${ROWSET_DOMAIN}` for the web and worker containers. Do not add a
 scheme, path, or port to `ROWSET_DOMAIN` in production. Startup migrations synchronize the Django
 Site record from this URL; no admin edit is required.
 
-Review optional email, OAuth, analytics, object-storage, payments, and vector-search settings in
-`.env.example`. Leave unused integrations blank. Never commit `.env`.
+Optional account/email, observability, private asset-storage, and semantic-search variables are
+grouped in `deployment/self-host/env.example`. Leave unused integrations blank. Never commit `.env`.
+
+Cloud provisioning credentials are separate from server application secrets. For example,
+`HCLOUD_TOKEN` belongs in the local provisioning shell or its secret store only. Never add it to the
+server `.env`, pass it to the Rowset containers, or paste it into an agent chat.
 
 ## 4. Start Rowset with automatic HTTPS
 
 ```bash
-docker compose -f docker-compose-prod.yml -p rowset up -d --remove-orphans
+deployment/self-host/start.sh
 ```
+
+`start.sh` runs `validate-env.sh` first and starts no container when validation fails. Direct
+`docker compose up` bypasses that host-side permission check and is not the supported startup path.
 
 Inspect startup state and logs:
 
@@ -242,11 +265,38 @@ Read the release notes, choose a new immutable image tag, and verify its platfor
 export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<new-release-or-sha-tag>
 deployment/verify-image-platforms.sh "$ROWSET_IMAGE"
 docker compose -f docker-compose-prod.yml -p rowset pull
-docker compose -f docker-compose-prod.yml -p rowset up -d --remove-orphans
+deployment/self-host/start.sh
 docker compose -f docker-compose-prod.yml -p rowset ps
 ```
 
 Back up PostgreSQL and local media before updates. Do not add `-v` to `down` commands.
+
+## Rotate secrets safely
+
+Initialization never rotates existing secrets. Before a deliberate rotation, back up `.env` to a
+private location, update only the intended assignment with a local editor or secret-management tool,
+then validate and restart:
+
+```bash
+umask 077
+cp .env ".env.before-rotation-$(date -u +%Y%m%dT%H%M%SZ)"
+deployment/self-host/validate-env.sh
+deployment/self-host/start.sh
+```
+
+Keep the backup only for the recovery window, then destroy it securely according to the host's
+storage policy. Do not paste either file into chat, logs, support tickets, or issues.
+
+Changing `POSTGRES_PASSWORD` or `REDIS_PASSWORD` only in `.env` breaks connectivity. Rotate the
+credential in PostgreSQL or Redis first using that service's authenticated administration path,
+then update `.env`, validate, and restart the dependent containers.
+
+Changing Django's `SECRET_KEY` invalidates signatures made only by the old key. That invalidates
+signed sessions, password-reset links, and similar signed tokens. When continuity is required, set the new
+active key and temporarily add the old key to `SECRET_KEY_FALLBACKS` as a comma-separated value.
+Validate and restart, wait through the chosen transition window, then remove the fallback, validate,
+and restart again. A fallback remains a live secret and must receive the same protection as the
+active key.
 
 ## Temporary insecure IP-only diagnostic mode
 
@@ -329,10 +379,14 @@ The core self-hosting values are:
 | `ENVIRONMENT` | Set to `prod` for the supported production path |
 | `DEBUG` | Set to `off` in production |
 | `SECRET_KEY` | Long independent Django secret |
+| `SECRET_KEY_FALLBACKS` | Optional comma-separated previous Django keys used only during rotation |
+| `SECRET_KEY_FILE` | First-initialization file input for `SECRET_KEY` |
 | `POSTGRES_DB` | PostgreSQL database name |
 | `POSTGRES_USER` | PostgreSQL user |
 | `POSTGRES_PASSWORD` | Strong PostgreSQL password |
+| `POSTGRES_PASSWORD_FILE` | First-initialization file input for `POSTGRES_PASSWORD` |
 | `REDIS_PASSWORD` | Strong Redis password |
+| `REDIS_PASSWORD_FILE` | First-initialization file input for `REDIS_PASSWORD` |
 
 `ROWSET_INSECURE_HTTP` is intentionally absent from `.env.example`; only the diagnostic Compose
-override sets it. See `.env.example` and the README environment table for optional integrations.
+override sets it. See `deployment/self-host/env.example` for optional production integrations.

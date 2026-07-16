@@ -116,6 +116,13 @@ def test_production_compose_applies_restart_and_bounded_logging_to_every_service
         }
 
 
+def test_production_services_load_the_validated_environment_file():
+    compose = _production_compose()
+
+    for service_name in {"db", "redis", "backend", "workers"}:
+        assert compose["services"][service_name]["env_file"] == ["${ROWSET_ENV_FILE:-.env}"]
+
+
 def test_production_compose_waits_for_authenticated_redis_health():
     compose = _production_compose()
     redis = compose["services"]["redis"]
@@ -164,10 +171,25 @@ def test_production_compose_rejects_an_empty_redis_password():
 
 def test_local_ci_validates_rendered_production_compose():
     ci_local = (_REPO_ROOT / "scripts/ci-local.sh").read_text()
+    compose_verifier = (_REPO_ROOT / "deployment/verify-production-compose.sh").read_text()
 
     assert (
         'run_step "Production Compose config" ./deployment/verify-production-compose.sh' in ci_local
     )
+    assert 'run_step "Project and deployment tests"' in ci_local
+    assert "rowset/tests -q" in ci_local
+    assert '"$ROOT/deployment/self-host/validate-env.sh" "$env_file"' in compose_verifier
+    assert 'grep -Fq "$env_file" "$rendered_config"' in compose_verifier
+
+
+def test_supported_start_command_validates_before_invoking_compose():
+    start_script = (_REPO_ROOT / "deployment/self-host/start.sh").read_text()
+
+    validation = '"$script_dir/validate-env.sh" "$environment_file"'
+    compose = "exec docker compose --env-file"
+    assert validation in start_script
+    assert compose in start_script
+    assert start_script.index(validation) < start_script.index(compose)
 
 
 def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics():
@@ -179,6 +201,32 @@ def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics
     assert "150 MB across the five-service stack" in self_hosting
     assert "config --no-env-resolution --no-interpolate" in self_hosting
     assert "Do not share `.env`" in self_hosting
+
+
+def test_self_hosting_docs_use_safe_environment_commands_and_explain_rotation():
+    self_hosting = (_REPO_ROOT / "SELF_HOSTING.md").read_text()
+    readme = (_REPO_ROOT / "README.md").read_text()
+    tech = (_REPO_ROOT / "TECH.md").read_text()
+    production_template = (_REPO_ROOT / "deployment/self-host/env.example").read_text()
+
+    for required in (
+        "deployment/self-host/env.example",
+        "deployment/self-host/init-env.sh",
+        "deployment/self-host/validate-env.sh",
+        "deployment/self-host/start.sh",
+        "SECRET_KEY_FILE",
+        "POSTGRES_PASSWORD_FILE",
+        "REDIS_PASSWORD_FILE",
+        "mode `0600`",
+        "HCLOUD_TOKEN",
+        "SECRET_KEY_FALLBACKS",
+        "signed sessions",
+    ):
+        assert required in self_hosting
+    assert "cp .env.example .env" not in self_hosting
+    assert "deployment/self-host/init-env.sh" in readme
+    assert "deployment/self-host/env.example" in tech
+    assert "HCLOUD_TOKEN" not in production_template
 
 
 def test_local_media_backup_archives_both_paths_with_restricted_permissions(tmp_path):
