@@ -52,7 +52,7 @@ For MCP and REST, Rowset expects a bearer token:
 Authorization: Bearer {{ api_key_placeholder }}
 ```
 
-Use `X-API-Key` only for REST clients that cannot send bearer tokens.
+Private REST requests accept only `Authorization: Bearer <key>`.
 
 Current interface references:
 

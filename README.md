@@ -356,8 +356,8 @@ Use bearer auth for private REST requests:
 Authorization: Bearer <key>
 ```
 
-`X-API-Key` and `?api_key=` are compatibility fallbacks for clients that cannot
-send bearer tokens.
+Private REST requests accept API keys only as bearer tokens. API keys in URLs
+or alternate headers are rejected.
 
 ### Verify a key
 

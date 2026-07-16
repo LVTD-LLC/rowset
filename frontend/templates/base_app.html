@@ -37,6 +37,7 @@
     <script defer src="{% static 'js/alpine-components.js' %}"></script>
     <script defer src="{% static 'vendors/js/alpine.min.js' %}"></script>
     <script defer src="{% static 'js/app.js' %}"></script>
+    <script defer src="{% static 'js/posthog-identity.js' %}"></script>
   </head>
   <body data-csrf-token="{{ csrf_token }}" {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}>
     {% block default_messages %}{% include 'components/messages.html' with messages=messages %}{% endblock default_messages %}

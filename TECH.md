@@ -88,7 +88,7 @@ contents.
 - Enabled public datasets expose separate read-only metadata and row endpoints keyed by
   `public_key`; unprotected datasets need no credential, while protected requests require
   `X-Rowset-Public-Password` on every request.
-- Query-string API keys and `X-API-Key` exist for compatibility only.
+- Private REST endpoints accept API keys only as `Authorization: Bearer <key>`.
 - Hosted MCP uses bearer API-key auth. Configure MCP clients with
   `Authorization: Bearer <key>`, usually through a bearer-token environment
   variable such as `ROWSET_API_KEY`.

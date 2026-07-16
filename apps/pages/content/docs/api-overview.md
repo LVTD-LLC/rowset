@@ -39,15 +39,15 @@ Authorization: Bearer {{ api_key_placeholder }}
 For MCP clients, store the key in a private env var such as `ROWSET_API_KEY` and
 set the client's bearer-token env-var field to `ROWSET_API_KEY`.
 
-REST clients that cannot send bearer tokens can use `X-API-Key: {{ api_key_placeholder }}` or the `api_key` query parameter.
-
 Example request:
 
 ```bash
 curl -H "Authorization: Bearer {{ api_key_placeholder }}" "{{ api_base_url }}/user"
 ```
 
-Treat API keys like passwords: do not put them in frontend code, public repos, shared screenshots, or logs.
+Bearer authentication is the only supported private REST authentication method.
+Treat API keys like passwords: do not put them in URLs, frontend code, public
+repos, shared screenshots, or logs.
 
 ## API key permissions
 

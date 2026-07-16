@@ -31,7 +31,7 @@
             {% if user.is_authenticated %}
                 <button type="button" data-command-palette-trigger class="fb-focus inline-flex min-h-9 items-center justify-center border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10">Search data</button>
                 <a href="{% url 'home' %}" class="inline-flex min-h-9 items-center justify-center bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Open Rowset</a>
-                <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit" class="fb-focus min-h-9 px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign out</button></form>
+                <form data-posthog-reset method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit" class="fb-focus min-h-9 px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign out</button></form>
             {% else %}
                 <a href="{% url 'account_login' %}" class="fb-focus px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign in</a>
                 <a href="{% url 'account_signup' %}" class="inline-flex min-h-9 items-center justify-center bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Create a backend</a>
@@ -50,7 +50,7 @@
                         <a href="{% url 'settings' %}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Settings</a>
                         {% if user.is_superuser %}<a href="{% url 'admin_panel' %}" class="fb-focus px-3 py-3 text-base font-medium text-[#ffdd3d] hover:bg-white/10 sm:text-sm">Admin</a>{% endif %}
                         <button type="button" data-command-palette-trigger class="fb-focus w-full px-3 py-3 text-left text-base font-medium hover:bg-white/10 sm:text-sm">Search data</button>
-                        <form method="post" action="{% url 'account_logout' %}" class="border-t border-white/20">{% csrf_token %}<button type="submit" class="fb-focus w-full px-3 py-3 text-left text-base font-medium hover:bg-white/10 sm:text-sm">Sign out</button></form>
+                        <form data-posthog-reset method="post" action="{% url 'account_logout' %}" class="border-t border-white/20">{% csrf_token %}<button type="submit" class="fb-focus w-full px-3 py-3 text-left text-base font-medium hover:bg-white/10 sm:text-sm">Sign out</button></form>
                     {% else %}
                         <a href="{{ use_cases_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Use Cases</a>
                         <a href="{{ docs_home_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Docs</a>

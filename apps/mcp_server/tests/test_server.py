@@ -163,7 +163,7 @@ def test_get_user_info_mcp_tool_returns_safe_user_data(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.track_activation_event",
@@ -205,7 +205,7 @@ def test_expired_trial_returns_structured_mcp_upgrade_error(monkeypatch):
 
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: (_ for _ in ()).throw(TrialExpiredError(ended_at)),
+            lambda: (_ for _ in ()).throw(TrialExpiredError(ended_at)),
         )
 
         async with Client(mcp) as client:
@@ -242,7 +242,7 @@ def test_write_mcp_tool_rejects_read_only_agent_api_key(monkeypatch):
         )
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: profile,
+            lambda: profile,
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.activate_or_require_trial_access",
@@ -271,7 +271,7 @@ def test_write_mcp_tool_rejects_missing_agent_api_key_context(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(agent_api_key_access_level=None),
+            lambda: _profile(agent_api_key_access_level=None),
         )
 
         async with Client(mcp) as client:
@@ -313,7 +313,7 @@ def test_create_agent_api_key_mcp_tool_requires_admin_and_returns_new_key(monkey
         )
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: profile,
+            lambda: profile,
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.create_agent_api_key_credential",
@@ -363,7 +363,7 @@ def test_create_agent_api_key_mcp_tool_rejects_expired_trial(monkeypatch):
         )
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: profile,
+            lambda: profile,
         )
 
         async with Client(mcp) as client:
@@ -386,7 +386,7 @@ def test_create_agent_api_key_mcp_tool_rejects_missing_agent_api_key_context(mon
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(agent_api_key_access_level=None),
+            lambda: _profile(agent_api_key_access_level=None),
         )
 
         async with Client(mcp) as client:
@@ -414,7 +414,7 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
 
         async with Client(mcp) as client:
@@ -532,7 +532,7 @@ def test_submit_feedback_mcp_tool_creates_feedback_dataset_row(django_user_model
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: profile,
+            lambda: profile,
         )
 
         async with Client(mcp) as client:
@@ -585,7 +585,7 @@ def test_get_all_datasets_mcp_tool_returns_compact_dataset_cards(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
 
         async with Client(mcp) as client:
@@ -637,7 +637,7 @@ def test_get_archived_datasets_mcp_tool_returns_archived_dataset_metadata(monkey
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.serialize_profile_archived_datasets",
@@ -661,7 +661,7 @@ def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
         dataset = profile.datasets.only().__getitem__(slice(0, 10, None))[0]
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: profile,
+            lambda: profile,
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.get_profile_dataset",
@@ -817,7 +817,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr("apps.mcp_server.server.search_profile_datasets", search_datasets)
         monkeypatch.setattr("apps.mcp_server.server.search_profile_projects", search_projects)
@@ -1083,7 +1083,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):  # noqa: C901
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr("apps.mcp_server.server.serialize_profile_projects", list_projects)
         monkeypatch.setattr("apps.mcp_server.server.create_profile_project", create_project)
@@ -1299,7 +1299,7 @@ def test_create_dataset_mcp_tool_calls_dataset_service(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr("apps.mcp_server.server.create_profile_dataset", create_dataset)
 
@@ -1379,7 +1379,7 @@ def test_update_dataset_metadata_mcp_tool_calls_dataset_service(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.update_profile_dataset_metadata",
@@ -1431,7 +1431,7 @@ def test_update_dataset_metadata_mcp_tool_treats_null_metadata_as_omitted(monkey
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.update_profile_dataset_metadata",
@@ -1528,7 +1528,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: profile(),
+            lambda: profile(),
         )
         monkeypatch.setattr("apps.mcp_server.server.list_profile_dataset_rows", list_rows)
         monkeypatch.setattr("apps.mcp_server.server.get_profile_dataset_row", get_row)
@@ -1697,7 +1697,7 @@ def test_dataset_image_mcp_tools_call_dataset_services(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.attach_profile_dataset_image_asset",
@@ -1794,7 +1794,7 @@ def test_dataset_audio_mcp_tools_call_dataset_services(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.attach_profile_dataset_audio_asset",
@@ -1944,7 +1944,7 @@ def test_dataset_relationship_mcp_tools_call_dataset_services(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.list_profile_dataset_relationships",
@@ -2047,7 +2047,7 @@ def test_dataset_row_mcp_tool_resolves_owned_public_row_url(monkeypatch, django_
 
     monkeypatch.setattr(
         "apps.mcp_server.server._authenticate_profile",
-        lambda api_key=None: user.profile,
+        lambda: user.profile,
     )
 
     result = mcp_get_dataset_row(public_row_url, row.id)
@@ -2071,7 +2071,7 @@ def test_update_dataset_column_types_mcp_tool_calls_dataset_service(monkeypatch)
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.update_profile_dataset_column_types",
@@ -2133,7 +2133,7 @@ def test_choice_column_metadata_mcp_tools_call_dataset_services(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr("apps.mcp_server.server.create_profile_dataset", create_dataset)
         monkeypatch.setattr(
@@ -2221,7 +2221,7 @@ def test_schema_mutation_mcp_tools_call_dataset_services(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr("apps.mcp_server.server.add_profile_dataset_column", add_column)
         monkeypatch.setattr("apps.mcp_server.server.rename_profile_dataset_column", rename_column)
@@ -2304,7 +2304,7 @@ def test_update_dataset_public_preview_mcp_tool_calls_dataset_service(monkeypatc
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.update_profile_dataset_public_preview",
@@ -2361,7 +2361,7 @@ def test_dataset_archive_restore_mcp_tools_call_dataset_services(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.archive_profile_dataset",
@@ -2533,7 +2533,7 @@ def test_dataset_row_mcp_tools_return_service_errors(
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(
             "apps.mcp_server.server.get_profile_dataset_row",
@@ -2576,7 +2576,7 @@ def test_metadata_mcp_tools_return_service_errors(
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
-            lambda api_key=None: _profile(),
+            lambda: _profile(),
         )
         monkeypatch.setattr(serializer_path, raise_service_error)
 
@@ -2633,7 +2633,7 @@ def test_get_user_info_mcp_tool_returns_structured_auth_errors(
     expected_message,
     expected_suggested_action,
 ):
-    def reject(api_key=None):
+    def reject():
         raise PermissionError(message)
 
     async def run():
