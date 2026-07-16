@@ -19,6 +19,7 @@ deployment or release cut date.
 ## 2026-07-16
 
 ### Added
+- Added coherent immutable self-host releases that publish a matching image and checksum-protected deployment bundle, pin installer reruns to the recorded version, and report the installed version, commit, image, and digest.
 - Added coordinated PostgreSQL and local-media backup/restore commands with versioned manifests, integrity checks, retention, optional S3-compatible off-server copies, a daily systemd timer, and an isolated destructive restore drill that verifies users, datasets, relationships, and assets.
 - Added an authenticated post-deployment smoke command that verifies REST, MCP, dataset writes and reads, and worker execution while removing temporary users, keys, datasets, and task results after success or failure.
 - Added a release gate that removes GHCR credentials, anonymously inspects and pulls both supported architectures before tag promotion, and prevents an immutable Git SHA tag from being overwritten with a different digest.

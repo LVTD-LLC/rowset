@@ -861,25 +861,27 @@ ReviewGate is present but temporarily disabled.
 - `backend`
 - `workers`
 
-On a server, fetch the repository files first so `docker-compose-prod.yml` and the production
-environment commands are present:
+On a server, install the latest coherent immutable release bundle:
 
 ```bash
-git clone https://github.com/LVTD-LLC/rowset.git
-cd rowset
+curl -fsSL https://github.com/LVTD-LLC/rowset/releases/latest/download/install-rowset-self-host.sh | sh
+cd "$HOME/rowset"
 ```
 
-Published Rowset images support `linux/amd64` and `linux/arm64`. Select a
-release or full Git SHA tag, then verify that its manifest contains the current
-server architecture. Docker Buildx is required for this inspection.
+The bundle, image tag, source commit, and image digest come from the same GitHub release.
+`deployment/self-host/version.sh` reports the installed identity, and rerunning the installer
+without `ROWSET_VERSION` preserves that version. Published Rowset images support `linux/amd64` and
+`linux/arm64`; verify the bundle's image on the current server:
 
 ```bash
-export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<release-or-sha-tag>
-deployment/verify-image-platforms.sh "$ROWSET_IMAGE"
+deployment/self-host/version.sh
+deployment/verify-image-platforms.sh \
+  "$(sed -n 's/^ROWSET_RELEASE_IMAGE=//p' .rowset-release)"
 ```
 
 The command rejects unsupported host architectures and image tags whose manifest does not contain
-the host platform. Set the hostname, then initialize and validate the protected production file:
+the host platform. Set the hostname, then initialize and validate the protected production file.
+The initializer selects the matching bundle image unless `ROWSET_IMAGE` is explicitly overridden:
 
 ```bash
 export ROWSET_DOMAIN=rowset.example.com
@@ -944,13 +946,16 @@ with the same release tag. The image is pushed to GHCR as:
 ghcr.io/lvtd-llc/rowset:2026.07.08-0
 ```
 
-The workflow also creates or updates the matching GitHub Release with:
+The workflow creates the matching immutable GitHub Release with:
 
 - `rowset_linux_amd64.tar.gz`
 - `rowset_linux_arm64.tar.gz`
 - `rowset_darwin_amd64.tar.gz`
 - `rowset_darwin_arm64.tar.gz`
 - `install-rowset-cli.sh`
+- `rowset-self-host-<release>.tar.gz`
+- `rowset-self-host-<release>.tar.gz.sha256`
+- `install-rowset-self-host.sh`
 - `checksums.txt`
 
 The release workflow verifies the manifest and executes the published release
@@ -960,16 +965,10 @@ same checks before deploying the full Git SHA tag to the `rowset` and
 
 - `ghcr.io/lvtd-llc/rowset:<full-git-sha>`
 
-Each push to `main` also publishes:
-
-- a UTC date alias such as `2026-07-01`
-- an immutable run-number tag such as `2026-07-01.123`
-- the full Git commit SHA traceability tag
-
-The plain date tag is a daily alias and can move if there is more than one
-release on the same UTC day. Pin the run-number tag, publish tag, or SHA tag for
-rollbacks and reproducible self-hosted deployments. CapRover production deploys
-the current build's full Git commit SHA tag.
+Each push to `main` publishes only the full Git commit SHA traceability tag. Friendly dated tags are
+created only by the immutable tagged-release workflow, which publishes the matching image and
+self-hosting bundle together. Previous GitHub releases and GHCR tags remain available for rollback.
+CapRover production deploys the current build's full Git commit SHA tag.
 
 CapRover pulls the published image from GHCR during deployment. Before
 switching production to these workflows, make sure either:

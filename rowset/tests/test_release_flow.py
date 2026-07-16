@@ -1,10 +1,28 @@
 import re
 import subprocess
+import tarfile
 from pathlib import Path
 
 import yaml
 
 _REPO_ROOT = Path(__file__).parents[2]
+
+
+def _build_self_host_release(tmp_path: Path, version: str = "2026.07.16-0") -> Path:
+    output_dir = tmp_path / "release-assets"
+    subprocess.run(
+        [
+            str(_REPO_ROOT / "scripts" / "build-self-host-release.sh"),
+            version,
+            "a" * 40,
+            f"ghcr.io/lvtd-llc/rowset:{version}",
+            "sha256:" + "b" * 64,
+            str(output_dir),
+        ],
+        cwd=_REPO_ROOT,
+        check=True,
+    )
+    return output_dir
 
 
 def test_publish_workflow_syncs_app_image_and_cli_version_to_release_tag():
@@ -15,6 +33,26 @@ def test_publish_workflow_syncs_app_image_and_cli_version_to_release_tag():
     assert "-X github.com/LVTD-LLC/rowset/cli/internal/rowsetcli.Version=${RELEASE_TAG}" in workflow
     assert "rowset_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz" in workflow
     assert "scripts/install-rowset-cli.sh" in workflow
+
+
+def test_publish_workflow_creates_an_immutable_matching_self_host_release():
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text()
+
+    assert "scripts/build-self-host-release.sh" in workflow
+    assert "${{ github.sha }}" in workflow
+    assert "${{ needs.app-image.outputs.digest }}" in workflow
+    assert "rowset-self-host-${RELEASE_TAG}.tar.gz" in workflow
+    assert "install-rowset-self-host.sh" in workflow
+    assert "--clobber" not in workflow
+
+
+def test_main_deploy_only_promotes_the_immutable_sha_tag():
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+
+    assert "${{ steps.image.outputs.image_name }}:${{ github.sha }}" in workflow
+    assert "${{ steps.image.outputs.image_name }}:latest" not in workflow
+    assert "release_date" not in workflow
+    assert "release_version" not in workflow
 
 
 def test_release_workflows_publish_and_smoke_both_supported_platforms():
@@ -132,8 +170,9 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
         for step in parsed_workflows["deploy.yml"]["jobs"]["build-and-deploy"]["steps"]
         if step["name"] == "Verify anonymous image availability"
     )
-    for tag in ("latest", "release_date", "release_version", "github.sha"):
-        assert tag in deploy_gate["run"]
+    assert "github.sha" in deploy_gate["run"]
+    for mutable_tag in ("latest", "release_date", "release_version"):
+        assert mutable_tag not in deploy_gate["run"]
 
     deploy_build = next(
         step
@@ -150,8 +189,9 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
         for step in parsed_workflows["deploy.yml"]["jobs"]["build-and-deploy"]["steps"]
         if step["name"] == "Promote advertised tags"
     )
-    for tag in ("latest", "release_date", "release_version", "github.sha"):
-        assert tag in deploy_promotion["run"]
+    assert "github.sha" in deploy_promotion["run"]
+    for mutable_tag in ("latest", "release_date", "release_version"):
+        assert mutable_tag not in deploy_promotion["run"]
     deploy_step_names = [
         step["name"] for step in parsed_workflows["deploy.yml"]["jobs"]["build-and-deploy"]["steps"]
     ]
@@ -169,6 +209,15 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
     )
     assert "github.ref_name" in publish_promotion["run"]
     assert "app-image" in publish["jobs"]["release"]["needs"]
+    publish_step_names = [step["name"] for step in publish["jobs"]["app-image"]["steps"]]
+    immutable_release_index = publish_step_names.index("Protect immutable release tag")
+    assert publish_step_names.index("Verify anonymous immutable image availability") < (
+        immutable_release_index
+    )
+    assert immutable_release_index < publish_step_names.index("Promote advertised tags")
+    immutable_release = publish["jobs"]["app-image"]["steps"][immutable_release_index]
+    assert "deployment/verify-immutable-image-tag.sh" in immutable_release["run"]
+    assert "github.ref_name" in immutable_release["run"]
 
 
 def test_install_script_installs_rowset_cli_from_release_assets():
@@ -211,3 +260,174 @@ def test_next_release_tag_uses_dotted_day_and_increments_suffix(tmp_path):
     )
 
     assert result.stdout.strip() == "2026.07.08-3"
+
+
+def test_self_host_release_builder_packages_matching_manifest_and_support_files(tmp_path):
+    output_dir = _build_self_host_release(tmp_path)
+    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
+    checksum = output_dir / "rowset-self-host-2026.07.16-0.tar.gz.sha256"
+    installer = output_dir / "install-rowset-self-host.sh"
+
+    assert archive.is_file()
+    assert checksum.is_file()
+    assert installer.is_file()
+    assert installer.stat().st_mode & 0o111
+    assert "@ROWSET_RELEASE_VERSION@" not in installer.read_text()
+
+    with tarfile.open(archive) as bundle:
+        names = set(bundle.getnames())
+        manifest = bundle.extractfile("./.rowset-release")
+        assert manifest is not None
+        manifest_text = manifest.read().decode()
+
+    assert {
+        "./.rowset-release",
+        "./SELF_HOSTING.md",
+        "./docker-compose-prod.yml",
+        "./deployment/self-host/init-env.sh",
+        "./deployment/self-host/version.sh",
+        "./deployment/verify-image-platforms.sh",
+    } <= names
+    assert "ROWSET_RELEASE_VERSION=2026.07.16-0" in manifest_text
+    assert f"ROWSET_RELEASE_COMMIT={'a' * 40}" in manifest_text
+    assert "ROWSET_RELEASE_IMAGE=ghcr.io/lvtd-llc/rowset:2026.07.16-0" in manifest_text
+    assert f"ROWSET_RELEASE_DIGEST=sha256:{'b' * 64}" in manifest_text
+    assert archive.name in checksum.read_text()
+
+
+def test_self_host_installer_pins_first_release_and_preserves_it_on_rerun(tmp_path):
+    first_assets = _build_self_host_release(tmp_path / "first", "2026.07.16-0")
+    second_assets = _build_self_host_release(tmp_path / "second", "2026.07.16-1")
+    install_dir = tmp_path / "installed"
+    environment = {
+        "ROWSET_INSTALL_DIR": str(install_dir),
+        "ROWSET_RELEASE_BASE_URL": first_assets.as_uri(),
+    }
+
+    first = subprocess.run(
+        [str(first_assets / "install-rowset-self-host.sh")],
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert first.returncode == 0, first.stderr
+    state = (install_dir / ".rowset-release").read_text()
+    assert "ROWSET_RELEASE_VERSION=2026.07.16-0" in state
+
+    rerun = subprocess.run(
+        [str(second_assets / "install-rowset-self-host.sh")],
+        env={
+            **environment,
+            "ROWSET_RELEASE_BASE_URL": first_assets.as_uri(),
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert rerun.returncode == 0, rerun.stderr
+    assert (install_dir / ".rowset-release").read_text() == state
+
+
+def test_self_host_installer_refuses_to_change_an_existing_release(tmp_path):
+    first_assets = _build_self_host_release(tmp_path / "first", "2026.07.16-0")
+    second_assets = _build_self_host_release(tmp_path / "second", "2026.07.16-1")
+    install_dir = tmp_path / "installed"
+    subprocess.run(
+        [str(first_assets / "install-rowset-self-host.sh")],
+        env={
+            "ROWSET_INSTALL_DIR": str(install_dir),
+            "ROWSET_RELEASE_BASE_URL": first_assets.as_uri(),
+        },
+        check=True,
+    )
+    state = (install_dir / ".rowset-release").read_bytes()
+
+    result = subprocess.run(
+        [str(second_assets / "install-rowset-self-host.sh")],
+        env={
+            "ROWSET_INSTALL_DIR": str(install_dir),
+            "ROWSET_RELEASE_BASE_URL": second_assets.as_uri(),
+            "ROWSET_VERSION": "2026.07.16-1",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "does not update or roll back" in result.stderr
+    assert (install_dir / ".rowset-release").read_bytes() == state
+
+
+def test_self_host_installer_rejects_a_bundle_with_the_wrong_checksum(tmp_path):
+    assets = _build_self_host_release(tmp_path)
+    archive = assets / "rowset-self-host-2026.07.16-0.tar.gz"
+    archive.write_bytes(archive.read_bytes() + b"corrupted")
+    install_dir = tmp_path / "installed"
+
+    result = subprocess.run(
+        [str(assets / "install-rowset-self-host.sh")],
+        env={
+            "ROWSET_INSTALL_DIR": str(install_dir),
+            "ROWSET_RELEASE_BASE_URL": assets.as_uri(),
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "checksum verification failed" in result.stderr
+    assert not install_dir.exists()
+
+
+def test_version_command_reports_release_commit_image_and_digest(tmp_path):
+    assets = _build_self_host_release(tmp_path)
+    install_dir = tmp_path / "installed"
+    subprocess.run(
+        [str(assets / "install-rowset-self-host.sh")],
+        env={
+            "ROWSET_INSTALL_DIR": str(install_dir),
+            "ROWSET_RELEASE_BASE_URL": assets.as_uri(),
+        },
+        check=True,
+    )
+
+    result = subprocess.run(
+        [str(install_dir / "deployment" / "self-host" / "version.sh")],
+        cwd=install_dir,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    assert result.stdout.splitlines() == [
+        "Version: 2026.07.16-0",
+        f"Commit: {'a' * 40}",
+        "Image: ghcr.io/lvtd-llc/rowset:2026.07.16-0",
+        f"Digest: sha256:{'b' * 64}",
+        "Configured image: not initialized",
+    ]
+
+
+def test_version_command_rejects_incomplete_release_metadata(tmp_path):
+    release_file = tmp_path / ".rowset-release"
+    release_file.write_text(
+        "ROWSET_RELEASE_VERSION=2026.07.16-0\n"
+        f"ROWSET_RELEASE_COMMIT={'a' * 40}\n"
+        "ROWSET_RELEASE_IMAGE=ghcr.io/lvtd-llc/rowset:2026.07.16-0\n"
+    )
+
+    result = subprocess.run(
+        [str(_REPO_ROOT / "deployment" / "self-host" / "version.sh")],
+        env={"ROWSET_RELEASE_FILE": str(release_file)},
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "ROWSET_RELEASE_DIGEST" in result.stderr

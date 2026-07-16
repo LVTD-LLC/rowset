@@ -96,6 +96,8 @@ jobs:
     name: Build and publish app image
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -147,6 +149,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Protect immutable release tag
+        run: |
+          deployment/verify-immutable-image-tag.sh \
+            "${{ steps.image.outputs.digest }}" \
+            "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}"
+
       - name: Promote advertised tags
         run: |
           docker buildx imagetools create \
@@ -187,6 +195,12 @@ jobs:
         shell: bash
         run: |
           cp scripts/install-rowset-cli.sh release-assets/install-rowset-cli.sh
+          scripts/build-self-host-release.sh \
+            "$RELEASE_TAG" \
+            "${{ github.sha }}" \
+            "$IMAGE_NAME:$RELEASE_TAG" \
+            "${{ needs.app-image.outputs.digest }}" \
+            release-assets
           (cd release-assets && sha256sum *.tar.gz > checksums.txt)
 
       - name: Publish release
@@ -199,6 +213,13 @@ jobs:
             echo "Docker image:"
             echo
             echo "- ${IMAGE_NAME}:${RELEASE_TAG}"
+            echo "- rowset-self-host-${RELEASE_TAG}.tar.gz"
+            echo
+            echo "Install the matching self-hosting bundle:"
+            echo
+            echo '```bash'
+            echo "curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/install-rowset-self-host.sh | sh"
+            echo '```'
             echo
             echo "Install the CLI:"
             echo
@@ -207,9 +228,6 @@ jobs:
             echo '```'
           } > "$notes"
 
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" release-assets/* --clobber
-            gh release edit "$RELEASE_TAG" --title "$RELEASE_TAG" --notes-file "$notes"
-          else
-            gh release create "$RELEASE_TAG" release-assets/* --title "$RELEASE_TAG" --notes-file "$notes"
-          fi
+          gh release create "$RELEASE_TAG" release-assets/* \
+            --title "$RELEASE_TAG" \
+            --notes-file "$notes"
