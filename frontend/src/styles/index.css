@@ -244,6 +244,184 @@
   }
 }
 
+@utility rs-article-prose {
+  color: var(--color-slate-700);
+  font-size: var(--text-base);
+  line-height: --spacing(7);
+  text-wrap: pretty;
+
+  @variant dark {
+    color: var(--color-slate-300);
+  }
+
+  & > * + * {
+    margin-top: --spacing(6);
+  }
+
+  & h1,
+  & h2,
+  & h3,
+  & h4,
+  & h5,
+  & h6 {
+    color: var(--color-slate-950);
+    font-family: var(--font-sans);
+    font-weight: var(--font-weight-semibold);
+    text-wrap: balance;
+
+    @variant dark {
+      color: var(--color-white);
+    }
+  }
+
+  & h1,
+  & h2 {
+    margin-top: --spacing(16);
+    border-top: 1px solid --alpha(var(--color-slate-950) / 10%);
+    padding-top: --spacing(10);
+    font-size: var(--text-3xl);
+    letter-spacing: var(--tracking-tight);
+
+    @variant dark {
+      border-color: --alpha(var(--color-white) / 15%);
+    }
+  }
+
+  & h3 {
+    margin-top: --spacing(10);
+    font-size: var(--text-xl);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  & h4,
+  & h5,
+  & h6 {
+    margin-top: --spacing(8);
+    font-size: var(--text-lg);
+  }
+
+  & a {
+    color: var(--color-blue-800);
+    font-weight: var(--font-weight-medium);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+
+    @variant hover {
+      color: var(--color-blue-950);
+      text-decoration-thickness: 2px;
+    }
+
+    @variant dark {
+      color: var(--color-yellow-300);
+    }
+  }
+
+  & ul,
+  & ol {
+    padding-left: --spacing(6);
+  }
+
+  & ul {
+    list-style-type: disc;
+  }
+
+  & ol {
+    list-style-type: decimal;
+  }
+
+  & li + li {
+    margin-top: --spacing(2);
+  }
+
+  & strong {
+    color: var(--color-slate-950);
+    font-weight: var(--font-weight-semibold);
+
+    @variant dark {
+      color: var(--color-white);
+    }
+  }
+
+  & blockquote {
+    border-left: 4px solid var(--color-yellow-400);
+    padding-left: --spacing(5);
+    color: var(--color-slate-600);
+    font-style: italic;
+
+    @variant dark {
+      color: var(--color-slate-300);
+    }
+  }
+
+  & pre {
+    overflow-x: auto;
+    border: 1px solid var(--color-slate-800);
+    border-radius: var(--radius-md);
+    background-color: var(--color-neutral-950);
+    padding: --spacing(4);
+    color: var(--color-white);
+    font-family: var(--font-mono);
+  }
+
+  & code {
+    border-radius: var(--radius-sm);
+    background-color: var(--color-slate-100);
+    padding: --spacing(0.5) --spacing(1);
+    color: var(--color-slate-950);
+    font-family: var(--font-mono);
+
+    @variant dark {
+      background-color: var(--color-slate-800);
+      color: var(--color-white);
+    }
+  }
+
+  & pre code {
+    border-radius: 0;
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+  }
+
+  & img {
+    max-width: 100%;
+    height: auto;
+    border-radius: min(1vw, var(--radius-lg));
+  }
+
+  & table {
+    width: 100%;
+    min-width: 48rem;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  & th {
+    border-bottom: 1px solid --alpha(var(--color-slate-950) / 20%);
+    padding: --spacing(3) --spacing(4) --spacing(3) 0;
+    color: var(--color-slate-950);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+
+    @variant dark {
+      border-color: --alpha(var(--color-white) / 25%);
+      color: var(--color-white);
+    }
+  }
+
+  & td {
+    border-bottom: 1px solid --alpha(var(--color-slate-950) / 10%);
+    padding: --spacing(4) --spacing(4) --spacing(4) 0;
+    white-space: normal;
+    vertical-align: top;
+
+    @variant dark {
+      border-color: --alpha(var(--color-white) / 15%);
+    }
+  }
+}
+
 @layer utilities {
   .rs-grid-field {
     background-image:

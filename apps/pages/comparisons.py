@@ -16,6 +16,11 @@ from apps.pages.content import CONTENT_MARKDOWN_EXTENSIONS, get_content_template
 
 COMPARISON_SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 COMPARISON_LOAD_ERRORS = (KeyError, TypeError, ValueError)
+COMPARISON_TABLE_OPEN = (
+    '<div class="-mx-5 -my-2 overflow-x-auto whitespace-nowrap sm:-mx-10">'
+    '<div class="inline-block min-w-full px-5 py-2 align-middle sm:px-10">'
+)
+COMPARISON_TABLE_CLOSE = "</div></div>"
 
 
 @dataclass(frozen=True)
@@ -48,6 +53,13 @@ def _metadata_date(value, field_name: str) -> date:
         raise ValueError(f"Invalid comparison {field_name}") from exc
 
 
+def _render_comparison_html(content: str) -> str:
+    html = markdown.markdown(content, extensions=CONTENT_MARKDOWN_EXTENSIONS)
+    return html.replace("<table>", f"{COMPARISON_TABLE_OPEN}<table>").replace(
+        "</table>", f"</table>{COMPARISON_TABLE_CLOSE}"
+    )
+
+
 def load_comparison_page(source_path: Path) -> ComparisonPage:
     comparisons_dir = get_comparisons_dir().resolve()
     source_path = source_path.resolve()
@@ -76,7 +88,7 @@ def load_comparison_page(source_path: Path) -> ComparisonPage:
         keywords=tuple(str(keyword) for keyword in post.metadata.get("keywords", ())),
         faqs=faqs,
         content=rendered_content,
-        html=markdown.markdown(rendered_content, extensions=CONTENT_MARKDOWN_EXTENSIONS),
+        html=_render_comparison_html(rendered_content),
     )
 
 
