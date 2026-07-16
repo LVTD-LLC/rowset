@@ -1,0 +1,59 @@
+{
+  "strictness": 1,
+  "commentTypes": [
+    "logic",
+    "syntax",
+    "style",
+    "info"
+  ],
+  "triggerOnUpdates": true,
+  "rules": [
+    {
+      "id": "private-dataset-ownership",
+      "rule": "Treat authenticated dataset access as private by default. Flag any REST, MCP, view, task, or service path that can read or mutate a dataset without enforcing the authenticated profile's ownership boundary.",
+      "severity": "high",
+      "enabled": true,
+      "scope": [
+        "apps/**"
+      ]
+    },
+    {
+      "id": "public-dataset-redaction",
+      "rule": "Public dataset surfaces must remain read-only and must not expose private dataset keys, owner context, internal instructions or metadata, relationships, or authenticated asset URLs. Flag any response, template, export, or log that violates this boundary.",
+      "severity": "high",
+      "enabled": true,
+      "scope": [
+        "apps/**",
+        "frontend/**"
+      ]
+    },
+    {
+      "id": "rest-mcp-parity",
+      "rule": "REST and MCP dataset behavior must stay aligned by reusing service-layer validation and persistence rules. Flag duplicated or divergent ownership checks, row validation, serialization, error handling, or dataset behavior at either boundary.",
+      "severity": "high",
+      "enabled": true,
+      "scope": [
+        "apps/api/**",
+        "apps/datasets/**",
+        "apps/mcp_server/**"
+      ]
+    },
+    {
+      "id": "dataset-index-invariants",
+      "rule": "Dataset headers must be present, non-empty, and unique. Explicit index values must be non-blank and unique, and generated index columns must keep the stable rowset_id naming path. Flag changes that weaken these invariants across create, update, import, export, REST, or MCP flows.",
+      "severity": "high",
+      "enabled": true,
+      "scope": [
+        "apps/api/**",
+        "apps/datasets/**",
+        "apps/mcp_server/**"
+      ]
+    },
+    {
+      "id": "secret-and-private-data-safety",
+      "rule": "Flag secrets, API keys, OAuth tokens, credentials, private dataset contents, raw request payloads, or sensitive exception details that can reach logs, analytics, documentation, templates, responses, screenshots, generated files, or source control.",
+      "severity": "high",
+      "enabled": true
+    }
+  ]
+}
