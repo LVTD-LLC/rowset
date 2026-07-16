@@ -58,8 +58,6 @@
       posthog.identify("{{ posthog_distinct_id|escapejs }}", {
         email: "{{ posthog_user_email|escapejs }}",
       });
-    {% else %}
-      posthog.reset();
     {% endif %}
     posthog.onSessionId(function (sessionId) {
       window.Rowset = window.Rowset || {};
