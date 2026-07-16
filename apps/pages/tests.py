@@ -25,7 +25,7 @@ from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
 from apps.pages.comparisons import get_comparison_page
-from apps.pages.content import get_content_section
+from apps.pages.content import build_content_agent_setup_prompt, get_content_section
 from apps.pages.public_markdown import markdown_path_for
 from apps.pages.schema import (
     article_schema,
@@ -36,6 +36,14 @@ from apps.pages.schema import (
 )
 
 pytestmark = pytest.mark.django_db
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_content_agent_setup_prompt_formats_trial_rewards_url():
+    prompt = build_content_agent_setup_prompt()
+
+    assert "See https://rowset.example/trial-rewards" in prompt
+    assert "{trial_rewards_url}" not in prompt
 
 
 PUBLIC_CONTENT_PATH_PREFIXES = ("/blog/", "/docs/", "/use-cases/", "/vs/")

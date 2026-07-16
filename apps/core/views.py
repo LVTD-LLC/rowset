@@ -34,8 +34,8 @@ from django.views.generic import TemplateView, UpdateView
 from django_htmx.http import HttpResponseClientRedirect
 
 from apps.core.agent_skill import (
-    ROWSET_AGENT_SETUP_INSTRUCTIONS,
     ROWSET_SKILL_INSTALL_COMMAND,
+    build_rowset_agent_setup_instructions,
     load_rowset_features_skill_markdown,
     load_rowset_skill_markdown,
     load_rowset_use_cases_skill_markdown,
@@ -209,7 +209,7 @@ def build_agent_setup_prompt(
             f"Rowset current API docs: {api_docs_url}",
             f"Rowset current capabilities: {rest_api_base_url}capabilities",
             "",
-            ROWSET_AGENT_SETUP_INSTRUCTIONS.format(trial_rewards_url=trial_rewards_url),
+            build_rowset_agent_setup_instructions(trial_rewards_url=trial_rewards_url),
         ]
     )
 

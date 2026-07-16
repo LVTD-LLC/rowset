@@ -21,7 +21,7 @@ ROWSET_USE_CASES_SKILL_SOURCE_URL = (
     "https://raw.githubusercontent.com/LVTD-LLC/rowset/main/"
     f"{ROWSET_USE_CASES_SKILL_REPOSITORY_PATH}"
 )
-ROWSET_AGENT_SETUP_INSTRUCTIONS = (
+ROWSET_AGENT_SETUP_INSTRUCTIONS_TEMPLATE = (
     "Read or install the Rowset skill before acting, then consult the current "
     "capabilities and documentation resources above. Rowset supports MCP, CLI, "
     "and REST API access. Evaluate which interface best fits your runtime and "
@@ -62,6 +62,10 @@ ROWSET_USE_CASES_SKILL_FALLBACK_DESCRIPTION = (
     "Use when a user asks how to use Rowset for a specific workflow, dataset "
     "shape, or agent-owned structured data use case."
 )
+
+
+def build_rowset_agent_setup_instructions(*, trial_rewards_url: str) -> str:
+    return ROWSET_AGENT_SETUP_INSTRUCTIONS_TEMPLATE.format(trial_rewards_url=trial_rewards_url)
 
 
 def rowset_skill_path() -> Path:

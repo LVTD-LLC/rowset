@@ -11,11 +11,11 @@ from django.template import Context, Template
 from django.urls import reverse
 
 from apps.core.agent_skill import (
-    ROWSET_AGENT_SETUP_INSTRUCTIONS,
     ROWSET_FEATURES_SKILL_SOURCE_URL,
     ROWSET_SKILL_INSTALL_COMMAND,
     ROWSET_SKILL_SOURCE_URL,
     ROWSET_USE_CASES_SKILL_SOURCE_URL,
+    build_rowset_agent_setup_instructions,
 )
 from apps.core.views import AGENT_API_KEY_MASK
 from apps.pages.public_markdown import build_ai_reader_context, build_public_markdown_context
@@ -232,6 +232,7 @@ def build_content_agent_setup_prompt():
     cli_docs_url = build_absolute_public_url("/docs/use-cli.md")
     docs_url = build_absolute_public_url(reverse("docs_home"))
     blog_url = build_absolute_public_url(reverse("blog_posts"))
+    trial_rewards_url = build_absolute_public_url(reverse("trial_rewards"))
 
     return "\n".join(
         [
@@ -249,7 +250,7 @@ def build_content_agent_setup_prompt():
             f"Rowset current API docs: {api_docs_url}",
             f"Rowset current capabilities: {rest_api_base_url}capabilities",
             "",
-            ROWSET_AGENT_SETUP_INSTRUCTIONS,
+            build_rowset_agent_setup_instructions(trial_rewards_url=trial_rewards_url),
         ]
     )
 
