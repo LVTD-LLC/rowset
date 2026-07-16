@@ -114,6 +114,14 @@ unset SECRET_KEY_FILE POSTGRES_PASSWORD_FILE REDIS_PASSWORD_FILE
 set a direct variable and its `*_FILE` variable together. Secret files must be readable regular files
 containing one nonblank line. The initializer resolves either form into the protected application
 environment file without displaying the value.
+
+Generate a compatible Django secret key with:
+
+```bash
+openssl rand -hex 32
+```
+
+Set the generated value as `SECRET_KEY`, keep it private, and do not reuse it for another service.
 Injected secrets must use only letters, numbers, dots, underscores, tildes, and hyphens. This
 URL-safe alphabet prevents dotenv, Compose, and Redis URL parsing from changing validated bytes.
 
