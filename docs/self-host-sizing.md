@@ -43,12 +43,12 @@ healthy. Memory was sampled ten seconds later.
 
 | Platform and host | Pull | Cold start | Logical images | New disk use | Steady container RAM |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| amd64, Hetzner CX23, 2 vCPU / 4 GB / 40 GB | 53 s | 60 s | 1.18 GB | 5.08 GB | 1.93 GB |
-| arm64, native Ubuntu VM, 2 vCPU / 4 GB / 40 GB | 537 s | 28 s | 1.13 GB | 4.96 GB | 1.75 GB |
+| amd64, Hetzner CX23, 2 vCPU / 4 GB / 40 GB | 82 s | 75 s | 1.18 GB | 5.08 GB | 1.98 GB |
+| arm64, native Ubuntu VM, 2 vCPU / 4 GB / 40 GB | 657 s | 26 s | 1.13 GB | 4.95 GB | 2.10 GB |
 
 The arm64 pull ran through a constrained local VM network, so its pull duration is not a hosting
 expectation. Pull time remains separate from startup because registry and network speed dominate it.
-The checked-in 180-second health window is three times the slower observed cold start and covers
+The checked-in 180-second health window is more than twice the slower observed cold start and covers
 migrations, dependency health checks, and ordinary shared-CPU variance. An early 502 during first
 startup is not a final failure; keep checking health until that bounded window expires.
 

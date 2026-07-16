@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "benchmark_run_id": "86e4f5c600c861391d6b6e0882a875d675aaea28",
-  "measured_at": "2026-07-16T13:28:18Z",
+  "measured_at": "2026-07-16T14:12:59Z",
   "platform": "linux/amd64",
   "operating_system": {
     "id": "ubuntu",
@@ -11,7 +11,7 @@
     "provider": "hetzner",
     "server_type": "cx23",
     "cpu_cores": 2,
-    "memory_bytes": 4005445632,
+    "memory_bytes": 4005457920,
     "disk_bytes": 39964635136
   },
   "image_reference": "ghcr.io/lvtd-llc/rowset:86e4f5c600c861391d6b6e0882a875d675aaea28",
@@ -34,8 +34,8 @@
       "digest": "sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99"
     }
   ],
-  "source_revision": "41ca48c8dad998d241c7744792ac178f4d3f98ec",
-  "docker_version": "29.1.3",
+  "source_revision": "42dc355bf75d94016ae5da43585adf3cdee6fdc0",
+  "docker_version": "29.6.1",
   "services": [
     "backend",
     "caddy",
@@ -44,11 +44,11 @@
     "workers"
   ],
   "measurements": {
-    "image_pull_seconds": 53,
-    "cold_start_seconds": 60,
+    "image_pull_seconds": 82,
+    "cold_start_seconds": 75,
     "image_logical_bytes": 1178772247,
-    "disk_delta_bytes": 5083521024,
-    "steady_state_memory_bytes": 1931141445,
-    "available_memory_after_start_bytes": 1650655232
+    "disk_delta_bytes": 5083533312,
+    "steady_state_memory_bytes": 1977173933,
+    "available_memory_after_start_bytes": 1620455424
   }
 }
