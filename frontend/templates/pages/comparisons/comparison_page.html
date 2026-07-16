@@ -19,31 +19,41 @@
           content="{{ comparison_page.description }}" />
 {% endblock meta %}
 {% block content %}
-    <article class="bg-white text-slate-950 dark:bg-neutral-950 dark:text-white">
-        <header class="relative overflow-hidden border-b border-slate-950/10 bg-[#f5f5ff] dark:border-white/15 dark:bg-slate-950">
-            <div class="rs-grid-field absolute inset-0" aria-hidden="true"></div>
-            <div class="relative mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-                <p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Rowset comparison</p>
-                <h1 class="mt-6 max-w-[18ch] font-display text-5xl font-semibold tracking-tight text-balance sm:text-7xl">{{ comparison_page.title }}</h1>
-                <p class="mt-8 max-w-3xl text-xl leading-8 text-pretty text-slate-700 dark:text-slate-300">{{ comparison_page.description }}</p>
-                <div class="mt-8 flex flex-wrap items-center gap-3 font-mono text-sm text-slate-600 dark:text-slate-300">
-                    <span>Updated <time datetime="{{ comparison_page.updated_at|date:'Y-m-d' }}">{{ comparison_page.updated_at|date:"M j, Y" }}</time></span><span>/</span><span>{{ comparison_page.author }}</span>
+    <article class="bg-[#f5f5ff] text-slate-950 dark:bg-neutral-950 dark:text-white">
+        <header class="border-b border-[#1313a4] bg-[#1313a4] text-white dark:border-white/15 dark:bg-slate-950">
+            <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+                <div class="border-x border-white/20 px-5 py-12 sm:px-10 lg:py-20">
+                    <div class="flex flex-col gap-3 font-mono text-sm sm:flex-row sm:items-center sm:justify-between">
+                        <p class="font-semibold uppercase tracking-wide text-[#ffdd3d]">Rowset comparison / field brief</p>
+                        <p class="tabular-nums text-white/70">Updated <time datetime="{{ comparison_page.updated_at|date:'Y-m-d' }}">{{ comparison_page.updated_at|date:"M j, Y" }}</time> · {{ comparison_page.author }}</p>
+                    </div>
+                    <h1 class="mt-10 max-w-[20ch] font-display text-5xl font-semibold tracking-tight text-pretty sm:text-7xl">{{ comparison_page.title }}</h1>
+                    <p class="mt-8 max-w-[48ch] border-l-4 border-[#ffdd3d] pl-5 text-xl leading-8 text-pretty text-white/80">{{ comparison_page.description }}</p>
+                    <div class="mt-10 flex flex-wrap items-start gap-3 border-t border-white/20 pt-6">
+                        <a href="{% url 'account_signup' %}"
+                           class="fb-focus inline-flex min-h-10 items-center justify-center rounded-md bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Start a 7-day trial</a>
+                        {% include "components/ai_reader_menu.html" with ai_reader_menu_variant="on_dark" %}
+                        <a href="{% url 'docs_page' slug='quickstart' %}"
+                           class="fb-focus inline-flex min-h-10 items-center justify-center rounded-md border border-white/40 px-3 py-2 text-sm font-semibold text-white hover:bg-white hover:text-[#1313a4]">Read the quickstart</a>
+                    </div>
                 </div>
-                <div class="mt-8 flex flex-wrap gap-3"><a href="{% url 'account_signup' %}" class="fb-button-primary">Start a 7-day trial</a><a href="{% url 'docs_page' slug='quickstart' %}"
-   class="fb-button-secondary">Read the quickstart</a></div>
             </div>
         </header>
-        <div class="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-            <div class="mb-10 flex justify-end">{% include "components/ai_reader_menu.html" %}</div>
-            <div class="prose prose-slate max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-[#1313a4] prose-table:text-sm prose-pre:bg-neutral-950 prose-pre:text-white dark:prose-invert dark:prose-a:text-[#ffdd3d]">{{ comparison_page.html|safe }}</div>
-            <aside class="mt-14 border-2 border-slate-950 bg-[#ffdd3d] p-6 text-[#1313a4] dark:border-white sm:p-8">
-                <p class="font-mono text-sm font-semibold uppercase tracking-wide">Try the narrower tool</p>
-                <h2 class="mt-4 text-3xl font-semibold tracking-tight">Give one trusted agent its own structured dataset.</h2>
-                <p class="mt-4 max-w-2xl text-base leading-7">Start with one workflow, one stable index column, and clear dataset instructions. Keep the incumbent where people still depend on its interfaces and move only the agent-owned state.</p>
-                <div class="mt-6 flex flex-wrap gap-3"><a href="{% url 'account_signup' %}"
-   class="fb-focus inline-flex min-h-12 items-center bg-[#1313a4] px-5 py-3 font-semibold text-white hover:bg-white hover:text-[#1313a4]">Start your trial</a><a href="{% url 'pricing' %}"
-   class="fb-focus inline-flex min-h-12 items-center border border-[#1313a4] px-5 py-3 font-semibold hover:bg-white">See pricing</a></div>
-            </aside>
+        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div class="border-x border-slate-950/10 bg-white px-5 py-12 dark:border-white/15 dark:bg-slate-950 sm:px-10 lg:py-20">
+                <div class="rs-article-prose max-w-[72ch]">{{ comparison_page.html|safe }}</div>
+                <aside class="mt-16 border border-slate-950/15 bg-[#ffdd3d] p-6 text-[#1313a4] dark:border-white/15 dark:bg-slate-900 dark:text-white sm:p-8">
+                    <p class="font-mono text-sm font-semibold uppercase tracking-wide">Recommended first move</p>
+                    <h2 class="mt-4 max-w-[30ch] text-3xl font-semibold tracking-tight text-balance">Give one trusted agent its own structured dataset.</h2>
+                    <p class="mt-4 max-w-[60ch] text-base leading-7 text-pretty text-[#1313a4]/80 dark:text-slate-300">Start with one workflow, one stable index column, and clear dataset instructions. Keep the incumbent where people still depend on its interfaces and move only the agent-owned state.</p>
+                    <div class="mt-6 flex flex-wrap items-center gap-4">
+                        <a href="{% url 'account_signup' %}"
+                           class="fb-focus inline-flex min-h-10 items-center justify-center rounded-md border border-[#1313a4] px-3 py-2 text-sm font-semibold hover:bg-white dark:border-white/40 dark:hover:bg-white dark:hover:text-[#1313a4]">Start your trial</a>
+                        <a href="{% url 'pricing' %}"
+                           class="fb-focus text-base font-semibold underline decoration-2 underline-offset-4 sm:text-sm">See pricing →</a>
+                    </div>
+                </aside>
+            </div>
         </div>
     </article>
 {% endblock content %}

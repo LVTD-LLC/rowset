@@ -1157,6 +1157,9 @@ def test_rowset_vs_airtable_page_has_required_content_links_and_schema(client):
 
     assert len(words) >= 1200
     assert content.count("<h1") == 1
+    assert "data-uidotsh" not in content
+    assert "ui-picker.js" not in content
+    assert content.count('class="-mx-5 -my-2 overflow-x-auto whitespace-nowrap sm:-mx-10"') == 1
     assert "Rowset vs Airtable: Which Fits AI Agents? (2026)" in content
     assert "Rowset vs Airtable at a glance" in content
     assert "AI agents: Airtable Field Agents vs external agent handoff" in content
@@ -1205,6 +1208,7 @@ def test_rowset_vs_google_sheets_page_has_required_content_links_and_schema(clie
 
     assert len(source_words) >= 1200
     assert content.count("<h1") == 1
+    assert content.count('class="-mx-5 -my-2 overflow-x-auto whitespace-nowrap sm:-mx-10"') == 1
     assert "Rowset vs Google Sheets for AI Agents (2026)" in content
     assert "Rowset vs Google Sheets at a glance" in content
     assert "AI in Sheets vs external agent handoff" in content
