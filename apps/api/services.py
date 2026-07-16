@@ -2356,6 +2356,7 @@ def create_profile_dataset(
     project_key: str | None = None,
     section_key: str | None = None,
     agent_api_key: AgentApiKey | None = None,
+    enqueue_background_work: bool = True,
 ) -> dict:
     """Create a ready API-backed dataset for an authenticated profile."""
     normalized_name = _normalize_dataset_name(name)
@@ -2465,24 +2466,25 @@ def create_profile_dataset(
                 "section_key": str(section.key) if section else "",
             },
         )
-        if row_payloads:
+        if row_payloads and enqueue_background_work:
             _enqueue_dataset_vector_backfill(dataset.id)
 
-    track_activation_event(
-        profile,
-        ROWSET_DATASET_CREATED,
-        {
-            "dataset_id": dataset.id,
-            "is_first_dataset": active_dataset_count_before == 0,
-            "initial_row_count": len(row_payloads),
-            "column_count": len(dataset_headers),
-            "index_generated": index_generated,
-            "has_project": project is not None,
-            "has_section": section is not None,
-            **agent_api_key_tracking_properties(agent_api_key),
-        },
-        source_function="apps.api.services.create_profile_dataset",
-    )
+    if enqueue_background_work:
+        track_activation_event(
+            profile,
+            ROWSET_DATASET_CREATED,
+            {
+                "dataset_id": dataset.id,
+                "is_first_dataset": active_dataset_count_before == 0,
+                "initial_row_count": len(row_payloads),
+                "column_count": len(dataset_headers),
+                "index_generated": index_generated,
+                "has_project": project is not None,
+                "has_section": section is not None,
+                **agent_api_key_tracking_properties(agent_api_key),
+            },
+            source_function="apps.api.services.create_profile_dataset",
+        )
 
     return {
         "status": "success",

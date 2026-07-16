@@ -11,6 +11,9 @@ from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.utils import timezone
 
 from apps.api.views import (
+    create_dataset as create_dataset_view,
+)
+from apps.api.views import (
     get_user_info,
     list_archived_datasets,
     list_datasets,
@@ -19,6 +22,7 @@ from apps.api.views import (
 from apps.core.analytics import ROWSET_GET_USER_INFO_SUCCEEDED
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import Feedback
+from apps.core.post_deploy_smoke_auth import SMOKE_HEADER, create_smoke_token
 from apps.datasets import models as dataset_models
 from apps.datasets.choices import DatasetColumnType
 from apps.datasets.embeddings import EmbeddingResult
@@ -587,6 +591,116 @@ class UserInfoApiUnitTests(SimpleTestCase):
             },
             source_function="apps.api.views.get_user_info",
         )
+
+    def test_smoke_user_info_does_not_enqueue_synthetic_analytics(self):
+        marker = "abc123"
+        user = SimpleNamespace(
+            id=7,
+            email=f"rowset-smoke-{marker}@invalid.example",
+            username=f"rowset-smoke-{marker}",
+            first_name="",
+            last_name="",
+            date_joined="2026-07-16T00:00:00Z",
+            is_active=True,
+            get_full_name=lambda: "",
+        )
+        profile = SimpleNamespace(
+            id=11,
+            user=user,
+            state="subscribed",
+            has_active_subscription=True,
+            trial_started_at=None,
+            trial_ends_at=None,
+        )
+        request = RequestFactory().get(
+            "/api/user",
+            headers={SMOKE_HEADER: create_smoke_token(marker)},
+        )
+        request.auth = profile
+        request.agent_api_key = SimpleNamespace(
+            id=13,
+            name=f"Post-deploy smoke {marker}",
+            access_level=AgentApiKeyAccessLevel.READ_WRITE,
+        )
+
+        with patch("apps.api.views.track_activation_event") as track_activation_event:
+            response = get_user_info(request)
+
+        assert response["email"] == user.email
+        track_activation_event.assert_not_called()
+
+
+class PostDeploySmokeDatasetApiUnitTests(SimpleTestCase):
+    def test_smoke_dataset_creation_suppresses_nonessential_background_work(self):
+        marker = "abc123"
+        profile = SimpleNamespace(
+            id=11,
+            user=SimpleNamespace(
+                username=f"rowset-smoke-{marker}",
+                is_active=True,
+            ),
+        )
+        request = RequestFactory().post(
+            "/api/datasets",
+            headers={SMOKE_HEADER: create_smoke_token(marker)},
+        )
+        request.auth = profile
+        request.agent_api_key = SimpleNamespace(
+            id=13,
+            name=f"Post-deploy smoke {marker}",
+            access_level=AgentApiKeyAccessLevel.READ_WRITE,
+        )
+        payload = SimpleNamespace(
+            name="Post-deploy smoke abc123",
+            description=None,
+            instructions=None,
+            metadata={},
+            headers=["smoke_id", "value"],
+            rows=[{"smoke_id": marker, "value": "ready"}],
+            index_column="smoke_id",
+            column_types=None,
+            project_key=None,
+            section_key=None,
+        )
+
+        with patch(
+            "apps.api.views.create_profile_dataset",
+            return_value={"status": "success", "message": "created", "dataset": {}},
+        ) as create_profile_dataset:
+            create_dataset_view(request, payload)
+
+        assert create_profile_dataset.call_args.kwargs["enqueue_background_work"] is False
+
+    def test_unsigned_smoke_header_cannot_suppress_background_work(self):
+        marker = "abc123"
+        request = RequestFactory().post(
+            "/api/datasets",
+            headers={SMOKE_HEADER: "1"},
+        )
+        request.auth = SimpleNamespace(
+            user=SimpleNamespace(username=f"rowset-smoke-{marker}", is_active=True)
+        )
+        request.agent_api_key = SimpleNamespace(name=f"Post-deploy smoke {marker}")
+        payload = SimpleNamespace(
+            name="Smoke",
+            description=None,
+            instructions=None,
+            metadata={},
+            headers=[],
+            rows=[],
+            index_column=None,
+            column_types=None,
+            project_key=None,
+            section_key=None,
+        )
+
+        with patch(
+            "apps.api.views.create_profile_dataset",
+            return_value={"status": "success", "message": "created", "dataset": {}},
+        ) as create_profile_dataset:
+            create_dataset_view(request, payload)
+
+        assert create_profile_dataset.call_args.kwargs["enqueue_background_work"] is True
 
 
 class DatasetListApiUnitTests(SimpleTestCase):
@@ -1784,6 +1898,39 @@ def test_create_profile_dataset_enqueues_vector_backfill_when_enabled(
 
     dataset = Dataset.objects.get(key=response["dataset"]["key"])
     assert calls == [("apps.datasets.tasks.backfill_dataset_vectors_task", (dataset.id,))]
+
+
+@pytest.mark.django_db
+def test_create_profile_dataset_can_suppress_background_work(django_user_model, monkeypatch):
+    from apps.api.services import create_profile_dataset
+
+    user = django_user_model.objects.create_user(
+        username="smokesideeffects",
+        email="smokesideeffects@example.com",
+        password="password123",
+    )
+    vector_calls = []
+    analytics_calls = []
+    monkeypatch.setattr(
+        "apps.api.services._enqueue_dataset_vector_backfill",
+        lambda dataset_id: vector_calls.append(dataset_id),
+    )
+    monkeypatch.setattr(
+        "apps.api.services.track_activation_event",
+        lambda *args, **kwargs: analytics_calls.append((args, kwargs)),
+    )
+
+    create_profile_dataset(
+        user.profile,
+        name="Smoke data",
+        headers=["smoke_id"],
+        index_column="smoke_id",
+        rows=[{"smoke_id": "1"}],
+        enqueue_background_work=False,
+    )
+
+    assert vector_calls == []
+    assert analytics_calls == []
 
 
 @pytest.mark.django_db

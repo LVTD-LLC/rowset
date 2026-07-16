@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-16
+
+### Added
+- Added an authenticated post-deployment smoke command that verifies REST, MCP, dataset writes and reads, and worker execution while removing temporary users, keys, datasets, and task results after success or failure.
+
 ## 2026-07-15
 
 ### Fixed
