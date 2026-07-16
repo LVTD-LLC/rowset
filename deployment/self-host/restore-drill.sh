@@ -12,7 +12,9 @@ fi
 environment_file=${2:-"$root/.env"}
 environment_directory=$(CDPATH= cd -- "$(dirname -- "$environment_file")" && pwd)
 environment_file="$environment_directory/$(basename -- "$environment_file")"
-"$script_dir/validate-env.sh" "$environment_file" >/dev/null
+# shellcheck source=deployment/self-host/env-lib.sh
+. "$script_dir/env-lib.sh"
+validate_environment_contract "$environment_file"
 unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER
 export ROWSET_ENV_FILE=$environment_file
 project_name="rowset-restore-drill-$$"
@@ -20,6 +22,8 @@ compose_file=${COMPOSE_FILE:-"$root/docker-compose-prod.yml"}
 work_dir=$(mktemp -d)
 backup_root="$work_dir/backups"
 expected="$work_dir/expected.json"
+backup_environment_file="$work_dir/local-backup.env"
+write_local_only_backup_environment "$environment_file" "$backup_environment_file"
 
 compose() {
     docker compose --env-file "$environment_file" -f "$compose_file" -p "$project_name" "$@"
@@ -53,7 +57,7 @@ compose exec -T -e ROWSET_RESTORE_DRILL=1 -e ROWSET_ASSET_S3_ENDPOINT_URL= backe
 
 backup_output=$(
     COMPOSE_PROJECT_NAME="$project_name" \
-        "$script_dir/backup.sh" "$backup_root" "$environment_file"
+        "$script_dir/backup.sh" "$backup_root" "$backup_environment_file"
 )
 backup_dir=$(printf '%s\n' "$backup_output" | tail -1)
 

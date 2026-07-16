@@ -347,6 +347,43 @@ else:
     return commands, log
 
 
+def test_restore_drill_backup_environment_disables_s3(tmp_path):
+    root = Path(__file__).parents[2]
+    source = _write_backup_test_environment(tmp_path)
+    with source.open("a") as output:
+        output.write(
+            "ROWSET_BACKUP_S3_ENDPOINT_URL=https://prod-s3.example.invalid\n"
+            "ROWSET_BACKUP_S3_BUCKET=prod-rowset-backups\n"
+            "ROWSET_BACKUP_S3_ACCESS_KEY_ID=production-access\n"
+            "ROWSET_BACKUP_S3_SECRET_ACCESS_KEY=production-secret\n"
+            "ROWSET_BACKUP_S3_REGION=us-east-1\n"
+            "ROWSET_BACKUP_S3_PREFIX=production/prefix\n"
+        )
+    destination = tmp_path / "local-backup.env"
+
+    subprocess.run(
+        [
+            "sh",
+            "-c",
+            '. "$1"; write_local_only_backup_environment "$2" "$3"',
+            "sh",
+            root / "deployment/self-host/env-lib.sh",
+            source,
+            destination,
+        ],
+        check=True,
+    )
+
+    values = dict(
+        line.split("=", 1)
+        for line in destination.read_text().splitlines()
+        if line and not line.startswith("#")
+    )
+    assert S3BackupConfig.from_mapping(values) is None
+    assert values["POSTGRES_PASSWORD"] == "b" * 32
+    assert destination.stat().st_mode & 0o777 == 0o600
+
+
 def test_backup_script_executes_cleanup_and_publishes_only_after_verification(tmp_path):
     root = Path(__file__).parents[2]
     environment = _write_backup_test_environment(tmp_path)
@@ -447,6 +484,7 @@ def test_backup_commands_and_daily_timer_are_shipped():
     assert "runuser" in service
     assert "ROWSET_BACKUP_USER" in service
     assert "ROWSET_ASSET_S3_ENDPOINT_URL=" in drill
+    assert 'backup.sh" "$backup_root" "$backup_environment_file"' in drill
 
     for script in (backup, restore, verify, drill):
         assert "export ROWSET_ENV_FILE=$environment_file" in script

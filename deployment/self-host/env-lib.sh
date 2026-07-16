@@ -75,6 +75,22 @@ environment_file_value() {
     ' "$env_file"
 }
 
+write_local_only_backup_environment() {
+    source_file=$1
+    destination_file=$2
+    while IFS= read -r line || test -n "$line"; do
+        case "$line" in
+            ROWSET_BACKUP_S3_ENDPOINT_URL=*|ROWSET_BACKUP_S3_BUCKET=*|\
+                ROWSET_BACKUP_S3_ACCESS_KEY_ID=*|ROWSET_BACKUP_S3_SECRET_ACCESS_KEY=*|\
+                ROWSET_BACKUP_S3_REGION=*|ROWSET_BACKUP_S3_PREFIX=*)
+                printf '%s=\n' "${line%%=*}"
+                ;;
+            *) printf '%s\n' "$line" ;;
+        esac
+    done < "$source_file" > "$destination_file"
+    chmod 600 "$destination_file"
+}
+
 required_file_value() {
     requested_key=$1
     env_file=$2
