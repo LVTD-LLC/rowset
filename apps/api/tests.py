@@ -785,7 +785,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
 
         assert response["count"] == 1
         assert response["total_count"] == 1
-        assert response["limit"] == 100
+        assert response["limit"] == 10
         assert response["offset"] == 0
         assert response["has_more"] is False
         assert response["datasets"] == [
@@ -810,7 +810,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
         active_datasets.select_related.return_value.annotate.assert_called_once()
         only_fields = card_queryset.only.call_args.args
         assert "headers" not in only_fields
-        queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
+        queryset.__getitem__.assert_called_once_with(slice(0, 10, None))
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_list_archived_datasets_returns_only_archived_profile_dataset_metadata(self):
@@ -870,7 +870,7 @@ class DatasetListApiUnitTests(SimpleTestCase):
         archived_datasets.select_related.return_value.annotate.assert_called_once()
         only_fields = card_queryset.only.call_args.args
         assert "headers" not in only_fields
-        queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
+        queryset.__getitem__.assert_called_once_with(slice(0, 10, None))
 
 
 class ProjectListApiUnitTests(SimpleTestCase):
@@ -911,7 +911,7 @@ class ProjectListApiUnitTests(SimpleTestCase):
         ]
         projects.annotate.assert_called_once()
         queryset.filter.assert_called_once_with(archived_at__isnull=True)
-        queryset.__getitem__.assert_called_once_with(slice(0, 100, None))
+        queryset.__getitem__.assert_called_once_with(slice(0, 10, None))
 
 
 def test_api_key_auth_returns_profile_for_valid_key():
@@ -1903,21 +1903,9 @@ def test_project_section_services_create_assign_and_group_datasets(django_user_m
     assert update_response["dataset"]["section"]["name"] == "Blog"
     dataset.refresh_from_db()
     assert dataset.section.name == "Blog"
-    assert detail_response["sections"][0]["key"] == section_response["section"]["key"]
-    assert detail_response["sections"][0]["dataset_count"] == 1
-    assert detail_response["dataset_groups"][0]["label"] == "Blog"
-    assert (
-        detail_response["dataset_groups"][0]["section"]["key"]
-        == (section_response["section"]["key"])
-    )
-    assert detail_response["dataset_groups"][0]["datasets"]["count"] == 1
-    assert detail_response["dataset_groups"][0]["datasets"]["total_count"] == 1
-    assert "limit" not in detail_response["dataset_groups"][0]["datasets"]
-    assert "offset" not in detail_response["dataset_groups"][0]["datasets"]
-    assert "has_more" not in detail_response["dataset_groups"][0]["datasets"]
-    assert detail_response["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == (
-        str(dataset.key)
-    )
+    assert "sections" not in detail_response
+    assert "dataset_groups" not in detail_response
+    assert detail_response["datasets"]["datasets"][0]["key"] == str(dataset.key)
 
 
 @pytest.mark.django_db

@@ -6001,19 +6001,18 @@ def test_project_section_api_creates_section_and_assigns_dataset(api_client, pro
 
     assert detail_response.status_code == 200
     detail_payload = detail_response.json()
-    assert detail_payload["sections"][0]["key"] == section_payload["key"]
-    assert detail_payload["sections"][0]["dataset_count"] == 1
-    assert detail_payload["dataset_groups"][0]["label"] == "Blog"
-    assert detail_payload["dataset_groups"][0]["section"]["key"] == section_payload["key"]
-    assert detail_payload["dataset_groups"][0]["datasets"]["count"] == 1
-    assert detail_payload["dataset_groups"][0]["datasets"]["total_count"] == 1
-    assert "limit" not in detail_payload["dataset_groups"][0]["datasets"]
-    assert "offset" not in detail_payload["dataset_groups"][0]["datasets"]
-    assert "has_more" not in detail_payload["dataset_groups"][0]["datasets"]
-    assert (
-        detail_payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"]
-        == (dataset_payload["key"])
-    )
+    assert "sections" not in detail_payload
+    assert "dataset_groups" not in detail_payload
+    assert detail_payload["datasets"]["datasets"][0]["key"] == dataset_payload["key"]
+
+    sections_response = api_client.get(f"/api/projects/{project.key}/sections")
+
+    assert sections_response.status_code == 200
+    sections_payload = sections_response.json()
+    assert sections_payload["count"] == 1
+    assert sections_payload["total_count"] == 1
+    assert sections_payload["sections"][0]["key"] == section_payload["key"]
+    assert sections_payload["sections"][0]["dataset_count"] == 1
 
 
 def test_dataset_api_rejects_section_from_another_project(api_client, profile):
@@ -6070,7 +6069,7 @@ def test_project_section_api_archives_section_and_unsections_datasets(api_client
     assert list_response.json()["sections"] == []
 
 
-def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(api_client, profile):
+def test_project_detail_api_reports_dataset_total_count_on_paginated_page(api_client, profile):
     project = Project.objects.create(profile=profile, name="Rowset")
     first = create_ready_dataset(profile)
     first.name = "Signals"
@@ -6087,14 +6086,14 @@ def test_project_detail_api_reports_unsectioned_total_count_on_paginated_page(ap
     payload = response.json()
     assert payload["datasets"]["count"] == 1
     assert payload["datasets"]["total_count"] == 2
-    assert payload["dataset_groups"][0]["label"] == "Unsectioned"
-    assert payload["dataset_groups"][0]["dataset_count"] == 2
-    assert payload["dataset_groups"][0]["datasets"]["count"] == 1
-    assert payload["dataset_groups"][0]["datasets"]["total_count"] == 2
-    assert payload["dataset_groups"][0]["datasets"]["datasets"][0]["key"] == str(second.key)
+    assert payload["datasets"]["limit"] == 1
+    assert payload["datasets"]["offset"] == 0
+    assert payload["datasets"]["has_more"] is True
+    assert payload["datasets"]["datasets"][0]["key"] == str(second.key)
+    assert "dataset_groups" not in payload
 
 
-def test_project_detail_api_includes_empty_page_unsectioned_group(api_client, profile):
+def test_project_detail_api_omits_section_groups_from_dataset_page(api_client, profile):
     assert hasattr(dataset_models, "ProjectSection")
     ProjectSection = dataset_models.ProjectSection
     project = Project.objects.create(profile=profile, name="Rowset")
@@ -6119,14 +6118,8 @@ def test_project_detail_api_includes_empty_page_unsectioned_group(api_client, pr
     payload = response.json()
     assert payload["datasets"]["count"] == 1
     assert payload["datasets"]["datasets"][0]["key"] == str(sectioned.key)
-    assert payload["dataset_groups"][0]["label"] == "Blog"
-    assert payload["dataset_groups"][0]["dataset_count"] == 1
-    assert payload["dataset_groups"][0]["datasets"]["count"] == 1
-    assert payload["dataset_groups"][1]["label"] == "Unsectioned"
-    assert payload["dataset_groups"][1]["dataset_count"] == 2
-    assert payload["dataset_groups"][1]["datasets"]["count"] == 0
-    assert payload["dataset_groups"][1]["datasets"]["total_count"] == 2
-    assert payload["dataset_groups"][1]["datasets"]["datasets"] == []
+    assert "sections" not in payload
+    assert "dataset_groups" not in payload
 
 
 def test_dataset_api_rejects_invalid_project_assignment_dataset_key(api_client, profile):

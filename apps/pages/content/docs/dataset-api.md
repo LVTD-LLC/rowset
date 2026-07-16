@@ -239,6 +239,13 @@ timestamps. They deliberately omit headers, semantic schema, instructions,
 metadata, index settings, and public-preview configuration. After selecting a
 dataset, inspect it with the endpoint below before operating on rows.
 
+Authenticated dataset, project, section, and row collections return 10 items by
+default. Pass `limit` explicitly to request up to 100 items, and advance
+`offset` by the number returned while `has_more` is `true`.
+
+Project detail omits sections. Use the project-sections endpoint to page through
+them independently.
+
 ## Inspect a dataset
 
 ```http

@@ -103,7 +103,6 @@ from apps.datasets.services import (
     normalize_column_schema,
     prepare_dataset_audio,
     prepare_dataset_image,
-    project_section_dataset_groups,
     validate_and_canonicalize_choice_row_values,
     validate_audio_row_values,
     validate_headers,
@@ -118,6 +117,8 @@ from apps.datasets.vector_tasks import enqueue_vector_task
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 MAX_API_DATASET_CREATE_ROWS = 1000
+AGENT_COLLECTION_DEFAULT_LIMIT = 10
+AGENT_COLLECTION_MAX_LIMIT = 100
 DATASET_SEARCH_MAX_LIMIT = 50
 DATASET_SEARCH_RRF_K = 60
 DATASET_SEARCH_LIMIT_ERRORS = (TypeError, ValueError)
@@ -132,6 +133,17 @@ PROFILE_ROW_SEARCH_SORTS = {
     PROFILE_ROW_SEARCH_SORT_ROW_NUMBER,
 }
 logger = get_rowset_logger(__name__)
+
+
+def _normalize_agent_collection_page(limit: int, offset: int) -> tuple[int, int]:
+    if not 1 <= limit <= AGENT_COLLECTION_MAX_LIMIT:
+        raise DatasetServiceError(
+            422,
+            f"limit must be between 1 and {AGENT_COLLECTION_MAX_LIMIT}.",
+        )
+    if offset < 0:
+        raise DatasetServiceError(422, "offset must be at least 0.")
+    return limit, offset
 
 
 @dataclass(frozen=True)
@@ -462,12 +474,11 @@ def search_profile_projects(
     profile: Profile,
     *,
     query: str | None = None,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
 ) -> dict:
     """Return a bounded, optionally filtered page of projects owned by the profile."""
-    limit = max(1, min(limit, 500))
-    offset = max(0, offset)
+    limit, offset = _normalize_agent_collection_page(limit, offset)
     normalized_query = _normalize_search_query(query)
     queryset = _active_project_queryset(
         profile.projects.annotate(dataset_count=_visible_project_dataset_count())
@@ -498,7 +509,11 @@ def search_profile_projects(
     }
 
 
-def serialize_profile_projects(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
+def serialize_profile_projects(
+    profile: Profile,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
+    offset: int = 0,
+) -> dict:
     """Return a bounded page of projects owned by the authenticated profile."""
     return search_profile_projects(profile, limit=limit, offset=offset)
 
@@ -708,13 +723,12 @@ def get_profile_project_section_for_project(
 def serialize_profile_project_sections(
     profile: Profile,
     project_key: str,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
 ) -> dict:
     """Return a bounded page of active sections inside one owned project."""
     project = get_profile_project(profile, project_key)
-    limit = max(1, min(limit, 500))
-    offset = max(0, offset)
+    limit, offset = _normalize_agent_collection_page(limit, offset)
     queryset = (
         _active_project_section_queryset(
             project.sections.select_related("project").annotate(
@@ -943,51 +957,23 @@ def archive_profile_project(profile: Profile, project_key: str) -> dict:
 def serialize_profile_project_detail(
     profile: Profile,
     project_key: str,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
 ) -> dict:
-    """Return one project plus a bounded page of datasets assigned to it."""
+    """Return one project plus a bounded page of datasets assigned to it.
+
+    Sections have their own paginated collection endpoint and are deliberately
+    omitted here so project detail cannot grow without a caller-selected bound.
+    """
     project = get_profile_project(profile, project_key)
-    limit = max(1, min(limit, 500))
-    offset = max(0, offset)
+    limit, offset = _normalize_agent_collection_page(limit, offset)
     queryset = _dataset_summary_queryset(_active_dataset_queryset(project.datasets))
-    sections = list(
-        _active_project_section_queryset(
-            project.sections.select_related("project").annotate(
-                dataset_count=_visible_project_section_dataset_count()
-            )
-        )
-        .only(
-            "key",
-            "project",
-            "project__key",
-            "project__name",
-            "project__description",
-            "project__archived_at",
-            "name",
-            "description",
-            "metadata",
-            "created_at",
-            "updated_at",
-            "archived_at",
-        )
-        .order_by("name", "id")
-    )
     total_count = project.dataset_count
     datasets = list(queryset[offset : offset + limit])
-    active_section_ids = [section.id for section in sections]
-    unsectioned_dataset_count = queryset.exclude(section_id__in=active_section_ids).count()
-    dataset_groups = _project_dataset_groups(
-        sections,
-        datasets,
-        unsectioned_dataset_count=unsectioned_dataset_count,
-    )
     return {
         "status": "success",
         "message": "Project retrieved.",
         "project": serialize_project_summary(project),
-        "sections": [serialize_project_section_summary(section) for section in sections],
-        "dataset_groups": dataset_groups,
         "datasets": {
             "count": len(datasets),
             "total_count": total_count,
@@ -997,36 +983,6 @@ def serialize_profile_project_detail(
             "datasets": [serialize_dataset_summary(dataset) for dataset in datasets],
         },
     }
-
-
-def _dataset_group_items_payload(datasets: list[Dataset], total_count: int) -> dict:
-    return {
-        "count": len(datasets),
-        "total_count": total_count,
-        "datasets": [serialize_dataset_summary(dataset) for dataset in datasets],
-    }
-
-
-def _project_dataset_groups(
-    sections: list[ProjectSection],
-    datasets: list[Dataset],
-    *,
-    unsectioned_dataset_count: int | None = None,
-) -> list[dict]:
-    groups = project_section_dataset_groups(
-        sections,
-        datasets,
-        unsectioned_dataset_count=unsectioned_dataset_count,
-    )
-    return [
-        {
-            "label": group["label"],
-            "section": serialize_project_section_reference(group["section"]),
-            "dataset_count": group["dataset_count"],
-            "datasets": _dataset_group_items_payload(group["datasets"], group["dataset_count"]),
-        }
-        for group in groups
-    ]
 
 
 def serialize_dataset_summary(dataset: Dataset) -> dict:
@@ -1290,7 +1246,7 @@ def search_profile_datasets(  # noqa: C901
     section_key: str | None = None,
     header_contains: str | None = None,
     updated_after: str | date | datetime | None = None,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
 ) -> dict:
     """
@@ -1299,8 +1255,7 @@ def search_profile_datasets(  # noqa: C901
     Query text matches dataset name, description, instructions, and project/section metadata.
     Ungrouped datasets match only on dataset fields because they have no grouping metadata.
     """
-    limit = max(1, min(limit, 500))
-    offset = max(0, offset)
+    limit, offset = _normalize_agent_collection_page(limit, offset)
     normalized_query = _normalize_search_query(query)
     normalized_project_key = str(project_key or "").strip()
     normalized_section_key = str(section_key or "").strip()
@@ -1369,19 +1324,22 @@ def search_profile_datasets(  # noqa: C901
     }
 
 
-def serialize_profile_datasets(profile: Profile, limit: int = 100, offset: int = 0) -> dict:
+def serialize_profile_datasets(
+    profile: Profile,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
+    offset: int = 0,
+) -> dict:
     """Return a bounded page of datasets owned by the authenticated profile."""
     return search_profile_datasets(profile, limit=limit, offset=offset)
 
 
 def serialize_profile_archived_datasets(
     profile: Profile,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
 ) -> dict:
     """Return a bounded page of archived datasets owned by the authenticated profile."""
-    limit = max(1, min(limit, 500))
-    offset = max(0, offset)
+    limit, offset = _normalize_agent_collection_page(limit, offset)
     queryset = _dataset_card_queryset(_archived_dataset_queryset(profile.datasets))
     total_count = queryset.count()
     page = list(queryset[offset : offset + limit])
@@ -4574,13 +4532,14 @@ def _list_dataset_rows_payload(
 def list_profile_dataset_rows(
     profile: Profile,
     dataset_key: str,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
     query: str | None = None,
     filters: dict[str, Any] | None = None,
     sort: str | None = None,
     direction: str | None = None,
 ) -> dict:
+    limit, offset = _normalize_agent_collection_page(limit, offset)
     dataset = get_profile_dataset(profile, dataset_key)
     return _list_dataset_rows_payload(
         dataset,

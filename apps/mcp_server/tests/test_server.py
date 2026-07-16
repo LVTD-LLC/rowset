@@ -115,7 +115,7 @@ def _profile(agent_api_key_access_level=AgentApiKeyAccessLevel.READ_WRITE):
             return 1
 
         def __getitem__(self, key):
-            assert key == slice(0, 100, None)
+            assert key == slice(0, 10, None)
             return [dataset]
 
     class DatasetManager:
@@ -485,6 +485,30 @@ def test_tags_column_type_is_explained_in_live_mcp_tool_schemas():
     anyio.run(run)
 
 
+def test_agent_collection_tools_have_small_exact_pagination_schemas():
+    async def run():
+        async with Client(mcp) as client:
+            tools = {tool.name: tool for tool in await client.list_tools()}
+
+        paginated_tools = (
+            "get_all_datasets",
+            "get_archived_datasets",
+            "search_datasets",
+            "get_all_projects",
+            "search_projects",
+            "get_project_sections",
+            "get_project",
+            "list_dataset_rows",
+        )
+        for tool_name in paginated_tools:
+            limit_schema = tools[tool_name].inputSchema["properties"]["limit"]
+            assert limit_schema["default"] == 10, tool_name
+            assert limit_schema["maximum"] == 100, tool_name
+            assert limit_schema["minimum"] == 1, tool_name
+
+    anyio.run(run)
+
+
 @pytest.mark.django_db(transaction=True)
 @override_settings(
     SITE_URL="https://rowset.example",
@@ -593,7 +617,7 @@ def test_get_all_datasets_mcp_tool_returns_compact_dataset_cards(monkeypatch):
 def test_get_archived_datasets_mcp_tool_returns_archived_dataset_metadata(monkeypatch):
     calls = []
 
-    def list_archived(authenticated_profile, limit=100, offset=0):
+    def list_archived(authenticated_profile, limit=10, offset=0):
         calls.append((authenticated_profile.id, limit, offset))
         return {
             "count": 1,
@@ -634,7 +658,7 @@ def test_get_archived_datasets_mcp_tool_returns_archived_dataset_metadata(monkey
 def test_get_dataset_mcp_tool_returns_single_dataset_metadata(monkeypatch):
     async def run():
         profile = _profile()
-        dataset = profile.datasets.only().__getitem__(slice(0, 100, None))[0]
+        dataset = profile.datasets.only().__getitem__(slice(0, 10, None))[0]
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
             lambda: profile,
@@ -687,7 +711,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
         section_key=None,
         header_contains=None,
         updated_after=None,
-        limit=100,
+        limit=10,
         offset=0,
     ):
         calls.append(
@@ -712,7 +736,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
             "datasets": [{"key": "dataset-key", "name": "Feature Suggestions"}],
         }
 
-    def search_projects(authenticated_profile, *, query=None, limit=100, offset=0):
+    def search_projects(authenticated_profile, *, query=None, limit=10, offset=0):
         calls.append(("search_projects", authenticated_profile.id, query, limit, offset))
         return {
             "count": 1,
@@ -889,7 +913,7 @@ def test_search_mcp_tools_call_search_services(monkeypatch):
 def test_project_mcp_tools_call_project_services(monkeypatch):  # noqa: C901
     calls = []
 
-    def list_projects(authenticated_profile, limit=100, offset=0):
+    def list_projects(authenticated_profile, limit=10, offset=0):
         calls.append(("list_projects", authenticated_profile.id, limit, offset))
         return {
             "count": 1,
@@ -942,7 +966,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):  # noqa: C901
             },
         }
 
-    def list_project_sections(authenticated_profile, project_key, limit=100, offset=0):
+    def list_project_sections(authenticated_profile, project_key, limit=10, offset=0):
         calls.append(
             ("list_project_sections", authenticated_profile.id, project_key, limit, offset)
         )
@@ -989,7 +1013,7 @@ def test_project_mcp_tools_call_project_services(monkeypatch):  # noqa: C901
             "section": {"key": section_key, "archived_at": "2026-05-14T00:00:00Z"},
         }
 
-    def get_project(authenticated_profile, project_key, limit=100, offset=0):
+    def get_project(authenticated_profile, project_key, limit=10, offset=0):
         calls.append(("get_project", authenticated_profile.id, project_key, limit, offset))
         return {
             "status": "success",
@@ -1445,7 +1469,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
     def list_rows(
         authenticated_profile,
         dataset_key,
-        limit=100,
+        limit=10,
         offset=0,
         query=None,
         filters=None,
@@ -1529,12 +1553,10 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
                     "direction": "desc",
                 },
             )
-            tolerant_list_result = await client.call_tool(
+            default_list_result = await client.call_tool(
                 "list_dataset_rows",
                 {
                     "dataset_key": "ds",
-                    "limit": None,
-                    "offset": None,
                     "filters": '{"active": true, "score": 7, "empty": null}',
                 },
             )
@@ -1580,7 +1602,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             )
 
         assert list_result.data["count"] == 1
-        assert tolerant_list_result.data["count"] == 1
+        assert default_list_result.data["count"] == 1
         assert get_result.data["row"]["id"] == 7
         assert get_by_index_result.data["row"]["index_value"] == "a@example.com"
         assert create_result.data["row"]["data"]["email"] == "b@example.com"
@@ -1592,7 +1614,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
 
         assert list_result.data["filters"] == {"active": "true"}
         assert list_result.data["sort"] == "email"
-        assert tolerant_list_result.data["filters"] == {
+        assert default_list_result.data["filters"] == {
             "active": "true",
             "score": "7",
             "empty": "",
@@ -1609,7 +1631,7 @@ def test_dataset_row_mcp_tools_call_dataset_services(monkeypatch):
             (
                 "list",
                 "ds",
-                100,
+                10,
                 0,
                 None,
                 {"active": "true", "score": "7", "empty": ""},

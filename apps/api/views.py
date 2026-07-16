@@ -80,6 +80,7 @@ from apps.api.schemas import (
     UserSettingsOut,
 )
 from apps.api.services import (
+    AGENT_COLLECTION_DEFAULT_LIMIT,
     DatasetServiceError,
     add_profile_dataset_column,
     archive_profile_dataset,
@@ -529,7 +530,7 @@ def user_settings(request: HttpRequest):
 )
 def list_projects(
     request: HttpRequest,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
     query: str | None = None,
 ):
@@ -568,7 +569,12 @@ def create_project(request: HttpRequest, payload: ProjectCreateIn):
     auth=[api_key_auth],
     tags=["projects"],
 )
-def get_project(request: HttpRequest, project_key: str, limit: int = 100, offset: int = 0):
+def get_project(
+    request: HttpRequest,
+    project_key: str,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
+    offset: int = 0,
+):
     """Return one project and a bounded page of assigned datasets."""
     try:
         return serialize_profile_project_detail(
@@ -633,7 +639,7 @@ def patch_project_metadata(
 def list_project_sections(
     request: HttpRequest,
     project_key: str,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
 ):
     """Return a page of active sections inside one project."""
@@ -749,7 +755,7 @@ def archive_project(request: HttpRequest, project_key: str):
 )
 def list_datasets(
     request: HttpRequest,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
     query: str | None = None,
     project_key: str | None = None,
@@ -779,9 +785,16 @@ def list_datasets(
     auth=[api_key_auth],
     tags=["datasets"],
 )
-def list_archived_datasets(request: HttpRequest, limit: int = 100, offset: int = 0):
+def list_archived_datasets(
+    request: HttpRequest,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
+    offset: int = 0,
+):
     """Return a page of archived datasets owned by the authenticated profile."""
-    return serialize_profile_archived_datasets(request.auth, limit=limit, offset=offset)
+    try:
+        return serialize_profile_archived_datasets(request.auth, limit=limit, offset=offset)
+    except DatasetServiceError as exc:
+        _raise_http_error(exc)
 
 
 @api.post(
@@ -1218,7 +1231,7 @@ def patch_dataset_public_preview(
 def list_dataset_rows(
     request: HttpRequest,
     dataset_key: str,
-    limit: int = 100,
+    limit: int = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: int = 0,
     query: str | None = None,
     filters: str | None = None,
