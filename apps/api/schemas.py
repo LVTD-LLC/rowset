@@ -242,6 +242,18 @@ class DatasetSummaryOut(Schema):
     archived_at: datetime | None = None
 
 
+class DatasetCardOut(Schema):
+    key: str
+    name: str
+    description: str
+    project: ProjectReferenceOut | None = None
+    section: ProjectSectionReferenceOut | None = None
+    column_count: int
+    row_count: int
+    updated_at: datetime
+    archived_at: datetime | None = None
+
+
 class PublicDatasetSummaryOut(Schema):
     public_key: str
     name: str
@@ -256,6 +268,15 @@ class PublicDatasetSummaryOut(Schema):
 
 
 class DatasetListOut(Schema):
+    count: int
+    total_count: int
+    limit: int
+    offset: int
+    has_more: bool
+    datasets: list[DatasetCardOut]
+
+
+class DatasetSummaryListOut(Schema):
     count: int
     total_count: int
     limit: int
@@ -283,7 +304,7 @@ class ProjectDetailOut(Schema):
     project: ProjectSummaryOut
     sections: list[ProjectSectionSummaryOut]
     dataset_groups: list[ProjectDatasetGroupOut]
-    datasets: DatasetListOut
+    datasets: DatasetSummaryListOut
 
 
 class DatasetCreateIn(Schema):

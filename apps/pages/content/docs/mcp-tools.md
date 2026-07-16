@@ -36,6 +36,10 @@ get_archived_datasets
 search_datasets
 ```
 
+These discovery tools return compact cards for selection. After choosing a
+dataset, call `get_dataset` to load headers, index configuration, semantic
+schema, instructions, metadata, relationships, and preview settings.
+
 Use `search_rows` when the relevant dataset is unknown or multiple datasets may
 contain the answer:
 

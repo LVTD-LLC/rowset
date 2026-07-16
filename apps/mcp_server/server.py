@@ -567,7 +567,10 @@ def submit_feedback(
 
 @mcp.tool(
     name="get_all_datasets",
-    description=("Return metadata for all datasets available to the authenticated Rowset profile."),
+    description=(
+        "Return compact discovery cards for datasets available to the authenticated Rowset "
+        "profile. Call get_dataset for full context after selecting one."
+    ),
 )
 def get_all_datasets(
     limit: Annotated[
@@ -591,7 +594,8 @@ def get_all_datasets(
 @mcp.tool(
     name="get_archived_datasets",
     description=(
-        "Return metadata for archived datasets owned by the authenticated Rowset profile."
+        "Return compact discovery cards for archived datasets owned by the authenticated "
+        "Rowset profile. Call get_dataset for full context after selecting one."
     ),
 )
 def get_archived_datasets(
@@ -616,8 +620,8 @@ def get_archived_datasets(
 @mcp.tool(
     name="search_datasets",
     description=(
-        "Search and filter active dataset metadata by name, project, section, header, "
-        "or update time."
+        "Search active datasets and return compact discovery cards. Filter by name, project, "
+        "section, header, or update time, then call get_dataset for full context."
     ),
 )
 def search_datasets(
@@ -682,7 +686,11 @@ def search_datasets(
 
 @mcp.tool(
     name="get_dataset",
-    description="Return metadata for one dataset owned by the authenticated Rowset profile.",
+    description=(
+        "Return full context for one owned dataset, including instructions, metadata, headers, "
+        "semantic schema, index settings, relationships, references, and preview configuration. "
+        "Call this after discovery and before row operations."
+    ),
 )
 def get_dataset(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],

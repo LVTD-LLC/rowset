@@ -255,7 +255,7 @@ def test_command_palette_search_uses_safe_dataset_row_count(auth_client, monkeyp
                     "key": str(dataset_key),
                     "name": "Malformed Count Dataset",
                     "row_count": "123.0",
-                    "headers": ["name"],
+                    "column_count": 1,
                 }
             ]
         },
@@ -275,3 +275,4 @@ def test_command_palette_search_uses_safe_dataset_row_count(auth_client, monkeyp
     content = response.content.decode()
     assert "Malformed Count Dataset" in content
     assert "0 rows" in content
+    assert "1 column" in content

@@ -21,6 +21,9 @@ deployment or release cut date.
 ### Added
 - Added a decision guide for sharing AI-agent data through scoped private access, authenticated exports, or read-only public previews.
 
+### Changed
+- Dataset list and search responses now return compact discovery cards through REST and MCP; clients call the single-dataset detail endpoint or `get_dataset` when they need headers, semantic schema, instructions, metadata, index settings, relationships, or preview configuration.
+
 ## 2026-07-15
 
 ### Fixed
