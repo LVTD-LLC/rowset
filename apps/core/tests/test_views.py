@@ -463,17 +463,19 @@ class TestHomeView:
         assert "window.posthog && window.posthog.__loaded" in content
         assert f'posthog.identify("{profile.id}"' in content
         assert f'email: "{profile.user.email}"' in content
-        assert "posthog.reset();" not in content
+        assert 'src="/static/js/posthog-identity.js"' in content
+        assert "<form data-posthog-reset" in content
 
     @override_settings(POSTHOG_API_KEY="phc_test")
-    def test_posthog_snippet_resets_anonymous_visitors(self, client):
+    def test_posthog_snippet_preserves_anonymous_identity(self, client):
         response = client.get(reverse("landing"))
 
         content = response.content.decode()
         assert response.status_code == 200
         assert 'posthog.init("phc_test"' in content
         assert "posthog.identify(" not in content
-        assert "posthog.reset();" in content
+        assert 'src="/static/js/posthog-identity.js"' in content
+        assert "<form data-posthog-reset" not in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_settings_view_omits_prompt_panel_and_legacy_key(self, auth_client, profile):

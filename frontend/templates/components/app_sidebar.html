@@ -116,7 +116,7 @@
       <span class="min-w-0 flex-1"><span class="block truncate text-base font-medium sm:text-sm">Settings</span><span class="block truncate text-xs font-normal text-slate-400">{{ request.user.email }}</span></span>
     </a>
     {% if request.user.is_superuser %}<a href="{% url 'admin_panel' %}" class="fb-focus mt-1 flex min-h-10 items-center rounded-md px-3 text-base font-medium text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">Admin</a>{% endif %}
-    <form method="post" action="{% url 'account_logout' %}" class="mt-1">
+    <form data-posthog-reset method="post" action="{% url 'account_logout' %}" class="mt-1">
       {% csrf_token %}
       <button type="submit" class="fb-focus min-h-10 w-full rounded-md px-3 text-left text-base font-medium text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">Sign out</button>
     </form>

@@ -94,6 +94,7 @@ async function writeManifest() {
     "css/index.css": "/static/css/index.css",
     "js/alpine-components.js": "/static/js/alpine-components.js",
     "js/app.js": "/static/js/app.js",
+    "js/posthog-identity.js": "/static/js/posthog-identity.js",
     "vendors/js/alpine.min.js": "/static/vendors/js/alpine.min.js",
   };
 
