@@ -16,6 +16,11 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-17
+
+### Removed
+- Removed dataset mutation counts from the internal admin dashboard's health cards, activity chart, and recent-activity feed.
+
 ## 2026-07-16
 
 ### Added
