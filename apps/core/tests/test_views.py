@@ -12,6 +12,7 @@ from django.views.generic import TemplateView
 
 from apps.core import agent_skill
 from apps.core.admin_dashboard import build_admin_dashboard_context
+from apps.core.choices import ProfileStates
 from apps.core.models import AgentApiKey, Feedback, Profile
 from apps.core.services import create_agent_api_key, get_or_create_profile_for_user
 from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_customer, server_error
@@ -870,6 +871,105 @@ class TestHomeView:
 
         assert response.context["growth"]["active_trials"] == 1
         assert response.context["attention"]["trials_expiring"] == 1
+
+    def test_admin_dashboard_excludes_staff_and_superuser_owned_data(self, django_user_model):
+        now = timezone.now()
+        regular_user = django_user_model.objects.create_user(
+            username="regular-dashboard-user",
+            email="regular-dashboard@example.com",
+            password="strong-test-pass-123",
+        )
+        staff_user = django_user_model.objects.create_user(
+            username="staff-dashboard-user",
+            email="staff-dashboard@example.com",
+            password="strong-test-pass-123",
+            is_staff=True,
+        )
+        superuser = django_user_model.objects.create_superuser(
+            username="super-dashboard-user",
+            email="super-dashboard@example.com",
+            password="strong-test-pass-123",
+        )
+
+        for user in (regular_user, staff_user, superuser):
+            profile = user.profile
+            profile.setup_completed_at = now - timezone.timedelta(hours=1)
+            profile.trial_started_at = now - timezone.timedelta(days=1)
+            profile.trial_ends_at = now + timezone.timedelta(days=2)
+            profile.state = ProfileStates.SUBSCRIBED
+            profile.save(
+                update_fields=[
+                    "setup_completed_at",
+                    "trial_started_at",
+                    "trial_ends_at",
+                    "state",
+                    "updated_at",
+                ]
+            )
+
+        users_and_rows = (
+            (regular_user, 2, "r"),
+            (staff_user, 50, "s"),
+            (superuser, 100, "a"),
+        )
+        for user, row_count, token_character in users_and_rows:
+            key = AgentApiKey.objects.create(
+                profile=user.profile,
+                name=f"{user.username} agent",
+                key_prefix=f"rsk_{token_character}",
+                token_hash=token_character * 64,
+                last_used_at=now - timezone.timedelta(minutes=30),
+            )
+            project = Project.objects.create(profile=user.profile, name=f"{user.username} project")
+            Dataset.objects.create(
+                profile=user.profile,
+                project=project,
+                created_by_agent_api_key=key,
+                name=f"{user.username} dataset",
+                headers=["id"],
+                row_count=row_count,
+                public_enabled=True,
+            )
+            Feedback.objects.create(
+                profile=user.profile,
+                feedback=f"{user.username} feedback",
+                page="/admin-panel",
+            )
+        Feedback.objects.create(feedback="Anonymous feedback", page="/admin-panel")
+
+        context = build_admin_dashboard_context(7, now=now + timezone.timedelta(minutes=1))
+
+        assert context["product_health"] == {
+            "new_users": 1,
+            "setup_completed": 1,
+            "active_agents": 1,
+        }
+        assert [stage["count"] for stage in context["activation_funnel"]] == [1, 1, 1, 1]
+        assert context["growth"] == {
+            "total_users": 1,
+            "setup_rate": 100,
+            "active_trials": 1,
+            "subscribers": 1,
+        }
+        assert context["operations"] == {
+            "datasets": 1,
+            "projects": 1,
+            "rows_stored": 2,
+            "public_previews": 1,
+            "active_agent_keys": 1,
+        }
+        assert context["attention"]["trials_expiring"] == 1
+        assert context["attention"]["new_feedback"] == 2
+        assert context["total_users"] == 1
+        assert context["profile_count"] == 1
+        assert context["total_feedback"] == 2
+        activity_text = " ".join(
+            f"{item['title']} {item['detail']}" for item in context["activity_feed"]
+        )
+        assert "regular-dashboard-user feedback" in activity_text
+        assert "Anonymous feedback" in activity_text
+        assert "staff-dashboard" not in activity_text
+        assert "super-dashboard" not in activity_text
 
     def test_admin_dashboard_activity_feed_orders_sources_before_slicing(self, django_user_model):
         now = timezone.now()

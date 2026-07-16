@@ -18,6 +18,9 @@ deployment or release cut date.
 
 ## 2026-07-17
 
+### Changed
+- Limited internal admin dashboard metrics and activity to regular users while excluding staff and superuser-owned data.
+
 ### Removed
 - Removed dataset mutation counts from the internal admin dashboard's health cards, activity chart, and recent-activity feed.
 

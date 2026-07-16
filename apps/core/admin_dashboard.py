@@ -138,9 +138,20 @@ def build_admin_dashboard_context(period_days: int, now=None) -> dict:
         profile__user__is_superuser=False,
         revoked_at__isnull=True,
     )
-    visible_datasets = Dataset.objects.filter(archived_at__isnull=True)
-    visible_projects = Project.objects.filter(archived_at__isnull=True)
-    feedback = Feedback.objects.all()
+    visible_datasets = Dataset.objects.filter(
+        profile__user__is_staff=False,
+        profile__user__is_superuser=False,
+        archived_at__isnull=True,
+    )
+    visible_projects = Project.objects.filter(
+        profile__user__is_staff=False,
+        profile__user__is_superuser=False,
+        archived_at__isnull=True,
+    )
+    feedback = Feedback.objects.filter(
+        Q(profile__isnull=True)
+        | Q(profile__user__is_staff=False, profile__user__is_superuser=False)
+    )
 
     user_stats = nonstaff_users.aggregate(
         total=Count("id"),
@@ -260,8 +271,8 @@ def build_admin_dashboard_context(period_days: int, now=None) -> dict:
         "activity_feed": _activity_feed(nonstaff_users, feedback),
         "generated_at": now,
         # Compatibility context for integrations that still read the original totals.
-        "total_users": User.objects.count(),
-        "profile_count": Profile.objects.count(),
+        "total_users": user_stats["total"],
+        "profile_count": profiles.count(),
         "total_feedback": feedback_stats["total"],
         "total_datasets": operations["datasets"],
         "total_projects": operations["projects"],
