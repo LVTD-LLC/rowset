@@ -7,7 +7,7 @@ from starlette.testclient import TestClient
 
 from apps.api.services import DatasetServiceError
 from apps.core.choices import AgentApiKeyAccessLevel
-from apps.mcp_server.server import AGENT_API_KEY_PROFILE_ATTR
+from apps.mcp_server.server import AGENT_API_KEY_PROFILE_ATTR, mcp
 from rowset.asgi import application
 
 MCP_HEADERS = {
@@ -15,6 +15,13 @@ MCP_HEADERS = {
     "content-type": "application/json",
 }
 PROTOCOL_VERSION = "2025-06-18"
+
+
+def _mcp_logging_globals():
+    middleware = next(
+        item for item in mcp.middleware if item.__class__.__name__ == "RowsetMCPLoggingMiddleware"
+    )
+    return middleware.on_request.__func__.__globals__
 
 
 @pytest.fixture
@@ -64,9 +71,10 @@ def authenticated_mcp(monkeypatch, profile):
         "apps.mcp_server.server.activate_or_require_trial_access",
         lambda _profile: None,
     )
-    monkeypatch.setattr(
-        "rowset.mcp_logging.mark_profile_setup_completed",
-        lambda _profile_id: None,
+    monkeypatch.setitem(
+        _mcp_logging_globals(),
+        "mark_profile_setup_completed",
+        lambda _profile_id, **_kwargs: None,
     )
     return profile
 
@@ -240,12 +248,21 @@ def test_mcp_tool_permission_errors_return_structured_error_envelope(
     }
 
 
-def test_authenticated_mcp_requests_invoke_setup_completion(authenticated_mcp, monkeypatch):
+def test_successful_mcp_requests_invoke_setup_completion(authenticated_mcp, monkeypatch):
     completed_profile_ids = []
 
-    monkeypatch.setattr(
-        "rowset.mcp_logging.mark_profile_setup_completed",
-        completed_profile_ids.append,
+    def record_setup_completion(profile_id, **_kwargs):
+        completed_profile_ids.append(profile_id)
+
+    monkeypatch.setitem(
+        _mcp_logging_globals(),
+        "mark_profile_setup_completed",
+        record_setup_completion,
+    )
+    monkeypatch.setitem(
+        _mcp_logging_globals(),
+        "_bind_access_token_actor",
+        lambda: authenticated_mcp.id,
     )
 
     with TestClient(application) as client:
