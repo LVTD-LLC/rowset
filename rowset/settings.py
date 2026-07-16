@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -65,6 +66,11 @@ def _validate_production_secret(
         )
     if "\n" in value or "\r" in value:
         _production_configuration_error(variable, "must be a single line")
+    if not re.fullmatch(r"[A-Za-z0-9._~-]+", value):
+        _production_configuration_error(
+            variable,
+            "must use only safe characters: letters, numbers, dot, underscore, tilde, or hyphen",
+        )
 
 
 def _validate_production_configuration() -> None:

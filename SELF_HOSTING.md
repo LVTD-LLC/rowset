@@ -90,6 +90,9 @@ rejects missing values, unsafe development defaults, malformed hostnames or imag
 secrets, and files that are not private. Both commands report variable names and remediation only;
 they never print secret values.
 
+Only one initializer may run for a destination at a time. If a prior process was forcibly killed,
+remove the adjacent `.env.lock` directory after confirming no initializer is still running.
+
 To supply secrets from a private shell or secret files during first initialization, use direct
 variables or the matching file variables:
 
@@ -105,6 +108,8 @@ unset SECRET_KEY_FILE POSTGRES_PASSWORD_FILE REDIS_PASSWORD_FILE
 set a direct variable and its `*_FILE` variable together. Secret files must be readable regular files
 containing one nonblank line. The initializer resolves either form into the protected application
 environment file without displaying the value.
+Injected secrets must use only letters, numbers, dots, underscores, tildes, and hyphens. This
+URL-safe alphabet prevents dotenv, Compose, and Redis URL parsing from changing validated bytes.
 
 Compose derives `SITE_URL=https://${ROWSET_DOMAIN}` for the web and worker containers. Do not add a
 scheme, path, or port to `ROWSET_DOMAIN` in production. Startup migrations synchronize the Django

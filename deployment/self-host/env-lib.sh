@@ -134,6 +134,7 @@ load_file_configuration() {
     CFG_REDIS_HOST=$(required_file_value REDIS_HOST "$env_file")
     CFG_REDIS_PORT=$(required_file_value REDIS_PORT "$env_file")
     CFG_REDIS_PASSWORD=$(required_file_value REDIS_PASSWORD "$env_file")
+    CFG_ROWSET_INSECURE_HTTP=$(environment_file_value ROWSET_INSECURE_HTTP "$env_file" || true)
 }
 
 load_process_configuration() {
@@ -155,6 +156,7 @@ load_process_configuration() {
     CFG_REDIS_PASSWORD=$(
         resolve_environment_secret REDIS_PASSWORD "${REDIS_PASSWORD:-}" "${REDIS_PASSWORD_FILE:-}"
     )
+    CFG_ROWSET_INSECURE_HTTP=${ROWSET_INSECURE_HTTP:-}
 }
 
 validate_secret() {
@@ -170,11 +172,17 @@ validate_secret() {
         *'
 '*) fail "$secret_key" "must be a single line" ;;
     esac
+    printf '%s\n' "$secret_value" | grep -Eq '^[A-Za-z0-9._~-]+$' || \
+        fail "$secret_key" "must use only safe characters: letters, numbers, dot, underscore, tilde, or hyphen"
 }
 
 validate_loaded_configuration() {
     test "$CFG_ENVIRONMENT" = "prod" || fail ENVIRONMENT "must be prod"
     test "$CFG_DEBUG" = "off" || fail DEBUG "must be off"
+    case "$CFG_ROWSET_INSECURE_HTTP" in
+        ""|0|false|off) ;;
+        *) fail ROWSET_INSECURE_HTTP "must be off in a production environment file" ;;
+    esac
 
     printf '%s\n' "$CFG_ROWSET_DOMAIN" | grep -Eq \
         '^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$' || \

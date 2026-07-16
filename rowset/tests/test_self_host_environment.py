@@ -1,6 +1,7 @@
 import os
 import stat
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -140,6 +141,9 @@ def test_validator_rejects_missing_required_values(tmp_path, key):
         ("POSTGRES_PASSWORD", "p" * 31, "at least 32 characters"),
         ("REDIS_PASSWORD", "rowset", "unsafe development default"),
         ("REDIS_PASSWORD", "r" * 31, "at least 32 characters"),
+        ("SECRET_KEY", "s" * 63 + "$", "safe characters"),
+        ("POSTGRES_PASSWORD", "p" * 47 + "#", "safe characters"),
+        ("REDIS_PASSWORD", "r" * 47 + "/", "safe characters"),
         ("POSTGRES_DB", "invalid name", "safe identifier"),
         ("POSTGRES_USER", "-invalid", "safe identifier"),
         ("POSTGRES_HOST", "localhost", "must be db"),
@@ -173,6 +177,19 @@ def test_validator_rejects_duplicate_assignments(tmp_path):
     assert result.returncode != 0
     assert "DEBUG" in result.stderr
     assert "assigned more than once" in result.stderr
+
+
+def test_validator_rejects_insecure_http_in_production_file(tmp_path):
+    values = _safe_values()
+    values["ROWSET_INSECURE_HTTP"] = "true"
+    env_file = tmp_path / ".env"
+    _write_env(env_file, values)
+
+    result = _run_validate(env_file)
+
+    assert result.returncode != 0
+    assert "ROWSET_INSECURE_HTTP" in result.stderr
+    assert "production environment file" in result.stderr
 
 
 def test_validator_rejects_malformed_lines_without_echoing_them(tmp_path):
@@ -338,6 +355,21 @@ def test_initializer_preserves_every_existing_byte_on_rerun(tmp_path):
     assert env_file.read_bytes() == before
 
 
+def test_initializer_preserves_complete_handwritten_file_without_final_newline(tmp_path):
+    env_file = tmp_path / ".env"
+    handwritten = (
+        "# hand-written production configuration\n"
+        + "\n".join(f"{key}={value}" for key, value in reversed(_safe_values().items()))
+    ).encode()
+    env_file.write_bytes(handwritten)
+    env_file.chmod(0o600)
+
+    result = _run_init(env_file, {})
+
+    assert result.returncode == 0
+    assert env_file.read_bytes() == handwritten
+
+
 def test_initializer_accepts_direct_secret_inputs_without_disclosure(tmp_path):
     env_file = tmp_path / ".env"
     expected = {
@@ -432,6 +464,96 @@ def test_initializer_does_not_replace_an_existing_unsafe_secret(tmp_path):
     assert env_file.read_bytes() == before
 
 
+def test_initializer_refuses_a_concurrent_run_without_creating_output(tmp_path):
+    env_file = tmp_path / ".env"
+    lock_directory = tmp_path / ".env.lock"
+    lock_directory.mkdir()
+
+    result = _run_init(
+        env_file,
+        {
+            "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+            "ROWSET_DOMAIN": "rowset.example.com",
+        },
+    )
+
+    assert result.returncode != 0
+    assert "ENV_FILE" in result.stderr
+    assert "initialization is already running" in result.stderr
+    assert not env_file.exists()
+
+
+def test_concurrent_first_run_leaves_one_stable_secret_set(tmp_path):
+    env_file = tmp_path / ".env"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    ready = tmp_path / "od-ready"
+    release = tmp_path / "od-release"
+    count = tmp_path / "od-count"
+    fake_od = fake_bin / "od"
+    fake_od.write_text(
+        "#!/bin/sh\n"
+        'current=$(cat "$OD_COUNT" 2>/dev/null || printf 0)\n'
+        "current=$((current + 1))\n"
+        'printf "%s" "$current" > "$OD_COUNT"\n'
+        'if test "$current" = 1; then\n'
+        '  : > "$OD_READY"\n'
+        '  while ! test -e "$OD_RELEASE"; do sleep 0.05; done\n'
+        "fi\n"
+        'case "$current" in\n'
+        f"  1) printf '{'a' * 96}' ;;\n"
+        f"  2) printf '{'b' * 96}' ;;\n"
+        f"  *) printf '{'c' * 96}' ;;\n"
+        "esac\n"
+    )
+    fake_od.chmod(0o755)
+    environment = {
+        **_clean_environment(),
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "OD_READY": str(ready),
+        "OD_RELEASE": str(release),
+        "OD_COUNT": str(count),
+        "ROWSET_IMAGE": "ghcr.io/lvtd-llc/rowset:v1",
+        "ROWSET_DOMAIN": "rowset.example.com",
+    }
+    first = subprocess.Popen(
+        [str(_INIT), str(env_file)],
+        cwd=_REPO_ROOT,
+        env=environment,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    for _ in range(100):
+        if ready.exists():
+            break
+        time.sleep(0.02)
+    assert ready.exists()
+
+    second = subprocess.run(
+        [str(_INIT), str(env_file)],
+        cwd=_REPO_ROOT,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    release.touch()
+    first_stdout, first_stderr = first.communicate(timeout=5)
+
+    assert first.returncode == 0
+    assert first_stderr == ""
+    assert second.returncode != 0
+    assert "initialization is already running" in second.stderr
+    before = env_file.read_bytes()
+    rerun = _run_init(env_file, {})
+    assert rerun.returncode == 0
+    assert env_file.read_bytes() == before
+    parsed = _parse_env(env_file)
+    for secret in (parsed[key] for key in _SECRET_KEYS):
+        assert secret not in first_stdout + first_stderr + second.stdout + second.stderr
+
+
 @pytest.mark.parametrize("missing_key", ["ROWSET_IMAGE", "ROWSET_DOMAIN"])
 def test_initializer_requires_non_secret_deployment_inputs(tmp_path, missing_key):
     env_file = tmp_path / ".env"
@@ -465,12 +587,24 @@ def _fake_docker(tmp_path: Path) -> tuple[Path, Path]:
     fake_bin.mkdir()
     docker_log = tmp_path / "docker.log"
     docker = fake_bin / "docker"
-    docker.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$DOCKER_LOG"\n')
+    docker.write_text(
+        "#!/bin/sh\n"
+        'printf "ROWSET_ENV_FILE=%s\\n" "$ROWSET_ENV_FILE" >> "$DOCKER_LOG"\n'
+        'printf "ROWSET_IMAGE=%s\\n" "${ROWSET_IMAGE-unset}" >> "$DOCKER_LOG"\n'
+        'printf "ROWSET_DOMAIN=%s\\n" "${ROWSET_DOMAIN-unset}" >> "$DOCKER_LOG"\n'
+        'printf "POSTGRES_USER=%s\\n" "${POSTGRES_USER-unset}" >> "$DOCKER_LOG"\n'
+        'printf "%s\\n" "$*" >> "$DOCKER_LOG"\n'
+    )
     docker.chmod(0o755)
     return fake_bin, docker_log
 
 
-def _run_start(env_file: Path, fake_bin: Path, docker_log: Path):
+def _run_start(
+    env_file: Path,
+    fake_bin: Path,
+    docker_log: Path,
+    environment: dict[str, str] | None = None,
+):
     return subprocess.run(
         [str(_START), str(env_file)],
         cwd=_REPO_ROOT,
@@ -478,6 +612,7 @@ def _run_start(env_file: Path, fake_bin: Path, docker_log: Path):
             **_clean_environment(),
             "PATH": f"{fake_bin}:{os.environ['PATH']}",
             "DOCKER_LOG": str(docker_log),
+            **(environment or {}),
         },
         text=True,
         capture_output=True,
@@ -493,7 +628,16 @@ def test_start_wrapper_does_not_invoke_docker_when_validation_fails(tmp_path):
     _write_env(env_file, values)
     fake_bin, docker_log = _fake_docker(tmp_path)
 
-    result = _run_start(env_file, fake_bin, docker_log)
+    result = _run_start(
+        env_file,
+        fake_bin,
+        docker_log,
+        environment={
+            "ROWSET_IMAGE": "attacker/image:latest",
+            "ROWSET_DOMAIN": "attacker.example.com",
+            "POSTGRES_USER": "attacker",
+        },
+    )
 
     assert result.returncode != 0
     assert not docker_log.exists()
@@ -513,8 +657,12 @@ def test_start_wrapper_validates_then_invokes_production_compose(tmp_path):
     assert result.returncode == 0
     assert result.stdout == "Production environment is valid.\n"
     assert result.stderr == ""
-    assert docker_log.read_text().strip() == (
-        f"compose --env-file {env_file} -f {_REPO_ROOT / 'docker-compose-prod.yml'} "
-        "-p rowset up -d --remove-orphans"
-    )
+    assert docker_log.read_text().splitlines() == [
+        f"ROWSET_ENV_FILE={env_file.resolve()}",
+        "ROWSET_IMAGE=unset",
+        "ROWSET_DOMAIN=unset",
+        "POSTGRES_USER=unset",
+        f"compose --env-file {env_file.resolve()} -f {_REPO_ROOT / 'docker-compose-prod.yml'} "
+        "-p rowset up -d --remove-orphans",
+    ]
     assert _CANARY not in result.stdout + result.stderr + docker_log.read_text()

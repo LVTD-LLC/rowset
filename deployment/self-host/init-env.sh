@@ -15,11 +15,20 @@ fi
 . "$script_dir/env-lib.sh"
 
 destination=${1:-"$root/.env"}
+destination_dir=$(dirname -- "$destination")
+test -d "$destination_dir" || fail ENV_FILE "parent directory does not exist"
+destination_dir=$(CDPATH= cd -- "$destination_dir" && pwd)
+destination="$destination_dir/$(basename -- "$destination")"
 temporary_file=
+lock_directory="${destination}.lock"
+lock_acquired=
 
 cleanup() {
     if test -n "$temporary_file"; then
         rm -f "$temporary_file"
+    fi
+    if test -n "$lock_acquired"; then
+        rmdir "$lock_directory" 2>/dev/null || true
     fi
 }
 trap cleanup EXIT
@@ -66,6 +75,9 @@ secret_or_generate() {
 }
 
 existing_file=
+mkdir "$lock_directory" 2>/dev/null || fail ENV_FILE "initialization is already running"
+lock_acquired=1
+
 if test -e "$destination"; then
     validate_environment_file_structure "$destination"
     destination_owner=$(file_owner "$destination") || \
@@ -73,6 +85,13 @@ if test -e "$destination"; then
     test "$destination_owner" = "$(id -u)" || \
         fail ENV_FILE "must be owned by the invoking user"
     existing_file=$destination
+fi
+
+if test -n "$existing_file" && "$script_dir/validate-env.sh" "$existing_file" >/dev/null 2>&1; then
+    rmdir "$lock_directory"
+    lock_acquired=
+    printf 'Production environment initialized.\n'
+    exit 0
 fi
 
 if resolved_value=$(existing_value ROWSET_IMAGE "$existing_file"); then
@@ -106,8 +125,6 @@ init_redis_password=$(
         "${REDIS_PASSWORD:-}" "${REDIS_PASSWORD_FILE:-}"
 )
 
-destination_dir=$(dirname -- "$destination")
-test -d "$destination_dir" || fail ENV_FILE "parent directory does not exist"
 temporary_file=$(mktemp "$destination_dir/.rowset-env.XXXXXX")
 chmod 600 "$temporary_file"
 
@@ -173,5 +190,7 @@ chmod 600 "$temporary_file"
 "$script_dir/validate-env.sh" "$temporary_file" >/dev/null
 mv "$temporary_file" "$destination"
 temporary_file=
+rmdir "$lock_directory"
+lock_acquired=
 
 printf 'Production environment initialized.\n'

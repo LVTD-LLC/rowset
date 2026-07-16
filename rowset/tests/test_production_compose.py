@@ -116,6 +116,13 @@ def test_production_compose_applies_restart_and_bounded_logging_to_every_service
         }
 
 
+def test_production_services_load_the_validated_environment_file():
+    compose = _production_compose()
+
+    for service_name in {"db", "redis", "backend", "workers"}:
+        assert compose["services"][service_name]["env_file"] == ["${ROWSET_ENV_FILE:-.env}"]
+
+
 def test_production_compose_waits_for_authenticated_redis_health():
     compose = _production_compose()
     redis = compose["services"]["redis"]
@@ -169,7 +176,10 @@ def test_local_ci_validates_rendered_production_compose():
     assert (
         'run_step "Production Compose config" ./deployment/verify-production-compose.sh' in ci_local
     )
+    assert 'run_step "Project and deployment tests"' in ci_local
+    assert "rowset/tests -q" in ci_local
     assert '"$ROOT/deployment/self-host/validate-env.sh" "$env_file"' in compose_verifier
+    assert 'grep -Fq "$env_file" "$rendered_config"' in compose_verifier
 
 
 def test_supported_start_command_validates_before_invoking_compose():

@@ -34,6 +34,8 @@ chmod 600 "$env_file" "$rendered_config" "$compose_errors"
 } >"$env_file"
 
 "$ROOT/deployment/self-host/validate-env.sh" "$env_file" >/dev/null
+unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER
+export ROWSET_ENV_FILE=$env_file
 
 if ! docker compose --env-file "$env_file" -f "$COMPOSE_FILE" \
   config --no-env-resolution >"$rendered_config" 2>"$compose_errors"; then
@@ -44,6 +46,11 @@ fi
 
 if grep -Fq "$sentinel" "$rendered_config" || grep -Fq "$sentinel" "$compose_errors"; then
   printf 'Production Compose config expanded a secret into rendered output.\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq "$env_file" "$rendered_config"; then
+  printf 'Production Compose config did not attach the validated environment file.\n' >&2
   exit 1
 fi
 

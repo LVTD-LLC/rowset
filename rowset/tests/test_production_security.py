@@ -116,6 +116,9 @@ def test_http_modes_do_not_force_https(environment, site_url, insecure_http):
         ({"POSTGRES_PASSWORD": "p" * 31}, "POSTGRES_PASSWORD"),
         ({"REDIS_PASSWORD": "rowset"}, "REDIS_PASSWORD"),
         ({"REDIS_PASSWORD": "r" * 31}, "REDIS_PASSWORD"),
+        ({"SECRET_KEY": "s" * 63 + "$"}, "SECRET_KEY"),
+        ({"POSTGRES_PASSWORD": "p" * 47 + "#"}, "POSTGRES_PASSWORD"),
+        ({"REDIS_PASSWORD": "r" * 47 + "/"}, "REDIS_PASSWORD"),
         (
             {
                 "SECRET_KEY": "shared-secret-" + "s" * 64,

@@ -1,4 +1,4 @@
-# docker compose -f docker-compose-prod.yml -p rowset up --detach --remove-orphans
+# Use deployment/self-host/start.sh so validation runs before containers start.
 
 x-service-defaults: &service-defaults
   restart: unless-stopped
@@ -37,7 +37,7 @@ services:
       timeout: 5s
       retries: 5
     env_file:
-      - .env
+      - ${ROWSET_ENV_FILE:-.env}
 
   redis:
     <<: *service-defaults
@@ -55,7 +55,7 @@ services:
       retries: 12
       start_period: 30s
     env_file:
-      - .env
+      - ${ROWSET_ENV_FILE:-.env}
 
   backend:
     <<: *service-defaults
@@ -69,7 +69,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env
+      - ${ROWSET_ENV_FILE:-.env}
     environment:
       APP_PROCESS_TYPE: server
       SITE_URL: https://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname}
@@ -87,7 +87,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env
+      - ${ROWSET_ENV_FILE:-.env}
     environment:
       APP_PROCESS_TYPE: worker
       SITE_URL: https://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname}
