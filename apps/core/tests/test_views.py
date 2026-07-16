@@ -241,11 +241,10 @@ class TestHomeView:
         content = response.content.decode()
 
         assert "<title>Dashboard · Rowset</title>" in content
-        assert "Connect your AI agent to Rowset" in content
-        assert "Setup tasks" in content
-        assert "Create an API key" in content
-        assert "Copy the setup prompt" in content
-        assert "Your prompt will appear here" in content
+        assert "Set up Rowset in two steps" in content
+        assert "Create an agent key" in content
+        assert "Create agent key" in content
+        assert "data-uidotsh" not in content
         assert "Connect Google Sheets" not in content
         assert "Upload dataset" not in content
 
@@ -263,17 +262,15 @@ class TestHomeView:
         assert "agent_setup_prompt" not in response.context
         assert response.context["show_agent_setup_prompt"] is True
         assert response.context["active_agent_api_key"] is None
-        assert "Create an API key" in content
-        assert "Create key" in content
-        assert "Your prompt will appear here" in content
-        assert "Copy agent prompt" not in content
+        assert "Create an agent key" in content
+        assert "Create agent key" in content
+        assert "Copy setup prompt" not in content
         assert "Copy request" not in content
         assert "Rowset API key: ***" not in content
         assert profile.key not in content
         assert reverse("create_agent_api_key") in content
         assert 'name="next" value="home"' in content
-        assert reverse("dismiss_agent_setup_prompt") in content
-        assert "Skip setup for now" in content
+        assert "Skip setup for now" not in content
         assert "Only share this prompt with agents and people you trust." not in content
 
     @override_settings(SITE_URL="https://rowset.example")
@@ -299,14 +296,18 @@ class TestHomeView:
         assert (
             reverse("agent_api_key_setup_prompt", args=[credential.agent_api_key.uuid]) in content
         )
-        assert "Copy agent prompt" in content
         assert 'data-copy-tracking-event="rowset_agent_setup_prompt_copied"' in content
-        assert "Copy request" in content
-        assert "Verify Rowset with get_user_info" in content
-        assert "Hide setup guide" in content
-        assert "Only share this prompt with agents and people you trust." in content
-        assert "create_dataset" in masked_prompt
-        assert "update_dataset_public_preview" in masked_prompt
+        assert "Copy request" not in content
+        assert "First request for your agent" not in content
+        assert "Give your agent its first job" not in content
+        assert "Copy first task" not in content
+        assert "Copy setup prompt" in content
+        assert content.count('data-copy-success-event="agent-setup-prompt-copied"') == 1
+        assert "Skip setup for now" not in content
+        assert "private bearer token" in content
+        assert "Rowset current docs index" in masked_prompt
+        assert "Rowset current capabilities" in masked_prompt
+        assert "ask the user which interface to configure" in masked_prompt
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_home_view_collapses_prompt_and_completes_copy_task_after_copy_success(
@@ -319,32 +320,37 @@ class TestHomeView:
         response = auth_client.get(reverse("home"))
 
         content = response.content.decode()
-        assert 'x-data="{ promptCopied: false }"' in content
+        assert 'x-data="{ promptCopied: false, promptVisible: false }"' in content
         assert '@agent-setup-prompt-copied="promptCopied = true"' in content
         assert 'data-copy-success-event="agent-setup-prompt-copied"' in content
+        assert 'data-copy-response-key="prompt"' in content
         assert 'x-text="promptCopied ? &#x27;✓&#x27; : &#x27;2&#x27;"' in content
-        assert 'x-show="promptCopied"' in content
         assert 'x-data="copyPanel"' in content
         assert 'x-show="promptVisible"' in content
-        assert 'aria-controls="dashboard-agent-setup-help-prompt"' in content
-        assert 'id="dashboard-agent-setup-help-prompt"' in content
+        assert 'aria-controls="agent-setup-prompt-preview"' in content
+        assert 'id="agent-setup-prompt-preview"' in content
         assert ':aria-expanded="promptVisible"' in content
-        prompt_toggle = 'x-text="promptVisible ? &#x27;Hide prompt&#x27; : &#x27;Show prompt&#x27;"'
+        prompt_toggle = (
+            'x-text="promptVisible ? &#x27;Hide what will be copied&#x27; : '
+            '&#x27;See what will be copied&#x27;"'
+        )
         assert prompt_toggle in content
 
-    def test_home_view_hides_agent_setup_prompt_after_dismissal(self, auth_client, profile):
+    def test_home_view_requires_agent_setup_for_previously_dismissed_profile(
+        self,
+        auth_client,
+        profile,
+    ):
         profile.agent_setup_prompt_dismissed = True
         profile.save(update_fields=["agent_setup_prompt_dismissed"])
 
         response = auth_client.get(reverse("home"))
 
         content = response.content.decode()
-        assert response.context["show_agent_setup_prompt"] is False
-        assert "Connect your AI agent to Rowset" not in content
-        assert "Copy/paste prompt" not in content
-        assert "Copy agent prompt" not in content
-        assert "Rowset API key: ***" not in content
-        assert "Your data workspace" in content
+        assert response.context["show_agent_setup_prompt"] is True
+        assert "Set up Rowset in two steps" in content
+        assert "Create an agent key" in content
+        assert "Your data workspace" not in content
 
     def test_home_view_hides_agent_setup_prompt_after_setup_completes(self, auth_client, profile):
         profile.setup_completed_at = timezone.now()
@@ -354,7 +360,7 @@ class TestHomeView:
 
         content = response.content.decode()
         assert response.context["show_agent_setup_prompt"] is False
-        assert "Connect your AI agent to Rowset" not in content
+        assert "Set up Rowset in two steps" not in content
         assert "Your data workspace" in content
 
     def test_home_view_keeps_agent_setup_prompt_until_setup_completes(
@@ -380,15 +386,7 @@ class TestHomeView:
             "public_preview_count": 0,
         }
         assert response.context["selected_view_mode"] == "grouped"
-        assert "Connect your AI agent to Rowset" in content
-
-    def test_dismiss_agent_setup_prompt_removes_prompt_from_home(self, auth_client, profile):
-        response = auth_client.post(reverse("dismiss_agent_setup_prompt"))
-
-        assert response.status_code == 302
-        assert response["Location"] == reverse("home")
-        profile.refresh_from_db()
-        assert profile.agent_setup_prompt_dismissed is True
+        assert "Set up Rowset in two steps" in content
 
     @override_settings(SITE_URL="https://rowset.example")
     def test_home_view_creates_missing_profile(self, auth_client, user):
@@ -401,9 +399,9 @@ class TestHomeView:
         assert "agent_setup_prompt_masked" not in response.context
         assert "agent_setup_prompt" not in response.context
         assert response.context["active_agent_api_key"] is None
-        assert "Connect your AI agent to Rowset" in content
-        assert "Setup tasks" in content
-        assert "Your prompt will appear here" in content
+        assert "Set up Rowset in two steps" in content
+        assert "Create an agent key" in content
+        assert "Create agent key" in content
         assert user.__class__.objects.get(pk=user.pk).profile
 
     def test_get_or_create_profile_for_user_recovers_from_create_race(
@@ -444,7 +442,7 @@ class TestHomeView:
         followup = auth_client.get(reverse("home"))
         content = followup.content.decode()
         assert followup.context["active_agent_api_key"].name == "Codex"
-        assert "Copy agent prompt" in content
+        assert "Copy setup prompt" in content
         assert "Created an API key for Codex." in content
 
     @override_settings(POSTHOG_API_KEY="phc_test")
@@ -543,17 +541,18 @@ class TestHomeView:
         assert "name: rowset" in content
         assert "# Rowset" in content
         assert "Use Rowset as a stable backend for user-owned structured datasets." in content
-        assert "Streamable HTTP" in content
-        assert "codex mcp add rowset --url <Rowset MCP URL>" in content
-        assert "screenshots, public chats, generated files, or final responses" in content
-        assert "not only the visible" in content
+        assert "MCP, the Rowset CLI, or the REST API" in content
+        assert "Ask the user which interface to configure" in content
+        assert "Do not silently install a CLI" in content
+        assert "Do not copy a setup command from memory" in content
         assert "get_user_info" in content
         assert "get_rowset_capabilities" in content
-        assert content.index("Discover available MCP tools") < content.index("get_user_info")
-        assert "create_dataset" in content
-        assert "list_dataset_relationships" in content
-        assert "update_dataset_public_preview" in content
-        assert "Keep user data private" in content
+        assert "rowset user info" in content
+        assert "GET <Rowset REST API base>/user" in content
+        assert "marks onboarding complete" in content
+        assert "starts the Rowset trial" in content
+        assert "a first dataset or perform another Rowset task unless the user asks" in content
+        assert "Public previews are read-only sharing surfaces" in content
 
     def test_companion_agent_instruction_markdown_is_public(self, client):
         features_response = client.get(reverse("agent_instructions_rowset_features"))
@@ -647,16 +646,21 @@ class TestHomeView:
 
         assert "Rowset MCP URL: https://rowset.example/mcp/" in prompt
         assert "Rowset REST API base: https://rowset.example/api/" in prompt
+        assert "Rowset CLI guide: https://rowset.example/docs/use-cli.md" in prompt
         assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
         assert "Rowset skill install: npx skills add LVTD-LLC/rowset" in prompt
+        assert "Rowset current docs index: https://rowset.example/llms.txt" in prompt
+        assert "Rowset docs: https://rowset.example/docs" in prompt
+        assert "Rowset blog: https://rowset.example/blog" in prompt
+        assert "Rowset current API docs: https://rowset.example/api/docs" in prompt
+        assert "Rowset current capabilities: https://rowset.example/api/capabilities" in prompt
         assert "Rowset API key: rsk_explicit" in prompt
-        assert "bearer-token env var ROWSET_API_KEY" in prompt
-        assert "get_rowset_capabilities" in prompt
-        assert (
-            "codex mcp add rowset --url <Rowset MCP URL> "
-            "--bearer-token-env-var ROWSET_API_KEY" in prompt
-        )
-        assert "update_dataset_public_preview" in prompt
+        assert "Rowset supports MCP, CLI, and REST API access" in prompt
+        assert "ask the user which interface to configure" in prompt
+        assert "get_user_info over MCP" in prompt
+        assert "rowset user info through the CLI" in prompt
+        assert "completes onboarding, and starts the trial" in prompt
+        assert "codex mcp add" not in prompt.lower()
 
         masked_prompt = build_agent_setup_prompt(request, mask_api_key=True)
         assert "Rowset API key: ***" in masked_prompt

@@ -5,22 +5,17 @@
   <div class="flex flex-col gap-3 border-b border-slate-800 pb-4 lg:flex-row lg:items-start lg:justify-between">
     <div>
       <h2 class="text-base font-semibold text-white">Copy/paste prompt</h2>
-      <p id="{{ agent_setup_prompt_help_id }}" class="mt-1 text-sm leading-6 text-slate-400">Best path: remote MCP over HTTPS with the API key configured as the bearer-token env var.</p>
+      <p id="{{ agent_setup_prompt_help_id }}" class="mt-1 text-sm leading-6 text-slate-400">Includes MCP, CLI, and REST details so your agent can recommend the best fit.</p>
     </div>
     <div
       class="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end"
       x-data="copyPanel"
       data-copy-url="{{ agent_setup_prompt_url }}"
+      data-copy-response-key="prompt"
       data-copy-label="Copy agent prompt"
       data-copy-tracking-event="rowset_agent_setup_prompt_copied"
       data-copy-success-event="agent-setup-prompt-copied"
     >
-      {% if agent_setup_prompt_dismiss_url %}
-        <form method="post" action="{{ agent_setup_prompt_dismiss_url }}">
-          {% csrf_token %}
-          <button type="submit" class="fb-button-secondary w-full whitespace-nowrap sm:w-auto">Hide setup guide</button>
-        </form>
-      {% endif %}
       <button
         type="button"
         @click="promptVisible = !promptVisible"

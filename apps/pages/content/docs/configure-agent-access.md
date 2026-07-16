@@ -7,10 +7,10 @@ keywords: Rowset, agents, MCP, API key, SKILL.md
 # Configure agent access
 
 Rowset gives signed-in users a short copy/paste setup prompt for trusted AI
-agents. It includes the current instance's MCP URL, REST API base URL,
-`SKILL.md` instructions URL, the repo skill install command, and an API key for
-bearer-token auth. On a self-hosted deployment, these URLs are generated from
-that instance's configured `SITE_URL`.
+agents. It includes the current instance's MCP URL, REST API base URL, CLI
+guide, live documentation and capability resources, `SKILL.md` instructions,
+and an API key for bearer-token auth. On a self-hosted deployment, these URLs
+are generated from that instance's configured `SITE_URL`.
 
 The dashboard preview masks the API key. The copy button includes the real key, so treat the copied prompt like a password.
 
@@ -56,7 +56,10 @@ The source text is available at:
 {{ skill_source_url }}
 ```
 
-The skill gives agents durable setup instructions for Rowset MCP and REST fallback. It tells agents how to discover the current tools and API docs instead of hardcoding an endpoint list.
+The skill gives agents durable, interface-neutral setup instructions for MCP,
+CLI, and REST. It tells agents to recommend an interface, ask the user before
+configuring it, and discover current capabilities and docs instead of
+hardcoding an agent-specific command or endpoint list.
 
 The repo also includes two companion skills:
 
@@ -77,40 +80,28 @@ Agents and search tools can also read the generated Rowset overview:
 {{ llms_txt_url }}
 ```
 
-For MCP, store the key in a private environment variable such as
-`ROWSET_API_KEY`, then configure the MCP client's bearer-token env var to
-`ROWSET_API_KEY`. That makes the client send `Authorization: Bearer <key>`.
+The agent should compare the available interfaces with its runtime and the
+user's workflow, explain one recommendation, and ask which path to configure:
 
-If you are deciding whether a workflow should start with MCP or REST,
-read [When should an AI agent use MCP instead of REST?](/blog/mcp-vs-rest-ai-agents).
-In short: use MCP for compatible agent sessions that benefit from discovery, and
-use REST for scripts, backend jobs, or constrained runtimes.
+- MCP for runtimes that support remote MCP and benefit from live tool discovery.
+- CLI for terminal workflows, scripts, and local file handling.
+- REST for applications and runtimes that already work naturally with HTTP.
 
-For Codex/OpenClaw-compatible clients, the concrete setup command is:
+After the user chooses, follow the current interface guide and store the key in
+a private environment variable such as `ROWSET_API_KEY` or an equivalent secret
+store. MCP and REST use `Authorization: Bearer <key>`; the CLI reads the same
+key from its private runtime environment.
 
-```bash
-codex mcp add rowset --url {{ mcp_url }} --bearer-token-env-var ROWSET_API_KEY
-```
-
-Set `ROWSET_API_KEY` in the agent's private runtime environment before running
-or syncing the client. The command records only the env-var name, not the raw
-key.
-
-If a client only supports custom headers, set `Authorization` to `Bearer <key>`.
-Use `X-API-Key` only for REST clients that cannot send bearer tokens.
-
-If the agent will use REST instead of MCP, follow
-[How to connect an AI agent to the Rowset Dataset API](/blog/connect-ai-agent-to-dataset-api)
-for the handoff checklist: scoped key, private secret storage, dataset
-inspection, and by-index row operations.
+Make authenticated user-info the final setup action: `get_user_info` over MCP,
+`rowset user info` through the CLI, or `GET /api/user` through REST. That request
+verifies the connection, completes onboarding, and starts the trial.
 
 ## Recommended agent behavior
 
-- Prefer MCP tools over browser automation.
-- Discover current MCP tools and schemas from the connected server before acting.
-- Load the current Rowset capability guide with `get_rowset_capabilities`.
-- For REST fallback, inspect the current API docs from the REST API base.
-- Verify setup with `get_user_info`.
+- Recommend MCP, CLI, or REST for the current context and ask before configuring it.
+- Discover current capabilities and exact operations through the selected interface.
+- Use `get_rowset_capabilities`, `rowset capabilities`, or `/api/capabilities`.
+- Make authenticated user-info the final setup action.
 - Discover available datasets with `get_all_datasets`.
 - Find archived datasets with `get_archived_datasets` before restoring them.
 - Search for a specific dataset or project with `search_datasets` and `search_projects`.
@@ -127,7 +118,6 @@ inspection, and by-index row operations.
 - Enable or disable read-only public previews with `update_dataset_public_preview` only when the user asks to share a dataset.
 - Archive mistaken datasets with `archive_dataset`, and restore them with `restore_dataset` when recovery is needed.
 - Archive inactive project groups with `archive_project`; this hides the project without archiving its datasets.
-- Use the Dataset API only if MCP configuration is unavailable and the user approves REST API authentication. The user can copy the API key from Settings.
 - Ask before destructive actions like archiving datasets or deleting rows.
 - Keep user data private and never print credentials into public logs or messages.
 

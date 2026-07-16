@@ -5,63 +5,84 @@
 {% block content %}
 <div class="fb-page">
   {% if show_agent_setup_prompt %}
-    <section aria-labelledby="agent-setup-heading">
-      <p class="fb-label-caps text-emerald-700 dark:text-emerald-300">First agent setup</p>
-      <h1 id="agent-setup-heading" class="fb-page-title mt-2">Connect your AI agent to Rowset</h1>
-      <p class="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-300">Create a named API key, copy the setup prompt, and paste it into a trusted agent. Your agent can then create and organize projects, sections, and datasets for you.</p>
-    </section>
-
     <div
-      class="mt-8 grid gap-6 lg:grid-cols-[17fr_23fr] lg:items-start"
-      x-data="{ promptCopied: false }"
+      class="relative left-1/2 -my-10 min-h-[calc(100dvh-4rem)] w-screen -translate-x-1/2 bg-white px-4 py-10 text-neutral-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 lg:w-[calc(100vw-var(--app-sidebar-width,18rem))] lg:px-8 lg:py-12"
+      x-data="{ promptCopied: false, promptVisible: false }"
       @agent-setup-prompt-copied="promptCopied = true"
     >
-      <section class="overflow-hidden rounded-lg border border-slate-950/10 bg-white dark:border-white/10 dark:bg-slate-950" aria-labelledby="setup-tasks-heading">
-        <div class="border-b border-slate-950/10 p-5 dark:border-white/10">
-          <h2 id="setup-tasks-heading" class="fb-section-title">Setup tasks</h2>
-          <p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">Give one trusted agent private Rowset access.</p>
-        </div>
-        <ol role="list" class="divide-y divide-slate-950/5 dark:divide-white/10">
-          <li class="flex gap-4 p-5">
-            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-950 font-semibold text-white dark:bg-slate-100 dark:text-slate-950">1</span>
-            <div class="min-w-0 flex-1">
-              <h3 class="font-semibold text-slate-950 dark:text-slate-100">Create an API key</h3>
-              {% if active_agent_api_key %}
-                <p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">Ready: <strong>{{ active_agent_api_key.name }}</strong> ({{ active_agent_api_key.key_prefix }}...)</p>
-              {% else %}
-                <form method="post" action="{% url 'create_agent_api_key' %}" class="mt-4 grid gap-3">
-                  {% csrf_token %}<input type="hidden" name="next" value="home">
-                  <div><label for="setup-agent-name" class="block text-sm font-semibold">App or agent name</label>{% render_field agent_api_key_form.name id="setup-agent-name" autocomplete="off" placeholder="Claude, Codex, internal app..." class="fb-input mt-2 block w-full px-3 py-2 text-base sm:text-sm" %}</div>
-                  <div><label for="setup-agent-access" class="block text-sm font-semibold">Permission</label>{% render_field agent_api_key_form.access_level id="setup-agent-access" class="fb-input mt-2 block w-full px-3 py-2 text-base sm:text-sm" %}</div>
-                  <button type="submit" class="fb-button-primary w-fit">Create key</button>
-                </form>
-              {% endif %}
-            </div>
+      <div class="mx-auto max-w-6xl">
+        <header class="text-center" aria-labelledby="agent-setup-heading">
+          <h1 id="agent-setup-heading" class="mx-auto max-w-[30ch] text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Set up Rowset in two steps</h1>
+        </header>
+
+        <ol role="list" class="mx-auto mt-6 grid max-w-xl grid-cols-2 divide-x divide-neutral-950/10 border-y border-neutral-950/10 dark:divide-white/10 dark:border-white/10" aria-label="Setup progress">
+          <li class="flex items-center gap-3 py-4 pr-4">
+            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-semibold text-white dark:bg-emerald-600" aria-hidden="true">{% if active_agent_api_key %}✓{% else %}1{% endif %}</span>
+            <span class="text-base/7 font-semibold sm:text-sm/6">Create agent key</span>
           </li>
-          <li class="flex gap-4 p-5">
-            <span
-              class="flex size-8 shrink-0 items-center justify-center rounded-full font-semibold"
-              :class="promptCopied ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300'"
-              x-text="promptCopied ? &#x27;✓&#x27; : &#x27;2&#x27;"
-            >2</span>
-            <div>
-              <h3 class="font-semibold">Copy the setup prompt</h3>
-              <p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">It contains the MCP endpoint and private bearer token.</p>
-              <p x-cloak x-show="promptCopied" class="mt-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300" role="status">Done</p>
-            </div>
+          <li class="flex items-center gap-3 py-4 pl-4">
+            <span class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold {% if active_agent_api_key %}bg-emerald-700 text-white dark:bg-emerald-600{% else %}bg-neutral-100 text-neutral-500 ring-1 ring-inset ring-neutral-950/10 dark:bg-white/5 dark:text-slate-400 dark:ring-white/10{% endif %}" aria-hidden="true">2</span>
+            <span class="text-base/7 font-semibold {% if not active_agent_api_key %}text-neutral-500 dark:text-slate-400{% endif %} sm:text-sm/6">Copy and paste prompt</span>
           </li>
-          <li class="flex gap-4 p-5"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">3</span><div><h3 class="font-semibold">Give it to your agent</h3><p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">Ask it to verify the connection and create your first dataset.</p></div></li>
         </ol>
-      </section>
-      <div>
+
         {% if active_agent_api_key %}
-          {% include "components/agent-setup-prompt-panel.html" with agent_setup_prompt_help_id="dashboard-agent-setup-help" agent_setup_prompt_warning_id="dashboard-agent-setup-warning" agent_setup_prompt_panel_class="mt-0" %}
-          <div class="mt-5 rounded-lg border border-slate-950/10 bg-white p-5 dark:border-white/10 dark:bg-slate-950" x-data="copyPanel" data-copy-label="Copy request">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 class="fb-section-title">First request for your agent</h2><p class="mt-1 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">Use this after the setup prompt so the agent verifies the connection and creates something useful.</p></div><button type="button" @click="copy" :disabled="busy" class="fb-button-secondary shrink-0"><span x-ref="label" x-text="label">Copy request</span></button></div>
-            <pre x-ref="source" class="mt-4 overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-slate-950/10 bg-slate-50 p-4 font-mono text-xs leading-5 text-slate-800 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">Verify Rowset with get_user_info. Then create my first Rowset dataset from the source I provide next. If there is no stable unique key, use Rowset's generated rowset_id.</pre>
+          <section class="mx-auto mt-8 max-w-2xl rounded-3xl bg-white p-5 shadow-xl ring-1 ring-neutral-950/10 dark:bg-slate-900 dark:shadow-none dark:ring-white/10 sm:p-8" aria-labelledby="agent-prompt-heading">
+            <div class="flex items-start gap-4 border-b border-neutral-950/10 pb-6 dark:border-white/10">
+              <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 font-semibold text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300" x-text="promptCopied ? &#x27;✓&#x27; : &#x27;2&#x27;">2</span>
+              <div class="min-w-0">
+                <p class="text-base/7 font-semibold text-emerald-700 dark:text-slate-100 sm:text-sm/6">Step 2 of 2</p>
+                <h2 id="agent-prompt-heading" class="mt-1 text-xl font-semibold">Copy and paste the setup prompt</h2>
+              </div>
+            </div>
+
+            <div
+              class="pt-6"
+              x-data="copyPanel"
+              data-copy-url="{{ agent_setup_prompt_url }}"
+              data-copy-response-key="prompt"
+              data-copy-label="Copy setup prompt"
+              data-copy-tracking-event="rowset_agent_setup_prompt_copied"
+              data-copy-success-event="agent-setup-prompt-copied"
+            >
+              <p id="agent-prompt-security-note" class="text-pretty text-base/7 text-neutral-600 dark:text-slate-300 sm:text-sm/6">Created for <strong class="font-semibold text-neutral-900 dark:text-slate-100">{{ active_agent_api_key.name }}</strong>. The prompt contains its private bearer token, so paste it only into that trusted agent.</p>
+              <button type="button" @click="copy" :disabled="busy" class="mt-6 flex min-h-9 w-full items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-wait disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:focus-visible:outline-emerald-500"><span x-ref="label" x-text="label">Copy setup prompt</span></button>
+              <div class="mt-3 text-center">
+                <button type="button" @click="promptVisible = !promptVisible" :aria-expanded="promptVisible" aria-controls="agent-setup-prompt-preview" class="relative px-3 py-2 text-sm font-medium text-neutral-600 underline decoration-neutral-950/20 underline-offset-4 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:text-slate-300 dark:decoration-white/20 dark:hover:text-white dark:focus-visible:outline-emerald-500">
+                  <span class="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden" aria-hidden="true"></span>
+                  <span x-text="promptVisible ? &#x27;Hide what will be copied&#x27; : &#x27;See what will be copied&#x27;">See what will be copied</span>
+                </button>
+              </div>
+              <pre id="agent-setup-prompt-preview" x-ref="source" x-cloak x-show="promptVisible" aria-describedby="agent-prompt-security-note" class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-neutral-100 p-4 font-mono text-xs leading-6 text-neutral-700 dark:bg-slate-950 dark:text-slate-300">{{ agent_setup_prompt_masked }}</pre>
+            </div>
+          </section>
+
+          <div class="mx-auto mt-6 max-w-md text-center text-base/7 text-neutral-600 dark:text-slate-300 sm:text-sm/6">
+            <p class="text-pretty">After copying, paste the prompt into {{ active_agent_api_key.name }}.</p>
           </div>
         {% else %}
-          <div class="fb-panel p-6"><h2 class="fb-section-title">Your prompt will appear here</h2><p class="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">Create an API key first. Rowset will generate the complete connection prompt without displaying the secret on this page.</p><form method="post" action="{{ agent_setup_prompt_dismiss_url }}" class="mt-5">{% csrf_token %}<button type="submit" class="fb-button-secondary">Skip setup for now</button></form></div>
+          <section class="mx-auto mt-8 max-w-2xl rounded-3xl bg-white p-5 shadow-xl ring-1 ring-neutral-950/10 dark:bg-slate-900 dark:shadow-none dark:ring-white/10 sm:p-8" aria-labelledby="agent-key-heading">
+            <p class="text-base/7 font-semibold text-emerald-700 dark:text-slate-100 sm:text-sm/6">Step 1 of 2</p>
+            <h2 id="agent-key-heading" class="mt-1 text-2xl font-semibold tracking-tight">Create an agent key</h2>
+            <p class="mt-3 text-pretty text-base/7 text-neutral-600 dark:text-slate-300 sm:text-sm/6">Name the trusted agent you want to connect, such as Codex, Claude Code, OpenClaw, or Hermes.</p>
+
+            <form method="post" action="{% url 'create_agent_api_key' %}" class="mt-6 grid gap-5">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="home">
+              <div>
+                <label for="onboarding-agent-name" class="text-base/7 font-semibold sm:text-sm/6">App or agent name</label>
+                {% render_field agent_api_key_form.name id="onboarding-agent-name" autocomplete="off" placeholder="Codex, Claude Code, OpenClaw…" class="mt-2 block w-full rounded-xl bg-neutral-50 px-3 py-2.5 text-base ring-1 ring-inset ring-neutral-950/15 placeholder:text-neutral-400 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-emerald-700 dark:bg-slate-950 dark:ring-white/15 dark:placeholder:text-slate-500 dark:focus-visible:outline-emerald-500 sm:py-2 sm:text-sm" %}
+              </div>
+              <div>
+                <label for="onboarding-agent-access" class="text-base/7 font-semibold sm:text-sm/6">Permission</label>
+                <div class="mt-2 grid grid-cols-[1fr_--spacing(8)]">
+                  {% render_field agent_api_key_form.access_level id="onboarding-agent-access" class="col-span-full row-start-1 w-full appearance-none rounded-xl bg-neutral-50 py-2.5 pr-8 pl-3 text-base ring-1 ring-inset ring-neutral-950/15 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-emerald-700 dark:bg-slate-950 dark:ring-white/15 dark:focus-visible:outline-emerald-500 sm:py-2 sm:text-sm" %}
+                  <svg viewBox="0 0 8 5" width="8" height="5" fill="none" class="pointer-events-none col-start-2 row-start-1 place-self-center stroke-neutral-500 dark:stroke-slate-400" aria-hidden="true"><path d="M.5.5 4 4 7.5.5" stroke-width="1.25" /></svg>
+                </div>
+              </div>
+              <button type="submit" class="min-h-9 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:focus-visible:outline-emerald-500">Create agent key</button>
+            </form>
+          </section>
         {% endif %}
       </div>
     </div>

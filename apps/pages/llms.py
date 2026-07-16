@@ -21,14 +21,15 @@ def render_llms_txt() -> str:
         "# Rowset",
         "",
         (
-            "> Rowset gives trusted AI agents a private MCP and REST backend for "
+            "> Rowset gives trusted AI agents private MCP, CLI, and REST access to "
             "user-owned structured datasets."
         ),
         "",
         "## Use Rowset",
         "",
-        "- Use hosted MCP first for private, authenticated agent workflows.",
-        "- Use REST second when MCP is unavailable or a file export is needed.",
+        "- Rowset supports MCP, CLI, and REST API access; choose for the runtime and workflow.",
+        "- Recommend an interface, explain why, and ask the user before configuring it.",
+        "- Use live capabilities and interface docs instead of relying on static feature lists.",
         (
             "- Public previews are human-facing, read-only pages; they are not "
             "authentication or a replacement for MCP or REST access."

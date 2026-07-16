@@ -49,7 +49,7 @@ function loadAlpineComponents() {
 
 function loadCopyPanel() {
   const loaded = loadAlpineComponents();
-  return { component: loaded.components.get("copyPanel")(), rowset: loaded.rowset };
+  return { ...loaded, component: loaded.components.get("copyPanel")() };
 }
 
 function loadAiReaderMenu() {
@@ -105,6 +105,47 @@ test("failed clipboard copy leaves prompt task incomplete", async () => {
   const { component, dispatched } = await runCopy({ copied: false });
 
   assert.deepEqual(dispatched, []);
+  assert.equal(component.busy, false);
+});
+
+test("copy panel copies the full prompt from its protected JSON endpoint", async () => {
+  const { component, context, rowset } = loadCopyPanel();
+  const copiedValues = [];
+  rowset.posthogSessionHeaders = () => ({});
+  rowset.copyTextToClipboard = async (value) => {
+    copiedValues.push(value);
+    return true;
+  };
+  const panelElement = new EventTarget();
+  panelElement.dataset = {
+    copyUrl: "/home/agent-setup-prompt/",
+    copyResponseKey: "prompt",
+    copyLabel: "Copy setup prompt",
+  };
+  const buttonElement = {
+    dataset: {},
+    closest(selector) {
+      assert.equal(selector, "[data-copy-url], [data-copy-label]");
+      return panelElement;
+    },
+  };
+  component.$el = buttonElement;
+  component.$refs = {
+    source: { textContent: "Rowset API key: ***" },
+  };
+  component.flashLabel = () => {};
+  context.fetch = async (url, options) => {
+    assert.equal(url, "/home/agent-setup-prompt/");
+    assert.equal(options.credentials, "same-origin");
+    return {
+      ok: true,
+      json: async () => ({ prompt: "Rowset API key: rsk_full_secret" }),
+    };
+  };
+
+  await component.copy({ preventDefault() {}, currentTarget: buttonElement });
+
+  assert.deepEqual(copiedValues, ["Rowset API key: rsk_full_secret"]);
   assert.equal(component.busy, false);
 });
 

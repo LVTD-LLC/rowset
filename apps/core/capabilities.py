@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-CAPABILITY_VERSION = "2026-07-08"
+CAPABILITY_VERSION = "2026-07-16"
 
 
 @dataclass(frozen=True)
@@ -44,24 +44,55 @@ class RowsetUseCase:
 
 ROWSET_RECOMMENDED_STARTUP = (
     "Read the setup prompt and store the full Rowset API key privately.",
-    "Configure the Rowset MCP server with Authorization: Bearer <ROWSET_API_KEY>.",
-    "Discover live MCP tools and schemas from the connected server.",
-    "Call get_user_info to verify authentication.",
-    "Call get_rowset_capabilities for the current Rowset workflow guide.",
-    "Call get_all_datasets, get_archived_datasets, or search_datasets before creating duplicates.",
     (
-        "Call get_dataset before row operations so dataset context, schema, and "
-        "relationships are in context."
+        "Inspect the current Rowset skill, llms.txt, capabilities response, and relevant "
+        "interface documentation before choosing a setup path."
     ),
+    (
+        "Evaluate MCP, CLI, and REST against the current runtime and user workflow; explain "
+        "a recommendation and ask the user which interface to configure."
+    ),
+    "Configure only the interface the user approves, following its current documentation.",
+    (
+        "As the final setup step, make an authenticated user-info request through the chosen "
+        "interface to verify access, complete onboarding, and start the trial."
+    ),
+    (
+        "Report the verified connection and ask what the user wants to do next, with a "
+        "contextual recommendation when useful."
+    ),
+)
+
+ROWSET_INTERFACES = (
+    {
+        "id": "mcp",
+        "best_for": "Agent runtimes with remote MCP support and live tool/schema discovery.",
+        "current_reference": (
+            "After authenticated verification, inspect live tools and call get_rowset_capabilities."
+        ),
+        "authenticated_verification": "Call get_user_info.",
+    },
+    {
+        "id": "cli",
+        "best_for": "Terminal workflows, scripts, and local file handling.",
+        "current_reference": "Run rowset --help and rowset capabilities.",
+        "authenticated_verification": "Run rowset user info.",
+    },
+    {
+        "id": "rest",
+        "best_for": "Applications and runtimes that work naturally with HTTP.",
+        "current_reference": "Read the capabilities endpoint and generated API docs.",
+        "authenticated_verification": "Request GET /api/user with bearer authentication.",
+    },
 )
 
 ROWSET_CAPABILITIES = (
     RowsetCapability(
         id="account_and_setup",
-        title="Account and MCP setup",
+        title="Account access and interface discovery",
         summary=(
-            "Verify the authenticated Rowset profile and use the live MCP server as the "
-            "source of truth for exact tool names, schemas, and descriptions."
+            "Connect through MCP, CLI, or REST; use live capabilities and interface "
+            "documentation as the source of truth; and verify the authenticated profile."
         ),
         mcp_tools=("get_user_info", "get_rowset_capabilities"),
         rest_paths=("/api/user", "/api/agent-api-keys"),
@@ -390,7 +421,7 @@ ROWSET_CAPABILITIES = (
         ),
         notes=(
             "Archive keeps rows and schema metadata recoverable.",
-            "Exports are REST fallback paths; prefer MCP row tools for live agent workflows.",
+            "Use the current CLI or REST documentation when a file snapshot is required.",
         ),
     ),
 )
@@ -562,13 +593,15 @@ def rowset_capabilities_payload() -> dict[str, Any]:
         "product": "Rowset",
         "capability_version": CAPABILITY_VERSION,
         "summary": (
-            "Rowset gives trusted AI agents a private MCP and REST backend for "
+            "Rowset gives trusted AI agents private MCP, CLI, and REST access to "
             "user-owned structured datasets."
         ),
         "source_of_truth": (
-            "Use MCP tools/list for exact current schemas. Use this guide for workflow "
-            "semantics, feature groups, and recommended startup order."
+            "Use this live guide for current feature groups and workflow semantics, then "
+            "consult MCP tool schemas, CLI help, or generated REST API docs for the exact "
+            "interface selected by the user."
         ),
+        "interfaces": list(ROWSET_INTERFACES),
         "recommended_startup": list(ROWSET_RECOMMENDED_STARTUP),
         "capabilities": [capability.as_dict() for capability in visible_capabilities],
         "use_cases": [use_case.as_dict() for use_case in visible_use_cases],
