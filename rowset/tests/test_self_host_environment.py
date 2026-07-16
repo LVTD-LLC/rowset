@@ -333,6 +333,51 @@ def test_initializer_generates_distinct_secrets_and_private_file(tmp_path):
         assert values[key] not in result.stdout + result.stderr
 
 
+def test_initializer_uses_the_installed_release_image_by_default(tmp_path):
+    env_file = tmp_path / ".env"
+    release_file = tmp_path / ".rowset-release"
+    release_file.write_text(
+        "ROWSET_RELEASE_VERSION=2026.07.16-0\n"
+        f"ROWSET_RELEASE_COMMIT={'a' * 40}\n"
+        "ROWSET_RELEASE_IMAGE=ghcr.io/lvtd-llc/rowset:2026.07.16-0\n"
+        f"ROWSET_RELEASE_DIGEST=sha256:{'b' * 64}\n"
+    )
+
+    result = _run_init(
+        env_file,
+        {
+            "ROWSET_DOMAIN": "rowset.example.com",
+            "ROWSET_RELEASE_FILE": str(release_file),
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert _parse_env(env_file)["ROWSET_IMAGE"] == ("ghcr.io/lvtd-llc/rowset:2026.07.16-0")
+
+
+def test_initializer_allows_an_explicit_image_to_override_release_metadata(tmp_path):
+    env_file = tmp_path / ".env"
+    release_file = tmp_path / ".rowset-release"
+    release_file.write_text(
+        "ROWSET_RELEASE_VERSION=2026.07.16-0\n"
+        f"ROWSET_RELEASE_COMMIT={'a' * 40}\n"
+        "ROWSET_RELEASE_IMAGE=ghcr.io/lvtd-llc/rowset:2026.07.16-0\n"
+        f"ROWSET_RELEASE_DIGEST=sha256:{'b' * 64}\n"
+    )
+
+    result = _run_init(
+        env_file,
+        {
+            "ROWSET_IMAGE": "example.com/fork/rowset:v9",
+            "ROWSET_DOMAIN": "rowset.example.com",
+            "ROWSET_RELEASE_FILE": str(release_file),
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert _parse_env(env_file)["ROWSET_IMAGE"] == "example.com/fork/rowset:v9"
+
+
 def test_initializer_preserves_every_existing_byte_on_rerun(tmp_path):
     env_file = tmp_path / ".env"
     environment = {

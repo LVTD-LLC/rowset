@@ -75,6 +75,26 @@ environment_file_value() {
     ' "$env_file"
 }
 
+load_release_metadata() {
+    release_metadata_file=$1
+    validate_environment_file_structure "$release_metadata_file"
+
+    RELEASE_VERSION=$(required_file_value ROWSET_RELEASE_VERSION "$release_metadata_file")
+    RELEASE_COMMIT=$(required_file_value ROWSET_RELEASE_COMMIT "$release_metadata_file")
+    RELEASE_IMAGE=$(required_file_value ROWSET_RELEASE_IMAGE "$release_metadata_file")
+    RELEASE_DIGEST=$(required_file_value ROWSET_RELEASE_DIGEST "$release_metadata_file")
+
+    printf '%s\n' "$RELEASE_VERSION" | grep -Eq \
+        '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[0-9]+$' || \
+        fail ROWSET_RELEASE_VERSION "must match YYYY.MM.DD-N"
+    printf '%s\n' "$RELEASE_COMMIT" | grep -Eq '^[0-9a-f]{40}$' || \
+        fail ROWSET_RELEASE_COMMIT "must be a full lowercase Git SHA"
+    test "$RELEASE_IMAGE" = "ghcr.io/lvtd-llc/rowset:$RELEASE_VERSION" || \
+        fail ROWSET_RELEASE_IMAGE "must match the installed release version"
+    printf '%s\n' "$RELEASE_DIGEST" | grep -Eq '^sha256:[0-9a-f]{64}$' || \
+        fail ROWSET_RELEASE_DIGEST "must use the sha256:<digest> form"
+}
+
 required_file_value() {
     requested_key=$1
     env_file=$2
@@ -193,7 +213,8 @@ validate_loaded_configuration() {
         *:*) image_tag=${image_segment##*:} ;;
         *) fail ROWSET_IMAGE "must use an explicit immutable tag" ;;
     esac
-    printf '%s\n' "$image_tag" | grep -Eq '^([0-9a-f]{7,40}|v[0-9][A-Za-z0-9._-]*)$' || \
+    printf '%s\n' "$image_tag" | grep -Eq \
+        '^([0-9a-f]{7,40}|[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[0-9]+|v[0-9][A-Za-z0-9._-]*)$' || \
         fail ROWSET_IMAGE "must use an explicit immutable tag"
 
     printf '%s\n' "$CFG_POSTGRES_DB" | grep -Eq '^[A-Za-z_][A-Za-z0-9_-]*$' || \

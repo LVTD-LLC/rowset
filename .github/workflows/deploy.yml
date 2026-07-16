@@ -32,8 +32,6 @@ jobs:
           image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
           echo "candidate_tag=candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
-          echo "release_date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
-          echo "release_version=$(date -u +%F).${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -94,9 +92,6 @@ jobs:
         run: |
           docker buildx imagetools create \
             --tag "${{ steps.image.outputs.image_name }}:${{ github.sha }}" \
-            --tag "${{ steps.image.outputs.image_name }}:latest" \
-            --tag "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_date }}" \
-            --tag "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_version }}" \
             "${{ steps.image.outputs.image_name }}@${{ steps.build.outputs.digest }}"
 
       - name: Verify anonymous image availability
@@ -104,9 +99,6 @@ jobs:
         run: |
           deployment/verify-anonymous-image.sh \
             "${{ steps.build.outputs.digest }}" \
-            "${{ steps.image.outputs.image_name }}:latest" \
-            "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_date }}" \
-            "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_version }}" \
             "${{ steps.image.outputs.image_name }}:${{ github.sha }}"
 
       - name: Deploy server to CapRover

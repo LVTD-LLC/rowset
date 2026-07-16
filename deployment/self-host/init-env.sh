@@ -5,6 +5,7 @@ umask 077
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$script_dir/../.." && pwd)
 template="$script_dir/env.example"
+release_file=${ROWSET_RELEASE_FILE:-"$root/.rowset-release"}
 
 if test "$#" -gt 1; then
     printf 'Usage: %s [ENV_FILE]\n' "$0" >&2
@@ -96,6 +97,11 @@ fi
 
 if resolved_value=$(existing_value ROWSET_IMAGE "$existing_file"); then
     init_rowset_image=$resolved_value
+elif test -n "${ROWSET_IMAGE:-}"; then
+    init_rowset_image=$ROWSET_IMAGE
+elif test -f "$release_file"; then
+    load_release_metadata "$release_file"
+    init_rowset_image=$RELEASE_IMAGE
 else
     init_rowset_image=$(required_environment_value ROWSET_IMAGE "${ROWSET_IMAGE:-}")
 fi

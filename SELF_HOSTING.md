@@ -26,8 +26,8 @@ You need:
 - anonymous pull access to the public `ghcr.io/lvtd-llc/rowset` package
 - a domain or subdomain whose DNS you control
 - SSH access with permission to run Docker
+- `curl`, `tar`, and a SHA-256 checksum command
 - inbound TCP ports 80 and 443 open; UDP 443 is optional but enables HTTP/3
-- an immutable Rowset release or full Git SHA image tag
 
 The examples assume a dedicated Rowset host. If another service already occupies ports 80 or 443,
 move it or use your existing ingress instead of starting the included Caddy service.
@@ -57,33 +57,43 @@ getent ahosts "$ROWSET_DOMAIN"
 The returned address must match the server. Certificate issuance cannot succeed until public DNS
 and ports 80/443 reach Caddy.
 
-## 2. Fetch Rowset and verify the image
+## 2. Install one coherent Rowset release
 
 ```bash
-git clone https://github.com/LVTD-LLC/rowset.git
-cd rowset
+curl -fsSL https://github.com/LVTD-LLC/rowset/releases/latest/download/install-rowset-self-host.sh | sh
+cd "$HOME/rowset"
 ```
 
-Choose a release or full Git SHA tag. Do not use a mutable `latest` tag.
+The release installer downloads a checksum-protected self-hosting bundle from the same immutable
+GitHub release as its application image. The bundle contains the matching Compose file, environment
+tools, support scripts, release version, source commit, image reference, and registry digest. It
+records that identity in `.rowset-release` and does not clone deployment files from the moving
+`main` branch.
+
+Inspect the installed identity and verify that the image supports this server:
 
 ```bash
-export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<release-or-sha-tag>
-deployment/verify-image-platforms.sh "$ROWSET_IMAGE"
+deployment/self-host/version.sh
+deployment/verify-image-platforms.sh \
+  "$(sed -n 's/^ROWSET_RELEASE_IMAGE=//p' .rowset-release)"
 ```
 
-The preflight fails if the image does not publish the current server architecture.
-Official releases are promoted only after CI removes its GHCR credentials and proves that every
-advertised tag can be inspected and pulled anonymously for both supported architectures. If this
-step reports `denied` or `unauthorized`, the package visibility has regressed and must be restored
-to public before the release can be used for self-hosting. Git SHA tags are promoted from a
-run-scoped candidate only after that check and cannot be replaced with a different image digest.
+On a first install, the script embedded in `releases/latest` selects that release's friendly dated
+version. On a rerun, it reads `.rowset-release` and reinstalls the recorded version instead of
+silently moving to a newer release. To install a specific release into an empty directory, set
+`ROWSET_VERSION=YYYY.MM.DD-N`. Set `ROWSET_INSTALL_DIR` to use a location other than
+`$HOME/rowset`.
+
+Official releases are promoted only after CI removes its GHCR credentials and proves that the
+matching tag can be inspected and pulled anonymously for both supported architectures. If image
+verification reports `denied` or `unauthorized`, package visibility has regressed and the release
+must not be used.
 
 ## 3. Configure the environment
 
-Set the two non-secret deployment inputs, then run the production initializer:
+Set the public hostname, then run the production initializer:
 
 ```bash
-export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<release-or-full-sha-tag>
 export ROWSET_DOMAIN=rowset.example.com
 deployment/self-host/init-env.sh
 deployment/self-host/validate-env.sh
@@ -95,6 +105,10 @@ rerunning it preserves every existing nonblank value and never rotates a secret.
 rejects missing values, unsafe development defaults, malformed hostnames or image tags, reused
 secrets, and files that are not private. Both commands report variable names and remediation only;
 they never print secret values.
+
+For an official bundle, `init-env.sh` obtains `ROWSET_IMAGE` from `.rowset-release`. An operator may
+still export an explicit immutable `ROWSET_IMAGE` before the first initialization for a fork or
+private registry. Once `.env` exists, reruns preserve its configured image.
 
 Only one initializer may run for a destination at a time. If a prior process was forcibly killed,
 remove the adjacent `.env.lock` directory after confirming no initializer is still running.
@@ -299,18 +313,14 @@ guidance as well.
 
 ## Updates
 
-Read the release notes, choose a new immutable image tag, and verify its platform before changing
-`.env`:
+Each dated GitHub release and its `rowset-self-host-<version>.tar.gz` asset are immutable and remain
+available from that release's page, so the previous application image and deployment bundle can be
+retrieved together for rollback. Do not combine files from `main` with an arbitrary image tag.
 
-```bash
-export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<new-release-or-sha-tag>
-deployment/verify-image-platforms.sh "$ROWSET_IMAGE"
-docker compose -f docker-compose-prod.yml -p rowset pull
-deployment/self-host/start.sh
-docker compose -f docker-compose-prod.yml -p rowset ps
-```
-
-Back up PostgreSQL and local media before updates. Do not add `-v` to `down` commands.
+The initial installer deliberately preserves an existing installed version on rerun. Use the
+documented update and rollback commands when they are available; until then, treat changing
+`.rowset-release`, deployment files, or `ROWSET_IMAGE` as a manual maintenance operation. Back up
+PostgreSQL and local media before any manual change. Do not add `-v` to `down` commands.
 
 ## Rotate secrets safely
 
@@ -415,7 +425,7 @@ The core self-hosting values are:
 
 | Variable | Purpose |
 | --- | --- |
-| `ROWSET_IMAGE` | Immutable Rowset release or full Git SHA image reference |
+| `ROWSET_IMAGE` | Matching release image from `.rowset-release`, or an explicit immutable override |
 | `ROWSET_DOMAIN` | Public hostname without scheme, path, or port |
 | `ENVIRONMENT` | Set to `prod` for the supported production path |
 | `DEBUG` | Set to `off` in production |

@@ -92,7 +92,12 @@ def test_self_hosting_docs_present_one_caddy_https_golden_path():
     assert "Nginx" not in self_hosting
     assert "Certbot" not in self_hosting
     assert "http://your-server-ip:8000" not in self_hosting
+    assert "install-rowset-self-host.sh" in self_hosting
+    assert "deployment/self-host/version.sh" in self_hosting
+    assert "git clone https://github.com/LVTD-LLC/rowset.git" not in self_hosting
+    assert "<release-or-sha-tag>" not in self_hosting
     assert "SELF_HOSTING.md" in readme
+    assert "install-rowset-self-host.sh" in readme
     assert "Nginx, Caddy, Traefik, or CapRover" not in readme
     assert "http://server-ip:8000" not in readme
 
