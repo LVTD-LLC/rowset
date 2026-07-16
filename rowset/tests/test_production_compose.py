@@ -193,6 +193,32 @@ def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics
     assert "Do not share `.env`" in self_hosting
 
 
+def test_self_hosting_docs_use_safe_environment_commands_and_explain_rotation():
+    self_hosting = (_REPO_ROOT / "SELF_HOSTING.md").read_text()
+    readme = (_REPO_ROOT / "README.md").read_text()
+    tech = (_REPO_ROOT / "TECH.md").read_text()
+    production_template = (_REPO_ROOT / "deployment/self-host/env.example").read_text()
+
+    for required in (
+        "deployment/self-host/env.example",
+        "deployment/self-host/init-env.sh",
+        "deployment/self-host/validate-env.sh",
+        "deployment/self-host/start.sh",
+        "SECRET_KEY_FILE",
+        "POSTGRES_PASSWORD_FILE",
+        "REDIS_PASSWORD_FILE",
+        "mode `0600`",
+        "HCLOUD_TOKEN",
+        "SECRET_KEY_FALLBACKS",
+        "signed sessions",
+    ):
+        assert required in self_hosting
+    assert "cp .env.example .env" not in self_hosting
+    assert "deployment/self-host/init-env.sh" in readme
+    assert "deployment/self-host/env.example" in tech
+    assert "HCLOUD_TOKEN" not in production_template
+
+
 def test_local_media_backup_archives_both_paths_with_restricted_permissions(tmp_path):
     source_archive = tmp_path / "source.tar.gz"
     payload = tmp_path / "payload.txt"

@@ -21,6 +21,9 @@ deployment or release cut date.
 ### Added
 - Added a decision guide for sharing AI-agent data through scoped private access, authenticated exports, or read-only public previews.
 
+### Security
+- Added idempotent production environment initialization and pre-start validation with generated strong secrets, owner-only files, injected-secret support, and rejection of unsafe development defaults.
+
 ## 2026-07-15
 
 ### Fixed

@@ -41,7 +41,9 @@
 Local configuration comes from `.env`, usually copied from `.env.example`.
 Important required values are `ENVIRONMENT`, `SECRET_KEY`, `SITE_URL`, Postgres
 settings, and Redis settings. Production should use `ENVIRONMENT=prod` and
-`DEBUG=off`.
+`DEBUG=off`. Production starts from `deployment/self-host/env.example` through
+the independently callable initializer and validator documented in
+`SELF_HOSTING.md`; it does not copy the development template.
 
 Keep secrets in environment variables only. Do not commit `.env`, API keys,
 service account JSON, Stripe secrets, Sentry DSNs, or user dataset
