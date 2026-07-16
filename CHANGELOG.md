@@ -20,6 +20,7 @@ deployment or release cut date.
 
 ### Added
 - Added an authenticated post-deployment smoke command that verifies REST, MCP, dataset writes and reads, and worker execution while removing temporary users, keys, datasets, and task results after success or failure.
+- Added tested self-host sizing profiles, amd64 and arm64 startup and footprint evidence, a reproducible benchmark command, and machine-readable requirements for deployment preflight checks.
 - Added a release gate that removes GHCR credentials, anonymously inspects and pulls both supported architectures before tag promotion, and prevents an immutable Git SHA tag from being overwritten with a different digest.
 - Added a decision guide for sharing AI-agent data through scoped private access, authenticated exports, or read-only public previews.
 - Added idempotent production environment initialization and pre-start validation with generated strong secrets, owner-only files, injected-secret support, and rejection of unsafe development defaults.

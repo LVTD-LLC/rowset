@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "benchmark_run_id": "86e4f5c600c861391d6b6e0882a875d675aaea28",
+  "measured_at": "2026-07-16T13:28:18Z",
+  "platform": "linux/amd64",
+  "operating_system": {
+    "id": "ubuntu",
+    "version": "24.04"
+  },
+  "host": {
+    "provider": "hetzner",
+    "server_type": "cx23",
+    "cpu_cores": 2,
+    "memory_bytes": 4005445632,
+    "disk_bytes": 39964635136
+  },
+  "image_reference": "ghcr.io/lvtd-llc/rowset:86e4f5c600c861391d6b6e0882a875d675aaea28",
+  "image_digest": "sha256:45e6b83055f9ebd5b8a8cabdd86d09b82e1e4b7f7728e2bb7022d86b166639ea",
+  "image_indexes": [
+    {
+      "reference": "caddy:2.11.4-alpine",
+      "digest": "sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648"
+    },
+    {
+      "reference": "ghcr.io/lvtd-llc/rowset:86e4f5c600c861391d6b6e0882a875d675aaea28",
+      "digest": "sha256:45e6b83055f9ebd5b8a8cabdd86d09b82e1e4b7f7728e2bb7022d86b166639ea"
+    },
+    {
+      "reference": "rasulkireev/custom-postgres:17",
+      "digest": "sha256:a3663a38fcea459362b4a9b4b91b72022718585e7aa6c75b197f25000248d400"
+    },
+    {
+      "reference": "redis:7-alpine",
+      "digest": "sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99"
+    }
+  ],
+  "source_revision": "41ca48c8dad998d241c7744792ac178f4d3f98ec",
+  "docker_version": "29.1.3",
+  "services": [
+    "backend",
+    "caddy",
+    "db",
+    "redis",
+    "workers"
+  ],
+  "measurements": {
+    "image_pull_seconds": 53,
+    "cold_start_seconds": 60,
+    "image_logical_bytes": 1178772247,
+    "disk_delta_bytes": 5083521024,
+    "steady_state_memory_bytes": 1931141445,
+    "available_memory_after_start_bytes": 1650655232
+  }
+}
