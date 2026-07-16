@@ -191,6 +191,33 @@ curl -fsS "https://$ROWSET_DOMAIN/" >/dev/null
 The HTTP response should redirect to `https://$ROWSET_DOMAIN/`. The HTTPS command must complete
 without `--insecure`; using `-k` would hide certificate failures.
 
+Run the authenticated, mutating post-deployment smoke test from the Rowset checkout on the host:
+
+```bash
+deployment/self-host/smoke-test.sh
+```
+
+The command creates a short-lived temporary user and scoped API key, verifies REST authentication,
+initializes MCP, checks live tool discovery, creates a one-row dataset through REST, reads that row
+through MCP, and waits for a real worker task. It removes the worker result, dataset, key, profile,
+and user on both success and failure. The raw key stays in command memory and is never passed as an
+argument or printed.
+
+`smoke-test.sh` uses `docker-compose-prod.yml`, the `rowset` Compose project, and the container's
+`SITE_URL` by default. Pass management-command options after the script when needed:
+
+```bash
+deployment/self-host/smoke-test.sh --base-url "https://$ROWSET_DOMAIN" --timeout 60
+```
+
+For credential safety, `--base-url` must match the configured HTTPS `SITE_URL` origin. HTTP is
+accepted only for loopback and the internal `backend` service during local deployment checks.
+
+Use `--fail-after` with one of `setup`, `rest_auth`, `mcp_initialize`, `mcp_tools`,
+`dataset_create`, `dataset_read`, or `worker` to verify cleanup after a deliberate failure. This
+command mutates temporary data and is intended for install completion, deployment verification,
+and CI. Keep ordinary load-balancer and uptime checks on the non-mutating health endpoint.
+
 Create an account in the browser, create a scoped agent API key in Settings, and store it only in a
 private shell or secret store:
 

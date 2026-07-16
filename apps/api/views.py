@@ -136,6 +136,7 @@ from apps.core.analytics import (
 )
 from apps.core.capabilities import rowset_capabilities_payload
 from apps.core.choices import FeedbackSource
+from apps.core.post_deploy_smoke_auth import SMOKE_HEADER, read_smoke_token
 from apps.core.services import (
     create_agent_api_key as create_agent_api_key_credential,
 )
@@ -364,6 +365,23 @@ def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
         return {"success": False, "message": "Failed to submit feedback. Please try again."}
 
 
+def _is_post_deploy_smoke_request(request: HttpRequest) -> bool:
+    """Recognize the short-lived identity and signed marker created by the smoke command."""
+    profile = getattr(request, "auth", None)
+    user = getattr(profile, "user", None)
+    username = getattr(user, "username", "")
+    marker = username.removeprefix("rowset-smoke-")
+    agent_api_key = getattr(request, "agent_api_key", None)
+    return bool(
+        user
+        and getattr(user, "is_active", False) is True
+        and marker
+        and marker != username
+        and read_smoke_token(request.headers.get(SMOKE_HEADER, "")) == marker
+        and getattr(agent_api_key, "name", "") == f"Post-deploy smoke {marker}"
+    )
+
+
 @api.get(
     "/user",
     response=UserInfoOut,
@@ -373,15 +391,16 @@ def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
 def get_user_info(request: HttpRequest):
     """Return safe profile and account details for the authenticated API key."""
     payload = serialize_user_info(request.auth)
-    track_activation_event(
-        request.auth,
-        ROWSET_GET_USER_INFO_SUCCEEDED,
-        {
-            "interface": "rest",
-            **agent_api_key_tracking_properties(getattr(request, "agent_api_key", None)),
-        },
-        source_function="apps.api.views.get_user_info",
-    )
+    if not _is_post_deploy_smoke_request(request):
+        track_activation_event(
+            request.auth,
+            ROWSET_GET_USER_INFO_SUCCEEDED,
+            {
+                "interface": "rest",
+                **agent_api_key_tracking_properties(getattr(request, "agent_api_key", None)),
+            },
+            source_function="apps.api.views.get_user_info",
+        )
     return payload
 
 
@@ -788,6 +807,7 @@ def create_dataset(request: HttpRequest, payload: DatasetCreateIn):
                 column_types=payload.column_types,
                 project_key=payload.project_key,
                 section_key=payload.section_key,
+                enqueue_background_work=not _is_post_deploy_smoke_request(request),
                 **_agent_actor_kwargs(request),
             ),
         )
