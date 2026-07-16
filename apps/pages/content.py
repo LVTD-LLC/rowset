@@ -21,6 +21,7 @@ from apps.core.agent_skill import (
 from apps.core.views import AGENT_API_KEY_MASK
 from apps.pages.public_markdown import build_ai_reader_context, build_public_markdown_context
 from apps.pages.schema import article_schema, json_ld
+from apps.pages.search import build_canonical_url
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -341,7 +342,7 @@ def render_content_page(request, section_slug, page_slug):
             "meta_description": post.get("description", ""),
             "meta_keywords": post.get("keywords", ""),
             "author": post.get("author", ""),
-            "canonical_url": post.get("canonical_url", page_url),
+            "canonical_url": build_canonical_url(page_path),
             "page_url": page_url,
             "previous_page": previous_page,
             "next_page": next_page,

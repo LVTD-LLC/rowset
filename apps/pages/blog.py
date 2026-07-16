@@ -15,6 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
+from apps.pages.search import INDEX_ROBOTS_POLICY, build_canonical_url
 from rowset.utils import build_absolute_public_url
 
 BLOG_TITLE = "Rowset Blog"
@@ -45,7 +46,6 @@ class BlogPost:
     author: str
     keywords: tuple[str, ...]
     topics: tuple[str, ...]
-    canonical_url: str
     image_url: str
     image_alt: str
     robots: str
@@ -54,6 +54,10 @@ class BlogPost:
 
     def get_absolute_url(self):
         return reverse("blog_post", kwargs={"slug": self.slug})
+
+    @property
+    def canonical_url(self) -> str:
+        return build_canonical_url(self.get_absolute_url())
 
     @property
     def metadata_keywords(self) -> tuple[str, ...]:
@@ -178,11 +182,9 @@ def load_blog_post(source_path: Path, content_dir: Path | None = None) -> BlogPo
         author=_coerce_string(post.get("author")) or BLOG_DEFAULT_AUTHOR,
         keywords=_coerce_list(post.get("keywords")),
         topics=_coerce_list(post.get("topics")),
-        canonical_url=_coerce_string(post.get("canonical_url"))
-        or build_absolute_public_url(reverse("blog_post", kwargs={"slug": slug})),
         image_url=_absolute_public_url(post.get("image")),
         image_alt=_coerce_string(post.get("image_alt")),
-        robots=_coerce_string(post.get("robots")) or "index, follow",
+        robots=_coerce_string(post.get("robots")) or INDEX_ROBOTS_POLICY,
         reading_time_minutes=_reading_time_minutes(content),
         source_path=source_path,
     )
@@ -227,7 +229,7 @@ def iter_blog_post_validation_errors() -> list[BlogPostValidationError]:
 
 
 def blog_index_url() -> str:
-    return build_absolute_public_url(reverse("blog_posts"))
+    return build_canonical_url(reverse("blog_posts"))
 
 
 def blog_post_schema(post: BlogPost) -> dict:

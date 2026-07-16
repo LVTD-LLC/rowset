@@ -2,9 +2,8 @@
 {% block meta %}
     <title>{{ section.title }}</title>
     <meta name="description" content="{{ section.description }}" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical"
-          href="https://{{ request.get_host }}{{ section.url }}" />
+    <meta name="robots" content="{{ search_robots_policy }}" />
+    <link rel="canonical" href="{{ canonical_url }}" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="{{ section.title }}" />
     <meta property="og:url"

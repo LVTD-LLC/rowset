@@ -4,8 +4,8 @@
 {% block meta %}
 <title>Privacy Policy - Rowset</title>
 <meta name="description" content="Privacy Policy for Rowset - Learn how we collect, use, and protect your personal information." />
-<meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://{{ request.get_host }}{% url 'privacy_policy' %}" />
+<meta name="robots" content="{{ search_robots_policy }}" />
+<link rel="canonical" href="{{ canonical_url }}" />
 
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Privacy Policy - Rowset" />

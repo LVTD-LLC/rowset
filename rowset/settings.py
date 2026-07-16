@@ -238,6 +238,7 @@ INSTALLED_APPS = DEFAULT_APPS + THIRD_PARTY_APPS + CUSTOM_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.pages.middleware.SearchEngineIndexingMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -276,6 +277,7 @@ TEMPLATES = [
                 "apps.core.context_processors.available_social_providers",
                 "apps.pages.context_processors.referrer_banner",
                 "apps.pages.context_processors.social_metadata",
+                "apps.pages.context_processors.search_metadata",
             ],
         },
     },

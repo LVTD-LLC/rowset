@@ -37,6 +37,7 @@ deployment or release cut date.
 
 ### Security
 - Added idempotent production environment initialization and pre-start validation with generated strong secrets, owner-only files, injected-secret support, and rejection of unsafe development defaults.
+- Disabled search indexing automatically on self-hosted origins, kept the hosted Rowset origin indexable, and canonicalized public pages to `rowset.lvtd.dev`.
 
 ## 2026-07-15
 

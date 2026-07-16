@@ -46,6 +46,7 @@ from apps.pages.schema import (
     product_schema,
     software_application_schema,
 )
+from apps.pages.search import build_canonical_url, search_robots_policy
 from apps.pages.use_cases import get_use_case_pages
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
@@ -234,7 +235,7 @@ def changelog_view(request):
         "pages/changelog.html",
         {
             "changelog_html": render_changelog_html(),
-            "canonical_url": build_absolute_public_url(path),
+            "canonical_url": build_canonical_url(path),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),
@@ -280,6 +281,7 @@ def blog_post_view(request, slug):
         {
             "blog_post": blog_post,
             "canonical_url": blog_post.canonical_url,
+            "search_robots_policy": search_robots_policy(blog_post.robots),
             "schema_json": blog_json_ld(blog_post_schema(blog_post)),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
@@ -306,7 +308,7 @@ def comparison_page_view(request, slug):
         "pages/comparisons/comparison_page.html",
         {
             "comparison_page": comparison_page,
-            "canonical_url": build_absolute_public_url(path),
+            "canonical_url": build_canonical_url(path),
             "docs_base_template": (
                 "base_app.html" if request.user.is_authenticated else "base_landing.html"
             ),

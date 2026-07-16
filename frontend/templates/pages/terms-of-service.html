@@ -4,8 +4,8 @@
 {% block meta %}
 <title>Terms of Service - Rowset</title>
 <meta name="description" content="Terms of Service for Rowset - Read our terms and conditions for using our platform." />
-<meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://{{ request.get_host }}{% url 'terms_of_service' %}" />
+<meta name="robots" content="{{ search_robots_policy }}" />
+<link rel="canonical" href="{{ canonical_url }}" />
 
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Terms of Service - Rowset" />
