@@ -861,13 +861,12 @@ ReviewGate is present but temporarily disabled.
 - `backend`
 - `workers`
 
-On a server, fetch the repository files first so `docker-compose-prod.yml` and
-`.env.example` are present:
+On a server, fetch the repository files first so `docker-compose-prod.yml` and the production
+environment commands are present:
 
 ```bash
 git clone https://github.com/LVTD-LLC/rowset.git
 cd rowset
-cp .env.example .env
 ```
 
 Published Rowset images support `linux/amd64` and `linux/arm64`. Select a
@@ -879,25 +878,20 @@ export ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:<release-or-sha-tag>
 deployment/verify-image-platforms.sh "$ROWSET_IMAGE"
 ```
 
-The command rejects unsupported host architectures and image tags whose
-manifest does not contain the host platform. Set the same `ROWSET_IMAGE` value
-in `.env` so Compose starts exactly the image that passed preflight.
-
-Edit `.env` for production:
-
-- `ENVIRONMENT=prod`
-- `DEBUG=off`
-- the verified immutable `ROWSET_IMAGE`
-- `ROWSET_DOMAIN` set to a hostname whose DNS resolves to the server
-- strong `SECRET_KEY`
-- strong Postgres and Redis passwords
-- any optional provider keys you actually use
-
-Start:
+The command rejects unsupported host architectures and image tags whose manifest does not contain
+the host platform. Set the hostname, then initialize and validate the protected production file:
 
 ```bash
-export ROWSET_IMAGE="$(sed -n 's/^ROWSET_IMAGE=//p' .env)"
-docker compose -f docker-compose-prod.yml -p rowset up --detach --remove-orphans
+export ROWSET_DOMAIN=rowset.example.com
+deployment/self-host/init-env.sh
+deployment/self-host/validate-env.sh
+```
+
+The initializer uses `deployment/self-host/env.example`, generates independent strong secrets, and
+preserves them on reruns. Start through the validation gate:
+
+```bash
+deployment/self-host/start.sh
 ```
 
 The production stack mounts the named `media_data` and `private_media_data`
