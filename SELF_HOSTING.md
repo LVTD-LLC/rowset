@@ -23,6 +23,7 @@ You need:
 
 - a VPS or dedicated server running Linux on `amd64` or `arm64`
 - Docker Engine, Docker Buildx, and Docker Compose v2
+- `flock` and `runuser` from the standard Linux `util-linux` package
 - anonymous pull access to the public `ghcr.io/lvtd-llc/rowset` package
 - a domain or subdomain whose DNS you control
 - SSH access with permission to run Docker
@@ -288,28 +289,116 @@ The production stack uses these named volumes:
 - `caddy_data`
 - `caddy_config`
 
-Back up public and private local media with:
+Create one coordinated backup of PostgreSQL, public media, and private media with:
 
 ```bash
-deployment/self-host/backup-local-media.sh /var/backups/rowset
+sudo install -d -m 0700 -o "$USER" -g "$(id -gn)" /var/backups/rowset
+deployment/self-host/backup.sh /var/backups/rowset .env
 ```
 
-The script writes a permission-restricted archive and checksum. It does not back up PostgreSQL.
-Create a database dump separately:
+The command briefly pauses `backend` and `workers` so application writes cannot split the database
+and local file snapshots. It writes a mode `0700` versioned directory containing a PostgreSQL
+custom-format dump, separate `media` and `private_media` archives, format/image/PostgreSQL metadata,
+and SHA-256 checksums. Every file is mode `0600`, and the command validates checksums, archive paths,
+and the PostgreSQL dump before reporting success. Redis is intentionally excluded because Rowset
+does not use it as durable user storage.
+
+Verify an existing backup without changing application data:
 
 ```bash
-umask 077
-docker compose -f docker-compose-prod.yml -p rowset exec -T db \
-  sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' \
-  > "/var/backups/rowset/rowset-$(date -u +%Y%m%dT%H%M%SZ).sql"
+deployment/self-host/verify-backup.sh \
+  /var/backups/rowset/rowset-backup-<UTC timestamp> .env
 ```
 
-Copy database and media backups off the server. A backup stored only on the Rowset host does not
-protect against disk or server loss.
+`ROWSET_BACKUP_RETENTION_DAYS` defaults to seven days. Only complete, timestamped Rowset backup
+directories older than that window are pruned; unrelated files and incomplete backups are left for
+operator review.
+
+### Off-server S3-compatible backups
+
+A backup stored only on the Rowset host is **not disaster recovery**: host deletion, disk failure,
+or filesystem corruption can remove the application and every local copy together. Configure an
+already-created private S3-compatible bucket in `.env` to upload each verified backup automatically:
+
+```dotenv
+ROWSET_BACKUP_S3_ENDPOINT_URL=https://s3.example.invalid
+ROWSET_BACKUP_S3_BUCKET=rowset-backups
+ROWSET_BACKUP_S3_ACCESS_KEY_ID=replace-in-private-env
+ROWSET_BACKUP_S3_SECRET_ACCESS_KEY=replace-in-private-env
+ROWSET_BACKUP_S3_REGION=auto
+ROWSET_BACKUP_S3_PREFIX=production/rowset
+```
+
+The backup command uploads with server-side AES-256 encryption and applies the same retention window
+to objects under that prefix. Test the credentials and bucket with a manual backup before relying on
+the timer. Use a bucket policy that grants only list/read/write/delete access to the configured
+prefix, enable provider-side versioning or immutability when available, and alert on failed systemd
+units. The secret values remain only in the owner-only `.env` file.
 
 When `ROWSET_ASSET_S3_ENDPOINT_URL` is configured, private dataset image and audio assets live in
 the object store instead of `private_media_data`. Follow the provider's versioning and backup
-guidance as well.
+guidance for that source bucket as well; the coordinated local archive cannot copy objects that are
+not mounted in `private_media_data`.
+
+### Schedule and observe backups
+
+Install the checked-in systemd unit and timer from the Rowset checkout directory:
+
+```bash
+sudo install -m 0644 deployment/self-host/systemd/rowset-backup.service \
+  /etc/systemd/system/rowset-backup.service
+sudo install -m 0644 deployment/self-host/systemd/rowset-backup.timer \
+  /etc/systemd/system/rowset-backup.timer
+sudo sh -c 'cat > /etc/rowset-backup.conf' <<EOF
+ROWSET_ROOT=$(pwd)
+ROWSET_ENV_FILE=$(pwd)/.env
+ROWSET_BACKUP_DIR=/var/backups/rowset
+ROWSET_BACKUP_USER=$(id -un)
+EOF
+sudo chmod 0600 /etc/rowset-backup.conf
+sudo systemctl daemon-reload
+sudo systemctl enable --now rowset-backup.timer
+sudo systemctl start rowset-backup.service
+```
+
+The system unit drops privileges to `ROWSET_BACKUP_USER`, which must own `.env`, be able to use
+Docker, and be able to write `ROWSET_BACKUP_DIR`. The timer runs daily, catches up after downtime,
+and leaves failures visible in systemd and the journal. Check both the last result and the next
+scheduled run:
+
+```bash
+systemctl status rowset-backup.service rowset-backup.timer
+journalctl -u rowset-backup.service --since yesterday
+systemctl list-timers rowset-backup.timer
+```
+
+### Restore and drill recovery
+
+Restore only into the intended Rowset stack. The command verifies all artifacts first, stops web and
+worker processes, recreates the configured PostgreSQL database, replaces both local media trees, and
+then restarts the services that were running. It is deliberately destructive and requires an exact
+confirmation flag:
+
+```bash
+deployment/self-host/restore.sh --confirm-destroy-data \
+  /var/backups/rowset/rowset-backup-<UTC timestamp> .env
+```
+
+For an off-server backup, pass its exact `s3://<bucket>/<prefix>/rowset-backup-<timestamp>.tar.gz`
+URI. The configured bucket must match. Preserve a copy of the current `.env`; encrypted and signed
+application data may depend on the original `SECRET_KEY` even when the database and assets restore.
+
+Run the complete recovery proof after setup and periodically thereafter:
+
+```bash
+deployment/self-host/restore-drill.sh --confirm-destroy-isolated-stack .env
+```
+
+The drill creates a unique Compose project without public ports, seeds a user, two related datasets,
+rows, and public/private assets, backs them up, runs `down -v` against only that isolated project,
+restores into fresh volumes, and verifies user authentication, stable keys, relationships, and asset
+hashes. It always removes its temporary project and volumes. A successful backup without a successful
+restore drill is not sufficient recovery evidence.
 
 ## Updates
 

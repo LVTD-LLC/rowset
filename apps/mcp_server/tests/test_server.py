@@ -428,7 +428,15 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         assert "dataset_context" in capability_ids
         assert "image_assets" in capability_ids
         assert "audio_assets" in capability_ids
-        assert "get_dataset before row operations" in " ".join(payload["recommended_startup"])
+        assert {interface["id"] for interface in payload["interfaces"]} == {
+            "mcp",
+            "cli",
+            "rest",
+        }
+        startup = " ".join(payload["recommended_startup"])
+        assert "ask the user which interface to configure" in startup
+        assert "authenticated user-info request" in startup
+        assert "start the trial" in startup
         dataset_context = next(
             capability
             for capability in payload["capabilities"]

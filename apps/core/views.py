@@ -180,6 +180,11 @@ def build_agent_setup_prompt(
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
+    llms_txt_url = build_absolute_public_url(reverse("llms_txt"))
+    api_docs_url = build_absolute_public_url("/api/docs")
+    cli_docs_url = build_absolute_public_url("/docs/use-cli.md")
+    docs_url = build_absolute_public_url(reverse("docs_home"))
+    blog_url = build_absolute_public_url(reverse("blog_posts"))
     if profile is None:
         profile = get_or_create_profile_for_user(request.user)
     if mask_api_key:
@@ -193,9 +198,15 @@ def build_agent_setup_prompt(
             "",
             f"Rowset MCP URL: {mcp_url}",
             f"Rowset REST API base: {rest_api_base_url}",
+            f"Rowset CLI guide: {cli_docs_url}",
             f"Rowset API key: {api_key}",
             f"Rowset skill: {instructions_url}",
             f"Rowset skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
+            f"Rowset current docs index: {llms_txt_url}",
+            f"Rowset docs: {docs_url}",
+            f"Rowset blog: {blog_url}",
+            f"Rowset current API docs: {api_docs_url}",
+            f"Rowset current capabilities: {rest_api_base_url}capabilities",
             "",
             ROWSET_AGENT_SETUP_INSTRUCTIONS,
         ]
@@ -247,9 +258,7 @@ class HomeView(DatasetListView):
 
         profile = self.get_profile()
         context["dashboard_stats"] = context["dataset_stats"]
-        show_agent_setup_prompt = (
-            not profile.agent_setup_prompt_dismissed and profile.setup_completed_at is None
-        )
+        show_agent_setup_prompt = profile.setup_completed_at is None
         context["show_agent_setup_prompt"] = show_agent_setup_prompt
         if show_agent_setup_prompt:
             active_agent_api_key = profile.agent_api_keys.filter(revoked_at__isnull=True).first()
@@ -265,7 +274,6 @@ class HomeView(DatasetListView):
                     "agent_api_key_setup_prompt",
                     args=[active_agent_api_key.uuid],
                 )
-            context["agent_setup_prompt_dismiss_url"] = reverse("dismiss_agent_setup_prompt")
         return context
 
 
@@ -508,16 +516,6 @@ def revoke_agent_api_key_view(request, agent_api_key_uuid):
         created_query = urlencode({CREATED_AGENT_API_KEY_QUERY_PARAM: created_agent_api_key_uuid})
         settings_url = f"{settings_url}?{created_query}"
     return redirect(settings_url)
-
-
-@login_required
-@require_POST
-def dismiss_agent_setup_prompt(request):
-    profile = get_or_create_profile_for_user(request.user)
-    if not profile.agent_setup_prompt_dismissed:
-        profile.agent_setup_prompt_dismissed = True
-        profile.save(update_fields=["agent_setup_prompt_dismissed", "updated_at"])
-    return redirect("home")
 
 
 @login_required

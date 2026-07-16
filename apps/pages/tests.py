@@ -264,8 +264,9 @@ def test_llms_txt_is_a_documentation_only_content_index(client):
         assert f"[{page['title']}]({markdown_url})" in content
         assert page["description"] in content
 
-    assert "Use hosted MCP first" in content
-    assert "Use REST second" in content
+    assert "Rowset supports MCP, CLI, and REST API access" in content
+    assert "Recommend an interface, explain why, and ask the user" in content
+    assert "Use live capabilities and interface docs" in content
     assert "Do not use browser automation" in content
     assert "human-facing, read-only" in content
     assert "not authentication" in content
@@ -492,7 +493,7 @@ def test_dashboard_does_not_show_email_confirmation_reminder(client):
     assert response.status_code == 200
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
-    assert "Connect your AI agent to Rowset" in content
+    assert "Set up Rowset in two steps" in content
 
 
 def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
@@ -1768,4 +1769,4 @@ def test_dashboard_suppresses_verification_reminder_without_email_address(client
     assert response.status_code == 200
     content = response.content.decode()
     assert "Your email is not yet confirmed" not in content
-    assert "Connect your AI agent to Rowset" in content
+    assert "Set up Rowset in two steps" in content

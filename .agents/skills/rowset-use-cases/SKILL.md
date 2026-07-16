@@ -5,13 +5,14 @@ description: Use when a user asks how to use Rowset for a specific workflow, wan
 
 # Rowset Use Cases
 
-Use this skill to design practical Rowset dataset shapes. Prefer MCP for live
-work, use REST only when MCP cannot be configured or when a file export is
-required, and keep public previews for read-only human sharing.
+Use this skill to design practical Rowset dataset shapes through the MCP, CLI,
+or REST interface selected by the user. Treat the patterns below as examples,
+verify them against the live capability guide and current interface docs, and
+keep public previews for explicitly requested read-only human sharing.
 
 Before creating or changing datasets:
 
-1. Call `get_rowset_capabilities` if MCP is connected.
+1. Load current capabilities through the selected interface.
 2. Search existing datasets and projects before creating new ones.
 3. Pick an explicit index column, or let Rowset generate `rowset_id` when no
    reliable business key exists.
