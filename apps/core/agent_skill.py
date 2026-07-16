@@ -35,7 +35,7 @@ ROWSET_AGENT_SETUP_INSTRUCTIONS_TEMPLATE = (
     "the final setup step: use get_user_info over MCP, rowset user info through "
     "the CLI, or GET <Rowset REST API base>/user with Authorization: Bearer "
     "<ROWSET_API_KEY>. This verifies the connection, completes onboarding, and "
-    "starts the trial. After verification succeeds, use only context you already "
+    "starts the trial. After verification succeeds, use context you already "
     "have from working with the user, plus read-only discovery of their existing "
     "Rowset projects and datasets, to suggest two to four useful project, section, "
     "and dataset structures tailored to their actual work. Explain briefly why each "

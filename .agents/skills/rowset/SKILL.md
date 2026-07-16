@@ -89,7 +89,7 @@ visible prefix.
 After verification, report which interface is connected without exposing the
 key. Then help the user turn the connection into a useful first workflow:
 
-1. Use only context already available from working with the user, plus read-only
+1. Use context already available from working with the user, plus read-only
    discovery of their existing Rowset projects and datasets. Do not search
    unrelated private sources or invent facts about their work.
 2. Suggest two to four tailored project, section, and dataset structures. Briefly
