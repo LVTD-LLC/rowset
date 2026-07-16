@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('datasets', '0022_datasetmutation_dataset_mut_time_idx'),
+        ("datasets", "0022_datasetmutation_dataset_mut_time_idx"),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name='datasetmutation',
-            name='dataset_mut_time_idx',
+            model_name="datasetmutation",
+            name="dataset_mut_time_idx",
         ),
     ]
