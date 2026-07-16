@@ -28,6 +28,7 @@ deployment or release cut date.
 - Added a decision guide for sharing AI-agent data through scoped private access, authenticated exports, or read-only public previews.
 
 ### Changed
+- Reworked the internal admin panel into a product-health dashboard with period comparisons, activation funnel, growth and activity trends, attention signals, operational inventory, and a unified recent-activity feed.
 - Redesigned first-agent onboarding as a required two-step create-key and copy-prompt wizard that matches the app shell.
 - Made the copied agent setup prompt and dedicated `rowset-setup` skill transport-neutral across MCP, CLI, and REST, while keeping the core `rowset` skill focused on ongoing platform interaction.
 - Added direct docs and blog discovery links to the agent prompt and ensured Step 2 copies the protected full-key prompt while keeping its on-screen preview masked.

@@ -11,10 +11,12 @@ from django.utils import timezone
 from django.views.generic import TemplateView
 
 from apps.core import agent_skill
-from apps.core.models import Profile
+from apps.core.admin_dashboard import build_admin_dashboard_context
+from apps.core.models import AgentApiKey, Feedback, Profile
 from apps.core.services import create_agent_api_key, get_or_create_profile_for_user
 from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_customer, server_error
-from apps.datasets.models import Dataset, Project
+from apps.datasets.choices import DatasetMutationType
+from apps.datasets.models import Dataset, DatasetMutation, Project
 from rowset.utils import build_absolute_public_url
 
 
@@ -749,8 +751,243 @@ class TestHomeView:
         assert response.context["profile_count"] >= 1
         assert "Total datasets" in content
         assert "Total projects" in content
-        assert "Total profiles" in content
-        assert "Latest datasets" in content
-        assert "Latest projects" in content
-        assert "People" in content
+        assert "Rows stored" in content
+        assert "Public previews" in content
         assert "Operations" in content
+
+    def test_admin_panel_summarizes_product_health_growth_and_operations(
+        self,
+        client,
+        django_user_model,
+    ):
+        now = timezone.now()
+        superuser = django_user_model.objects.create_superuser(
+            username="admin-health",
+            email="admin-health@example.com",
+            password="strong-test-pass-123",
+        )
+        activated_user = django_user_model.objects.create_user(
+            username="activated-user",
+            email="activated@example.com",
+            password="strong-test-pass-123",
+        )
+        stalled_user = django_user_model.objects.create_user(
+            username="stalled-user",
+            email="stalled@example.com",
+            password="strong-test-pass-123",
+        )
+        old_user = django_user_model.objects.create_user(
+            username="old-user",
+            email="old@example.com",
+            password="strong-test-pass-123",
+        )
+        django_user_model.objects.filter(pk=activated_user.pk).update(
+            date_joined=now - timezone.timedelta(days=2)
+        )
+        django_user_model.objects.filter(pk=stalled_user.pk).update(
+            date_joined=now - timezone.timedelta(days=3)
+        )
+        django_user_model.objects.filter(pk=old_user.pk).update(
+            date_joined=now - timezone.timedelta(days=20)
+        )
+        activated_user.profile.setup_completed_at = now - timezone.timedelta(days=1)
+        activated_user.profile.save(update_fields=["setup_completed_at", "updated_at"])
+
+        active_key = AgentApiKey.objects.create(
+            profile=activated_user.profile,
+            name="Active agent",
+            key_prefix="rsk_active",
+            token_hash="a" * 64,
+            last_used_at=now - timezone.timedelta(hours=2),
+        )
+        AgentApiKey.objects.create(
+            profile=stalled_user.profile,
+            name="Unused agent",
+            key_prefix="rsk_unused",
+            token_hash="b" * 64,
+        )
+        dataset = Dataset.objects.create(
+            profile=activated_user.profile,
+            created_by_agent_api_key=active_key,
+            name="Agent research",
+            headers=["topic"],
+            row_count=14,
+            public_enabled=True,
+        )
+        mutation = DatasetMutation.objects.create(
+            dataset=dataset,
+            profile=activated_user.profile,
+            agent_api_key=active_key,
+            actor_label=active_key.name,
+            mutation_type=DatasetMutationType.ROW_CREATED,
+            summary="Created 14 rows",
+        )
+        DatasetMutation.objects.filter(pk=mutation.pk).update(
+            created_at=now - timezone.timedelta(hours=1)
+        )
+        feedback = Feedback.objects.create(
+            profile=activated_user.profile,
+            feedback="Please add clearer usage reporting.",
+            page="/home",
+        )
+        Feedback.objects.filter(pk=feedback.pk).update(created_at=now - timezone.timedelta(hours=3))
+        client.force_login(superuser)
+
+        response = client.get(reverse("admin_panel"))
+
+        assert response.status_code == 200
+        assert response.context["period_days"] == 7
+        assert response.context["product_health"] == {
+            "new_users": 2,
+            "setup_completed": 1,
+            "active_agents": 1,
+            "mutations": 1,
+        }
+        assert response.context["activation_funnel"][0]["count"] == 3
+        assert response.context["activation_funnel"][-1]["count"] == 1
+        assert response.context["operations"]["rows_stored"] == 14
+        assert response.context["operations"]["public_previews"] == 1
+        assert response.context["attention"]["stalled_onboarding"] == 1
+        assert response.context["attention"]["unused_agent_keys"] == 1
+        assert response.context["attention"]["new_feedback"] == 1
+        assert response.context["activity_feed"][0]["kind"] == "mutation"
+        content = response.content.decode()
+        assert "Product health" in content
+        assert "Activation funnel" in content
+        assert "Growth" in content
+        assert "Operations" in content
+        assert "Needs attention" in content
+        assert "Recent activity" in content
+        assert 'hx-sync="closest #admin-dashboard:replace"' in content
+        assert "New users:" in content
+        assert 'tabindex="0"' in content
+
+    def test_admin_panel_counts_trials_from_trial_dates(self, client, django_user_model):
+        now = timezone.now()
+        superuser = django_user_model.objects.create_superuser(
+            username="admin-trials",
+            email="admin-trials@example.com",
+            password="strong-test-pass-123",
+        )
+        trial_user = django_user_model.objects.create_user(
+            username="active-trial-user",
+            email="active-trial@example.com",
+            password="strong-test-pass-123",
+        )
+        trial_user.profile.trial_started_at = now - timezone.timedelta(days=2)
+        trial_user.profile.trial_ends_at = now + timezone.timedelta(days=2)
+        trial_user.profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
+        client.force_login(superuser)
+
+        response = client.get(reverse("admin_panel"))
+
+        assert response.context["growth"]["active_trials"] == 1
+        assert response.context["attention"]["trials_expiring"] == 1
+
+    def test_admin_dashboard_activity_feed_keeps_latest_source_dominant_events(
+        self, django_user_model
+    ):
+        user = django_user_model.objects.create_user(
+            username="mutation-heavy-user",
+            email="mutation-heavy@example.com",
+            password="strong-test-pass-123",
+        )
+        dataset = Dataset.objects.create(profile=user.profile, name="Busy dataset", headers=["id"])
+        for number in range(12):
+            DatasetMutation.objects.create(
+                dataset=dataset,
+                profile=user.profile,
+                mutation_type=DatasetMutationType.ROW_CREATED,
+                summary=f"Mutation {number}",
+            )
+
+        context = build_admin_dashboard_context(7)
+
+        assert len(context["activity_feed"]) == 12
+        assert {item["title"] for item in context["activity_feed"]} == {
+            f"Mutation {number}" for number in range(12)
+        }
+
+    def test_admin_dashboard_activity_feed_orders_sources_before_slicing(self, django_user_model):
+        now = timezone.now()
+        for number in range(13):
+            item = Feedback.objects.create(feedback=f"Feedback {number}", page="/admin-panel")
+            Feedback.objects.filter(pk=item.pk).update(
+                created_at=now + timezone.timedelta(minutes=number)
+            )
+            user = django_user_model.objects.create_user(
+                username=f"feed-user-{number}",
+                email=f"feed-user-{number}@example.com",
+                password="strong-test-pass-123",
+            )
+            django_user_model.objects.filter(pk=user.pk).update(
+                date_joined=now + timezone.timedelta(minutes=number)
+            )
+
+        context = build_admin_dashboard_context(7, now=now + timezone.timedelta(hours=1))
+        activity_titles = {item["title"] for item in context["activity_feed"]}
+        activity_details = {item["detail"] for item in context["activity_feed"]}
+
+        assert "Feedback 12" in activity_titles
+        assert "Feedback 0" not in activity_titles
+        assert "feed-user-12@example.com" in activity_details
+        assert "feed-user-0@example.com" not in activity_details
+
+    def test_admin_dashboard_uses_calendar_day_boundaries(self, django_user_model):
+        now = timezone.localtime(timezone.now()).replace(hour=18, minute=0, second=0, microsecond=0)
+        first_day = now.replace(hour=0) - timezone.timedelta(days=6)
+        user = django_user_model.objects.create_user(
+            username="boundary-user",
+            email="boundary@example.com",
+            password="strong-test-pass-123",
+        )
+        django_user_model.objects.filter(pk=user.pk).update(
+            date_joined=first_day + timezone.timedelta(hours=10)
+        )
+
+        context = build_admin_dashboard_context(7, now=now)
+
+        assert context["product_health"]["new_users"] == 1
+        assert sum(day["signups"] for day in context["growth_series"]) == 1
+
+    def test_admin_panel_supports_a_thirty_day_htmx_range(self, client, django_user_model):
+        now = timezone.now()
+        superuser = django_user_model.objects.create_superuser(
+            username="admin-range",
+            email="admin-range@example.com",
+            password="strong-test-pass-123",
+        )
+        recent_user = django_user_model.objects.create_user(
+            username="recent-range-user",
+            email="recent-range@example.com",
+            password="strong-test-pass-123",
+        )
+        django_user_model.objects.filter(pk=recent_user.pk).update(
+            date_joined=now - timezone.timedelta(days=20)
+        )
+        client.force_login(superuser)
+
+        response = client.get(
+            reverse("admin_panel"),
+            {"period": "30"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 200
+        assert response.context["period_days"] == 30
+        assert response.context["product_health"]["new_users"] == 1
+        assert b'id="admin-dashboard"' in response.content
+        assert b"<html" not in response.content
+
+    def test_admin_panel_defaults_invalid_range_to_seven_days(self, client, django_user_model):
+        superuser = django_user_model.objects.create_superuser(
+            username="admin-invalid-range",
+            email="admin-invalid-range@example.com",
+            password="strong-test-pass-123",
+        )
+        client.force_login(superuser)
+
+        response = client.get(reverse("admin_panel"), {"period": "365"})
+
+        assert response.status_code == 200
+        assert response.context["period_days"] == 7

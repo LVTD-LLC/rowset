@@ -15,7 +15,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q, Sum
 from django.http import (
     HttpRequest,
     HttpResponse,
@@ -33,6 +32,7 @@ from django.views.defaults import server_error as default_server_error
 from django.views.generic import TemplateView, UpdateView
 from django_htmx.http import HttpResponseClientRedirect
 
+from apps.core.admin_dashboard import ADMIN_DASHBOARD_PERIODS, build_admin_dashboard_context
 from apps.core.agent_skill import (
     ROWSET_AGENT_SETUP_INSTRUCTIONS,
     ROWSET_SKILL_INSTALL_COMMAND,
@@ -718,6 +718,11 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
     template_name = "pages/admin-panel.html"
     login_url = "account_login"
 
+    def get_template_names(self):
+        if self.request.htmx:
+            return ["components/admin-dashboard.html"]
+        return super().get_template_names()
+
     def test_func(self):
         return self.request.user.is_superuser
 
@@ -726,83 +731,14 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         return redirect("home")
 
     def get_context_data(self, **kwargs):
-        from datetime import timedelta
-
-        from django.contrib.auth.models import User
-        from django.utils import timezone
-
-        from apps.core.models import Feedback, Profile
-        from apps.datasets.models import Dataset, Project
-
         context = super().get_context_data(**kwargs)
-
-        now = timezone.now()
-        week_ago = now - timedelta(days=7)
-        month_ago = now - timedelta(days=30)
-        visible_datasets = Dataset.objects.filter(archived_at__isnull=True)
-
-        total_users = User.objects.count()
-        profile_count = Profile.objects.count()
-        total_feedback = Feedback.objects.count()
-        total_datasets = visible_datasets.count()
-        total_projects = Project.objects.count()
-        dataset_summary = visible_datasets.aggregate(
-            total_rows=Sum("row_count"),
-            public_preview_count=Count("id", filter=Q(public_enabled=True)),
-        )
-
-        new_users_week = User.objects.filter(date_joined__gte=week_ago).count()
-        new_users_month = User.objects.filter(date_joined__gte=month_ago).count()
-        feedback_week = Feedback.objects.filter(created_at__gte=week_ago).count()
-        datasets_week = visible_datasets.filter(created_at__gte=week_ago).count()
-        datasets_month = visible_datasets.filter(created_at__gte=month_ago).count()
-        projects_week = Project.objects.filter(created_at__gte=week_ago).count()
-        projects_month = Project.objects.filter(created_at__gte=month_ago).count()
-
-        recent_users = User.objects.select_related("profile").order_by("-date_joined")[:10]
-        recent_feedback = Feedback.objects.select_related("profile__user").order_by("-created_at")[
-            :10
-        ]
-        recent_datasets = visible_datasets.select_related("profile__user", "project").order_by(
-            "-created_at"
-        )[:10]
-        recent_projects = (
-            Project.objects.select_related("profile__user")
-            .annotate(
-                dataset_count=Count(
-                    "datasets",
-                    filter=Q(datasets__archived_at__isnull=True),
-                )
-            )
-            .order_by("-created_at")[:10]
-        )
-
-        # Calculate average users per day for last 30 days
-        avg_users_per_day = new_users_month / 30 if new_users_month > 0 else 0
-
-        context.update(
-            {
-                "total_users": total_users,
-                "profile_count": profile_count,
-                "total_feedback": total_feedback,
-                "total_datasets": total_datasets,
-                "total_projects": total_projects,
-                "total_rows": dataset_summary["total_rows"] or 0,
-                "public_preview_count": dataset_summary["public_preview_count"] or 0,
-                "new_users_week": new_users_week,
-                "new_users_month": new_users_month,
-                "feedback_week": feedback_week,
-                "datasets_week": datasets_week,
-                "datasets_month": datasets_month,
-                "projects_week": projects_week,
-                "projects_month": projects_month,
-                "recent_users": recent_users,
-                "recent_feedback": recent_feedback,
-                "recent_datasets": recent_datasets,
-                "recent_projects": recent_projects,
-                "avg_users_per_day": avg_users_per_day,
-            }
-        )
+        try:
+            period_days = int(self.request.GET.get("period", ADMIN_DASHBOARD_PERIODS[0]))
+        except TypeError:
+            period_days = ADMIN_DASHBOARD_PERIODS[0]
+        except ValueError:
+            period_days = ADMIN_DASHBOARD_PERIODS[0]
+        context.update(build_admin_dashboard_context(period_days))
 
         logger.info(
             "Admin panel accessed",
