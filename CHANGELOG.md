@@ -19,6 +19,7 @@ deployment or release cut date.
 ## 2026-07-16
 
 ### Added
+- Added deterministic, read-only self-host preflight and doctor commands with stable machine-readable checks for host requirements, release access, service health, HTTPS, migrations, authentication boundaries, and optional runtime capabilities.
 - Added coherent immutable self-host releases that publish a matching image and checksum-protected deployment bundle, pin installer reruns to the recorded version, and report the installed version, commit, image, and digest.
 - Added coordinated PostgreSQL and local-media backup/restore commands with versioned manifests, integrity checks, retention, optional S3-compatible off-server copies, a daily systemd timer, and an isolated destructive restore drill that verifies users, datasets, relationships, and assets.
 - Added an authenticated post-deployment smoke command that verifies REST, MCP, dataset writes and reads, and worker execution while removing temporary users, keys, datasets, and task results after success or failure.
@@ -37,6 +38,7 @@ deployment or release cut date.
 ### Security
 - Added idempotent production environment initialization and pre-start validation with generated strong secrets, owner-only files, injected-secret support, and rejection of unsafe development defaults.
 - Removed query-string and alternate-header API-key authentication so private REST and hosted MCP requests accept credentials only as bearer tokens.
+- Disabled search indexing automatically on self-hosted origins, kept the hosted Rowset origin indexable, and canonicalized public pages to `rowset.lvtd.dev`.
 
 ## 2026-07-15
 

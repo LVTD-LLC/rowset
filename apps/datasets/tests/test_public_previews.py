@@ -334,6 +334,7 @@ def test_public_preview_settings_helper_validates_blank_password_before_mutating
     assert dataset.mutations.count() == 0
 
 
+@override_settings(SITE_URL="https://rowset.lvtd.dev")
 def test_public_dataset_view_paginates_rows(client, profile):
     dataset = create_ready_dataset(profile)
     dataset.public_enabled = True

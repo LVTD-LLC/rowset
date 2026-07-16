@@ -273,6 +273,8 @@ def test_self_host_release_builder_packages_matching_manifest_and_support_files(
     assert installer.is_file()
     assert installer.stat().st_mode & 0o111
     assert "@ROWSET_RELEASE_VERSION@" not in installer.read_text()
+    assert "preflight.sh" in installer.read_text()
+    assert "doctor.sh until its summary passes" in installer.read_text()
 
     with tarfile.open(archive) as bundle:
         names = set(bundle.getnames())
@@ -285,6 +287,9 @@ def test_self_host_release_builder_packages_matching_manifest_and_support_files(
         "./SELF_HOSTING.md",
         "./docker-compose-prod.yml",
         "./deployment/self-host/init-env.sh",
+        "./deployment/self-host/preflight.sh",
+        "./deployment/self-host/doctor.sh",
+        "./deployment/self-host/diagnostics.py",
         "./deployment/self-host/version.sh",
         "./deployment/verify-image-platforms.sh",
     } <= names

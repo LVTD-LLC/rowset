@@ -2,6 +2,7 @@ from django.db import DatabaseError
 from django.templatetags.static import static
 
 from apps.pages.models import ReferrerBanner
+from apps.pages.search import build_canonical_url, search_robots_policy
 from rowset.utils import build_absolute_public_url
 
 
@@ -10,6 +11,13 @@ def social_metadata(request):
         "rowset_social_image_url": build_absolute_public_url(
             static("vendors/images/rowset-social-card.png")
         )
+    }
+
+
+def search_metadata(request):
+    return {
+        "canonical_url": build_canonical_url(request.path),
+        "search_robots_policy": search_robots_policy(),
     }
 
 

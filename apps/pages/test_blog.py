@@ -35,7 +35,8 @@ def test_blog_index_renders_empty_state(client, blog_posts_dir):
     assert response.status_code == 200
     content = response.content.decode()
     assert "No blog posts are available yet." in content
-    assert 'href="https://rowset.example/blog"' in content
+    assert 'href="https://rowset.lvtd.dev/blog"' in content
+    assert '<meta name="robots" content="noindex, nofollow, noarchive"' in content
 
 
 def test_ai_reader_menu_is_absent_from_blog_index(client, blog_posts_dir):
@@ -139,6 +140,42 @@ def test_authenticated_blog_pages_use_app_shell(client, blog_posts_dir):
         assert "Search everything" in content
         assert f'action="{reverse("account_logout")}"' in content
         assert "data-command-palette" in content
+        assert '<meta name="robots" content="noindex, nofollow, noarchive"' in content
+        assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+
+
+def test_authenticated_blog_page_on_hosted_origin_remains_indexable(
+    client, blog_posts_dir, settings
+):
+    settings.SITE_URL = "https://rowset.lvtd.dev"
+    write_post(
+        blog_posts_dir,
+        "agent-managed-datasets",
+        {
+            "title": "Agent-managed datasets",
+            "description": "How AI agents keep Rowset datasets current.",
+            "published_at": "2026-07-03",
+        },
+        "Agents need stable APIs for rows.",
+    )
+    user = get_user_model().objects.create_user(
+        username="hosted-blog-auth",
+        email="hosted-blog-auth@example.com",
+        password="strong-test-pass-123",
+    )
+    client.force_login(user)
+
+    response = client.get(reverse("blog_post", kwargs={"slug": "agent-managed-datasets"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert 'data-app-shell="sidebar"' in content
+    assert '<meta name="robots" content="index, follow"' in content
+    assert (
+        '<link rel="canonical" href="https://rowset.lvtd.dev/blog/agent-managed-datasets"'
+        in content
+    )
+    assert "X-Robots-Tag" not in response.headers
 
 
 def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_dir):
@@ -169,9 +206,10 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
         in content
     )
     assert (
-        '<link rel="canonical" href="https://rowset.example/blog/agent-managed-datasets" />'
+        '<link rel="canonical" href="https://rowset.lvtd.dev/blog/agent-managed-datasets" />'
         in content
     )
+    assert '<meta name="robots" content="noindex, nofollow, noarchive" />' in content
     assert "<h2>Why agents need it</h2>" in content
     assert "<strong>stable APIs</strong>" in content
     assert re.search(
@@ -355,7 +393,7 @@ def test_blog_post_schema_uses_checked_in_markdown_content(blog_posts_dir):
     schema = json.loads(post_schema_json(post))
 
     assert schema["headline"] == "Schema post"
-    assert schema["url"] == "https://rowset.example/blog/schema-post"
+    assert schema["url"] == "https://rowset.lvtd.dev/blog/schema-post"
     assert schema["articleBody"] == "The article body comes from markdown."
 
 
