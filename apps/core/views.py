@@ -734,7 +734,7 @@ class AdminPanelView(UserPassesTestMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         try:
             period_days = int(self.request.GET.get("period", ADMIN_DASHBOARD_PERIODS[0]))
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             period_days = ADMIN_DASHBOARD_PERIODS[0]
         context.update(build_admin_dashboard_context(period_days))
 
