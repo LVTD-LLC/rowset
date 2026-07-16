@@ -14,13 +14,16 @@ interface to configure.
 
 ## Recommended startup order
 
-1. Read the setup skill, `llms.txt`, and current capability resources.
+1. Read `rowset-setup`, `llms.txt`, and current capability resources.
 2. Compare MCP, CLI, and REST, recommend one, and ask the user which to configure.
 3. Load the public `/api/capabilities` response and current interface docs.
 4. Configure only the approved interface and keep the API key in a secret store.
 5. Make authenticated user-info the first authenticated action and final setup step so the connection is
    verified, onboarding completes, and the trial starts.
-6. Ask what the user wants to do next before creating or changing data.
+6. Use existing user context and read-only Rowset discovery to suggest two to four
+   useful project, section, and dataset structures, then ask which one to create.
+7. If the agent runtime supports scheduled tasks, separately offer an opt-in
+   daily automation for Rowset tips grounded in current Rowset resources.
 
 ## Capability guide
 
@@ -58,9 +61,10 @@ are intentionally omitted.
 
 ## Installable skills
 
-The repo skill package includes three skills:
+The repo skill package includes four skills:
 
-- `rowset` for setup, MCP authentication, and safe default workflows
+- `rowset-setup` for interface choice, authentication, and first-run activation
+- `rowset` for ongoing platform interaction and safety rules
 - `rowset-features` for explaining supported capabilities
 - `rowset-use-cases` for choosing dataset shapes for common workflows
 
@@ -74,6 +78,7 @@ The app serves the skill markdown at:
 
 ```text
 {{ site_url }}/SKILL.md
+{{ setup_skill_url }}
 {{ features_skill_url }}
 {{ use_cases_skill_url }}
 ```

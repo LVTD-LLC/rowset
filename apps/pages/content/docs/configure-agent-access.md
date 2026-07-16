@@ -8,7 +8,7 @@ keywords: Rowset, agents, MCP, API key, SKILL.md
 
 Rowset gives signed-in users a short copy/paste setup prompt for trusted AI
 agents. It includes the current instance's MCP URL, REST API base URL, CLI
-guide, live documentation and capability resources, `SKILL.md` instructions,
+guide, live documentation and capability resources, setup skill instructions,
 and an API key for bearer-token auth. On a self-hosted deployment, these URLs
 are generated from that instance's configured `SITE_URL`.
 
@@ -37,11 +37,11 @@ the agent's job:
 
 ## Installable skills
 
-The canonical setup skill lives in the Rowset repo. The app also serves that
-same checked-in file as markdown at:
+The canonical `rowset-setup` skill lives in the Rowset repo. The app serves that
+checked-in file as markdown at:
 
 ```text
-{{ site_url }}/SKILL.md
+{{ setup_skill_url }}
 ```
 
 Agents that support the skills CLI can install it with:
@@ -50,19 +50,20 @@ Agents that support the skills CLI can install it with:
 {{ skill_install_command }}
 ```
 
-The source text is available at:
+The setup skill source text is available at:
 
 ```text
-{{ skill_source_url }}
+{{ setup_skill_source_url }}
 ```
 
-The skill gives agents durable, interface-neutral setup instructions for MCP,
-CLI, and REST. It tells agents to recommend an interface, ask the user before
-configuring it, and discover current capabilities and docs instead of
-hardcoding an agent-specific command or endpoint list.
+The setup skill gives agents durable, interface-neutral instructions for MCP,
+CLI, and REST. It covers interface selection, credential handling,
+authentication verification, first-workflow suggestions, and the optional
+agent-account tips automation.
 
-The repo also includes two companion skills:
+The repo also includes three companion skills:
 
+- `rowset` for ongoing platform interaction and safety rules
 - `rowset-features` for explaining the current Rowset feature surface
 - `rowset-use-cases` for concrete dataset patterns such as CRMs, task boards,
   feedback trackers, content pipelines, catalogs, and QA trackers
@@ -70,6 +71,7 @@ The repo also includes two companion skills:
 The app serves those skill files at:
 
 ```text
+{{ site_url }}/SKILL.md
 {{ features_skill_url }}
 {{ use_cases_skill_url }}
 ```
@@ -95,6 +97,13 @@ key from its private runtime environment.
 Make authenticated user-info the final setup action: `get_user_info` over MCP,
 `rowset user info` through the CLI, or `GET /api/user` through REST. That request
 verifies the connection, completes onboarding, and starts the trial.
+
+After verification, the setup prompt asks the agent to use context it already
+has about the user's work and read-only Rowset discovery to propose a few useful
+project, section, and dataset structures. The agent asks which option to create
+before changing data. In runtimes with scheduled tasks, it also offers a
+separate opt-in daily Rowset tips automation; that automation runs in the agent
+account, not in Rowset.
 
 ## Recommended agent behavior
 

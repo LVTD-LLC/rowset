@@ -19,6 +19,11 @@ urlpatterns = [
         name="agent_instructions_rowset_mcp",
     ),
     path(
+        "skills/rowset-setup/SKILL.md",
+        views.agent_instructions_rowset_setup,
+        name="agent_instructions_rowset_setup",
+    ),
+    path(
         "skills/rowset-features/SKILL.md",
         views.agent_instructions_rowset_features,
         name="agent_instructions_rowset_features",

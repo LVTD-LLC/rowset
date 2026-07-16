@@ -13,6 +13,7 @@ from django.urls import reverse
 from apps.core.agent_skill import (
     ROWSET_AGENT_SETUP_INSTRUCTIONS,
     ROWSET_FEATURES_SKILL_SOURCE_URL,
+    ROWSET_SETUP_SKILL_SOURCE_URL,
     ROWSET_SKILL_INSTALL_COMMAND,
     ROWSET_SKILL_SOURCE_URL,
     ROWSET_USE_CASES_SKILL_SOURCE_URL,
@@ -227,11 +228,13 @@ def build_content_agent_setup_prompt():
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
+    setup_instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_setup"))
     llms_txt_url = build_absolute_public_url(reverse("llms_txt"))
     api_docs_url = build_absolute_public_url("/api/docs")
     cli_docs_url = build_absolute_public_url("/docs/use-cli.md")
     docs_url = build_absolute_public_url(reverse("docs_home"))
     blog_url = build_absolute_public_url(reverse("blog_posts"))
+    trial_rewards_url = build_absolute_public_url(reverse("trial_rewards"))
 
     return "\n".join(
         [
@@ -241,6 +244,7 @@ def build_content_agent_setup_prompt():
             f"Rowset REST API base: {rest_api_base_url}",
             f"Rowset CLI guide: {cli_docs_url}",
             f"Rowset API key: {AGENT_API_KEY_MASK}",
+            f"Rowset setup skill: {setup_instructions_url}",
             f"Rowset skill: {instructions_url}",
             f"Rowset skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
             f"Rowset current docs index: {llms_txt_url}",
@@ -248,6 +252,7 @@ def build_content_agent_setup_prompt():
             f"Rowset blog: {blog_url}",
             f"Rowset current API docs: {api_docs_url}",
             f"Rowset current capabilities: {rest_api_base_url}capabilities",
+            f"Rowset trial rewards: {trial_rewards_url}",
             "",
             ROWSET_AGENT_SETUP_INSTRUCTIONS,
         ]
@@ -269,6 +274,8 @@ def get_content_template_context():
         "mcp_url": build_absolute_public_url("/mcp/"),
         "settings_url": build_absolute_public_url(reverse("settings")),
         "skill_install_command": ROWSET_SKILL_INSTALL_COMMAND,
+        "setup_skill_source_url": ROWSET_SETUP_SKILL_SOURCE_URL,
+        "setup_skill_url": build_absolute_public_url(reverse("agent_instructions_rowset_setup")),
         "skill_source_url": ROWSET_SKILL_SOURCE_URL,
         "signup_url": build_absolute_public_url(reverse("account_signup")),
         "site_url": build_absolute_public_url("/").rstrip("/"),

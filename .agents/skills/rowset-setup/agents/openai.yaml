@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rowset Setup"
+  short_description: "Connect an agent to Rowset and complete the first-run activation handoff."
+  default_prompt: "Use $rowset-setup to configure Rowset access, verify authentication, and complete the activation handoff."

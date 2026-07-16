@@ -247,6 +247,7 @@ def test_agent_api_key_setup_prompt_endpoint_returns_selected_key_prompt(auth_cl
     assert "Rowset REST API base: https://rowset.example/api/" in prompt
     assert f"Rowset API key: {credential.raw_key}" in prompt
     assert f"Rowset API key: {profile.key}" not in prompt
+    assert "Rowset setup skill: https://rowset.example/skills/rowset-setup/SKILL.md" in prompt
     assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
 
 

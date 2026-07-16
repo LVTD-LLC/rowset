@@ -25,7 +25,7 @@ from apps.core.capabilities import RowsetUseCase
 from apps.pages import use_cases as page_use_cases
 from apps.pages.checks import check_use_case_page_registry
 from apps.pages.comparisons import get_comparison_page
-from apps.pages.content import get_content_section
+from apps.pages.content import build_content_agent_setup_prompt, get_content_section
 from apps.pages.public_markdown import markdown_path_for
 from apps.pages.schema import (
     article_schema,
@@ -36,6 +36,16 @@ from apps.pages.schema import (
 )
 
 pytestmark = pytest.mark.django_db
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_content_agent_setup_prompt_includes_setup_skill_and_trial_rewards_url():
+    prompt = build_content_agent_setup_prompt()
+
+    assert "Rowset setup skill: https://rowset.example/skills/rowset-setup/SKILL.md" in prompt
+    assert "Rowset trial rewards: https://rowset.example/trial-rewards" in prompt
+    assert "post-verification activation handoff" in prompt
+    assert "{trial_rewards_url}" not in prompt
 
 
 PUBLIC_CONTENT_PATH_PREFIXES = ("/blog/", "/docs/", "/use-cases/", "/vs/")
@@ -274,6 +284,7 @@ def test_llms_txt_is_a_documentation_only_content_index(client):
     assert "https://rowset.example/api" in content
     assert "https://rowset.example/api/docs" in content
     assert "https://rowset.example/SKILL.md" in content
+    assert "https://rowset.example/skills/rowset-setup/SKILL.md" in content
     assert "https://rowset.example/skills/rowset-features/SKILL.md" in content
     assert "https://rowset.example/skills/rowset-use-cases/SKILL.md" in content
     assert "## Use cases" not in content
