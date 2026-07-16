@@ -28,21 +28,15 @@ to a database or use Rowset as a private dataset layer, read
 
 ## Authentication
 
-Prefer the `Authorization` header for private API requests:
+Send the API key as a bearer token for every private API request:
 
 ```http
 Authorization: Bearer {{ api_key_placeholder }}
 ```
 
-Query-string API keys are supported only for clients that cannot send headers:
-
-```text
-?api_key={{ api_key_placeholder }}
-```
-
-`X-API-Key: {{ api_key_placeholder }}` is also accepted for clients that support custom headers but not bearer tokens.
-
-Keep API keys private. Copy your real key from Settings or the dashboard agent prompt only when you are configuring a trusted client.
+Query-string keys and alternate API-key headers are rejected. Keep API keys
+private. Copy your real key from Settings or the dashboard agent prompt only
+when you are configuring a trusted client.
 
 ## Base URL
 

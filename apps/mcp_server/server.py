@@ -4,7 +4,7 @@ from typing import Annotated, Any
 from django.db import IntegrityError, close_old_connections
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from fastmcp.server.dependencies import get_access_token, get_http_request
+from fastmcp.server.dependencies import get_access_token
 from pydantic import Field
 
 from apps.api.services import (
@@ -68,7 +68,6 @@ from apps.core.services import (
 )
 from apps.core.services import (
     require_agent_api_key_access,
-    resolve_api_key_profile,
     serialize_agent_api_key,
     serialize_feedback_submission_result,
     submit_profile_feedback,
@@ -104,24 +103,6 @@ mcp = FastMCP(
 mcp.add_middleware(RowsetMCPLoggingMiddleware())
 
 
-def _get_request_api_key() -> str:
-    try:
-        request = get_http_request()
-    except RuntimeError:
-        return ""
-
-    authorization = request.headers.get("authorization", "")
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() == "bearer" and token.strip():
-        return token.strip()
-
-    header_key = request.headers.get("x-api-key", "").strip()
-    if header_key:
-        return header_key
-
-    return request.query_params.get("api_key", "").strip()
-
-
 def _attach_agent_api_key(
     profile: Profile,
     agent_api_key: AgentApiKey | None,
@@ -137,24 +118,15 @@ def _agent_actor_kwargs(profile: Profile) -> dict[str, AgentApiKey]:
     return {"agent_api_key": agent_api_key}
 
 
-def _authenticate_profile(api_key: str | None = None) -> Profile:
+def _authenticate_profile() -> Profile:
     token_profile = _get_access_token_profile()
     if token_profile is not None:
         return token_profile
 
-    key = (api_key or "").strip() or _get_request_api_key()
-    if not key:
-        raise PermissionError(
-            "Missing Rowset authorization. Configure the Rowset MCP server request with "
-            "Authorization: Bearer <ROWSET_API_KEY>."
-        )
-
-    resolved = resolve_api_key_profile(key)
-    if resolved is None:
-        logger.warning("[MCP] Invalid API key")
-        raise PermissionError("Invalid Rowset API key.")
-    profile, agent_api_key = resolved
-    return _attach_agent_api_key(profile, agent_api_key)
+    raise PermissionError(
+        "Missing Rowset authorization. Configure the Rowset MCP server request with "
+        "Authorization: Bearer <ROWSET_API_KEY>."
+    )
 
 
 def _get_access_token_profile() -> Profile | None:

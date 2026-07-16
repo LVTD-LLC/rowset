@@ -82,44 +82,18 @@ def test_authenticate_profile_uses_access_token(monkeypatch, profile):
     assert _authenticate_profile() == profile
 
 
-def test_authenticate_profile_prefers_access_token_over_explicit_api_key(
-    monkeypatch,
-    profile,
-):
-    monkeypatch.setattr(
-        "apps.mcp_server.server.get_access_token",
-        lambda: AccessToken(
-            token="token",
-            client_id=AGENT_API_KEY_CLIENT_ID,
-            scopes=[MCP_SCOPE],
-            subject=str(profile.id),
-        ),
-    )
-    monkeypatch.setattr(
-        "apps.mcp_server.server.resolve_api_key_profile",
-        lambda _key: (_ for _ in ()).throw(AssertionError("unexpected key lookup")),
-    )
+def test_authenticate_profile_rejects_missing_access_token(monkeypatch):
+    monkeypatch.setattr("apps.mcp_server.server.get_access_token", lambda: None)
 
-    assert _authenticate_profile(api_key="ignored-api-key") == profile
-
-
-def test_authenticate_profile_accepts_explicit_named_agent_api_key(profile):
-    credential = create_agent_api_key(profile, "OpenClaw")
-
-    authenticated_profile = _authenticate_profile(api_key=credential.raw_key)
-
-    assert authenticated_profile == profile
-    assert getattr(authenticated_profile, AGENT_API_KEY_PROFILE_ATTR) == credential.agent_api_key
-    profile.refresh_from_db()
-    assert profile.trial_started_at is None
-    assert profile.trial_ends_at is None
+    with pytest.raises(PermissionError, match="Authorization: Bearer"):
+        _authenticate_profile()
 
 
 def test_authorized_mcp_tool_request_starts_trial(monkeypatch, profile):
     credential = create_agent_api_key(profile, "OpenClaw")
     monkeypatch.setattr(
         "apps.mcp_server.server._authenticate_profile",
-        lambda api_key=None: _attach_agent_api_key(profile, credential.agent_api_key),
+        lambda: _attach_agent_api_key(profile, credential.agent_api_key),
     )
 
     authenticated_profile = _mcp_authenticated_profile()

@@ -64,6 +64,16 @@ def test_openapi_dataset_list_uses_compact_dataset_cards(client):
     }
 
 
+def test_openapi_advertises_bearer_auth_without_query_key_scheme(client):
+    response = client.get("/api/openapi.json")
+
+    assert response.status_code == 200
+    security_schemes = response.json()["components"]["securitySchemes"]
+    assert security_schemes
+    assert all(scheme["type"] == "http" for scheme in security_schemes.values())
+    assert all(scheme["scheme"] == "bearer" for scheme in security_schemes.values())
+
+
 def test_capabilities_endpoint_supports_current_api_prefix(client):
     response = client.get("/api/capabilities")
 
@@ -957,7 +967,7 @@ def test_api_key_auth_enforces_required_access_level():
     activate_trial.assert_not_called()
 
 
-def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
+def test_api_key_auth_accepts_only_bearer_headers():
     from apps.api.auth import APIKeyAuth
 
     agent_api_key = SimpleNamespace(id=1, access_level=AgentApiKeyAccessLevel.READ_WRITE)
@@ -977,6 +987,9 @@ def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
     assert response is profile
     resolver.assert_called_once_with("secret-key")
 
+    query_request = HttpRequest()
+    query_request.GET = query_request.GET.copy()
+    query_request.GET["api_key"] = "query-key"
     header_request = HttpRequest()
     header_request.META["HTTP_X_API_KEY"] = "header-key"
     with (
@@ -986,10 +999,12 @@ def test_api_key_auth_accepts_bearer_and_x_api_key_headers():
         ) as resolver,
         patch("apps.api.auth.activate_or_require_trial_access"),
     ):
-        response = APIKeyAuth()(header_request)
+        query_response = APIKeyAuth()(query_request)
+        header_response = APIKeyAuth()(header_request)
 
-    assert response is profile
-    resolver.assert_called_once_with("header-key")
+    assert query_response is None
+    assert header_response is None
+    resolver.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -2984,9 +2999,10 @@ def test_dataset_search_endpoint_delegates_to_search_service(
     monkeypatch.setattr("apps.api.views.search_profile_dataset_rows", search_rows)
 
     response = client.post(
-        f"/api/datasets/dataset-key/search?api_key={credential.raw_key}",
+        "/api/datasets/dataset-key/search",
         data={"query": "TASK-1", "filters": {"status": "Ready"}, "limit": 5},
         content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
     )
 
     assert response.status_code == 200
@@ -3085,7 +3101,7 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
     monkeypatch.setattr("apps.api.views.search_profile_rows", search_rows)
 
     response = client.post(
-        f"/api/search?api_key={credential.raw_key}",
+        "/api/search",
         data={
             "query": "stale vectors",
             "filters": {"status": "Ready"},
@@ -3099,6 +3115,7 @@ def test_profile_search_endpoint_delegates_to_profile_row_search_service(
             "limit": 5,
         },
         content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {credential.raw_key}",
     )
 
     assert response.status_code == 200

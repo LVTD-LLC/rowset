@@ -1,5 +1,5 @@
 from django.http import HttpRequest
-from ninja.security import APIKeyQuery
+from ninja.security import HttpBearer
 
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import Profile
@@ -11,22 +11,7 @@ from rowset.utils import get_rowset_logger
 logger = get_rowset_logger(__name__)
 
 
-def _api_key_from_request(request: HttpRequest, query_param_name: str) -> str | None:
-    authorization = request.headers.get("authorization", "")
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() == "bearer" and token.strip():
-        return token.strip()
-
-    header_key = request.headers.get("x-api-key", "").strip()
-    if header_key:
-        return header_key
-
-    return request.GET.get(query_param_name)
-
-
-class APIKeyAuth(APIKeyQuery):
-    param_name = "api_key"
-
+class APIKeyAuth(HttpBearer):
     def __init__(
         self,
         required_access_level: str = AgentApiKeyAccessLevel.READ,
@@ -36,9 +21,6 @@ class APIKeyAuth(APIKeyQuery):
         super().__init__()
         self.required_access_level = required_access_level
         self.activate_trial = activate_trial
-
-    def _get_key(self, request: HttpRequest) -> str | None:
-        return _api_key_from_request(request, self.param_name)
 
     def authenticate(self, request: HttpRequest, key: str | None) -> Profile | None:
         if not key:
@@ -106,12 +88,7 @@ class SessionAuth:
         return self.authenticate(request)
 
 
-class SuperuserAPIKeyAuth(APIKeyQuery):
-    param_name = "api_key"
-
-    def _get_key(self, request: HttpRequest) -> str | None:
-        return _api_key_from_request(request, self.param_name)
-
+class SuperuserAPIKeyAuth(HttpBearer):
     def authenticate(self, request: HttpRequest, key: str | None) -> Profile | None:
         if not key:
             return None

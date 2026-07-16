@@ -132,6 +132,32 @@ def test_mcp_initialize_uses_stateless_json_response(authenticated_mcp):
     assert result["serverInfo"]["name"] == "Rowset"
 
 
+@pytest.mark.parametrize(
+    ("url", "headers"),
+    [
+        ("/mcp/?api_key=rsk_test", MCP_HEADERS),
+        ("/mcp/", {**MCP_HEADERS, "x-api-key": "rsk_test"}),
+    ],
+)
+def test_mcp_rejects_non_bearer_api_keys(authenticated_mcp, url, headers):
+    with TestClient(application) as client:
+        response = client.post(
+            url,
+            headers=headers,
+            json=_mcp_request(
+                "initialize",
+                1,
+                {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "capabilities": {},
+                    "clientInfo": {"name": "rowset-test", "version": "0.1"},
+                },
+            ),
+        )
+
+    assert response.status_code == 401
+
+
 def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     with TestClient(application) as client:
         tools_response = client.post(

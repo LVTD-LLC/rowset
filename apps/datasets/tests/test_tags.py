@@ -137,10 +137,10 @@ def test_separator_only_tags_render_as_blank_without_pills(auth_client, profile)
 
 
 @pytest.mark.django_db
-def test_rest_api_preserves_tags_schema_and_original_comma_separated_value(client, profile):
+def test_rest_api_preserves_tags_schema_and_original_comma_separated_value(api_client, profile):
     original_value = " Django, HTMX, , django ,  "
-    create_response = client.post(
-        f"/api/datasets?api_key={profile.key}",
+    create_response = api_client.post(
+        "/api/datasets",
         data={
             "name": "Tagged docs",
             "headers": ["item", "topics"],
@@ -155,7 +155,7 @@ def test_rest_api_preserves_tags_schema_and_original_comma_separated_value(clien
     dataset_payload = create_response.json()["dataset"]
     assert dataset_payload["column_schema"]["topics"] == {"type": "tags"}
 
-    rows_response = client.get(f"/api/datasets/{dataset_payload['key']}/rows?api_key={profile.key}")
+    rows_response = api_client.get(f"/api/datasets/{dataset_payload['key']}/rows")
 
     assert rows_response.status_code == 200
     assert rows_response.json()["rows"][0]["data"]["topics"] == original_value

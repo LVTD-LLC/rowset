@@ -20,7 +20,7 @@ def _authenticate_mcp_as(monkeypatch, profile):
     setattr(profile, AGENT_API_KEY_PROFILE_ATTR, profile.agent_api_keys.get())
     monkeypatch.setattr(
         "apps.mcp_server.server._authenticate_profile",
-        lambda api_key=None: profile,
+        lambda: profile,
     )
 
 
