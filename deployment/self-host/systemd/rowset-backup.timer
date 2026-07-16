@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Rowset backup every day
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+Unit=rowset-backup.service
+
+[Install]
+WantedBy=timers.target
