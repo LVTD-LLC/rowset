@@ -31,6 +31,7 @@ jobs:
         run: |
           image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
+          echo "candidate_tag=candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
           echo "release_date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
           echo "release_version=$(date -u +%F).${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
 
@@ -50,6 +51,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -57,16 +59,55 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ steps.image.outputs.image_name }}:latest
-            ${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_date }}
-            ${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_version }}
-            ${{ steps.image.outputs.image_name }}:${{ github.sha }}
+            ${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.candidate_tag }}
+          labels: |
+            org.opencontainers.image.title=${{ env.PROJECT_NAME }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Verify published platforms
-        run: deployment/verify-image-platforms.sh "${{ steps.image.outputs.image_name }}:${{ github.sha }}" linux/amd64 linux/arm64
+        run: deployment/verify-image-platforms.sh "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.candidate_tag }}" linux/amd64 linux/arm64
 
       - name: Smoke published platforms
-        run: deployment/smoke-image-platforms.sh "${{ steps.image.outputs.image_name }}:${{ github.sha }}"
+        run: deployment/smoke-image-platforms.sh "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.candidate_tag }}"
+
+      - name: Verify anonymous candidate availability
+        timeout-minutes: 15
+        run: |
+          deployment/verify-anonymous-image.sh \
+            "${{ steps.build.outputs.digest }}" \
+            "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.candidate_tag }}"
+
+      - name: Log in to GHCR for tag promotion
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Protect immutable SHA tag
+        run: |
+          deployment/verify-immutable-image-tag.sh \
+            "${{ steps.build.outputs.digest }}" \
+            "${{ steps.image.outputs.image_name }}:${{ github.sha }}"
+
+      - name: Promote advertised tags
+        run: |
+          docker buildx imagetools create \
+            --tag "${{ steps.image.outputs.image_name }}:${{ github.sha }}" \
+            --tag "${{ steps.image.outputs.image_name }}:latest" \
+            --tag "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_date }}" \
+            --tag "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_version }}" \
+            "${{ steps.image.outputs.image_name }}@${{ steps.build.outputs.digest }}"
+
+      - name: Verify anonymous image availability
+        timeout-minutes: 15
+        run: |
+          deployment/verify-anonymous-image.sh \
+            "${{ steps.build.outputs.digest }}" \
+            "${{ steps.image.outputs.image_name }}:latest" \
+            "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_date }}" \
+            "${{ steps.image.outputs.image_name }}:${{ steps.image.outputs.release_version }}" \
+            "${{ steps.image.outputs.image_name }}:${{ github.sha }}"
 
       - name: Deploy server to CapRover
         uses: caprover/deploy-from-github@v1.2.0

@@ -18,6 +18,11 @@ cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-16
+
+### Added
+- Added a release gate that removes GHCR credentials, anonymously inspects and pulls both supported architectures before tag promotion, and prevents an immutable Git SHA tag from being overwritten with a different digest.
+
 ## 2026-07-15
 
 ### Fixed
