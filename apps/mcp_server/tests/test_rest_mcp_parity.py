@@ -6,6 +6,7 @@ from apps.datasets.models import ProjectSection
 from apps.datasets.tests.factories import (
     configure_filterable_dataset,
     create_crm_datasets,
+    create_dataset,
     create_profile_with_api_key,
     create_project,
     create_ready_dataset,
@@ -156,6 +157,87 @@ def test_rest_and_mcp_list_rows_share_filter_and_sort_semantics(
             "Ada Lovelace",
         ]
     )
+
+
+def test_rest_and_mcp_collection_defaults_preserve_bounded_pagination(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    profile = create_profile_with_api_key(django_user_model)
+    _authenticate_mcp_as(monkeypatch, profile)
+    for number in range(11):
+        create_dataset(
+            profile,
+            name=f"Dataset {number:02d}",
+            description="Compact discovery card.",
+        )
+
+    rest_response = client.get(
+        "/api/datasets",
+        HTTP_AUTHORIZATION=_bearer(profile),
+    )
+    mcp_result = mcp_server.get_all_datasets()
+
+    assert rest_response.status_code == 200
+    for payload in (rest_response.json(), mcp_result):
+        assert payload["count"] == 10
+        assert payload["total_count"] == 11
+        assert payload["limit"] == 10
+        assert payload["offset"] == 0
+        assert payload["has_more"] is True
+        assert len(json.dumps(payload, default=str)) <= 6_000
+
+
+def test_rest_and_mcp_row_list_defaults_preserve_bounded_pagination(
+    client,
+    django_user_model,
+    monkeypatch,
+):
+    profile = create_profile_with_api_key(django_user_model)
+    _authenticate_mcp_as(monkeypatch, profile)
+    dataset = create_dataset(
+        profile,
+        name="People",
+        headers=["person_id", "name"],
+        index_column="person_id",
+        rows=[
+            {"person_id": f"P-{number:02d}", "name": f"Person {number:02d}"} for number in range(11)
+        ],
+    )
+
+    rest_response = client.get(
+        f"/api/datasets/{dataset.key}/rows",
+        HTTP_AUTHORIZATION=_bearer(profile),
+    )
+    mcp_result = mcp_server.list_dataset_rows(str(dataset.key))
+
+    assert rest_response.status_code == 200
+    for payload in (rest_response.json(), mcp_result):
+        assert len(payload["rows"]) == 10
+        assert payload["count"] == 11
+        assert payload["total_count"] == 11
+        assert payload["limit"] == 10
+        assert payload["offset"] == 0
+        assert payload["has_more"] is True
+        assert len(json.dumps(payload, default=str)) <= 5_000
+
+
+def test_rest_collection_limits_reject_reads_above_agent_budget(
+    client,
+    django_user_model,
+):
+    profile = create_profile_with_api_key(django_user_model)
+    dataset = create_dataset(profile)
+    headers = {"HTTP_AUTHORIZATION": _bearer(profile)}
+
+    responses = (
+        client.get("/api/datasets", {"limit": 101}, **headers),
+        client.get("/api/projects", {"limit": 101}, **headers),
+        client.get(f"/api/datasets/{dataset.key}/rows", {"limit": 101}, **headers),
+    )
+
+    assert [response.status_code for response in responses] == [422, 422, 422]
 
 
 def test_rest_and_mcp_patch_row_by_index_ignore_unknown_columns(

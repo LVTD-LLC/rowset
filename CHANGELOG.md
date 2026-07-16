@@ -33,6 +33,7 @@ deployment or release cut date.
 - Added direct docs and blog discovery links to the agent prompt and ensured Step 2 copies the protected full-key prompt while keeping its on-screen preview masked.
 - Extended the post-setup agent handoff with tailored project, section, and dataset suggestions plus an opt-in daily Rowset tips automation for agent runtimes that support scheduled tasks.
 - Dataset list and search responses now return compact discovery cards through REST and MCP; clients call the single-dataset detail endpoint or `get_dataset` when they need headers, semantic schema, instructions, metadata, index settings, relationships, or preview configuration.
+- Agent-facing dataset, project, section, and row collections now default to 10 results, reject limits above 100, preserve explicit pagination metadata for requesting subsequent pages, and expose project sections only through their bounded collection endpoint.
 - Comparison articles now use an aligned technical-brief layout with clearer action hierarchy, responsive tables, and dedicated long-form reading styles.
 
 ### Security

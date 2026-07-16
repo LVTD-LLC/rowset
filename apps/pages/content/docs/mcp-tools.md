@@ -40,6 +40,12 @@ These discovery tools return compact cards for selection. After choosing a
 dataset, call `get_dataset` to load headers, index configuration, semantic
 schema, instructions, metadata, relationships, and preview settings.
 
+Collection tools return 10 items by default and accept an explicit `limit` up
+to 100. While `has_more` is `true`, increase `offset` by the number of entries
+in the returned collection array, such as the length of `rows` or `datasets`.
+Project detail omits sections; call `get_project_sections` for their paginated
+collection.
+
 Use `search_rows` when the relevant dataset is unknown or multiple datasets may
 contain the answer:
 

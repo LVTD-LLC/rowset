@@ -8,6 +8,8 @@ from fastmcp.server.dependencies import get_access_token, get_http_request
 from pydantic import Field
 
 from apps.api.services import (
+    AGENT_COLLECTION_DEFAULT_LIMIT,
+    AGENT_COLLECTION_MAX_LIMIT,
     MAX_API_DATASET_CREATE_ROWS,
     DatasetServiceError,
     add_profile_dataset_column,
@@ -90,6 +92,18 @@ RETRYABLE_ERROR_CODES = {
     "RATE_LIMITED",
     "ROWSET_SERVICE_ERROR",
 }
+
+
+def _agent_collection_limit_field(resource_name: str):
+    return Field(
+        default=AGENT_COLLECTION_DEFAULT_LIMIT,
+        ge=1,
+        le=AGENT_COLLECTION_MAX_LIMIT,
+        description=(
+            f"Maximum {resource_name} to return. "
+            f"Defaults to {AGENT_COLLECTION_DEFAULT_LIMIT}; request more explicitly."
+        ),
+    )
 
 
 mcp = FastMCP(
@@ -575,8 +589,8 @@ def submit_feedback(
 def get_all_datasets(
     limit: Annotated[
         int,
-        Field(default=100, ge=1, le=500, description="Maximum datasets to return."),
-    ] = 100,
+        _agent_collection_limit_field("datasets"),
+    ] = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: Annotated[
         int,
         Field(default=0, ge=0, description="Number of datasets to skip."),
@@ -601,8 +615,8 @@ def get_all_datasets(
 def get_archived_datasets(
     limit: Annotated[
         int,
-        Field(default=100, ge=1, le=500, description="Maximum archived datasets to return."),
-    ] = 100,
+        _agent_collection_limit_field("archived datasets"),
+    ] = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: Annotated[
         int,
         Field(default=0, ge=0, description="Number of archived datasets to skip."),
@@ -660,8 +674,8 @@ def search_datasets(
     ] = None,
     limit: Annotated[
         int,
-        Field(default=100, ge=1, le=500, description="Maximum datasets to return."),
-    ] = 100,
+        _agent_collection_limit_field("datasets"),
+    ] = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: Annotated[
         int,
         Field(default=0, ge=0, description="Number of datasets to skip."),
@@ -710,8 +724,8 @@ def get_dataset(
 def get_all_projects(
     limit: Annotated[
         int,
-        Field(default=100, ge=1, le=500, description="Maximum projects to return."),
-    ] = 100,
+        _agent_collection_limit_field("projects"),
+    ] = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: Annotated[
         int,
         Field(default=0, ge=0, description="Number of projects to skip."),
@@ -740,8 +754,8 @@ def search_projects(
     ] = None,
     limit: Annotated[
         int,
-        Field(default=100, ge=1, le=500, description="Maximum projects to return."),
-    ] = 100,
+        _agent_collection_limit_field("projects"),
+    ] = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: Annotated[
         int,
         Field(default=0, ge=0, description="Number of projects to skip."),
@@ -797,8 +811,8 @@ def get_project_sections(
     project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
     limit: Annotated[
         int,
-        Field(default=100, ge=1, le=500, description="Maximum sections to return."),
-    ] = 100,
+        _agent_collection_limit_field("sections"),
+    ] = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: Annotated[
         int,
         Field(default=0, ge=0, description="Number of sections to skip."),
@@ -861,8 +875,8 @@ def get_project(
     project_key: Annotated[str, Field(description="Rowset project key/UUID.")],
     limit: Annotated[
         int,
-        Field(default=100, ge=1, le=500, description="Maximum datasets to return."),
-    ] = 100,
+        _agent_collection_limit_field("datasets"),
+    ] = AGENT_COLLECTION_DEFAULT_LIMIT,
     offset: Annotated[
         int,
         Field(default=0, ge=0, description="Number of datasets to skip."),
@@ -1638,8 +1652,11 @@ def restore_dataset(
 )
 def list_dataset_rows(
     dataset_key: Annotated[str, Field(description=DATASET_IDENTIFIER_DESCRIPTION)],
-    limit: Annotated[int | None, Field(default=100, ge=1, le=500)] = 100,
-    offset: Annotated[int | None, Field(default=0, ge=0)] = 0,
+    limit: Annotated[
+        int,
+        _agent_collection_limit_field("rows"),
+    ] = AGENT_COLLECTION_DEFAULT_LIMIT,
+    offset: Annotated[int, Field(default=0, ge=0)] = 0,
     query: Annotated[
         str | None,
         Field(default=None, description="Optional text to search across row values."),
@@ -1674,8 +1691,8 @@ def list_dataset_rows(
         return list_profile_dataset_rows(
             profile,
             dataset_key,
-            limit=100 if limit is None else limit,
-            offset=0 if offset is None else offset,
+            limit=limit,
+            offset=offset,
             query=query,
             filters=_normalize_mcp_row_filters(filters),
             sort=sort,

@@ -285,25 +285,10 @@ class DatasetSummaryListOut(Schema):
     datasets: list[DatasetSummaryOut]
 
 
-class DatasetGroupItemsOut(Schema):
-    count: int
-    total_count: int
-    datasets: list[DatasetSummaryOut]
-
-
-class ProjectDatasetGroupOut(Schema):
-    label: str
-    section: ProjectSectionReferenceOut | None = None
-    dataset_count: int
-    datasets: DatasetGroupItemsOut
-
-
 class ProjectDetailOut(Schema):
     status: str
     message: str
     project: ProjectSummaryOut
-    sections: list[ProjectSectionSummaryOut]
-    dataset_groups: list[ProjectDatasetGroupOut]
     datasets: DatasetSummaryListOut
 
 
