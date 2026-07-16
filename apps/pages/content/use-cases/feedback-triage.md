@@ -26,6 +26,11 @@ Create a `feedback` dataset indexed by `feedback_id`.
 - Count repeated signals without losing the original request.
 - Share a read-only preview when stakeholders need a board.
 
+Keep customer evidence and internal notes in the private working dataset. When
+a client needs review access, use the
+[safe data-sharing decision guide](/blog/share-ai-agent-data-safely) to create a
+reduced review dataset or time-bounded read-only preview.
+
 ## Workflow rules
 
 Tell the agent how to pick themes, how to set severity, and when to mark
