@@ -115,25 +115,51 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: deployment/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}
-          labels: |
-            org.opencontainers.image.title=${{ env.PROJECT_NAME }}
-            org.opencontainers.image.version=${{ github.ref_name }}
-            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Resolve immutable image digest
+        id: image
+        shell: bash
+        timeout-minutes: 15
+        env:
+          IMAGE_DIGEST_RESOLVE_ATTEMPTS: "60"
+          IMAGE_DIGEST_RESOLVE_DELAY_SECONDS: "10"
+        run: |
+          digest="$(deployment/resolve-image-digest.sh \
+            "${{ needs.validate.outputs.image_name }}:${{ github.sha }}")"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Verify published platforms
-        run: deployment/verify-image-platforms.sh "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}" linux/amd64 linux/arm64
+        run: deployment/verify-image-platforms.sh "${{ needs.validate.outputs.image_name }}:${{ github.sha }}" linux/amd64 linux/arm64
 
       - name: Smoke published platforms
-        run: deployment/smoke-image-platforms.sh "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}"
+        run: deployment/smoke-image-platforms.sh "${{ needs.validate.outputs.image_name }}:${{ github.sha }}"
+
+      - name: Verify anonymous immutable image availability
+        timeout-minutes: 15
+        run: |
+          deployment/verify-anonymous-image.sh \
+            "${{ steps.image.outputs.digest }}" \
+            "${{ needs.validate.outputs.image_name }}:${{ github.sha }}"
+
+      - name: Log in to GHCR for tag promotion
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote advertised tags
+        run: |
+          docker buildx imagetools create \
+            --tag "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}" \
+            "${{ needs.validate.outputs.image_name }}@${{ steps.image.outputs.digest }}"
+
+      - name: Verify anonymous image availability
+        timeout-minutes: 15
+        run: |
+          deployment/verify-anonymous-image.sh \
+            "${{ steps.image.outputs.digest }}" \
+            "${{ needs.validate.outputs.image_name }}:${{ github.sha }}" \
+            "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}"
 
   release:
     name: Create GitHub release

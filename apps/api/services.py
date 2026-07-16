@@ -11,7 +11,7 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import storages
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Exists, OuterRef, Q, TextField
+from django.db.models import Count, Exists, F, Func, IntegerField, OuterRef, Q, TextField
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast, Trim
 from django.urls import reverse
@@ -144,21 +144,11 @@ class _DatasetVectorSearchResult:
 
 
 ColumnTypeSpec = str | dict[str, Any]
-DATASET_SUMMARY_ONLY_FIELDS = (
+DATASET_CARD_ONLY_FIELDS = (
     "key",
     "name",
     "description",
-    "instructions",
-    "metadata",
-    "headers",
-    "column_schema",
-    "index_column",
-    "index_generated",
     "row_count",
-    "public_enabled",
-    "public_key",
-    "public_page_size",
-    "public_password_hash",
     "project",
     "project__key",
     "project__name",
@@ -169,9 +159,22 @@ DATASET_SUMMARY_ONLY_FIELDS = (
     "section__name",
     "section__description",
     "section__archived_at",
-    "created_at",
     "updated_at",
     "archived_at",
+)
+DATASET_SUMMARY_ONLY_FIELDS = (
+    *DATASET_CARD_ONLY_FIELDS,
+    "instructions",
+    "metadata",
+    "headers",
+    "column_schema",
+    "index_column",
+    "index_generated",
+    "public_enabled",
+    "public_key",
+    "public_page_size",
+    "public_password_hash",
+    "created_at",
 )
 UNSET = object()
 
@@ -1058,6 +1061,21 @@ def serialize_dataset_summary(dataset: Dataset) -> dict:
     }
 
 
+def serialize_dataset_card(dataset: Dataset) -> dict:
+    """Return concise metadata for selecting a dataset during discovery."""
+    return {
+        "key": str(dataset.key),
+        "name": dataset.name,
+        "description": dataset.description,
+        "project": serialize_project_reference(getattr(dataset, "project", None)),
+        "section": serialize_project_section_reference(getattr(dataset, "section", None)),
+        "column_count": dataset.column_count,
+        "row_count": dataset.row_count,
+        "updated_at": dataset.updated_at,
+        "archived_at": dataset.archived_at,
+    }
+
+
 def _serialize_relationships_from_manager(manager) -> list[dict]:
     if manager is None:
         return []
@@ -1250,6 +1268,20 @@ def _dataset_summary_queryset(queryset):
     return queryset.select_related("project", "section").only(*DATASET_SUMMARY_ONLY_FIELDS)
 
 
+def _dataset_card_queryset(queryset):
+    return (
+        queryset.select_related("project", "section")
+        .annotate(
+            column_count=Func(
+                F("headers"),
+                function="jsonb_array_length",
+                output_field=IntegerField(),
+            )
+        )
+        .only(*DATASET_CARD_ONLY_FIELDS)
+    )
+
+
 def search_profile_datasets(  # noqa: C901
     profile: Profile,
     *,
@@ -1275,7 +1307,7 @@ def search_profile_datasets(  # noqa: C901
     normalized_header = str(header_contains or "").strip()
     normalized_updated_after = _normalize_updated_after(updated_after)
 
-    queryset = _dataset_summary_queryset(_active_dataset_queryset(profile.datasets))
+    queryset = _dataset_card_queryset(_active_dataset_queryset(profile.datasets))
     if normalized_query:
         queryset = queryset.filter(
             Q(name__icontains=normalized_query)
@@ -1333,7 +1365,7 @@ def search_profile_datasets(  # noqa: C901
         "limit": limit,
         "offset": offset,
         "has_more": offset + len(page) < total_count,
-        "datasets": [serialize_dataset_summary(dataset) for dataset in page],
+        "datasets": [serialize_dataset_card(dataset) for dataset in page],
     }
 
 
@@ -1350,7 +1382,7 @@ def serialize_profile_archived_datasets(
     """Return a bounded page of archived datasets owned by the authenticated profile."""
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    queryset = _dataset_summary_queryset(_archived_dataset_queryset(profile.datasets))
+    queryset = _dataset_card_queryset(_archived_dataset_queryset(profile.datasets))
     total_count = queryset.count()
     page = list(queryset[offset : offset + limit])
 
@@ -1360,7 +1392,7 @@ def serialize_profile_archived_datasets(
         "limit": limit,
         "offset": offset,
         "has_more": offset + len(page) < total_count,
-        "datasets": [serialize_dataset_summary(dataset) for dataset in page],
+        "datasets": [serialize_dataset_card(dataset) for dataset in page],
     }
 
 
