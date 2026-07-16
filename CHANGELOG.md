@@ -16,6 +16,11 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-16
+
+### Added
+- Added a decision guide for sharing AI-agent data through scoped private access, authenticated exports, or read-only public previews.
+
 ## 2026-07-15
 
 ### Fixed

@@ -135,6 +135,10 @@ This is where Rowset intentionally stays different from a generic memory layer:
 the agent gets private API/MCP access, while the human gets a dashboard and
 optional [public previews](/docs/share-public-previews).
 
+When another agent, system, or client needs access, use the
+[safe AI-agent data sharing guide](/blog/share-ai-agent-data-safely) to choose
+between a scoped private key, a point-in-time export, and a read-only preview.
+
 ## Agent-managed dataset vs spreadsheet
 
 Spreadsheets are good when humans are the primary operators. They are visible,

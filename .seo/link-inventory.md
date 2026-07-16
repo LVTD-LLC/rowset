@@ -78,6 +78,7 @@
 | `/blog/relationship-modeling-agent-datasets` | https://rowset.lvtd.dev/blog/relationship-modeling-agent-datasets | Model relationships between agent-managed datasets | relationships |
 | `/blog/ai-agent-memory-vs-state` | https://rowset.lvtd.dev/blog/ai-agent-memory-vs-state | AI agent memory vs structured state | memory, operational state |
 | `/blog/idempotent-ai-agent-updates` | https://rowset.lvtd.dev/blog/idempotent-ai-agent-updates | Make AI-agent data updates idempotent | retries, reconciliation |
+| `/blog/share-ai-agent-data-safely` | https://rowset.lvtd.dev/blog/share-ai-agent-data-safely | Share AI-agent data safely | access control, exports, public previews |
 
 ## Shipped SEO Sprint Pages
 
@@ -151,3 +152,8 @@ These routes return 404 in production and must not be selected as internal-link 
 - AI agent memory vs structured state
 - idempotent AI-agent data updates
 - retry-safe Rowset updates
+- share AI-agent data safely
+- safe agent-managed dataset sharing
+- choose a Rowset sharing path
+- private agent access or public preview
+- scoped dataset access for AI agents
