@@ -156,7 +156,26 @@ Cloud provisioning credentials are separate from server application secrets. For
 `HCLOUD_TOKEN` belongs in the local provisioning shell or its secret store only. Never add it to the
 server `.env`, pass it to the Rowset containers, or paste it into an agent chat.
 
-## 4. Start Rowset with automatic HTTPS
+## 4. Run the deterministic preflight
+
+Run the read-only host and release checks after configuration and before starting containers:
+
+```bash
+deployment/self-host/preflight.sh
+```
+
+Preflight validates the supported OS and architecture, CPU, RAM, free disk, DNS, availability of
+ports 80 and 443, Docker Engine, Compose v2, Buildx, anonymous access to the configured image manifest,
+the production environment, and deployment-file permissions. It consumes
+`deployment/self-host/requirements.json`; do not copy its thresholds into installer logic.
+
+The command emits compact newline-delimited JSON. Every check has a stable `id`, a `PASS` or `FAIL`
+status, and one remediation when it fails. The final `SUMMARY` record is machine-readable, and the
+process exits nonzero when any required check fails. Fix the named failure and rerun preflight; do
+not replace it with improvised host checks. Preflight reads configuration values for validation but
+never prints secrets or creates application data.
+
+## 5. Start Rowset with automatic HTTPS
 
 ```bash
 deployment/self-host/start.sh
@@ -199,7 +218,24 @@ docker compose --env-file .env -f docker-compose-prod.yml -p rowset \
 Do not share `.env`, ordinary fully resolved `docker compose config` output, or container environment
 output; all can contain secrets.
 
-## 5. Verify web, REST, and MCP
+## 6. Verify web, REST, and MCP
+
+Run the non-mutating post-deployment doctor first:
+
+```bash
+deployment/self-host/doctor.sh
+```
+
+Doctor derives the required service list from the rendered production Compose configuration and
+checks every service, including Caddy, PostgreSQL, Redis, backend, and workers. It also verifies
+trusted HTTPS, pending migrations, database and cache readiness, and that unauthenticated REST and
+MCP requests are rejected. Email delivery and the backup timer are reported as optional when they
+are not configured. Like preflight, doctor emits bounded newline-delimited JSON with stable IDs and
+exits nonzero for any required failure.
+
+Fix the single named cause for each failed check and continue until doctor reports a passing summary.
+Use the bounded log command in a failure's remediation instead of dumping full Compose logs. Doctor
+does not create users, keys, datasets, or other product data.
 
 Verify that HTTP redirects once to HTTPS and that HTTPS is healthy:
 
@@ -211,7 +247,8 @@ curl -fsS "https://$ROWSET_DOMAIN/" >/dev/null
 The HTTP response should redirect to `https://$ROWSET_DOMAIN/`. The HTTPS command must complete
 without `--insecure`; using `-k` would hide certificate failures.
 
-Run the authenticated, mutating post-deployment smoke test from the Rowset checkout on the host:
+After doctor passes, run the authenticated, mutating post-deployment smoke test from the Rowset
+checkout on the host:
 
 ```bash
 deployment/self-host/smoke-test.sh
@@ -234,9 +271,10 @@ For credential safety, `--base-url` must match the configured HTTPS `SITE_URL` o
 accepted only for loopback and the internal `backend` service during local deployment checks.
 
 Use `--fail-after` with one of `setup`, `rest_auth`, `mcp_initialize`, `mcp_tools`,
-`dataset_create`, `dataset_read`, or `worker` to verify cleanup after a deliberate failure. This
-command mutates temporary data and is intended for install completion, deployment verification,
-and CI. Keep ordinary load-balancer and uptime checks on the non-mutating health endpoint.
+`dataset_create`, `dataset_read`, or `worker` to verify cleanup after a deliberate failure. The
+authenticated smoke test mutates temporary data and is intended for install completion, deployment
+verification, and CI. Keep ordinary load-balancer and uptime checks on the non-mutating health
+endpoint.
 
 Create an account in the browser, create a scoped agent API key in Settings, and store it only in a
 private shell or secret store:

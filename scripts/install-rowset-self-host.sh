@@ -86,3 +86,4 @@ cp -R "$temporary/extracted/." "$install_dir/"
 
 printf 'Installed Rowset self-host release %s in %s.\n' "$version" "$install_dir"
 printf 'Run %s/deployment/self-host/version.sh to inspect the installed release.\n' "$install_dir"
+printf 'Next: configure .env, run deployment/self-host/preflight.sh, start Rowset, then rerun deployment/self-host/doctor.sh until its summary passes.\n'
