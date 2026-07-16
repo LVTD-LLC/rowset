@@ -95,9 +95,11 @@ def _activation_funnel(user_stats, profile_stats) -> list[dict]:
 
 def _activity_feed(nonstaff_users, feedback, mutations) -> list[dict]:
     events = []
-    for mutation in mutations.select_related("dataset").only(
-        "id", "summary", "actor_label", "created_at", "dataset__name"
-    )[:12]:
+    for mutation in (
+        mutations.select_related("dataset")
+        .only("id", "summary", "actor_label", "created_at", "dataset__name")
+        .order_by("-created_at", "-id")[:12]
+    ):
         events.append(
             {
                 "kind": "mutation",
@@ -107,9 +109,11 @@ def _activity_feed(nonstaff_users, feedback, mutations) -> list[dict]:
                 "url": reverse("admin:datasets_datasetmutation_change", args=[mutation.pk]),
             }
         )
-    for item in feedback.select_related("profile__user").only(
-        "id", "feedback", "created_at", "profile__user__email"
-    )[:12]:
+    for item in (
+        feedback.select_related("profile__user")
+        .only("id", "feedback", "created_at", "profile__user__email")
+        .order_by("-created_at", "-id")[:12]
+    ):
         submitter = item.profile.user.email if item.profile else "Anonymous"
         events.append(
             {
@@ -120,7 +124,9 @@ def _activity_feed(nonstaff_users, feedback, mutations) -> list[dict]:
                 "url": reverse("admin:core_feedback_change", args=[item.pk]),
             }
         )
-    for user in nonstaff_users.only("id", "email", "username", "date_joined")[:12]:
+    for user in nonstaff_users.only("id", "email", "username", "date_joined").order_by(
+        "-date_joined", "-id"
+    )[:12]:
         events.append(
             {
                 "kind": "signup",

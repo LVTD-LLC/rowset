@@ -906,6 +906,31 @@ class TestHomeView:
             f"Mutation {number}" for number in range(12)
         }
 
+    def test_admin_dashboard_activity_feed_orders_sources_before_slicing(self, django_user_model):
+        now = timezone.now()
+        for number in range(13):
+            item = Feedback.objects.create(feedback=f"Feedback {number}", page="/admin-panel")
+            Feedback.objects.filter(pk=item.pk).update(
+                created_at=now + timezone.timedelta(minutes=number)
+            )
+            user = django_user_model.objects.create_user(
+                username=f"feed-user-{number}",
+                email=f"feed-user-{number}@example.com",
+                password="strong-test-pass-123",
+            )
+            django_user_model.objects.filter(pk=user.pk).update(
+                date_joined=now + timezone.timedelta(minutes=number)
+            )
+
+        context = build_admin_dashboard_context(7, now=now + timezone.timedelta(hours=1))
+        activity_titles = {item["title"] for item in context["activity_feed"]}
+        activity_details = {item["detail"] for item in context["activity_feed"]}
+
+        assert "Feedback 12" in activity_titles
+        assert "Feedback 0" not in activity_titles
+        assert "feed-user-12@example.com" in activity_details
+        assert "feed-user-0@example.com" not in activity_details
+
     def test_admin_dashboard_uses_calendar_day_boundaries(self, django_user_model):
         now = timezone.localtime(timezone.now()).replace(hour=18, minute=0, second=0, microsecond=0)
         first_day = now.replace(hour=0) - timezone.timedelta(days=6)
