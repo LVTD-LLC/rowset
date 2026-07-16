@@ -242,20 +242,22 @@
           return;
         }
 
+        const panelElement =
+          event.currentTarget?.closest?.("[data-copy-url], [data-copy-label]") || this.$el;
         this.busy = true;
-        const text = await this.copyText();
+        const text = await this.copyText(panelElement);
         const copied = await Rowset.copyTextToClipboard(text, {
-          sourceElement: this.$el.dataset.copyUrl ? null : this.$refs.source,
+          sourceElement: panelElement.dataset.copyUrl ? null : this.$refs.source,
         });
 
-        this.flashLabel(copied ? "Copied" : "Copy failed");
-        this.trackCopy(copied);
-        this.dispatchCopySuccess(copied);
+        this.flashLabel(copied ? "Copied" : "Copy failed", panelElement);
+        this.trackCopy(copied, panelElement);
+        this.dispatchCopySuccess(copied, panelElement);
         this.busy = false;
       },
 
-      async copyText() {
-        const url = this.$el.dataset.copyUrl || "";
+      async copyText(panelElement = this.$el) {
+        const url = panelElement.dataset.copyUrl || "";
         if (!url) {
           return this.$refs.source?.value || this.$refs.source?.textContent || "";
         }
@@ -273,7 +275,7 @@
           }
 
           const payload = await response.json();
-          const responseKey = this.$el.dataset.copyResponseKey || "";
+          const responseKey = panelElement.dataset.copyResponseKey || "";
           if (responseKey) {
             return typeof payload[responseKey] === "string" ? payload[responseKey] : "";
           }
@@ -283,10 +285,10 @@
         }
       },
 
-      flashLabel(message) {
+      flashLabel(message, panelElement = this.$el) {
         window.clearTimeout(this.resetTimer);
         const originalLabel =
-          this.$el.dataset.copyLabel ||
+          panelElement.dataset.copyLabel ||
           this.$refs.label?.dataset.originalLabel ||
           this.label;
         if (this.$refs.label) {
@@ -299,8 +301,8 @@
         }, 1600);
       },
 
-      trackCopy(copied) {
-        const eventName = this.$el.dataset.copyTrackingEvent || "";
+      trackCopy(copied, panelElement = this.$el) {
+        const eventName = panelElement.dataset.copyTrackingEvent || "";
         if (!copied || !eventName || typeof window.posthog?.capture !== "function") {
           return;
         }
@@ -308,13 +310,13 @@
         window.posthog.capture(eventName);
       },
 
-      dispatchCopySuccess(copied) {
-        const eventName = this.$el.dataset.copySuccessEvent || "";
+      dispatchCopySuccess(copied, panelElement = this.$el) {
+        const eventName = panelElement.dataset.copySuccessEvent || "";
         if (!copied || !eventName) {
           return;
         }
 
-        this.$el.dispatchEvent(
+        panelElement.dispatchEvent(
           new CustomEvent(eventName, {
             bubbles: true,
             composed: false,

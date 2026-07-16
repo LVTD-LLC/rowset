@@ -227,6 +227,11 @@ def build_content_agent_setup_prompt():
     mcp_url = build_absolute_public_url("/mcp/")
     rest_api_base_url = build_absolute_public_url("/api/")
     instructions_url = build_absolute_public_url(reverse("agent_instructions_rowset_mcp"))
+    llms_txt_url = build_absolute_public_url(reverse("llms_txt"))
+    api_docs_url = build_absolute_public_url("/api/docs")
+    cli_docs_url = build_absolute_public_url("/docs/use-cli.md")
+    docs_url = build_absolute_public_url(reverse("docs_home"))
+    blog_url = build_absolute_public_url(reverse("blog_posts"))
 
     return "\n".join(
         [
@@ -234,9 +239,15 @@ def build_content_agent_setup_prompt():
             "",
             f"Rowset MCP URL: {mcp_url}",
             f"Rowset REST API base: {rest_api_base_url}",
+            f"Rowset CLI guide: {cli_docs_url}",
             f"Rowset API key: {AGENT_API_KEY_MASK}",
             f"Rowset skill: {instructions_url}",
             f"Rowset skill install: {ROWSET_SKILL_INSTALL_COMMAND}",
+            f"Rowset current docs index: {llms_txt_url}",
+            f"Rowset docs: {docs_url}",
+            f"Rowset blog: {blog_url}",
+            f"Rowset current API docs: {api_docs_url}",
+            f"Rowset current capabilities: {rest_api_base_url}capabilities",
             "",
             ROWSET_AGENT_SETUP_INSTRUCTIONS,
         ]

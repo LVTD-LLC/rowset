@@ -1,6 +1,6 @@
 ---
 name: rowset-features
-description: Use when a user asks what Rowset can do, which MCP or REST features Rowset supports, how Rowset capabilities fit together, or whether a requested dataset workflow is supported.
+description: Use when a user asks what Rowset can do through MCP, CLI, or REST, how current Rowset capabilities fit together, or whether a requested dataset workflow is supported.
 ---
 
 # Rowset Features
@@ -8,10 +8,14 @@ description: Use when a user asks what Rowset can do, which MCP or REST features
 Use this skill to explain Rowset's current feature surface accurately. Always
 prefer live discovery over memory:
 
-1. If MCP is connected, call `get_rowset_capabilities`.
-2. Inspect live MCP tools and schemas before invoking named tools.
-3. Use the generated API docs or `llms.txt` from the Rowset site for public
-   reference material.
+1. Load the live capability guide through `get_rowset_capabilities`,
+   `rowset capabilities`, or the REST capabilities endpoint.
+2. Inspect current MCP schemas, CLI help, or generated REST API docs for the
+   interface the user selected.
+3. Use `llms.txt` from the Rowset site to find current public reference material.
+
+The sections below are orientation, not a complete or permanent feature list.
+When they disagree with a live Rowset resource, follow the live resource.
 
 Do not claim Rowset-owned Google Sheets sync, dashboard upload wizards, or
 spreadsheet write-back as active product capabilities.

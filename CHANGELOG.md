@@ -22,10 +22,15 @@ deployment or release cut date.
 - Added an authenticated post-deployment smoke command that verifies REST, MCP, dataset writes and reads, and worker execution while removing temporary users, keys, datasets, and task results after success or failure.
 - Added a release gate that removes GHCR credentials, anonymously inspects and pulls both supported architectures before tag promotion, and prevents an immutable Git SHA tag from being overwritten with a different digest.
 - Added a decision guide for sharing AI-agent data through scoped private access, authenticated exports, or read-only public previews.
-- Added idempotent production environment initialization and pre-start validation with generated strong secrets, owner-only files, injected-secret support, and rejection of unsafe development defaults.
 
 ### Changed
+- Redesigned first-agent onboarding as a required two-step create-key and copy-prompt wizard that matches the app shell.
+- Made the copied agent setup prompt and Rowset skills transport-neutral and evergreen across MCP, CLI, and REST, with user-approved configuration and authenticated completion.
+- Added direct docs and blog discovery links to the agent prompt and ensured Step 2 copies the protected full-key prompt while keeping its on-screen preview masked.
 - Dataset list and search responses now return compact discovery cards through REST and MCP; clients call the single-dataset detail endpoint or `get_dataset` when they need headers, semantic schema, instructions, metadata, index settings, relationships, or preview configuration.
+
+### Security
+- Added idempotent production environment initialization and pre-start validation with generated strong secrets, owner-only files, injected-secret support, and rejection of unsafe development defaults.
 
 ## 2026-07-15
 

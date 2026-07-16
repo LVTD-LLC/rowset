@@ -9,9 +9,9 @@ keywords: Rowset tutorial, getting started, MCP, dataset API
 This guide connects a trusted agent to Rowset and creates one small dataset the
 agent can inspect and update later.
 
-You will use the dashboard for setup, then the agent will use authenticated MCP
-or REST for the actual dataset work. Public previews stay off unless you
-explicitly ask to share a read-only browser page.
+You will use the dashboard for setup, then the agent will recommend MCP, CLI,
+or REST for the actual dataset work and ask which one to configure. Public
+previews stay off unless you explicitly ask to share a read-only browser page.
 
 Use this as the shortest path. After it works, use the broader
 [dataset guide](/docs/datasets) when you need projects, relationships, image
@@ -35,9 +35,16 @@ The docs show a masked example:
 The dashboard preview masks the API key. The copy button includes the real key,
 so treat the copied prompt like a password.
 
-## 2. Store the API key privately
+## 2. Choose an interface
 
-Store the key in the agent runtime as `ROWSET_API_KEY`.
+Ask the agent to compare MCP, CLI, and REST with its runtime and your workflow.
+It should explain one recommendation, then wait for you to choose before it
+installs software or changes configuration.
+
+## 3. Configure the approved interface
+
+Store the key in the agent runtime as `ROWSET_API_KEY` or in an equivalent
+secret store, then follow the current guide for the interface you approved.
 
 For MCP and REST, Rowset expects a bearer token:
 
@@ -47,28 +54,30 @@ Authorization: Bearer {{ api_key_placeholder }}
 
 Use `X-API-Key` only for REST clients that cannot send bearer tokens.
 
-## 3. Connect the MCP server
+Current interface references:
 
-Configure the agent's MCP client with the URL shown by your Rowset instance:
+- [Connect over MCP](/docs/connect-mcp)
+- [Use Rowset from the CLI](/docs/use-cli)
+- [Dataset API](/docs/dataset-api)
 
-```bash
-codex mcp add rowset --url {{ mcp_url }} --bearer-token-env-var ROWSET_API_KEY
-```
+## 4. Load current capabilities
 
-The command records the env-var name, not the raw key.
+Before relying on static examples, read the public `/api/capabilities` response,
+`llms.txt`, and the current guide for the interface you selected. These can be
+read before sending the API key, so trial activation still happens only after
+configuration is complete.
 
-## 4. Verify access
+## 5. Verify access and complete onboarding
 
-Ask the agent to verify the connected account and load the current Rowset
-capabilities:
+Make authenticated user-info the final setup action: call `get_user_info` over
+MCP, run `rowset user info` through the CLI, or request `GET /api/user` through
+REST. A successful response verifies the connection, completes onboarding, and
+starts the trial.
 
-```text
-Call get_user_info, then call get_rowset_capabilities.
-```
+After verification, use `get_rowset_capabilities`, `rowset capabilities`, or
+`/api/capabilities` whenever you need to refresh Rowset's current feature guide.
 
-The agent should use MCP tool discovery for exact tool names and input schemas.
-
-## 5. Create one dataset
+## 6. Create one dataset
 
 Ask the agent to create a small dataset with a stable index column. For a first
 run, choose a workflow with a natural key:
@@ -92,7 +101,7 @@ and include instructions that status must be todo, doing, blocked, or done.
 The agent should call `get_dataset` after creation so it has the dataset key,
 headers, index column, instructions, and schema context.
 
-## 6. Try one update
+## 7. Try one update
 
 Ask the agent to update a row by index value, then read it back:
 

@@ -7,26 +7,26 @@ keywords: Rowset agents, llms.txt, MCP discovery, Rowset skills
 # Help agents discover Rowset
 
 Rowset is designed so agents do not have to rely on stale prompt text. A trusted
-agent should discover the live MCP server, then load Rowset's current feature
-guide before creating or changing data. If the client cannot use MCP and must
-call REST directly, use
-[How to connect an AI agent to the Rowset Dataset API](/blog/connect-ai-agent-to-dataset-api)
-as the REST setup path.
+agent should use live capabilities and current interface documentation before
+creating or changing data. MCP, CLI, and REST are peer access methods; the agent
+should recommend one for its runtime and the user's workflow, then ask which
+interface to configure.
 
 ## Recommended startup order
 
-1. Configure the Rowset MCP URL with `Authorization: Bearer <key>`.
-2. Discover available MCP tools and schemas from the connected server.
-3. Call `get_user_info` to verify authentication.
-4. Call `get_rowset_capabilities` to load the current Rowset feature guide.
-5. Call `get_all_datasets`, `get_archived_datasets`, or `search_datasets` before creating a new dataset.
-6. Call `get_dataset` before row operations so headers, index column, schema
-   metadata, dataset context, and relationship summaries are in context.
+1. Read the setup skill, `llms.txt`, and current capability resources.
+2. Compare MCP, CLI, and REST, recommend one, and ask the user which to configure.
+3. Load the public `/api/capabilities` response and current interface docs.
+4. Configure only the approved interface and keep the API key in a secret store.
+5. Make authenticated user-info the first authenticated action and final setup step so the connection is
+   verified, onboarding completes, and the trial starts.
+6. Ask what the user wants to do next before creating or changing data.
 
-## MCP capability guide
+## Capability guide
 
-`get_rowset_capabilities` returns a concise, structured guide for the connected
-server. It groups Rowset features by workflow:
+The same concise, structured capability guide is available through
+`get_rowset_capabilities`, `rowset capabilities`, and `/api/capabilities`. It
+groups Rowset features by workflow:
 
 - account and MCP setup
 - datasets
@@ -39,8 +39,8 @@ server. It groups Rowset features by workflow:
 - public previews
 - archive, restore, and exports
 
-Use the guide for workflow semantics. Use MCP tool discovery for exact current
-input schemas.
+Use the guide for workflow semantics. Use MCP tool discovery, CLI help, or
+generated REST API docs for exact current operations and inputs.
 
 ## llms.txt
 
@@ -80,9 +80,9 @@ The app serves the skill markdown at:
 
 ## What agents should treat as current
 
-- MCP `tools/list` is the exact source for live tool names, descriptions, and
-  schemas.
-- `get_rowset_capabilities` is the current workflow and feature guide.
+- The live capability guide is the current workflow and feature reference.
+- MCP `tools/list`, CLI help, and generated REST docs are the exact sources for
+  their respective interface operations and schemas.
 - `get_dataset` is the current per-dataset context source before row work.
 - Generated API docs are the exact REST schema source.
 - Public docs and skills explain stable workflows and guardrails.
