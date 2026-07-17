@@ -839,6 +839,7 @@ class TestHomeView:
         assert response.context["attention"]["unused_agent_keys"] == 1
         assert response.context["attention"]["new_feedback"] == 1
         assert response.context["activity_feed"][0]["kind"] == "feedback"
+        assert all("url" not in event for event in response.context["activity_feed"])
         content = response.content.decode()
         assert "Product health" in content
         assert "Activation funnel" in content
@@ -847,6 +848,7 @@ class TestHomeView:
         assert "Needs attention" in content
         assert "Recent activity" in content
         assert 'hx-sync="closest #admin-dashboard:replace"' in content
+        assert 'href="/admin/' not in content
         assert "New users:" in content
         assert 'tabindex="0"' in content
 

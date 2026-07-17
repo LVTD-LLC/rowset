@@ -240,15 +240,14 @@
             role="list">
             {% for event in activity_feed %}
                 <li>
-                    <a href="{{ event.url }}"
-                       class="fb-focus flex min-w-0 flex-col gap-2 py-4 hover:bg-slate-950/3 dark:hover:bg-white/5 @2xl:flex-row @2xl:items-center">
+                    <div class="flex min-w-0 flex-col gap-2 py-4 @2xl:flex-row @2xl:items-center">
                         <p class="w-24 shrink-0 font-mono text-sm text-slate-500 dark:text-slate-400">{{ event.kind }}</p>
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-base font-medium text-slate-950 dark:text-slate-100 sm:text-sm">{{ event.title }}</p>
                             <p class="mt-1 truncate text-base text-slate-500 dark:text-slate-400 sm:text-sm">{{ event.detail }}</p>
                         </div>
                         <p class="shrink-0 text-base text-slate-400 dark:text-slate-500 sm:text-sm">{{ event.timestamp|timesince }} ago</p>
-                    </a>
+                    </div>
                 </li>
             {% empty %}
                 <li class="py-8 text-center text-base text-slate-500 dark:text-slate-400 sm:text-sm">No activity yet.</li>

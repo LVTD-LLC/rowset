@@ -3,7 +3,6 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncDate
-from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.choices import ProfileStates
@@ -102,7 +101,6 @@ def _activity_feed(nonstaff_users, feedback) -> list[dict]:
                 "title": item.feedback,
                 "detail": f"Feedback · {submitter}",
                 "timestamp": item.created_at,
-                "url": reverse("admin:core_feedback_change", args=[item.pk]),
             }
         )
     for user in nonstaff_users.only("id", "email", "username", "date_joined").order_by(
@@ -114,7 +112,6 @@ def _activity_feed(nonstaff_users, feedback) -> list[dict]:
                 "title": "New account created",
                 "detail": user.email or user.username,
                 "timestamp": user.date_joined,
-                "url": reverse("admin:auth_user_change", args=[user.pk]),
             }
         )
 

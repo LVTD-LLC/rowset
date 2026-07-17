@@ -14,6 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
@@ -22,7 +23,6 @@ from apps.pages.seo import favicon, public_sitemap, robots_txt
 from apps.pages.views import AccountSignupByPasskeyView, AccountSignupView
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
     # Override allauth signup with custom views.
     path(
         "accounts/signup/passkey/",
@@ -45,6 +45,9 @@ urlpatterns = [
         name="django.contrib.sitemaps.views.sitemap",
     ),
 ]
+
+if settings.ENVIRONMENT != "prod":
+    urlpatterns.insert(0, path("admin/", admin.site.urls))
 
 handler500 = "apps.core.views.server_error"
 handler404 = "apps.core.views.page_not_found"
