@@ -1,4 +1,13 @@
+{% load static %}
 {% if posthog_api_key %}
+    <script>
+    window.Rowset = window.Rowset || {};
+    window.Rowset.posthogPageviewContext = {
+      contentGroup: "{{ posthog_content_group|escapejs }}",
+      route: "{{ posthog_pageview_route|escapejs }}",
+    };
+    </script>
+    <script src="{% static 'js/posthog-privacy.js' %}"></script>
     <script>
     !(function (t, e) {
       var o, n, p, r;
@@ -50,6 +59,7 @@
     posthog.init("{{ posthog_api_key|escapejs }}", {
       api_host: "{{ posthog_host|escapejs }}",
       autocapture: false,
+      before_send: window.Rowset.sanitizePosthogEvent,
       capture_pageview: false,
       defaults: "2026-05-30",
       person_profiles: "identified_only",
@@ -64,4 +74,7 @@
       window.Rowset.posthogSessionId = sessionId;
     });
     </script>
+    {% if posthog_pageview_enabled %}
+      <script defer src="{% static 'js/posthog-pageviews.js' %}"></script>
+    {% endif %}
 {% endif %}

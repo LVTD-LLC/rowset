@@ -18,6 +18,9 @@ deployment or release cut date.
 
 ## 2026-07-17
 
+### Added
+- Added explicit privacy-safe pageview capture for marketing, documentation, authentication, and public dataset pages, including exact-once HTMX handling and bounded campaign attribution.
+
 ### Security
 - Disabled Django's model administration routes in production and removed internal dashboard links into editable admin records.
 

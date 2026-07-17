@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import re
 
 from allauth.socialaccount.models import SocialApp
 from django.conf import settings
@@ -10,6 +11,34 @@ from apps.datasets.models import Dataset, Project, ProjectSection
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+
+POSTHOG_PAGEVIEW_GROUPS = {
+    "account_confirm_email": "auth",
+    "account_login": "auth",
+    "account_reset_password": "auth",
+    "account_reset_password_done": "auth",
+    "account_reset_password_from_key": "auth",
+    "account_reset_password_from_key_done": "auth",
+    "account_signup": "auth",
+    "account_signup_by_passkey": "auth",
+    "blog_post": "blog",
+    "blog_posts": "blog",
+    "changelog": "marketing",
+    "comparison_page": "marketing",
+    "docs_home": "docs",
+    "docs_page": "docs",
+    "landing": "marketing",
+    "pricing": "marketing",
+    "privacy_policy": "marketing",
+    "public_dataset": "public_dataset",
+    "public_dataset_row_detail": "public_dataset",
+    "socialaccount_login": "auth",
+    "terms_of_service": "marketing",
+    "use_case_page": "marketing",
+    "use_cases": "marketing",
+    "uses": "marketing",
+}
+POSTHOG_ROUTE_PARAMETER_PATTERN = re.compile(r"<(?:[^:>]+:)?([^>]+)>")
 
 
 def app_navigation(request):
@@ -86,10 +115,24 @@ def pro_subscription_status(request):
 
 
 def posthog_api_key(request):
+    resolver_match = getattr(request, "resolver_match", None)
+    content_group = POSTHOG_PAGEVIEW_GROUPS.get(
+        getattr(resolver_match, "url_name", None),
+        "",
+    )
+    route = getattr(resolver_match, "route", "") if content_group else ""
+    normalized_route = (
+        f"/{POSTHOG_ROUTE_PARAMETER_PATTERN.sub(r':\1', route).lstrip('/')}"
+        if content_group
+        else ""
+    )
     context = {
         "posthog_api_key": settings.POSTHOG_API_KEY,
+        "posthog_content_group": content_group,
         "posthog_host": settings.POSTHOG_HOST,
         "posthog_distinct_id": "",
+        "posthog_pageview_enabled": bool(settings.POSTHOG_API_KEY and normalized_route),
+        "posthog_pageview_route": normalized_route,
         "posthog_user_email": "",
     }
     if request.user.is_authenticated and hasattr(request.user, "profile"):
