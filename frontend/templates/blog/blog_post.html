@@ -29,10 +29,16 @@
                 <div class="mt-10 flex flex-wrap gap-3 font-mono text-sm"><time datetime="{{ blog_post.published_at|date:'Y-m-d' }}">{{ blog_post.published_at|date:"M j, Y" }}</time><span>/</span><span>{{ blog_post.reading_time_minutes }} min read</span><span>/</span><span>{{ blog_post.author }}</span></div>
                 <h1 class="mt-6 max-w-[20ch] font-display text-5xl font-semibold tracking-tight text-balance sm:text-7xl">{{ blog_post.title }}</h1>
                 <p class="mt-8 max-w-[40ch] text-2xl text-pretty sm:text-xl">{{ blog_post.description }}</p>
+                <div class="mt-10 flex flex-wrap items-start gap-3 border-t border-[#1313a4]/20 pt-6">
+                    <a href="{% url 'account_signup' %}"
+                       class="fb-focus inline-flex min-h-10 items-center justify-center rounded-md bg-[#1313a4] px-3 py-2 text-sm font-semibold text-white hover:bg-white hover:text-[#1313a4]">Start a 7-day trial</a>
+                    {% include "components/ai_reader_menu.html" with ai_reader_menu_variant="on_yellow" %}
+                    <a href="{% url 'docs_page' slug='quickstart' %}"
+                       class="fb-focus inline-flex min-h-10 items-center justify-center rounded-md border border-[#1313a4]/50 px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Read the quickstart</a>
+                </div>
             </div>
         </header>
         <div class="mx-auto max-w-3xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-            <div class="mb-10 flex justify-end">{% include "components/ai_reader_menu.html" %}</div>
             <div class="prose max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-[#1313a4] prose-pre:bg-neutral-950 prose-pre:text-white dark:prose-invert dark:prose-a:text-[#ffdd3d]">{{ blog_post.html|safe }}</div>
             <nav class="mt-14 border-t-2 border-slate-950 pt-8 dark:border-white" aria-label="Related resources"><h2 class="text-2xl font-semibold tracking-tight">Keep building</h2><div class="mt-6 grid gap-3 sm:grid-cols-3"><a href="{% url 'docs_page' slug='quickstart' %}" class="fb-focus border border-slate-950/20 p-4 font-semibold hover:bg-[#f5f5ff] dark:border-white/20 dark:hover:bg-white/10">Quickstart →</a><a href="{% url 'docs_page' slug='dataset-api' %}" class="fb-focus border border-slate-950/20 p-4 font-semibold hover:bg-[#f5f5ff] dark:border-white/20 dark:hover:bg-white/10">Dataset API →</a><a href="{% url 'use_cases' %}" class="fb-focus border border-slate-950/20 p-4 font-semibold hover:bg-[#f5f5ff] dark:border-white/20 dark:hover:bg-white/10">AI agent examples →</a></div></nav>
         </div>
