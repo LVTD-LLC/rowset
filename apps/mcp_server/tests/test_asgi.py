@@ -132,6 +132,43 @@ def test_mcp_initialize_uses_stateless_json_response(authenticated_mcp):
     assert result["serverInfo"]["name"] == "Rowset"
 
 
+def test_mcp_initialize_includes_essential_workflow_and_safety_instructions(authenticated_mcp):
+    with TestClient(application) as client:
+        response = client.post(
+            "/mcp/",
+            headers=_authorization_headers(authenticated_mcp),
+            json=_mcp_request(
+                "initialize",
+                1,
+                {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "capabilities": {},
+                    "clientInfo": {"name": "clean-client", "version": "0.1"},
+                },
+            ),
+        )
+
+    instructions = _assert_jsonrpc_result(response)["instructions"].lower()
+    required_guidance = (
+        "small limits",
+        "get_dataset",
+        "before dataset-specific writes",
+        "stable index",
+        "by-index",
+        "explicit user intent",
+        "delete",
+        "archive",
+        "destructive schema changes",
+        "clear preview passwords",
+        "enable public access",
+        "public previews",
+        "read-only sharing surfaces",
+        "not authentication",
+    )
+    missing_guidance = [guidance for guidance in required_guidance if guidance not in instructions]
+    assert missing_guidance == []
+
+
 @pytest.mark.parametrize(
     ("url", "headers"),
     [

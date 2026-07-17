@@ -24,6 +24,7 @@ deployment or release cut date.
 ### Changed
 - Enabled colorized choice values and tags by default for new user profiles.
 - Limited internal admin dashboard metrics and activity to regular users while excluding staff and superuser-owned data.
+- Made hosted MCP initialization instructions self-contained for bounded reads, stable-index writes, destructive-action consent, and public-preview safety.
 - Moved blog reading actions into the article header alongside trial and quickstart links, matching the comparison-article action hierarchy.
 
 ### Removed
