@@ -110,7 +110,13 @@ mcp = FastMCP(
     instructions=(
         "Rowset lets AI agents create, inspect, update, and share API-addressable datasets. "
         "For hosted MCP requests, add the Rowset MCP server URL to your MCP client "
-        "and configure the agent API key as an Authorization: Bearer token."
+        "and configure the agent API key as an Authorization: Bearer token. "
+        "Keep discovery and search reads bounded with small limits. Before dataset-specific "
+        "writes, call get_dataset to inspect the current schema, instructions, metadata, "
+        "relationships, and index settings. Keep each stable index unchanged and prefer "
+        "by-index row operations. Do not delete or archive data, make destructive schema "
+        "changes, clear preview passwords, or enable public access without explicit user intent. "
+        "Public previews are read-only sharing surfaces, not authentication."
     ),
     auth=mcp_auth,
 )
