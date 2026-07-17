@@ -7,7 +7,7 @@
      @keydown.escape.window="if (open) { open = false; $refs.trigger.focus(); }">
     <button type="button"
             x-ref="trigger"
-            class="{% if ai_reader_menu_variant == 'on_dark' %}fb-focus inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-white/40 bg-transparent px-3 py-2 text-sm font-semibold text-white hover:bg-white hover:text-[#1313a4]{% else %}fb-button-secondary inline-flex items-center gap-2{% endif %}"
+            class="{% if ai_reader_menu_variant == 'on_dark' %}fb-focus inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-white/40 bg-transparent px-3 py-2 text-sm font-semibold text-white hover:bg-white hover:text-[#1313a4]{% elif ai_reader_menu_variant == 'on_yellow' %}fb-focus inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[#1313a4]/50 bg-transparent px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white{% else %}fb-button-secondary inline-flex items-center gap-2{% endif %}"
             aria-haspopup="menu"
             :aria-expanded="open.toString()"
             @click="open = !open">Read with AI</button>
@@ -38,7 +38,7 @@
                 :disabled="busy"
                 @click="copyMarkdown()">Copy Markdown</button>
     </div>
-    <p class="mt-2 min-h-5 text-base leading-7 sm:text-sm sm:leading-6 {% if ai_reader_menu_variant == 'on_dark' %}text-white/70{% else %}text-slate-600 dark:text-slate-300{% endif %}"
+    <p class="mt-2 min-h-5 text-base leading-7 sm:text-sm sm:leading-6 {% if ai_reader_menu_variant == 'on_dark' %}text-white/70{% elif ai_reader_menu_variant == 'on_yellow' %}text-[#1313a4]/70{% else %}text-slate-600 dark:text-slate-300{% endif %}"
        role="status"
        aria-live="polite"
        x-text="status"></p>
