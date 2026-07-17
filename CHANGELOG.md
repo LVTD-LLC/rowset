@@ -18,6 +18,9 @@ deployment or release cut date.
 
 ## 2026-07-17
 
+### Security
+- Disabled Django's model administration routes in production and removed internal dashboard links into editable admin records.
+
 ### Changed
 - Limited internal admin dashboard metrics and activity to regular users while excluding staff and superuser-owned data.
 

@@ -25,6 +25,21 @@ print(json.dumps({
 }))
 """
 
+_ADMIN_URL_PROBE = """
+import django
+
+django.setup()
+
+from django.urls import Resolver404, resolve
+
+try:
+    match = resolve("/admin/")
+except Resolver404:
+    print("disabled")
+else:
+    print(match.view_name)
+"""
+
 
 def _settings_environment(*, environment, site_url, insecure_http=False, **overrides):
     process_environment = {
@@ -66,6 +81,41 @@ def _probe_settings(*, environment, site_url, insecure_http=False, **overrides):
     )
     result.check_returncode()
     return json.loads(result.stdout.splitlines()[-1])
+
+
+def _probe_admin_url(*, environment, site_url, insecure_http=False):
+    result = subprocess.run(
+        [sys.executable, "-c", _ADMIN_URL_PROBE],
+        env=_settings_environment(
+            environment=environment,
+            site_url=site_url,
+            insecure_http=insecure_http,
+        ),
+        text=True,
+        capture_output=True,
+    )
+    result.check_returncode()
+    return result.stdout.splitlines()[-1]
+
+
+def test_django_admin_url_is_disabled_in_production():
+    assert (
+        _probe_admin_url(
+            environment="prod",
+            site_url="https://rowset.example.com",
+        )
+        == "disabled"
+    )
+
+
+def test_django_admin_url_remains_available_in_development():
+    assert (
+        _probe_admin_url(
+            environment="dev",
+            site_url="http://localhost:8000",
+        )
+        == "admin:index"
+    )
 
 
 def test_production_https_settings_trust_caddy_and_secure_django():
