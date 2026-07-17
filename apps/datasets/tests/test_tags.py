@@ -58,6 +58,8 @@ def test_authenticated_dataset_and_row_detail_render_tags_using_profile_color_se
     auth_client,
     profile,
 ):
+    profile.choice_colorization_enabled = False
+    profile.save(update_fields=["choice_colorization_enabled"])
     original_value = " Django, HTMX, , django ,  "
     dataset = _create_tags_dataset(
         profile,
@@ -99,6 +101,8 @@ def test_authenticated_preview_rows_render_tags_using_profile_color_setting(
     auth_client,
     profile,
 ):
+    profile.choice_colorization_enabled = False
+    profile.save(update_fields=["choice_colorization_enabled"])
     dataset = _create_tags_dataset(
         profile,
         preview_rows=[{"item": "DOC-1", "topics": "Django, HTMX"}],

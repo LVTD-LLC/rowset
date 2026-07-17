@@ -6,6 +6,17 @@ from apps.core.models import Profile
 
 
 @pytest.mark.django_db
+def test_new_profile_enables_choice_colorization_by_default(django_user_model):
+    user = django_user_model.objects.create_user(
+        username="colorizeduser",
+        email="colorizeduser@example.com",
+        password="password123",
+    )
+
+    assert user.profile.choice_colorization_enabled is True
+
+
+@pytest.mark.django_db
 def test_user_save_does_not_revert_profile_state(sync_state_transitions):
     user_model = get_user_model()
     user = user_model.objects.create_user(

@@ -1065,6 +1065,8 @@ def test_dataset_detail_keeps_choice_values_plain_when_colorize_is_disabled(
     auth_client,
     profile,
 ):
+    profile.choice_colorization_enabled = False
+    profile.save(update_fields=["choice_colorization_enabled"])
     dataset = create_choice_status_dataset(profile)
 
     response = auth_client.get(dataset.get_absolute_url())

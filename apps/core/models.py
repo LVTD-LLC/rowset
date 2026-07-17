@@ -25,7 +25,7 @@ class Profile(BaseModel):
     setup_completed_at = models.DateTimeField(null=True, blank=True)
     agent_setup_prompt_dismissed = models.BooleanField(default=False)
     choice_colorization_enabled = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Render choice values with color accents in the dataset UI.",
     )
 
