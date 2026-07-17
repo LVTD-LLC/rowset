@@ -62,10 +62,14 @@ Current interface references:
 
 ## 4. Load current capabilities
 
-Before relying on static examples, read the public `/api/capabilities` response,
-`llms.txt`, and the current guide for the interface you selected. These can be
-read before sending the API key, so trial activation still happens only after
-configuration is complete.
+Before relying on static examples, load the compact capability topic index with
+a bare `get_rowset_capabilities` call, `rowset capabilities` command, or
+`GET /api/capabilities` request. Then request only the relevant topics, such as
+`rows` and `schema`. Use cases are opt-in; full mode retrieves the complete
+guide. Also read `llms.txt` and the current guide for the selected interface.
+The REST capability index and `llms.txt` are public and can be read before
+sending the API key, so trial activation still happens only after configuration
+is complete.
 
 ## 5. Verify access and complete onboarding
 
@@ -74,8 +78,9 @@ MCP, run `rowset user info` through the CLI, or request `GET /api/user` through
 REST. A successful response verifies the connection, completes onboarding, and
 starts the trial.
 
-After verification, use `get_rowset_capabilities`, `rowset capabilities`, or
-`/api/capabilities` whenever you need to refresh Rowset's current feature guide.
+After verification, refresh relevant details with MCP `topics`, CLI `--topic`,
+or REST `?topics=...`. Use MCP `full`, CLI `--full`, or REST `?full=true` only
+when the complete guide is needed.
 
 ## 6. Create one dataset
 

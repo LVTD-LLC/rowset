@@ -12,7 +12,9 @@ keep public previews for explicitly requested read-only human sharing.
 
 Before creating or changing datasets:
 
-1. Load current capabilities through the selected interface.
+1. Load the capability topic index through the selected interface, then request
+   relevant topics with use cases included. Do not retrieve the full guide
+   unless the workflow needs it.
 2. Search existing datasets and projects before creating new ones.
 3. Pick an explicit index column, or let Rowset generate `rowset_id` when no
    reliable business key exists.

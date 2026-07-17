@@ -234,7 +234,8 @@ Recommended agent startup order:
 3. Configure the remote MCP server with bearer-token auth.
 4. Discover live MCP tools and schemas from the connected server.
 5. Call `get_user_info` to verify authentication.
-6. Call `get_rowset_capabilities` for the current feature guide.
+6. Call `get_rowset_capabilities` for the compact topic index, then request only
+   the relevant topics for detailed guidance.
 7. Call `get_all_datasets`, `get_archived_datasets`, or `search_datasets`
    before creating duplicates.
 8. Call `get_dataset` before row operations so the agent sees headers, index
@@ -449,6 +450,16 @@ Store your private API key and verify authentication:
 export ROWSET_API_KEY="replace-with-your-copied-key"
 rowset user info
 rowset capabilities
+```
+
+Bare `rowset capabilities` returns the compact `available_topics` index. Request
+specific details with repeatable `--topic` flags, opt into examples with
+`--include-use-cases`, or retrieve the complete guide with `--full`:
+
+```bash
+rowset capabilities --topic rows --topic schema
+rowset capabilities --topic rows --include-use-cases
+rowset capabilities --full
 ```
 
 For local development, override the API base:

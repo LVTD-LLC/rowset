@@ -109,7 +109,10 @@ account, not in Rowset.
 
 - Recommend MCP, CLI, or REST for the current context and ask before configuring it.
 - Discover current capabilities and exact operations through the selected interface.
-- Use `get_rowset_capabilities`, `rowset capabilities`, or `/api/capabilities`.
+- Use a bare `get_rowset_capabilities` call, `rowset capabilities` command, or
+  `/api/capabilities` request for the compact topic index, then request only the
+  relevant topics. Opt into use cases only when useful; use full mode for the
+  complete guide.
 - Make authenticated user-info the final setup action.
 - Discover available datasets with `get_all_datasets`.
 - Find archived datasets with `get_archived_datasets` before restoring them.

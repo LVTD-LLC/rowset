@@ -68,9 +68,20 @@ rowset capabilities
 ```
 
 `rowset user info` returns safe account details for the authenticated user.
-`rowset capabilities` returns the feature groups supported by the connected
-instance. An authentication error usually means the API key and API base came
-from different Rowset instances, or the key is missing from the environment.
+Bare `rowset capabilities` returns a compact `available_topics` index. Request
+only the details needed for the task:
+
+```bash
+rowset capabilities --topic rows --topic schema
+rowset capabilities --topic rows --include-use-cases
+rowset capabilities --full
+```
+
+`--topic` is repeatable and also accepts comma-separated IDs. Use
+`--include-use-cases` only when examples help. `--full` returns the complete
+guide and cannot be combined with `--topic`. An authentication error usually
+means the API key and API base came from different Rowset instances, or the key
+is missing from the environment.
 
 ## Run common commands
 

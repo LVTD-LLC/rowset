@@ -70,7 +70,14 @@ Inspect Rowset capability groups:
 
 ```bash
 rowset capabilities
+rowset capabilities --topic rows --topic schema
+rowset capabilities --topic rows --include-use-cases
+rowset capabilities --full
 ```
+
+The bare command returns a compact `available_topics` index. `--topic` is
+repeatable and requests detailed guidance, `--include-use-cases` opts into
+examples, and `--full` retrieves the complete guide.
 
 Create a dataset:
 

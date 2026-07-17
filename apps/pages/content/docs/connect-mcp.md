@@ -67,9 +67,11 @@ get_user_info
 get_rowset_capabilities
 ```
 
-`get_user_info` verifies the authenticated account. `get_rowset_capabilities`
-loads Rowset's current workflow guide, privacy guardrails, REST fallback paths,
-and use-case patterns.
+`get_user_info` verifies the authenticated account. A bare
+`get_rowset_capabilities` call returns the compact `available_topics` index.
+Request specific `topics` for detailed workflow guidance, set
+`include_use_cases` only when examples help, or set `full` for the complete
+guide.
 
 ## 5. Inspect before changing rows
 
