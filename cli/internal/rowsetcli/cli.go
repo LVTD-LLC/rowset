@@ -91,7 +91,7 @@ func Run(ctx context.Context, streams IO, args []string) error {
 func dispatch(ctx context.Context, streams IO, cfg config, args []string) error {
 	switch args[0] {
 	case "capabilities":
-		return doRequest(ctx, streams, cfg, http.MethodGet, "/capabilities", nil, requestOptions{})
+		return runCapabilities(ctx, streams, cfg, args[1:])
 	case "healthcheck":
 		return doRequest(ctx, streams, cfg, http.MethodGet, "/healthcheck", nil, requestOptions{})
 	case "user":
@@ -124,6 +124,34 @@ func dispatch(ctx context.Context, streams IO, cfg config, args []string) error 
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runCapabilities(ctx context.Context, streams IO, cfg config, args []string) error {
+	fs := newFlagSet("capabilities")
+	var topicValues repeatedStrings
+	fs.Var(&topicValues, "topic", "capability topic (repeatable or comma-separated)")
+	includeUseCases := fs.Bool("include-use-cases", false, "include relevant use cases")
+	full := fs.Bool("full", false, "return the complete capability guide")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if len(topicValues) > 0 && *full {
+		return errors.New("--topic cannot be combined with --full")
+	}
+
+	topics := make([]string, 0, len(topicValues))
+	for _, value := range topicValues {
+		topics = append(topics, splitCSV(value)...)
+	}
+	values := url.Values{}
+	addQuery(values, "topics", strings.Join(topics, ","))
+	if *includeUseCases {
+		values.Set("include_use_cases", "true")
+	}
+	if *full {
+		values.Set("full", "true")
+	}
+	return doRequest(ctx, streams, cfg, http.MethodGet, "/capabilities", values, requestOptions{})
 }
 
 func runUser(ctx context.Context, streams IO, cfg config, args []string) error {
@@ -1370,7 +1398,7 @@ Global flags:
   --api-key-env NAME   env var containing the API key (default ROWSET_API_KEY)
 
 Commands:
-  capabilities
+  capabilities [--topic TOPIC ...] [--include-use-cases] [--full]
   user info
   api-key create
   feedback submit
