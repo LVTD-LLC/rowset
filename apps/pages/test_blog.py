@@ -273,6 +273,34 @@ def test_blog_post_header_and_body_share_the_same_content_width(client, blog_pos
     assert content.count('class="mx-auto max-w-3xl px-4') == 2
 
 
+def test_blog_post_actions_are_grouped_below_the_summary(client, blog_posts_dir):
+    write_post(
+        blog_posts_dir,
+        "post-with-actions",
+        {
+            "title": "A blog post with actions",
+            "description": "The article actions belong with the summary.",
+            "published_at": "2026-07-03",
+        },
+        "The article body.",
+    )
+
+    response = client.get(reverse("blog_post", kwargs={"slug": "post-with-actions"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    labels = (
+        "The article actions belong with the summary.",
+        "Start a 7-day trial",
+        "Read with AI",
+        "Read the quickstart",
+        "The article body.",
+    )
+    positions = [content.index(label) for label in labels]
+    assert positions == sorted(positions)
+    assert 'class="mb-10 flex justify-end"' not in content
+
+
 def test_blog_posts_are_sorted_by_publication_date(blog_posts_dir):
     write_post(
         blog_posts_dir,
