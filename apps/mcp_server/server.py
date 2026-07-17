@@ -5,6 +5,7 @@ from django.db import IntegrityError, close_old_connections
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token
+from fastmcp.tools.tool import ToolResult
 from pydantic import Field
 
 from apps.api.services import (
@@ -62,7 +63,7 @@ from apps.core.analytics import (
     agent_api_key_tracking_properties,
     track_activation_event,
 )
-from apps.core.capabilities import rowset_capabilities_payload
+from apps.core.capabilities import CapabilitySelectionError, rowset_capabilities_payload
 from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
 from apps.core.models import AgentApiKey, Profile
 from apps.core.services import (
@@ -468,15 +469,69 @@ def create_agent_api_key_tool(
 @mcp.tool(
     name="get_rowset_capabilities",
     description=(
-        "Return the current Rowset feature guide, recommended startup sequence, "
-        "MCP tool groups, REST fallback paths, use-case patterns, and safety guardrails."
+        "Return a compact Rowset capability topic index by default. Request topics for "
+        "detailed MCP tools, REST paths, and guidance; set full=true for the complete guide. "
+        "Use cases are opt-in."
     ),
 )
-def get_rowset_capabilities() -> dict:
-    """Return the current Rowset feature guide for the authenticated agent."""
+def get_rowset_capabilities(
+    topics: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "Optional topic IDs such as rows, relationships, schema, assets, previews, "
+                "or setup. Omit for the compact topic index."
+            )
+        ),
+    ] = None,
+    include_use_cases: Annotated[
+        bool,
+        Field(description="Include relevant use-case examples. Defaults to false."),
+    ] = False,
+    full: Annotated[
+        bool,
+        Field(description="Return every capability group. Cannot be combined with topics."),
+    ] = False,
+) -> ToolResult:
+    """Return compact or topic-selected Rowset capability guidance."""
     close_old_connections()
     _mcp_authenticated_profile()
-    return rowset_capabilities_payload()
+    try:
+        payload = rowset_capabilities_payload(
+            topics=topics,
+            include_use_cases=include_use_cases,
+            full=full,
+        )
+    except CapabilitySelectionError as exc:
+        raise _mcp_tool_error(
+            _mcp_error_payload(
+                code="VALIDATION_ERROR",
+                message=str(exc),
+                retryable=False,
+                suggested_action=(
+                    "Request IDs from available_topics, or choose full mode without topics."
+                ),
+                details={"http_status": 400},
+            )
+        ) from exc
+
+    if payload["mode"] == "summary":
+        topic_ids = ", ".join(topic["id"] for topic in payload["available_topics"])
+        content = (
+            f"Rowset capability topics: {topic_ids}. Request only the topics you need, "
+            "or set full=true for the complete guide."
+        )
+    elif payload["mode"] == "topics":
+        content = (
+            f"Returned {len(payload['capabilities'])} capability groups for topics: "
+            f"{', '.join(payload['requested_topics'])}. See structured content for details."
+        )
+    else:
+        content = (
+            f"Returned the full Rowset guide with {len(payload['capabilities'])} capability "
+            "groups. See structured content for details."
+        )
+    return ToolResult(content=content, structured_content=payload)
 
 
 @mcp.tool(

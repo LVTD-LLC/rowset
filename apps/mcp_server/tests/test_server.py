@@ -410,7 +410,7 @@ def test_create_agent_api_key_mcp_tool_rejects_missing_agent_api_key_context(mon
     anyio.run(run)
 
 
-def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
+def test_get_rowset_capabilities_mcp_tool_returns_compact_topic_index(monkeypatch):
     async def run():
         monkeypatch.setattr(
             "apps.mcp_server.server._authenticate_profile",
@@ -420,14 +420,56 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         async with Client(mcp) as client:
             result = await client.call_tool("get_rowset_capabilities", {})
 
-        payload = result.data
+        payload = result.structured_content
         assert payload["product"] == "Rowset"
         assert payload["capability_version"]
+        assert payload["mode"] == "summary"
+        assert "capabilities" not in payload
+        assert "use_cases" not in payload
+        assert len(result.content) == 1
+        assert len(result.content[0].text) < 500
+
+    anyio.run(run)
+
+
+def test_get_rowset_capabilities_mcp_tool_filters_topics_and_opts_into_use_cases(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda: _profile(),
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "get_rowset_capabilities",
+                {"topics": ["schema", "rows", "projects"], "include_use_cases": True},
+            )
+
+        payload = result.structured_content
         capability_ids = {capability["id"] for capability in payload["capabilities"]}
-        assert "relationships" in capability_ids
-        assert "dataset_context" in capability_ids
-        assert "image_assets" in capability_ids
-        assert "audio_assets" in capability_ids
+        assert capability_ids == {"dataset_context", "schema_mutations", "rows", "projects"}
+        assert payload["requested_topics"] == ["schema", "rows", "projects"]
+        assert [use_case["id"] for use_case in payload["use_cases"]] == ["task_board"]
+        assert len(result.content[0].text) < len(str(payload))
+
+    anyio.run(run)
+
+
+def test_get_rowset_capabilities_mcp_tool_can_return_full_guide(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda: _profile(),
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "get_rowset_capabilities",
+                {"full": True, "include_use_cases": True},
+            )
+
+        payload = result.structured_content
+        assert payload["mode"] == "full"
         assert {interface["id"] for interface in payload["interfaces"]} == {
             "mcp",
             "cli",
@@ -462,6 +504,60 @@ def test_get_rowset_capabilities_mcp_tool_returns_feature_guide(monkeypatch):
         assert "attach_audio_to_dataset_row" in audio_assets["mcp_tools"]
         assert "hosted MCP cannot read local file paths" in " ".join(audio_assets["notes"])
         assert "guardrails" in payload
+
+    anyio.run(run)
+
+
+def test_get_rowset_capabilities_mcp_tool_rejects_unknown_topics(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda: _profile(),
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool("get_rowset_capabilities", {"topics": ["unknown"]})
+
+        payload = _extract_mcp_error_payload(exc_info.value)
+        assert payload["code"] == "VALIDATION_ERROR"
+        assert "Unknown capability topic" in payload["message"]
+        assert payload["retryable"] is False
+
+    anyio.run(run)
+
+
+def test_get_rowset_capabilities_mcp_tool_does_not_translate_registry_errors(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda: _profile(),
+        )
+        monkeypatch.setattr(
+            "apps.mcp_server.server.rowset_capabilities_payload",
+            lambda **_kwargs: (_ for _ in ()).throw(ValueError("broken capability registry")),
+        )
+
+        async with Client(mcp) as client:
+            with pytest.raises(Exception) as exc_info:
+                await client.call_tool("get_rowset_capabilities", {})
+
+        assert "broken capability registry" in str(exc_info.value)
+        assert "VALIDATION_ERROR" not in str(exc_info.value)
+
+    anyio.run(run)
+
+
+def test_get_rowset_capabilities_mcp_tool_schema_exposes_selection_controls():
+    async def run():
+        async with Client(mcp) as client:
+            tools = {tool.name: tool for tool in await client.list_tools()}
+
+        properties = tools["get_rowset_capabilities"].inputSchema["properties"]
+        assert set(properties) == {"topics", "include_use_cases", "full"}
+        assert "compact Rowset capability topic index" in (
+            tools["get_rowset_capabilities"].description
+        )
 
     anyio.run(run)
 

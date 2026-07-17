@@ -1,7 +1,11 @@
 from dataclasses import dataclass
 from typing import Any
 
-CAPABILITY_VERSION = "2026-07-16"
+CAPABILITY_VERSION = "2026-07-17"
+
+
+class CapabilitySelectionError(ValueError):
+    """Raised when a caller requests an invalid capability payload selection."""
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,20 @@ class RowsetUseCase:
             "summary": self.summary,
             "starter_shape": list(self.starter_shape),
             "rowset_features": list(self.rowset_features),
+        }
+
+
+@dataclass(frozen=True)
+class RowsetCapabilityTopic:
+    id: str
+    title: str
+    capability_ids: tuple[str, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "capability_ids": list(self.capability_ids),
         }
 
 
@@ -544,6 +562,54 @@ ROWSET_GUARDRAILS = (
     ),
 )
 
+ROWSET_CAPABILITY_TOPICS = (
+    RowsetCapabilityTopic(
+        id="setup",
+        title="Account access, setup, API keys, and feedback",
+        capability_ids=("account_and_setup", "api_key_management", "product_feedback"),
+    ),
+    RowsetCapabilityTopic(
+        id="datasets",
+        title="Dataset discovery and creation",
+        capability_ids=("datasets",),
+    ),
+    RowsetCapabilityTopic(
+        id="schema",
+        title="Dataset context and schema changes",
+        capability_ids=("dataset_context", "schema_mutations"),
+    ),
+    RowsetCapabilityTopic(
+        id="rows",
+        title="Row reads, search, writes, and deletion",
+        capability_ids=("rows",),
+    ),
+    RowsetCapabilityTopic(
+        id="relationships",
+        title="Relationships between datasets",
+        capability_ids=("relationships",),
+    ),
+    RowsetCapabilityTopic(
+        id="projects",
+        title="Projects and sections",
+        capability_ids=("projects",),
+    ),
+    RowsetCapabilityTopic(
+        id="assets",
+        title="Image and audio assets",
+        capability_ids=("image_assets", "audio_assets"),
+    ),
+    RowsetCapabilityTopic(
+        id="previews",
+        title="Public read-only previews",
+        capability_ids=("public_previews",),
+    ),
+    RowsetCapabilityTopic(
+        id="archive_exports",
+        title="Archive, restore, and exports",
+        capability_ids=("archive_restore_and_exports",),
+    ),
+)
+
 
 def _validate_capability_registry() -> None:
     capability_ids = [capability.id for capability in ROWSET_CAPABILITIES]
@@ -565,6 +631,19 @@ def _validate_capability_registry() -> None:
     if unknown_references:
         raise ValueError(
             "ROWSET_USE_CASES references unknown capability IDs: " + "; ".join(unknown_references)
+        )
+
+    topic_capability_ids = {
+        capability_id
+        for topic in ROWSET_CAPABILITY_TOPICS
+        for capability_id in topic.capability_ids
+    }
+    if topic_capability_ids != valid_capability_ids:
+        missing_ids = sorted(valid_capability_ids - topic_capability_ids)
+        unknown_ids = sorted(topic_capability_ids - valid_capability_ids)
+        raise ValueError(
+            "ROWSET_CAPABILITY_TOPICS must cover the capability registry exactly; "
+            f"missing={missing_ids}, unknown={unknown_ids}"
         )
 
 
@@ -591,25 +670,96 @@ def public_rowset_use_cases() -> tuple[RowsetUseCase, ...]:
     return _visible_rowset_use_cases(public_rowset_capabilities())
 
 
-def rowset_capabilities_payload() -> dict[str, Any]:
+def _normalize_topics(topics: list[str] | tuple[str, ...] | None) -> tuple[str, ...]:
+    normalized_topics = tuple(
+        dict.fromkeys(topic.strip().lower() for topic in topics or () if topic.strip())
+    )
+    known_topics = {topic.id for topic in ROWSET_CAPABILITY_TOPICS}
+    unknown_topics = sorted(set(normalized_topics) - known_topics)
+    if unknown_topics:
+        label = "topic" if len(unknown_topics) == 1 else "topics"
+        raise CapabilitySelectionError(
+            f"Unknown capability {label}: {', '.join(unknown_topics)}. "
+            f"Available topics: {', '.join(sorted(known_topics))}."
+        )
+    return normalized_topics
+
+
+def _capabilities_for_topics(topics: tuple[str, ...]) -> tuple[RowsetCapability, ...]:
+    selected_ids = {
+        capability_id
+        for topic in ROWSET_CAPABILITY_TOPICS
+        if topic.id in topics
+        for capability_id in topic.capability_ids
+    }
+    return tuple(
+        capability for capability in _visible_rowset_capabilities() if capability.id in selected_ids
+    )
+
+
+def rowset_capabilities_payload(
+    *,
+    topics: list[str] | tuple[str, ...] | None = None,
+    include_use_cases: bool = False,
+    full: bool = False,
+) -> dict[str, Any]:
     _validate_capability_registry()
-    visible_capabilities = _visible_rowset_capabilities()
-    visible_use_cases = _visible_rowset_use_cases(visible_capabilities)
-    return {
+    normalized_topics = _normalize_topics(topics)
+    if full and normalized_topics:
+        raise CapabilitySelectionError("Choose topics or full mode, not both.")
+
+    if full:
+        mode = "full"
+    elif normalized_topics:
+        mode = "topics"
+    else:
+        mode = "summary"
+
+    payload: dict[str, Any] = {
         "product": "Rowset",
         "capability_version": CAPABILITY_VERSION,
         "summary": (
             "Rowset gives trusted AI agents private MCP, CLI, and REST access to "
             "user-owned structured datasets."
         ),
-        "source_of_truth": (
-            "Use this live guide for current feature groups and workflow semantics, then "
-            "consult MCP tool schemas, CLI help, or generated REST API docs for the exact "
-            "interface selected by the user."
-        ),
-        "interfaces": list(ROWSET_INTERFACES),
-        "recommended_startup": list(ROWSET_RECOMMENDED_STARTUP),
-        "capabilities": [capability.as_dict() for capability in visible_capabilities],
-        "use_cases": [use_case.as_dict() for use_case in visible_use_cases],
-        "guardrails": list(ROWSET_GUARDRAILS),
+        "mode": mode,
     }
+
+    if not full and not normalized_topics:
+        payload.update(
+            {
+                "usage": (
+                    "Request one or more available topic IDs for details. Set full=true for "
+                    "the complete guide, and include_use_cases=true only when examples help."
+                ),
+                "available_topics": [topic.as_dict() for topic in ROWSET_CAPABILITY_TOPICS],
+                "guardrails": list(ROWSET_GUARDRAILS),
+            }
+        )
+        if include_use_cases:
+            payload["use_cases"] = [use_case.as_dict() for use_case in ROWSET_USE_CASES]
+        return payload
+
+    visible_capabilities = (
+        _visible_rowset_capabilities() if full else _capabilities_for_topics(normalized_topics)
+    )
+    payload.update(
+        {
+            "source_of_truth": (
+                "Use this live guide for current feature groups and workflow semantics, then "
+                "consult MCP tool schemas, CLI help, or generated REST API docs for the exact "
+                "interface selected by the user."
+            ),
+            "capabilities": [capability.as_dict() for capability in visible_capabilities],
+            "guardrails": list(ROWSET_GUARDRAILS),
+        }
+    )
+    if normalized_topics:
+        payload["requested_topics"] = list(normalized_topics)
+    if full or "setup" in normalized_topics:
+        payload["interfaces"] = list(ROWSET_INTERFACES)
+        payload["recommended_startup"] = list(ROWSET_RECOMMENDED_STARTUP)
+    if include_use_cases:
+        use_cases = _visible_rowset_use_cases(visible_capabilities)
+        payload["use_cases"] = [use_case.as_dict() for use_case in use_cases]
+    return payload
