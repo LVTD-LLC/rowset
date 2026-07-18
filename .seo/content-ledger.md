@@ -24,7 +24,7 @@
 | 2026-07-15 | Rowset vs Airtable: Which Fits AI Agents? (2026) | product comparison | `/vs/airtable` | Rowset vs Airtable | unmeasured | n/a | Airtable alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide | #277 |
 | 2026-07-15 | Rowset vs Google Sheets for AI Agents (2026) | product comparison | `/vs/google-sheets` | Rowset vs Google Sheets | unmeasured | n/a | Google Sheets alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide | #280 |
 | 2026-07-16 | How to share AI-agent data safely | security decision guide | `/blog/share-ai-agent-data-safely` | share AI agent data | unmeasured | n/a | MCP access, Dataset API, agent access, public previews, exports, relationship modeling, feedback triage | #281 |
-| 2026-07-18 | Human-in-the-Loop AI Agents: A Practical Workflow | how-to / operational decision guide | `/blog/human-in-the-loop-ai-agents` | human in the loop AI agents | 70 | 11 | MCP access, Dataset API, schema design, dataset instructions, idempotent updates, safe sharing, pricing | #TBD |
+| 2026-07-18 | Human-in-the-Loop AI Agents: A Practical Workflow | how-to / operational decision guide | `/blog/human-in-the-loop-ai-agents` | human in the loop AI agents | 70 | 11 | MCP access, Dataset API, schema design, dataset instructions, idempotent updates, safe sharing, pricing | #310 |
 
 ---
 
