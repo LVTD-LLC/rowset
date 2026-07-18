@@ -82,6 +82,7 @@ from apps.core.trials import (
 )
 from apps.datasets.types import ColumnTypeSpec, DatasetRowInput, JsonObject
 from apps.mcp_server.auth import mcp_auth
+from apps.mcp_server.tool_policy import RowsetToolPolicy
 from rowset.mcp_logging import RowsetMCPLoggingMiddleware
 from rowset.utils import get_rowset_logger
 
@@ -122,6 +123,13 @@ mcp = FastMCP(
     auth=mcp_auth,
 )
 mcp.add_middleware(RowsetMCPLoggingMiddleware())
+tool_policy = RowsetToolPolicy(mcp)
+read_tool = tool_policy.read
+write_tool = tool_policy.write
+idempotent_write_tool = tool_policy.idempotent_write
+destructive_tool = tool_policy.destructive
+idempotent_destructive_tool = tool_policy.idempotent_destructive
+admin_tool = tool_policy.admin
 
 
 def _attach_agent_api_key(
@@ -363,7 +371,7 @@ def _permission_error_to_tool_error(exc: PermissionError) -> ToolError:
 def _mcp_authenticated_profile(
     required_access_level: str = AgentApiKeyAccessLevel.READ,
     *,
-    activate_trial: bool = True,
+    activate_trial: bool | None = None,
 ) -> Profile:
     try:
         profile = _authenticate_profile()
@@ -371,7 +379,12 @@ def _mcp_authenticated_profile(
             getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None),
             required_access_level,
         )
-        if activate_trial:
+        should_activate_trial = (
+            required_access_level != AgentApiKeyAccessLevel.READ
+            if activate_trial is None
+            else activate_trial
+        )
+        if should_activate_trial:
             activate_or_require_trial_access(profile)
         else:
             require_unexpired_trial_access(profile)
@@ -394,7 +407,7 @@ def _mcp_authenticated_profile(
         raise _permission_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_user_info",
     description="Return safe account and profile details for the authenticated Rowset user.",
 )
@@ -418,7 +431,7 @@ def get_user_info() -> dict:
     return payload
 
 
-@mcp.tool(
+@admin_tool(
     name="create_agent_api_key",
     description=(
         "Create a named Rowset API key for this account. Requires an admin Rowset API key. "
@@ -472,7 +485,7 @@ def create_agent_api_key_tool(
     }
 
 
-@mcp.tool(
+@read_tool(
     name="get_rowset_capabilities",
     description=(
         "Return a compact Rowset capability topic index by default. Request topics for "
@@ -501,12 +514,16 @@ def get_rowset_capabilities(
 ) -> ToolResult:
     """Return compact or topic-selected Rowset capability guidance."""
     close_old_connections()
-    _mcp_authenticated_profile()
+    profile = _mcp_authenticated_profile()
     try:
+        agent_api_key = getattr(profile, AGENT_API_KEY_PROFILE_ATTR, None)
         payload = rowset_capabilities_payload(
             topics=topics,
             include_use_cases=include_use_cases,
             full=full,
+            allowed_mcp_tools=tool_policy.allowed_tool_names(
+                getattr(agent_api_key, "access_level", None)
+            ),
         )
     except CapabilitySelectionError as exc:
         raise _mcp_tool_error(
@@ -540,7 +557,7 @@ def get_rowset_capabilities(
     return ToolResult(content=content, structured_content=payload)
 
 
-@mcp.tool(
+@write_tool(
     name="submit_feedback",
     description=(
         "Submit concise product feedback about Rowset from the authenticated agent. "
@@ -612,7 +629,7 @@ def submit_feedback(
         close_old_connections()
 
 
-@mcp.tool(
+@read_tool(
     name="get_all_datasets",
     description=(
         "Return compact discovery cards for datasets available to the authenticated Rowset "
@@ -638,7 +655,7 @@ def get_all_datasets(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_archived_datasets",
     description=(
         "Return compact discovery cards for archived datasets owned by the authenticated "
@@ -664,7 +681,7 @@ def get_archived_datasets(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="search_datasets",
     description=(
         "Search active datasets and return compact discovery cards. Filter by name, project, "
@@ -731,7 +748,7 @@ def search_datasets(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_dataset",
     description=(
         "Return full context for one owned dataset, including instructions, metadata, headers, "
@@ -750,7 +767,7 @@ def get_dataset(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_all_projects",
     description=("Return semantic dataset projects available to the authenticated Rowset profile."),
 )
@@ -773,7 +790,7 @@ def get_all_projects(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="search_projects",
     description="Search project metadata by project name, description, or JSON metadata.",
 )
@@ -802,7 +819,7 @@ def search_projects(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@write_tool(
     name="create_project",
     description="Create a semantic project for grouping Rowset datasets.",
 )
@@ -836,7 +853,7 @@ def create_project(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_project_sections",
     description="Return sections inside one Rowset project for grouping related datasets.",
 )
@@ -864,7 +881,7 @@ def get_project_sections(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@write_tool(
     name="create_project_section",
     description=(
         "Create a section inside a Rowset project, such as Blog or Sales, for grouping "
@@ -900,7 +917,7 @@ def create_project_section(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_project",
     description="Return one project and a bounded page of datasets assigned to it.",
 )
@@ -928,7 +945,7 @@ def get_project(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@idempotent_destructive_tool(
     name="update_project",
     description=(
         "Update a semantic project name or description for the authenticated Rowset profile."
@@ -967,7 +984,7 @@ def update_project(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@idempotent_destructive_tool(
     name="update_project_metadata",
     description=(
         "Replace arbitrary JSON metadata for a Rowset project. Pass an empty object to clear it."
@@ -992,7 +1009,7 @@ def update_project_metadata(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@idempotent_destructive_tool(
     name="update_project_section",
     description="Update a Rowset project section name or description.",
 )
@@ -1030,7 +1047,7 @@ def update_project_section(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="archive_project_section",
     description=(
         "Archive a Rowset project section without deleting datasets. Datasets remain in "
@@ -1049,7 +1066,7 @@ def archive_project_section(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@idempotent_destructive_tool(
     name="archive_project",
     description=(
         "Archive a Rowset project without deleting or archiving its datasets. "
@@ -1068,7 +1085,7 @@ def archive_project(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@write_tool(
     name="create_dataset",
     description=(
         "Create an API-backed dataset for the authenticated Rowset profile. "
@@ -1197,7 +1214,7 @@ def create_dataset(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@idempotent_destructive_tool(
     name="update_dataset_metadata",
     description=(
         "Update persistent dataset context: description, agent instructions, and "
@@ -1257,7 +1274,7 @@ def update_dataset_metadata(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="update_dataset_column_types",
     description="Update semantic column type metadata for an existing Rowset dataset.",
 )
@@ -1297,7 +1314,7 @@ def update_dataset_column_types(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@write_tool(
     name="add_column",
     description=(
         "Add one column to an existing active Rowset dataset and backfill existing rows "
@@ -1351,7 +1368,7 @@ def add_column(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="rename_column",
     description=(
         "Rename one column on an existing active Rowset dataset while preserving row values."
@@ -1376,7 +1393,7 @@ def rename_column(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="drop_column",
     description="Drop one non-index column from an existing active Rowset dataset and its rows.",
 )
@@ -1397,7 +1414,7 @@ def drop_column(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="reorder_columns",
     description=(
         "Set the display and export order for existing dataset columns. Provide each "
@@ -1424,7 +1441,7 @@ def reorder_columns(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="update_dataset_project",
     description=(
         "Attach an existing Rowset dataset to a project and optional section, or detach "
@@ -1465,7 +1482,7 @@ def update_dataset_project(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="list_dataset_relationships",
     description=(
         "Return relationship definitions where the source dataset has a column that stores "
@@ -1483,7 +1500,7 @@ def list_dataset_relationships(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@write_tool(
     name="create_dataset_relationship",
     description=(
         "Create one relationship from a source dataset column to another active dataset's "
@@ -1529,7 +1546,7 @@ def create_dataset_relationship(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="resolve_dataset_relationship",
     description=(
         "Resolve one source row through a dataset relationship and return the related "
@@ -1557,7 +1574,7 @@ def resolve_dataset_relationship(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="delete_dataset_relationship",
     description="Delete one dataset relationship definition without changing rows.",
 )
@@ -1578,7 +1595,7 @@ def delete_dataset_relationship(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="update_dataset_public_preview",
     description=(
         "Enable, disable, password-protect, or resize a read-only public preview for "
@@ -1634,7 +1651,7 @@ def update_dataset_public_preview(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@idempotent_destructive_tool(
     name="archive_dataset",
     description=(
         "Archive an existing Rowset dataset without deleting rows. Archived datasets are "
@@ -1656,7 +1673,7 @@ def archive_dataset(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@idempotent_destructive_tool(
     name="restore_dataset",
     description="Restore an archived Rowset dataset to normal dataset and project lists.",
 )
@@ -1675,7 +1692,7 @@ def restore_dataset(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="list_dataset_rows",
     description=(
         "Return a bounded page of rows for a dataset, including archived datasets "
@@ -1735,7 +1752,7 @@ def list_dataset_rows(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="search_rows",
     description=(
         "Search rows across the authenticated Rowset profile with hybrid vector and lexical "
@@ -1824,7 +1841,7 @@ def search_rows(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="search_dataset_rows",
     description=(
         "Search one dataset, including archived datasets when addressed directly, "
@@ -1864,7 +1881,7 @@ def search_dataset_rows(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_dataset_row",
     description=(
         "Return one row from a dataset by internal row id, including archived "
@@ -1883,7 +1900,7 @@ def get_dataset_row(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_dataset_row_by_index",
     description=(
         "Return one row from a dataset by its configured index value, including "
@@ -1902,7 +1919,7 @@ def get_dataset_row_by_index(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@write_tool(
     name="create_dataset_row",
     description="Create one row in an active dataset. Provide values keyed by dataset header.",
 )
@@ -1923,7 +1940,7 @@ def create_dataset_row(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="attach_image_to_dataset_row",
     description=(
         "Attach or replace one image asset in an image column for an active dataset row. "
@@ -1983,7 +2000,7 @@ def attach_image_to_dataset_row(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_dataset_image_asset",
     description=(
         "Return metadata plus authenticated content URLs for one image asset. "
@@ -2004,7 +2021,7 @@ def get_dataset_image_asset(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="attach_audio_to_dataset_row",
     description=(
         "Attach or replace one audio asset in an audio column for an active dataset row. "
@@ -2065,7 +2082,7 @@ def attach_audio_to_dataset_row(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@read_tool(
     name="get_dataset_audio_asset",
     description=(
         "Return metadata plus authenticated content URLs for one audio asset. "
@@ -2085,7 +2102,7 @@ def get_dataset_audio_asset(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="update_dataset_row",
     description="Patch one row in an active dataset. Unknown headers are ignored.",
 )
@@ -2108,7 +2125,7 @@ def update_dataset_row(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="update_dataset_row_by_index",
     description="Patch one row in an active dataset by its configured index value.",
 )
@@ -2131,7 +2148,7 @@ def update_dataset_row_by_index(
         raise _service_error_to_tool_error(exc) from exc
 
 
-@mcp.tool(
+@destructive_tool(
     name="delete_dataset_row",
     description="Delete one row from an active dataset by internal row id.",
 )

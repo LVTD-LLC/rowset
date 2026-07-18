@@ -17,14 +17,23 @@ from apps.datasets.models import Dataset, DatasetRow
 from apps.mcp_server.server import (
     AGENT_API_KEY_PROFILE_ATTR,
     mcp,
+    tool_policy,
 )
 from apps.mcp_server.server import (
     get_dataset_row as mcp_get_dataset_row,
 )
 
 
+async def _registered_tools():
+    return await mcp.list_tools(run_middleware=False)
+
+
 @pytest.fixture(autouse=True)
 def disable_trial_activation(monkeypatch):
+    # Component auth on FastMCP's in-memory lifecycle interferes with later HTTP auth tests.
+    # These tests cover tool bodies; protocol authorization is covered through ASGI instead.
+    for tool in anyio.run(_registered_tools):
+        monkeypatch.setattr(tool, "auth", None)
     monkeypatch.setattr(
         "apps.mcp_server.server.activate_or_require_trial_access",
         lambda _profile: None,
@@ -478,7 +487,7 @@ def test_get_rowset_capabilities_mcp_tool_can_return_full_guide(monkeypatch):
         startup = " ".join(payload["recommended_startup"])
         assert "ask the user which interface to configure" in startup
         assert "authenticated user-info request" in startup
-        assert "start the trial" in startup
+        assert "trial starts on the first dataset or project mutation" in startup
         assert "suggest two to four project, section, and dataset structures" in startup
         assert "Ask before creating anything" in startup
         assert "daily Rowset tips automation" in startup
@@ -504,6 +513,29 @@ def test_get_rowset_capabilities_mcp_tool_can_return_full_guide(monkeypatch):
         assert "attach_audio_to_dataset_row" in audio_assets["mcp_tools"]
         assert "hosted MCP cannot read local file paths" in " ".join(audio_assets["notes"])
         assert "guardrails" in payload
+
+    anyio.run(run)
+
+
+def test_get_rowset_capabilities_hides_tools_above_key_permission(monkeypatch):
+    async def run():
+        monkeypatch.setattr(
+            "apps.mcp_server.server._authenticate_profile",
+            lambda: _profile(AgentApiKeyAccessLevel.READ),
+        )
+
+        async with Client(mcp) as client:
+            result = await client.call_tool("get_rowset_capabilities", {"full": True})
+
+        advertised_tools = {
+            tool
+            for capability in result.structured_content["capabilities"]
+            for tool in capability["mcp_tools"]
+        }
+        assert advertised_tools <= tool_policy.allowed_tool_names(AgentApiKeyAccessLevel.READ)
+        assert "get_dataset" in advertised_tools
+        assert "create_dataset" not in advertised_tools
+        assert "create_agent_api_key" not in advertised_tools
 
     anyio.run(run)
 
