@@ -15,6 +15,59 @@ MCP_HEADERS = {
     "content-type": "application/json",
 }
 PROTOCOL_VERSION = "2025-06-18"
+READ_ONLY_TOOL_NAMES = {
+    "get_all_datasets",
+    "get_all_projects",
+    "get_archived_datasets",
+    "get_dataset",
+    "get_dataset_audio_asset",
+    "get_dataset_image_asset",
+    "get_dataset_row",
+    "get_dataset_row_by_index",
+    "get_project",
+    "get_project_sections",
+    "get_rowset_capabilities",
+    "get_user_info",
+    "list_dataset_relationships",
+    "list_dataset_rows",
+    "resolve_dataset_relationship",
+    "search_dataset_rows",
+    "search_datasets",
+    "search_projects",
+    "search_rows",
+}
+DESTRUCTIVE_TOOL_NAMES = {
+    "archive_dataset",
+    "archive_project",
+    "archive_project_section",
+    "attach_audio_to_dataset_row",
+    "attach_image_to_dataset_row",
+    "delete_dataset_relationship",
+    "delete_dataset_row",
+    "drop_column",
+    "rename_column",
+    "reorder_columns",
+    "restore_dataset",
+    "update_dataset_column_types",
+    "update_dataset_metadata",
+    "update_dataset_project",
+    "update_dataset_public_preview",
+    "update_dataset_row",
+    "update_dataset_row_by_index",
+    "update_project",
+    "update_project_metadata",
+    "update_project_section",
+}
+IDEMPOTENT_MUTATION_TOOL_NAMES = {
+    "archive_dataset",
+    "archive_project",
+    "restore_dataset",
+    "update_dataset_metadata",
+    "update_project",
+    "update_project_metadata",
+    "update_project_section",
+}
+ADMIN_ONLY_TOOL_NAMES = {"create_agent_api_key"}
 
 
 def _mcp_logging_globals():
@@ -220,6 +273,166 @@ def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     assert "Hosted MCP cannot read local file paths" in audio_tool["description"]
     audio_base64_schema = audio_tool["inputSchema"]["properties"]["audio_base64"]
     assert "base64 or a data URI" in audio_base64_schema["description"]
+
+
+def test_mcp_tools_list_exposes_behavior_annotations(authenticated_mcp):
+    authenticated_mcp.agent_api_key.access_level = AgentApiKeyAccessLevel.ADMIN
+
+    with TestClient(application) as client:
+        response = client.post(
+            "/mcp/",
+            headers=_authorization_headers(authenticated_mcp),
+            json=_mcp_request("tools/list", 20),
+        )
+
+    tools = _assert_jsonrpc_result(response)["tools"]
+    tool_names = {tool["name"] for tool in tools}
+    mutation_tool_names = tool_names - READ_ONLY_TOOL_NAMES
+
+    assert READ_ONLY_TOOL_NAMES | mutation_tool_names == tool_names
+    assert DESTRUCTIVE_TOOL_NAMES <= mutation_tool_names
+    assert IDEMPOTENT_MUTATION_TOOL_NAMES <= mutation_tool_names
+    for tool in tools:
+        annotations = tool["annotations"]
+        name = tool["name"]
+        assert annotations == {
+            "readOnlyHint": name in READ_ONLY_TOOL_NAMES,
+            "destructiveHint": name in DESTRUCTIVE_TOOL_NAMES,
+            "idempotentHint": (
+                name in READ_ONLY_TOOL_NAMES or name in IDEMPOTENT_MUTATION_TOOL_NAMES
+            ),
+            "openWorldHint": False,
+        }
+
+
+@pytest.mark.parametrize("access_level", AgentApiKeyAccessLevel.values)
+def test_mcp_tools_list_is_filtered_by_api_key_permission(
+    authenticated_mcp,
+    access_level,
+):
+    with TestClient(application) as client:
+        authenticated_mcp.agent_api_key.access_level = AgentApiKeyAccessLevel.ADMIN
+        admin_response = client.post(
+            "/mcp/",
+            headers=_authorization_headers(authenticated_mcp),
+            json=_mcp_request("tools/list", 21),
+        )
+        authenticated_mcp.agent_api_key.access_level = access_level
+        response = client.post(
+            "/mcp/",
+            headers=_authorization_headers(authenticated_mcp),
+            json=_mcp_request("tools/list", 22),
+        )
+
+    all_tool_names = {tool["name"] for tool in _assert_jsonrpc_result(admin_response)["tools"]}
+    tool_names = {tool["name"] for tool in _assert_jsonrpc_result(response)["tools"]}
+    expected_names = {
+        AgentApiKeyAccessLevel.READ: READ_ONLY_TOOL_NAMES,
+        AgentApiKeyAccessLevel.READ_WRITE: all_tool_names - ADMIN_ONLY_TOOL_NAMES,
+        AgentApiKeyAccessLevel.ADMIN: all_tool_names,
+    }[access_level]
+    assert tool_names == expected_names
+
+
+def test_read_only_key_cannot_invoke_hidden_write_tool(
+    authenticated_mcp,
+    monkeypatch,
+):
+    authenticated_mcp.agent_api_key.access_level = AgentApiKeyAccessLevel.READ
+    body_calls = []
+    monkeypatch.setattr(
+        "apps.mcp_server.server._mcp_authenticated_profile",
+        lambda *_args, **_kwargs: body_calls.append("called") or authenticated_mcp,
+    )
+    monkeypatch.setattr(
+        "apps.mcp_server.server.create_profile_project",
+        lambda *_args, **_kwargs: {"status": "success"},
+    )
+
+    with TestClient(application) as client:
+        response = client.post(
+            "/mcp/",
+            headers=_authorization_headers(authenticated_mcp),
+            json=_mcp_request(
+                "tools/call",
+                22,
+                {"name": "create_project", "arguments": {"name": "Denied"}},
+            ),
+        )
+
+    result = _assert_jsonrpc_result(response)
+    assert result["isError"] is True
+    assert body_calls == []
+
+
+def test_read_write_key_can_invoke_write_tool(authenticated_mcp, monkeypatch):
+    authenticated_mcp.agent_api_key.access_level = AgentApiKeyAccessLevel.READ_WRITE
+    required_levels = []
+    monkeypatch.setattr(
+        "apps.mcp_server.server._mcp_authenticated_profile",
+        lambda required_access_level, **_kwargs: (
+            required_levels.append(required_access_level) or authenticated_mcp
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.mcp_server.server.create_profile_project",
+        lambda *_args, **_kwargs: {"status": "success"},
+    )
+
+    with TestClient(application) as client:
+        response = client.post(
+            "/mcp/",
+            headers=_authorization_headers(authenticated_mcp),
+            json=_mcp_request(
+                "tools/call",
+                23,
+                {"name": "create_project", "arguments": {"name": "Allowed"}},
+            ),
+        )
+
+    result = _assert_jsonrpc_result(response)
+    assert result["isError"] is False
+    assert required_levels == [AgentApiKeyAccessLevel.READ_WRITE]
+
+
+def test_admin_key_can_invoke_admin_tool(authenticated_mcp, monkeypatch):
+    authenticated_mcp.agent_api_key.access_level = AgentApiKeyAccessLevel.ADMIN
+    required_levels = []
+    monkeypatch.setattr(
+        "apps.mcp_server.server._mcp_authenticated_profile",
+        lambda required_access_level, **_kwargs: (
+            required_levels.append(required_access_level) or authenticated_mcp
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.mcp_server.server.create_agent_api_key_credential",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            agent_api_key=SimpleNamespace(name="Child agent"),
+            raw_key="rsk_new",
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.mcp_server.server.serialize_agent_api_key",
+        lambda _agent_api_key: {},
+    )
+
+    with TestClient(application) as client:
+        response = client.post(
+            "/mcp/",
+            headers=_authorization_headers(authenticated_mcp),
+            json=_mcp_request(
+                "tools/call",
+                24,
+                {
+                    "name": "create_agent_api_key",
+                    "arguments": {"name": "Child agent", "access_level": "read"},
+                },
+            ),
+        )
+
+    result = _assert_jsonrpc_result(response)
+    assert result["isError"] is False
+    assert required_levels == [AgentApiKeyAccessLevel.ADMIN]
 
 
 def test_mcp_get_user_info_uses_stateless_json_response(authenticated_mcp):

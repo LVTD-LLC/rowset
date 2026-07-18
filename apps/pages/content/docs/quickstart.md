@@ -73,8 +73,9 @@ then load only the relevant topics. Use cases and full mode remain opt-in.
 
 Make authenticated user-info the final setup action: call `get_user_info` over
 MCP, run `rowset user info` through the CLI, or request `GET /api/user` through
-REST. A successful response verifies the connection, completes onboarding, and
-starts the trial.
+REST. A successful response verifies the connection and completes onboarding.
+MCP reads and API-key creation stay trial-neutral, so the MCP trial starts on the
+first dataset or project mutation; CLI and REST user-info requests start it immediately.
 
 After verification, begin the requested task. If the user supplied a dataset
 key or URL, inspect it directly: MCP `get_dataset` accepts either value; for CLI

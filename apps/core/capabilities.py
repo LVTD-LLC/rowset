@@ -73,7 +73,9 @@ ROWSET_RECOMMENDED_STARTUP = (
     "Configure only the interface the user approves, following its current documentation.",
     (
         "As the final setup step, make an authenticated user-info request through the chosen "
-        "interface to verify access, complete onboarding, and start the trial."
+        "interface to verify access and complete onboarding. MCP reads and API-key creation "
+        "stay trial-neutral, so its trial starts on the first dataset or project mutation; "
+        "CLI and REST user-info requests start it immediately."
     ),
     (
         "Report the verified connection, inspect existing Rowset structure read-only, and "
@@ -697,11 +699,27 @@ def _capabilities_for_topics(topics: tuple[str, ...]) -> tuple[RowsetCapability,
     )
 
 
+def _serialize_capabilities(
+    capabilities: tuple[RowsetCapability, ...],
+    allowed_mcp_tools: set[str] | None,
+) -> list[dict[str, Any]]:
+    serialized_capabilities = []
+    for capability in capabilities:
+        serialized = capability.as_dict()
+        if allowed_mcp_tools is not None:
+            serialized["mcp_tools"] = [
+                name for name in serialized["mcp_tools"] if name in allowed_mcp_tools
+            ]
+        serialized_capabilities.append(serialized)
+    return serialized_capabilities
+
+
 def rowset_capabilities_payload(
     *,
     topics: list[str] | tuple[str, ...] | None = None,
     include_use_cases: bool = False,
     full: bool = False,
+    allowed_mcp_tools: set[str] | None = None,
 ) -> dict[str, Any]:
     _validate_capability_registry()
     normalized_topics = _normalize_topics(topics)
@@ -750,7 +768,10 @@ def rowset_capabilities_payload(
                 "consult MCP tool schemas, CLI help, or generated REST API docs for the exact "
                 "interface selected by the user."
             ),
-            "capabilities": [capability.as_dict() for capability in visible_capabilities],
+            "capabilities": _serialize_capabilities(
+                visible_capabilities,
+                allowed_mcp_tools,
+            ),
             "guardrails": list(ROWSET_GUARDRAILS),
         }
     )
