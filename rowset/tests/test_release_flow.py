@@ -108,6 +108,35 @@ def test_self_host_release_contract_rejects_a_partial_installer_sequence(tmp_pat
     assert "does not match the required command sequence" in result.stderr
 
 
+def test_self_host_release_contract_rejects_a_guide_with_required_commands_out_of_order(
+    tmp_path,
+):
+    output_dir = _build_self_host_release(tmp_path / "build")
+    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
+    extracted = tmp_path / "extracted"
+    with tarfile.open(archive) as bundle:
+        bundle.extractall(extracted, filter="data")
+    guide = extracted / "SELF_HOSTING.md"
+    guide_text = guide.read_text()
+    guide.write_text(
+        guide_text.replace(
+            "deployment/self-host/version.sh\ndeployment/verify-image-platforms.sh \\\n",
+            "deployment/verify-image-platforms.sh \\\ndeployment/self-host/version.sh\n",
+            1,
+        )
+    )
+
+    result = subprocess.run(
+        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "SELF_HOSTING.md does not match the required command sequence" in result.stderr
+
+
 def test_self_host_release_contract_rejects_a_missing_linked_guide_file(tmp_path):
     output_dir = _build_self_host_release(tmp_path / "build")
     archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"

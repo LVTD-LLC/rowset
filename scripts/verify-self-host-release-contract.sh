@@ -24,7 +24,9 @@ deployment/self-host/start.sh
 deployment/self-host/doctor.sh
 deployment/self-host/smoke-test.sh'
 
-documented_commands=$(grep -Eo 'deployment/[A-Za-z0-9_./-]+\.sh' "$guide" | sort -u) || true
+documented_commands=$(
+    grep -Eo 'deployment/[A-Za-z0-9_./-]+\.sh' "$guide" | awk '!seen[$0]++'
+) || true
 test -n "$documented_commands" || {
     printf 'SELF_HOSTING.md does not document any deployment commands\n' >&2
     exit 1
@@ -40,6 +42,22 @@ for command in $documented_commands; do
         exit 1
     }
 done
+
+guide_required_commands=$(
+    printf '%s\n' "$documented_commands" | awk -v required="$required_commands" '
+        BEGIN {
+            count = split(required, commands, "\n")
+            for (i = 1; i <= count; i++) {
+                is_required[commands[i]] = 1
+            }
+        }
+        is_required[$0] { print }
+    '
+)
+test "$guide_required_commands" = "$required_commands" || {
+    printf 'SELF_HOSTING.md does not match the required command sequence\n' >&2
+    exit 1
+}
 
 for reference_file in "$@"; do
     test -f "$reference_file" || {
