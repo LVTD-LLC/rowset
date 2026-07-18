@@ -1,4 +1,5 @@
 import pytest
+from django.conf import settings
 from django.test import override_settings
 
 from apps.core import tasks
@@ -36,9 +37,9 @@ def test_track_activation_event_uses_profile_id_distinct_id(profile, monkeypatch
             "event": "rowset_dataset_row_mutated",
             "properties": {
                 "event_version": 1,
-                "environment": "dev",
+                "environment": settings.ENVIRONMENT,
                 "profile_id": profile.id,
-                "current_state": profile.state,
+                "current_state": str(profile.state),
                 "$set": {
                     "email": profile.user.email,
                     "username": profile.user.username,
