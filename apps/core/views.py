@@ -41,6 +41,7 @@ from apps.core.agent_skill import (
     load_rowset_skill_markdown,
     load_rowset_use_cases_skill_markdown,
 )
+from apps.core.analytics import ROWSET_CHECKOUT_STARTED, track_activation_event
 from apps.core.choices import TrialReward
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
@@ -684,6 +685,13 @@ def create_checkout_session(request, pk, plan):
         messages.error(request, "Unable to start checkout. Please try again.")
         return redirect("pricing")
 
+    track_activation_event(
+        profile,
+        ROWSET_CHECKOUT_STARTED,
+        {"plan": plan, "checkout_mode": "subscription"},
+        source_function="create_checkout_session",
+        session_id=request.headers.get("X-PostHog-Session-ID"),
+    )
     return stripe_redirect(checkout_session.url)
 
 

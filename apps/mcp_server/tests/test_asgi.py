@@ -325,7 +325,11 @@ def test_successful_mcp_requests_invoke_setup_completion(authenticated_mcp, monk
     monkeypatch.setitem(
         _mcp_logging_globals(),
         "_bind_access_token_actor",
-        lambda: authenticated_mcp.id,
+        lambda: {
+            "profile_id": authenticated_mcp.id,
+            "agent_api_key_id": authenticated_mcp.agent_api_key.id,
+            "agent_api_key_access_level": authenticated_mcp.agent_api_key.access_level,
+        },
     )
 
     with TestClient(application) as client:

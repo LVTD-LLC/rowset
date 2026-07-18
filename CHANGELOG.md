@@ -20,6 +20,10 @@ deployment or release cut date.
 
 ### Added
 - Added a practical guide to human-in-the-loop AI agent workflows with a risk matrix, durable approval schema, Rowset implementation pattern, and explicit execution-boundary limitations.
+- Added consent-aware marketing attribution across pageviews, signup, agent activation, checkout, subscription, cancellation, churn, and payment-failure events.
+
+### Changed
+- Unified browser and backend PostHog identity and setup milestones, removed duplicate signup and alias events, and added first-party browser ingestion configuration.
 
 ## 2026-07-17
 

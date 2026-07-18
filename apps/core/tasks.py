@@ -1,15 +1,24 @@
-import json
-from urllib.parse import unquote
-
 import apprise
 import posthog
 import requests
 from django.conf import settings
 
+from apps.core.attribution import attribution_event_properties
 from apps.core.models import Feedback, Profile
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
+_POSTHOG_DURABLE_EVENTS = frozenset(
+    {
+        "rowset_signup_completed",
+        "rowset_agent_setup_completed",
+        "rowset_checkout_started",
+        "rowset_subscription_started",
+        "rowset_subscription_cancellation_requested",
+        "rowset_subscription_ended",
+        "rowset_payment_failed",
+    }
+)
 
 
 def _format_feedback_apprise_body(feedback: Feedback) -> str:
@@ -116,87 +125,12 @@ def add_email_to_buttondown(email, tag):
     return r.json()
 
 
-def try_create_posthog_alias(profile_id: int, cookies: dict, source_function: str = None) -> str:
-    if not settings.POSTHOG_API_KEY:
-        return "PostHog API key not found."
-
-    base_log_data = {
-        "profile_id": profile_id,
-        "source_function": source_function,
-    }
-
-    profile = Profile.objects.get(id=profile_id)
-    email = profile.user.email
-
-    posthog_cookie = cookies.get(f"ph_{settings.POSTHOG_API_KEY}_posthog")
-    if not posthog_cookie:
-        logger.warning(
-            "posthog.alias.completed",
-            **base_log_data,
-            alias_found=False,
-            outcome="success",
-            **{"operation.status": "skipped"},
-        )
-        return f"No PostHog cookie found for profile {profile_id}."
-
-    cookie_dict = json.loads(unquote(posthog_cookie))
-    frontend_distinct_id = cookie_dict.get("distinct_id")
-
-    if frontend_distinct_id:
-        posthog.alias(frontend_distinct_id, email)
-        posthog.alias(frontend_distinct_id, str(profile_id))
-
-    alias_log_data = {
-        **base_log_data,
-        "alias_found": bool(frontend_distinct_id),
-        "outcome": "success",
-    }
-    if not frontend_distinct_id:
-        alias_log_data["operation.status"] = "skipped"
-    logger.info("posthog.alias.completed", **alias_log_data)
-    return f"Set PostHog alias for profile {profile_id}."
-
-
-def track_event(
-    profile_id: int, event_name: str, properties: dict, source_function: str = None
-) -> str:
-    if not settings.POSTHOG_API_KEY:
-        return "PostHog API key not found."
-
-    base_log_data = {
-        "profile_id": profile_id,
-        "event_name": event_name,
-        "properties_count": len(properties),
-        "source_function": source_function,
-    }
-
-    try:
-        profile = Profile.objects.get(id=profile_id)
-    except Profile.DoesNotExist:
-        logger.error("posthog.event.failed", **base_log_data, error_type="ProfileNotFound")
-        return f"Profile with id {profile_id} not found."
-
-    posthog.capture(
-        event_name,
-        distinct_id=str(profile.id),
-        properties={
-            "profile_id": profile.id,
-            "email": profile.user.email,
-            "current_state": profile.state,
-            **properties,
-        },
-    )
-
-    logger.info("posthog.event.completed", **base_log_data, outcome="success")
-
-    return f"Tracked event {event_name} for profile {profile_id}"
-
-
 def track_activation_event(
     profile_id: int,
     event_name: str,
     properties: dict | None = None,
     source_function: str = None,
+    session_id: str | None = None,
 ) -> str:
     if not settings.POSTHOG_API_KEY:
         return "PostHog API key not found."
@@ -218,15 +152,21 @@ def track_activation_event(
         event_name,
         distinct_id=str(profile.id),
         properties={
+            "event_version": 1,
+            "environment": settings.ENVIRONMENT,
             "profile_id": profile.id,
             "current_state": profile.state,
             "$set": {
                 "email": profile.user.email,
                 "username": profile.user.username,
             },
+            **attribution_event_properties(profile.marketing_attribution),
             **(properties or {}),
+            **({"$session_id": session_id} if session_id else {}),
         },
     )
+    if event_name in _POSTHOG_DURABLE_EVENTS:
+        posthog.flush(timeout_seconds=5)
 
     logger.info("posthog.activation.completed", **base_log_data, outcome="success")
     return f"Tracked activation event {event_name} for profile {profile_id}"

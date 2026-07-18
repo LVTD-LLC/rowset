@@ -91,6 +91,8 @@ test("captures one privacy-safe pageview for an eligible full page", () => {
     $referrer: "https://news.ycombinator.com",
     $referring_domain: "news.ycombinator.com",
     content_group: "marketing",
+    environment: "unknown",
+    event_version: 1,
     route: "/pricing",
     utm_campaign: "launch 2026",
     utm_source: "hacker-news",
@@ -147,6 +149,8 @@ test("captures a new normalized route once after an HTMX navigation", () => {
     $referrer: "https://news.ycombinator.com",
     $referring_domain: "news.ycombinator.com",
     content_group: "docs",
+    environment: "unknown",
+    event_version: 1,
     route: "/docs/:slug",
     utm_medium: "social",
   });

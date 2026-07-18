@@ -62,7 +62,11 @@
 
   Rowset.capturePosthogPageview = function capturePosthogPageview(force = false) {
     const context = pageviewContext();
-    if (!context || typeof window.posthog?.capture !== "function") {
+    if (
+      !context ||
+      (typeof Rowset.hasAnalyticsConsent === "function" && !Rowset.hasAnalyticsConsent()) ||
+      typeof window.posthog?.capture !== "function"
+    ) {
       return false;
     }
 
@@ -73,11 +77,18 @@
     }
 
     const currentUrl = `${window.location.origin}${context.route}`;
+    Rowset.persistMarketingAttribution?.({
+      ...campaign,
+      landing_route: context.route,
+      referring_domain: referrerProperties().$referring_domain || "",
+    });
     window.posthog.capture("$pageview", {
       $current_url: currentUrl,
       $pathname: context.route,
       ...referrerProperties(),
       content_group: context.contentGroup,
+      environment: Rowset.posthogEnvironment || "unknown",
+      event_version: 1,
       route: context.route,
       ...campaign,
     });
@@ -136,6 +147,7 @@
     Rowset.capturePosthogPageview();
     document.body?.addEventListener("htmx:afterSwap", captureHtmxPageview);
     window.addEventListener?.("popstate", Rowset.capturePosthogPageview);
+    window.addEventListener?.("rowset:analytics-consent-granted", () => Rowset.capturePosthogPageview(true));
   }
 
   if (document.readyState === "loading") {

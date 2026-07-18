@@ -23,7 +23,12 @@ class AgentSetupCompletionMiddleware:
             and getattr(profile, "setup_completed_at", None) is None
         ):
             try:
-                mark_profile_setup_completed(agent_api_key.profile_id)
+                mark_profile_setup_completed(
+                    agent_api_key.profile_id,
+                    interface="rest",
+                    agent_api_key_id=getattr(agent_api_key, "id", None),
+                    agent_api_key_access_level=getattr(agent_api_key, "access_level", ""),
+                )
             except DatabaseError as exc:
                 logger.warning(
                     "agent_setup.completion_failed",

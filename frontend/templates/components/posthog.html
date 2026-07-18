@@ -6,6 +6,11 @@
       contentGroup: "{{ posthog_content_group|escapejs }}",
       route: "{{ posthog_pageview_route|escapejs }}",
     };
+    window.Rowset.posthogIdentity = {
+      distinctId: "{{ posthog_distinct_id|escapejs }}",
+      email: "{{ posthog_user_email|escapejs }}",
+    };
+    window.Rowset.posthogEnvironment = "{{ posthog_environment|escapejs }}";
     </script>
     <script src="{% static 'js/posthog-privacy.js' %}"></script>
     <script>
@@ -57,23 +62,29 @@
         (e.__SV = 1));
     })(document, window.posthog || []);
     posthog.init("{{ posthog_api_key|escapejs }}", {
-      api_host: "{{ posthog_host|escapejs }}",
+      api_host: "{{ posthog_browser_host|escapejs }}",
       autocapture: false,
       before_send: window.Rowset.sanitizePosthogEvent,
       capture_pageview: false,
       defaults: "2026-05-30",
       person_profiles: "identified_only",
+      opt_out_capturing_by_default: true,
+      properties_string_max_length: 200,
     });
     {% if posthog_distinct_id %}
-      posthog.identify("{{ posthog_distinct_id|escapejs }}", {
-        email: "{{ posthog_user_email|escapejs }}",
-      });
+      if (posthog.get_distinct_id() !== "{{ posthog_distinct_id|escapejs }}") {
+        posthog.identify("{{ posthog_distinct_id|escapejs }}", {
+          email: "{{ posthog_user_email|escapejs }}",
+        });
+      }
     {% endif %}
     posthog.onSessionId(function (sessionId) {
       window.Rowset = window.Rowset || {};
       window.Rowset.posthogSessionId = sessionId;
     });
     </script>
+    <script defer src="{% static 'js/posthog-consent.js' %}"></script>
+    <script defer src="{% static 'js/posthog-ctas.js' %}"></script>
     {% if posthog_pageview_enabled %}
       <script defer src="{% static 'js/posthog-pageviews.js' %}"></script>
     {% endif %}

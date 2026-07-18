@@ -5,6 +5,7 @@ from apps.core.models import Profile
 from apps.core.stripe_webhooks import (
     handle_created_subscription,
     handle_deleted_subscription,
+    handle_payment_failed,
     handle_updated_subscription,
 )
 from apps.core.tests.test_helpers import build_subscription_event
@@ -29,7 +30,14 @@ def test_handle_created_subscription_starts_trial(sync_state_transitions, profil
 
 
 @pytest.mark.django_db
-def test_handle_updated_subscription_marks_cancelled(sync_state_transitions, profile):
+def test_handle_updated_subscription_marks_cancelled(sync_state_transitions, profile, monkeypatch):
+    tracked = []
+    monkeypatch.setattr(
+        "apps.core.stripe_webhooks.track_activation_event",
+        lambda _profile, event_name, properties, **_kwargs: tracked.append(
+            (event_name, properties)
+        ),
+    )
     event = build_subscription_event(
         status="active",
         customer_id="cus_cancel",
@@ -38,6 +46,7 @@ def test_handle_updated_subscription_marks_cancelled(sync_state_transitions, pro
         cancel_at_period_end=True,
         current_period_end=1_700_000_100,
     )
+    event["data"]["previous_attributes"] = {"cancel_at_period_end": False}
 
     handle_updated_subscription(event)
 
@@ -45,6 +54,12 @@ def test_handle_updated_subscription_marks_cancelled(sync_state_transitions, pro
     assert profile.stripe_customer_id == "cus_cancel"
     assert profile.stripe_subscription_id == "sub_cancel"
     assert profile.state == ProfileStates.CANCELLED
+    assert tracked == [
+        (
+            "rowset_subscription_cancellation_requested",
+            {"subscription_status": "active"},
+        )
+    ]
 
 
 @pytest.mark.django_db
@@ -102,3 +117,37 @@ def test_handle_deleted_subscription_churns_and_clears_subscription_id(
     profile.refresh_from_db()
     assert profile.state == ProfileStates.CHURNED
     assert profile.stripe_subscription_id == ""
+
+
+@pytest.mark.django_db
+def test_handle_payment_failed_tracks_revenue_failure(profile, monkeypatch):
+    Profile.objects.filter(id=profile.id).update(stripe_customer_id="cus_failed")
+    tracked = []
+    monkeypatch.setattr(
+        "apps.core.stripe_webhooks.track_activation_event",
+        lambda profile, event_name, properties, **_kwargs: tracked.append(
+            (profile.id, event_name, properties)
+        ),
+    )
+
+    handle_payment_failed(
+        {
+            "id": "evt_failed",
+            "data": {
+                "object": {
+                    "customer": "cus_failed",
+                    "currency": "usd",
+                    "amount_due": 5000,
+                    "attempt_count": 2,
+                }
+            },
+        }
+    )
+
+    assert tracked == [
+        (
+            profile.id,
+            "rowset_payment_failed",
+            {"currency": "usd", "amount_due": 5000, "attempt_count": 2},
+        )
+    ]

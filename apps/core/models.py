@@ -23,6 +23,11 @@ class Profile(BaseModel):
     trial_started_at = models.DateTimeField(null=True, blank=True)
     trial_ends_at = models.DateTimeField(null=True, blank=True)
     setup_completed_at = models.DateTimeField(null=True, blank=True)
+    marketing_attribution = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Sanitized first- and latest-touch campaign attribution.",
+    )
     agent_setup_prompt_dismissed = models.BooleanField(default=False)
     choice_colorization_enabled = models.BooleanField(
         default=True,
