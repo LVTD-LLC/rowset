@@ -21,6 +21,9 @@ deployment or release cut date.
 ### Added
 - Added a practical guide to human-in-the-loop AI agent workflows with a risk matrix, durable approval schema, Rowset implementation pattern, and explicit execution-boundary limitations.
 
+### Changed
+- Replaced eager agent startup discovery with task-driven capability lookup, bounded dataset search, and direct dataset inspection when a key or URL is already known.
+
 ## 2026-07-17
 
 ### Added

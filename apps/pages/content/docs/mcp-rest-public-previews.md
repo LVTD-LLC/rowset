@@ -21,8 +21,8 @@ agent authentication.
 ## Use MCP for agent work
 
 Use MCP when the agent runtime can connect to Rowset's hosted MCP endpoint and
-send a bearer token. The agent can discover tools, inspect schemas, verify the
-connected account, load Rowset capabilities, and operate on datasets without
+send a bearer token. The agent can discover tools, inspect schemas, verify a new
+or failing connection, request Rowset capability topics when needed, and operate on datasets without
 scraping the browser.
 
 This is the best fit for workflows like personal CRMs, task boards, feedback

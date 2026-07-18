@@ -14,16 +14,23 @@ interface to configure.
 
 ## Recommended startup order
 
-1. Read `rowset-setup`, `llms.txt`, and current capability resources.
+1. Read `rowset-setup` and the connection documentation needed for the current
+   runtime.
 2. Compare MCP, CLI, and REST, recommend one, and ask the user which to configure.
-3. Load the compact capability topic index and request only the relevant topics.
-4. Configure only the approved interface and keep the API key in a secret store.
-5. Make authenticated user-info the first authenticated action and final setup step so the connection is
-   verified, onboarding completes, and the trial starts.
-6. Use existing user context and read-only Rowset discovery to suggest two to four
-   useful project, section, and dataset structures, then ask which one to create.
+3. Configure only the approved interface and keep the API key in a secret store.
+4. For a new or failing connection, make authenticated user-info the final setup
+   action so the connection is verified, onboarding completes, and the trial starts.
+5. Start the user's task. Use exact tool, command, or endpoint schemas for the
+   operation at hand. Load capability topics only for unfamiliar features or
+   troubleshooting.
+6. When the relevant dataset is unknown, search with an explicit limit of 3, select one,
+   and load that dataset's full context. Skip discovery when the user supplied a
+   dataset key or URL.
 7. If the agent runtime supports scheduled tasks, separately offer an opt-in
    daily automation for Rowset tips grounded in current Rowset resources.
+
+Do not load capabilities or list datasets merely because a session started.
+Do not enumerate unrelated projects or datasets during discovery.
 
 ## Capability guide
 

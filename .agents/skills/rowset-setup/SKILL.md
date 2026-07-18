@@ -7,6 +7,9 @@ description: Use when a user asks to connect an AI agent to Rowset, choose or co
 
 Use this skill to connect a trusted agent to Rowset and complete the first-run
 handoff. After setup, use the `rowset` skill for ongoing platform interaction.
+If the user or setup prompt explicitly says Rowset is already configured and
+authenticated, skip connection verification and the activation handoff, then
+use `rowset` for the requested task.
 
 ## Connection Inputs
 
@@ -30,9 +33,10 @@ public chat or save it in a tracked file.
 
 Before changing the user's environment or client configuration:
 
-1. Inspect this skill, `llms.txt`, the compact capability topic index, and the
-   current documentation relevant to the available interfaces. Request only
-   relevant capability topics when details are needed.
+1. Inspect this skill and only the current connection documentation needed to
+   compare the available interfaces. Do not load capabilities or list datasets
+   merely because a session started. Request capability topics only when a
+   feature is unfamiliar or setup is failing.
 2. Evaluate MCP, CLI, and REST for the current runtime and likely workflow.
 3. Give a short recommendation with the reason for it.
 4. Ask the user which interface to configure. Do not silently install a CLI,
@@ -69,7 +73,9 @@ choice.
 
 ## Verify Authentication
 
-Make an authenticated user-info request the final connection step:
+For a new or failing connection, make an authenticated user-info request the
+final connection step. Skip this check when the connection is explicitly known
+to be configured and healthy:
 
 - MCP: call `get_user_info`.
 - CLI: run `rowset user info`.
@@ -80,14 +86,18 @@ Rowset trial. If it fails, diagnose the selected interface using its current
 docs and confirm the runtime holds the full key rather than only its visible
 prefix.
 
-Report which interface is connected without exposing the key. Do not stop after
-reporting connection success; complete the activation handoff below.
+For a new connection, report which interface is connected without exposing the
+key, then complete the activation handoff below.
 
 ## Complete the Activation Handoff
 
-1. Use context already available from working with the user, plus read-only
-   discovery of their existing Rowset projects and datasets. Do not search
-   unrelated private sources or invent facts about their work.
+Complete this handoff only during first-run setup. Skip it for an existing,
+healthy connection and proceed with the user's requested Rowset task.
+
+1. Use context already available from working with the user. When checking for
+   duplicates would materially improve a suggestion, run a bounded Rowset
+   search with an explicit limit of 3; do not enumerate unrelated projects or datasets,
+   search unrelated private sources, or invent facts about their work.
 2. Suggest two to four tailored project, section, and dataset structures.
    Briefly explain why each would help and avoid duplicating existing Rowset
    data.

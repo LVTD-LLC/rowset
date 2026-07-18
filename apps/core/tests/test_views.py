@@ -693,7 +693,10 @@ class TestHomeView:
         assert "Rowset API key: rsk_explicit" in prompt
         assert "Read or install the Rowset setup skill before acting" in prompt
         assert "post-verification activation handoff" in prompt
-        assert "Use the Rowset skill for ongoing platform interaction" in prompt
+        assert "already configured and authenticated" in prompt
+        assert "Do not load capabilities or list datasets" in prompt
+        assert "search with an explicit limit of 3" in prompt
+        assert "Use the Rowset skill for progressive, task-driven discovery" in prompt
         assert "suggest two to four useful project" not in prompt
         assert "codex mcp add" not in prompt.lower()
 

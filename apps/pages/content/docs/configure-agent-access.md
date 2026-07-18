@@ -108,15 +108,17 @@ account, not in Rowset.
 ## Recommended agent behavior
 
 - Recommend MCP, CLI, or REST for the current context and ask before configuring it.
-- Discover current capabilities and exact operations through the selected interface.
-- Use a bare `get_rowset_capabilities` call, `rowset capabilities` command, or
-  `/api/capabilities` request for the compact topic index, then request only the
-  relevant topics. Opt into use cases only when useful; use full mode for the
-  complete guide.
-- Make authenticated user-info the final setup action.
-- Discover available datasets with `get_all_datasets`.
-- Find archived datasets with `get_archived_datasets` before restoring them.
-- Search for a specific dataset or project with `search_datasets` and `search_projects`.
+- Make authenticated user-info the final action for a new setup, or use it when
+  diagnosing a failing connection.
+- Use exact tool, command, or endpoint schemas for the operation at hand.
+- Use `get_rowset_capabilities`, `rowset capabilities`, or `/api/capabilities`
+  only for unfamiliar features or troubleshooting. Request only relevant topics;
+  opt into use cases or full mode only when needed.
+- When a dataset or project is unknown, use `search_datasets` or
+  `search_projects` with a limit of 3. Search archived datasets only when the
+  task involves recovery.
+- When the user supplies a dataset key or URL, skip discovery and inspect it
+  directly with `get_dataset`.
 - Create new datasets with `create_dataset` when the user asks for an on-the-fly dataset.
 - Inspect one dataset with `get_dataset` before row operations. The response
   includes dataset context, semantic schema, and relationship summaries.
@@ -132,6 +134,9 @@ account, not in Rowset.
 - Archive inactive project groups with `archive_project`; this hides the project without archiving its datasets.
 - Ask before destructive actions like archiving datasets or deleting rows.
 - Keep user data private and never print credentials into public logs or messages.
+
+Do not load capabilities or list datasets merely because a session started.
+Do not enumerate unrelated resources during discovery.
 
 ## Related docs
 

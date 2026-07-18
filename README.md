@@ -232,14 +232,17 @@ Recommended agent startup order:
 1. Read the Rowset setup prompt.
 2. Store the full API key privately as `ROWSET_API_KEY`.
 3. Configure the remote MCP server with bearer-token auth.
-4. Discover live MCP tools and schemas from the connected server.
-5. Call `get_user_info` to verify authentication.
-6. Call `get_rowset_capabilities` for the compact topic index, then request only
-   the relevant topics for detailed guidance.
-7. Call `get_all_datasets`, `get_archived_datasets`, or `search_datasets`
-   before creating duplicates.
-8. Call `get_dataset` before row operations so the agent sees headers, index
-   column, semantic schema, dataset instructions, metadata, and relationships.
+4. For a new or failing connection, call `get_user_info` once to verify
+   authentication, complete onboarding, and diagnose credential problems.
+5. Start the user's task. Use live tool schemas for the operation at hand and
+   call `get_rowset_capabilities` only for an unfamiliar feature or
+   troubleshooting, requesting only the relevant topics.
+6. If the user supplied a dataset key or URL, call `get_dataset` directly. If
+   the relevant dataset is unknown, use `search_datasets` with a limit of 3,
+   select a result, then call `get_dataset` before row operations.
+
+Do not load capabilities or list datasets merely because a session started.
+Do not enumerate unrelated datasets or projects during discovery.
 
 For Codex/OpenClaw-compatible clients:
 
