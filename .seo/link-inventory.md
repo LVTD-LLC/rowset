@@ -79,6 +79,7 @@
 | `/blog/ai-agent-memory-vs-state` | https://rowset.lvtd.dev/blog/ai-agent-memory-vs-state | AI agent memory vs structured state | memory, operational state |
 | `/blog/idempotent-ai-agent-updates` | https://rowset.lvtd.dev/blog/idempotent-ai-agent-updates | Make AI-agent data updates idempotent | retries, reconciliation |
 | `/blog/share-ai-agent-data-safely` | https://rowset.lvtd.dev/blog/share-ai-agent-data-safely | Share AI-agent data safely | access control, exports, public previews |
+| `/blog/human-in-the-loop-ai-agents` | https://rowset.lvtd.dev/blog/human-in-the-loop-ai-agents | Human-in-the-Loop AI Agents: A Practical Workflow | human-in-the-loop AI agents, AI agent approval workflow, agent review queue, human oversight for agents, durable approval records |
 
 ## Shipped SEO Sprint Pages
 

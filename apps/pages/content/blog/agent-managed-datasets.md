@@ -139,6 +139,11 @@ When another agent, system, or client needs access, use the
 [safe AI-agent data sharing guide](/blog/share-ai-agent-data-safely) to choose
 between a scoped private key, a point-in-time export, and a read-only preview.
 
+When review must happen before a consequential tool call, use the
+[human-in-the-loop AI agent workflow](/blog/human-in-the-loop-ai-agents) to
+separate the risk boundary, durable proposal, human decision, and verified
+execution outcome.
+
 ## Agent-managed dataset vs spreadsheet
 
 Spreadsheets are good when humans are the primary operators. They are visible,
