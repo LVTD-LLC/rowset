@@ -1,0 +1,90 @@
+name: Daily Release Cutter
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: rowset-release-cutter
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: write
+  packages: write
+
+jobs:
+  prepare:
+    name: Check for releasable main changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.release.outputs.should_release }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      release_sha: ${{ steps.release.outputs.release_sha }}
+    steps:
+      - name: Checkout main with release tags
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Prepare scheduled release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          head_sha="$(git rev-parse HEAD)"
+          latest_tag="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
+          latest_release_sha=""
+
+          if [[ -n "$latest_tag" ]]; then
+            git fetch --force origin "refs/tags/${latest_tag}:refs/tags/${latest_tag}"
+            latest_release_sha="$(git rev-list -n 1 "$latest_tag")"
+            if ! git merge-base --is-ancestor "$latest_release_sha" "$head_sha"; then
+              echo "Latest release ${latest_tag} is not an ancestor of main ${head_sha}." >&2
+              exit 1
+            fi
+          fi
+
+          if [[ "$latest_release_sha" == "$head_sha" ]]; then
+            echo "main ${head_sha} is already the latest release; skipping."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          deploy_run="$(gh run list \
+            --workflow deploy.yml \
+            --branch main \
+            --commit "$head_sha" \
+            --event push \
+            --limit 1 \
+            --json databaseId,status,conclusion \
+            --jq 'if length == 0 then empty else .[0] | [.databaseId, .status, .conclusion] | @tsv end')"
+          if [[ -z "$deploy_run" ]]; then
+            echo "No Deploy Prod run exists for main ${head_sha}." >&2
+            exit 1
+          fi
+
+          IFS=$'\t' read -r deploy_id deploy_status deploy_conclusion <<< "$deploy_run"
+          if [[ "$deploy_status" != "completed" || "$deploy_conclusion" != "success" ]]; then
+            echo "Deploy Prod run ${deploy_id} for ${head_sha} is ${deploy_status}/${deploy_conclusion}." >&2
+            exit 1
+          fi
+
+          release_tag="$(scripts/next-release-tag.sh)"
+          echo "Scheduling ${release_tag} from deployed main ${head_sha}."
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+          echo "release_sha=${head_sha}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish scheduled release
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
+    uses: ./.github/workflows/publish.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.release_tag }}
+      release_sha: ${{ needs.prepare.outputs.release_sha }}

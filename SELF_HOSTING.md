@@ -4,6 +4,12 @@ This is the supported Docker Compose path for a single-server Rowset installatio
 PostgreSQL, Redis, the Rowset web process, workers, and Caddy. Caddy is the only public ingress and
 manages trusted HTTPS certificates automatically.
 
+> **Release boundary:** The copy of this guide on `main` describes the next Rowset release and may
+> mention commands that are not in the current `/releases/latest` bundle yet. The installer always
+> installs the guide from the same immutable release as its scripts and image. After installation,
+> continue only with `$HOME/rowset/SELF_HOSTING.md`; do not mix later instructions from `main` into
+> that installation.
+
 ## What this path supports
 
 - `linux/amd64` and `linux/arm64` servers
@@ -69,6 +75,10 @@ and ports 80/443 reach Caddy.
 curl -fsSL https://github.com/LVTD-LLC/rowset/releases/latest/download/install-rowset-self-host.sh | sh
 cd "$HOME/rowset"
 ```
+
+Stop following the `main` copy of this page after the installer completes. The installer prints a
+bounded command sequence from its release and installs the matching guide at `SELF_HOSTING.md`.
+Follow that installed guide for the rest of setup.
 
 The release installer downloads a checksum-protected self-hosting bundle from the same immutable
 GitHub release as its application image. The bundle contains the matching Compose file, environment

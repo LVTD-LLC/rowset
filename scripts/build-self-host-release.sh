@@ -36,11 +36,15 @@ output_dir=$(CDPATH= cd -- "$output_dir" && pwd)
 staging=$(mktemp -d)
 trap 'rm -rf "$staging"' EXIT HUP INT TERM
 bundle_root="$staging/rowset-self-host"
-mkdir -p "$bundle_root/deployment"
+mkdir -p "$bundle_root/deployment" "$bundle_root/docs"
 
 cp "$root/SELF_HOSTING.md" "$root/docker-compose-prod.yml" "$bundle_root/"
-cp -R "$root/deployment/self-host" "$bundle_root/deployment/"
+self_host_source_archive="$staging/self-host-source.tar"
+tar -C "$root" --exclude='__pycache__' --exclude='*.pyc' \
+    -cf "$self_host_source_archive" deployment/self-host
+tar -C "$bundle_root" -xf "$self_host_source_archive"
 cp "$root/deployment/verify-image-platforms.sh" "$bundle_root/deployment/"
+cp "$root/docs/self-host-sizing.md" "$bundle_root/docs/"
 
 cat > "$bundle_root/.rowset-release" <<EOF
 ROWSET_RELEASE_VERSION=$version
@@ -50,6 +54,15 @@ ROWSET_RELEASE_DIGEST=$digest
 EOF
 
 archive="rowset-self-host-$version.tar.gz"
+
+sed "s/@ROWSET_RELEASE_VERSION@/$version/g" \
+    "$root/scripts/install-rowset-self-host.sh" > "$output_dir/install-rowset-self-host.sh"
+chmod 755 "$output_dir/install-rowset-self-host.sh"
+
+"$root/scripts/verify-self-host-release-contract.sh" \
+    "$bundle_root" \
+    "$output_dir/install-rowset-self-host.sh"
+
 tar -C "$bundle_root" -czf "$output_dir/$archive" .
 
 if command -v sha256sum >/dev/null 2>&1; then
@@ -58,7 +71,3 @@ else
     checksum=$(shasum -a 256 "$output_dir/$archive" | awk '{print $1}')
 fi
 printf '%s  %s\n' "$checksum" "$archive" > "$output_dir/$archive.sha256"
-
-sed "s/@ROWSET_RELEASE_VERSION@/$version/g" \
-    "$root/scripts/install-rowset-self-host.sh" > "$output_dir/install-rowset-self-host.sh"
-chmod 755 "$output_dir/install-rowset-self-host.sh"

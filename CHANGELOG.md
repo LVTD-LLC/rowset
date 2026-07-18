@@ -27,6 +27,10 @@ deployment or release cut date.
 
 ### Security
 - Filtered hosted MCP tool and capability discovery by API-key permission and blocked hidden write or admin tools before their implementation bodies run.
+- Added a daily release train that skips unchanged `main`, requires a successful production deploy for the exact commit, and publishes the next immutable dotted-date release through the existing guarded release pipeline.
+
+### Fixed
+- Made self-host release publishing fail before image promotion when the bundled guide or installer references a missing command, non-executable command, or local guide file, and made the source-versus-installed guide boundary explicit.
 
 ## 2026-07-17
 
