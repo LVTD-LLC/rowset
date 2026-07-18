@@ -39,7 +39,11 @@
     <script defer src="{% static 'js/app.js' %}"></script>
     <script defer src="{% static 'js/posthog-identity.js' %}"></script>
   </head>
-  <body data-csrf-token="{{ csrf_token }}" {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}>
+  <body data-csrf-token="{{ csrf_token }}"
+        {% if posthog_pageview_enabled %}data-posthog-pageview-enabled="true"
+        data-posthog-route="{{ posthog_pageview_route }}"
+        data-posthog-content-group="{{ posthog_content_group }}"{% endif %}
+        {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}>
     {% block default_messages %}{% include 'components/messages.html' with messages=messages %}{% endblock default_messages %}
     <div class="isolate min-h-dvh bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100" x-data="appShell" @keydown.escape.window="sidebarOpen = false" @keydown.window="handleShellKeydown($event)">
       <a href="#main-content" class="fb-focus sr-only fixed left-4 top-4 z-50 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white focus:not-sr-only">Skip to content</a>

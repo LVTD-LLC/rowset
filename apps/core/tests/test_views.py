@@ -460,12 +460,14 @@ class TestHomeView:
         assert 'posthog.init("phc_test"' in content
         assert "autocapture: false" in content
         assert "capture_pageview: false" in content
+        assert "before_send: window.Rowset.sanitizePosthogEvent" in content
         assert 'defaults: "2026-05-30"' in content
         assert 'person_profiles: "identified_only"' in content
         assert "window.posthog && window.posthog.__loaded" in content
         assert f'posthog.identify("{profile.id}"' in content
         assert f'email: "{profile.user.email}"' in content
         assert 'src="/static/js/posthog-identity.js"' in content
+        assert 'src="/static/js/posthog-pageviews.js"' not in content
         assert "<form data-posthog-reset" in content
 
     @override_settings(POSTHOG_API_KEY="phc_test")
@@ -475,8 +477,13 @@ class TestHomeView:
         content = response.content.decode()
         assert response.status_code == 200
         assert 'posthog.init("phc_test"' in content
+        assert 'src="/static/js/posthog-privacy.js"' in content
         assert "posthog.identify(" not in content
         assert 'src="/static/js/posthog-identity.js"' in content
+        assert 'src="/static/js/posthog-pageviews.js"' in content
+        assert 'data-posthog-pageview-enabled="true"' in content
+        assert 'data-posthog-route="/"' in content
+        assert 'data-posthog-content-group="marketing"' in content
         assert "<form data-posthog-reset" not in content
 
     @override_settings(SITE_URL="https://rowset.example")
