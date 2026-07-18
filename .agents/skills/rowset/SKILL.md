@@ -24,9 +24,14 @@ current schemas, commands, endpoints, and workflows.
 
 Use the current live resources rather than maintaining a static feature catalog:
 
-- MCP: inspect live tools and call `get_rowset_capabilities` when connected.
-- CLI: use `rowset capabilities` and current `rowset --help` output.
-- REST: read the capabilities endpoint and generated API docs.
+- MCP: inspect live tools and call `get_rowset_capabilities` without arguments
+  for the compact topic index, then request only relevant `topics`.
+- CLI: use bare `rowset capabilities` for the topic index, repeat `--topic` for
+  details, and inspect current `rowset --help` output.
+- REST: read `/api/capabilities`, then request details with `?topics=...` and
+  consult generated API docs.
+- Across interfaces, use cases are opt-in and full mode retrieves the complete
+  guide without topic filtering.
 - Any interface: use Rowset `llms.txt` to find current docs, guides, skills,
   use cases, and release-oriented resources.
 - Use the Rowset docs and blog indexes for current product guidance, examples,

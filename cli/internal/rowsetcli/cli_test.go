@@ -516,6 +516,61 @@ func TestCommandRoutesCoverRowsetOperations(t *testing.T) {
 	}
 }
 
+func TestCapabilitiesFlagsBuildRESTQuery(t *testing.T) {
+	tests := []struct {
+		name      string
+		args      []string
+		wantQuery string
+	}{
+		{
+			name: "compact default",
+			args: []string{"capabilities"},
+		},
+		{
+			name:      "repeatable and comma-separated topics",
+			args:      []string{"capabilities", "--topic", "setup,datasets", "--topic", "rows"},
+			wantQuery: "topics=setup%2Cdatasets%2Crows",
+		},
+		{
+			name:      "include use cases",
+			args:      []string{"capabilities", "--include-use-cases"},
+			wantQuery: "include_use_cases=true",
+		},
+		{
+			name:      "full guide",
+			args:      []string{"capabilities", "--full"},
+			wantQuery: "full=true",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runAgainstServer(t, test.args, expectJSONRequest(t, requestCapture{
+				method: http.MethodGet,
+				path:   "/api/capabilities",
+				query:  test.wantQuery,
+			}))
+		})
+	}
+}
+
+func TestCapabilitiesRejectsTopicsWithFull(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	err := Run(context.Background(), IO{
+		Stdout: &out,
+		Stderr: &errOut,
+		Stdin:  strings.NewReader(""),
+	}, []string{"capabilities", "--topic", "setup", "--full"})
+
+	if err == nil {
+		t.Fatal("expected topics and full to be rejected")
+	}
+	if got, want := err.Error(), "--topic cannot be combined with --full"; got != want {
+		t.Fatalf("error mismatch: got %q want %q", got, want)
+	}
+}
+
 func TestRunUsesProductionAPIBaseByDefault(t *testing.T) {
 	t.Setenv("ROWSET_API_BASE", "")
 	t.Setenv("ROWSET_API_KEY", "")
@@ -564,6 +619,12 @@ func TestHelpVersionAndUsageUseRowsetCommand(t *testing.T) {
 	}
 	if strings.Contains(helpOut.String(), "rowset-cli") {
 		t.Fatalf("help should not tell users to run rowset-cli: %q", helpOut.String())
+	}
+	if !strings.Contains(
+		helpOut.String(),
+		"capabilities [--topic TOPIC ...] [--include-use-cases] [--full]",
+	) {
+		t.Fatalf("help should describe capability selection flags, got %q", helpOut.String())
 	}
 
 	err = Run(context.Background(), IO{

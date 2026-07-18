@@ -27,6 +27,7 @@ deployment or release cut date.
 - Disabled Django's model administration routes in production and removed internal dashboard links into editable admin records.
 
 ### Changed
+- Made capability discovery progressive across MCP, REST, and CLI: bare requests return a compact topic index, topic selection loads focused details, use cases are opt-in, and full mode remains available for the complete guide.
 - Enabled colorized choice values and tags by default for new user profiles.
 - Limited internal admin dashboard metrics and activity to regular users while excluding staff and superuser-owned data.
 - Made hosted MCP initialization instructions self-contained for bounded reads, stable-index writes, destructive-action consent, and public-preview safety.

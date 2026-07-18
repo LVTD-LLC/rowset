@@ -16,7 +16,7 @@ interface to configure.
 
 1. Read `rowset-setup`, `llms.txt`, and current capability resources.
 2. Compare MCP, CLI, and REST, recommend one, and ask the user which to configure.
-3. Load the public `/api/capabilities` response and current interface docs.
+3. Load the compact capability topic index and request only the relevant topics.
 4. Configure only the approved interface and keep the API key in a secret store.
 5. Make authenticated user-info the first authenticated action and final setup step so the connection is
    verified, onboarding completes, and the trial starts.
@@ -27,9 +27,25 @@ interface to configure.
 
 ## Capability guide
 
-The same concise, structured capability guide is available through
-`get_rowset_capabilities`, `rowset capabilities`, and `/api/capabilities`. It
-groups Rowset features by workflow:
+The same progressive capability guide is available through
+`get_rowset_capabilities`, `rowset capabilities`, and `/api/capabilities`. A
+bare call, command, or request returns a compact `available_topics` index. Use
+one or more topic IDs to retrieve the detailed feature groups needed for the
+task. Use cases are opt-in, while full mode retrieves the complete guide.
+
+Examples:
+
+```text
+MCP:  get_rowset_capabilities {"topics":["rows","schema"]}
+CLI:  rowset capabilities --topic rows --topic schema
+REST: GET /api/capabilities?topics=rows,schema
+```
+
+Add `include_use_cases=true`, `--include-use-cases`, or
+`"include_use_cases": true` only when examples help. For the complete guide,
+use `full=true`, `--full`, or `{"full": true}` without topics.
+
+Available topics group Rowset features by workflow:
 
 - account and MCP setup
 - datasets
@@ -85,7 +101,8 @@ The app serves the skill markdown at:
 
 ## What agents should treat as current
 
-- The live capability guide is the current workflow and feature reference.
+- The live capability topic index and selected details are the current workflow
+  and feature reference.
 - MCP `tools/list`, CLI help, and generated REST docs are the exact sources for
   their respective interface operations and schemas.
 - `get_dataset` is the current per-dataset context source before row work.

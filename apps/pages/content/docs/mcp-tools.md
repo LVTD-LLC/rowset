@@ -22,9 +22,17 @@ get_user_info
 get_rowset_capabilities
 ```
 
-`get_user_info` verifies the authenticated Rowset account. `get_rowset_capabilities`
-returns current feature groups, recommended startup order, REST fallback paths,
-use-case patterns, and privacy guardrails.
+`get_user_info` verifies the authenticated Rowset account. A bare
+`get_rowset_capabilities` call returns a compact `available_topics` index. Pass
+only the topic IDs needed for detailed feature groups, MCP tools, REST paths,
+and guidance:
+
+```json
+{"topics": ["rows", "schema"]}
+```
+
+Add `"include_use_cases": true` only when examples help. Use `{"full": true}`
+for the complete guide; `full` cannot be combined with `topics`.
 
 ## Dataset discovery
 

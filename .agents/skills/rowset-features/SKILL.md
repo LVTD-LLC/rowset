@@ -8,11 +8,14 @@ description: Use when a user asks what Rowset can do through MCP, CLI, or REST, 
 Use this skill to explain Rowset's current feature surface accurately. Always
 prefer live discovery over memory:
 
-1. Load the live capability guide through `get_rowset_capabilities`,
-   `rowset capabilities`, or the REST capabilities endpoint.
-2. Inspect current MCP schemas, CLI help, or generated REST API docs for the
+1. Load the compact `available_topics` index through a bare
+   `get_rowset_capabilities` call, `rowset capabilities` command, or REST
+   capabilities request.
+2. Request only relevant topics for detailed guidance. Use cases are opt-in;
+   full mode retrieves the complete guide.
+3. Inspect current MCP schemas, CLI help, or generated REST API docs for the
    interface the user selected.
-3. Use `llms.txt` from the Rowset site to find current public reference material.
+4. Use `llms.txt` from the Rowset site to find current public reference material.
 
 The sections below are orientation, not a complete or permanent feature list.
 When they disagree with a live Rowset resource, follow the live resource.
@@ -27,7 +30,9 @@ spreadsheet write-back as active product capabilities.
 - Configure Rowset as a remote Streamable HTTP MCP server.
 - Store the full API key in a private `ROWSET_API_KEY` environment variable.
 - Verify auth with `get_user_info`.
-- Load current feature guidance with `get_rowset_capabilities`.
+- Load the topic index with `get_rowset_capabilities`, then request specific
+  `topics`. Set `include_use_cases` only when examples help, or `full` for the
+  complete guide.
 
 ### Datasets
 

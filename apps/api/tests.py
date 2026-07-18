@@ -76,13 +76,74 @@ def test_openapi_advertises_bearer_auth_without_query_key_scheme(client):
 
 def test_capabilities_endpoint_supports_current_api_prefix(client):
     response = client.get("/api/capabilities")
+    payload = response.json()
 
     assert response.status_code == 200
-    assert response.json()["product"] == "Rowset"
+    assert payload["product"] == "Rowset"
+    assert payload["mode"] == "summary"
+    assert "capabilities" not in payload
+
+
+def test_capabilities_endpoint_supports_topic_filters(client):
+    response = client.get("/api/capabilities?topics=rows,schema")
+
+    assert response.status_code == 200
+    assert {capability["id"] for capability in response.json()["capabilities"]} == {
+        "rows",
+        "dataset_context",
+        "schema_mutations",
+    }
+
+
+def test_capabilities_endpoint_rejects_unknown_topics(client):
+    response = client.get("/api/capabilities?topics=unknown")
+
+    assert response.status_code == 400
+    assert "Unknown capability topic" in response.json()["detail"]
+
+
+def test_capabilities_endpoint_supports_full_mode(client):
+    response = client.get("/api/capabilities?full=true")
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "full"
+    assert response.json()["capabilities"]
+
+
+def test_capabilities_endpoint_supports_opt_in_use_cases(client):
+    response = client.get("/api/capabilities?include_use_cases=true")
+
+    assert response.status_code == 200
+    assert {use_case["id"] for use_case in response.json()["use_cases"]} >= {
+        "task_board",
+        "bug_tracker",
+    }
+
+
+def test_capabilities_endpoint_rejects_topics_with_full_mode(client):
+    response = client.get("/api/capabilities?topics=rows&full=true")
+
+    assert response.status_code == 400
+    assert "Choose topics or full mode" in response.json()["detail"]
+
+
+def test_capabilities_endpoint_does_not_translate_registry_errors_to_bad_requests(
+    client,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "apps.api.views.rowset_capabilities_payload",
+        lambda **_kwargs: (_ for _ in ()).throw(ValueError("broken capability registry")),
+    )
+    client.raise_request_exception = False
+
+    response = client.get("/api/capabilities")
+
+    assert response.status_code == 500
 
 
 def test_capabilities_endpoint_advertises_public_dataset_read_paths(client):
-    response = client.get("/api/capabilities")
+    response = client.get("/api/capabilities?topics=previews")
 
     assert response.status_code == 200
     public_capability = next(

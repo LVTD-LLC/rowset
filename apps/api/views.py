@@ -135,7 +135,7 @@ from apps.core.analytics import (
     agent_api_key_tracking_properties,
     track_activation_event,
 )
-from apps.core.capabilities import rowset_capabilities_payload
+from apps.core.capabilities import CapabilitySelectionError, rowset_capabilities_payload
 from apps.core.choices import FeedbackSource
 from apps.core.post_deploy_smoke_auth import SMOKE_HEADER, read_smoke_token
 from apps.core.services import (
@@ -260,8 +260,21 @@ def api_not_found(request: HttpRequest, unmatched: str = "") -> JsonResponse:
 
 
 @api.get("/capabilities", auth=None, tags=["agent discovery"])
-def get_rowset_capabilities(request: HttpRequest):
-    return rowset_capabilities_payload()
+def get_rowset_capabilities(
+    request: HttpRequest,
+    topics: str | None = None,
+    include_use_cases: bool = False,
+    full: bool = False,
+):
+    selected_topics = topics.split(",") if topics else None
+    try:
+        return rowset_capabilities_payload(
+            topics=selected_topics,
+            include_use_cases=include_use_cases,
+            full=full,
+        )
+    except CapabilitySelectionError as exc:
+        raise HttpError(400, str(exc)) from exc
 
 
 @api.get("/healthcheck", auth=None, include_in_schema=False, tags=["private"])

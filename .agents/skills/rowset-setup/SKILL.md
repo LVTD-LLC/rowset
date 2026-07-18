@@ -30,8 +30,9 @@ public chat or save it in a tracked file.
 
 Before changing the user's environment or client configuration:
 
-1. Inspect this skill, `llms.txt`, the capabilities response, and the current
-   documentation relevant to the available interfaces.
+1. Inspect this skill, `llms.txt`, the compact capability topic index, and the
+   current documentation relevant to the available interfaces. Request only
+   relevant capability topics when details are needed.
 2. Evaluate MCP, CLI, and REST for the current runtime and likely workflow.
 3. Give a short recommendation with the reason for it.
 4. Ask the user which interface to configure. Do not silently install a CLI,
