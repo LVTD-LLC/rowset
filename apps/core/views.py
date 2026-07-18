@@ -691,8 +691,7 @@ def create_checkout_session(request, pk, plan):
         {"plan": plan, "checkout_mode": "subscription"},
         source_function="create_checkout_session",
         session_id=(
-            request.headers.get("X-PostHog-Session-ID")
-            or request.POST.get("posthog_session_id")
+            request.headers.get("X-PostHog-Session-ID") or request.POST.get("posthog_session_id")
         ),
     )
     return stripe_redirect(checkout_session.url)
