@@ -8,6 +8,7 @@ ATTRIBUTION_VERSION = 1
 CAMPAIGN_KEYS = ("utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term")
 _VALUE_RE = re.compile(r"^[a-z0-9][a-z0-9 ._\-/]*$", re.IGNORECASE)
 _DOMAIN_RE = re.compile(r"^[a-z0-9.-]+$", re.IGNORECASE)
+_ATTRIBUTION_PARSE_ERRORS = (TypeError, ValueError, json.JSONDecodeError)
 
 
 def _sanitize_touch(touch: Any) -> dict[str, str]:
@@ -35,7 +36,7 @@ def parse_attribution_cookie(value: str | None) -> dict[str, Any]:
         return {}
     try:
         raw = json.loads(unquote(value))
-    except TypeError, ValueError, json.JSONDecodeError:
+    except _ATTRIBUTION_PARSE_ERRORS:
         return {}
     if not isinstance(raw, dict) or raw.get("version") != ATTRIBUTION_VERSION:
         return {}
