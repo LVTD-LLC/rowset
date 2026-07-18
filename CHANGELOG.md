@@ -21,6 +21,9 @@ deployment or release cut date.
 ### Added
 - Added a practical guide to human-in-the-loop AI agent workflows with a risk matrix, durable approval schema, Rowset implementation pattern, and explicit execution-boundary limitations.
 
+### Fixed
+- Made self-host release publishing fail before image promotion when the bundled guide or installer references a missing command, non-executable command, or local guide file, and made the source-versus-installed guide boundary explicit.
+
 ## 2026-07-17
 
 ### Added

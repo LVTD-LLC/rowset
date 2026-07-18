@@ -24,6 +24,9 @@ jobs:
       release_tag: ${{ steps.release.outputs.release_tag }}
       image_name: ${{ steps.release.outputs.image_name }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Prepare release metadata
         id: release
         shell: bash
@@ -36,6 +39,24 @@ jobs:
           image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
           echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify self-host release contract
+        shell: bash
+        run: |
+          assets="$RUNNER_TEMP/self-host-assets"
+          extracted="$RUNNER_TEMP/self-host-extracted"
+          scripts/build-self-host-release.sh \
+            "$GITHUB_REF_NAME" \
+            "$GITHUB_SHA" \
+            "ghcr.io/${GITHUB_REPOSITORY,,}:$GITHUB_REF_NAME" \
+            "sha256:$(printf '0%.0s' {1..64})" \
+            "$assets"
+          mkdir -p "$extracted"
+          tar -C "$extracted" -xzf \
+            "$assets/rowset-self-host-$GITHUB_REF_NAME.tar.gz"
+          scripts/verify-self-host-release-contract.sh \
+            "$extracted" \
+            "$assets/install-rowset-self-host.sh"
 
   cli:
     name: Build CLI (${{ matrix.goos }}/${{ matrix.goarch }})
