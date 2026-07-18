@@ -6,9 +6,12 @@
     "utm_campaign",
     "utm_content",
     "utm_term",
+    "campaign_id",
   ];
   const campaignValuePattern = /^[a-z0-9][a-z0-9 ._\-/]*$/i;
   const capturedHtmxRequests = new WeakSet();
+  const pendingPageviews = (Rowset.pendingPosthogPageviews =
+    Rowset.pendingPosthogPageviews || []);
   let lastCaptureKey = "";
 
   function pageviewContext() {
@@ -60,29 +63,58 @@
     }
   }
 
-  Rowset.capturePosthogPageview = function capturePosthogPageview(force = false) {
+  function pageviewSnapshot(force) {
     const context = pageviewContext();
-    if (!context || typeof window.posthog?.capture !== "function") {
-      return false;
+    if (!context) {
+      return null;
     }
-
+    Rowset.registerPosthogPageviewContext?.(context);
     const campaign = campaignProperties(window.location.search);
+    return {
+      campaign,
+      context,
+      force,
+      href: window.location.href,
+      referrer: referrerProperties(),
+    };
+  }
+
+  function sendPageview(snapshot) {
+    const { campaign, context, force, href, referrer } = snapshot;
     const captureKey = JSON.stringify([context.route, context.contentGroup, campaign]);
     if (force !== true && captureKey === lastCaptureKey) {
       return false;
     }
 
-    const currentUrl = `${window.location.origin}${context.route}`;
+    Rowset.updatePosthogAttribution?.(href);
+    const currentUrl = `${new window.URL(href).origin}${context.route}`;
     window.posthog.capture("$pageview", {
       $current_url: currentUrl,
       $pathname: context.route,
-      ...referrerProperties(),
+      ...referrer,
       content_group: context.contentGroup,
       route: context.route,
       ...campaign,
     });
     lastCaptureKey = captureKey;
     return true;
+  }
+
+  Rowset.capturePosthogPageview = function capturePosthogPageview(force = false) {
+    const snapshot = pageviewSnapshot(force);
+    if (!snapshot) {
+      return false;
+    }
+    if (Rowset.posthogReady !== true || typeof window.posthog?.capture !== "function") {
+      pendingPageviews.push(snapshot);
+      return false;
+    }
+
+    let captured = false;
+    while (pendingPageviews.length > 0) {
+      captured = sendPageview(pendingPageviews.shift()) || captured;
+    }
+    return sendPageview(snapshot) || captured;
   };
 
   function updateContextFromHtmxResponse(event) {

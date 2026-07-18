@@ -55,6 +55,12 @@ test("sanitizes URL, referrer, and campaign properties before PostHog sends an e
       ph_keyword: "private search terms",
       $utm_campaign: "launch 2026",
       $utm_term: "user@example.com",
+      current_touch_campaign_id: "hn-launch",
+      current_touch_referrer: "https://news.ycombinator.com/item?id=private",
+      current_touch_utm_campaign: null,
+      current_touch_utm_source: "hacker-news",
+      first_touch_referrer: "javascript:alert(1)",
+      first_touch_utm_term: "user@example.com",
       token: "required-project-token",
     },
     $set_once: {
@@ -83,6 +89,10 @@ test("sanitizes URL, referrer, and campaign properties before PostHog sends an e
     $session_entry_url: "https://rowset.example/accounts/password/reset/key/:uid/:key/",
     $session_entry_utm_source: "hacker-news",
     $utm_campaign: "launch 2026",
+    current_touch_campaign_id: "hn-launch",
+    current_touch_referrer: "https://news.ycombinator.com",
+    current_touch_utm_campaign: null,
+    current_touch_utm_source: "hacker-news",
     token: "required-project-token",
   });
   assert.deepEqual({ ...event.$set_once }, {

@@ -2,11 +2,14 @@
 {% if posthog_api_key %}
     <script>
     window.Rowset = window.Rowset || {};
+    window.Rowset.posthogIdentified = false;
+    window.Rowset.posthogReady = false;
     window.Rowset.posthogPageviewContext = {
       contentGroup: "{{ posthog_content_group|escapejs }}",
       route: "{{ posthog_pageview_route|escapejs }}",
     };
     </script>
+    <script src="{% static 'js/posthog-attribution.js' %}"></script>
     <script src="{% static 'js/posthog-privacy.js' %}"></script>
     <script>
     !(function (t, e) {
@@ -61,14 +64,22 @@
       autocapture: false,
       before_send: window.Rowset.sanitizePosthogEvent,
       capture_pageview: false,
+      custom_campaign_params: ["campaign_id"],
       defaults: "2026-05-30",
+      loaded: function (posthogClient) {
+        var posthogAttribution = window.Rowset.initializePosthogAttribution(posthogClient);
+        {% if posthog_distinct_id %}
+          posthogClient.identify("{{ posthog_distinct_id|escapejs }}", {
+            email: "{{ posthog_user_email|escapejs }}",
+            ...posthogAttribution.current,
+          }, posthogAttribution.first);
+          window.Rowset.posthogIdentified = true;
+        {% endif %}
+        window.Rowset.posthogReady = true;
+        window.Rowset.capturePosthogPageview?.();
+      },
       person_profiles: "identified_only",
     });
-    {% if posthog_distinct_id %}
-      posthog.identify("{{ posthog_distinct_id|escapejs }}", {
-        email: "{{ posthog_user_email|escapejs }}",
-      });
-    {% endif %}
     posthog.onSessionId(function (sessionId) {
       window.Rowset = window.Rowset || {};
       window.Rowset.posthogSessionId = sessionId;

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory, override_settings
+from django.urls import reverse
 
 from apps.core.context_processors import posthog_api_key
 from apps.datasets.tests.factories import create_dataset
@@ -76,3 +77,23 @@ def test_public_dataset_page_wires_normalized_pageview_context(client, profile):
     assert 'data-posthog-pageview-enabled="true"' in content
     assert 'data-posthog-route="/share/datasets/:public_key/"' in content
     assert 'data-posthog-content-group="public_dataset"' in content
+
+
+@pytest.mark.django_db
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_posthog_component_initializes_attribution_before_identifying_user(client, profile):
+    client.force_login(profile.user)
+
+    response = client.get(reverse("pricing"))
+    content = response.content.decode()
+
+    attribution_script = content.index('src="/static/js/posthog-attribution.js"')
+    posthog_init = content.index('posthog.init("phc_test"')
+    attribution_init = content.index(
+        "posthogAttribution = window.Rowset.initializePosthogAttribution(posthogClient)"
+    )
+    identify = content.index(f'posthogClient.identify("{profile.id}"')
+    identified_boundary = content.index("posthogIdentified = true")
+
+    assert attribution_script < posthog_init < attribution_init < identify < identified_boundary
+    assert 'custom_campaign_params: ["campaign_id"]' in content

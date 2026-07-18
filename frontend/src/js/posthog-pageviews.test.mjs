@@ -4,6 +4,10 @@ import test from "node:test";
 import vm from "node:vm";
 
 const source = fs.readFileSync(new URL("./posthog-pageviews.js", import.meta.url), "utf8");
+const attributionSource = fs.readFileSync(
+  new URL("./posthog-attribution.js", import.meta.url),
+  "utf8",
+);
 const privacySource = fs.readFileSync(new URL("./posthog-privacy.js", import.meta.url), "utf8");
 
 function loadPageviews({
@@ -13,11 +17,15 @@ function loadPageviews({
     posthogRoute: "/pricing",
   },
   href = "https://rowset.example/pricing",
+  loadAttribution = false,
   loadPrivacy = false,
+  posthogReady = true,
   readyState = "complete",
   referrer = "https://news.ycombinator.com/item?id=48920229&token=secret",
 } = {}) {
   const captures = [];
+  const attributionUpdates = [];
+  const properties = {};
   const documentListeners = new Map();
   const bodyListeners = new Map();
   const location = new URL(href);
@@ -54,6 +62,10 @@ function loadPageviews({
   const window = {
     DOMParser,
     Rowset: {
+      posthogReady,
+      updatePosthogAttribution(href = window.location.href) {
+        attributionUpdates.push(href);
+      },
       posthogPageviewContext: {
         contentGroup: dataset.posthogContentGroup,
         route: dataset.posthogRoute,
@@ -63,18 +75,50 @@ function loadPageviews({
     location,
     posthog: {
       capture(event, properties) {
-        captures.push({ event, properties });
+        const payload = window.Rowset.sanitizePosthogEvent?.({ event, properties }) || {
+          event,
+          properties,
+        };
+        captures.push(payload);
+      },
+      get_property(name) {
+        return properties[name];
+      },
+      register(values) {
+        Object.assign(properties, values);
+      },
+      register_once(values) {
+        Object.entries(values).forEach(([name, value]) => {
+          if (!(name in properties)) {
+            properties[name] = value;
+          }
+        });
+      },
+      unregister(name) {
+        delete properties[name];
       },
     },
   };
   const context = vm.createContext({ document, URL, URLSearchParams, window });
 
+  if (loadAttribution) {
+    delete window.Rowset.updatePosthogAttribution;
+    vm.runInContext(attributionSource, context);
+  }
   if (loadPrivacy) {
     vm.runInContext(privacySource, context);
   }
   vm.runInContext(source, context);
 
-  return { body, bodyListeners, captures, documentListeners, window };
+  return {
+    attributionUpdates,
+    body,
+    bodyListeners,
+    captures,
+    documentListeners,
+    properties,
+    window,
+  };
 }
 
 test("captures one privacy-safe pageview for an eligible full page", () => {
@@ -99,12 +143,102 @@ test("captures one privacy-safe pageview for an eligible full page", () => {
   assert.equal("code" in captures[0].properties, false);
 });
 
+test("updates persisted attribution before full-page and HTMX captures", () => {
+  const { attributionUpdates, bodyListeners, captures, window } = loadPageviews({
+    href: "https://rowset.example/pricing?campaign_id=launch-one&utm_source=hacker-news",
+  });
+
+  assert.deepEqual(attributionUpdates, [
+    "https://rowset.example/pricing?campaign_id=launch-one&utm_source=hacker-news",
+  ]);
+  assert.equal(captures[0].properties.campaign_id, "launch-one");
+
+  window.location = new URL(
+    "https://rowset.example/docs/quickstart?campaign_id=launch-two&utm_source=newsletter",
+  );
+  bodyListeners.get("htmx:afterSwap")({
+    detail: { xhr: { responseText: "<!doctype html><body>docs-page" } },
+  });
+
+  assert.equal(attributionUpdates.length, 2);
+  assert.equal(captures[1].properties.campaign_id, "launch-two");
+});
+
 test("waits for DOM readiness before reading the server route context", () => {
   const { captures, documentListeners } = loadPageviews({ readyState: "loading" });
 
   assert.equal(captures.length, 0);
   documentListeners.get("DOMContentLoaded")();
   assert.equal(captures.length, 1);
+});
+
+test("waits for the real PostHog client before capturing attribution and pageviews", () => {
+  const { attributionUpdates, captures, window } = loadPageviews({ posthogReady: false });
+
+  assert.equal(captures.length, 0);
+  assert.equal(attributionUpdates.length, 0);
+
+  window.Rowset.posthogReady = true;
+  window.Rowset.capturePosthogPageview();
+
+  assert.equal(captures.length, 1);
+  assert.equal(attributionUpdates.length, 1);
+});
+
+test("replays HTMX pageviews and campaign touches captured before PostHog loads", () => {
+  const { attributionUpdates, bodyListeners, captures, window } = loadPageviews({
+    href: "https://rowset.example/pricing?utm_source=hacker-news",
+    posthogReady: false,
+  });
+
+  window.location = new URL(
+    "https://rowset.example/docs/quickstart?campaign_id=docs-launch&utm_source=newsletter",
+  );
+  bodyListeners.get("htmx:afterSwap")({
+    detail: { xhr: { responseText: "<!doctype html><body>docs-page" } },
+  });
+
+  window.Rowset.posthogReady = true;
+  window.Rowset.capturePosthogPageview();
+
+  assert.deepEqual(attributionUpdates, [
+    "https://rowset.example/pricing?utm_source=hacker-news",
+    "https://rowset.example/docs/quickstart?campaign_id=docs-launch&utm_source=newsletter",
+  ]);
+  assert.equal(captures.length, 2);
+  assert.equal(captures[0].properties.utm_source, "hacker-news");
+  assert.equal(captures[1].properties.campaign_id, "docs-launch");
+});
+
+test("replays pre-load pageviews through the real attribution module", () => {
+  const { bodyListeners, captures, properties, window } = loadPageviews({
+    href: "https://rowset.example/pricing?utm_source=hacker-news",
+    loadAttribution: true,
+    loadPrivacy: true,
+    posthogReady: false,
+  });
+
+  window.location = new URL(
+    "https://rowset.example/docs/quickstart?campaign_id=docs-launch&utm_source=newsletter",
+  );
+  bodyListeners.get("htmx:afterSwap")({
+    detail: { xhr: { responseText: "<!doctype html><body>docs-page" } },
+  });
+
+  window.Rowset.initializePosthogAttribution(window.posthog);
+  window.Rowset.posthogReady = true;
+  window.Rowset.capturePosthogPageview();
+
+  assert.equal(captures.length, 2);
+  assert.equal(captures[0].properties.route, "/pricing");
+  assert.equal(captures[0].properties.$pathname, "/pricing");
+  assert.equal(captures[1].properties.route, "/docs/:slug");
+  assert.equal(captures[1].properties.$pathname, "/docs/:slug");
+  assert.equal(properties.first_touch_utm_source, "hacker-news");
+  assert.equal(properties.first_touch_referring_domain, "news.ycombinator.com");
+  assert.equal(properties.current_touch_utm_source, "newsletter");
+  assert.equal(properties.current_touch_campaign_id, "docs-launch");
+  assert.equal("current_touch_referrer" in properties, false);
 });
 
 test("does not capture private or disabled routes", () => {

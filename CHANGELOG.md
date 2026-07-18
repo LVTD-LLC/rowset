@@ -19,6 +19,7 @@ deployment or release cut date.
 ## 2026-07-18
 
 ### Added
+- Added privacy-safe first-touch and current campaign attribution that persists allowlisted UTM, campaign ID, and external referrer context across page, HTMX, signup, and authentication boundaries.
 - Added a practical guide to human-in-the-loop AI agent workflows with a risk matrix, durable approval schema, Rowset implementation pattern, and explicit execution-boundary limitations.
 
 ## 2026-07-17
