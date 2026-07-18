@@ -20,6 +20,7 @@ deployment or release cut date.
 
 ### Added
 - Added a practical guide to human-in-the-loop AI agent workflows with a risk matrix, durable approval schema, Rowset implementation pattern, and explicit execution-boundary limitations.
+- Added a daily release train that skips unchanged `main`, requires a successful production deploy for the exact commit, and publishes the next immutable dotted-date release through the existing guarded release pipeline.
 
 ### Fixed
 - Made self-host release publishing fail before image promotion when the bundled guide or installer references a missing command, non-executable command, or local guide file, and made the source-versus-installed guide boundary explicit.

@@ -168,7 +168,14 @@ def test_publish_workflow_syncs_app_image_and_cli_version_to_release_tag():
     workflow = (_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text()
 
     assert "[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]-[0-9]*" in workflow
-    assert "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}" in workflow
+    assert (
+        "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_tag }}"
+        in workflow
+    )
+    assert (
+        "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_sha }}"
+        in workflow
+    )
     assert "-X github.com/LVTD-LLC/rowset/cli/internal/rowsetcli.Version=${RELEASE_TAG}" in workflow
     assert "rowset_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz" in workflow
     assert "scripts/install-rowset-cli.sh" in workflow
@@ -180,10 +187,12 @@ def test_publish_workflow_creates_an_immutable_matching_self_host_release():
 
     assert "scripts/build-self-host-release.sh" in workflow
     assert "scripts/verify-self-host-release-contract.sh" in workflow
-    assert "${{ github.sha }}" in workflow
+    assert "release_sha: ${{ steps.release.outputs.release_sha }}" in workflow
+    assert "ref: ${{ needs.validate.outputs.release_sha }}" in workflow
     assert "${{ needs.app-image.outputs.digest }}" in workflow
     assert "rowset-self-host-${RELEASE_TAG}.tar.gz" in workflow
     assert "install-rowset-self-host.sh" in workflow
+    assert '--target "$RELEASE_SHA"' in workflow
     assert "--clobber" not in workflow
     validate_steps = parsed_workflow["jobs"]["validate"]["steps"]
     assert "Verify self-host release contract" in [step["name"] for step in validate_steps]
@@ -218,7 +227,7 @@ def test_release_workflows_publish_and_smoke_both_supported_platforms():
         smoke = steps[step_names.index("Smoke published platforms")]
         qemu = steps[step_names.index("Set up QEMU")]
 
-        expected_tag = "candidate_tag" if workflow_name == "deploy.yml" else "github.sha"
+        expected_tag = "candidate_tag" if workflow_name == "deploy.yml" else "release_sha"
         assert expected_tag in verify["run"]
         assert expected_tag in smoke["run"]
         assert qemu["uses"] == "docker/setup-qemu-action@v3"
@@ -239,7 +248,9 @@ def test_release_workflows_publish_and_smoke_both_supported_platforms():
     )
 
     publish = yaml.safe_load((_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text())
-    assert publish["concurrency"]["group"] == "rowset-release-${{ github.ref_name }}"
+    assert publish["concurrency"]["group"] == (
+        "rowset-release-${{ inputs.release_tag || github.ref_name }}"
+    )
     publish_names = [step["name"] for step in publish["jobs"]["app-image"]["steps"]]
     assert "Build and push image" not in publish_names
     assert "Resolve immutable image digest" in publish_names
@@ -278,7 +289,7 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
             "app-image",
             "Verify anonymous immutable image availability",
             "${{ steps.image.outputs.digest }}",
-            "github.sha",
+            "release_sha",
             None,
         ),
     )
@@ -351,7 +362,7 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
         for step in publish["jobs"]["app-image"]["steps"]
         if step["name"] == "Promote advertised tags"
     )
-    assert "github.ref_name" in publish_promotion["run"]
+    assert "release_tag" in publish_promotion["run"]
     assert "app-image" in publish["jobs"]["release"]["needs"]
     publish_step_names = [step["name"] for step in publish["jobs"]["app-image"]["steps"]]
     immutable_release_index = publish_step_names.index("Protect immutable release tag")
@@ -361,7 +372,43 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
     assert immutable_release_index < publish_step_names.index("Promote advertised tags")
     immutable_release = publish["jobs"]["app-image"]["steps"][immutable_release_index]
     assert "deployment/verify-immutable-image-tag.sh" in immutable_release["run"]
-    assert "github.ref_name" in immutable_release["run"]
+    assert "release_tag" in immutable_release["run"]
+
+
+def test_daily_release_cutter_skips_unchanged_main_and_requires_a_successful_deploy():
+    workflow_path = _REPO_ROOT / ".github" / "workflows" / "release-cutter.yml"
+    workflow = workflow_path.read_text()
+    parsed_workflow = yaml.safe_load(workflow)
+
+    assert "schedule:" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "gh release view" in workflow
+    assert 'if [[ "$latest_release_sha" == "$head_sha" ]]' in workflow
+    assert "should_release=false" in workflow
+    assert "gh run list" in workflow
+    assert "--workflow deploy.yml" in workflow
+    assert '--commit "$head_sha"' in workflow
+    assert '[[ "$deploy_status" != "completed" || "$deploy_conclusion" != "success" ]]' in workflow
+    assert "scripts/next-release-tag.sh" in workflow
+
+    publish = parsed_workflow["jobs"]["publish"]
+    assert publish["needs"] == "prepare"
+    assert publish["if"] == "needs.prepare.outputs.should_release == 'true'"
+    assert publish["uses"] == "./.github/workflows/publish.yml"
+    assert publish["with"] == {
+        "release_tag": "${{ needs.prepare.outputs.release_tag }}",
+        "release_sha": "${{ needs.prepare.outputs.release_sha }}",
+    }
+
+
+def test_publish_workflow_accepts_an_exact_scheduled_release_identity():
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text()
+
+    assert "workflow_call:" in workflow
+    assert "release_tag:" in workflow
+    assert "release_sha:" in workflow
+    assert 'release_tag="${RELEASE_TAG_INPUT:-$GITHUB_REF_NAME}"' in workflow
+    assert 'release_sha="${RELEASE_SHA_INPUT:-$GITHUB_SHA}"' in workflow
 
 
 def test_install_script_installs_rowset_cli_from_release_assets():

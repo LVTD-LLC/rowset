@@ -4,9 +4,19 @@ on:
   push:
     tags:
       - "[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]-[0-9]*"
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Immutable dotted-date release tag.
+        required: true
+        type: string
+      release_sha:
+        description: Exact deployed main commit to publish.
+        required: true
+        type: string
 
 concurrency:
-  group: rowset-release-${{ github.ref_name }}
+  group: rowset-release-${{ inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -22,22 +32,35 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.release.outputs.release_tag }}
+      release_sha: ${{ steps.release.outputs.release_sha }}
       image_name: ${{ steps.release.outputs.image_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha || github.sha }}
 
       - name: Prepare release metadata
         id: release
         shell: bash
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+          RELEASE_SHA_INPUT: ${{ inputs.release_sha }}
         run: |
-          release_tag="${GITHUB_REF_NAME}"
+          release_tag="${RELEASE_TAG_INPUT:-$GITHUB_REF_NAME}"
+          release_sha="${RELEASE_SHA_INPUT:-$GITHUB_SHA}"
           if [[ ! "$release_tag" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[0-9]+$ ]]; then
             echo "Release tag must match YYYY.MM.DD-N, for example 2026.07.08-0." >&2
             exit 1
           fi
+          if [[ ! "$release_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Release SHA must be a full 40-character commit SHA." >&2
+            exit 1
+          fi
+          git cat-file -e "${release_sha}^{commit}"
           image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+          echo "release_sha=${release_sha}" >> "$GITHUB_OUTPUT"
           echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
 
       - name: Verify self-host release contract
@@ -46,14 +69,14 @@ jobs:
           assets="$RUNNER_TEMP/self-host-assets"
           extracted="$RUNNER_TEMP/self-host-extracted"
           scripts/build-self-host-release.sh \
-            "$GITHUB_REF_NAME" \
-            "$GITHUB_SHA" \
-            "ghcr.io/${GITHUB_REPOSITORY,,}:$GITHUB_REF_NAME" \
+            "${{ steps.release.outputs.release_tag }}" \
+            "${{ steps.release.outputs.release_sha }}" \
+            "ghcr.io/${GITHUB_REPOSITORY,,}:${{ steps.release.outputs.release_tag }}" \
             "sha256:$(printf '0%.0s' {1..64})" \
             "$assets"
           mkdir -p "$extracted"
           tar -C "$extracted" -xzf \
-            "$assets/rowset-self-host-$GITHUB_REF_NAME.tar.gz"
+            "$assets/rowset-self-host-${{ steps.release.outputs.release_tag }}.tar.gz"
           scripts/verify-self-host-release-contract.sh \
             "$extracted" \
             "$assets/install-rowset-self-host.sh"
@@ -79,6 +102,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.release_sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -122,6 +147,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.release_sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -147,21 +174,21 @@ jobs:
           IMAGE_DIGEST_RESOLVE_DELAY_SECONDS: "10"
         run: |
           digest="$(deployment/resolve-image-digest.sh \
-            "${{ needs.validate.outputs.image_name }}:${{ github.sha }}")"
+            "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_sha }}")"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Verify published platforms
-        run: deployment/verify-image-platforms.sh "${{ needs.validate.outputs.image_name }}:${{ github.sha }}" linux/amd64 linux/arm64
+        run: deployment/verify-image-platforms.sh "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_sha }}" linux/amd64 linux/arm64
 
       - name: Smoke published platforms
-        run: deployment/smoke-image-platforms.sh "${{ needs.validate.outputs.image_name }}:${{ github.sha }}"
+        run: deployment/smoke-image-platforms.sh "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_sha }}"
 
       - name: Verify anonymous immutable image availability
         timeout-minutes: 15
         run: |
           deployment/verify-anonymous-image.sh \
             "${{ steps.image.outputs.digest }}" \
-            "${{ needs.validate.outputs.image_name }}:${{ github.sha }}"
+            "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_sha }}"
 
       - name: Log in to GHCR for tag promotion
         uses: docker/login-action@v3
@@ -174,12 +201,12 @@ jobs:
         run: |
           deployment/verify-immutable-image-tag.sh \
             "${{ steps.image.outputs.digest }}" \
-            "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}"
+            "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_tag }}"
 
       - name: Promote advertised tags
         run: |
           docker buildx imagetools create \
-            --tag "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}" \
+            --tag "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_tag }}" \
             "${{ needs.validate.outputs.image_name }}@${{ steps.image.outputs.digest }}"
 
       - name: Verify anonymous image availability
@@ -187,8 +214,8 @@ jobs:
         run: |
           deployment/verify-anonymous-image.sh \
             "${{ steps.image.outputs.digest }}" \
-            "${{ needs.validate.outputs.image_name }}:${{ github.sha }}" \
-            "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}"
+            "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_sha }}" \
+            "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_tag }}"
 
   release:
     name: Create GitHub release
@@ -200,10 +227,13 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_TAG: ${{ needs.validate.outputs.release_tag }}
+      RELEASE_SHA: ${{ needs.validate.outputs.release_sha }}
       IMAGE_NAME: ${{ needs.validate.outputs.image_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.release_sha }}
 
       - name: Download CLI archives
         uses: actions/download-artifact@v4
@@ -218,7 +248,7 @@ jobs:
           cp scripts/install-rowset-cli.sh release-assets/install-rowset-cli.sh
           scripts/build-self-host-release.sh \
             "$RELEASE_TAG" \
-            "${{ github.sha }}" \
+            "$RELEASE_SHA" \
             "$IMAGE_NAME:$RELEASE_TAG" \
             "${{ needs.app-image.outputs.digest }}" \
             release-assets
@@ -250,5 +280,6 @@ jobs:
           } > "$notes"
 
           gh release create "$RELEASE_TAG" release-assets/* \
+            --target "$RELEASE_SHA" \
             --title "$RELEASE_TAG" \
             --notes-file "$notes"
