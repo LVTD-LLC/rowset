@@ -89,7 +89,7 @@ def test_authenticate_profile_rejects_missing_access_token(monkeypatch):
         _authenticate_profile()
 
 
-def test_authorized_mcp_tool_request_starts_trial(monkeypatch, profile):
+def test_authorized_read_mcp_tool_request_does_not_start_trial(monkeypatch, profile):
     credential = create_agent_api_key(profile, "OpenClaw")
     monkeypatch.setattr(
         "apps.mcp_server.server._authenticate_profile",
@@ -97,6 +97,21 @@ def test_authorized_mcp_tool_request_starts_trial(monkeypatch, profile):
     )
 
     authenticated_profile = _mcp_authenticated_profile()
+
+    assert authenticated_profile == profile
+    profile.refresh_from_db()
+    assert profile.trial_started_at is None
+    assert profile.trial_ends_at is None
+
+
+def test_authorized_write_mcp_tool_request_starts_trial(monkeypatch, profile):
+    credential = create_agent_api_key(profile, "OpenClaw")
+    monkeypatch.setattr(
+        "apps.mcp_server.server._authenticate_profile",
+        lambda: _attach_agent_api_key(profile, credential.agent_api_key),
+    )
+
+    authenticated_profile = _mcp_authenticated_profile(AgentApiKeyAccessLevel.READ_WRITE)
 
     assert authenticated_profile == profile
     profile.refresh_from_db()

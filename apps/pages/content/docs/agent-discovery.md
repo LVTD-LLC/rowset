@@ -19,7 +19,9 @@ interface to configure.
 3. Load the compact capability topic index and request only the relevant topics.
 4. Configure only the approved interface and keep the API key in a secret store.
 5. Make authenticated user-info the first authenticated action and final setup step so the connection is
-   verified, onboarding completes, and the trial starts.
+   verified and onboarding completes. MCP reads and API-key creation stay trial-neutral, so the MCP
+   trial starts on the first dataset or project mutation; CLI and REST user-info requests start it
+   immediately.
 6. Use existing user context and read-only Rowset discovery to suggest two to four
    useful project, section, and dataset structures, then ask which one to create.
 7. If the agent runtime supports scheduled tasks, separately offer an opt-in
