@@ -319,6 +319,11 @@ access for reads and writes, with the right API-key permission level. If the
 connection path is still unclear, read [MCP vs REST for AI
 agents](/blog/mcp-vs-rest-ai-agents).
 
+For actions that must stop until a person decides, pair these instructions with
+a durable proposal record and an execution-layer interrupt. The guide to
+[human-in-the-loop AI agents](/blog/human-in-the-loop-ai-agents) shows the
+approval schema, risk matrix, and verify-before-execution flow.
+
 ## A quick QA checklist
 
 Before giving an agent write access, read the instructions and check:

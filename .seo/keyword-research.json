@@ -194,6 +194,7 @@
     {"keyword": "idempotent api", "source": "dataforseo", "search_volume": 260, "keyword_difficulty": 25, "cpc": null, "intent": "informational", "as_of": "2026-07-15"},
     {"keyword": "ai agent memory", "source": "dataforseo", "search_volume": 210, "keyword_difficulty": 27, "cpc": 9.77, "intent": "informational", "as_of": "2026-07-15"},
     {"keyword": "spreadsheet database", "source": "dataforseo", "search_volume": 170, "keyword_difficulty": 22, "cpc": 14.12, "intent": "transactional", "as_of": "2026-07-15"},
+    {"keyword": "human in the loop ai agents", "source": "dataforseo", "search_volume": 70, "keyword_difficulty": 11, "cpc": 16.32, "intent": "informational", "as_of": "2026-07-18"},
     {"keyword": "agentic database", "source": "dataforseo", "search_volume": 70, "keyword_difficulty": 10, "cpc": 18.06, "intent": "informational", "as_of": "2026-07-15"},
     {"keyword": "baserow alternatives", "source": "dataforseo", "search_volume": 70, "keyword_difficulty": 0, "cpc": 8.08, "intent": "informational", "as_of": "2026-07-15"},
     {"keyword": "database mcp server", "source": "dataforseo", "search_volume": 50, "keyword_difficulty": 16, "cpc": 12.11, "intent": "navigational", "as_of": "2026-07-15"},

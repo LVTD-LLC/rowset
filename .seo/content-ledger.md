@@ -24,6 +24,7 @@
 | 2026-07-15 | Rowset vs Airtable: Which Fits AI Agents? (2026) | product comparison | `/vs/airtable` | Rowset vs Airtable | unmeasured | n/a | Airtable alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide | #277 |
 | 2026-07-15 | Rowset vs Google Sheets for AI Agents (2026) | product comparison | `/vs/google-sheets` | Rowset vs Google Sheets | unmeasured | n/a | Google Sheets alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide | #280 |
 | 2026-07-16 | How to share AI-agent data safely | security decision guide | `/blog/share-ai-agent-data-safely` | share AI agent data | unmeasured | n/a | MCP access, Dataset API, agent access, public previews, exports, relationship modeling, feedback triage | #281 |
+| 2026-07-18 | Human-in-the-Loop AI Agents: A Practical Workflow | how-to / operational decision guide | `/blog/human-in-the-loop-ai-agents` | human in the loop AI agents | 70 | 11 | MCP access, Dataset API, schema design, dataset instructions, idempotent updates, safe sharing, pricing | #310 |
 
 ---
 
@@ -35,6 +36,9 @@
 | 2 | How to make AI-agent data updates idempotent | how-to | AI agent idempotent operations | unmeasured | n/a | operational/setup | shipped | Shipped 2026-07-15 as `/blog/idempotent-ai-agent-updates`. |
 | 3 | How to share agent-managed datasets safely | decision guide | share AI agent data | unmeasured | n/a | security/decision | shipped | Shipped 2026-07-16 as `/blog/share-ai-agent-data-safely`. |
 | 4 | spreadsheet database for AI agents | explanation | spreadsheet database | 170 | 20 | informational | 15 | Reserved for the sprint-owned explanation page; do not duplicate as a blog post. |
+| 5 | Human-in-the-loop AI agents | how-to / operational decision guide | human in the loop AI agents | 70 | 11 | informational / implementation | shipped | Shipped 2026-07-18 as `/blog/human-in-the-loop-ai-agents`. |
+| 6 | AI agent audit trail | implementation guide | AI audit trail | 40 | n/a | commercial / implementation | 17 | Strong product fit, but narrower demand and substantial overlap with the selected HITL workflow. |
+| 7 | Database for AI agents | decision guide | database for AI agents | 10 | 7 | commercial | 16 | Winnable but overlaps existing agent-managed-dataset and memory-vs-state coverage. |
 
 ---
 
@@ -42,7 +46,7 @@
 
 | Cluster / theme | Pieces shipped | Gaps still open |
 |---|---|---|
-| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates`, `/blog/share-ai-agent-data-safely` | Generated-index migration patterns |
+| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates`, `/blog/share-ai-agent-data-safely`, `/blog/human-in-the-loop-ai-agents` | Generated-index migration patterns; audit-history implementation details |
 | MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents`, `/blog/connect-ai-agent-to-dataset-api`, `/blog/relationship-modeling-agent-datasets` | REST/MCP setup examples with concrete datasets |
 | Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives`, `/vs/airtable`, `/vs/google-sheets` | Spreadsheet database explanation |
 

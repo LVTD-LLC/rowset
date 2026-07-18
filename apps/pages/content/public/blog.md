@@ -12,6 +12,7 @@ keep structured data useful.
 - [Rowset `rowset_id` vs business keys]({{ site_url }}/blog/rowset-id-vs-business-keys.md)
 - [How to structure dataset instructions for AI agents]({{ site_url }}/blog/structure-dataset-instructions-ai-agents.md)
 - [How to model relationships between agent-managed datasets]({{ site_url }}/blog/relationship-modeling-agent-datasets.md)
+- [Human-in-the-loop AI agents: a practical workflow]({{ site_url }}/blog/human-in-the-loop-ai-agents.md)
 - [Best Airtable alternatives for AI-agent-managed datasets]({{ site_url }}/blog/airtable-alternatives.md)
 - [Best Baserow alternatives for AI-agent-managed datasets]({{ site_url }}/blog/baserow-alternatives.md)
 - [Best Google Sheets alternatives for AI-agent-managed datasets]({{ site_url }}/blog/google-sheets-alternatives.md)
