@@ -328,8 +328,20 @@ def agent_api_key_allows(
 ) -> bool:
     if agent_api_key is None:
         return False
+    return agent_api_key_access_level_allows(
+        agent_api_key.access_level,
+        required_access_level,
+    )
+
+
+def agent_api_key_access_level_allows(
+    access_level: str | None,
+    required_access_level: str,
+) -> bool:
+    if access_level is None:
+        return False
     required = normalize_agent_api_key_access_level(required_access_level)
-    actual = normalize_agent_api_key_access_level(agent_api_key.access_level)
+    actual = normalize_agent_api_key_access_level(access_level)
     return AGENT_API_KEY_ACCESS_LEVEL_ORDER[actual] >= AGENT_API_KEY_ACCESS_LEVEL_ORDER[required]
 
 

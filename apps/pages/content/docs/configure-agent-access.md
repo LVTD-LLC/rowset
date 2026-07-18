@@ -96,7 +96,9 @@ key from its private runtime environment.
 
 Make authenticated user-info the final setup action: `get_user_info` over MCP,
 `rowset user info` through the CLI, or `GET /api/user` through REST. That request
-verifies the connection, completes onboarding, and starts the trial.
+verifies the connection and completes onboarding. MCP reads and API-key creation
+stay trial-neutral, so the MCP trial starts on the first dataset or project mutation;
+CLI and REST user-info requests start it immediately.
 
 After verification, the setup prompt asks the agent to use context it already
 has about the user's work and read-only Rowset discovery to propose a few useful

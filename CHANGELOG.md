@@ -20,6 +20,13 @@ deployment or release cut date.
 
 ### Added
 - Added a practical guide to human-in-the-loop AI agent workflows with a risk matrix, durable approval schema, Rowset implementation pattern, and explicit execution-boundary limitations.
+- Added MCP behavior annotations for safe reads, mutations, destructive actions, and idempotent operations.
+
+### Changed
+- Read-only MCP tools no longer start an account trial; the trial starts on the first dataset or project mutation.
+
+### Security
+- Filtered hosted MCP tool and capability discovery by API-key permission and blocked hidden write or admin tools before their implementation bodies run.
 
 ## 2026-07-17
 

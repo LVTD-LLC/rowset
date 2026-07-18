@@ -9,6 +9,7 @@ from apps.core.analytics import ROWSET_AGENT_API_KEY_CREATED
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey
 from apps.core.services import (
+    agent_api_key_access_level_allows,
     agent_api_key_allows,
     create_agent_api_key,
     get_agent_api_key_token,
@@ -74,6 +75,27 @@ def test_agent_api_key_access_level_helpers(profile):
     write_key = create_agent_api_key(profile, "Write Agent", "read + write").agent_api_key
 
     assert normalize_agent_api_key_access_level("") == AgentApiKeyAccessLevel.READ_WRITE
+    assert (
+        agent_api_key_access_level_allows(
+            AgentApiKeyAccessLevel.ADMIN,
+            AgentApiKeyAccessLevel.READ_WRITE,
+        )
+        is True
+    )
+    assert (
+        agent_api_key_access_level_allows(
+            AgentApiKeyAccessLevel.READ,
+            AgentApiKeyAccessLevel.READ_WRITE,
+        )
+        is False
+    )
+    assert (
+        agent_api_key_access_level_allows(
+            None,
+            AgentApiKeyAccessLevel.READ,
+        )
+        is False
+    )
     assert agent_api_key_allows(read_key, AgentApiKeyAccessLevel.READ) is True
     assert agent_api_key_allows(read_key, AgentApiKeyAccessLevel.READ_WRITE) is False
     assert agent_api_key_allows(write_key, AgentApiKeyAccessLevel.READ_WRITE) is True
