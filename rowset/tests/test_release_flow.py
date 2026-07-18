@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 _REPO_ROOT = Path(__file__).parents[2]
+_VERIFY_SELF_HOST_RELEASE = _REPO_ROOT / "scripts" / "verify-self-host-release-contract.sh"
 
 
 def _build_self_host_release(tmp_path: Path, version: str = "2026.07.16-0") -> Path:
@@ -25,11 +26,156 @@ def _build_self_host_release(tmp_path: Path, version: str = "2026.07.16-0") -> P
     return output_dir
 
 
+def test_self_host_release_contract_rejects_a_missing_documented_command(tmp_path):
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    (bundle_root / "SELF_HOSTING.md").write_text(
+        "Run `deployment/self-host/preflight.sh` before starting Rowset.\n"
+    )
+
+    result = subprocess.run(
+        [str(_VERIFY_SELF_HOST_RELEASE), str(bundle_root)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "missing documented command: deployment/self-host/preflight.sh" in result.stderr
+
+
+def test_self_host_release_contract_rejects_a_non_executable_documented_command(tmp_path):
+    bundle_root = tmp_path / "bundle"
+    command = bundle_root / "deployment" / "self-host" / "preflight.sh"
+    command.parent.mkdir(parents=True)
+    command.write_text("#!/bin/sh\n")
+    (bundle_root / "SELF_HOSTING.md").write_text(
+        "Run `deployment/self-host/preflight.sh` before starting Rowset.\n"
+    )
+
+    result = subprocess.run(
+        [str(_VERIFY_SELF_HOST_RELEASE), str(bundle_root)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert (
+        "documented command is not executable: deployment/self-host/preflight.sh" in result.stderr
+    )
+
+
+def test_self_host_release_contract_rejects_an_empty_installer_sequence(tmp_path):
+    output_dir = _build_self_host_release(tmp_path / "build")
+    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
+    extracted = tmp_path / "extracted"
+    with tarfile.open(archive) as bundle:
+        bundle.extractall(extracted, filter="data")
+    empty_installer = tmp_path / "empty-installer.sh"
+    empty_installer.write_text("#!/bin/sh\n")
+
+    result = subprocess.run(
+        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted), str(empty_installer)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "does not match the required command sequence" in result.stderr
+
+
+def test_self_host_release_contract_rejects_a_partial_installer_sequence(tmp_path):
+    output_dir = _build_self_host_release(tmp_path / "build")
+    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
+    extracted = tmp_path / "extracted"
+    with tarfile.open(archive) as bundle:
+        bundle.extractall(extracted, filter="data")
+    installer = output_dir / "install-rowset-self-host.sh"
+    installer.write_text(
+        installer.read_text().replace("printf '  deployment/self-host/doctor.sh\\n'\n", "")
+    )
+
+    result = subprocess.run(
+        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted), str(installer)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "does not match the required command sequence" in result.stderr
+
+
+def test_self_host_release_contract_rejects_a_guide_with_required_commands_out_of_order(
+    tmp_path,
+):
+    output_dir = _build_self_host_release(tmp_path / "build")
+    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
+    extracted = tmp_path / "extracted"
+    with tarfile.open(archive) as bundle:
+        bundle.extractall(extracted, filter="data")
+    guide = extracted / "SELF_HOSTING.md"
+    guide_text = guide.read_text()
+    guide.write_text(
+        guide_text.replace(
+            "deployment/self-host/version.sh\ndeployment/verify-image-platforms.sh \\\n",
+            "deployment/verify-image-platforms.sh \\\ndeployment/self-host/version.sh\n",
+            1,
+        )
+    )
+
+    result = subprocess.run(
+        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "SELF_HOSTING.md does not match the required command sequence" in result.stderr
+
+
+def test_self_host_release_contract_rejects_a_missing_linked_guide_file(tmp_path):
+    output_dir = _build_self_host_release(tmp_path / "build")
+    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
+    extracted = tmp_path / "extracted"
+    with tarfile.open(archive) as bundle:
+        bundle.extractall(extracted, filter="data")
+    guide = extracted / "SELF_HOSTING.md"
+    guide.write_text(
+        guide.read_text().replace(
+            "docs/self-host-sizing.md)", "docs/self-host-sizing.md#tested-profiles)"
+        )
+    )
+    linked_file = extracted / "docs" / "self-host-sizing.md"
+    if linked_file.exists():
+        linked_file.unlink()
+
+    result = subprocess.run(
+        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "missing linked guide file: docs/self-host-sizing.md" in result.stderr
+
+
 def test_publish_workflow_syncs_app_image_and_cli_version_to_release_tag():
     workflow = (_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text()
 
     assert "[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]-[0-9]*" in workflow
-    assert "${{ needs.validate.outputs.image_name }}:${{ github.ref_name }}" in workflow
+    assert (
+        "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_tag }}"
+        in workflow
+    )
+    assert (
+        "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_sha }}"
+        in workflow
+    )
     assert "-X github.com/LVTD-LLC/rowset/cli/internal/rowsetcli.Version=${RELEASE_TAG}" in workflow
     assert "rowset_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz" in workflow
     assert "scripts/install-rowset-cli.sh" in workflow
@@ -37,13 +183,20 @@ def test_publish_workflow_syncs_app_image_and_cli_version_to_release_tag():
 
 def test_publish_workflow_creates_an_immutable_matching_self_host_release():
     workflow = (_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text()
+    parsed_workflow = yaml.safe_load(workflow)
 
     assert "scripts/build-self-host-release.sh" in workflow
-    assert "${{ github.sha }}" in workflow
+    assert "scripts/verify-self-host-release-contract.sh" in workflow
+    assert "release_sha: ${{ steps.release.outputs.release_sha }}" in workflow
+    assert "ref: ${{ needs.validate.outputs.release_sha }}" in workflow
     assert "${{ needs.app-image.outputs.digest }}" in workflow
     assert "rowset-self-host-${RELEASE_TAG}.tar.gz" in workflow
     assert "install-rowset-self-host.sh" in workflow
+    assert '--target "$RELEASE_SHA"' in workflow
     assert "--clobber" not in workflow
+    validate_steps = parsed_workflow["jobs"]["validate"]["steps"]
+    assert "Verify self-host release contract" in [step["name"] for step in validate_steps]
+    assert parsed_workflow["jobs"]["app-image"]["needs"] == "validate"
 
 
 def test_main_deploy_only_promotes_the_immutable_sha_tag():
@@ -74,7 +227,7 @@ def test_release_workflows_publish_and_smoke_both_supported_platforms():
         smoke = steps[step_names.index("Smoke published platforms")]
         qemu = steps[step_names.index("Set up QEMU")]
 
-        expected_tag = "candidate_tag" if workflow_name == "deploy.yml" else "github.sha"
+        expected_tag = "candidate_tag" if workflow_name == "deploy.yml" else "release_sha"
         assert expected_tag in verify["run"]
         assert expected_tag in smoke["run"]
         assert qemu["uses"] == "docker/setup-qemu-action@v3"
@@ -95,7 +248,9 @@ def test_release_workflows_publish_and_smoke_both_supported_platforms():
     )
 
     publish = yaml.safe_load((_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text())
-    assert publish["concurrency"]["group"] == "rowset-release-${{ github.ref_name }}"
+    assert publish["concurrency"]["group"] == (
+        "rowset-release-${{ inputs.release_tag || github.ref_name }}"
+    )
     publish_names = [step["name"] for step in publish["jobs"]["app-image"]["steps"]]
     assert "Build and push image" not in publish_names
     assert "Resolve immutable image digest" in publish_names
@@ -134,7 +289,7 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
             "app-image",
             "Verify anonymous immutable image availability",
             "${{ steps.image.outputs.digest }}",
-            "github.sha",
+            "release_sha",
             None,
         ),
     )
@@ -207,7 +362,7 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
         for step in publish["jobs"]["app-image"]["steps"]
         if step["name"] == "Promote advertised tags"
     )
-    assert "github.ref_name" in publish_promotion["run"]
+    assert "release_tag" in publish_promotion["run"]
     assert "app-image" in publish["jobs"]["release"]["needs"]
     publish_step_names = [step["name"] for step in publish["jobs"]["app-image"]["steps"]]
     immutable_release_index = publish_step_names.index("Protect immutable release tag")
@@ -217,7 +372,43 @@ def test_release_workflows_gate_promotion_on_anonymous_image_availability():
     assert immutable_release_index < publish_step_names.index("Promote advertised tags")
     immutable_release = publish["jobs"]["app-image"]["steps"][immutable_release_index]
     assert "deployment/verify-immutable-image-tag.sh" in immutable_release["run"]
-    assert "github.ref_name" in immutable_release["run"]
+    assert "release_tag" in immutable_release["run"]
+
+
+def test_daily_release_cutter_skips_unchanged_main_and_requires_a_successful_deploy():
+    workflow_path = _REPO_ROOT / ".github" / "workflows" / "release-cutter.yml"
+    workflow = workflow_path.read_text()
+    parsed_workflow = yaml.safe_load(workflow)
+
+    assert "schedule:" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "gh release view" in workflow
+    assert 'if [[ "$latest_release_sha" == "$head_sha" ]]' in workflow
+    assert "should_release=false" in workflow
+    assert "gh run list" in workflow
+    assert "--workflow deploy.yml" in workflow
+    assert '--commit "$head_sha"' in workflow
+    assert '[[ "$deploy_status" != "completed" || "$deploy_conclusion" != "success" ]]' in workflow
+    assert "scripts/next-release-tag.sh" in workflow
+
+    publish = parsed_workflow["jobs"]["publish"]
+    assert publish["needs"] == "prepare"
+    assert publish["if"] == "needs.prepare.outputs.should_release == 'true'"
+    assert publish["uses"] == "./.github/workflows/publish.yml"
+    assert publish["with"] == {
+        "release_tag": "${{ needs.prepare.outputs.release_tag }}",
+        "release_sha": "${{ needs.prepare.outputs.release_sha }}",
+    }
+
+
+def test_publish_workflow_accepts_an_exact_scheduled_release_identity():
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text()
+
+    assert "workflow_call:" in workflow
+    assert "release_tag:" in workflow
+    assert "release_sha:" in workflow
+    assert 'release_tag="${RELEASE_TAG_INPUT:-$GITHUB_REF_NAME}"' in workflow
+    assert 'release_sha="${RELEASE_SHA_INPUT:-$GITHUB_SHA}"' in workflow
 
 
 def test_install_script_installs_rowset_cli_from_release_assets():
@@ -272,38 +463,53 @@ def test_self_host_release_builder_packages_matching_manifest_and_support_files(
     assert checksum.is_file()
     assert installer.is_file()
     assert installer.stat().st_mode & 0o111
-    assert "@ROWSET_RELEASE_VERSION@" not in installer.read_text()
-    assert "preflight.sh" in installer.read_text()
-    assert "doctor.sh until its summary passes" in installer.read_text()
+    installer_text = installer.read_text()
+    assert "@ROWSET_RELEASE_VERSION@" not in installer_text
+    assert "preflight.sh" in installer_text
+    assert "Continue with the guide installed from this release" in installer_text
+    assert "deployment/self-host/doctor.sh" in installer_text
+    assert "deployment/self-host/smoke-test.sh" in installer_text
 
     with tarfile.open(archive) as bundle:
-        names = set(bundle.getnames())
+        members = {member.name.removeprefix("./"): member for member in bundle.getmembers()}
         manifest = bundle.extractfile("./.rowset-release")
         assert manifest is not None
         manifest_text = manifest.read().decode()
+        extracted = tmp_path / "extracted"
+        bundle.extractall(extracted, filter="data")
+
+    assert not any("__pycache__" in member for member in members)
 
     assert {
-        "./.rowset-release",
-        "./SELF_HOSTING.md",
-        "./docker-compose-prod.yml",
-        "./deployment/self-host/init-env.sh",
-        "./deployment/self-host/preflight.sh",
-        "./deployment/self-host/doctor.sh",
-        "./deployment/self-host/diagnostics.py",
-        "./deployment/self-host/version.sh",
-        "./deployment/verify-image-platforms.sh",
-    } <= names
+        ".rowset-release",
+        "SELF_HOSTING.md",
+        "docs/self-host-sizing.md",
+        "docker-compose-prod.yml",
+        "deployment/self-host/init-env.sh",
+        "deployment/self-host/preflight.sh",
+        "deployment/self-host/doctor.sh",
+        "deployment/self-host/diagnostics.py",
+        "deployment/self-host/version.sh",
+        "deployment/verify-image-platforms.sh",
+    } <= members.keys()
     assert "ROWSET_RELEASE_VERSION=2026.07.16-0" in manifest_text
     assert f"ROWSET_RELEASE_COMMIT={'a' * 40}" in manifest_text
     assert "ROWSET_RELEASE_IMAGE=ghcr.io/lvtd-llc/rowset:2026.07.16-0" in manifest_text
     assert f"ROWSET_RELEASE_DIGEST=sha256:{'b' * 64}" in manifest_text
     assert archive.name in checksum.read_text()
+    contract = subprocess.run(
+        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted), str(installer)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert contract.returncode == 0, contract.stderr
 
 
 def test_self_host_installer_pins_first_release_and_preserves_it_on_rerun(tmp_path):
     first_assets = _build_self_host_release(tmp_path / "first", "2026.07.16-0")
     second_assets = _build_self_host_release(tmp_path / "second", "2026.07.16-1")
-    install_dir = tmp_path / "installed"
+    install_dir = tmp_path / "installed path's"
     environment = {
         "ROWSET_INSTALL_DIR": str(install_dir),
         "ROWSET_RELEASE_BASE_URL": first_assets.as_uri(),
@@ -318,6 +524,10 @@ def test_self_host_installer_pins_first_release_and_preserves_it_on_rerun(tmp_pa
     )
 
     assert first.returncode == 0, first.stderr
+    quoted_install_dir = "'" + str(install_dir).replace("'", "'\\''") + "'"
+    assert f"  cd {quoted_install_dir}" in first.stdout
+    assert "  export ROWSET_DOMAIN=replace-with-your-rowset-hostname.invalid" in first.stdout
+    assert "Replace the placeholder hostname before continuing." in first.stdout
     state = (install_dir / ".rowset-release").read_text()
     assert "ROWSET_RELEASE_VERSION=2026.07.16-0" in state
 

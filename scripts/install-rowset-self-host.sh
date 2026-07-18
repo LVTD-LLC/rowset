@@ -11,6 +11,12 @@ state_value() {
     awk -F= -v key="$key" '$1 == key { print substr($0, length(key) + 2); found = 1; exit } END { exit !found }' "$file"
 }
 
+print_shell_single_quoted() {
+    printf "'"
+    printf '%s' "$1" | sed "s/'/'\\\\''/g"
+    printf "'"
+}
+
 installed_version=
 if test -f "$state_file"; then
     installed_version=$(state_value ROWSET_RELEASE_VERSION "$state_file") || {
@@ -85,5 +91,18 @@ mkdir -p "$install_dir"
 cp -R "$temporary/extracted/." "$install_dir/"
 
 printf 'Installed Rowset self-host release %s in %s.\n' "$version" "$install_dir"
-printf 'Run %s/deployment/self-host/version.sh to inspect the installed release.\n' "$install_dir"
-printf 'Next: configure .env, run deployment/self-host/preflight.sh, start Rowset, then rerun deployment/self-host/doctor.sh until its summary passes.\n'
+printf 'Continue with the guide installed from this release: %s/SELF_HOSTING.md\n' "$install_dir"
+printf 'Next commands, in order:\n'
+printf '  cd '
+print_shell_single_quoted "$install_dir"
+printf '\n'
+printf '  deployment/self-host/version.sh\n'
+printf '  deployment/verify-image-platforms.sh "$(sed -n '\''s/^ROWSET_RELEASE_IMAGE=//p'\'' .rowset-release)"\n'
+printf '  export ROWSET_DOMAIN=replace-with-your-rowset-hostname.invalid\n'
+printf 'Replace the placeholder hostname before continuing. Validation intentionally rejects it.\n'
+printf '  deployment/self-host/init-env.sh\n'
+printf '  deployment/self-host/validate-env.sh\n'
+printf '  deployment/self-host/preflight.sh\n'
+printf '  deployment/self-host/start.sh\n'
+printf '  deployment/self-host/doctor.sh\n'
+printf '  deployment/self-host/smoke-test.sh\n'
