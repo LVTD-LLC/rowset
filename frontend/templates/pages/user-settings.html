@@ -41,7 +41,11 @@
           <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Rowset Pro · $50/month</p>
           <a href="{% url 'trial_rewards' %}" class="fb-focus mt-1 inline-block rounded text-sm font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">Earn up to 12 extra trial days</a>
         </div>
-        <a href="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" class="fb-button-primary">Upgrade</a>
+        <form method="post" action="{% url 'user_upgrade_checkout_session' pk=user.id plan='monthly' %}" data-posthog-cta="upgrade" data-posthog-cta-location="settings_billing">
+          {% csrf_token %}
+          <input type="hidden" name="posthog_session_id" value="" data-posthog-session-id />
+          <button type="submit" class="fb-button-primary">Upgrade</button>
+        </form>
       </div>
       {% endif %}
     </section>

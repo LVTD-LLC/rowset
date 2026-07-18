@@ -179,6 +179,7 @@ def test_server_error_preserves_programmatic_500_responses(auth_client, path):
 )
 def test_checkout_session_passes_stripe_context(auth_client, profile, monkeypatch):
     calls = []
+    tracked_events = []
 
     monkeypatch.setattr(
         "apps.core.views.get_or_create_stripe_customer",
@@ -190,14 +191,20 @@ def test_checkout_session_passes_stripe_context(auth_client, profile, monkeypatc
         return SimpleNamespace(url="https://checkout.stripe.test/session")
 
     monkeypatch.setattr("apps.core.views.stripe.checkout.Session.create", create_session)
+    monkeypatch.setattr(
+        "apps.core.views.track_activation_event",
+        lambda *args, **kwargs: tracked_events.append((args, kwargs)),
+    )
 
     response = auth_client.post(
-        reverse("user_upgrade_checkout_session", args=[profile.user_id, "monthly"])
+        reverse("user_upgrade_checkout_session", args=[profile.user_id, "monthly"]),
+        {"posthog_session_id": "session-123"},
     )
 
     assert response.status_code == 303
     assert response["Location"] == "https://checkout.stripe.test/session"
     assert calls[0]["stripe_context"] == "acct_test"
+    assert tracked_events[0][1]["session_id"] == "session-123"
 
 
 @pytest.mark.django_db
