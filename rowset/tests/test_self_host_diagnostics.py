@@ -63,7 +63,7 @@ def test_requirement_checker_exposes_structured_failures_for_each_host_constrain
             "--os-version",
             "13",
             "--cpu-cores",
-            "1",
+            "0",
             "--memory-bytes",
             "1000",
             "--disk-capacity-bytes",
@@ -129,21 +129,35 @@ def test_preflight_checks_total_capacity_and_free_space_separately(monkeypatch):
     assert all(check.status == "PASS" for check in checks)
 
 
-def test_preflight_fails_when_docker_storage_cannot_be_measured(monkeypatch):
+@pytest.mark.parametrize(
+    ("docker_root_result", "expected_disk_paths"),
+    [
+        ((0, ""), [_REPO_ROOT]),
+        ((0, "relative/docker"), [_REPO_ROOT]),
+        ((0, "/var/lib/docker"), [Path("/var/lib/docker"), _REPO_ROOT]),
+    ],
+)
+def test_preflight_fails_when_docker_storage_cannot_be_measured(
+    monkeypatch, docker_root_result, expected_disk_paths
+):
     diagnostics = _load_diagnostics()
     monkeypatch.setattr(diagnostics, "_os_release", lambda: ("ubuntu", "24.04"))
     monkeypatch.setattr(diagnostics, "_host_platform", lambda: "linux/amd64")
     monkeypatch.setattr(diagnostics.os, "cpu_count", lambda: 2)
     monkeypatch.setattr(diagnostics, "_memory_bytes", lambda: 3_750_000_000)
-    monkeypatch.setattr(
-        diagnostics.shutil,
-        "disk_usage",
-        lambda _path: SimpleNamespace(total=39_964_635_136, free=36_244_299_776),
-    )
+    disk_paths = []
+
+    def disk_usage(path):
+        disk_paths.append(path)
+        if path == Path("/var/lib/docker"):
+            raise OSError("Docker storage is unavailable")
+        return SimpleNamespace(total=39_964_635_136, free=36_244_299_776)
+
+    monkeypatch.setattr(diagnostics.shutil, "disk_usage", disk_usage)
 
     def respond(command, _environment):
         if command[:3] == ["docker", "info", "--format"]:
-            return diagnostics.CommandResult(1)
+            return diagnostics.CommandResult(*docker_root_result)
         checks = [
             {"id": check_id, "passed": True, "message": "ok"}
             for check_id in ("OS", "ARCH", "CPU", "MEMORY", "DISK_CAPACITY", "DISK_FREE")
@@ -158,6 +172,55 @@ def test_preflight_fails_when_docker_storage_cannot_be_measured(monkeypatch):
         "Docker storage filesystem could not be measured",
         "Start the local Docker Engine and make its DockerRootDir readable.",
     )
+    assert disk_paths == expected_disk_paths
+    assert [check.id for check in checks[1:]] == [
+        "PREFLIGHT_OS",
+        "PREFLIGHT_ARCH",
+        "PREFLIGHT_CPU",
+        "PREFLIGHT_MEMORY",
+        "PREFLIGHT_DISK_CAPACITY",
+        "PREFLIGHT_DISK_FREE",
+    ]
+
+
+def test_preflight_disk_failures_preserve_observed_and_minimum_bytes(monkeypatch):
+    diagnostics = _load_diagnostics()
+    monkeypatch.setattr(diagnostics, "_os_release", lambda: ("ubuntu", "24.04"))
+    monkeypatch.setattr(diagnostics, "_host_platform", lambda: "linux/amd64")
+    monkeypatch.setattr(diagnostics.os, "cpu_count", lambda: 1)
+    monkeypatch.setattr(diagnostics, "_memory_bytes", lambda: 4_000_000_000)
+    monkeypatch.setattr(
+        diagnostics.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=23_000_000_000, free=19_000_000_000),
+    )
+
+    def respond(command, _environment):
+        if command[:3] == ["docker", "info", "--format"]:
+            return diagnostics.CommandResult(0, "/var/lib/docker\n")
+        checks = [
+            {
+                "id": "DISK_CAPACITY",
+                "passed": False,
+                "message": "disk capacity bytes 23000000000; minimum 24000000000",
+            },
+            {
+                "id": "DISK_FREE",
+                "passed": False,
+                "message": "free disk bytes 19000000000; minimum 20000000000",
+            },
+        ]
+        return diagnostics.CommandResult(1, json.dumps({"checks": checks}))
+
+    checks = diagnostics._requirement_checks(_REPO_ROOT, _FakeRunner(respond))
+    rendered = diagnostics.render(checks, secrets=[])
+
+    assert [check.detail for check in checks] == [
+        "disk capacity bytes 23000000000; minimum 24000000000",
+        "free disk bytes 19000000000; minimum 20000000000",
+    ]
+    assert "23000000000" in rendered
+    assert "20000000000" in rendered
 
 
 def test_renderer_emits_bounded_ndjson_without_secret_values():

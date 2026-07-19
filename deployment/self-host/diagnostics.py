@@ -256,7 +256,7 @@ def _requirement_checks(root: Path, runner: CommandRunner) -> list[Check]:
             if outcome["passed"]
             else _fail(
                 f"PREFLIGHT_{check_id}",
-                f"requirement {check_id} is not satisfied",
+                str(outcome.get("message") or f"requirement {check_id} is not satisfied"),
                 remediation,
             )
         )

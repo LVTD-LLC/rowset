@@ -28,8 +28,8 @@ addresses, streaming responses, request sizes, and backend isolation.
 You need:
 
 - a VPS or dedicated server running Ubuntu 24.04 on `amd64` or `arm64`
-- at least a 2 vCPU, 4 GB RAM, 40 GB total-disk host class
-- at least 30 GB of free disk after installing the host prerequisites
+- at least a 1 vCPU, 4 GB RAM, 25 GB total-disk host class
+- at least 20 GB of free disk after installing the host prerequisites
 - Docker Engine, Docker Buildx, and Docker Compose v2
 - `flock` and `runuser` from the standard Linux `util-linux` package
 - anonymous pull access to the public `ghcr.io/lvtd-llc/rowset` package
@@ -38,9 +38,11 @@ You need:
 - `curl`, `tar`, and a SHA-256 checksum command
 - inbound TCP ports 80 and 443 open; UDP 443 is optional but enables HTTP/3
 
-See [`docs/self-host-sizing.md`](docs/self-host-sizing.md) for the minimum, tested, and recommended
-profiles, amd64/arm64 measurements, image and startup footprints, and capacity planning. Automation
-must consume `deployment/self-host/requirements.json` as the machine-readable source of truth.
+The minimum is a cost-first profile for evaluation and light use. The measured 2 vCPU / 4 GB RAM /
+40 GB profile is the safer starting point. Resize if startup, imports, workers, or database growth
+are slow or unstable. See [`docs/self-host-sizing.md`](docs/self-host-sizing.md) for the profiles,
+amd64/arm64 measurements, image and startup footprints, and capacity planning. Automation must
+consume `deployment/self-host/requirements.json` as the machine-readable source of truth.
 
 The examples assume a dedicated Rowset host. If another service already occupies ports 80 or 443,
 move it or use your existing ingress instead of starting the included Caddy service.
@@ -178,8 +180,8 @@ deployment/self-host/preflight.sh
 Preflight validates the supported OS and architecture, CPU, RAM, total disk capacity, current free
 disk space, DNS, availability of ports 80 and 443, Docker Engine, Compose v2, Buildx, anonymous
 access to the configured image manifest, the production environment, and deployment-file
-permissions. The capacity check proves that the host belongs to the published 40 GB class; the
-separate 30 billion-byte free-space floor preserves room for the initial images and stack after
+permissions. The capacity check proves that the host belongs to the published 25 GB class; the
+separate 20 billion-byte free-space floor preserves room for the initial images and stack after
 Docker and the other prerequisites are installed. Preflight consumes
 `deployment/self-host/requirements.json`; do not copy its thresholds into installer logic.
 

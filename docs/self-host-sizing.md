@@ -9,22 +9,28 @@ the empty-stack baseline.
 
 | Profile | CPU | RAM class | Disk class | Use it for |
 | --- | ---: | ---: | ---: | --- |
-| Minimum | 2 vCPU | 4 GB | 40 GB | Evaluation and low-traffic installations with active capacity monitoring |
-| Tested | 2 vCPU | 4 GB | 40 GB | The amd64 and arm64 clean-start benchmarks below |
+| Minimum | 1 vCPU | 4 GB | 25 GB | Cost-first evaluation and light use with active capacity monitoring |
+| Tested | 2 vCPU | 4 GB | 40 GB | The measured amd64 and arm64 clean-start baseline below |
 | Recommended | 4 vCPU | 8 GB | 80 GB | Small production teams, safer updates, and useful growth headroom |
 
-Minimum and tested are intentionally the same. We have not validated a smaller host and do not
-publish one as supported. Provider kernels report slightly less than advertised capacity, so the
-machine thresholds are 3.75 billion RAM bytes and 38 billion total-disk-capacity bytes for a nominal
-4 GB / 40 GB host. The recommended machine thresholds similarly allow normal provider and
-filesystem overhead on an 8 GB / 80 GB host.
+Minimum is intentionally cheaper than the tested profile. It is the smallest practical contract for
+evaluation and light use, not a claim that one shared vCPU has the same performance or headroom as
+the measured hosts. Its machine thresholds are one CPU core, 3.75 billion RAM bytes, and 24 billion
+total-disk-capacity bytes for a nominal 1 vCPU / 4 GB / 25 GB host. The tested and recommended
+capacity thresholds similarly allow normal provider and filesystem overhead on nominal 40 GB and
+80 GB hosts.
 
 Total capacity and free space are separate requirements. A supported minimum host must also have at
-least 30 billion free bytes when preflight runs, after Docker and the other host prerequisites are
-installed. The July 2026 Hetzner minimum-profile check measured 39,964,635,136 total bytes and
-36,244,299,776 free bytes at that point. The free-space floor still leaves room for the roughly 5 GB
-clean-install footprint measured below while rejecting a correctly sized host whose disk is already
-too full to install Rowset safely.
+least 20 billion free bytes when preflight runs, after Docker and the other host prerequisites are
+installed. The July 2026 Hetzner tested-profile check measured 39,964,635,136 total bytes and
+36,244,299,776 free bytes at that point. The free-space floor leaves room for the roughly 5 GB
+clean-install footprint measured below while rejecting a correctly sized minimum host whose disk is
+already too full to install Rowset safely.
+
+Choose the tested profile when predictable startup and worker throughput matter. On the minimum
+profile, resize if startup approaches the health timeout or if imports, workers, or database growth
+are slow or unstable. The recommended profile remains the safer default when future usage is
+unknown.
 
 `deployment/self-host/requirements.json` is the source of truth for automation. It contains the
 minimum, tested, and recommended capacity profiles, the operational free-space floor, supported OS

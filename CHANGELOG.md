@@ -22,7 +22,7 @@ deployment or release cut date.
 - Added an implementation guide for AI agent audit trails that separates runtime traces, authorization decisions, and business-state changes while documenting Rowset's operational-history limits.
 
 ### Fixed
-- Split self-host preflight disk checks into total host capacity and current free-space requirements so the documented 40 GB minimum profile passes safely after Docker prerequisites are installed.
+- Split self-host preflight disk checks into total capacity and current free space, with a cost-first 1 vCPU / 4 GB / 25 GB minimum and the measured 2 vCPU / 4 GB / 40 GB profile retained as the safer baseline.
 
 ## 2026-07-18
 

@@ -48,9 +48,9 @@ def test_sizing_requirements_are_an_ordered_machine_readable_contract():
     assert list(profiles) == ["minimum", "tested", "recommended"]
     assert profiles == {
         "minimum": {
-            "cpu_cores": 2,
+            "cpu_cores": 1,
             "memory_bytes": 3_750_000_000,
-            "disk_capacity_bytes": 38_000_000_000,
+            "disk_capacity_bytes": 24_000_000_000,
         },
         "tested": {
             "cpu_cores": 2,
@@ -68,12 +68,13 @@ def test_sizing_requirements_are_an_ordered_machine_readable_contract():
         assert all(isinstance(value, int) and value > 0 for value in values)
         assert values == sorted(values)
 
-    assert profiles["minimum"] == profiles["tested"]
+    assert profiles["tested"]["cpu_cores"] > profiles["minimum"]["cpu_cores"]
+    assert profiles["tested"]["disk_capacity_bytes"] > profiles["minimum"]["disk_capacity_bytes"]
     assert profiles["recommended"]["memory_bytes"] > profiles["tested"]["memory_bytes"]
     assert (
         profiles["recommended"]["disk_capacity_bytes"] > profiles["tested"]["disk_capacity_bytes"]
     )
-    assert requirements["runtime"] == {"minimum_free_disk_bytes": 30_000_000_000}
+    assert requirements["runtime"] == {"minimum_free_disk_bytes": 20_000_000_000}
     assert requirements["startup"]["health_timeout_seconds"] >= 60
 
 
@@ -295,7 +296,7 @@ def test_requirement_checker_accepts_the_published_minimum():
     assert int(result.stdout) == requirements["startup"]["health_timeout_seconds"]
 
 
-def test_requirement_checker_accepts_observed_minimum_host_after_prerequisites():
+def test_requirement_checker_accepts_observed_tested_host_after_prerequisites():
     requirements = _requirements()
     result = subprocess.run(
         [
@@ -378,7 +379,7 @@ def test_requirement_checker_reports_every_undersized_or_unsupported_field():
             "--os-version",
             "13",
             "--cpu-cores",
-            "1",
+            "0",
             "--memory-bytes",
             "1000",
             "--disk-capacity-bytes",
