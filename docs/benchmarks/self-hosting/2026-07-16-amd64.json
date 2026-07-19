@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "benchmark_run_id": "86e4f5c600c861391d6b6e0882a875d675aaea28",
   "measured_at": "2026-07-16T14:12:59Z",
   "platform": "linux/amd64",
@@ -12,7 +12,7 @@
     "server_type": "cx23",
     "cpu_cores": 2,
     "memory_bytes": 4005457920,
-    "disk_bytes": 39964635136
+    "disk_capacity_bytes": 39964635136
   },
   "image_reference": "ghcr.io/lvtd-llc/rowset:86e4f5c600c861391d6b6e0882a875d675aaea28",
   "image_digest": "sha256:45e6b83055f9ebd5b8a8cabdd86d09b82e1e4b7f7728e2bb7022d86b166639ea",
