@@ -104,3 +104,38 @@ def test_track_account_deleted_event_uses_snapshot_without_profile_lookup(monkey
         )
     ]
     assert flushed == [5]
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_track_user_logged_in_event_omits_private_account_properties(monkeypatch):
+    captures = []
+    monkeypatch.setattr(
+        tasks.posthog,
+        "capture",
+        lambda event, **kwargs: captures.append((event, kwargs)),
+    )
+
+    result = tasks.track_user_logged_in_event(
+        profile_id=42,
+        current_state="signed_up",
+        login_method="AuthenticationBackend",
+        session_id="session-123",
+    )
+
+    assert result == "Tracked login event for profile 42"
+    assert captures == [
+        (
+            "rowset_user_logged_in",
+            {
+                "distinct_id": "42",
+                "properties": {
+                    "event_version": 1,
+                    "environment": settings.ENVIRONMENT,
+                    "profile_id": 42,
+                    "current_state": "signed_up",
+                    "login_method": "AuthenticationBackend",
+                    "$session_id": "session-123",
+                },
+            },
+        )
+    ]

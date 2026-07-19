@@ -102,3 +102,27 @@ def track_account_deleted_event(
         enqueue_event()
 
     return f"Queued account deletion event for profile {profile_id}"
+
+
+def track_user_logged_in_event(
+    profile: Profile,
+    *,
+    login_method: str,
+    session_id: str | None = None,
+) -> str:
+    """Queue login analytics without copying private account fields into PostHog."""
+    if not settings.POSTHOG_API_KEY:
+        return "PostHog API key not found."
+
+    profile_id = profile.id
+    current_state = profile.state
+    session_id = validate_correlation_id(session_id or get_contextvars().get("sessionId"))
+    async_task(
+        "apps.core.tasks.track_user_logged_in_event",
+        profile_id=profile_id,
+        current_state=current_state,
+        login_method=login_method,
+        session_id=session_id,
+        group="Track Activation Event",
+    )
+    return f"Queued login event for profile {profile_id}"

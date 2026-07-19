@@ -81,3 +81,35 @@ def test_track_account_deleted_event_snapshots_profile_before_commit(
         )
     ]
     assert import_string(queued[0][0]).__name__ == "track_account_deleted_event"
+
+
+@pytest.mark.django_db
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_track_user_logged_in_event_queues_privacy_safe_snapshot(profile, monkeypatch):
+    queued = []
+    monkeypatch.setattr(
+        analytics,
+        "async_task",
+        lambda path, **kwargs: queued.append((path, kwargs)),
+    )
+
+    result = analytics.track_user_logged_in_event(
+        profile,
+        login_method="AuthenticationBackend",
+        session_id="session-123",
+    )
+
+    assert result == f"Queued login event for profile {profile.id}"
+    assert queued == [
+        (
+            "apps.core.tasks.track_user_logged_in_event",
+            {
+                "profile_id": profile.id,
+                "current_state": profile.state,
+                "login_method": "AuthenticationBackend",
+                "session_id": "session-123",
+                "group": "Track Activation Event",
+            },
+        )
+    ]
+    assert import_string(queued[0][0]).__name__ == "track_user_logged_in_event"

@@ -5,7 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django_q.tasks import async_task
 
-from apps.core.analytics import ROWSET_USER_LOGGED_IN, track_activation_event
+from apps.core.analytics import track_user_logged_in_event
 from apps.core.choices import TrialReward
 from apps.core.models import Profile, ProfileStates
 from apps.core.tasks import add_email_to_buttondown
@@ -56,11 +56,9 @@ def track_user_logged_in(sender, request, user, **kwargs):
         request.POST.get("posthog_session_id") if request else None
     )
     backend = getattr(user, "backend", "") or ""
-    track_activation_event(
+    track_user_logged_in_event(
         profile,
-        ROWSET_USER_LOGGED_IN,
-        {"login_method": backend.split(".")[-1]},
-        source_function="track_user_logged_in signal",
+        login_method=backend.split(".")[-1],
         session_id=session_id,
     )
 

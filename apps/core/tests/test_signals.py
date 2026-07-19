@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 
 from apps.core import signals
-from apps.core.analytics import ROWSET_USER_LOGGED_IN
 from apps.core.choices import ProfileStates
 from apps.core.models import Profile
 
@@ -46,7 +45,7 @@ def test_user_login_tracks_backend_and_browser_session(profile, monkeypatch):
     tracked = []
     monkeypatch.setattr(
         signals,
-        "track_activation_event",
+        "track_user_logged_in_event",
         lambda *args, **kwargs: tracked.append((args, kwargs)),
     )
     request = RequestFactory().post(
@@ -64,13 +63,9 @@ def test_user_login_tracks_backend_and_browser_session(profile, monkeypatch):
 
     assert tracked == [
         (
-            (
-                profile,
-                ROWSET_USER_LOGGED_IN,
-                {"login_method": "AuthenticationBackend"},
-            ),
+            (profile,),
             {
-                "source_function": "track_user_logged_in signal",
+                "login_method": "AuthenticationBackend",
                 "session_id": "header-session",
             },
         )
