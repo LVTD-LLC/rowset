@@ -1,9 +1,11 @@
 from allauth.account.signals import email_confirmed, user_signed_up
+from django.contrib.auth.signals import user_logged_in
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django_q.tasks import async_task
 
+from apps.core.analytics import ROWSET_USER_LOGGED_IN, track_activation_event
 from apps.core.choices import TrialReward
 from apps.core.models import Profile, ProfileStates
 from apps.core.tasks import add_email_to_buttondown
@@ -43,6 +45,26 @@ def claim_email_verification_trial_reward(sender, email_address, **kwargs):  # n
     profile = email_address.user.profile
     if not profile.has_active_subscription:
         claim_trial_reward(profile, TrialReward.EMAIL_VERIFIED)
+
+
+@receiver(user_logged_in, dispatch_uid="rowset.track_user_logged_in")
+def track_user_logged_in(sender, request, user, **kwargs):
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        return
+    session_id = (
+        request.headers.get("X-PostHog-Session-ID") if request else None
+    ) or (
+        request.POST.get("posthog_session_id") if request else None
+    )
+    backend = getattr(user, "backend", "") or ""
+    track_activation_event(
+        profile,
+        ROWSET_USER_LOGGED_IN,
+        {"login_method": backend.split(".")[-1]},
+        source_function="track_user_logged_in signal",
+        session_id=session_id,
+    )
 
 
 @receiver(user_signed_up)

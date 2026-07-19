@@ -1,3 +1,5 @@
+import atexit
+
 import posthog
 from django.apps import AppConfig
 from django.conf import settings
@@ -28,6 +30,7 @@ class CoreConfig(AppConfig):
         if settings.POSTHOG_API_KEY:
             posthog.api_key = settings.POSTHOG_API_KEY
             posthog.host = settings.POSTHOG_HOST
+            atexit.register(posthog.shutdown)
 
         if settings.ENVIRONMENT == "dev":
             posthog.debug = True

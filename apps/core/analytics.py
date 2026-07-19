@@ -9,6 +9,8 @@ from apps.core.models import AgentApiKey, Profile
 from rowset.logging_context import validate_correlation_id
 
 ROWSET_SIGNUP_COMPLETED = "rowset_signup_completed"
+ROWSET_USER_LOGGED_IN = "rowset_user_logged_in"
+ROWSET_ACCOUNT_DELETED = "rowset_account_deleted"
 ROWSET_AGENT_API_KEY_CREATED = "rowset_agent_api_key_created"
 ROWSET_AGENT_SETUP_PROMPT_COPIED = "rowset_agent_setup_prompt_copied"
 ROWSET_AGENT_SETUP_COMPLETED = "rowset_agent_setup_completed"

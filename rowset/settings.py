@@ -251,6 +251,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "posthog.integrations.django.PosthogContextMiddleware",
     # "django_structlog.middlewares.RequestMiddleware",
 ]
 
