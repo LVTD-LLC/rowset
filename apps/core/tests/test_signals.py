@@ -1,6 +1,9 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import RequestFactory
 
+from apps.core import signals
+from apps.core.analytics import ROWSET_USER_LOGGED_IN
 from apps.core.choices import ProfileStates
 from apps.core.models import Profile
 
@@ -36,3 +39,39 @@ def test_user_save_does_not_revert_profile_state(sync_state_transitions):
 
     profile.refresh_from_db()
     assert profile.state == ProfileStates.SIGNED_UP
+
+
+@pytest.mark.django_db
+def test_user_login_tracks_backend_and_browser_session(profile, monkeypatch):
+    tracked = []
+    monkeypatch.setattr(
+        signals,
+        "track_activation_event",
+        lambda *args, **kwargs: tracked.append((args, kwargs)),
+    )
+    request = RequestFactory().post(
+        "/accounts/login/",
+        {"posthog_session_id": "form-session"},
+        headers={"X-PostHog-Session-ID": "header-session"},
+    )
+    profile.user.backend = "allauth.account.auth_backends.AuthenticationBackend"
+
+    signals.track_user_logged_in(
+        sender=profile.user.__class__,
+        request=request,
+        user=profile.user,
+    )
+
+    assert tracked == [
+        (
+            (
+                profile,
+                ROWSET_USER_LOGGED_IN,
+                {"login_method": "AuthenticationBackend"},
+            ),
+            {
+                "source_function": "track_user_logged_in signal",
+                "session_id": "header-session",
+            },
+        )
+    ]

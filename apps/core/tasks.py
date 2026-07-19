@@ -3,6 +3,7 @@ import posthog
 import requests
 from django.conf import settings
 
+from apps.core.analytics import ROWSET_ACCOUNT_DELETED
 from apps.core.attribution import attribution_event_properties
 from apps.core.models import Feedback, Profile
 from rowset.utils import get_rowset_logger
@@ -170,6 +171,39 @@ def track_activation_event(
 
     logger.info("posthog.activation.completed", **base_log_data, outcome="success")
     return f"Tracked activation event {event_name} for profile {profile_id}"
+
+
+def track_account_deleted_event(
+    profile_id: int,
+    current_state: str,
+    session_id: str | None = None,
+) -> str:
+    """Capture deletion after commit using values snapshotted before the profile was removed."""
+    if not settings.POSTHOG_API_KEY:
+        return "PostHog API key not found."
+
+    properties = {
+        "event_version": 1,
+        "environment": settings.ENVIRONMENT,
+        "profile_id": profile_id,
+        "current_state": current_state,
+        **({"$session_id": session_id} if session_id else {}),
+    }
+    posthog.capture(
+        ROWSET_ACCOUNT_DELETED,
+        distinct_id=str(profile_id),
+        properties=properties,
+    )
+    posthog.flush(timeout_seconds=5)
+    logger.info(
+        "posthog.activation.completed",
+        profile_id=profile_id,
+        event_name=ROWSET_ACCOUNT_DELETED,
+        properties_count=0,
+        source_function="delete_account",
+        outcome="success",
+    )
+    return f"Tracked account deletion event for profile {profile_id}"
 
 
 def track_state_change(

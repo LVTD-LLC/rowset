@@ -71,3 +71,34 @@ def track_activation_event(
         enqueue_event()
 
     return f"Queued activation event {event_name} for profile {profile_id}"
+
+
+def track_account_deleted_event(
+    profile: Profile,
+    *,
+    session_id: str | None = None,
+) -> str:
+    """Queue account deletion analytics without depending on the deleted profile."""
+    if not settings.POSTHOG_API_KEY:
+        return "PostHog API key not found."
+
+    profile_id = profile.id
+    current_state = profile.state
+    session_id = validate_correlation_id(session_id or get_contextvars().get("sessionId"))
+
+    def enqueue_event() -> None:
+        async_task(
+            "apps.core.tasks.track_account_deleted_event",
+            profile_id=profile_id,
+            current_state=current_state,
+            session_id=session_id,
+            group="Track Activation Event",
+        )
+
+    connection = transaction.get_connection()
+    if connection.in_atomic_block:
+        transaction.on_commit(enqueue_event)
+    else:
+        enqueue_event()
+
+    return f"Queued account deletion event for profile {profile_id}"

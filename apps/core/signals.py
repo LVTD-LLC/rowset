@@ -1,6 +1,6 @@
 from allauth.account.signals import email_confirmed, user_signed_up
-from django.contrib.auth.signals import user_logged_in
 from django.contrib.auth.models import User
+from django.contrib.auth.signals import user_logged_in
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django_q.tasks import async_task
@@ -52,9 +52,7 @@ def track_user_logged_in(sender, request, user, **kwargs):
     profile = getattr(user, "profile", None)
     if profile is None:
         return
-    session_id = (
-        request.headers.get("X-PostHog-Session-ID") if request else None
-    ) or (
+    session_id = (request.headers.get("X-PostHog-Session-ID") if request else None) or (
         request.POST.get("posthog_session_id") if request else None
     )
     backend = getattr(user, "backend", "") or ""
