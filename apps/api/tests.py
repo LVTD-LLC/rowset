@@ -79,6 +79,7 @@ def test_capabilities_endpoint_supports_current_api_prefix(client):
     payload = response.json()
 
     assert response.status_code == 200
+    assert len(response.content) <= 2_000
     assert payload["product"] == "Rowset"
     assert payload["mode"] == "summary"
     assert "capabilities" not in payload

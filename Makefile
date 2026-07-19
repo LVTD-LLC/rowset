@@ -1,5 +1,6 @@
 COMPOSE_LOCAL ?= docker compose -f docker-compose-local.yml
-COMPOSE_TEST ?= $(COMPOSE_LOCAL) -f docker-compose-test.yml
+TEST_COMPOSE_PROJECT_NAME ?= rowset-test-$(shell printf '%s' "$(CURDIR)" | cksum | cut -d ' ' -f 1)
+COMPOSE_TEST ?= docker compose -p $(TEST_COMPOSE_PROJECT_NAME) -f docker-compose-local.yml -f docker-compose-test.yml
 PYTHON_RUN ?= $(COMPOSE_LOCAL) run --rm backend python
 CHECK_PYTHON_RUN ?= $(COMPOSE_TEST) run --rm backend python
 PYTEST_RUN ?= $(COMPOSE_TEST) run --rm backend pytest

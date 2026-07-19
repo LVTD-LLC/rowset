@@ -435,6 +435,7 @@ def test_get_rowset_capabilities_mcp_tool_returns_compact_topic_index(monkeypatc
         assert payload["mode"] == "summary"
         assert "capabilities" not in payload
         assert "use_cases" not in payload
+        assert len(json.dumps(payload, separators=(",", ":"), sort_keys=True)) <= 2_000
         assert len(result.content) == 1
         assert len(result.content[0].text) < 500
 

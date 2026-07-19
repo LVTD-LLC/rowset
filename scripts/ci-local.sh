@@ -4,12 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ ! -f .env ]]; then
-  printf "Missing .env. Run: cp .env.example .env\n" >&2
-  exit 1
-fi
-
-COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$ROOT")}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-rowset-test-$(printf '%s' "$ROOT" | cksum | cut -d ' ' -f 1)}"
+export COMPOSE_PROJECT_NAME
 COMPOSE_TEST=(docker compose -f docker-compose-local.yml -f docker-compose-test.yml)
 CHECK_PYTHON_RUN="${COMPOSE_TEST[*]} run --rm --no-deps backend python"
 PYTEST_RUN="${COMPOSE_TEST[*]} run --rm --no-deps backend pytest"

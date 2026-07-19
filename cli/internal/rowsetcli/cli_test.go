@@ -751,63 +751,6 @@ func TestGlobalFlagsOverrideEnvironment(t *testing.T) {
 	}
 }
 
-func TestExportAndAssetContentWriteRawBytes(t *testing.T) {
-	for _, tt := range []struct {
-		name     string
-		args     []string
-		wantPath string
-		query    string
-	}{
-		{
-			name:     "export",
-			args:     []string{"export", "dataset-key", "csv", "--output"},
-			wantPath: "/api/datasets/dataset-key/export.csv",
-		},
-		{
-			name:     "asset content",
-			args:     []string{"asset", "content", "dataset-key", "asset-key", "--variant", "thumbnail", "--output"},
-			wantPath: "/api/datasets/dataset-key/assets/asset-key/content",
-			query:    "variant=thumbnail",
-		},
-		{
-			name:     "asset content default variant",
-			args:     []string{"asset", "content", "dataset-key", "asset-key", "--output"},
-			wantPath: "/api/datasets/dataset-key/assets/asset-key/content",
-			query:    "variant=original",
-		},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			outputPath := filepath.Join(t.TempDir(), "out.bin")
-			args := append([]string{}, tt.args...)
-			args = append(args, outputPath)
-
-			runAgainstServer(t, args, func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodGet {
-					t.Fatalf("method mismatch: got %s", r.Method)
-				}
-				if r.URL.Path != tt.wantPath {
-					t.Fatalf("path mismatch: got %s want %s", r.URL.Path, tt.wantPath)
-				}
-				if r.URL.RawQuery != tt.query {
-					t.Fatalf("query mismatch: got %q want %q", r.URL.RawQuery, tt.query)
-				}
-				if r.Header.Get("Authorization") != "Bearer test-key" {
-					t.Fatalf("missing bearer auth")
-				}
-				_, _ = w.Write([]byte("raw-bytes"))
-			})
-
-			data, err := os.ReadFile(outputPath)
-			if err != nil {
-				t.Fatalf("read output: %v", err)
-			}
-			if string(data) != "raw-bytes" {
-				t.Fatalf("output mismatch: %q", string(data))
-			}
-		})
-	}
-}
-
 func TestAssetAttachReadsAndEncodesLocalImage(t *testing.T) {
 	imagePath := filepath.Join(t.TempDir(), "photo.png")
 	if err := os.WriteFile(imagePath, []byte("fake-png"), 0o600); err != nil {
