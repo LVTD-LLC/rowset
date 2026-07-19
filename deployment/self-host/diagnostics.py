@@ -170,6 +170,20 @@ def _memory_bytes(path: Path = Path("/proc/meminfo")) -> int:
 
 def _requirement_checks(root: Path, runner: CommandRunner) -> list[Check]:
     os_id, os_version = _os_release()
+    docker_root_result = runner.run(["docker", "info", "--format", "{{.DockerRootDir}}"])
+    docker_root = Path(docker_root_result.stdout.strip())
+    storage_failure = None
+    try:
+        if docker_root_result.returncode != 0 or not docker_root.is_absolute():
+            raise OSError
+        disk_usage = shutil.disk_usage(docker_root)
+    except OSError:
+        disk_usage = shutil.disk_usage(root)
+        storage_failure = _fail(
+            "PREFLIGHT_DOCKER_STORAGE",
+            "Docker storage filesystem could not be measured",
+            "Start the local Docker Engine and make its DockerRootDir readable.",
+        )
     command = [
         sys.executable,
         str(root / "deployment/self-host/check-requirements.py"),
@@ -184,8 +198,10 @@ def _requirement_checks(root: Path, runner: CommandRunner) -> list[Check]:
         str(os.cpu_count() or 0),
         "--memory-bytes",
         str(_memory_bytes()),
-        "--disk-bytes",
-        str(shutil.disk_usage(root).free),
+        "--disk-capacity-bytes",
+        str(disk_usage.total),
+        "--disk-free-bytes",
+        str(disk_usage.free),
         "--json",
     ]
     result = runner.run(command)
@@ -219,12 +235,16 @@ def _requirement_checks(root: Path, runner: CommandRunner) -> list[Check]:
             "memory meets the minimum",
             "Resize the host to the published minimum RAM profile.",
         ),
-        "DISK": (
-            "disk space meets the minimum",
-            "Free disk space or resize to the published minimum disk profile.",
+        "DISK_CAPACITY": (
+            "disk capacity meets the minimum host profile",
+            "Resize the host to the published minimum disk-capacity profile.",
+        ),
+        "DISK_FREE": (
+            "free disk space meets the operational floor",
+            "Free disk space until the published operational floor is available.",
         ),
     }
-    checks = []
+    checks = [storage_failure] if storage_failure else []
     for outcome in outcomes:
         check_id = outcome["id"]
         pass_detail, remediation = definitions.get(
@@ -236,7 +256,7 @@ def _requirement_checks(root: Path, runner: CommandRunner) -> list[Check]:
             if outcome["passed"]
             else _fail(
                 f"PREFLIGHT_{check_id}",
-                f"requirement {check_id} is not satisfied",
+                str(outcome.get("message") or f"requirement {check_id} is not satisfied"),
                 remediation,
             )
         )

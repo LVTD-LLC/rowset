@@ -30,6 +30,9 @@ deployment or release cut date.
 ### Fixed
 - Made Docker-backed tests and the local CI path run from a fresh checkout without `.env`, using deterministic test-only settings and per-checkout Compose isolation.
 
+### Fixed
+- Split self-host preflight disk checks into total capacity and current free space, with a cost-first 1 vCPU / 4 GB / 25 GB minimum and the measured 2 vCPU / 4 GB / 40 GB profile retained as the safer baseline.
+
 ## 2026-07-18
 
 ### Added

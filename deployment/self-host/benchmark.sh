@@ -61,10 +61,13 @@ if cgroup_memory_bytes=$(cat /sys/fs/cgroup/memory.max 2>/dev/null); then
 fi
 docker_root=$(docker info --format '{{.DockerRootDir}}')
 disk_path=${ROWSET_BENCHMARK_DISK_PATH:-$docker_root}
-disk_bytes=${ROWSET_BENCHMARK_DISK_BYTES:-$(df -B1 --output=size "$disk_path" | awk 'NR == 2 { print $1 }')}
+disk_usage=$(sh "$script_dir/resolve-disk-facts.sh" "$disk_path")
+disk_capacity_bytes=${disk_usage%% *}
+disk_free_bytes=${disk_usage##* }
 health_timeout=$(python3 "$script_dir/check-requirements.py" "$requirements_file" \
     --platform "$platform" --os-id "$os_id" --os-version "$os_version" \
-    --cpu-cores "$cpu_cores" --memory-bytes "$memory_bytes" --disk-bytes "$disk_bytes")
+    --cpu-cores "$cpu_cores" --memory-bytes "$memory_bytes" \
+    --disk-capacity-bytes "$disk_capacity_bytes" --disk-free-bytes "$disk_free_bytes")
 
 if docker ps -aq --filter "label=com.docker.compose.project=$project_name" | grep -q . || \
     docker volume ls -q --filter "label=com.docker.compose.project=$project_name" | grep -q . || \
@@ -212,13 +215,13 @@ import sys
 print(json.dumps([line.strip() for line in sys.stdin if line.strip()]))
 ')
 
-python3 - "$output" \
+python3 "$script_dir/write-benchmark.py" "$output" \
     --platform "$platform" \
     --os-id "$os_id" \
     --os-version "$os_version" \
     --cpu-cores "$cpu_cores" \
     --memory-bytes "$memory_bytes" \
-    --disk-bytes "$disk_bytes" \
+    --disk-capacity-bytes "$disk_capacity_bytes" \
     --provider "$provider" \
     --server-type "$server_type" \
     --benchmark-run-id "$benchmark_run_id" \
@@ -234,67 +237,6 @@ python3 - "$output" \
     --steady-state-memory-bytes "$steady_state_memory_bytes" \
     --available-memory-bytes "$available_memory_bytes" \
     --measured-at "$measured_at" \
-    --services "$services" <<'PY'
-import argparse
-import json
-import sys
-
-output = sys.argv[1]
-parser = argparse.ArgumentParser()
-parser.add_argument("--platform", required=True)
-parser.add_argument("--os-id", required=True)
-parser.add_argument("--os-version", required=True)
-parser.add_argument("--cpu-cores", type=int, required=True)
-parser.add_argument("--memory-bytes", type=int, required=True)
-parser.add_argument("--disk-bytes", type=int, required=True)
-parser.add_argument("--provider", required=True)
-parser.add_argument("--server-type", required=True)
-parser.add_argument("--benchmark-run-id", required=True)
-parser.add_argument("--image-reference", required=True)
-parser.add_argument("--image-digest", required=True)
-parser.add_argument("--image-indexes", type=json.loads, required=True)
-parser.add_argument("--source-revision", required=True)
-parser.add_argument("--docker-version", required=True)
-parser.add_argument("--pull-seconds", type=int, required=True)
-parser.add_argument("--cold-start-seconds", type=int, required=True)
-parser.add_argument("--image-logical-bytes", type=int, required=True)
-parser.add_argument("--disk-delta-bytes", type=int, required=True)
-parser.add_argument("--steady-state-memory-bytes", type=int, required=True)
-parser.add_argument("--available-memory-bytes", type=int, required=True)
-parser.add_argument("--measured-at", required=True)
-parser.add_argument("--services", type=json.loads, required=True)
-args = parser.parse_args(sys.argv[2:])
-document = {
-    "schema_version": 1,
-    "benchmark_run_id": args.benchmark_run_id,
-    "measured_at": args.measured_at,
-    "platform": args.platform,
-    "operating_system": {"id": args.os_id, "version": args.os_version},
-    "host": {
-        "provider": args.provider,
-        "server_type": args.server_type,
-        "cpu_cores": args.cpu_cores,
-        "memory_bytes": args.memory_bytes,
-        "disk_bytes": args.disk_bytes,
-    },
-    "image_reference": args.image_reference,
-    "image_digest": args.image_digest,
-    "image_indexes": args.image_indexes,
-    "source_revision": args.source_revision,
-    "docker_version": args.docker_version,
-    "services": args.services,
-    "measurements": {
-        "image_pull_seconds": args.pull_seconds,
-        "cold_start_seconds": args.cold_start_seconds,
-        "image_logical_bytes": args.image_logical_bytes,
-        "disk_delta_bytes": args.disk_delta_bytes,
-        "steady_state_memory_bytes": args.steady_state_memory_bytes,
-        "available_memory_after_start_bytes": args.available_memory_bytes,
-    },
-}
-with open(output, "w", encoding="utf-8") as stream:
-    json.dump(document, stream, indent=2)
-    stream.write("\n")
-PY
+    --services "$services"
 
 printf 'Benchmark written to %s\n' "$output"
