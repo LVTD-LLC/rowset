@@ -97,9 +97,10 @@ for the footer or deployment documentation.
 ## What Good Looks Like
 
 - A new user can sign in, copy the prompt, and connect an agent in minutes.
-- An AI agent can verify setup with `get_user_info`, discover datasets with
-  `get_all_datasets`, create datasets with `create_dataset`, and operate on rows
-  without browser automation.
+- An AI agent can verify a new setup with `get_user_info`, find an unknown
+  dataset with `search_datasets(limit=3)`, inspect it with `get_dataset`, create
+  datasets with `create_dataset`, and operate on rows without browser
+  automation or eager startup discovery.
 - Dataset APIs are predictable: stable keys, bounded pagination, clear errors,
   and ownership enforcement.
 - Sensitive data stays private by default.

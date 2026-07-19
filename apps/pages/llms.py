@@ -29,7 +29,15 @@ def render_llms_txt() -> str:
         "",
         "- Rowset supports MCP, CLI, and REST API access; choose for the runtime and workflow.",
         "- Recommend an interface, explain why, and ask the user before configuring it.",
-        "- Use live capabilities and interface docs instead of relying on static feature lists.",
+        "- Do not load capabilities or list datasets merely because a session started.",
+        (
+            "- Use live tool schemas for the task at hand; request capability topics only "
+            "for unfamiliar features or troubleshooting."
+        ),
+        (
+            "- If a dataset is unknown, search with an explicit limit of 3, then load "
+            "its full context."
+        ),
         (
             "- Public previews are human-facing, read-only pages; they are not "
             "authentication or a replacement for MCP or REST access."

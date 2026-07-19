@@ -39,6 +39,9 @@ deployment or release cut date.
 ### Fixed
 - Made self-host release publishing fail before image promotion when the bundled guide or installer references a missing command, non-executable command, or local guide file, and made the source-versus-installed guide boundary explicit.
 
+### Changed
+- Replaced eager agent startup discovery with task-driven capability lookup, bounded dataset search, and direct dataset inspection when a key or URL is already known.
+
 ## 2026-07-17
 
 ### Added

@@ -8,6 +8,10 @@ description: Use when a user asks what Rowset can do through MCP, CLI, or REST, 
 Use this skill to explain Rowset's current feature surface accurately. Always
 prefer live discovery over memory:
 
+Do not load capabilities or list datasets merely because a session started.
+Use the live discovery steps below when the user asks about Rowset's feature
+surface or when troubleshooting requires current capability details.
+
 1. Load the compact `available_topics` index through a bare
    `get_rowset_capabilities` call, `rowset capabilities` command, or REST
    capabilities request.
@@ -29,14 +33,17 @@ spreadsheet write-back as active product capabilities.
 
 - Configure Rowset as a remote Streamable HTTP MCP server.
 - Store the full API key in a private `ROWSET_API_KEY` environment variable.
-- Verify auth with `get_user_info`.
+- Verify auth with `get_user_info` only for a new or failing connection. If
+  Rowset is already configured and authenticated, skip connection verification
+  and the activation handoff.
 - Load the topic index with `get_rowset_capabilities`, then request specific
   `topics`. Set `include_use_cases` only when examples help, or `full` for the
   complete guide.
 
 ### Datasets
 
-- Discover datasets with `get_all_datasets` and `search_datasets`.
+- When the relevant dataset is unknown, use `search_datasets` with a limit of 3;
+  avoid listing unrelated datasets.
 - Create ready API-backed datasets with `create_dataset`.
 - Inspect one dataset with `get_dataset` before row work.
 - Use `rowset_id` generation when no reliable business key exists.

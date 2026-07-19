@@ -26,10 +26,14 @@ ROWSET_USE_CASES_SKILL_SOURCE_URL = (
     f"{ROWSET_USE_CASES_SKILL_REPOSITORY_PATH}"
 )
 ROWSET_AGENT_SETUP_INSTRUCTIONS = (
-    "Read or install the Rowset setup skill before acting. Follow it end to end, "
-    "including its post-verification activation handoff; do not stop after the "
-    "connection succeeds. Use the Rowset skill for ongoing platform interaction "
-    "after setup."
+    "Read or install the Rowset setup skill before acting. For a new connection, "
+    "follow it end to end, including its post-verification activation handoff; do not "
+    "stop after the connection succeeds. If Rowset is already configured and "
+    "authenticated, skip connection verification and the activation handoff. Do not "
+    "load capabilities or list datasets merely because a session started. When dataset "
+    "discovery is needed, search with an explicit limit of 3 and load full context only after "
+    "selection. Use the Rowset skill for progressive, task-driven discovery and ongoing "
+    "platform interaction after setup."
 )
 ROWSET_SKILL_FALLBACK_DESCRIPTION = (
     "Use when an authenticated agent needs to discover Rowset capabilities or "

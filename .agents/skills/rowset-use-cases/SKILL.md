@@ -12,10 +12,16 @@ keep public previews for explicitly requested read-only human sharing.
 
 Before creating or changing datasets:
 
-1. Load the capability topic index through the selected interface, then request
-   relevant topics with use cases included. Do not retrieve the full guide
-   unless the workflow needs it.
-2. Search existing datasets and projects before creating new ones.
+1. Do not load capabilities or list datasets merely because a session started.
+   For unfamiliar workflows or troubleshooting, load the capability topic index
+   through the selected interface, then request only relevant topics with use
+   cases included. Do not retrieve the full guide unless the workflow needs it.
+2. When the user supplies a dataset key or URL, inspect that dataset directly.
+   MCP `get_dataset` accepts either value. For CLI or REST, extract the dataset
+   key from the URL before using `rowset dataset get` or
+   `/api/datasets/{dataset_key}`. Otherwise, search only the relevant datasets
+   or projects with an explicit limit of 3, select one, and inspect its full
+   context before creating anything new.
 3. Pick an explicit index column, or let Rowset generate `rowset_id` when no
    reliable business key exists.
 4. Add dataset instructions, JSON metadata, column descriptions, and choice

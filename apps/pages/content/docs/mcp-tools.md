@@ -13,19 +13,19 @@ Do not treat this page as the exact schema source. The connected MCP server's
 tool discovery response is the source of truth for live tool names, descriptions,
 and input schemas.
 
-## Startup tools
+## Connection checks and on-demand guidance
 
-Use these tools at the beginning of an agent session:
+Do not load capabilities or list datasets merely because a session started.
+For a new or failing connection, verify the account with:
 
 ```text
 get_user_info
-get_rowset_capabilities
 ```
 
-`get_user_info` verifies the authenticated Rowset account. A bare
+`get_user_info` verifies the authenticated Rowset account, completes onboarding,
+and starts the trial. For an unfamiliar feature or troubleshooting, a bare
 `get_rowset_capabilities` call returns a compact `available_topics` index. Pass
-only the topic IDs needed for detailed feature groups, MCP tools, REST paths,
-and guidance:
+only the topic IDs needed for detailed workflow guidance:
 
 ```json
 {"topics": ["rows", "schema"]}
@@ -36,17 +36,18 @@ for the complete guide; `full` cannot be combined with `topics`.
 
 ## Dataset discovery
 
-Use these tools before creating a new dataset:
+If the user supplied a dataset key or URL, skip discovery and call `get_dataset`.
+When the relevant dataset is unknown, prefer a bounded search:
 
 ```text
-get_all_datasets
-get_archived_datasets
-search_datasets
+search_datasets {"query": "relevant name or purpose", "limit": 3}
 ```
 
-These discovery tools return compact cards for selection. After choosing a
-dataset, call `get_dataset` to load headers, index configuration, semantic
-schema, instructions, metadata, relationships, and preview settings.
+After choosing a dataset, call `get_dataset` to load headers, index
+configuration, semantic schema, instructions, metadata, relationships, and
+preview settings. `get_all_datasets` and `get_archived_datasets` remain available
+for explicit browsing and recovery workflows, but agents should not enumerate
+unrelated resources during startup.
 
 Collection tools return 10 items by default and accept an explicit `limit` up
 to 100. While `has_more` is `true`, increase `offset` by the number of entries

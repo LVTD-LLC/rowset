@@ -45,7 +45,97 @@ def test_content_agent_setup_prompt_includes_setup_skill_and_trial_rewards_url()
     assert "Rowset setup skill: https://rowset.example/skills/rowset-setup/SKILL.md" in prompt
     assert "Rowset trial rewards: https://rowset.example/trial-rewards" in prompt
     assert "post-verification activation handoff" in prompt
+    assert "already configured and authenticated" in prompt
     assert "{trial_rewards_url}" not in prompt
+
+
+@override_settings(SITE_URL="https://rowset.example")
+def test_agent_guidance_uses_progressive_discovery_instead_of_eager_startup(client):
+    progressive_startup_rule = (
+        "Do not load capabilities or list datasets merely because a session started."
+    )
+    sources = {
+        "generated setup prompt": build_content_agent_setup_prompt(),
+        "llms.txt": client.get(reverse("llms_txt")).content.decode(),
+    }
+    for relative_path in (
+        ".agents/skills/rowset/SKILL.md",
+        ".agents/skills/rowset-setup/SKILL.md",
+        ".agents/skills/rowset-features/SKILL.md",
+        ".agents/skills/rowset-use-cases/SKILL.md",
+        "README.md",
+        "apps/pages/content/docs/agent-discovery.md",
+        "apps/pages/content/docs/connect-mcp.md",
+        "apps/pages/content/docs/configure-agent-access.md",
+        "apps/pages/content/docs/quickstart.md",
+        "apps/pages/content/docs/mcp-tools.md",
+    ):
+        sources[relative_path] = Path(settings.BASE_DIR, relative_path).read_text(encoding="utf-8")
+
+    missing_rule = [
+        name
+        for name, source in sources.items()
+        if progressive_startup_rule not in " ".join(source.split())
+    ]
+    missing_explicit_bound = [
+        name
+        for name, source in sources.items()
+        if "limit of 3" not in " ".join(source.lower().split()) and '"limit": 3' not in source
+    ]
+
+    assert missing_rule == []
+    assert missing_explicit_bound == []
+
+    direct_lookup_sources = {
+        name: " ".join(sources[name].lower().split())
+        for name in (
+            ".agents/skills/rowset/SKILL.md",
+            ".agents/skills/rowset-use-cases/SKILL.md",
+            "apps/pages/content/docs/quickstart.md",
+        )
+    }
+    assert (
+        "when the user supplies a dataset key or url"
+        in direct_lookup_sources[".agents/skills/rowset/SKILL.md"]
+        and "inspect that dataset directly"
+        in direct_lookup_sources[".agents/skills/rowset/SKILL.md"]
+    )
+    assert (
+        "when the user supplies a dataset key or url"
+        in direct_lookup_sources[".agents/skills/rowset-use-cases/SKILL.md"]
+        and "inspect that dataset directly"
+        in direct_lookup_sources[".agents/skills/rowset-use-cases/SKILL.md"]
+    )
+    assert (
+        "if the user supplied a dataset key or url"
+        in direct_lookup_sources["apps/pages/content/docs/quickstart.md"]
+        and "inspect it directly" in direct_lookup_sources["apps/pages/content/docs/quickstart.md"]
+    )
+    for name in (
+        ".agents/skills/rowset/SKILL.md",
+        ".agents/skills/rowset-use-cases/SKILL.md",
+        "apps/pages/content/docs/quickstart.md",
+    ):
+        assert "mcp `get_dataset` accepts either value" in direct_lookup_sources[name]
+        assert "extract the dataset key from the url" in direct_lookup_sources[name]
+    agent_discovery = " ".join(
+        sources["apps/pages/content/docs/agent-discovery.md"].lower().split()
+    )
+    assert "skip discovery when the user supplied a dataset key or url" in agent_discovery
+
+    healthy_connection_sources = {
+        name: " ".join(sources[name].lower().split())
+        for name in (
+            "generated setup prompt",
+            ".agents/skills/rowset-setup/SKILL.md",
+            ".agents/skills/rowset-features/SKILL.md",
+        )
+    }
+    assert all(
+        "already configured and authenticated" in source
+        and "skip connection verification and the activation handoff" in source
+        for source in healthy_connection_sources.values()
+    )
 
 
 PUBLIC_CONTENT_PATH_PREFIXES = ("/blog/", "/docs/", "/use-cases/", "/vs/")
@@ -276,7 +366,8 @@ def test_llms_txt_is_a_documentation_only_content_index(client):
 
     assert "Rowset supports MCP, CLI, and REST API access" in content
     assert "Recommend an interface, explain why, and ask the user" in content
-    assert "Use live capabilities and interface docs" in content
+    assert "request capability topics only for unfamiliar features or troubleshooting" in content
+    assert "search with an explicit limit of 3" in content
     assert "Do not use browser automation" in content
     assert "human-facing, read-only" in content
     assert "not authentication" in content

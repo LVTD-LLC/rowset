@@ -60,31 +60,29 @@ authentication format.
 
 ## 4. Verify the connection
 
-Ask the agent to discover the connected server's tools, then call:
+For a new connection, ask the agent to call:
 
 ```text
 get_user_info
-get_rowset_capabilities
 ```
 
-`get_user_info` verifies the authenticated account. A bare
-`get_rowset_capabilities` call returns the compact `available_topics` index.
-Request specific `topics` for detailed workflow guidance, set
-`include_use_cases` only when examples help, or set `full` for the complete
-guide.
+`get_user_info` verifies the authenticated account, completes onboarding, and
+starts the trial. Repeat it only when diagnosing connection or credential
+problems. Do not load capabilities or list datasets merely because a session
+started. Use live MCP tool schemas for the operation at hand. Call
+`get_rowset_capabilities` only for an unfamiliar feature or troubleshooting,
+then request specific `topics`; opt into use cases or full mode only when needed.
 
 ## 5. Inspect before changing rows
 
-For an existing workflow, ask the agent to discover datasets before creating new
-ones:
+If the user supplied a dataset key or URL, call `get_dataset` directly. When the
+relevant dataset is unknown, use a bounded search before creating a duplicate:
 
 ```text
-get_all_datasets
-get_archived_datasets
-search_datasets
+search_datasets {"query": "relevant name or purpose", "limit": 3}
 ```
 
-Before row operations, the agent should call `get_dataset`. That response
+Select a result, then call `get_dataset` before row operations. That response
 includes headers, index column, dataset instructions, schema metadata, project
 context, and relationship summaries.
 If you are designing those rules for a new workflow, use the guide to

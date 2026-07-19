@@ -22,14 +22,19 @@ current schemas, commands, endpoints, and workflows.
 
 ## Current Capability Discovery
 
-Use the current live resources rather than maintaining a static feature catalog:
+Discovery is task-driven, not a startup checklist. Do not load capabilities or
+list datasets merely because a session started. Use the current live resources
+only when the task needs them rather than maintaining a static feature catalog:
 
-- MCP: inspect live tools and call `get_rowset_capabilities` without arguments
-  for the compact topic index, then request only relevant `topics`.
-- CLI: use bare `rowset capabilities` for the topic index, repeat `--topic` for
-  details, and inspect current `rowset --help` output.
-- REST: read `/api/capabilities`, then request details with `?topics=...` and
-  consult generated API docs.
+- MCP: use live tool schemas for exact inputs. Call `get_rowset_capabilities`
+  for the compact topic index only when a feature is unfamiliar or setup is
+  failing, then request only relevant `topics`.
+- CLI: inspect command help for the operation at hand. Use bare
+  `rowset capabilities` and repeat `--topic` only when broader workflow guidance
+  is needed.
+- REST: consult generated API docs for the endpoint at hand. Read
+  `/api/capabilities` and request details with `?topics=...` only when broader
+  workflow guidance is needed.
 - Across interfaces, use cases are opt-in and full mode retrieves the complete
   guide without topic filtering.
 - Any interface: use Rowset `llms.txt` to find current docs, guides, skills,
@@ -37,11 +42,14 @@ Use the current live resources rather than maintaining a static feature catalog:
 - Use the Rowset docs and blog indexes for current product guidance, examples,
   decision guides, and evolving workflow recommendations.
 
-Before working with an existing dataset, discover it and inspect its current
-schema, instructions, metadata, relationships, and index semantics through the
-selected interface. Search before creating duplicates. If no stable business
-key exists for a new dataset, use Rowset's current generated-ID path documented
-by the live capability guide.
+When the user supplies a dataset key or URL, inspect that dataset directly. MCP
+`get_dataset` accepts either value. For CLI or REST, extract the dataset key from
+the URL before using `rowset dataset get` or `/api/datasets/{dataset_key}`. If the
+relevant dataset is unknown, search with an explicit limit of 3, select one, then
+inspect its current schema, instructions, metadata, relationships, and index
+semantics. Search before creating duplicates. If no stable business key exists
+for a new dataset, use Rowset's current generated-ID path documented by the live
+capability guide.
 
 ## Working With Rowset
 
@@ -52,7 +60,8 @@ by the live capability guide.
   index settings as durable operating context, not decoration.
 - Keep index columns stable, unique, and explicit. Use Rowset's generated-ID
   path when the source has no reliable business key.
-- Search existing projects and datasets before creating new ones.
+- Search existing projects and datasets with an explicit limit of 3 before creating new
+  ones; do not enumerate unrelated resources.
 - Inspect a dataset's current detail before reading or changing its rows.
 - Ask before destructive actions and before changing public sharing state.
 

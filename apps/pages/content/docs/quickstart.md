@@ -60,16 +60,14 @@ Current interface references:
 - [Use Rowset from the CLI](/docs/use-cli)
 - [Dataset API](/docs/dataset-api)
 
-## 4. Load current capabilities
+## 4. Configure only what the connection needs
 
-Before relying on static examples, load the compact capability topic index with
-a bare `get_rowset_capabilities` call, `rowset capabilities` command, or
-`GET /api/capabilities` request. Then request only the relevant topics, such as
-`rows` and `schema`. Use cases are opt-in; full mode retrieves the complete
-guide. Also read `llms.txt` and the current guide for the selected interface.
-The REST capability index and `llms.txt` are public and can be read before
-sending the API key, so trial activation still happens only after configuration
-is complete.
+Follow the current connection guide for the approved interface. Do not load
+capabilities or list datasets merely because a session started. Use exact tool,
+command, or endpoint schemas for the operation at hand. If a feature is
+unfamiliar or setup is failing, request the compact capability topic index with
+`get_rowset_capabilities`, `rowset capabilities`, or `GET /api/capabilities`,
+then load only the relevant topics. Use cases and full mode remain opt-in.
 
 ## 5. Verify access and complete onboarding
 
@@ -79,9 +77,11 @@ REST. A successful response verifies the connection and completes onboarding.
 MCP reads and API-key creation stay trial-neutral, so the MCP trial starts on the
 first dataset or project mutation; CLI and REST user-info requests start it immediately.
 
-After verification, refresh relevant details with MCP `topics`, CLI `--topic`,
-or REST `?topics=...`. Use MCP `full`, CLI `--full`, or REST `?full=true` only
-when the complete guide is needed.
+After verification, begin the requested task. If the user supplied a dataset
+key or URL, inspect it directly: MCP `get_dataset` accepts either value; for CLI
+or REST, extract the dataset key from the URL before using `rowset dataset get`
+or `/api/datasets/{dataset_key}`. If the relevant dataset is unknown, search
+with an explicit limit of 3, select one result, then load its full context.
 
 ## 6. Create one dataset
 
