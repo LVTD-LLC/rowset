@@ -7,8 +7,10 @@ click IDs to PostHog.
 ## Event contract
 
 Event names are lowercase snake case and describe completed actions. Every server event includes
-`event_version`, `environment`, `profile_id`, and `current_state`. Browser and server events use the
-profile ID as the identified `distinct_id`. Logout calls `reset()`.
+`event_version`, `environment`, and `current_state`; authenticated server events also include
+`profile_id`. Browser and authenticated server events use the profile ID as the identified
+`distinct_id`. Anonymous public server events use validated pseudonymous browser identity and
+session headers when available and never invent a person identity. Logout calls `reset()`.
 
 The primary acquisition funnel is:
 
@@ -19,12 +21,84 @@ The primary acquisition funnel is:
 5. `rowset_dataset_created` and `rowset_dataset_row_mutated`
 6. `rowset_checkout_started` and `rowset_subscription_started`
 
+Public dataset measurement uses the same funnel vocabulary:
+
+| Stage | Canonical signal | Meaning |
+| --- | --- | --- |
+| Reach | `$pageview` with `content_group=public_dataset` | A consented browser rendered an available public preview or row-detail page. |
+| Intent | `rowset_public_dataset_row_opened` or `rowset_public_dataset_export_requested` | A consented browser deliberately opened a row or requested an export. |
+| Engagement | `rowset_public_dataset_markdown_opened` or `rowset_public_dataset_export_completed` | The server successfully returned the Markdown representation or an export. |
+| Conversion | The existing signup and activation events | The visitor completed signup or the first meaningful agent setup milestone. |
+
+Intent events are browser signals; they do not prove the requested response succeeded. Completion
+events are server signals and fire only after an eligible public request succeeds. Do not count raw
+requests, pagination, filtering, sorting, or copied cell text as meaningful engagement.
+
+Every public dataset signal includes `content_group=public_dataset`, a `content_id`, and a bounded
+`content_surface` of `preview`, `row_detail`, `markdown`, or `export`. Export events also include a
+bounded `export_format` from the formats the endpoint accepts. A row open identifies only the
+dataset and surface; it never includes a row ID or row value.
+
+`content_id` is the one approved asset-level identity. Derive it on the server as
+`pd_v1_` followed by the first 24 lowercase hexadecimal characters of an HMAC-SHA256 digest of the
+canonical lowercase public-key string, keyed by the deployment's Django `SECRET_KEY`. It is stable
+within one deployment, unlinkable across deployments with different secrets, and changes if the
+secret is rotated. Never send the public key, private dataset key, dataset name, column names, row
+IDs, row values, preview password, or the raw public URL to PostHog.
+
+Only successful, available public datasets receive a `content_id`. Every public dataset request
+records a bounded `public_access_state` in structured request telemetry: `available` for an enabled
+and authorized success, `locked` when a password is required, `denied` when supplied access is
+invalid, `disabled` when sharing is inactive, and `not_found` when no active dataset exists.
+Browser and PostHog server events are emitted only for `available`; the other states never receive
+or expose a dataset identity.
+
 Lifecycle events are `rowset_subscription_cancellation_requested`, `rowset_subscription_ended`,
 and `rowset_payment_failed`. Additive property changes keep the current event version; incompatible
 meaning changes require a new event name or version.
 
 Critical signup, setup, checkout, and subscription events flush the server SDK queue before their
 worker task completes. High-volume dataset activity remains buffered.
+
+## Traffic categories and metric sources
+
+`traffic_category` is a bounded derived property, not a claim that Rowset has identified a person.
+Classify each request once, using the first matching rule below, and retain every category in
+all-traffic reporting:
+
+| Category | Deterministic rule |
+| --- | --- |
+| `api_client` | The request uses an API or MCP route/interface. This route rule wins over user-agent matching. |
+| `ai_agent` | A maintained, explicit user-agent allowlist identifies an interactive AI agent or agent fetcher. |
+| `link_preview` | A maintained, explicit user-agent allowlist identifies a social, chat, or search preview fetcher. |
+| `crawler` | A maintained, explicit user-agent allowlist identifies a search, training, monitoring, or archival crawler. |
+| `unknown_automation` | The user agent is absent, malformed, names a generic script client, or otherwise cannot be classified. |
+| `human` | An eligible browser request has a recognizable browser user agent and matches neither an explicit automation category nor an unknown-automation condition. |
+
+Keep the allowlists small, checked in, and covered by representative tests. Match case-insensitively
+against bounded user-agent tokens; do not add the raw user agent as a Rowset event property.
+Classification uses only route/interface and known user-agent tokens. It must not use raw IP
+addresses, fingerprints, request-rate behavior, or probabilistic bot scores. Known AI crawlers
+belong to `crawler`; reserve `ai_agent` for interactive agent/tool retrieval. Unknown traffic stays
+visible instead of being folded into `human`.
+
+For precedence examples, an API request with a browser-like user agent is `api_client`; a web
+request with a missing, malformed, or generic-script user agent is `unknown_automation`; and only a
+recognizable browser user agent unmatched by the earlier rules is `human`.
+
+PostHog's `$virt_traffic_*` and `$virt_bot_*` properties are advisory diagnostics, not the canonical
+Rowset category: their taxonomy and IP-assisted detection can change outside this repository. Do
+not substitute them for `traffic_category` in funnels or human-only conversion reporting.
+
+Put the server-derived category on eligible browser pageview/intent context for both full-page and
+HTMX responses, and on public server completion events. Do not reclassify in browser JavaScript.
+
+Use PostHog browser events as the canonical source for consented reach and intent, PostHog server
+events for successful engagement and irreversible conversion, and structured request telemetry for
+all request traffic including non-consenting browsers and automation. Report both all-traffic and
+`traffic_category=human` views. Human-only conversion means human-category consented browser reach
+joined to canonical server conversion events through the existing anonymous/profile identity; do
+not divide raw request counts by signups or describe a user-agent category as verified humanity.
 
 ## Attribution and consent
 
