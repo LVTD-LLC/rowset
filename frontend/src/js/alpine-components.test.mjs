@@ -64,6 +64,33 @@ function loadAiReaderMenu() {
   return { ...loaded, component };
 }
 
+function loadChoiceFilter(checkedValues = []) {
+  const loaded = loadAlpineComponents();
+  const component = loaded.components.get("choiceFilter")();
+  component.$root = {
+    querySelectorAll(selector) {
+      assert.equal(selector, "input[type='checkbox']:checked");
+      return checkedValues.map((value) => ({ value }));
+    },
+  };
+  component.$refs = { trigger: { focus() {} } };
+  return { ...loaded, component };
+}
+
+test("choice filter summarizes and clears multiple checked choices", () => {
+  const { component } = loadChoiceFilter(["P1", "P2"]);
+
+  component.init();
+
+  assert.deepEqual(Array.from(component.selected), ["P1", "P2"]);
+  assert.equal(component.summary(), "2 choices selected");
+
+  component.clear();
+
+  assert.deepEqual(Array.from(component.selected), []);
+  assert.equal(component.summary(), "Any choice");
+});
+
 async function runCopy({ copied }) {
   const { component, rowset } = loadCopyPanel();
   const dispatched = [];

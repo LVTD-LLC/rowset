@@ -8,8 +8,14 @@
   <input type="hidden" name="row_dir" value="{{ row_sort_direction }}">
 {% endif %}
 {% for hidden_filter in row_filter_fields %}
-  {% if hidden_filter.value and hidden_filter.param_name != current_filter_param %}
-    <input type="hidden" name="{{ hidden_filter.param_name }}" value="{{ hidden_filter.value }}">
+  {% if hidden_filter.selected_values and hidden_filter.param_name != current_filter_param %}
+    {% if hidden_filter.is_choice %}
+      {% for selected_value in hidden_filter.selected_values %}
+        <input type="hidden" name="{{ hidden_filter.param_name }}" value="{{ selected_value }}">
+      {% endfor %}
+    {% else %}
+      <input type="hidden" name="{{ hidden_filter.param_name }}" value="{{ hidden_filter.value }}">
+    {% endif %}
     {% if hidden_filter.operator != hidden_filter.default_operator %}
       <input type="hidden" name="{{ hidden_filter.operator_param_name }}" value="{{ hidden_filter.operator }}">
     {% endif %}

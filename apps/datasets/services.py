@@ -67,6 +67,9 @@ class DatasetRowQueryError(ValueError):
     pass
 
 
+RowFilterValue = str | list[str]
+
+
 class DatasetImageError(ValueError):
     pass
 
@@ -81,7 +84,7 @@ class _DatasetRowsQueryContext:
     headers: list[str]
     column_map: dict[str, dict[str, Any]]
     calculated_value_expressions: dict[str, Any]
-    filters: dict[str, str]
+    filters: dict[str, RowFilterValue]
     filter_operators: dict[str, str]
 
 
@@ -1520,14 +1523,46 @@ def invalid_choice_values_by_column(
     return {header: values for header, values in invalid_values.items() if values}
 
 
+def _normalize_dataset_row_filter_value(
+    raw_value,
+    *,
+    allow_multiple: bool,
+    strict: bool,
+) -> RowFilterValue | None:
+    if not isinstance(raw_value, (list, tuple)):
+        value = "" if raw_value is None else str(raw_value).strip()
+        return value or None
+
+    values = []
+    for item in raw_value:
+        value = "" if item is None else str(item).strip()
+        if value and value not in values:
+            values.append(value)
+    if not values:
+        return None
+    if allow_multiple:
+        return values
+    if strict and len(values) > 1:
+        raise DatasetRowQueryError(
+            "Multiple row filter values are only supported for choice columns."
+        )
+    return values[0]
+
+
 def normalize_dataset_row_filters(
     headers: list[str],
+    column_schema: dict | None,
     filters: dict | None,
     *,
     strict: bool = False,
-) -> dict[str, str]:
+) -> dict[str, RowFilterValue]:
     normalized_filters = {}
     header_set = set(headers)
+    choice_headers = {
+        column["name"]
+        for column in column_definitions(headers, column_schema)
+        if column["type"] == DatasetColumnType.CHOICE
+    }
     for raw_header, raw_value in (filters or {}).items():
         header = str(raw_header or "").strip()
         if not header:
@@ -1538,8 +1573,12 @@ def normalize_dataset_row_filters(
             if strict:
                 raise DatasetRowQueryError(f"Column '{header}' is not in this dataset.")
             continue
-        value = "" if raw_value is None else str(raw_value).strip()
-        if value:
+        value = _normalize_dataset_row_filter_value(
+            raw_value,
+            allow_multiple=header in choice_headers,
+            strict=strict,
+        )
+        if value is not None:
             normalized_filters[header] = value
     return normalized_filters
 
@@ -1582,7 +1621,7 @@ def normalize_dataset_row_filter_operator(
 def normalize_dataset_row_filter_operators(
     headers: list[str],
     column_schema: dict | None,
-    filters: dict[str, str],
+    filters: dict[str, RowFilterValue],
     filter_operators: dict | None,
     *,
     strict: bool = False,
@@ -1783,11 +1822,18 @@ def _boolean_filter_query(alias: str, value: str) -> Q | None:
     return query
 
 
+def _choice_filter_query(alias: str, value: RowFilterValue) -> Q:
+    query = Q()
+    for selected_value in value if isinstance(value, list) else [value]:
+        query |= Q(**{f"{alias}__iexact": selected_value})
+    return query
+
+
 def _apply_row_field_filters(
     queryset,
     headers: list[str],
     column_schema: dict | None,
-    filters: dict[str, str],
+    filters: dict[str, RowFilterValue],
     filter_operators: dict[str, str],
 ):
     column_map = {column["name"]: column for column in column_definitions(headers, column_schema)}
@@ -1805,7 +1851,7 @@ def _apply_row_field_filters(
                 return queryset.none()
             queryset = queryset.filter(boolean_query)
         elif column["type"] == DatasetColumnType.CHOICE:
-            queryset = queryset.filter(**{f"{alias}__iexact": value})
+            queryset = queryset.filter(_choice_filter_query(alias, value))
         elif column["type"] in ROW_NUMERIC_SORT_TYPES and filter_operators.get(header) in {
             ROW_FILTER_ABOVE,
             ROW_FILTER_BELOW,
@@ -1862,6 +1908,7 @@ def apply_dataset_row_query(
     search_query = str(query or "").strip()
     normalized_filters = normalize_dataset_row_filters(
         dataset.headers,
+        dataset.column_schema,
         filters,
         strict=strict,
     )
@@ -1919,6 +1966,7 @@ def _dataset_rows_query_contexts(
     for dataset in datasets:
         normalized_filters = normalize_dataset_row_filters(
             dataset.headers,
+            dataset.column_schema,
             filters,
             strict=strict,
         )
@@ -1999,7 +2047,7 @@ def _dataset_rows_filter_condition(
             return None
         return dataset_scope & boolean_query
     if column_type == DatasetColumnType.CHOICE:
-        return dataset_scope & Q(**{f"{alias}__iexact": value})
+        return dataset_scope & _choice_filter_query(alias, value)
     if column_type in ROW_NUMERIC_SORT_TYPES and operator in {ROW_FILTER_ABOVE, ROW_FILTER_BELOW}:
         filter_value = _normalize_numeric_filter_value(value)
         if filter_value is None:
