@@ -1,14 +1,8 @@
 (function () {
   const Rowset = (window.Rowset = window.Rowset || {});
-  const campaignKeys = [
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "utm_content",
-    "utm_term",
-  ];
-  const campaignValuePattern = /^[a-z0-9][a-z0-9 ._\-/]*$/i;
+  const { campaignKeys, safeCampaignValue } = Rowset.posthogAttribution;
   const capturedHtmxRequests = new WeakSet();
+  let includeDocumentReferrer = true;
   let lastCaptureKey = "";
 
   function pageviewContext() {
@@ -32,23 +26,26 @@
     const searchParams = new URLSearchParams(search);
 
     campaignKeys.forEach((key) => {
-      const value = searchParams.get(key)?.trim() || "";
-      if (value && value.length <= 100 && campaignValuePattern.test(value)) {
-        properties[key] = value;
-      }
+      const value = safeCampaignValue(searchParams.get(key));
+      if (value) properties[key] = value;
     });
 
     return properties;
   }
 
   function referrerProperties() {
-    if (!document.referrer) {
+    const referrerValue = includeDocumentReferrer ? document.referrer : "";
+    includeDocumentReferrer = false;
+    if (!referrerValue) {
       return {};
     }
 
     try {
-      const referrer = new window.URL(document.referrer);
-      if (!['http:', 'https:'].includes(referrer.protocol)) {
+      const referrer = new window.URL(referrerValue);
+      if (
+        !["http:", "https:"].includes(referrer.protocol) ||
+        referrer.origin === window.location.origin
+      ) {
         return {};
       }
       return {
@@ -77,15 +74,19 @@
     }
 
     const currentUrl = `${window.location.origin}${context.route}`;
+    const referrer = referrerProperties();
     Rowset.persistMarketingAttribution?.({
       ...campaign,
       landing_route: context.route,
-      referring_domain: referrerProperties().$referring_domain || "",
+      ...(referrer.$referrer ? { referrer: referrer.$referrer } : {}),
+      ...(referrer.$referring_domain
+        ? { referring_domain: referrer.$referring_domain }
+        : {}),
     });
     window.posthog.capture("$pageview", {
       $current_url: currentUrl,
       $pathname: context.route,
-      ...referrerProperties(),
+      ...referrer,
       content_group: context.contentGroup,
       environment: Rowset.posthogEnvironment || "unknown",
       event_version: 1,

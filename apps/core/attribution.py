@@ -1,14 +1,49 @@
 import json
 import re
-from typing import Any
-from urllib.parse import unquote
+from typing import TYPE_CHECKING, Any
+from urllib.parse import unquote, urlsplit
+
+if TYPE_CHECKING:
+    from apps.core.models import Profile
 
 ATTRIBUTION_COOKIE = "rowset_marketing_attribution"
+ANALYTICS_CONSENT_COOKIE = "rowset_analytics_consent"
 ATTRIBUTION_VERSION = 1
-CAMPAIGN_KEYS = ("utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term")
+CAMPAIGN_KEYS = (
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+    "campaign_id",
+)
 _VALUE_RE = re.compile(r"^[a-z0-9][a-z0-9 ._\-/]*$", re.IGNORECASE)
 _DOMAIN_RE = re.compile(r"^[a-z0-9.-]+$", re.IGNORECASE)
 _ATTRIBUTION_PARSE_ERRORS = (TypeError, ValueError, json.JSONDecodeError)
+
+
+def _sanitize_referrer(value: Any) -> str:
+    if not isinstance(value, str) or len(value) > 500:
+        return ""
+    try:
+        parsed = urlsplit(value)
+        hostname = parsed.hostname or ""
+        if (
+            parsed.scheme not in {"http", "https"}
+            or parsed.username
+            or parsed.password
+            or not hostname
+            or len(hostname) > 253
+            or not _DOMAIN_RE.fullmatch(hostname)
+        ):
+            return ""
+        port = parsed.port
+    except ValueError:
+        return ""
+    authority = hostname.lower()
+    if port is not None and (parsed.scheme, port) not in {("http", 80), ("https", 443)}:
+        authority = f"{authority}:{port}"
+    return f"{parsed.scheme}://{authority}"
 
 
 def _sanitize_touch(touch: Any) -> dict[str, str]:
@@ -24,6 +59,9 @@ def _sanitize_touch(touch: Any) -> dict[str, str]:
     route = touch.get("landing_route")
     if isinstance(route, str) and route.startswith("/") and "?" not in route and len(route) <= 160:
         clean["landing_route"] = route
+    referrer = _sanitize_referrer(touch.get("referrer"))
+    if referrer:
+        clean["referrer"] = referrer
     domain = touch.get("referring_domain")
     if isinstance(domain, str) and len(domain) <= 253 and _DOMAIN_RE.fullmatch(domain):
         clean["referring_domain"] = domain.lower()
@@ -49,6 +87,16 @@ def parse_attribution_cookie(value: str | None) -> dict[str, Any]:
     return result if len(result) > 1 else {}
 
 
+def sync_profile_marketing_attribution(profile: Profile, cookie_value: str | None) -> bool:
+    """Persist a valid attribution cookie when it differs from the profile snapshot."""
+    attribution = parse_attribution_cookie(cookie_value)
+    if not attribution or profile.marketing_attribution == attribution:
+        return False
+    profile.marketing_attribution = attribution
+    profile.save(update_fields=["marketing_attribution", "updated_at"])
+    return True
+
+
 def attribution_event_properties(attribution: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(attribution, dict):
         return {}
@@ -60,7 +108,7 @@ def attribution_event_properties(attribution: dict[str, Any] | None) -> dict[str
             properties[key] = latest[key]
         if key in first:
             properties[f"initial_{key}"] = first[key]
-    for key in ("landing_route", "referring_domain"):
+    for key in ("landing_route", "referrer", "referring_domain"):
         if key in first:
             properties[f"initial_{key}"] = first[key]
     return properties if len(properties) > 1 else {}
