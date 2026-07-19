@@ -4,6 +4,10 @@ import test from "node:test";
 import vm from "node:vm";
 
 const source = fs.readFileSync(new URL("./posthog-privacy.js", import.meta.url), "utf8");
+const attributionSource = fs.readFileSync(
+  new URL("./posthog-attribution.js", import.meta.url),
+  "utf8",
+);
 
 function loadPrivacy({ route = "/accounts/password/reset/key/:uid/:key/" } = {}) {
   const window = {
@@ -21,6 +25,7 @@ function loadPrivacy({ route = "/accounts/password/reset/key/:uid/:key/" } = {})
     window,
   });
 
+  vm.runInContext(attributionSource, context);
   vm.runInContext(source, context);
   return window.Rowset.sanitizePosthogEvent;
 }
@@ -52,6 +57,7 @@ test("sanitizes URL, referrer, and campaign properties before PostHog sends an e
       $session_entry_utm_source: "hacker-news",
       $session_entry_utm_term: "user@example.com",
       gclid: "secret-click-id",
+      campaign_id: "hn-launch",
       ph_keyword: "private search terms",
       $utm_campaign: "launch 2026",
       $utm_term: "user@example.com",
@@ -83,6 +89,7 @@ test("sanitizes URL, referrer, and campaign properties before PostHog sends an e
     $session_entry_url: "https://rowset.example/accounts/password/reset/key/:uid/:key/",
     $session_entry_utm_source: "hacker-news",
     $utm_campaign: "launch 2026",
+    campaign_id: "hn-launch",
     token: "required-project-token",
   });
   assert.deepEqual({ ...event.$set_once }, {
@@ -95,6 +102,16 @@ test("sanitizes URL, referrer, and campaign properties before PostHog sends an e
   assert.equal("$prev_pageview_pathname" in event.properties, false);
   assert.equal("$session_entry_utm_term" in event.properties, false);
   assert.equal(event.properties.token, "required-project-token");
+});
+
+test("drops an unsafe custom campaign identifier", () => {
+  const sanitize = loadPrivacy();
+  const event = sanitize({
+    event: "$pageview",
+    properties: { campaign_id: "user@example.com" },
+  });
+
+  assert.equal("campaign_id" in event.properties, false);
 });
 
 test("uses origin-only URL properties on private application routes", () => {

@@ -1,7 +1,7 @@
 (function () {
   const Rowset = (window.Rowset = window.Rowset || {});
-  const campaignValuePattern = /^[a-z0-9][a-z0-9 ._\-/]*$/i;
-  const campaignPropertyPattern = /^(?:\$initial_|\$session_entry_|\$)?utm_[a-z0-9_]+$/i;
+  const { campaignKeys, safeCampaignValue } = Rowset.posthogAttribution;
+  const campaignPropertyPattern = /^(?:\$initial_|\$session_entry_|\$)?(?:utm_[a-z0-9_]+|campaign_id)$/i;
   const sensitiveAttributionPropertyPattern = /^(?:\$(?:initial_|session_entry_)?)?(?:_kx|dclid|epik|fbclid|gad_source|gclsrc|gbraid|gclid|igshid|irclid|li_fat_id|mc_cid|msclkid|ph_keyword|qclid|rdt_cid|sccid|ttclid|twclid|wbraid)$/i;
   const safeCampaignProperties = new Set();
   const urlPropertyNames = {
@@ -20,14 +20,12 @@
     $session_entry_url: "url",
   };
 
-  ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].forEach(
-    (key) => {
-      safeCampaignProperties.add(key);
-      safeCampaignProperties.add(`$${key}`);
-      safeCampaignProperties.add(`$initial_${key}`);
-      safeCampaignProperties.add(`$session_entry_${key}`);
-    },
-  );
+  campaignKeys.forEach((key) => {
+    safeCampaignProperties.add(key);
+    safeCampaignProperties.add(`$${key}`);
+    safeCampaignProperties.add(`$initial_${key}`);
+    safeCampaignProperties.add(`$session_entry_${key}`);
+  });
 
   function safeLocationProperties() {
     const route = Rowset.posthogPageviewContext?.route || "";
@@ -78,13 +76,8 @@
         return;
       }
 
-      const value = String(sanitized[property] || "").trim();
-      if (
-        !safeCampaignProperties.has(property) ||
-        !value ||
-        value.length > 100 ||
-        !campaignValuePattern.test(value)
-      ) {
+      const value = safeCampaignValue(sanitized[property]);
+      if (!safeCampaignProperties.has(property) || !value) {
         delete sanitized[property];
       } else {
         sanitized[property] = value;

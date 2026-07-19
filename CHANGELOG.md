@@ -29,6 +29,8 @@ deployment or release cut date.
 - Added privacy-safe PostHog lifecycle tracking for returning logins and committed account deletions.
 
 ### Fixed
+- Synchronized privacy-bounded first-touch and current-touch campaign properties to PostHog people
+  and backend conversion events after identification and tagged HTMX navigation.
 - Made Docker-backed tests and the local CI path run from a fresh checkout without `.env`, using deterministic test-only settings and per-checkout Compose isolation.
 
 ### Fixed

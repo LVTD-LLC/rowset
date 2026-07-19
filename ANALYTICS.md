@@ -104,13 +104,19 @@ not divide raw request counts by signups or describe a user-agent category as ve
 
 Browser capture is opted out by default. A visitor must choose **Allow analytics** before Rowset
 captures a pageview or CTA. Consent is stored for one year. Declining removes Rowset's attribution
-cookie. Only `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, the normalized
-landing route, and referring domain are retained. Click IDs such as `gclid` and `fbclid` are
+cookie. Only `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `campaign_id`,
+the normalized landing route, referring domain, and the external referrer origin are retained.
+Referrer paths and query strings are discarded. Click IDs such as `gclid` and `fbclid` are
 intentionally excluded.
 
-The sanitized first and latest touch are copied to the profile at signup. Backend activation and
-revenue events then carry the latest `utm_*` properties and `initial_utm_*` properties, so campaign
-reporting does not depend on a browser event arriving at the same time.
+After identification, the sanitized first and latest touch are synchronized to the PostHog person
+as `first_touch_*` and `current_touch_*` properties. The first touch is set once; a later tagged
+navigation replaces the current touch, while an untagged signup or authentication navigation does
+not erase it. For an authenticated and consenting visitor, the browser also sends a same-origin,
+CSRF-protected synchronization request after attribution changes. The server reads and sanitizes
+its own attribution cookie rather than accepting attribution JSON from the request. Backend
+activation and revenue events then carry the latest campaign properties and their `initial_*`
+equivalents, so campaign reporting does not depend on a browser event arriving at the same time.
 
 ## PostHog project setup
 
@@ -121,6 +127,8 @@ reporting does not depend on a browser event arriving at the same time.
 - Exclude `environment != prod`, staff traffic, and known office/VPN traffic in PostHog project
   filters before using dashboards for marketing decisions.
 - Build funnels using the events above and break down by `utm_source`, `utm_medium`, and
-  `utm_campaign`. Use `initial_utm_*` for acquisition and unprefixed `utm_*` for latest-touch views.
+  `utm_campaign`. Use `initial_*` event properties or `first_touch_*` person properties for
+  acquisition, and unprefixed event properties or `current_touch_*` person properties for the
+  latest touch. Use `campaign_id` when the campaign platform supplies a stable campaign identifier.
 - Validate a campaign with a unique test UTM through consent, signup, agent setup, and checkout
   before launching spend.
