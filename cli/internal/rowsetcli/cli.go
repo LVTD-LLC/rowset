@@ -30,6 +30,7 @@ type IO struct {
 type config struct {
 	apiBase   string
 	apiKeyEnv string
+	compact   bool
 }
 
 type requestOptions struct {
@@ -71,6 +72,7 @@ func Run(ctx context.Context, streams IO, args []string) error {
 	global.SetOutput(io.Discard)
 	global.StringVar(&cfg.apiBase, "api-base", cfg.apiBase, "Rowset REST API base URL")
 	global.StringVar(&cfg.apiKeyEnv, "api-key-env", cfg.apiKeyEnv, "environment variable containing the Rowset API key")
+	global.BoolVar(&cfg.compact, "compact", false, "write JSON responses on one line")
 	showHelp := global.Bool("help", false, "show help")
 	showVersion := global.Bool("version", false, "show version")
 	if err := global.Parse(args); err != nil {
@@ -83,6 +85,9 @@ func Run(ctx context.Context, streams IO, args []string) error {
 	if *showHelp || len(global.Args()) == 0 {
 		printHelp(streams.Stdout)
 		return nil
+	}
+	if helpArgs, ok := requestedHelp(global.Args()); ok {
+		return printCommandHelp(streams.Stdout, helpArgs)
 	}
 
 	return dispatch(ctx, streams, cfg, global.Args())
@@ -119,8 +124,7 @@ func dispatch(ctx context.Context, streams IO, cfg config, args []string) error 
 	case "request":
 		return runRawRequest(ctx, streams, cfg, args[1:])
 	case "help":
-		printHelp(streams.Stdout)
-		return nil
+		return printCommandHelp(streams.Stdout, args[1:])
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
@@ -1209,7 +1213,7 @@ func doRequest(
 		_, err = streams.Stdout.Write(responseBody)
 		return err
 	}
-	formatted := prettyJSON(responseBody)
+	formatted := formatJSON(responseBody, cfg.compact)
 	_, err = streams.Stdout.Write(formatted)
 	return err
 }
@@ -1374,9 +1378,15 @@ func parseMaybeJSON(raw string, flagName string) (any, error) {
 	return raw, nil
 }
 
-func prettyJSON(data []byte) []byte {
+func formatJSON(data []byte, compact bool) []byte {
 	var formatted bytes.Buffer
-	if err := json.Indent(&formatted, data, "", "  "); err != nil {
+	var err error
+	if compact {
+		err = json.Compact(&formatted, data)
+	} else {
+		err = json.Indent(&formatted, data, "", "  ")
+	}
+	if err != nil {
 		if len(data) > 0 && data[len(data)-1] != '\n' {
 			return append(data, '\n')
 		}
@@ -1384,32 +1394,4 @@ func prettyJSON(data []byte) []byte {
 	}
 	formatted.WriteByte('\n')
 	return formatted.Bytes()
-}
-
-func printHelp(w io.Writer) {
-	_, _ = fmt.Fprint(w, `rowset is the Rowset REST CLI.
-
-Configuration:
-  ROWSET_API_BASE   Rowset REST API base (default https://rowset.lvtd.dev/api/)
-  ROWSET_API_KEY    Rowset API key sent as Authorization: Bearer <key>
-
-Global flags:
-  --api-base URL       override ROWSET_API_BASE
-  --api-key-env NAME   env var containing the API key (default ROWSET_API_KEY)
-
-Commands:
-  capabilities [--topic TOPIC ...] [--include-use-cases] [--full]
-  user info
-  api-key create
-  feedback submit
-  project list|search|create|get|update|metadata|archive|section
-  dataset list|search|archived|get|create|metadata|column-types|project|archive|restore
-  preview update
-  column add|rename|drop|reorder
-  relationship list|create|resolve|delete
-  row list|search|search-dataset|get|get-by-index|create|update|update-by-index|delete
-  asset attach|get|content
-  export DATASET_KEY csv|jsonl|xlsx|sqlite
-  request METHOD PATH
-`)
 }

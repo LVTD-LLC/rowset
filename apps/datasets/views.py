@@ -1351,6 +1351,15 @@ def _row_filter_fields(
         column_type = column["type"]
         param_name = f"{ROW_FILTER_PARAM_PREFIX}{index}"
         operator_param_name = f"{ROW_FILTER_OPERATOR_PARAM_PREFIX}{index}"
+        value = request.GET.get(param_name, "").strip()
+        if column_type == DatasetColumnType.CHOICE:
+            selected_values = list(
+                dict.fromkeys(
+                    item.strip() for item in request.GET.getlist(param_name) if item.strip()
+                )
+            )
+        else:
+            selected_values = [value] if value else []
         selected_operator = normalize_dataset_row_filter_operator(
             column_type,
             request.GET.get(operator_param_name),
@@ -1365,7 +1374,8 @@ def _row_filter_fields(
                 "type_label": column["type_label"],
                 "description": (column["description"] if include_column_descriptions else ""),
                 "param_name": param_name,
-                "value": request.GET.get(param_name, "").strip(),
+                "value": selected_values[0] if selected_values else value,
+                "selected_values": selected_values,
                 "operator": selected_operator,
                 "default_operator": default_operator,
                 "operator_param_name": operator_param_name,
@@ -1446,15 +1456,16 @@ def _dataset_row_query_context(
         include_column_descriptions=include_column_descriptions,
         columns=columns,
     )
-    filters = {
-        str(field["header"]): str(field["value"])
-        for field in filter_fields
-        if str(field["value"]).strip()
-    }
+    filters = {}
+    for field in filter_fields:
+        if field["is_choice"] and field["selected_values"]:
+            filters[str(field["header"])] = field["selected_values"]
+        elif str(field["value"]).strip():
+            filters[str(field["header"])] = str(field["value"])
     filter_operators = {
         str(field["header"]): str(field["operator"])
         for field in filter_fields
-        if str(field["value"]).strip()
+        if field["selected_values"]
     }
 
     queryset, row_query = apply_dataset_row_query(

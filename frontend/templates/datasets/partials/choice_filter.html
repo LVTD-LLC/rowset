@@ -1,0 +1,67 @@
+<div
+  x-data="choiceFilter"
+  class="relative"
+  @keydown.escape="if (open) { $event.stopPropagation(); close(true) }"
+>
+  <button
+    x-ref="trigger"
+    id="{{ control_id }}-{{ choice_filter.param_name }}"
+    type="button"
+    class="fb-focus flex min-h-10 w-full items-center justify-between gap-2 rounded-md border border-slate-300 bg-white py-2 pr-2 pl-3 text-left text-base text-slate-900 shadow-sm hover:border-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:shadow-none dark:hover:border-slate-600 sm:text-sm"
+    aria-label="Filter {{ choice_filter.header }} by choices"
+    :aria-expanded="open.toString()"
+    aria-controls="{{ control_id }}-choices-{{ choice_filter.index }}"
+    @click="toggle()"
+  >
+    <span class="min-w-0 truncate" x-text="summary()">
+      {% if choice_filter.selected_values|length == 1 %}
+        {{ choice_filter.selected_values.0 }}
+      {% elif choice_filter.selected_values %}
+        {{ choice_filter.selected_values|length }} choices selected
+      {% else %}
+        Any choice
+      {% endif %}
+    </span>
+    <span class="shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true">▾</span>
+  </button>
+
+  <div
+    x-cloak
+    x-show="open"
+    class="absolute left-0 z-30 w-full min-w-52 overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-slate-950/10 dark:bg-slate-900 dark:shadow-none dark:ring-white/10 {% if placement == 'responsive' %}mt-1 sm:bottom-full sm:mt-0 sm:mb-1{% else %}mt-1{% endif %}"
+    @click.outside="close()"
+  >
+    <fieldset>
+      <legend class="sr-only">Select {{ choice_filter.header }} choices</legend>
+      <ul
+        id="{{ control_id }}-choices-{{ choice_filter.index }}"
+        class="max-h-56 overflow-y-auto p-1"
+      >
+        {% for choice in choice_filter.choices %}
+        <li>
+          <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-base text-slate-700 hover:bg-slate-950/5 dark:text-slate-200 dark:hover:bg-white/10 sm:py-1.5 sm:text-sm">
+            <input
+              type="checkbox"
+              name="{{ choice_filter.param_name }}"
+              value="{{ choice }}"
+              {% if choice in choice_filter.selected_values %}checked{% endif %}
+              x-model="selected"
+              class="fb-focus size-5 shrink-0 rounded border-slate-300 text-emerald-600 dark:border-slate-600 dark:bg-slate-950 sm:size-4"
+            >
+            <span class="min-w-0 break-words">{{ choice }}</span>
+          </label>
+        </li>
+        {% empty %}
+          <li class="px-2 py-2 text-base text-slate-500 dark:text-slate-400 sm:text-sm">No choices configured.</li>
+        {% endfor %}
+      </ul>
+    </fieldset>
+    <div class="border-t border-slate-950/10 p-2 dark:border-white/10" x-show="selected.length > 0">
+      <button
+        type="button"
+        class="fb-focus relative rounded-md px-2 py-1 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
+        @click="clear()"
+      ><span class="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden" aria-hidden="true"></span>Clear choices</button>
+    </div>
+  </div>
+</div>

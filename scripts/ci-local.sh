@@ -4,12 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ ! -f .env ]]; then
-  printf "Missing .env. Run: cp .env.example .env\n" >&2
-  exit 1
-fi
-
-COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$ROOT")}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-rowset-test-$(printf '%s' "$ROOT" | cksum | cut -d ' ' -f 1)}"
+export COMPOSE_PROJECT_NAME
 COMPOSE_TEST=(docker compose -f docker-compose-local.yml -f docker-compose-test.yml)
 CHECK_PYTHON_RUN="${COMPOSE_TEST[*]} run --rm --no-deps backend python"
 PYTEST_RUN="${COMPOSE_TEST[*]} run --rm --no-deps backend pytest"
@@ -67,7 +63,10 @@ run_step "Reset local test database" reset_test_database
 run_step "Start backend test dependencies" "${COMPOSE_TEST[@]}" up -d db redis
 run_step "Migration check" make migrations-check CHECK_PYTHON_RUN="$CHECK_PYTHON_RUN"
 run_step "Django system checks" make django-check CHECK_PYTHON_RUN="$CHECK_PYTHON_RUN"
-run_step "Project and deployment tests" make test PYTEST_RUN="$PYTEST_RUN" -- rowset/tests -q
+run_step "Project and deployment tests" \
+  make test PYTEST_RUN="$PYTEST_RUN" -- rowset/tests -q
+run_step "Agent interface evaluation tests" \
+  make test PYTEST_RUN="$PYTEST_RUN" -- evaluations -q
 run_step "Core and pages tests" make test PYTEST_RUN="$PYTEST_RUN" -- apps/core apps/pages -q
 run_step "Dataset tests" make test PYTEST_RUN="$PYTEST_RUN" -- apps/datasets -q
 run_step "API tests" make test PYTEST_RUN="$PYTEST_RUN" -- apps/api -q

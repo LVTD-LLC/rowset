@@ -839,6 +839,51 @@
       },
     }));
 
+    Alpine.data("choiceFilter", () => ({
+      open: false,
+      selected: [],
+
+      init() {
+        this.selected = Array.from(
+          this.$root.querySelectorAll("input[type='checkbox']:checked"),
+          (input) => input.value,
+        );
+      },
+
+      summary() {
+        if (this.selected.length === 0) {
+          return "Any choice";
+        }
+        if (this.selected.length === 1) {
+          return this.selected[0];
+        }
+        return `${this.selected.length} choices selected`;
+      },
+
+      toggle() {
+        this.open = !this.open;
+        if (this.open) {
+          this.$nextTick(() => {
+            this.$root.querySelector("input[type='checkbox']")?.focus();
+          });
+        }
+      },
+
+      close(restoreFocus = false) {
+        if (!this.open) {
+          return;
+        }
+        this.open = false;
+        if (restoreFocus) {
+          this.$nextTick(() => this.$refs.trigger?.focus());
+        }
+      },
+
+      clear() {
+        this.selected = [];
+      },
+    }));
+
     Alpine.data("rowColumnMenu", () => ({
       repositionFrame: null,
       triggerElement: null,
