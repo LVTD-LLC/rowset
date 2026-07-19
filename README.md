@@ -807,6 +807,10 @@ The supported test path is Docker-backed:
 make test
 ```
 
+Tests use checked-in, non-production defaults and an isolated Compose project,
+so a fresh checkout can run them without creating `.env`. Create `.env` before
+starting the development stack with `make serve`.
+
 Run focused tests while iterating:
 
 ```bash
