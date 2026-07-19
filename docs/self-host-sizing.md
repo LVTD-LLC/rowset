@@ -15,14 +15,21 @@ the empty-stack baseline.
 
 Minimum and tested are intentionally the same. We have not validated a smaller host and do not
 publish one as supported. Provider kernels report slightly less than advertised capacity, so the
-machine thresholds are 3.75 billion RAM bytes and 38 billion disk bytes for a nominal 4 GB / 40 GB
-host. The recommended machine thresholds similarly allow normal provider and filesystem overhead
-on an 8 GB / 80 GB host.
+machine thresholds are 3.75 billion RAM bytes and 38 billion total-disk-capacity bytes for a nominal
+4 GB / 40 GB host. The recommended machine thresholds similarly allow normal provider and
+filesystem overhead on an 8 GB / 80 GB host.
+
+Total capacity and free space are separate requirements. A supported minimum host must also have at
+least 30 billion free bytes when preflight runs, after Docker and the other host prerequisites are
+installed. The July 2026 Hetzner minimum-profile check measured 39,964,635,136 total bytes and
+36,244,299,776 free bytes at that point. The free-space floor still leaves room for the roughly 5 GB
+clean-install footprint measured below while rejecting a correctly sized host whose disk is already
+too full to install Rowset safely.
 
 `deployment/self-host/requirements.json` is the source of truth for automation. It contains the
-minimum, tested, and recommended profiles, supported OS versions and architectures, and the startup
-timeout. The future preflight command should read that file rather than copy these values into shell
-code.
+minimum, tested, and recommended capacity profiles, the operational free-space floor, supported OS
+versions and architectures, and the startup timeout. Preflight and benchmark automation read that
+file rather than copying these values into shell code.
 
 ## Supported platform
 

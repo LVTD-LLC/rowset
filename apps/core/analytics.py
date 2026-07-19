@@ -20,6 +20,10 @@ ROWSET_SUBSCRIPTION_STARTED = "rowset_subscription_started"
 ROWSET_SUBSCRIPTION_CANCELLATION_REQUESTED = "rowset_subscription_cancellation_requested"
 ROWSET_SUBSCRIPTION_ENDED = "rowset_subscription_ended"
 ROWSET_PAYMENT_FAILED = "rowset_payment_failed"
+ROWSET_TRIAL_REWARD_CLAIMED = "rowset_trial_reward_claimed"
+ROWSET_ACCOUNT_DELETED = "rowset_account_deleted"
+ROWSET_AGENT_API_KEY_REVOKED = "rowset_agent_api_key_revoked"
+ROWSET_DATASET_EXPORTED = "rowset_dataset_exported"
 
 
 def agent_api_key_tracking_properties(agent_api_key: AgentApiKey | None) -> dict[str, Any]:

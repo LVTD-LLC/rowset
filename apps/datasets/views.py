@@ -43,6 +43,7 @@ from apps.api.services import (
     update_profile_project,
     update_profile_project_metadata,
 )
+from apps.core.analytics import ROWSET_DATASET_EXPORTED, track_activation_event
 from apps.core.services import get_or_create_profile_for_user
 from apps.datasets.choices import DatasetColumnType
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project, ProjectSection
@@ -2821,6 +2822,12 @@ def dataset_export(request, dataset_key, export_format):
         profile=request.user.profile,
     )
 
+    track_activation_event(
+        request.user.profile,
+        ROWSET_DATASET_EXPORTED,
+        {"export_format": export_format, "row_count": dataset.row_count},
+        source_function="dataset_export",
+    )
     return _dataset_export_response(dataset, export_format)
 
 

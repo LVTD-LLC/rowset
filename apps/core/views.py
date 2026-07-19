@@ -41,7 +41,14 @@ from apps.core.agent_skill import (
     load_rowset_skill_markdown,
     load_rowset_use_cases_skill_markdown,
 )
-from apps.core.analytics import ROWSET_CHECKOUT_STARTED, track_activation_event
+from apps.core.analytics import (
+    ROWSET_ACCOUNT_DELETED,
+    ROWSET_AGENT_API_KEY_REVOKED,
+    ROWSET_AGENT_SETUP_PROMPT_COPIED,
+    ROWSET_CHECKOUT_STARTED,
+    ROWSET_TRIAL_REWARD_CLAIMED,
+    track_activation_event,
+)
 from apps.core.choices import TrialReward
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
@@ -370,6 +377,14 @@ def claim_trial_reward_view(request, reward):
         result = None
         claim_error = str(exc)
 
+    if result and result.created:
+        track_activation_event(
+            request.user.profile,
+            ROWSET_TRIAL_REWARD_CLAIMED,
+            {"reward": reward.value, "days_added": result.claim.days},
+            source_function="claim_trial_reward_view",
+        )
+
     if not request.htmx:
         if claim_error:
             messages.error(request, claim_error)
@@ -439,6 +454,12 @@ def agent_api_key_setup_prompt(request, agent_api_key_uuid):
                 api_key=api_key,
             )
         }
+    )
+    track_activation_event(
+        profile,
+        ROWSET_AGENT_SETUP_PROMPT_COPIED,
+        {"agent_api_key_id": agent_api_key.id},
+        source_function="agent_api_key_setup_prompt",
     )
     response["Cache-Control"] = "no-store"
     return response
@@ -520,6 +541,12 @@ def revoke_agent_api_key_view(request, agent_api_key_uuid):
         agent_api_key.revoked_at = timezone.now()
         agent_api_key.save(update_fields=["revoked_at", "updated_at"])
         messages.success(request, f"Revoked {agent_api_key.name}.")
+        track_activation_event(
+            request.user.profile,
+            ROWSET_AGENT_API_KEY_REVOKED,
+            {"agent_api_key_id": agent_api_key.id},
+            source_function="revoke_agent_api_key_view",
+        )
     else:
         messages.info(request, f"{agent_api_key.name} is already revoked.")
 
@@ -601,6 +628,13 @@ def delete_account(request):
         return redirect("settings")
 
     user_id = request.user.id
+    profile = request.user.profile
+
+    track_activation_event(
+        profile,
+        ROWSET_ACCOUNT_DELETED,
+        source_function="delete_account",
+    )
 
     # Ensure we log the user out and remove data in a single flow.
     with transaction.atomic():

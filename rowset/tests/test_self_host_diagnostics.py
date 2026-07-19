@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -65,7 +66,9 @@ def test_requirement_checker_exposes_structured_failures_for_each_host_constrain
             "1",
             "--memory-bytes",
             "1000",
-            "--disk-bytes",
+            "--disk-capacity-bytes",
+            "1000",
+            "--disk-free-bytes",
             "1000",
             "--json",
         ],
@@ -81,11 +84,79 @@ def test_requirement_checker_exposes_structured_failures_for_each_host_constrain
         "ARCH",
         "CPU",
         "MEMORY",
-        "DISK",
+        "DISK_CAPACITY",
+        "DISK_FREE",
     ]
     assert all(not check["passed"] for check in payload["checks"])
     assert payload["health_timeout_seconds"] == 180
     assert "1000" not in result.stderr
+
+
+def test_preflight_checks_total_capacity_and_free_space_separately(monkeypatch):
+    diagnostics = _load_diagnostics()
+    monkeypatch.setattr(diagnostics, "_os_release", lambda: ("ubuntu", "24.04"))
+    monkeypatch.setattr(diagnostics, "_host_platform", lambda: "linux/amd64")
+    monkeypatch.setattr(diagnostics.os, "cpu_count", lambda: 2)
+    monkeypatch.setattr(diagnostics, "_memory_bytes", lambda: 3_750_000_000)
+    def disk_usage(path):
+        assert path == Path("/var/lib/docker")
+        return SimpleNamespace(total=39_964_635_136, free=36_244_299_776)
+
+    monkeypatch.setattr(diagnostics.shutil, "disk_usage", disk_usage)
+
+    def respond(command, _environment):
+        if command[:3] == ["docker", "info", "--format"]:
+            return diagnostics.CommandResult(0, "/var/lib/docker\n")
+        assert command[command.index("--disk-capacity-bytes") + 1] == "39964635136"
+        assert command[command.index("--disk-free-bytes") + 1] == "36244299776"
+        checks = [
+            {"id": check_id, "passed": True, "message": "ok"}
+            for check_id in ("OS", "ARCH", "CPU", "MEMORY", "DISK_CAPACITY", "DISK_FREE")
+        ]
+        return diagnostics.CommandResult(0, json.dumps({"checks": checks}))
+
+    checks = diagnostics._requirement_checks(_REPO_ROOT, _FakeRunner(respond))
+
+    assert [check.id for check in checks] == [
+        "PREFLIGHT_OS",
+        "PREFLIGHT_ARCH",
+        "PREFLIGHT_CPU",
+        "PREFLIGHT_MEMORY",
+        "PREFLIGHT_DISK_CAPACITY",
+        "PREFLIGHT_DISK_FREE",
+    ]
+    assert all(check.status == "PASS" for check in checks)
+
+
+def test_preflight_fails_when_docker_storage_cannot_be_measured(monkeypatch):
+    diagnostics = _load_diagnostics()
+    monkeypatch.setattr(diagnostics, "_os_release", lambda: ("ubuntu", "24.04"))
+    monkeypatch.setattr(diagnostics, "_host_platform", lambda: "linux/amd64")
+    monkeypatch.setattr(diagnostics.os, "cpu_count", lambda: 2)
+    monkeypatch.setattr(diagnostics, "_memory_bytes", lambda: 3_750_000_000)
+    monkeypatch.setattr(
+        diagnostics.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=39_964_635_136, free=36_244_299_776),
+    )
+
+    def respond(command, _environment):
+        if command[:3] == ["docker", "info", "--format"]:
+            return diagnostics.CommandResult(1)
+        checks = [
+            {"id": check_id, "passed": True, "message": "ok"}
+            for check_id in ("OS", "ARCH", "CPU", "MEMORY", "DISK_CAPACITY", "DISK_FREE")
+        ]
+        return diagnostics.CommandResult(0, json.dumps({"checks": checks}))
+
+    checks = diagnostics._requirement_checks(_REPO_ROOT, _FakeRunner(respond))
+
+    assert checks[0] == diagnostics.Check(
+        "PREFLIGHT_DOCKER_STORAGE",
+        "FAIL",
+        "Docker storage filesystem could not be measured",
+        "Start the local Docker Engine and make its DockerRootDir readable.",
+    )
 
 
 def test_renderer_emits_bounded_ndjson_without_secret_values():
