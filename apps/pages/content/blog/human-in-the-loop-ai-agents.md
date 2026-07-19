@@ -224,6 +224,10 @@ The guide to [idempotent AI-agent updates](/blog/idempotent-ai-agent-updates) ex
 
 Rowset's signed-in dashboard records recent dataset changes with actor labels and timestamps; row updates include before-and-after field details ([Rowset source](https://github.com/LVTD-LLC/rowset/blob/main/apps/api/row_mutations.py)). An actor label is the API-key name or generic `Account`, not verified proof of a natural person's identity. That history is useful for investigating a workflow, but it is not rollback, tamper-evident logging, nonrepudiation, or a compliance-grade audit system. It is currently a dashboard surface rather than an MCP or REST history endpoint.
 
+The [AI agent audit trail guide](/blog/ai-agent-audit-trail) shows how to join
+that business-state history to runtime traces and authorization records while
+keeping Rowset's operational-history limits explicit.
+
 ## How agent frameworks pause and resume
 
 The storage model is portable even though runtimes implement the interrupt differently.

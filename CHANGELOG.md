@@ -16,6 +16,11 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-19
+
+### Added
+- Added an implementation guide for AI agent audit trails that separates runtime traces, authorization decisions, and business-state changes while documenting Rowset's operational-history limits.
+
 ## 2026-07-18
 
 ### Added

@@ -13,6 +13,7 @@ keep structured data useful.
 - [How to structure dataset instructions for AI agents]({{ site_url }}/blog/structure-dataset-instructions-ai-agents.md)
 - [How to model relationships between agent-managed datasets]({{ site_url }}/blog/relationship-modeling-agent-datasets.md)
 - [Human-in-the-loop AI agents: a practical workflow]({{ site_url }}/blog/human-in-the-loop-ai-agents.md)
+- [AI agent audit trail: what to log and how to build it]({{ site_url }}/blog/ai-agent-audit-trail.md)
 - [Best Airtable alternatives for AI-agent-managed datasets]({{ site_url }}/blog/airtable-alternatives.md)
 - [Best Baserow alternatives for AI-agent-managed datasets]({{ site_url }}/blog/baserow-alternatives.md)
 - [Best Google Sheets alternatives for AI-agent-managed datasets]({{ site_url }}/blog/google-sheets-alternatives.md)
