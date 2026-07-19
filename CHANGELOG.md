@@ -20,6 +20,7 @@ deployment or release cut date.
 
 ### Added
 - Added an implementation guide for AI agent audit trails that separates runtime traces, authorization decisions, and business-state changes while documenting Rowset's operational-history limits.
+- Added a repeatable MCP-versus-CLI agent evaluation harness with a 24-task corpus, cross-client result contract, safety and efficiency thresholds, and baseline regression reports.
 
 ## 2026-07-18
 
