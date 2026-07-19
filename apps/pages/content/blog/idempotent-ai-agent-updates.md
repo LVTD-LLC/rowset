@@ -197,6 +197,11 @@ Finish every mutation loop with a read. Return the row key, the fields checked, 
 
 Rowset records authenticated row mutation history, including changed-field metadata. That history helps answer who changed a row and which fields moved, but it is not a replacement for final-state verification. Audit history explains the path; the keyed row answers what is true now.
 
+For workflows that also need model/tool traces, authorization decisions, and
+cross-system outcomes, use the [AI agent audit trail
+guide](/blog/ai-agent-audit-trail) to join runtime, approval, and state-change
+evidence without copying sensitive payloads into one log.
+
 For a complete worked dataset, use the [agent task board](/use-cases/agent-task-board) and apply the retry contract above to every status transition. If your runtime uses HTTP rather than MCP, the [Dataset API setup guide](/blog/connect-ai-agent-to-dataset-api) covers bearer-key handling and dataset inspection.
 
 ## Common idempotency mistakes in agent workflows

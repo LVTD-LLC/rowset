@@ -80,6 +80,7 @@
 | `/blog/idempotent-ai-agent-updates` | https://rowset.lvtd.dev/blog/idempotent-ai-agent-updates | Make AI-agent data updates idempotent | retries, reconciliation |
 | `/blog/share-ai-agent-data-safely` | https://rowset.lvtd.dev/blog/share-ai-agent-data-safely | Share AI-agent data safely | access control, exports, public previews |
 | `/blog/human-in-the-loop-ai-agents` | https://rowset.lvtd.dev/blog/human-in-the-loop-ai-agents | Human-in-the-Loop AI Agents: A Practical Workflow | human-in-the-loop AI agents, AI agent approval workflow, agent review queue, human oversight for agents, durable approval records |
+| `/blog/ai-agent-audit-trail` | https://rowset.lvtd.dev/blog/ai-agent-audit-trail | AI Agent Audit Trail: What to Log and How to Build It | AI agent audit trail, AI agent audit logs, trace decision and change evidence, agent tool-call logging, agent auditability guide |
 
 ## Shipped SEO Sprint Pages
 
@@ -158,3 +159,8 @@ These routes return 404 in production and must not be selected as internal-link 
 - choose a Rowset sharing path
 - private agent access or public preview
 - scoped dataset access for AI agents
+- AI agent audit trail
+- AI agent audit logs
+- trace, decision, and state-change evidence
+- agent tool-call logging
+- auditability for AI agent workflows
