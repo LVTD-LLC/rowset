@@ -64,3 +64,78 @@ def test_critical_conversion_event_flushes_before_worker_task_completes(profile,
     tasks.track_activation_event(profile.id, "rowset_signup_completed")
 
     assert flushed == [5]
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_track_account_deleted_event_uses_snapshot_without_profile_lookup(monkeypatch):
+    captures = []
+    flushed = []
+    monkeypatch.setattr(
+        tasks.posthog,
+        "capture",
+        lambda event, **kwargs: captures.append((event, kwargs)),
+    )
+    monkeypatch.setattr(
+        tasks.posthog,
+        "flush",
+        lambda *, timeout_seconds: flushed.append(timeout_seconds),
+    )
+
+    result = tasks.track_account_deleted_event(
+        profile_id=42,
+        current_state="signed_up",
+        session_id="session-123",
+    )
+
+    assert result == "Tracked account deletion event for profile 42"
+    assert captures == [
+        (
+            "rowset_account_deleted",
+            {
+                "distinct_id": "42",
+                "properties": {
+                    "event_version": 1,
+                    "environment": settings.ENVIRONMENT,
+                    "profile_id": 42,
+                    "current_state": "signed_up",
+                    "$session_id": "session-123",
+                },
+            },
+        )
+    ]
+    assert flushed == [5]
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_track_user_logged_in_event_omits_private_account_properties(monkeypatch):
+    captures = []
+    monkeypatch.setattr(
+        tasks.posthog,
+        "capture",
+        lambda event, **kwargs: captures.append((event, kwargs)),
+    )
+
+    result = tasks.track_user_logged_in_event(
+        profile_id=42,
+        current_state="signed_up",
+        login_method="AuthenticationBackend",
+        session_id="session-123",
+    )
+
+    assert result == "Tracked login event for profile 42"
+    assert captures == [
+        (
+            "rowset_user_logged_in",
+            {
+                "distinct_id": "42",
+                "properties": {
+                    "event_version": 1,
+                    "environment": settings.ENVIRONMENT,
+                    "profile_id": 42,
+                    "current_state": "signed_up",
+                    "login_method": "AuthenticationBackend",
+                    "$session_id": "session-123",
+                },
+            },
+        )
+    ]

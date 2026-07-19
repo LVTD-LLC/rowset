@@ -41,7 +41,11 @@ from apps.core.agent_skill import (
     load_rowset_skill_markdown,
     load_rowset_use_cases_skill_markdown,
 )
-from apps.core.analytics import ROWSET_CHECKOUT_STARTED, track_activation_event
+from apps.core.analytics import (
+    ROWSET_CHECKOUT_STARTED,
+    track_account_deleted_event,
+    track_activation_event,
+)
 from apps.core.attribution import (
     ANALYTICS_CONSENT_COOKIE,
     ATTRIBUTION_COOKIE,
@@ -617,10 +621,16 @@ def delete_account(request):
         return redirect("settings")
 
     user_id = request.user.id
-
     # Ensure we log the user out and remove data in a single flow.
     with transaction.atomic():
         user = request.user
+        track_account_deleted_event(
+            user.profile,
+            session_id=(
+                request.headers.get("X-PostHog-Session-ID")
+                or request.POST.get("posthog_session_id")
+            ),
+        )
         logout(request)
         user.delete()
 

@@ -26,6 +26,7 @@ deployment or release cut date.
 
 ### Changed
 - Defined privacy-safe public dataset identity, meaningful engagement, canonical metric sources, and deterministic human, agent, crawler, preview, API, and unknown traffic categories for marketing analytics.
+- Added privacy-safe PostHog lifecycle tracking for returning logins and committed account deletions.
 
 ### Fixed
 - Synchronized privacy-bounded first-touch and current-touch campaign properties to PostHog people

@@ -3,6 +3,7 @@ import posthog
 import requests
 from django.conf import settings
 
+from apps.core.analytics import ROWSET_ACCOUNT_DELETED, ROWSET_USER_LOGGED_IN
 from apps.core.attribution import attribution_event_properties
 from apps.core.models import Feedback, Profile
 from rowset.utils import get_rowset_logger
@@ -170,6 +171,73 @@ def track_activation_event(
 
     logger.info("posthog.activation.completed", **base_log_data, outcome="success")
     return f"Tracked activation event {event_name} for profile {profile_id}"
+
+
+def track_account_deleted_event(
+    profile_id: int,
+    current_state: str,
+    session_id: str | None = None,
+) -> str:
+    """Capture deletion after commit using values snapshotted before the profile was removed."""
+    if not settings.POSTHOG_API_KEY:
+        return "PostHog API key not found."
+
+    properties = {
+        "event_version": 1,
+        "environment": settings.ENVIRONMENT,
+        "profile_id": profile_id,
+        "current_state": current_state,
+        **({"$session_id": session_id} if session_id else {}),
+    }
+    posthog.capture(
+        ROWSET_ACCOUNT_DELETED,
+        distinct_id=str(profile_id),
+        properties=properties,
+    )
+    posthog.flush(timeout_seconds=5)
+    logger.info(
+        "posthog.activation.completed",
+        profile_id=profile_id,
+        event_name=ROWSET_ACCOUNT_DELETED,
+        properties_count=0,
+        source_function="delete_account",
+        outcome="success",
+    )
+    return f"Tracked account deletion event for profile {profile_id}"
+
+
+def track_user_logged_in_event(
+    profile_id: int,
+    current_state: str,
+    login_method: str,
+    session_id: str | None = None,
+) -> str:
+    """Capture a login event without sending email or username person properties."""
+    if not settings.POSTHOG_API_KEY:
+        return "PostHog API key not found."
+
+    properties = {
+        "event_version": 1,
+        "environment": settings.ENVIRONMENT,
+        "profile_id": profile_id,
+        "current_state": current_state,
+        "login_method": login_method,
+        **({"$session_id": session_id} if session_id else {}),
+    }
+    posthog.capture(
+        ROWSET_USER_LOGGED_IN,
+        distinct_id=str(profile_id),
+        properties=properties,
+    )
+    logger.info(
+        "posthog.activation.completed",
+        profile_id=profile_id,
+        event_name=ROWSET_USER_LOGGED_IN,
+        properties_count=1,
+        source_function="track_user_logged_in signal",
+        outcome="success",
+    )
+    return f"Tracked login event for profile {profile_id}"
 
 
 def track_state_change(
