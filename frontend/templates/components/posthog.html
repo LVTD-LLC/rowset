@@ -12,6 +12,7 @@
     };
     window.Rowset.posthogEnvironment = "{{ posthog_environment|escapejs }}";
     </script>
+    <script src="{% static 'js/posthog-attribution.js' %}"></script>
     <script src="{% static 'js/posthog-privacy.js' %}"></script>
     <script>
     !(function (t, e) {
@@ -71,13 +72,6 @@
       opt_out_capturing_by_default: true,
       properties_string_max_length: 200,
     });
-    {% if posthog_distinct_id %}
-      if (posthog.get_distinct_id() !== "{{ posthog_distinct_id|escapejs }}") {
-        posthog.identify("{{ posthog_distinct_id|escapejs }}", {
-          email: "{{ posthog_user_email|escapejs }}",
-        });
-      }
-    {% endif %}
     posthog.onSessionId(function (sessionId) {
       window.Rowset = window.Rowset || {};
       window.Rowset.posthogSessionId = sessionId;

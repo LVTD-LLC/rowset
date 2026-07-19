@@ -4,6 +4,10 @@ import test from "node:test";
 import vm from "node:vm";
 
 const source = fs.readFileSync(new URL("./posthog-pageviews.js", import.meta.url), "utf8");
+const attributionSource = fs.readFileSync(
+  new URL("./posthog-attribution.js", import.meta.url),
+  "utf8",
+);
 const privacySource = fs.readFileSync(new URL("./posthog-privacy.js", import.meta.url), "utf8");
 
 function loadPageviews({
@@ -18,6 +22,7 @@ function loadPageviews({
   referrer = "https://news.ycombinator.com/item?id=48920229&token=secret",
 } = {}) {
   const captures = [];
+  const attributionTouches = [];
   const documentListeners = new Map();
   const bodyListeners = new Map();
   const location = new URL(href);
@@ -54,6 +59,9 @@ function loadPageviews({
   const window = {
     DOMParser,
     Rowset: {
+      persistMarketingAttribution(touch) {
+        attributionTouches.push(touch);
+      },
       posthogPageviewContext: {
         contentGroup: dataset.posthogContentGroup,
         route: dataset.posthogRoute,
@@ -69,18 +77,19 @@ function loadPageviews({
   };
   const context = vm.createContext({ document, URL, URLSearchParams, window });
 
+  vm.runInContext(attributionSource, context);
   if (loadPrivacy) {
     vm.runInContext(privacySource, context);
   }
   vm.runInContext(source, context);
 
-  return { body, bodyListeners, captures, documentListeners, window };
+  return { attributionTouches, body, bodyListeners, captures, documentListeners, window };
 }
 
 test("captures one privacy-safe pageview for an eligible full page", () => {
-  const { captures } = loadPageviews({
+  const { attributionTouches, captures } = loadPageviews({
     href:
-      "https://rowset.example/pricing?utm_source=hacker-news&utm_campaign=launch%202026&code=secret",
+      "https://rowset.example/pricing?utm_source=hacker-news&utm_campaign=launch%202026&campaign_id=hn-launch&code=secret",
   });
 
   assert.equal(captures.length, 1);
@@ -90,6 +99,7 @@ test("captures one privacy-safe pageview for an eligible full page", () => {
     $pathname: "/pricing",
     $referrer: "https://news.ycombinator.com",
     $referring_domain: "news.ycombinator.com",
+    campaign_id: "hn-launch",
     content_group: "marketing",
     environment: "unknown",
     event_version: 1,
@@ -99,6 +109,16 @@ test("captures one privacy-safe pageview for an eligible full page", () => {
   });
   assert.equal(JSON.stringify(captures[0].properties).includes("secret"), false);
   assert.equal("code" in captures[0].properties, false);
+  assert.deepEqual(JSON.parse(JSON.stringify(attributionTouches)), [
+    {
+      campaign_id: "hn-launch",
+      landing_route: "/pricing",
+      referrer: "https://news.ycombinator.com",
+      referring_domain: "news.ycombinator.com",
+      utm_campaign: "launch 2026",
+      utm_source: "hacker-news",
+    },
+  ]);
 });
 
 test("waits for DOM readiness before reading the server route context", () => {
@@ -146,8 +166,6 @@ test("captures a new normalized route once after an HTMX navigation", () => {
   assert.deepEqual({ ...captures[1].properties }, {
     $current_url: "https://rowset.example/docs/:slug",
     $pathname: "/docs/:slug",
-    $referrer: "https://news.ycombinator.com",
-    $referring_domain: "news.ycombinator.com",
     content_group: "docs",
     environment: "unknown",
     event_version: 1,
@@ -155,6 +173,23 @@ test("captures a new normalized route once after an HTMX navigation", () => {
     utm_medium: "social",
   });
   assert.equal(JSON.stringify(captures[1].properties).includes("secret"), false);
+});
+
+test("persists a tagged HTMX navigation without reusing the landing referrer", () => {
+  const { attributionTouches, bodyListeners, window } = loadPageviews();
+
+  window.location = new URL(
+    "https://rowset.example/docs/authentication?campaign_id=docs-return&utm_source=newsletter",
+  );
+  bodyListeners.get("htmx:afterSwap")({
+    detail: { xhr: { responseText: "<!doctype html><body>docs-page" } },
+  });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(attributionTouches[1])), {
+    campaign_id: "docs-return",
+    landing_route: "/docs/:slug",
+    utm_source: "newsletter",
+  });
 });
 
 test("captures distinct HTMX navigations with the same normalized route", () => {

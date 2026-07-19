@@ -5,7 +5,14 @@ from urllib.parse import unquote
 
 ATTRIBUTION_COOKIE = "rowset_marketing_attribution"
 ATTRIBUTION_VERSION = 1
-CAMPAIGN_KEYS = ("utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term")
+CAMPAIGN_KEYS = (
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+    "campaign_id",
+)
 _VALUE_RE = re.compile(r"^[a-z0-9][a-z0-9 ._\-/]*$", re.IGNORECASE)
 _DOMAIN_RE = re.compile(r"^[a-z0-9.-]+$", re.IGNORECASE)
 _ATTRIBUTION_PARSE_ERRORS = (TypeError, ValueError, json.JSONDecodeError)

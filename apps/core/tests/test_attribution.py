@@ -6,16 +6,18 @@ from apps.core.attribution import attribution_event_properties, parse_attributio
 def test_attribution_cookie_allowlists_campaign_properties():
     value = quote(
         '{"version":1,"first_touch":{"utm_source":"google","landing_route":"/pricing",'
-        '"gclid":"secret-click-id"},"latest_touch":{"utm_campaign":"agents"}}'
+        '"gclid":"secret-click-id"},"latest_touch":{"campaign_id":"agent-launch",'
+        '"utm_campaign":"agents"}}'
     )
     result = parse_attribution_cookie(value)
     assert result == {
         "version": 1,
         "first_touch": {"utm_source": "google", "landing_route": "/pricing"},
-        "latest_touch": {"utm_campaign": "agents"},
+        "latest_touch": {"campaign_id": "agent-launch", "utm_campaign": "agents"},
     }
     assert attribution_event_properties(result) == {
         "attribution_version": 1,
+        "campaign_id": "agent-launch",
         "utm_campaign": "agents",
         "initial_utm_source": "google",
         "initial_landing_route": "/pricing",
