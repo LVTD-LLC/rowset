@@ -20,6 +20,7 @@ deployment or release cut date.
 
 ### Added
 - Added an implementation guide for AI agent audit trails that separates runtime traces, authorization decisions, and business-state changes while documenting Rowset's operational-history limits.
+- Added network-free help at every Rowset CLI command level and an explicit one-line compact JSON output mode for agents and scripts.
 
 ### Changed
 - Defined privacy-safe public dataset identity, meaningful engagement, canonical metric sources, and deterministic human, agent, crawler, preview, API, and unknown traffic categories for marketing analytics.

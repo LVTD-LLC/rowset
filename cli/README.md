@@ -58,6 +58,25 @@ export ROWSET_PROD_API_KEY="replace-with-your-copied-key"
 rowset --api-key-env ROWSET_PROD_API_KEY user info
 ```
 
+Use `--help` at any command level. Help is local and never requires an API key
+or network request:
+
+```bash
+rowset dataset --help
+rowset dataset search --help
+rowset help row update-by-index
+```
+
+JSON responses are pretty-printed by default. Put the global `--compact` flag
+before the command when an agent or script needs one JSON value per line:
+
+```bash
+rowset --compact dataset get "{dataset_key}"
+```
+
+Raw exports, downloaded assets, and explicit `--output` files are unchanged by
+this flag.
+
 ## Examples
 
 Verify authentication:
@@ -158,6 +177,9 @@ rowset request PATCH /datasets/{dataset_key}/public-preview \
 - `asset attach|get|content`
 - `export DATASET_KEY csv|jsonl|xlsx|sqlite`
 - `request METHOD PATH`
+
+Run `rowset COMMAND --help` or `rowset help COMMAND` for required arguments and
+examples at each group or leaf command.
 
 ## Build
 
