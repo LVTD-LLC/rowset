@@ -8,6 +8,7 @@
     "utm_term",
     "campaign_id",
   ]);
+  const version = 1;
   const campaignValuePattern = /^[a-z0-9][a-z0-9 ._\-/]*$/i;
 
   function safeCampaignValue(value) {
@@ -17,5 +18,5 @@
       : "";
   }
 
-  Rowset.posthogAttribution = Object.freeze({ campaignKeys, safeCampaignValue });
+  Rowset.posthogAttribution = Object.freeze({ campaignKeys, safeCampaignValue, version });
 })();

@@ -1,9 +1,13 @@
 import json
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote
 
+if TYPE_CHECKING:
+    from apps.core.models import Profile
+
 ATTRIBUTION_COOKIE = "rowset_marketing_attribution"
+ANALYTICS_CONSENT_COOKIE = "rowset_analytics_consent"
 ATTRIBUTION_VERSION = 1
 CAMPAIGN_KEYS = (
     "utm_source",
@@ -54,6 +58,16 @@ def parse_attribution_cookie(value: str | None) -> dict[str, Any]:
         if clean:
             result[touch_name] = clean
     return result if len(result) > 1 else {}
+
+
+def sync_profile_marketing_attribution(profile: Profile, cookie_value: str | None) -> bool:
+    """Persist a valid attribution cookie when it differs from the profile snapshot."""
+    attribution = parse_attribution_cookie(cookie_value)
+    if not attribution or profile.marketing_attribution == attribution:
+        return False
+    profile.marketing_attribution = attribution
+    profile.save(update_fields=["marketing_attribution", "updated_at"])
+    return True
 
 
 def attribution_event_properties(attribution: dict[str, Any] | None) -> dict[str, Any]:

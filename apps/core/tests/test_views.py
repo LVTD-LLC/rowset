@@ -5,7 +5,7 @@ from allauth.account.models import EmailAddress
 from django.contrib import messages as message_constants
 from django.contrib.messages import get_messages
 from django.db import IntegrityError, OperationalError, transaction
-from django.test import RequestFactory, override_settings
+from django.test import Client, RequestFactory, override_settings
 from django.urls import path, reverse
 from django.utils import timezone
 from django.views.generic import TemplateView
@@ -18,6 +18,12 @@ from apps.core.services import create_agent_api_key, get_or_create_profile_for_u
 from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_customer, server_error
 from apps.datasets.models import Dataset, Project
 from rowset.utils import build_absolute_public_url
+
+ATTRIBUTION_COOKIE_VALUE = (
+    "%7B%22version%22%3A1%2C%22first_touch%22%3A%7B%22utm_source%22%3A%22google%22%7D%2C"
+    "%22latest_touch%22%3A%7B%22utm_source%22%3A%22newsletter%22%2C%22utm_campaign%22%3A"
+    "%22return%22%7D%7D"
+)
 
 
 def _broken_view(_request):
@@ -34,6 +40,69 @@ urlpatterns = [
 
 handler500 = "apps.core.views.server_error"
 handler404 = "apps.core.views.page_not_found"
+
+
+@pytest.mark.django_db
+def test_sync_marketing_attribution_updates_authenticated_profile(auth_client, profile):
+    auth_client.cookies["rowset_analytics_consent"] = "granted"
+    auth_client.cookies["rowset_marketing_attribution"] = ATTRIBUTION_COOKIE_VALUE
+
+    response = auth_client.post(reverse("sync_marketing_attribution"))
+
+    assert response.status_code == 204
+    profile.refresh_from_db()
+    assert profile.marketing_attribution == {
+        "version": 1,
+        "first_touch": {"utm_source": "google"},
+        "latest_touch": {"utm_source": "newsletter", "utm_campaign": "return"},
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("consent", "attribution"),
+    [
+        ("denied", ATTRIBUTION_COOKIE_VALUE),
+        ("", ATTRIBUTION_COOKIE_VALUE),
+        ("granted", "not-json"),
+    ],
+)
+def test_sync_marketing_attribution_ignores_denied_or_invalid_data(
+    auth_client, profile, consent, attribution
+):
+    if consent:
+        auth_client.cookies["rowset_analytics_consent"] = consent
+    auth_client.cookies["rowset_marketing_attribution"] = attribution
+
+    response = auth_client.post(reverse("sync_marketing_attribution"))
+
+    assert response.status_code == 204
+    profile.refresh_from_db()
+    assert profile.marketing_attribution == {}
+
+
+def test_sync_marketing_attribution_requires_authentication(client):
+    response = client.post(reverse("sync_marketing_attribution"))
+
+    assert response.status_code == 302
+    assert response["Location"].startswith("/accounts/login/")
+
+
+@pytest.mark.django_db
+def test_sync_marketing_attribution_requires_post(auth_client):
+    response = auth_client.get(reverse("sync_marketing_attribution"))
+
+    assert response.status_code == 405
+
+
+@pytest.mark.django_db
+def test_sync_marketing_attribution_requires_csrf(user):
+    csrf_client = Client(enforce_csrf_checks=True)
+    csrf_client.force_login(user)
+
+    response = csrf_client.post(reverse("sync_marketing_attribution"))
+
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db

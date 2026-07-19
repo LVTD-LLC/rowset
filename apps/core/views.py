@@ -42,6 +42,11 @@ from apps.core.agent_skill import (
     load_rowset_use_cases_skill_markdown,
 )
 from apps.core.analytics import ROWSET_CHECKOUT_STARTED, track_activation_event
+from apps.core.attribution import (
+    ANALYTICS_CONSENT_COOKIE,
+    ATTRIBUTION_COOKIE,
+    sync_profile_marketing_attribution,
+)
 from apps.core.choices import TrialReward
 from apps.core.forms import AgentApiKeyCreateForm, ProfileUpdateForm
 from apps.core.models import AgentApiKey, Profile
@@ -77,6 +82,17 @@ def _is_programmatic_error_request(request: HttpRequest) -> bool:
         path == prefix or path.startswith(f"{prefix}/")
         for prefix in PROGRAMMATIC_ERROR_PATH_PREFIXES
     )
+
+
+@login_required
+@require_POST
+def sync_marketing_attribution(request: HttpRequest) -> HttpResponse:
+    if request.COOKIES.get(ANALYTICS_CONSENT_COOKIE) == "granted":
+        sync_profile_marketing_attribution(
+            request.user.profile,
+            request.COOKIES.get(ATTRIBUTION_COOKIE),
+        )
+    return HttpResponse(status=204)
 
 
 def server_error(request: HttpRequest):

@@ -14,6 +14,7 @@ function loadAttribution() {
 test("shares the bounded campaign schema across PostHog producers", () => {
   const attribution = loadAttribution();
 
+  assert.equal(attribution.version, 1);
   assert.deepEqual([...attribution.campaignKeys], [
     "utm_source",
     "utm_medium",

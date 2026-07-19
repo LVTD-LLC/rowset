@@ -112,9 +112,11 @@ intentionally excluded.
 After identification, the sanitized first and latest touch are synchronized to the PostHog person
 as `first_touch_*` and `current_touch_*` properties. The first touch is set once; a later tagged
 navigation replaces the current touch, while an untagged signup or authentication navigation does
-not erase it. Backend activation and revenue events carry the latest campaign properties and their
-`initial_*` equivalents, so campaign reporting does not depend on a browser event arriving at the
-same time.
+not erase it. For an authenticated and consenting visitor, the browser also sends a same-origin,
+CSRF-protected synchronization request after attribution changes. The server reads and sanitizes
+its own attribution cookie rather than accepting attribution JSON from the request. Backend
+activation and revenue events then carry the latest campaign properties and their `initial_*`
+equivalents, so campaign reporting does not depend on a browser event arriving at the same time.
 
 ## PostHog project setup
 

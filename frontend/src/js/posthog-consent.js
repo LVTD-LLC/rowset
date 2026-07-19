@@ -2,7 +2,9 @@
   const Rowset = (window.Rowset = window.Rowset || {});
   const consentCookie = "rowset_analytics_consent";
   const attributionCookie = "rowset_marketing_attribution";
-  const { campaignKeys, safeCampaignValue } = Rowset.posthogAttribution;
+  const attributionSyncUrl = "/analytics/attribution/";
+  const maxAttributionCookieValueLength = 3800;
+  const { campaignKeys, safeCampaignValue, version } = Rowset.posthogAttribution;
   const attributionSignalKeys = [...campaignKeys, "referrer", "referring_domain"];
   const touchKeys = [
     ...campaignKeys,
@@ -63,16 +65,36 @@
     return sanitized;
   }
 
+  function canonicalAttribution(firstTouch, latestTouch) {
+    const attribution = {
+      version,
+      first_touch: sanitizeTouch(firstTouch),
+      latest_touch: sanitizeTouch(latestTouch),
+    };
+    const expendableKeys = [
+      "referrer",
+      "referring_domain",
+      "utm_term",
+      "utm_content",
+      "campaign_id",
+      "utm_medium",
+      "utm_campaign",
+    ];
+    for (const key of expendableKeys) {
+      if (encodeURIComponent(JSON.stringify(attribution)).length <= maxAttributionCookieValueLength) {
+        break;
+      }
+      delete attribution.latest_touch[key];
+      delete attribution.first_touch[key];
+    }
+    return attribution;
+  }
+
   function readMarketingAttribution() {
     try {
       const stored = JSON.parse(decodeURIComponent(cookieValue(attributionCookie))) || {};
-      if (stored.version !== 1) return {};
-      const firstTouch = sanitizeTouch(stored.first_touch);
-      const latestTouch = sanitizeTouch(stored.latest_touch);
-      return {
-        first_touch: firstTouch,
-        latest_touch: latestTouch,
-      };
+      if (stored.version !== version) return {};
+      return canonicalAttribution(stored.first_touch, stored.latest_touch);
     } catch (_error) {
       return {};
     }
@@ -106,11 +128,17 @@
       window.posthog?.identify?.(identity.distinctId, { email: identity.email });
     }
     const properties = personAttribution(attribution);
-    if (
-      (Object.keys(properties.current).length > 0 || Object.keys(properties.first).length > 0) &&
-      typeof window.posthog?.setPersonProperties === "function"
-    ) {
+    const hasAttribution =
+      Object.keys(properties.current).length > 0 || Object.keys(properties.first).length > 0;
+    if (hasAttribution && typeof window.posthog?.setPersonProperties === "function") {
       window.posthog.setPersonProperties(properties.current, properties.first);
+    }
+    if (hasAttribution) {
+      window.fetch?.(attributionSyncUrl, {
+        credentials: "same-origin",
+        headers: { "X-CSRFToken": document.body?.dataset.csrfToken || "" },
+        method: "POST",
+      })?.catch?.(() => {});
     }
   };
 
@@ -124,12 +152,16 @@
     const hasFirstTouch = Object.keys(existing.first_touch || {}).length > 0;
     const hasAttributionSignal = attributionSignalKeys.some((key) => key in sanitized);
     if (hasFirstTouch && !hasAttributionSignal) return;
-    const attribution = {
-      version: 1,
-      first_touch: hasFirstTouch ? existing.first_touch : sanitized,
-      latest_touch: sanitized,
-    };
-    setCookie(attributionCookie, encodeURIComponent(JSON.stringify(attribution)), 60 * 60 * 24 * 180);
+    if (hasFirstTouch && JSON.stringify(existing.latest_touch) === JSON.stringify(sanitized)) return;
+    const attribution = canonicalAttribution(
+      hasFirstTouch ? existing.first_touch : sanitized,
+      sanitized,
+    );
+    setCookie(
+      attributionCookie,
+      encodeURIComponent(JSON.stringify(attribution)),
+      60 * 60 * 24 * 180,
+    );
     Rowset.syncPosthogIdentityAndAttribution(attribution);
   };
 

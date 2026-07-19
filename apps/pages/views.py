@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.views.generic import TemplateView
 
 from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
-from apps.core.attribution import ATTRIBUTION_COOKIE, parse_attribution_cookie
+from apps.core.attribution import ATTRIBUTION_COOKIE, sync_profile_marketing_attribution
 from apps.core.models import Profile
 from apps.pages.blog import (
     BLOG_DESCRIPTION,
@@ -120,10 +120,10 @@ class SignupTrackingMixin:
         user = self.user
         profile = user.profile
 
-        attribution = parse_attribution_cookie(self.request.COOKIES.get(ATTRIBUTION_COOKIE))
-        if attribution:
-            profile.marketing_attribution = attribution
-            profile.save(update_fields=["marketing_attribution", "updated_at"])
+        sync_profile_marketing_attribution(
+            profile,
+            self.request.COOKIES.get(ATTRIBUTION_COOKIE),
+        )
         track_activation_event(
             profile,
             ROWSET_SIGNUP_COMPLETED,

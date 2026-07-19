@@ -8,6 +8,11 @@ urlpatterns = [
     path("settings", views.UserSettingsView.as_view(), name="settings"),
     path("trial-rewards", views.trial_rewards, name="trial_rewards"),
     path(
+        "analytics/attribution/",
+        views.sync_marketing_attribution,
+        name="sync_marketing_attribution",
+    ),
+    path(
         "trial-rewards/<str:reward>/claim",
         views.claim_trial_reward_view,
         name="claim_trial_reward",
