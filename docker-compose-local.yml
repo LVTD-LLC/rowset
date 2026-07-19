@@ -100,7 +100,7 @@ services:
       "--forward-to", "http://backend:8000/stripe/webhook/"
     ]
     environment:
-      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_DEVICE_NAME=cleanapp_docker
     dns:
       - 8.8.8.8

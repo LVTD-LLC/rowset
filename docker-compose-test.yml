@@ -1,3 +1,18 @@
+x-test-environment: &test-environment
+  ENVIRONMENT: test
+  DJANGO_READ_DOT_ENV: "0"
+  DEBUG: "0"
+  SECRET_KEY: test-secret-key
+  SITE_URL: "https://testserver"
+  POSTGRES_HOST: db
+  POSTGRES_DB: rowset
+  POSTGRES_USER: rowset
+  POSTGRES_PASSWORD: rowset
+  POSTGRES_PORT: "5432"
+  REDIS_HOST: redis
+  REDIS_PASSWORD: rowset
+  REDIS_PORT: "6379"
+
 services:
   db:
     ports: !reset []
@@ -9,3 +24,14 @@ services:
 
   frontend:
     ports: !reset []
+
+  backend:
+    env_file: !reset []
+    environment: *test-environment
+
+  workers:
+    env_file: !reset []
+    environment: *test-environment
+
+  stripe:
+    env_file: !reset []
