@@ -47,7 +47,7 @@ automation.
 
 | Area | Technology |
 | --- | --- |
-| Language | Python 3.14 (`.python-version`, `pyproject.toml`) and Go for `cli/` |
+| Language | Python 3.14.2 (`.python-version`, `pyproject.toml`) and Go for `cli/` |
 | Backend | Django 6 |
 | REST API | Django Ninja |
 | MCP | FastMCP mounted through Starlette in `rowset/asgi.py` |
