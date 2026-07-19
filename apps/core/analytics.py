@@ -3,15 +3,23 @@ from typing import Any
 from django.conf import settings
 from django.db import transaction
 from django_q.tasks import async_task
+from structlog.contextvars import get_contextvars
 
 from apps.core.models import AgentApiKey, Profile
+from rowset.logging_context import validate_correlation_id
 
 ROWSET_SIGNUP_COMPLETED = "rowset_signup_completed"
 ROWSET_AGENT_API_KEY_CREATED = "rowset_agent_api_key_created"
 ROWSET_AGENT_SETUP_PROMPT_COPIED = "rowset_agent_setup_prompt_copied"
+ROWSET_AGENT_SETUP_COMPLETED = "rowset_agent_setup_completed"
 ROWSET_GET_USER_INFO_SUCCEEDED = "rowset_get_user_info_succeeded"
 ROWSET_DATASET_CREATED = "rowset_dataset_created"
 ROWSET_DATASET_ROW_MUTATED = "rowset_dataset_row_mutated"
+ROWSET_CHECKOUT_STARTED = "rowset_checkout_started"
+ROWSET_SUBSCRIPTION_STARTED = "rowset_subscription_started"
+ROWSET_SUBSCRIPTION_CANCELLATION_REQUESTED = "rowset_subscription_cancellation_requested"
+ROWSET_SUBSCRIPTION_ENDED = "rowset_subscription_ended"
+ROWSET_PAYMENT_FAILED = "rowset_payment_failed"
 
 
 def agent_api_key_tracking_properties(agent_api_key: AgentApiKey | None) -> dict[str, Any]:
@@ -34,11 +42,13 @@ def track_activation_event(
     properties: dict[str, Any] | None = None,
     *,
     source_function: str | None = None,
+    session_id: str | None = None,
 ) -> str:
     if not settings.POSTHOG_API_KEY:
         return "PostHog API key not found."
 
     profile_id = profile.id
+    session_id = validate_correlation_id(session_id or get_contextvars().get("sessionId"))
     event_properties = properties or {}
 
     def enqueue_event() -> None:
@@ -48,6 +58,7 @@ def track_activation_event(
             event_name=event_name,
             properties=event_properties,
             source_function=source_function,
+            session_id=session_id,
             group="Track Activation Event",
         )
 

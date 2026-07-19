@@ -24,7 +24,7 @@ def _request_id() -> str:
     return correlation_id_or_new(request.headers.get("x-request-id"))
 
 
-def _bind_access_token_actor() -> int | None:
+def _bind_access_token_actor() -> dict[str, Any] | None:
     try:
         access_token = get_access_token()
     except RuntimeError:
@@ -58,7 +58,11 @@ def _bind_access_token_actor() -> int | None:
         auth_method="mcp_bearer",
     )
     if agent_api_key_id is not None and not claims.get("setup_completed"):
-        return profile_id
+        return {
+            "profile_id": profile_id,
+            "agent_api_key_id": agent_api_key_id,
+            "agent_api_key_access_level": str(claims.get("agent_api_key_access_level") or ""),
+        }
     return None
 
 
@@ -79,7 +83,7 @@ class RowsetMCPLoggingMiddleware(Middleware):
         if tool_name:
             request_context["mcp.tool.name"] = str(tool_name)
         structlog.contextvars.bind_contextvars(**request_context)
-        setup_profile_id = _bind_access_token_actor()
+        setup_actor = _bind_access_token_actor()
 
         outcome = "success"
         error_type = ""
@@ -87,16 +91,19 @@ class RowsetMCPLoggingMiddleware(Middleware):
             result = await call_next(context)
             if bool(getattr(result, "is_error", False)):
                 outcome = "failure"
-            elif setup_profile_id is not None:
+            elif setup_actor is not None:
                 try:
                     await sync_to_async(mark_profile_setup_completed, thread_sensitive=True)(
-                        setup_profile_id
+                        setup_actor["profile_id"],
+                        interface="mcp",
+                        agent_api_key_id=setup_actor["agent_api_key_id"],
+                        agent_api_key_access_level=setup_actor["agent_api_key_access_level"],
                     )
                 except DatabaseError as exc:
                     logger.warning(
                         "agent_setup.completion_failed",
                         error_type=type(exc).__name__,
-                        profile_id=setup_profile_id,
+                        profile_id=setup_actor["profile_id"],
                         request_interface="mcp",
                     )
             return result

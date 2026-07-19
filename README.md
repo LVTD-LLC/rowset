@@ -724,6 +724,7 @@ make manage backfill_dataset_vectors <dataset_key>
 | `SENTRY_MAX_BREADCRUMBS` | Max Sentry breadcrumbs. |
 | `POSTHOG_API_KEY` | PostHog `phc_` project token for analytics and log ingestion. |
 | `POSTHOG_HOST` | PostHog regional ingestion host. Defaults to the US host. |
+| `POSTHOG_BROWSER_HOST` | First-party PostHog reverse-proxy URL for browser analytics; defaults to `POSTHOG_HOST`. |
 | `POSTHOG_LOGS_ENABLED` | Enables batched OTLP log export; production defaults on when a token exists. |
 | `POSTHOG_LOG_LEVEL` | Minimum level exported to PostHog. Defaults to `INFO`. |
 | `POSTHOG_SERVICE_NAME` | Optional OTel service-name override for PostHog facets. |
@@ -759,6 +760,9 @@ logger.info(
 PostHog receives a string body plus flat OTel attributes in both cases. Only strings, booleans,
 integers, finite floats, enums, and UUIDs are exported. Never log credentials, request or response
 bodies, query text, email addresses, or user-owned dataset contents.
+
+See [ANALYTICS.md](ANALYTICS.md) for the consent, attribution, event naming, funnel, and PostHog
+project configuration contract.
 
 ## Available Commands
 

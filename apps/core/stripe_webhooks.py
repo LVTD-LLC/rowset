@@ -1,6 +1,13 @@
 import stripe
 from django.conf import settings
 
+from apps.core.analytics import (
+    ROWSET_PAYMENT_FAILED,
+    ROWSET_SUBSCRIPTION_CANCELLATION_REQUESTED,
+    ROWSET_SUBSCRIPTION_ENDED,
+    ROWSET_SUBSCRIPTION_STARTED,
+    track_activation_event,
+)
 from apps.core.choices import ProfileStates
 from apps.core.models import Profile
 from rowset.utils import get_rowset_logger
@@ -84,9 +91,18 @@ def handle_created_subscription(event):
         return
 
     update_profile_stripe_ids(profile, customer_id=customer_id, subscription_id=subscription_id)
-
     target_state = get_subscription_target_state(subscription_data)
     if target_state:
+        track_activation_event(
+            profile,
+            ROWSET_SUBSCRIPTION_STARTED,
+            {
+                "plan": (subscription_data.get("metadata") or {}).get("plan", ""),
+                "subscription_status": subscription_data.get("status", ""),
+                "is_trial": subscription_data.get("status") == "trialing",
+            },
+            source_function="stripe_webhook handle_created_subscription",
+        )
         profile.track_state_change(
             to_state=target_state,
             source_function="stripe_webhook handle_created_subscription",
@@ -163,6 +179,33 @@ def handle_updated_subscription(event):
                 "trial_end": subscription_data.get("trial_end"),
             },
         )
+        cancellation_changed = any(
+            key in previous_attributes
+            for key in ("cancel_at_period_end", "cancel_at", "cancellation_details")
+        )
+        if target_state == ProfileStates.CANCELLED and cancellation_changed:
+            track_activation_event(
+                profile,
+                ROWSET_SUBSCRIPTION_CANCELLATION_REQUESTED,
+                {"subscription_status": subscription_data.get("status", "")},
+                source_function="stripe_webhook handle_updated_subscription",
+            )
+        elif (
+            target_state in {ProfileStates.CHURNED, ProfileStates.TRIAL_ENDED}
+            and previous_status is not None
+            and previous_status != subscription_data.get("status")
+        ):
+            track_activation_event(
+                profile,
+                ROWSET_SUBSCRIPTION_ENDED,
+                {
+                    "subscription_status": subscription_data.get("status", ""),
+                    "end_reason": (
+                        "trial_ended" if target_state == ProfileStates.TRIAL_ENDED else "churned"
+                    ),
+                },
+                source_function="stripe_webhook handle_updated_subscription",
+            )
 
         logger.info(
             "Subscription state updated for profile.",
@@ -212,6 +255,12 @@ def handle_deleted_subscription(event):
             "subscription_id": subscription_id,
             "ended_at": subscription_data.get("ended_at"),
         },
+    )
+    track_activation_event(
+        profile,
+        ROWSET_SUBSCRIPTION_ENDED,
+        {"subscription_status": subscription_data.get("status", ""), "end_reason": "deleted"},
+        source_function="stripe_webhook handle_deleted_subscription",
     )
 
     profile.stripe_subscription_id = ""
@@ -306,9 +355,28 @@ def handle_checkout_completed(event):
         )
 
 
+def handle_payment_failed(event):
+    invoice_data = event["data"]["object"]
+    profile = get_profile_for_customer(invoice_data.get("customer"), {})
+    if not profile:
+        logger.warning("Payment failed but profile not found", event_id=event.get("id"))
+        return
+    track_activation_event(
+        profile,
+        ROWSET_PAYMENT_FAILED,
+        {
+            "currency": invoice_data.get("currency", ""),
+            "amount_due": invoice_data.get("amount_due"),
+            "attempt_count": invoice_data.get("attempt_count"),
+        },
+        source_function="stripe_webhook handle_payment_failed",
+    )
+
+
 EVENT_HANDLERS = {
     "customer.subscription.created": handle_created_subscription,
     "customer.subscription.updated": handle_updated_subscription,
     "customer.subscription.deleted": handle_deleted_subscription,
     "checkout.session.completed": handle_checkout_completed,
+    "invoice.payment_failed": handle_payment_failed,
 }

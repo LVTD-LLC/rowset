@@ -35,7 +35,7 @@ def test_mcp_logging_emits_tool_name_identity_outcome_and_duration(
     monkeypatch.setattr("rowset.mcp_logging.get_access_token", _access_token)
     monkeypatch.setattr(
         "rowset.mcp_logging.mark_profile_setup_completed",
-        completed_profile_ids.append,
+        lambda profile_id, **_kwargs: completed_profile_ids.append(profile_id),
     )
     monkeypatch.setattr(
         "rowset.mcp_logging.get_http_request",
@@ -182,7 +182,7 @@ def test_mcp_setup_completion_failure_preserves_successful_result(
         lambda: SimpleNamespace(headers={}),
     )
 
-    def fail_to_mark(_profile_id):
+    def fail_to_mark(_profile_id, **_kwargs):
         raise DatabaseError("database unavailable")
 
     monkeypatch.setattr("rowset.mcp_logging.mark_profile_setup_completed", fail_to_mark)

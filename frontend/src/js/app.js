@@ -60,8 +60,13 @@
   }
 
   Rowset.posthogSessionHeaders = function posthogSessionHeaders() {
+    if (typeof Rowset.hasAnalyticsConsent === "function" && !Rowset.hasAnalyticsConsent()) return {};
     const sessionId = Rowset.posthogSessionId;
-    return sessionId ? { "X-PostHog-Session-ID": sessionId } : {};
+    const distinctId = window.posthog?.get_distinct_id?.();
+    return {
+      ...(sessionId ? { "X-PostHog-Session-ID": sessionId } : {}),
+      ...(distinctId ? { "X-PostHog-Distinct-ID": distinctId } : {}),
+    };
   };
 
   function configureHtmx() {

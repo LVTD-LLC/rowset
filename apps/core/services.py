@@ -20,6 +20,7 @@ from apps.api.services import (
 )
 from apps.core.analytics import (
     ROWSET_AGENT_API_KEY_CREATED,
+    ROWSET_AGENT_SETUP_COMPLETED,
     track_activation_event,
 )
 from apps.core.choices import AgentApiKeyAccessLevel, FeedbackSource
@@ -88,13 +89,34 @@ class FeedbackSubmissionResult:
     row_url: str
 
 
-def mark_profile_setup_completed(profile_id: int) -> None:
+def mark_profile_setup_completed(
+    profile_id: int,
+    *,
+    interface: str,
+    agent_api_key_id: int | None = None,
+    agent_api_key_access_level: str = "",
+) -> bool:
     """Record the first successful agent request for a profile exactly once."""
     now = timezone.now()
-    Profile.objects.filter(id=profile_id, setup_completed_at__isnull=True).update(
+    updated = Profile.objects.filter(id=profile_id, setup_completed_at__isnull=True).update(
         setup_completed_at=now,
         updated_at=now,
     )
+    if not updated:
+        return False
+    profile = Profile.objects.get(id=profile_id)
+    track_activation_event(
+        profile,
+        ROWSET_AGENT_SETUP_COMPLETED,
+        {
+            "interface": interface,
+            "agent_api_key_present": agent_api_key_id is not None,
+            "agent_api_key_id": agent_api_key_id,
+            "agent_api_key_access_level": agent_api_key_access_level,
+        },
+        source_function="mark_profile_setup_completed",
+    )
+    return True
 
 
 def _active_project_by_name(profile: Profile, name: str) -> Project | None:

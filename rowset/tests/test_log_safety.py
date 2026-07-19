@@ -1,74 +1,17 @@
 import ast
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
-from django.test import RequestFactory, override_settings
+from django.test import RequestFactory
 
 from apps.core import signals as core_signals
 from apps.core import stripe_webhooks
-from apps.core import tasks as core_tasks
 from apps.core import utils as core_utils
 from apps.core.choices import EmailType
 from apps.core.views import stripe_webhook
 from apps.datasets import tasks as dataset_tasks
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-
-
-@override_settings(POSTHOG_API_KEY="phc_test")
-def test_posthog_alias_log_contains_only_safe_completion_context(captured_events, monkeypatch):
-    profile = SimpleNamespace(id=7, user=SimpleNamespace(email="private@example.com"))
-    monkeypatch.setattr(core_tasks.Profile.objects, "get", lambda **_kwargs: profile)
-    aliases = []
-    monkeypatch.setattr(core_tasks.posthog, "alias", lambda *args: aliases.append(args))
-    cookie = json.dumps({"distinct_id": "anonymous-private-id", "session_id": "private"})
-
-    core_tasks.try_create_posthog_alias(
-        7,
-        {"ph_phc_test_posthog": cookie, "sessionid": "private-session-cookie"},
-        source_function="signup",
-    )
-
-    event = captured_events.event("posthog.alias.completed")
-    assert event == {
-        "profile_id": 7,
-        "source_function": "signup",
-        "alias_found": True,
-        "outcome": "success",
-        "event": "posthog.alias.completed",
-        "project": "rowset",
-        "logger": "rowset.apps.core.tasks",
-        "level": "info",
-        "timestamp": event["timestamp"],
-    }
-    assert len(aliases) == 2
-    assert "private@example.com" not in str(event)
-    assert "anonymous-private-id" not in str(event)
-    assert "private-session-cookie" not in str(event)
-
-
-@override_settings(POSTHOG_API_KEY="phc_test")
-def test_posthog_event_log_records_property_count_not_property_values(captured_events, monkeypatch):
-    profile = SimpleNamespace(
-        id=7,
-        state="signed_up",
-        user=SimpleNamespace(email="private@example.com"),
-    )
-    monkeypatch.setattr(core_tasks.Profile.objects, "get", lambda **_kwargs: profile)
-    monkeypatch.setattr(core_tasks.posthog, "capture", lambda *args, **kwargs: None)
-
-    core_tasks.track_event(
-        7,
-        "dataset_created",
-        {"private_value": "dataset contents", "dataset_id": 3},
-        source_function="test",
-    )
-
-    event = captured_events.event("posthog.event.completed")
-    assert event["properties_count"] == 2
-    assert "properties" not in event
-    assert "dataset contents" not in str(event)
 
 
 def test_email_tracking_log_uses_profile_identity_not_email(captured_events, monkeypatch):

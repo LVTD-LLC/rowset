@@ -25,9 +25,11 @@ deployment or release cut date.
 
 ### Added
 - Added a practical guide to human-in-the-loop AI agent workflows with a risk matrix, durable approval schema, Rowset implementation pattern, and explicit execution-boundary limitations.
+- Added consent-aware marketing attribution across pageviews, signup, agent activation, checkout, subscription, cancellation, churn, and payment-failure events.
 - Added MCP behavior annotations for safe reads, mutations, destructive actions, and idempotent operations.
 
 ### Changed
+- Unified browser and backend PostHog identity and setup milestones, removed duplicate signup and alias events, and added first-party browser ingestion configuration.
 - Read-only MCP tools no longer start an account trial; the trial starts on the first dataset or project mutation.
 
 ### Security

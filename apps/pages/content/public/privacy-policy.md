@@ -36,8 +36,9 @@ cannot guarantee absolute security.
 
 We use essential cookies required for the service, analytics cookies that help us understand
 service usage, and preference cookies that remember settings. Stripe may set cookies for payment
-processing, and Plausible or PostHog may set cookies for usage analytics. You can control cookies
-in your browser, but disabling essential cookies may affect service functionality.
+processing. PostHog analytics is disabled until you choose **Allow analytics** in Rowset; you may
+decline without affecting service functionality. You can also control cookies in your browser, but
+disabling essential cookies may affect service functionality.
 
 ## 6. Your Rights
 

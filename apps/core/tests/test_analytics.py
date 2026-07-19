@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import structlog
 from django.test import override_settings
 from django.utils.module_loading import import_string
 
@@ -29,3 +30,15 @@ def test_track_activation_event_queues_importable_worker_task(monkeypatch):
     assert task_path == "apps.core.tasks.track_activation_event"
     assert import_string(task_path).__name__ == "track_activation_event"
     assert kwargs["profile_id"] == 42
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_track_activation_event_propagates_safe_browser_session(monkeypatch):
+    queued = []
+    monkeypatch.setattr(analytics, "async_task", lambda _path, **kwargs: queued.append(kwargs))
+    structlog.contextvars.bind_contextvars(sessionId="session-123")
+    try:
+        analytics.track_activation_event(SimpleNamespace(id=42), "rowset_test")
+    finally:
+        structlog.contextvars.clear_contextvars()
+    assert queued[0]["session_id"] == "session-123"

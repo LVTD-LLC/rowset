@@ -18,7 +18,7 @@ def _request(*, completed=False):
 
 
 def test_rest_setup_completion_failure_preserves_successful_response(monkeypatch):
-    def fail_to_mark(_profile_id):
+    def fail_to_mark(_profile_id, **_kwargs):
         raise DatabaseError("database unavailable")
 
     monkeypatch.setattr("apps.core.middleware.mark_profile_setup_completed", fail_to_mark)
