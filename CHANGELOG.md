@@ -19,10 +19,8 @@ deployment or release cut date.
 ## 2026-07-19
 
 ### Added
+- Added privacy-bounded PostHog events for trial rewards, agent setup prompt copies, API-key revocations, and successful dataset exports.
 - Added an implementation guide for AI agent audit trails that separates runtime traces, authorization decisions, and business-state changes while documenting Rowset's operational-history limits.
-
-### Fixed
-- Split self-host preflight disk checks into total host capacity and current free-space requirements so the documented 40 GB minimum profile passes safely after Docker prerequisites are installed.
 
 ## 2026-07-18
 

@@ -12,8 +12,7 @@ class HostFacts:
     os_version: str
     cpu_cores: int
     memory_bytes: int
-    disk_capacity_bytes: int
-    disk_free_bytes: int
+    disk_bytes: int
 
 
 @dataclass(frozen=True)
@@ -52,17 +51,9 @@ def evaluate_requirements(requirements: dict, facts: HostFacts) -> list[Requirem
             f"memory bytes {facts.memory_bytes} < {minimum['memory_bytes']}",
         ),
         (
-            "DISK_CAPACITY",
-            facts.disk_capacity_bytes >= minimum["disk_capacity_bytes"],
-            "disk capacity bytes "
-            f"{facts.disk_capacity_bytes}; minimum {minimum['disk_capacity_bytes']}",
-        ),
-        (
-            "DISK_FREE",
-            facts.disk_free_bytes >= requirements["runtime"]["minimum_free_disk_bytes"],
-            "free disk bytes "
-            f"{facts.disk_free_bytes}; minimum "
-            f"{requirements['runtime']['minimum_free_disk_bytes']}",
+            "DISK",
+            facts.disk_bytes >= minimum["disk_bytes"],
+            f"disk bytes {facts.disk_bytes} < {minimum['disk_bytes']}",
         ),
     )
     return [RequirementOutcome(check_id, passed, message) for check_id, passed, message in checks]
@@ -76,8 +67,7 @@ def main() -> None:
     parser.add_argument("--os-version", required=True)
     parser.add_argument("--cpu-cores", type=int, required=True)
     parser.add_argument("--memory-bytes", type=int, required=True)
-    parser.add_argument("--disk-capacity-bytes", type=int, required=True)
-    parser.add_argument("--disk-free-bytes", type=int, required=True)
+    parser.add_argument("--disk-bytes", type=int, required=True)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -90,8 +80,7 @@ def main() -> None:
             os_version=args.os_version,
             cpu_cores=args.cpu_cores,
             memory_bytes=args.memory_bytes,
-            disk_capacity_bytes=args.disk_capacity_bytes,
-            disk_free_bytes=args.disk_free_bytes,
+            disk_bytes=args.disk_bytes,
         ),
     )
     failures = [outcome for outcome in outcomes if not outcome.passed]

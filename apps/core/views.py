@@ -42,7 +42,6 @@ from apps.core.agent_skill import (
     load_rowset_use_cases_skill_markdown,
 )
 from apps.core.analytics import (
-    ROWSET_ACCOUNT_DELETED,
     ROWSET_AGENT_API_KEY_REVOKED,
     ROWSET_AGENT_SETUP_PROMPT_COPIED,
     ROWSET_CHECKOUT_STARTED,
@@ -628,14 +627,6 @@ def delete_account(request):
         return redirect("settings")
 
     user_id = request.user.id
-    profile = request.user.profile
-
-    track_activation_event(
-        profile,
-        ROWSET_ACCOUNT_DELETED,
-        source_function="delete_account",
-    )
-
     # Ensure we log the user out and remove data in a single flow.
     with transaction.atomic():
         user = request.user

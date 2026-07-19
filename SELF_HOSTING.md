@@ -28,8 +28,7 @@ addresses, streaming responses, request sizes, and backend isolation.
 You need:
 
 - a VPS or dedicated server running Ubuntu 24.04 on `amd64` or `arm64`
-- at least a 2 vCPU, 4 GB RAM, 40 GB total-disk host class
-- at least 30 GB of free disk after installing the host prerequisites
+- at least a 2 vCPU, 4 GB RAM, 40 GB disk host class
 - Docker Engine, Docker Buildx, and Docker Compose v2
 - `flock` and `runuser` from the standard Linux `util-linux` package
 - anonymous pull access to the public `ghcr.io/lvtd-llc/rowset` package
@@ -175,12 +174,9 @@ Run the read-only host and release checks after configuration and before startin
 deployment/self-host/preflight.sh
 ```
 
-Preflight validates the supported OS and architecture, CPU, RAM, total disk capacity, current free
-disk space, DNS, availability of ports 80 and 443, Docker Engine, Compose v2, Buildx, anonymous
-access to the configured image manifest, the production environment, and deployment-file
-permissions. The capacity check proves that the host belongs to the published 40 GB class; the
-separate 30 billion-byte free-space floor preserves room for the initial images and stack after
-Docker and the other prerequisites are installed. Preflight consumes
+Preflight validates the supported OS and architecture, CPU, RAM, free disk, DNS, availability of
+ports 80 and 443, Docker Engine, Compose v2, Buildx, anonymous access to the configured image manifest,
+the production environment, and deployment-file permissions. It consumes
 `deployment/self-host/requirements.json`; do not copy its thresholds into installer logic.
 
 The command emits compact newline-delimited JSON. Every check has a stable `id`, a `PASS` or `FAIL`

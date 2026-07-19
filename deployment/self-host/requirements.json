@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 1,
   "supported_platforms": [
     "linux/amd64",
     "linux/arm64"
@@ -16,21 +16,18 @@
     "minimum": {
       "cpu_cores": 2,
       "memory_bytes": 3750000000,
-      "disk_capacity_bytes": 38000000000
+      "disk_bytes": 38000000000
     },
     "tested": {
       "cpu_cores": 2,
       "memory_bytes": 3750000000,
-      "disk_capacity_bytes": 38000000000
+      "disk_bytes": 38000000000
     },
     "recommended": {
       "cpu_cores": 4,
       "memory_bytes": 7500000000,
-      "disk_capacity_bytes": 75000000000
+      "disk_bytes": 75000000000
     }
-  },
-  "runtime": {
-    "minimum_free_disk_bytes": 30000000000
   },
   "startup": {
     "health_timeout_seconds": 180

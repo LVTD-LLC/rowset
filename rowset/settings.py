@@ -252,7 +252,6 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # "django_structlog.middlewares.RequestMiddleware",
-    "posthog.integrations.django.PosthogContextMiddleware",
 ]
 
 if SENTRY_DSN and ENVIRONMENT == "prod" and SENTRY_ENABLE_METRICS:

@@ -5,7 +5,11 @@ from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core.analytics import ROWSET_AGENT_API_KEY_CREATED
+from apps.core.analytics import (
+    ROWSET_AGENT_API_KEY_CREATED,
+    ROWSET_AGENT_API_KEY_REVOKED,
+    ROWSET_AGENT_SETUP_PROMPT_COPIED,
+)
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.core.models import AgentApiKey
 from apps.core.services import (
@@ -254,7 +258,18 @@ def test_settings_shows_active_subscription(auth_client, profile):
 
 
 @override_settings(SITE_URL="https://rowset.example")
-def test_agent_api_key_setup_prompt_endpoint_returns_selected_key_prompt(auth_client, profile):
+def test_agent_api_key_setup_prompt_endpoint_returns_selected_key_prompt(
+    auth_client,
+    profile,
+    monkeypatch,
+):
+    tracked_events = []
+    monkeypatch.setattr(
+        "apps.core.views.track_activation_event",
+        lambda profile, event_name, properties, source_function=None: tracked_events.append(
+            (profile.id, event_name, properties, source_function)
+        ),
+    )
     credential = create_agent_api_key(profile, "Reporting Agent")
 
     response = auth_client.get(
@@ -271,6 +286,14 @@ def test_agent_api_key_setup_prompt_endpoint_returns_selected_key_prompt(auth_cl
     assert f"Rowset API key: {profile.key}" not in prompt
     assert "Rowset setup skill: https://rowset.example/skills/rowset-setup/SKILL.md" in prompt
     assert "Rowset skill: https://rowset.example/SKILL.md" in prompt
+    assert tracked_events == [
+        (
+            profile.id,
+            ROWSET_AGENT_SETUP_PROMPT_COPIED,
+            {"agent_api_key_id": credential.agent_api_key.id},
+            "agent_api_key_setup_prompt",
+        )
+    ]
 
 
 def test_agent_api_key_token_endpoint_returns_selected_key(auth_client, profile):
@@ -459,6 +482,32 @@ def test_settings_owner_can_revoke_agent_api_key(auth_client, profile):
     assert resolve_api_key_profile(credential.raw_key) is None
     assert list(response.context["agent_api_keys"]) == []
     assert "No active API keys." in response.content.decode()
+
+
+def test_settings_revoke_tracks_only_the_first_revocation(auth_client, profile, monkeypatch):
+    tracked_events = []
+    monkeypatch.setattr(
+        "apps.core.views.track_activation_event",
+        lambda profile, event_name, properties, source_function=None: tracked_events.append(
+            (profile.id, event_name, properties, source_function)
+        ),
+    )
+    credential = create_agent_api_key(profile, "Codex")
+    url = reverse("revoke_agent_api_key", args=[credential.agent_api_key.uuid])
+
+    first_response = auth_client.post(url)
+    second_response = auth_client.post(url)
+
+    assert first_response.status_code == 302
+    assert second_response.status_code == 302
+    assert tracked_events == [
+        (
+            profile.id,
+            ROWSET_AGENT_API_KEY_REVOKED,
+            {"agent_api_key_id": credential.agent_api_key.id},
+            "revoke_agent_api_key_view",
+        )
+    ]
 
 
 def test_settings_revoke_agent_api_key_redirects_without_follow(auth_client, profile):

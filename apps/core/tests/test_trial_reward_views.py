@@ -1,6 +1,7 @@
 import pytest
 from allauth.account.models import EmailAddress
 
+from apps.core.analytics import ROWSET_TRIAL_REWARD_CLAIMED
 from apps.core.choices import TrialReward
 from apps.core.models import TrialRewardClaim
 
@@ -37,7 +38,18 @@ def test_trial_rewards_page_requires_sign_in(client):
     assert response["Location"].startswith("/accounts/login/")
 
 
-def test_htmx_claim_extends_trial_and_refreshes_reward_progress(auth_client, profile):
+def test_htmx_claim_extends_trial_and_refreshes_reward_progress(
+    auth_client,
+    profile,
+    monkeypatch,
+):
+    tracked_events = []
+    monkeypatch.setattr(
+        "apps.core.views.track_activation_event",
+        lambda profile, event_name, properties, source_function=None: tracked_events.append(
+            (profile.id, event_name, properties, source_function)
+        ),
+    )
     profile.trial_started_at = profile.created_at
     profile.trial_ends_at = profile.created_at
     profile.save(update_fields=["trial_started_at", "trial_ends_at", "updated_at"])
@@ -57,6 +69,14 @@ def test_htmx_claim_extends_trial_and_refreshes_reward_progress(auth_client, pro
         profile=profile,
         reward=TrialReward.GITHUB_STAR,
     ).exists()
+    assert tracked_events == [
+        (
+            profile.id,
+            ROWSET_TRIAL_REWARD_CLAIMED,
+            {"reward": TrialReward.GITHUB_STAR, "days_added": 3},
+            "claim_trial_reward_view",
+        )
+    ]
 
 
 def test_non_htmx_claim_reports_the_three_day_reward(auth_client):

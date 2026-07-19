@@ -28,7 +28,6 @@ class CoreConfig(AppConfig):
         if settings.POSTHOG_API_KEY:
             posthog.api_key = settings.POSTHOG_API_KEY
             posthog.host = settings.POSTHOG_HOST
-            posthog.enable_exception_autocapture = True
 
         if settings.ENVIRONMENT == "dev":
             posthog.debug = True

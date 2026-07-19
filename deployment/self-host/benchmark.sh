@@ -61,13 +61,10 @@ if cgroup_memory_bytes=$(cat /sys/fs/cgroup/memory.max 2>/dev/null); then
 fi
 docker_root=$(docker info --format '{{.DockerRootDir}}')
 disk_path=${ROWSET_BENCHMARK_DISK_PATH:-$docker_root}
-disk_usage=$(sh "$script_dir/resolve-disk-facts.sh" "$disk_path")
-disk_capacity_bytes=${disk_usage%% *}
-disk_free_bytes=${disk_usage##* }
+disk_bytes=${ROWSET_BENCHMARK_DISK_BYTES:-$(df -B1 --output=size "$disk_path" | awk 'NR == 2 { print $1 }')}
 health_timeout=$(python3 "$script_dir/check-requirements.py" "$requirements_file" \
     --platform "$platform" --os-id "$os_id" --os-version "$os_version" \
-    --cpu-cores "$cpu_cores" --memory-bytes "$memory_bytes" \
-    --disk-capacity-bytes "$disk_capacity_bytes" --disk-free-bytes "$disk_free_bytes")
+    --cpu-cores "$cpu_cores" --memory-bytes "$memory_bytes" --disk-bytes "$disk_bytes")
 
 if docker ps -aq --filter "label=com.docker.compose.project=$project_name" | grep -q . || \
     docker volume ls -q --filter "label=com.docker.compose.project=$project_name" | grep -q . || \
@@ -221,7 +218,7 @@ python3 - "$output" \
     --os-version "$os_version" \
     --cpu-cores "$cpu_cores" \
     --memory-bytes "$memory_bytes" \
-    --disk-capacity-bytes "$disk_capacity_bytes" \
+    --disk-bytes "$disk_bytes" \
     --provider "$provider" \
     --server-type "$server_type" \
     --benchmark-run-id "$benchmark_run_id" \
@@ -249,7 +246,7 @@ parser.add_argument("--os-id", required=True)
 parser.add_argument("--os-version", required=True)
 parser.add_argument("--cpu-cores", type=int, required=True)
 parser.add_argument("--memory-bytes", type=int, required=True)
-parser.add_argument("--disk-capacity-bytes", type=int, required=True)
+parser.add_argument("--disk-bytes", type=int, required=True)
 parser.add_argument("--provider", required=True)
 parser.add_argument("--server-type", required=True)
 parser.add_argument("--benchmark-run-id", required=True)
@@ -268,7 +265,7 @@ parser.add_argument("--measured-at", required=True)
 parser.add_argument("--services", type=json.loads, required=True)
 args = parser.parse_args(sys.argv[2:])
 document = {
-    "schema_version": 2,
+    "schema_version": 1,
     "benchmark_run_id": args.benchmark_run_id,
     "measured_at": args.measured_at,
     "platform": args.platform,
@@ -278,7 +275,7 @@ document = {
         "server_type": args.server_type,
         "cpu_cores": args.cpu_cores,
         "memory_bytes": args.memory_bytes,
-        "disk_capacity_bytes": args.disk_capacity_bytes,
+        "disk_bytes": args.disk_bytes,
     },
     "image_reference": args.image_reference,
     "image_digest": args.image_digest,

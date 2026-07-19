@@ -27,7 +27,7 @@ from apps.api.services import (
     patch_profile_dataset_row,
     serialize_dataset_detail,
 )
-from apps.core.analytics import ROWSET_DATASET_ROW_MUTATED
+from apps.core.analytics import ROWSET_DATASET_EXPORTED, ROWSET_DATASET_ROW_MUTATED
 from apps.core.choices import ProfileStates
 from apps.core.services import create_agent_api_key
 from apps.datasets import models as dataset_models
@@ -2895,7 +2895,14 @@ def test_dataset_delete_rejects_other_users_dataset(client, django_user_model, p
     assert Dataset.objects.filter(id=dataset.id).exists()
 
 
-def test_dataset_export_csv_download(auth_client, profile):
+def test_dataset_export_csv_download(auth_client, profile, monkeypatch):
+    tracked_events = []
+    monkeypatch.setattr(
+        "apps.datasets.views.track_activation_event",
+        lambda profile, event_name, properties, source_function=None: tracked_events.append(
+            (profile.id, event_name, properties, source_function)
+        ),
+    )
     dataset = create_ready_dataset(profile)
 
     response = auth_client.get(reverse("dataset_export", args=[dataset.key, "csv"]))
@@ -2908,6 +2915,28 @@ def test_dataset_export_csv_download(auth_client, profile):
         {"name": "Ada", "email": "ada@example.com"},
         {"name": "Grace", "email": "grace@example.com"},
     ]
+    assert tracked_events == [
+        (
+            profile.id,
+            ROWSET_DATASET_EXPORTED,
+            {"export_format": "csv", "row_count": 2},
+            "dataset_export",
+        )
+    ]
+
+
+def test_dataset_export_does_not_track_unsupported_format(auth_client, profile, monkeypatch):
+    tracked_events = []
+    monkeypatch.setattr(
+        "apps.datasets.views.track_activation_event",
+        lambda *args, **kwargs: tracked_events.append((args, kwargs)),
+    )
+    dataset = create_ready_dataset(profile)
+
+    response = auth_client.get(reverse("dataset_export", args=[dataset.key, "unsupported"]))
+
+    assert response.status_code == 404
+    assert tracked_events == []
 
 
 def test_dataset_export_escapes_content_disposition_filename(auth_client, profile):

@@ -2822,13 +2822,14 @@ def dataset_export(request, dataset_key, export_format):
         profile=request.user.profile,
     )
 
+    response = _dataset_export_response(dataset, export_format)
     track_activation_event(
         request.user.profile,
         ROWSET_DATASET_EXPORTED,
         {"export_format": export_format, "row_count": dataset.row_count},
         source_function="dataset_export",
     )
-    return _dataset_export_response(dataset, export_format)
+    return response
 
 
 @login_required
