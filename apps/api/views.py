@@ -147,6 +147,7 @@ from apps.core.services import (
     submit_profile_feedback,
 )
 from apps.core.trials import TrialExpiredError
+from apps.datasets.public_previews import set_public_dataset_request_context
 from apps.datasets.services import (
     DATASET_ASSET_CACHE_CONTROL,
     iter_export_row_data,
@@ -858,9 +859,16 @@ def get_public_dataset_metadata(
     """Return safe metadata for an enabled public dataset."""
     try:
         dataset = get_public_dataset(public_key, password=password)
-        return serialize_public_dataset_summary(dataset)
+        response = serialize_public_dataset_summary(dataset)
     except DatasetServiceError as exc:
+        if exc.public_access_state:
+            set_public_dataset_request_context(
+                request,
+                access_state=exc.public_access_state,
+            )
         _raise_http_error(exc)
+    set_public_dataset_request_context(request, access_state="available", dataset=dataset)
+    return response
 
 
 @api.get(
@@ -885,7 +893,7 @@ def list_public_rows(
 ):
     """Return a bounded page of rows from an enabled public dataset."""
     try:
-        return list_public_dataset_rows(
+        response = list_public_dataset_rows(
             public_key,
             password=password,
             limit=limit,
@@ -896,7 +904,18 @@ def list_public_rows(
             direction=direction,
         )
     except DatasetServiceError as exc:
+        if exc.public_access_state:
+            set_public_dataset_request_context(
+                request,
+                access_state=exc.public_access_state,
+            )
         _raise_http_error(exc)
+    set_public_dataset_request_context(
+        request,
+        access_state="available",
+        public_key=response["dataset"],
+    )
+    return response
 
 
 @api.get(

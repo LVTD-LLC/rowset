@@ -126,9 +126,20 @@ def posthog_api_key(request):
         if content_group
         else ""
     )
+    public_access_state = getattr(request, "_rowset_public_access_state", "")
+    content_id = getattr(request, "_rowset_public_content_id", "")
+    content_surface = getattr(request, "_rowset_public_content_surface", "")
+    if content_group == "public_dataset" and not (
+        public_access_state == "available"
+        and content_id
+        and content_surface in {"preview", "row_detail"}
+    ):
+        normalized_route = ""
     context = {
         "posthog_api_key": settings.POSTHOG_API_KEY,
         "posthog_content_group": content_group,
+        "posthog_content_id": content_id,
+        "posthog_content_surface": content_surface,
         "posthog_host": settings.POSTHOG_HOST,
         "posthog_browser_host": settings.POSTHOG_BROWSER_HOST,
         "posthog_distinct_id": "",

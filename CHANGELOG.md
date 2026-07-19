@@ -16,6 +16,11 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-20
+
+### Added
+- Added privacy-safe, deployment-scoped content identity and bounded access-state telemetry for public dataset access.
+
 ## 2026-07-19
 
 ### Added

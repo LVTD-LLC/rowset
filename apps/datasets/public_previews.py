@@ -1,8 +1,11 @@
 import hashlib
+import hmac
 from collections.abc import MutableMapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
+from uuid import UUID
 
+from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
 
@@ -16,6 +19,35 @@ from rowset.utils import build_absolute_public_url
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
 PUBLIC_PREVIEW_ROBOTS_POLICY = "noindex, nofollow, noarchive"
 PUBLIC_PREVIEW_SETTINGS_UPDATED_MESSAGE = "Public preview settings updated."
+PublicDatasetAccessState = Literal["available", "locked", "denied", "disabled", "not_found"]
+PublicDatasetContentSurface = Literal["preview", "row_detail", "markdown", "export"]
+
+
+def public_dataset_content_id(public_key: UUID | str) -> str:
+    canonical_public_key = str(public_key).lower().encode()
+    digest = hmac.new(
+        settings.SECRET_KEY.encode(),
+        canonical_public_key,
+        hashlib.sha256,
+    ).hexdigest()
+    return f"pd_v1_{digest[:24]}"
+
+
+def set_public_dataset_request_context(
+    request: Any,
+    *,
+    access_state: PublicDatasetAccessState,
+    content_surface: PublicDatasetContentSurface | None = None,
+    dataset: Dataset | None = None,
+    public_key: UUID | str | None = None,
+) -> None:
+    request._rowset_public_access_state = access_state
+    request._rowset_public_content_surface = content_surface or ""
+    content_public_key = dataset.public_key if dataset is not None else public_key
+    if access_state == "available" and content_public_key is not None:
+        request._rowset_public_content_id = public_dataset_content_id(content_public_key)
+    elif hasattr(request, "_rowset_public_content_id"):
+        del request._rowset_public_content_id
 
 
 def build_public_dataset_agent_prompt(dataset: Dataset) -> str:

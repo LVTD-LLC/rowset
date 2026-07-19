@@ -21,6 +21,8 @@ from rowset.utils import get_rowset_logger
 logger = get_rowset_logger(__name__)
 
 _HEALTHCHECK_PATHS = frozenset({"/api/healthcheck"})
+_PUBLIC_ACCESS_STATES = frozenset({"available", "locked", "denied", "disabled", "not_found"})
+_PUBLIC_CONTENT_SURFACES = frozenset({"preview", "row_detail", "markdown", "export"})
 
 
 def _request_id(request: HttpRequest) -> str:
@@ -175,6 +177,19 @@ class RequestLoggingMiddleware:
         }
         if error_type:
             attributes["error.type"] = error_type
+
+        public_access_state = getattr(request, "_rowset_public_access_state", "")
+        if public_access_state == "available" and status_code >= 400:
+            public_access_state = ""
+        if public_access_state in _PUBLIC_ACCESS_STATES and status_code < 500:
+            attributes["public_access_state"] = public_access_state
+            attributes["content_group"] = "public_dataset"
+            content_surface = getattr(request, "_rowset_public_content_surface", "")
+            if content_surface in _PUBLIC_CONTENT_SURFACES:
+                attributes["content_surface"] = content_surface
+            content_id = getattr(request, "_rowset_public_content_id", "")
+            if public_access_state == "available" and content_id:
+                attributes["content_id"] = content_id
 
         log_method = logger.error if status_code >= 500 else logger.info
         log_method("http.request.completed", **attributes)

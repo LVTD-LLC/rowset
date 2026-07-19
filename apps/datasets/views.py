@@ -48,9 +48,12 @@ from apps.datasets.choices import DatasetColumnType
 from apps.datasets.models import Dataset, DatasetAsset, DatasetRow, Project, ProjectSection
 from apps.datasets.public_previews import (
     PUBLIC_PREVIEW_ROBOTS_POLICY,
+    PublicDatasetAccessState,
+    PublicDatasetContentSurface,
     build_public_dataset_agent_prompt,
     grant_public_preview_access,
     has_public_preview_access,
+    set_public_dataset_request_context,
 )
 from apps.datasets.services import (
     CALCULATION_RELATIONSHIP_COUNT,
@@ -2855,17 +2858,71 @@ def _has_public_dataset_access(request, dataset: Dataset) -> bool:
     return has_public_preview_access(request.session, dataset)
 
 
+def _set_public_dataset_request_context(
+    request,
+    *,
+    access_state: PublicDatasetAccessState,
+    content_surface: PublicDatasetContentSurface | None = None,
+    dataset: Dataset | None = None,
+) -> None:
+    set_public_dataset_request_context(
+        request,
+        access_state=access_state,
+        content_surface=content_surface,
+        dataset=dataset,
+    )
+
+
+def _public_dataset_or_404(
+    request,
+    public_key,
+    *,
+    content_surface: PublicDatasetContentSurface | None = None,
+) -> Dataset:
+    try:
+        dataset = Dataset.objects.get(public_key=public_key, archived_at__isnull=True)
+    except Dataset.DoesNotExist as exc:
+        _set_public_dataset_request_context(
+            request,
+            access_state="not_found",
+            content_surface=content_surface,
+        )
+        raise Http404("Public dataset not found.") from exc
+    if not dataset.public_enabled:
+        _set_public_dataset_request_context(
+            request,
+            access_state="disabled",
+            content_surface=content_surface,
+        )
+        raise Http404("Public dataset not found.")
+    return dataset
+
+
 @require_http_methods(["GET", "HEAD"])
 def public_dataset_export(request, public_key, export_format):
-    dataset = get_object_or_404(
-        Dataset,
-        public_key=public_key,
-        public_enabled=True,
-        archived_at__isnull=True,
-    )
+    dataset = _public_dataset_or_404(request, public_key, content_surface="export")
     if not _has_public_dataset_access(request, dataset):
+        _set_public_dataset_request_context(
+            request,
+            access_state="locked",
+            content_surface="export",
+        )
         raise Http404("Dataset export not found.")
-    response = _dataset_export_response(dataset, export_format)
+    try:
+        response = _dataset_export_response(dataset, export_format)
+    except Http404:
+        _set_public_dataset_request_context(
+            request,
+            access_state="not_found",
+            content_surface="export",
+        )
+        raise
+    _set_public_dataset_request_context(
+        request,
+        access_state="available",
+        content_surface="export",
+        dataset=dataset,
+    )
     response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
     return response
 
@@ -2874,31 +2931,34 @@ def _handle_public_password_access(
     request,
     dataset: Dataset,
     success_url: str,
-) -> tuple[bool, str, HttpResponse | None]:
+) -> tuple[bool, str, HttpResponse | None, str]:
     password_error = ""
     if request.method == "POST" and dataset.is_public_password_protected:
         password = request.POST.get("password", "")
         if dataset.public_password_matches(password):
             grant_public_preview_access(request.session, dataset)
-            return True, password_error, redirect(success_url)
+            return True, password_error, redirect(success_url), "available"
         password_error = "That password did not work. Please try again."
+        return False, password_error, None, "denied"
 
-    return _has_public_dataset_access(request, dataset), password_error, None
+    has_access = _has_public_dataset_access(request, dataset)
+    return has_access, password_error, None, "available" if has_access else "locked"
 
 
 @require_http_methods(["GET", "HEAD", "POST"])
 def public_dataset(request, public_key):
-    dataset = get_object_or_404(
-        Dataset,
-        public_key=public_key,
-        public_enabled=True,
-        archived_at__isnull=True,
-    )
+    dataset = _public_dataset_or_404(request, public_key, content_surface="preview")
 
-    has_access, password_error, password_response = _handle_public_password_access(
+    has_access, password_error, password_response, access_state = _handle_public_password_access(
         request,
         dataset,
         dataset.get_public_url(),
+    )
+    _set_public_dataset_request_context(
+        request,
+        access_state=access_state,
+        content_surface="preview",
+        dataset=dataset if access_state == "available" else None,
     )
     if password_response is not None:
         return password_response
@@ -2998,13 +3058,13 @@ def public_dataset(request, public_key):
 
 @require_http_methods(["GET", "HEAD"])
 def public_dataset_markdown(request, public_key):
-    dataset = get_object_or_404(
-        Dataset,
-        public_key=public_key,
-        public_enabled=True,
-        archived_at__isnull=True,
-    )
+    dataset = _public_dataset_or_404(request, public_key, content_surface="markdown")
     if not _has_public_dataset_access(request, dataset):
+        _set_public_dataset_request_context(
+            request,
+            access_state="locked",
+            content_surface="markdown",
+        )
         response = HttpResponse(
             "Unlock this password-protected dataset in the public preview first.\n",
             status=403,
@@ -3021,36 +3081,65 @@ def public_dataset_markdown(request, public_key):
             ),
             content_type="text/markdown; charset=utf-8",
         )
+    if response.status_code < 400:
+        _set_public_dataset_request_context(
+            request,
+            access_state="available",
+            content_surface="markdown",
+            dataset=dataset,
+        )
     response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
     return response
 
 
 @require_http_methods(["GET", "HEAD", "POST"])
 def public_dataset_row_detail(request, public_key, row_id):
-    dataset = get_object_or_404(
-        Dataset,
-        public_key=public_key,
-        public_enabled=True,
-        archived_at__isnull=True,
-    )
+    dataset = _public_dataset_or_404(request, public_key, content_surface="row_detail")
     row_url = reverse(
         "public_dataset_row_detail",
         kwargs={"public_key": dataset.public_key, "row_id": row_id},
     )
-    has_access, password_error, password_response = _handle_public_password_access(
+    has_access, password_error, password_response, access_state = _handle_public_password_access(
         request,
         dataset,
         row_url,
     )
     if password_response is not None:
+        _set_public_dataset_request_context(
+            request,
+            access_state=access_state,
+            content_surface="row_detail",
+            dataset=dataset,
+        )
         return password_response
+
+    if not has_access:
+        _set_public_dataset_request_context(
+            request,
+            access_state=access_state,
+            content_surface="row_detail",
+        )
 
     if request.method == "HEAD":
         if has_access:
-            get_object_or_404(
-                DatasetRow.objects.only("id"),
+            try:
+                get_object_or_404(
+                    DatasetRow.objects.only("id"),
+                    dataset=dataset,
+                    id=row_id,
+                )
+            except Http404:
+                _set_public_dataset_request_context(
+                    request,
+                    access_state="not_found",
+                    content_surface="row_detail",
+                )
+                raise
+            _set_public_dataset_request_context(
+                request,
+                access_state="available",
+                content_surface="row_detail",
                 dataset=dataset,
-                id=row_id,
             )
         response = HttpResponse()
         response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
@@ -3060,10 +3149,24 @@ def public_dataset_row_detail(request, public_key, row_id):
     row_cells = []
     row_navigation_context = {}
     if has_access:
-        dataset_row = get_object_or_404(
-            DatasetRow,
+        try:
+            dataset_row = get_object_or_404(
+                DatasetRow,
+                dataset=dataset,
+                id=row_id,
+            )
+        except Http404:
+            _set_public_dataset_request_context(
+                request,
+                access_state="not_found",
+                content_surface="row_detail",
+            )
+            raise
+        _set_public_dataset_request_context(
+            request,
+            access_state="available",
+            content_surface="row_detail",
             dataset=dataset,
-            id=row_id,
         )
         row_data = dataset_row_data_with_calculated_values(dataset, dataset_row)
         row_cells = _row_cells(
@@ -3100,23 +3203,28 @@ def public_dataset_row_detail(request, public_key, row_id):
 
 @require_http_methods(["GET", "HEAD"])
 def public_dataset_asset_content(request, public_key, asset_key):
-    dataset = get_object_or_404(
-        Dataset,
-        public_key=public_key,
-        public_enabled=True,
-        archived_at__isnull=True,
-    )
+    dataset = _public_dataset_or_404(request, public_key)
     if not _has_public_dataset_access(request, dataset):
+        _set_public_dataset_request_context(request, access_state="locked")
         raise Http404("Dataset asset not found.")
-    asset = get_object_or_404(
-        DatasetAsset.objects.select_related("dataset"),
-        key=asset_key,
-        dataset=dataset,
-    )
-    response = _dataset_asset_file_response(
-        asset,
-        request.GET.get("variant", "original"),
-        include_body=request.method != "HEAD",
-    )
+    try:
+        asset = get_object_or_404(
+            DatasetAsset.objects.select_related("dataset"),
+            key=asset_key,
+            dataset=dataset,
+        )
+    except Http404:
+        _set_public_dataset_request_context(request, access_state="not_found")
+        raise
+    try:
+        response = _dataset_asset_file_response(
+            asset,
+            request.GET.get("variant", "original"),
+            include_body=request.method != "HEAD",
+        )
+    except Http404:
+        _set_public_dataset_request_context(request, access_state="not_found")
+        raise
+    _set_public_dataset_request_context(request, access_state="available", dataset=dataset)
     response["X-Robots-Tag"] = PUBLIC_PREVIEW_ROBOTS_POLICY
     return response

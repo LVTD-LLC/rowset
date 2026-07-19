@@ -1,5 +1,6 @@
 import csv
 import io
+from uuid import UUID, uuid4
 
 import pytest
 from django.contrib.auth.hashers import make_password
@@ -11,11 +12,13 @@ from apps.datasets.choices import DatasetColumnType, DatasetMutationType
 from apps.datasets.public_previews import (
     PublicPreviewSettingsError,
     build_public_dataset_agent_prompt,
+    public_dataset_content_id,
     update_public_preview_settings,
 )
 from apps.datasets.tests.factories import (
     configure_filterable_dataset,
     create_dataset,
+    create_dataset_asset,
     create_ready_dataset,
 )
 
@@ -28,6 +31,171 @@ PUBLIC_EXPORT_CONTENT_TYPES = {
     "sqlite": "application/vnd.sqlite3",
     "parquet": "application/vnd.apache.parquet",
 }
+
+
+@override_settings(SECRET_KEY="deployment-secret")
+def test_public_dataset_content_id_matches_the_privacy_contract():
+    public_key = UUID("fddae2f3-e103-47fe-9605-9ae2669ba059")
+
+    assert public_dataset_content_id(public_key) == "pd_v1_a491d64af73e3c8aa246ae0a"
+
+
+@override_settings(SECRET_KEY="deployment-secret")
+def test_public_dataset_content_ids_distinguish_assets_without_names(profile):
+    first = create_dataset(profile, name="Private campaign name", public_enabled=True)
+    second = create_dataset(profile, name="Another private name", public_enabled=True)
+
+    first_id = public_dataset_content_id(first.public_key)
+    second_id = public_dataset_content_id(second.public_key)
+
+    assert first_id != second_id
+    assert first.name not in first_id
+    assert second.name not in second_id
+
+
+def _completed_request_event(captured_events):
+    return [event for event in captured_events if event.get("event") == "http.request.completed"][
+        -1
+    ]
+
+
+def test_public_dataset_request_logs_available_identity(client, profile, captured_events):
+    dataset = create_dataset(profile, public_enabled=True)
+
+    response = client.get(dataset.get_public_url())
+
+    event = _completed_request_event(captured_events)
+    assert response.status_code == 200
+    assert event["public_access_state"] == "available"
+    assert event["content_group"] == "public_dataset"
+    assert event["content_surface"] == "preview"
+    assert event["content_id"] == public_dataset_content_id(dataset.public_key)
+    assert dataset.name not in str(event)
+    assert str(dataset.public_key) not in str(event)
+
+
+def test_public_dataset_request_logs_locked_without_identity(client, profile, captured_events):
+    dataset = create_dataset(
+        profile,
+        public_enabled=True,
+        public_password_hash=make_password("share-secret"),
+    )
+
+    response = client.get(dataset.get_public_url())
+
+    event = _completed_request_event(captured_events)
+    assert response.status_code == 200
+    assert event["public_access_state"] == "locked"
+    assert "content_id" not in event
+
+
+def test_public_dataset_request_logs_denied_without_identity(client, profile, captured_events):
+    dataset = create_dataset(
+        profile,
+        public_enabled=True,
+        public_password_hash=make_password("share-secret"),
+    )
+
+    response = client.post(dataset.get_public_url(), {"password": "wrong-secret"})
+
+    event = _completed_request_event(captured_events)
+    assert response.status_code == 200
+    assert event["public_access_state"] == "denied"
+    assert "content_id" not in event
+
+
+def test_public_dataset_request_distinguishes_disabled_and_not_found(
+    client,
+    profile,
+    captured_events,
+):
+    dataset = create_dataset(profile, public_enabled=False)
+
+    disabled_response = client.get(dataset.get_public_url())
+    disabled_event = _completed_request_event(captured_events)
+    missing_response = client.get(reverse("public_dataset", args=[uuid4()]))
+    missing_event = _completed_request_event(captured_events)
+
+    assert disabled_response.status_code == 404
+    assert disabled_event["public_access_state"] == "disabled"
+    assert "content_id" not in disabled_event
+    assert missing_response.status_code == 404
+    assert missing_event["public_access_state"] == "not_found"
+    assert "content_id" not in missing_event
+
+
+@pytest.mark.parametrize(
+    "url_builder",
+    (
+        lambda dataset: reverse(
+            "public_dataset_row_detail",
+            args=[dataset.public_key, 999_999],
+        ),
+        lambda dataset: reverse(
+            "public_dataset_export",
+            args=[dataset.public_key, "unsupported"],
+        ),
+    ),
+)
+def test_missing_public_resources_log_not_found_without_identity(
+    client,
+    profile,
+    captured_events,
+    url_builder,
+):
+    dataset = create_dataset(profile, public_enabled=True)
+
+    response = client.get(url_builder(dataset))
+
+    event = _completed_request_event(captured_events)
+    assert response.status_code == 404
+    assert event["public_access_state"] == "not_found"
+    assert "content_id" not in event
+
+
+def test_unsupported_public_asset_variant_logs_not_found_without_identity(
+    client,
+    profile,
+    captured_events,
+):
+    dataset = create_ready_dataset(profile)
+    dataset.public_enabled = True
+    dataset.save(update_fields=["public_enabled"])
+    asset = create_dataset_asset(dataset, dataset.rows.first())
+
+    response = client.get(
+        reverse("public_dataset_asset_content", args=[dataset.public_key, asset.key]),
+        {"variant": "unsupported"},
+    )
+
+    event = _completed_request_event(captured_events)
+    assert response.status_code == 404
+    assert event["public_access_state"] == "not_found"
+    assert "content_id" not in event
+
+
+@pytest.mark.parametrize(
+    ("path_suffix", "content_surface"),
+    (("export/csv/", "export"), ("md", "markdown")),
+)
+def test_public_dataset_success_surfaces_retain_safe_identity(
+    client,
+    profile,
+    captured_events,
+    path_suffix,
+    content_surface,
+):
+    dataset = create_dataset(profile, public_enabled=True)
+
+    response = client.get(f"{dataset.get_public_url()}{path_suffix}")
+
+    event = _completed_request_event(captured_events)
+    assert response.status_code == 200
+    assert event["public_access_state"] == "available"
+    assert event["content_surface"] == content_surface
+    assert event["content_id"] == public_dataset_content_id(dataset.public_key)
+    assert dataset.name not in str(event)
+    assert str(dataset.public_key) not in str(event)
 
 
 @override_settings(SITE_URL="https://rowset.example")
