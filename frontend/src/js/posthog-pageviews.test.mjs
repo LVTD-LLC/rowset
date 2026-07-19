@@ -15,6 +15,7 @@ function loadPageviews({
     posthogContentGroup: "marketing",
     posthogPageviewEnabled: "true",
     posthogRoute: "/pricing",
+    posthogTrafficCategory: "human",
   },
   href = "https://rowset.example/pricing",
   loadPrivacy = false,
@@ -51,6 +52,7 @@ function loadPageviews({
             posthogContentGroup: "docs",
             posthogPageviewEnabled: "true",
             posthogRoute: "/docs/:slug",
+            posthogTrafficCategory: "ai_agent",
           },
         },
       };
@@ -65,6 +67,7 @@ function loadPageviews({
       posthogPageviewContext: {
         contentGroup: dataset.posthogContentGroup,
         route: dataset.posthogRoute,
+        trafficCategory: dataset.posthogTrafficCategory,
       },
     },
     URL,
@@ -104,6 +107,7 @@ test("captures one privacy-safe pageview for an eligible full page", () => {
     environment: "unknown",
     event_version: 1,
     route: "/pricing",
+    traffic_category: "human",
     utm_campaign: "launch 2026",
     utm_source: "hacker-news",
   });
@@ -135,6 +139,7 @@ test("does not capture private or disabled routes", () => {
       posthogContentGroup: "",
       posthogPageviewEnabled: "false",
       posthogRoute: "",
+      posthogTrafficCategory: "unknown_automation",
     },
     href: "https://rowset.example/datasets/",
   });
@@ -170,9 +175,15 @@ test("captures a new normalized route once after an HTMX navigation", () => {
     environment: "unknown",
     event_version: 1,
     route: "/docs/:slug",
+    traffic_category: "ai_agent",
     utm_medium: "social",
   });
   assert.equal(JSON.stringify(captures[1].properties).includes("secret"), false);
+  assert.deepEqual(JSON.parse(JSON.stringify(window.Rowset.posthogPageviewContext)), {
+    contentGroup: "docs",
+    route: "/docs/:slug",
+    trafficCategory: "ai_agent",
+  });
 });
 
 test("persists a tagged HTMX navigation without reusing the landing referrer", () => {
@@ -198,6 +209,7 @@ test("captures distinct HTMX navigations with the same normalized route", () => 
       posthogContentGroup: "docs",
       posthogPageviewEnabled: "true",
       posthogRoute: "/docs/:slug",
+      posthogTrafficCategory: "human",
     },
     href: "https://rowset.example/docs/getting-started",
   });
@@ -225,7 +237,12 @@ test("disables capture after an HTMX transition to a private route", () => {
   assert.equal(body.dataset.posthogPageviewEnabled, "false");
   assert.equal("posthogRoute" in body.dataset, false);
   assert.equal("posthogContentGroup" in body.dataset, false);
-  assert.equal(window.Rowset.posthogPageviewContext.route, "");
+  assert.equal("posthogTrafficCategory" in body.dataset, false);
+  assert.deepEqual(JSON.parse(JSON.stringify(window.Rowset.posthogPageviewContext)), {
+    contentGroup: "",
+    route: "",
+    trafficCategory: "",
+  });
 });
 
 test("keeps the privacy hook in sync with HTMX route changes", () => {

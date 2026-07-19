@@ -84,7 +84,8 @@
           data-csrf-token="{{ csrf_token }}"
           {% if posthog_pageview_enabled %}data-posthog-pageview-enabled="true"
           data-posthog-route="{{ posthog_pageview_route }}"
-          data-posthog-content-group="{{ posthog_content_group }}"{% endif %}
+          data-posthog-content-group="{{ posthog_content_group }}"
+          data-posthog-traffic-category="{{ posthog_traffic_category }}"{% endif %}
           {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}>
         {% include 'components/referrer_banner.html' %}
         {% block default_messages %}

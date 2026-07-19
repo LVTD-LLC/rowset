@@ -16,6 +16,7 @@ from rowset.logging_context import (
     route_name,
     validate_correlation_id,
 )
+from rowset.traffic import classify_traffic
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -78,10 +79,16 @@ class RequestLoggingMiddleware:
         started_at = time.perf_counter()
         request_id = _request_id(request)
         request_interface = _request_interface(request)
+        traffic_category = classify_traffic(
+            request_interface=request_interface,
+            user_agent=request.headers.get("User-Agent"),
+        )
+        request.traffic_category = traffic_category
         structlog.contextvars.bind_contextvars(
             **{
                 "request.id": request_id,
                 "request.interface": request_interface,
+                "traffic_category": traffic_category,
             }
         )
         session_id = _posthog_session_id(request)

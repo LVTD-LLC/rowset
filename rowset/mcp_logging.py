@@ -11,6 +11,7 @@ from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 
 from apps.core.services import mark_profile_setup_completed
 from rowset.logging_context import bind_actor_context, correlation_id_or_new
+from rowset.traffic import classify_traffic
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -78,6 +79,7 @@ class RowsetMCPLoggingMiddleware(Middleware):
             "request.id": _request_id(),
             "request.interface": "mcp",
             "rpc.method": context.method or "unknown",
+            "traffic_category": classify_traffic(request_interface="mcp", user_agent=None),
         }
         tool_name = getattr(context.message, "name", "") if context.method == "tools/call" else ""
         if tool_name:

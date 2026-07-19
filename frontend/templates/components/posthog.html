@@ -5,6 +5,7 @@
     window.Rowset.posthogPageviewContext = {
       contentGroup: "{{ posthog_content_group|escapejs }}",
       route: "{{ posthog_pageview_route|escapejs }}",
+      trafficCategory: "{{ posthog_traffic_category|escapejs }}",
     };
     window.Rowset.posthogIdentity = {
       distinctId: "{{ posthog_distinct_id|escapejs }}",

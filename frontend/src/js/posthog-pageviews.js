@@ -9,16 +9,18 @@
     const dataset = document.body?.dataset || {};
     const route = dataset.posthogRoute || "";
     const contentGroup = dataset.posthogContentGroup || "";
+    const trafficCategory = dataset.posthogTrafficCategory || "";
 
     if (
       dataset.posthogPageviewEnabled !== "true" ||
       !route.startsWith("/") ||
-      !contentGroup
+      !contentGroup ||
+      !trafficCategory
     ) {
       return null;
     }
 
-    return { contentGroup, route };
+    return { contentGroup, route, trafficCategory };
   }
 
   function campaignProperties(search) {
@@ -91,6 +93,7 @@
       environment: Rowset.posthogEnvironment || "unknown",
       event_version: 1,
       route: context.route,
+      traffic_category: context.trafficCategory,
       ...campaign,
     });
     lastCaptureKey = captureKey;
@@ -118,9 +121,11 @@
       dataset.posthogPageviewEnabled = "true";
       dataset.posthogRoute = responseContext.posthogRoute || "";
       dataset.posthogContentGroup = responseContext.posthogContentGroup || "";
+      dataset.posthogTrafficCategory = responseContext.posthogTrafficCategory || "";
       Rowset.posthogPageviewContext = {
         contentGroup: dataset.posthogContentGroup,
         route: dataset.posthogRoute,
+        trafficCategory: dataset.posthogTrafficCategory,
       };
       return "eligible";
     }
@@ -128,7 +133,8 @@
     dataset.posthogPageviewEnabled = "false";
     delete dataset.posthogRoute;
     delete dataset.posthogContentGroup;
-    Rowset.posthogPageviewContext = { contentGroup: "", route: "" };
+    delete dataset.posthogTrafficCategory;
+    Rowset.posthogPageviewContext = { contentGroup: "", route: "", trafficCategory: "" };
     return "disabled";
   }
 
