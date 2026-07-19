@@ -19,6 +19,7 @@ deployment or release cut date.
 ## 2026-07-19
 
 ### Added
+- Added multi-select choice-column filters to dataset tables, with shareable URLs that preserve every selected choice.
 - Added an implementation guide for AI agent audit trails that separates runtime traces, authorization decisions, and business-state changes while documenting Rowset's operational-history limits.
 - Added network-free help at every Rowset CLI command level and an explicit one-line compact JSON output mode for agents and scripts.
 

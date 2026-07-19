@@ -1714,10 +1714,28 @@ def test_dataset_detail_filters_choice_columns_by_exact_choice(auth_client, prof
     assert response.context["row_page_obj"].paginator.count == 1
     assert response.context["row_filter_fields"][2]["is_choice"] is True
     assert response.context["row_filter_fields"][2]["operator"] == "is"
-    assert '<option value="P1" selected>P1</option>' in content
+    assert re.search(r'name="filter_2"\s+value="P1"\s+checked', content)
     assert "TASK-1" in content
     assert "TASK-2" not in content
     assert "TASK-3" not in content
+
+    multi_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_2": ["P1", "P2"]},
+    )
+    multi_content = multi_response.content.decode()
+
+    assert multi_response.status_code == 200
+    assert multi_response.context["row_page_obj"].paginator.count == 2
+    assert multi_response.context["row_filter_fields"][2]["selected_values"] == ["P1", "P2"]
+    assert re.search(r'name="filter_2"\s+value="P1"\s+checked', multi_content)
+    assert re.search(r'name="filter_2"\s+value="P2"\s+checked', multi_content)
+    assert re.search(r'type="hidden"\s+name="filter_2"\s+value="P1"', multi_content)
+    assert re.search(r'type="hidden"\s+name="filter_2"\s+value="P2"', multi_content)
+    assert "2 choices selected" in multi_content
+    assert "TASK-1" in multi_content
+    assert "TASK-2" not in multi_content
+    assert "TASK-3" in multi_content
 
 
 def test_dataset_detail_semantic_text_filters_accept_partial_values(auth_client, profile):
@@ -1746,6 +1764,15 @@ def test_dataset_detail_semantic_text_filters_accept_partial_values(auth_client,
     assert 'id="row-column-filter-1"' in content
     assert 'name="filter_0"' in content
     assert 'name="filter_1"' in content
+
+    repeated_response = auth_client.get(
+        dataset.get_absolute_url(),
+        {"filter_0": ["not-a-match", "ada"]},
+    )
+
+    assert repeated_response.status_code == 200
+    assert repeated_response.context["row_page_obj"].paginator.count == 1
+    assert repeated_response.context["row_filter_fields"][0]["value"] == "ada"
 
 
 def test_dataset_detail_renders_url_cells_as_text(auth_client, profile):

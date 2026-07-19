@@ -69,17 +69,7 @@
           <form method="get" action="" class="mt-2 space-y-3">
             {% include "datasets/partials/row_query_hidden_inputs.html" with current_filter_param=column.param_name preserve_row_sort=True preserve_row_direction=True %}
             {% if column.is_choice %}
-              <label for="row-column-filter-{{ column.index }}" class="sr-only">{{ column.header }}</label>
-              <select
-                id="row-column-filter-{{ column.index }}"
-                name="{{ column.param_name }}"
-                class="block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
-              >
-                <option value="">Any choice</option>
-                {% for choice in column.choices %}
-                  <option value="{{ choice }}"{% if column.value == choice %} selected{% endif %}>{{ choice }}</option>
-                {% endfor %}
-              </select>
+              {% include "datasets/partials/choice_filter.html" with choice_filter=column control_id="row-column-filter" placement="responsive" %}
             {% elif column.is_boolean %}
               <label for="row-column-filter-{{ column.index }}" class="sr-only">{{ column.header }}</label>
               <select

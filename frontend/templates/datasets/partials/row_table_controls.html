@@ -51,16 +51,9 @@
           <div>
             <label for="row-filter-{{ row_filter.param_name }}" class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title="{% firstof row_filter.description row_filter.header %}">{{ row_filter.header }}</label>
             {% if row_filter.is_choice %}
-              <select
-                id="row-filter-{{ row_filter.param_name }}"
-                name="{{ row_filter.param_name }}"
-                class="mt-1 block min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-950"
-              >
-                <option value="">Any choice</option>
-                {% for choice in row_filter.choices %}
-                  <option value="{{ choice }}"{% if row_filter.value == choice %} selected{% endif %}>{{ choice }}</option>
-                {% endfor %}
-              </select>
+              <div class="mt-1">
+                {% include "datasets/partials/choice_filter.html" with choice_filter=row_filter control_id="row-filter" %}
+              </div>
             {% elif row_filter.is_boolean %}
               <select
                 id="row-filter-{{ row_filter.param_name }}"
