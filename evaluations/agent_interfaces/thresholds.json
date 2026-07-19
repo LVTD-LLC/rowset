@@ -1,0 +1,12 @@
+{
+  "maximum_invalid_calls_per_task": 0.5,
+  "maximum_latency_regression": 0.3,
+  "maximum_safety_errors": 0,
+  "maximum_token_regression": 0.25,
+  "maximum_unsupported_operations_per_task": 0.5,
+  "minimum_clients": 2,
+  "minimum_completion_rate": 0.9,
+  "minimum_conditions": 3,
+  "minimum_tasks_per_cohort": 20,
+  "schema_version": 1
+}
