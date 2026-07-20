@@ -23,6 +23,9 @@ deployment or release cut date.
   crawler, AI-agent, preview, API-client, and unknown-automation traffic without raw request data.
 - Added privacy-safe MCP usage analytics that records tool and parameter usage without dataset
   contents, tool responses, exception payloads, or MCP schema changes.
+- Added an opt-in self-host Qdrant service with generated authentication, private persistent
+  storage, lifecycle and doctor integration, architecture preflight checks, safe restore clearing,
+  and an all-datasets vector backfill command.
 - Added privacy-safe, deployment-scoped content identity and bounded access-state telemetry for public dataset access.
 - Added a decision guide for choosing databases for AI agents by separating conversation history, workflow checkpoints, semantic retrieval, structured operational state, artifacts, and audit evidence.
 

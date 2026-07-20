@@ -7,6 +7,7 @@ sentinel="rowset-compose-secret-$$-${RANDOM}"
 django_secret="${sentinel}-django-$(printf 'd%.0s' {1..50})"
 postgres_secret="${sentinel}-postgres-$(printf 'p%.0s' {1..32})"
 redis_secret="${sentinel}-redis-$(printf 'r%.0s' {1..32})"
+qdrant_secret="${sentinel}-qdrant-$(printf 'q%.0s' {1..32})"
 env_file="$(mktemp)"
 rendered_config="$(mktemp)"
 compose_errors="$(mktemp)"
@@ -31,6 +32,10 @@ chmod 600 "$env_file" "$rendered_config" "$compose_errors"
   printf 'REDIS_HOST=redis\n'
   printf 'REDIS_PORT=6379\n'
   printf 'REDIS_PASSWORD=%s\n' "$redis_secret"
+  printf 'ROWSET_VECTOR_SEARCH_ENABLED=False\n'
+  printf 'QDRANT_URL=http://qdrant:6333\n'
+  printf 'QDRANT_API_KEY=%s\n' "$qdrant_secret"
+  printf 'OPENROUTER_API_KEY=\n'
 } >"$env_file"
 
 "$ROOT/deployment/self-host/validate-env.sh" "$env_file" >/dev/null

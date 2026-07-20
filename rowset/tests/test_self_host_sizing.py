@@ -25,7 +25,9 @@ def _benchmarks():
 
 def _production_services():
     compose = yaml.safe_load((_REPO_ROOT / "docker-compose-prod.yml").read_text())
-    return sorted(compose["services"])
+    return sorted(
+        name for name, service in compose["services"].items() if "profiles" not in service
+    )
 
 
 def _production_dependency_images():
@@ -33,7 +35,7 @@ def _production_dependency_images():
     return {
         service["image"]
         for service in compose["services"].values()
-        if not service["image"].startswith("${ROWSET_IMAGE:")
+        if "profiles" not in service and not service["image"].startswith("${ROWSET_IMAGE:")
     }
 
 

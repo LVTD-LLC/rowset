@@ -273,6 +273,10 @@ def _write_backup_test_environment(tmp_path: Path) -> Path:
                 "REDIS_HOST=redis",
                 "REDIS_PORT=6379",
                 f"REDIS_PASSWORD={'c' * 32}",
+                "ROWSET_VECTOR_SEARCH_ENABLED=False",
+                "QDRANT_URL=http://qdrant:6333",
+                f"QDRANT_API_KEY={'d' * 32}",
+                "OPENROUTER_API_KEY=",
                 "ROWSET_BACKUP_RETENTION_DAYS=7",
             )
         )
@@ -465,6 +469,8 @@ def test_backup_commands_and_daily_timer_are_shipped():
     assert "--confirm-destroy-data" in restore
     assert "verify-backup.sh" in restore
     assert "application services remain stopped" in restore
+    assert "find /qdrant/storage -mindepth 1 -delete" in restore
+    assert "Qdrant was cleared because it is a rebuildable index" in restore
     destructive_stop = restore.index(
         "compose stop caddy backend workers", restore.index("running_services=$(compose")
     )
@@ -472,6 +478,9 @@ def test_backup_commands_and_daily_timer_are_shipped():
     assert "restore-bundle" in restore
     assert "verify-directory" in verify
     assert "down -v" in drill
+    assert 'drill_services="db redis backend workers"' in drill
+    assert 'drill_services="db redis qdrant backend workers"' in drill
+    assert drill.count("compose up -d $drill_services") == 2
     assert "restore_drill_state seed" in drill
     assert "restore_drill_state verify" in drill
     assert "backup_output=$(" in drill

@@ -57,6 +57,27 @@ services:
     env_file:
       - ${ROWSET_ENV_FILE:-.env}
 
+  qdrant:
+    <<: *service-defaults
+    image: qdrant/qdrant:v1.18.2
+    profiles:
+      - vector-search
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY with deployment/self-host/init-env.sh}
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333;
+          printf "GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3;
+          grep -q "200 OK" <&3'
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
   backend:
     <<: *service-defaults
     image: ${ROWSET_IMAGE:?Set ROWSET_IMAGE to a verified release or SHA tag}
@@ -100,5 +121,6 @@ volumes:
   caddy_config:
   postgres_data:
   redis_data:
+  qdrant_data:
   media_data:
   private_media_data:

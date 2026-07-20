@@ -4,6 +4,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import override_settings
+from django.utils import timezone
 
 from apps.datasets.embeddings import EmbeddingResult
 from apps.datasets.models import Dataset, DatasetRow
@@ -241,8 +242,6 @@ def test_reindex_dataset_vectors_task_backfills_when_enabled(
 
 
 def test_backfill_dataset_vectors_indexes_archived_dataset_rows(dataset, rows):
-    from django.utils import timezone
-
     dataset.archived_at = timezone.now()
     dataset.save(update_fields=["archived_at", "updated_at"])
     provider = FakeEmbeddingProvider()
@@ -269,6 +268,46 @@ def test_backfill_dataset_vectors_command_supports_dry_run(dataset, rows):
     output = stdout.getvalue()
     assert "1 row(s) would be indexed" in output
     assert "0 indexed" in output
+
+
+def test_backfill_dataset_vectors_command_supports_every_active_dataset(
+    dataset, profile, monkeypatch
+):
+    second = Dataset.objects.create(
+        profile=profile,
+        name="More vectors",
+        headers=["id"],
+        index_column="id",
+    )
+    archived = Dataset.objects.create(
+        profile=profile,
+        name="Archived vectors",
+        headers=["id"],
+        index_column="id",
+        archived_at=timezone.now(),
+    )
+    seen = []
+
+    def record_backfill(selected, **_kwargs):
+        seen.append(selected.id)
+        return VectorBackfillResult(rows_seen=1, indexed=1)
+
+    monkeypatch.setattr(
+        "apps.datasets.management.commands.backfill_dataset_vectors.backfill_dataset_vectors",
+        record_backfill,
+    )
+    stdout = StringIO()
+
+    call_command("backfill_dataset_vectors", "--all", stdout=stdout)
+
+    assert seen == [dataset.id, second.id]
+    assert archived.id not in seen
+    assert "2 indexed, 0 failed, 2 row(s) seen" in stdout.getvalue()
+
+
+def test_backfill_dataset_vectors_command_requires_one_scope():
+    with pytest.raises(CommandError, match="dataset_key or --all"):
+        call_command("backfill_dataset_vectors")
 
 
 def test_backfill_dataset_vectors_command_reports_missing_embedding_configuration(dataset, rows):

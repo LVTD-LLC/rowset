@@ -1,8 +1,9 @@
 # Self-host Rowset
 
 This is the supported Docker Compose path for a single-server Rowset installation. It runs
-PostgreSQL, Redis, the Rowset web process, workers, and Caddy. Caddy is the only public ingress and
-manages trusted HTTPS certificates automatically.
+PostgreSQL, Redis, the Rowset web process, workers, and Caddy, plus a private Qdrant service when
+semantic search is enabled. Caddy is the only public ingress and manages trusted HTTPS certificates
+automatically.
 
 > **Release boundary:** The copy of this guide on `main` describes the next Rowset release and may
 > mention commands that are not in the current `/releases/latest` bundle yet. The installer always
@@ -16,6 +17,7 @@ manages trusted HTTPS certificates automatically.
 - one public hostname supplied as `ROWSET_DOMAIN`
 - automatic HTTPS issuance, renewal, and HTTP-to-HTTPS redirects
 - private backend, database, Redis, and worker services
+- optional private, authenticated Qdrant with persistent local storage
 - persistent PostgreSQL, Redis, media, private asset, and Caddy state
 - authenticated browser, REST, and Streamable HTTP MCP traffic
 
@@ -59,8 +61,8 @@ Allow inbound:
 - TCP 443 from the internet for HTTPS
 - UDP 443 from the internet when HTTP/3 is desired
 
-Do not expose ports 5432, 6379, or 8000. The production Compose file publishes only Caddy's web
-ports.
+Do not expose ports 5432, 6333, 6379, or 8000. The production Compose file publishes only Caddy's
+web ports.
 
 Confirm DNS before starting the stack:
 
@@ -119,7 +121,7 @@ deployment/self-host/validate-env.sh
 ```
 
 The initializer starts from `deployment/self-host/env.example`, generates independent strong Django,
-PostgreSQL, and Redis secrets, and stores the result in `.env` with mode `0600`. It is idempotent:
+PostgreSQL, Redis, and Qdrant secrets, and stores the result in `.env` with mode `0600`. It is idempotent:
 rerunning it preserves every existing nonblank value and never rotates a secret. The validator
 rejects missing values, unsafe development defaults, malformed hostnames or image tags, reused
 secrets, and files that are not private. Both commands report variable names and remediation only;
@@ -139,11 +141,13 @@ variables or the matching file variables:
 export SECRET_KEY_FILE=/run/secrets/rowset-django
 export POSTGRES_PASSWORD_FILE=/run/secrets/rowset-postgres
 export REDIS_PASSWORD_FILE=/run/secrets/rowset-redis
+export QDRANT_API_KEY_FILE=/run/secrets/rowset-qdrant
 deployment/self-host/init-env.sh
-unset SECRET_KEY_FILE POSTGRES_PASSWORD_FILE REDIS_PASSWORD_FILE
+unset SECRET_KEY_FILE POSTGRES_PASSWORD_FILE REDIS_PASSWORD_FILE QDRANT_API_KEY_FILE
 ```
 
-`SECRET_KEY`, `POSTGRES_PASSWORD`, and `REDIS_PASSWORD` are the direct-variable alternatives. Do not
+`SECRET_KEY`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `QDRANT_API_KEY` are the direct-variable
+alternatives. Do not
 set a direct variable and its `*_FILE` variable together. Secret files must be readable regular files
 containing one nonblank line. The initializer resolves either form into the protected application
 environment file without displaying the value.
@@ -168,6 +172,41 @@ grouped in `deployment/self-host/env.example`. Leave unused integrations blank. 
 Cloud provisioning credentials are separate from server application secrets. For example,
 `HCLOUD_TOKEN` belongs in the local provisioning shell or its secret store only. Never add it to the
 server `.env`, pass it to the Rowset containers, or paste it into an agent chat.
+
+### Optional: enable bundled vector search
+
+The initializer prepares Qdrant without starting it: it generates `QDRANT_API_KEY` and sets the
+private Compose URL `QDRANT_URL=http://qdrant:6333`. PostgreSQL remains the source of truth, and the
+normal five-service stack keeps the published minimum sizing profile when vector search is off.
+
+To enable semantic search, edit the protected `.env` file and set both values:
+
+```dotenv
+ROWSET_VECTOR_SEARCH_ENABLED=True
+OPENROUTER_API_KEY=<private OpenRouter API key>
+```
+
+Do not paste the provider key into an agent chat, command argument, issue, or log. A human should
+inject it from a private shell or secret store. Then continue through the normal validation,
+preflight, start, and doctor steps below.
+
+`start.sh` activates the `vector-search` Compose profile automatically. The Qdrant HTTP API remains
+on the private Compose network, requires the generated API key, persists in `qdrant_data`, and is
+checked by both its container health check and doctor. Preflight also verifies that the pinned
+Qdrant image supports the host architecture when vector search is enabled.
+
+Index existing active datasets after the first start:
+
+```bash
+docker compose --env-file .env -f docker-compose-prod.yml -p rowset \
+  exec -T backend python manage.py backfill_dataset_vectors --all --dry-run
+docker compose --env-file .env -f docker-compose-prod.yml -p rowset \
+  exec -T backend python manage.py backfill_dataset_vectors --all --stop-on-error
+```
+
+New and changed rows are indexed by workers after this one-time backfill. If vector search is not
+needed, leave `ROWSET_VECTOR_SEARCH_ENABLED=False`; Qdrant is not started and no embedding-provider
+key is required.
 
 ## 4. Run the deterministic preflight
 
@@ -215,13 +254,13 @@ normally completes shortly after DNS and firewall prerequisites are correct.
 
 ### Lifecycle and local Docker logs
 
-All five services use `restart: unless-stopped`, so containers restart automatically after a Docker
+All baseline services, plus Qdrant when enabled, use `restart: unless-stopped`, so containers restart automatically after a Docker
 daemon or host restart unless an operator stopped them explicitly. Backend and workers wait for
 healthy PostgreSQL and authenticated Redis dependencies during Compose startup; Caddy waits for the
 healthy backend.
 
 Docker's local `json-file` logs rotate at three 10 MB files: approximately 30 MB per service and
-150 MB across the five-service stack, before small Docker metadata overhead. Application-level
+150 MB across the five-service baseline, plus up to 30 MB for Qdrant logs when enabled, before small Docker metadata overhead. Application-level
 external logging remains separately configurable through optional observability settings.
 
 To validate or share the Compose structure without resolving `.env` values, use:
@@ -243,7 +282,7 @@ deployment/self-host/doctor.sh
 ```
 
 Doctor derives the required service list from the rendered production Compose configuration and
-checks every service, including Caddy, PostgreSQL, Redis, backend, and workers. It also verifies
+checks every service, including Qdrant when vector search is enabled. It also verifies
 trusted HTTPS, pending migrations, database and cache readiness, and that unauthenticated REST and
 MCP requests are rejected. Email delivery and the backup timer are reported as optional when they
 are not configured. Like preflight, doctor emits bounded newline-delimited JSON with stable IDs and
@@ -343,6 +382,7 @@ The production stack uses these named volumes:
 
 - `postgres_data`
 - `redis_data`
+- `qdrant_data` when vector search is enabled
 - `media_data`
 - `private_media_data`
 - `caddy_data`
@@ -360,7 +400,8 @@ and local file snapshots. It writes a mode `0700` versioned directory containing
 custom-format dump, separate `media` and `private_media` archives, format/image/PostgreSQL metadata,
 and SHA-256 checksums. Every file is mode `0600`, and the command validates checksums, archive paths,
 and the PostgreSQL dump before reporting success. Redis is intentionally excluded because Rowset
-does not use it as durable user storage.
+does not use it as durable user storage. Qdrant is also excluded because it is a rebuildable index;
+PostgreSQL rows remain the canonical data.
 
 Verify an existing backup without changing application data:
 
@@ -446,6 +487,9 @@ deployment/self-host/restore.sh --confirm-destroy-data \
 For an off-server backup, pass its exact `s3://<bucket>/<prefix>/rowset-backup-<timestamp>.tar.gz`
 URI. The configured bucket must match. Preserve a copy of the current `.env`; encrypted and signed
 application data may depend on the original `SECRET_KEY` even when the database and assets restore.
+When vector search is enabled, restore clears `qdrant_data` before restarting services so vectors
+from the newer database state cannot resolve to restored row identifiers. Run the two `--all`
+backfill commands from the vector-search section after restore.
 
 Run the complete recovery proof after setup and periodically thereafter:
 
@@ -565,7 +609,8 @@ containing secrets into public issues or chats.
 ### Confirm the backend is private
 
 From another host, scan only systems you own or are authorized to test. Ports 80 and 443 should be
-reachable; port 8000 should be closed. PostgreSQL and Redis must not be publicly reachable.
+reachable; ports 6333 and 8000 should be closed. PostgreSQL, Qdrant, and Redis must not be publicly
+reachable.
 
 ## Environment reference
 
@@ -586,6 +631,11 @@ The core self-hosting values are:
 | `POSTGRES_PASSWORD_FILE` | First-initialization file input for `POSTGRES_PASSWORD` |
 | `REDIS_PASSWORD` | Strong Redis password |
 | `REDIS_PASSWORD_FILE` | First-initialization file input for `REDIS_PASSWORD` |
+| `QDRANT_API_KEY` | Strong generated key shared only by Rowset and bundled Qdrant |
+| `QDRANT_API_KEY_FILE` | First-initialization file input for `QDRANT_API_KEY` |
+| `QDRANT_URL` | Private bundled service URL; keep `http://qdrant:6333` |
+| `ROWSET_VECTOR_SEARCH_ENABLED` | Set `True` to start Qdrant and enable semantic search |
+| `OPENROUTER_API_KEY` | Private embedding-provider key required when vector search is enabled |
 
 `ROWSET_INSECURE_HTTP` is intentionally absent from `.env.example`; only the diagnostic Compose
 override sets it. See `deployment/self-host/env.example` for optional production integrations.

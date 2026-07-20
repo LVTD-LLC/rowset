@@ -170,6 +170,12 @@ load_file_configuration() {
     CFG_REDIS_HOST=$(required_file_value REDIS_HOST "$env_file")
     CFG_REDIS_PORT=$(required_file_value REDIS_PORT "$env_file")
     CFG_REDIS_PASSWORD=$(required_file_value REDIS_PASSWORD "$env_file")
+    CFG_ROWSET_VECTOR_SEARCH_ENABLED=$(
+        required_file_value ROWSET_VECTOR_SEARCH_ENABLED "$env_file"
+    )
+    CFG_QDRANT_URL=$(required_file_value QDRANT_URL "$env_file")
+    CFG_QDRANT_API_KEY=$(required_file_value QDRANT_API_KEY "$env_file")
+    CFG_OPENROUTER_API_KEY=$(environment_file_value OPENROUTER_API_KEY "$env_file" || true)
     CFG_ROWSET_INSECURE_HTTP=$(environment_file_value ROWSET_INSECURE_HTTP "$env_file" || true)
 }
 
@@ -192,6 +198,16 @@ load_process_configuration() {
     CFG_REDIS_PASSWORD=$(
         resolve_environment_secret REDIS_PASSWORD "${REDIS_PASSWORD:-}" "${REDIS_PASSWORD_FILE:-}"
     )
+    CFG_ROWSET_VECTOR_SEARCH_ENABLED=$(
+        required_environment_value ROWSET_VECTOR_SEARCH_ENABLED \
+            "${ROWSET_VECTOR_SEARCH_ENABLED:-}"
+    )
+    CFG_QDRANT_URL=$(required_environment_value QDRANT_URL "${QDRANT_URL:-}")
+    CFG_QDRANT_API_KEY=$(
+        resolve_environment_secret QDRANT_API_KEY \
+            "${QDRANT_API_KEY:-}" "${QDRANT_API_KEY_FILE:-}"
+    )
+    CFG_OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
     CFG_ROWSET_INSECURE_HTTP=${ROWSET_INSECURE_HTTP:-}
 }
 
@@ -242,14 +258,38 @@ validate_loaded_configuration() {
     test "$CFG_REDIS_HOST" = "redis" || fail REDIS_HOST "must be redis"
     test "$CFG_REDIS_PORT" = "6379" || fail REDIS_PORT "must be 6379"
 
+    case "$CFG_ROWSET_VECTOR_SEARCH_ENABLED" in
+        True|False) ;;
+        *) fail ROWSET_VECTOR_SEARCH_ENABLED "must be True or False" ;;
+    esac
+    test "$CFG_QDRANT_URL" = "http://qdrant:6333" || \
+        fail QDRANT_URL "must be http://qdrant:6333 for the bundled service"
+    if test "$CFG_ROWSET_VECTOR_SEARCH_ENABLED" = "True"; then
+        test -n "$CFG_OPENROUTER_API_KEY" || \
+            fail OPENROUTER_API_KEY "is required when vector search is enabled"
+    fi
+
     validate_secret SECRET_KEY "$CFG_SECRET_KEY" 50 super-secret-key
     validate_secret POSTGRES_PASSWORD "$CFG_POSTGRES_PASSWORD" 32 rowset
     validate_secret REDIS_PASSWORD "$CFG_REDIS_PASSWORD" 32 rowset
+    validate_secret QDRANT_API_KEY "$CFG_QDRANT_API_KEY" 32 rowset
 
     if test "$CFG_SECRET_KEY" = "$CFG_POSTGRES_PASSWORD" || \
         test "$CFG_SECRET_KEY" = "$CFG_REDIS_PASSWORD" || \
-        test "$CFG_POSTGRES_PASSWORD" = "$CFG_REDIS_PASSWORD"; then
+        test "$CFG_SECRET_KEY" = "$CFG_QDRANT_API_KEY" || \
+        test "$CFG_POSTGRES_PASSWORD" = "$CFG_REDIS_PASSWORD" || \
+        test "$CFG_POSTGRES_PASSWORD" = "$CFG_QDRANT_API_KEY" || \
+        test "$CFG_REDIS_PASSWORD" = "$CFG_QDRANT_API_KEY"; then
         fail SECRETS "must be distinct"
+    fi
+}
+
+configure_compose_profiles() {
+    if test "$CFG_ROWSET_VECTOR_SEARCH_ENABLED" = "True"; then
+        COMPOSE_PROFILES=vector-search
+        export COMPOSE_PROFILES
+    else
+        unset COMPOSE_PROFILES
     fi
 }
 

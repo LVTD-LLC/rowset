@@ -9,6 +9,8 @@ fi
 bundle_root=$1
 shift
 guide="$bundle_root/SELF_HOSTING.md"
+compose_file="$bundle_root/docker-compose-prod.yml"
+environment_template="$bundle_root/deployment/self-host/env.example"
 
 test -f "$guide" || {
     printf 'self-host release is missing SELF_HOSTING.md\n' >&2
@@ -43,10 +45,11 @@ for command in $documented_commands; do
     }
 done
 
+required_command_list=$(printf '%s\n' "$required_commands" | paste -sd '|' -)
 guide_required_commands=$(
-    printf '%s\n' "$documented_commands" | awk -v required="$required_commands" '
+    printf '%s\n' "$documented_commands" | awk -v required="$required_command_list" '
         BEGIN {
-            count = split(required, commands, "\n")
+            count = split(required, commands, "|")
             for (i = 1; i <= count; i++) {
                 is_required[commands[i]] = 1
             }
@@ -103,6 +106,23 @@ for linked_target in $linked_guide_targets; do
     esac
     test -f "$bundle_root/$linked_file" || {
         printf 'missing linked guide file: %s\n' "$linked_file" >&2
+        exit 1
+    }
+done
+
+test -f "$compose_file" && test -f "$environment_template" || {
+    printf 'self-host release is missing the Qdrant deployment contract\n' >&2
+    exit 1
+}
+for required_text in 'qdrant/qdrant:v1.18.2' 'vector-search' 'qdrant_data:/qdrant/storage'; do
+    grep -Fq "$required_text" "$compose_file" || {
+        printf 'self-host Compose is missing Qdrant contract: %s\n' "$required_text" >&2
+        exit 1
+    }
+done
+for required_text in 'ROWSET_VECTOR_SEARCH_ENABLED=False' 'QDRANT_URL=http://qdrant:6333' 'QDRANT_API_KEY='; do
+    grep -Fq "$required_text" "$environment_template" || {
+        printf 'self-host environment is missing Qdrant contract: %s\n' "$required_text" >&2
         exit 1
     }
 done
