@@ -201,7 +201,6 @@
     dataset.posthogPageviewEnabled = "false";
     delete dataset.posthogRoute;
     delete dataset.posthogContentGroup;
-    delete dataset.posthogTrafficCategory;
     delete dataset.posthogContentId;
     delete dataset.posthogContentSurface;
     syncPrivacyContext();

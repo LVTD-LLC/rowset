@@ -62,6 +62,35 @@ test("captures the updated server-derived traffic category after HTMX navigation
   assert.equal(captures[0][1].traffic_category, "ai_agent");
 });
 
+test("preserves the last server-derived category when pageview context is disabled", () => {
+  const listeners = {};
+  const captures = [];
+  const window = {
+    URL,
+    location: { origin: "https://rowset.example" },
+    Rowset: {
+      hasAnalyticsConsent: () => true,
+      posthogEnvironment: "prod",
+      posthogPageviewContext: {
+        contentGroup: "",
+        route: "",
+        trafficCategory: "ai_agent",
+      },
+    },
+    posthog: { capture: (...args) => captures.push(args) },
+  };
+  const document = { addEventListener: (name, callback) => { listeners[name] = callback; } };
+  const link = {
+    dataset: { posthogCta: "signup", posthogCtaLocation: "private_shell" },
+    href: "https://rowset.example/accounts/signup/",
+  };
+  vm.runInNewContext(source, { document, window });
+
+  listeners.click({ target: { closest: () => link } });
+
+  assert.equal(captures[0][1].traffic_category, "ai_agent");
+});
+
 test("adds the PostHog session ID to checkout form submissions", () => {
   const listeners = {};
   const captures = [];

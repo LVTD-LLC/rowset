@@ -357,13 +357,13 @@ test("disables capture after an HTMX transition to a private route", () => {
   assert.equal(body.dataset.posthogPageviewEnabled, "false");
   assert.equal("posthogRoute" in body.dataset, false);
   assert.equal("posthogContentGroup" in body.dataset, false);
-  assert.equal("posthogTrafficCategory" in body.dataset, false);
+  assert.equal(body.dataset.posthogTrafficCategory, "human");
   assert.equal("posthogContentId" in body.dataset, false);
   assert.equal("posthogContentSurface" in body.dataset, false);
   assert.deepEqual(JSON.parse(JSON.stringify(window.Rowset.posthogPageviewContext)), {
     contentGroup: "",
     route: "",
-    trafficCategory: "",
+    trafficCategory: "human",
   });
 });
 
