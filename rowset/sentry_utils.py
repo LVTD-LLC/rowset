@@ -1,3 +1,4 @@
+import asyncio
 import json
 from logging import LogRecord
 
@@ -34,6 +35,8 @@ def before_send(event, hint):
 
         if isinstance(exc_value, SystemExit):  # group all SystemExits together
             event["fingerprint"] = ["system-exit"]
+        if isinstance(exc_value, asyncio.CancelledError):
+            return None
         if _is_expected_agent_error(exc_value):
             return None
     return event
