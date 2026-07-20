@@ -5,7 +5,9 @@ It exposes the ASGI callable as a module-level variable named ``application``.
 """
 
 import os
+from contextlib import asynccontextmanager
 
+import posthog
 from django.core.asgi import get_asgi_application
 from starlette.applications import Starlette
 from starlette.routing import Mount
@@ -15,7 +17,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rowset.settings")
 django_application = get_asgi_application()
 
 from apps.mcp_server.auth import MCP_INTERNAL_PATH, MCP_MOUNT_PATH  # noqa: E402
-from apps.mcp_server.server import mcp  # noqa: E402
+from apps.mcp_server.server import mcp, mcp_analytics  # noqa: E402
 
 mcp_application = mcp.http_app(
     path=MCP_INTERNAL_PATH,
@@ -24,10 +26,21 @@ mcp_application = mcp.http_app(
 )
 
 
+@asynccontextmanager
+async def application_lifespan(app):
+    async with mcp_application.lifespan(app):
+        try:
+            yield
+        finally:
+            if mcp_analytics is not None:
+                await mcp_analytics.flush()
+                posthog.flush()
+
+
 application = Starlette(
     routes=[
         Mount(MCP_MOUNT_PATH, app=mcp_application),
         Mount("/", app=django_application),
     ],
-    lifespan=mcp_application.lifespan,
+    lifespan=application_lifespan,
 )
