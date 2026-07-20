@@ -157,7 +157,11 @@ def test_capabilities_endpoint_advertises_public_dataset_read_paths(client):
 
 
 @pytest.mark.django_db
-def test_public_dataset_metadata_is_available_without_api_key(client, django_user_model):
+def test_public_dataset_metadata_is_available_without_api_key(
+    client,
+    django_user_model,
+    captured_events,
+):
     user = django_user_model.objects.create_user(
         username="publicmetadataowner",
         email="publicmetadataowner@example.com",
@@ -199,6 +203,12 @@ def test_public_dataset_metadata_is_available_without_api_key(client, django_use
     assert str(dataset.key) not in body
     assert "Private agent handling instructions" not in body
     assert "private_workflow" not in body
+    event = captured_events.event("http.request.completed")
+    assert event["content_group"] == "public_dataset"
+    assert event["public_access_state"] == "available"
+    assert event["content_id"].startswith("pd_v1_")
+    assert str(dataset.public_key) not in str(event)
+    assert dataset.name not in str(event)
 
 
 @pytest.mark.django_db
@@ -207,6 +217,7 @@ def test_public_dataset_metadata_requires_active_public_sharing(
     client,
     django_user_model,
     state,
+    captured_events,
 ):
     user = django_user_model.objects.create_user(
         username=f"publicmetadatastate{state}",
@@ -222,6 +233,9 @@ def test_public_dataset_metadata_requires_active_public_sharing(
     response = client.get(f"/api/public/datasets/{dataset.public_key}")
 
     assert response.status_code == 404
+    event = captured_events.event("http.request.completed")
+    assert event["public_access_state"] == ("disabled" if state == "disabled" else "not_found")
+    assert "content_id" not in event
 
 
 @pytest.mark.django_db
@@ -248,6 +262,7 @@ def test_public_dataset_metadata_requires_the_public_password_header(
     django_user_model,
     header,
     expected_status,
+    captured_events,
 ):
     user = django_user_model.objects.create_user(
         username=f"publicpassword{expected_status}{bool(header)}",
@@ -271,10 +286,20 @@ def test_public_dataset_metadata_requires_the_public_password_header(
     assert response.status_code == expected_status
     if expected_status == 403:
         assert response.json() == {"detail": "Public dataset password is required or invalid."}
+    event = captured_events.event("http.request.completed")
+    assert event["public_access_state"] == (
+        "available" if expected_status == 200 else "locked" if header is None else "denied"
+    )
+    assert ("content_id" in event) is (expected_status == 200)
+    assert "share-secret" not in str(event)
 
 
 @pytest.mark.django_db
-def test_public_dataset_rows_can_be_fully_retrieved_with_pagination(client, django_user_model):
+def test_public_dataset_rows_can_be_fully_retrieved_with_pagination(
+    client,
+    django_user_model,
+    captured_events,
+):
     user = django_user_model.objects.create_user(
         username="publicpaginationowner",
         email="publicpaginationowner@example.com",
@@ -313,6 +338,33 @@ def test_public_dataset_rows_can_be_fully_retrieved_with_pagination(client, djan
     assert [
         row["index_value"] for page in (first.json(), second.json()) for row in page["rows"]
     ] == ["P-1", "P-2", "P-3"]
+    events = [event for event in captured_events if event.get("event") == "http.request.completed"]
+    assert [event["public_access_state"] for event in events] == ["available", "available"]
+    assert len({event["content_id"] for event in events}) == 1
+    assert all("Ada" not in str(event) for event in events)
+
+
+@pytest.mark.django_db
+def test_public_dataset_api_uses_one_canonical_identity_for_equivalent_uuid_paths(
+    client,
+    django_user_model,
+    captured_events,
+):
+    user = django_user_model.objects.create_user(
+        username="publiccanonicalidentity",
+        email="publiccanonicalidentity@example.com",
+        password="password123",
+    )
+    dataset = create_dataset(user.profile, public_enabled=True)
+    canonical_key = str(dataset.public_key)
+
+    metadata = client.get(f"/api/public/datasets/{canonical_key.upper()}")
+    rows = client.get(f"/api/public/datasets/{canonical_key.replace('-', '')}/rows")
+
+    assert metadata.status_code == 200
+    assert rows.status_code == 200
+    events = [event for event in captured_events if event.get("event") == "http.request.completed"]
+    assert len({event["content_id"] for event in events}) == 1
 
 
 @pytest.mark.django_db
@@ -367,6 +419,7 @@ def test_public_dataset_rows_require_active_public_sharing(client, django_user_m
 def test_public_dataset_rows_require_the_public_password_on_every_request(
     client,
     django_user_model,
+    captured_events,
 ):
     user = django_user_model.objects.create_user(
         username="publicrowpasswordowner",
@@ -390,6 +443,15 @@ def test_public_dataset_rows_require_the_public_password_on_every_request(
     assert incorrect.status_code == 403
     assert correct.status_code == 200
     assert next_request_without_header.status_code == 403
+    events = [event for event in captured_events if event.get("event") == "http.request.completed"]
+    assert [event["public_access_state"] for event in events] == [
+        "locked",
+        "denied",
+        "available",
+        "locked",
+    ]
+    assert ["content_id" in event for event in events] == [False, False, True, False]
+    assert all("share-secret" not in str(event) for event in events)
 
 
 @pytest.mark.django_db

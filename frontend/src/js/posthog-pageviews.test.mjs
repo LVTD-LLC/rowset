@@ -26,6 +26,7 @@ function loadPageviews({
   const attributionTouches = [];
   const documentListeners = new Map();
   const bodyListeners = new Map();
+  const windowListeners = new Map();
   const location = new URL(href);
   const body = {
     dataset: { ...dataset },
@@ -43,6 +44,23 @@ function loadPageviews({
   };
   class DOMParser {
     parseFromString(responseText) {
+      if (responseText.includes("public-dataset-page")) {
+        const contentId = responseText.includes("public-dataset-page-b")
+          ? "pd_v1_0123456789abcdef01234568"
+          : "pd_v1_0123456789abcdef01234567";
+        return {
+          body: {
+            dataset: {
+              posthogContentGroup: "public_dataset",
+              posthogContentId: contentId,
+              posthogContentSurface: "preview",
+              posthogPageviewEnabled: "true",
+              posthogRoute: "/share/datasets/:public_key/",
+              posthogTrafficCategory: "human",
+            },
+          },
+        };
+      }
       if (!responseText.includes("docs-page")) {
         return { body: { dataset: {} } };
       }
@@ -59,6 +77,9 @@ function loadPageviews({
     }
   }
   const window = {
+    addEventListener(name, callback) {
+      windowListeners.set(name, callback);
+    },
     DOMParser,
     Rowset: {
       persistMarketingAttribution(touch) {
@@ -86,7 +107,15 @@ function loadPageviews({
   }
   vm.runInContext(source, context);
 
-  return { attributionTouches, body, bodyListeners, captures, documentListeners, window };
+  return {
+    attributionTouches,
+    body,
+    bodyListeners,
+    captures,
+    documentListeners,
+    window,
+    windowListeners,
+  };
 }
 
 test("captures one privacy-safe pageview for an eligible full page", () => {
@@ -123,6 +152,68 @@ test("captures one privacy-safe pageview for an eligible full page", () => {
       utm_source: "hacker-news",
     },
   ]);
+});
+
+test("captures server-approved public dataset identity without URL identifiers", () => {
+  const { captures } = loadPageviews({
+    dataset: {
+      posthogContentGroup: "public_dataset",
+      posthogContentId: "pd_v1_0123456789abcdef01234567",
+      posthogContentSurface: "preview",
+      posthogPageviewEnabled: "true",
+      posthogRoute: "/share/datasets/:public_key/",
+      posthogTrafficCategory: "human",
+    },
+    href: "https://rowset.example/share/datasets/fddae2f3-e103-47fe-9605-9ae2669ba059/",
+    referrer: "",
+  });
+
+  assert.equal(captures.length, 1);
+  assert.equal(captures[0].properties.content_group, "public_dataset");
+  assert.equal(captures[0].properties.content_id, "pd_v1_0123456789abcdef01234567");
+  assert.equal(captures[0].properties.content_surface, "preview");
+  assert.equal(
+    JSON.stringify(captures[0]).includes("fddae2f3-e103-47fe-9605-9ae2669ba059"),
+    false,
+  );
+});
+
+for (const [label, overrides] of [
+  ["missing identity", { posthogContentId: "" }],
+  ["malformed identity", { posthogContentId: "raw-public-key" }],
+  ["unsupported surface", { posthogContentSurface: "api" }],
+]) {
+  test(`rejects public dataset pageviews with ${label}`, () => {
+    const { captures } = loadPageviews({
+      dataset: {
+        posthogContentGroup: "public_dataset",
+        posthogContentId: "pd_v1_0123456789abcdef01234567",
+        posthogContentSurface: "preview",
+        posthogPageviewEnabled: "true",
+        posthogRoute: "/share/datasets/:public_key/",
+        posthogTrafficCategory: "human",
+        ...overrides,
+      },
+    });
+
+    assert.equal(captures.length, 0);
+  });
+}
+
+test("accepts the bounded public row detail surface", () => {
+  const { captures } = loadPageviews({
+    dataset: {
+      posthogContentGroup: "public_dataset",
+      posthogContentId: "pd_v1_0123456789abcdef01234567",
+      posthogContentSurface: "row_detail",
+      posthogPageviewEnabled: "true",
+      posthogRoute: "/share/datasets/:public_key/rows/:row_id/",
+      posthogTrafficCategory: "human",
+    },
+  });
+
+  assert.equal(captures.length, 1);
+  assert.equal(captures[0].properties.content_surface, "row_detail");
 });
 
 test("waits for DOM readiness before reading the server route context", () => {
@@ -225,8 +316,37 @@ test("captures distinct HTMX navigations with the same normalized route", () => 
   assert.equal(captures[1].properties.route, "/docs/:slug");
 });
 
-test("disables capture after an HTMX transition to a private route", () => {
+test("replaces public content identity from an HTMX full-document response", () => {
   const { body, bodyListeners, captures, window } = loadPageviews();
+
+  window.location = new URL(
+    "https://rowset.example/share/datasets/fddae2f3-e103-47fe-9605-9ae2669ba059/",
+  );
+  bodyListeners.get("htmx:afterSwap")({
+    detail: { xhr: { responseText: "<!doctype html><body>public-dataset-page" } },
+  });
+
+  assert.equal(captures.length, 2);
+  assert.equal(captures[1].properties.content_id, "pd_v1_0123456789abcdef01234567");
+  assert.equal(captures[1].properties.content_surface, "preview");
+  assert.equal(body.dataset.posthogContentId, "pd_v1_0123456789abcdef01234567");
+  assert.equal(
+    JSON.stringify(captures[1]).includes("fddae2f3-e103-47fe-9605-9ae2669ba059"),
+    false,
+  );
+});
+
+test("disables capture after an HTMX transition to a private route", () => {
+  const { body, bodyListeners, captures, window } = loadPageviews({
+    dataset: {
+      posthogContentGroup: "public_dataset",
+      posthogContentId: "pd_v1_0123456789abcdef01234567",
+      posthogContentSurface: "preview",
+      posthogPageviewEnabled: "true",
+      posthogRoute: "/share/datasets/:public_key/",
+      posthogTrafficCategory: "human",
+    },
+  });
 
   window.location = new URL("https://rowset.example/datasets/private-id/");
   bodyListeners.get("htmx:afterSwap")({
@@ -238,11 +358,39 @@ test("disables capture after an HTMX transition to a private route", () => {
   assert.equal("posthogRoute" in body.dataset, false);
   assert.equal("posthogContentGroup" in body.dataset, false);
   assert.equal("posthogTrafficCategory" in body.dataset, false);
+  assert.equal("posthogContentId" in body.dataset, false);
+  assert.equal("posthogContentSurface" in body.dataset, false);
   assert.deepEqual(JSON.parse(JSON.stringify(window.Rowset.posthogPageviewContext)), {
     contentGroup: "",
     route: "",
     trafficCategory: "",
   });
+});
+
+test("restores public identity before capturing a cached history pageview", () => {
+  const { bodyListeners, captures, window, windowListeners } = loadPageviews({
+    dataset: {
+      posthogContentGroup: "public_dataset",
+      posthogContentId: "pd_v1_0123456789abcdef01234567",
+      posthogContentSurface: "preview",
+      posthogPageviewEnabled: "true",
+      posthogRoute: "/share/datasets/:public_key/",
+      posthogTrafficCategory: "human",
+    },
+  });
+  const firstLocation = window.location;
+  window.location = new URL(
+    "https://rowset.example/share/datasets/fddae2f3-e103-47fe-9605-9ae2669ba060/",
+  );
+  bodyListeners.get("htmx:afterSwap")({
+    detail: { xhr: { responseText: "<!doctype html><body>public-dataset-page-b" } },
+  });
+  window.location = firstLocation;
+  windowListeners.get("popstate")({ state: { htmx: true } });
+
+  assert.equal(captures.length, 3);
+  assert.equal(captures[1].properties.content_id, "pd_v1_0123456789abcdef01234568");
+  assert.equal(captures[2].properties.content_id, "pd_v1_0123456789abcdef01234567");
 });
 
 test("keeps the privacy hook in sync with HTMX route changes", () => {

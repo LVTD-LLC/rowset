@@ -2,14 +2,67 @@
   const Rowset = (window.Rowset = window.Rowset || {});
   const { campaignKeys, safeCampaignValue } = Rowset.posthogAttribution;
   const capturedHtmxRequests = new WeakSet();
+  const pageviewContextsByUrl = new Map();
   let includeDocumentReferrer = true;
   let lastCaptureKey = "";
+
+  function syncPrivacyContext() {
+    const dataset = document.body?.dataset || {};
+    Rowset.posthogPageviewContext = {
+      contentGroup: dataset.posthogContentGroup || "",
+      route: dataset.posthogRoute || "",
+      trafficCategory: dataset.posthogTrafficCategory || "",
+    };
+  }
+
+  function pageviewContextSnapshot() {
+    const dataset = document.body?.dataset || {};
+    return {
+      contentGroup: dataset.posthogContentGroup || "",
+      contentId: dataset.posthogContentId || "",
+      contentSurface: dataset.posthogContentSurface || "",
+      enabled: dataset.posthogPageviewEnabled === "true",
+      route: dataset.posthogRoute || "",
+      trafficCategory: dataset.posthogTrafficCategory || "",
+    };
+  }
+
+  function rememberPageviewContext() {
+    pageviewContextsByUrl.set(
+      `${window.location.origin}${window.location.pathname}`,
+      pageviewContextSnapshot(),
+    );
+  }
+
+  function restorePageviewContext() {
+    const context = pageviewContextsByUrl.get(
+      `${window.location.origin}${window.location.pathname}`,
+    );
+    const dataset = document.body?.dataset;
+    if (!context || !dataset) return false;
+
+    dataset.posthogPageviewEnabled = context.enabled === true ? "true" : "false";
+    for (const [key, value] of [
+      ["posthogRoute", context.route],
+      ["posthogContentGroup", context.contentGroup],
+      ["posthogContentId", context.contentId],
+      ["posthogContentSurface", context.contentSurface],
+      ["posthogTrafficCategory", context.trafficCategory],
+    ]) {
+      if (value) dataset[key] = value;
+      else delete dataset[key];
+    }
+    syncPrivacyContext();
+    return true;
+  }
 
   function pageviewContext() {
     const dataset = document.body?.dataset || {};
     const route = dataset.posthogRoute || "";
     const contentGroup = dataset.posthogContentGroup || "";
     const trafficCategory = dataset.posthogTrafficCategory || "";
+    const contentId = dataset.posthogContentId || "";
+    const contentSurface = dataset.posthogContentSurface || "";
 
     if (
       dataset.posthogPageviewEnabled !== "true" ||
@@ -20,7 +73,15 @@
       return null;
     }
 
-    return { contentGroup, route, trafficCategory };
+    if (
+      contentGroup === "public_dataset" &&
+      (!/^pd_v1_[a-f0-9]{24}$/.test(contentId) ||
+        !["preview", "row_detail"].includes(contentSurface))
+    ) {
+      return null;
+    }
+
+    return { contentGroup, contentId, contentSurface, route, trafficCategory };
   }
 
   function campaignProperties(search) {
@@ -70,7 +131,14 @@
     }
 
     const campaign = campaignProperties(window.location.search);
-    const captureKey = JSON.stringify([context.route, context.contentGroup, campaign]);
+    const captureKey = JSON.stringify([
+      context.route,
+      context.contentGroup,
+      context.contentId,
+      context.contentSurface,
+      context.trafficCategory,
+      campaign,
+    ]);
     if (force !== true && captureKey === lastCaptureKey) {
       return false;
     }
@@ -90,6 +158,8 @@
       $pathname: context.route,
       ...referrer,
       content_group: context.contentGroup,
+      ...(context.contentId ? { content_id: context.contentId } : {}),
+      ...(context.contentSurface ? { content_surface: context.contentSurface } : {}),
       environment: Rowset.posthogEnvironment || "unknown",
       event_version: 1,
       route: context.route,
@@ -122,11 +192,9 @@
       dataset.posthogRoute = responseContext.posthogRoute || "";
       dataset.posthogContentGroup = responseContext.posthogContentGroup || "";
       dataset.posthogTrafficCategory = responseContext.posthogTrafficCategory || "";
-      Rowset.posthogPageviewContext = {
-        contentGroup: dataset.posthogContentGroup,
-        route: dataset.posthogRoute,
-        trafficCategory: dataset.posthogTrafficCategory,
-      };
+      dataset.posthogContentId = responseContext.posthogContentId || "";
+      dataset.posthogContentSurface = responseContext.posthogContentSurface || "";
+      syncPrivacyContext();
       return "eligible";
     }
 
@@ -134,7 +202,9 @@
     delete dataset.posthogRoute;
     delete dataset.posthogContentGroup;
     delete dataset.posthogTrafficCategory;
-    Rowset.posthogPageviewContext = { contentGroup: "", route: "", trafficCategory: "" };
+    delete dataset.posthogContentId;
+    delete dataset.posthogContentSurface;
+    syncPrivacyContext();
     return "disabled";
   }
 
@@ -147,13 +217,21 @@
     if (contextUpdate === "eligible" && request) {
       capturedHtmxRequests.add(request);
     }
+    rememberPageviewContext();
     Rowset.capturePosthogPageview(contextUpdate === "eligible");
   }
 
+  function captureRestoredPageview() {
+    if (restorePageviewContext()) {
+      Rowset.capturePosthogPageview(true);
+    }
+  }
+
   function initializePageviews() {
+    rememberPageviewContext();
     Rowset.capturePosthogPageview();
     document.body?.addEventListener("htmx:afterSwap", captureHtmxPageview);
-    window.addEventListener?.("popstate", Rowset.capturePosthogPageview);
+    window.addEventListener?.("popstate", captureRestoredPageview);
     window.addEventListener?.("rowset:analytics-consent-granted", () => Rowset.capturePosthogPageview(true));
   }
 

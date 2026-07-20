@@ -224,6 +224,11 @@ Rowset can participate in that stack as the structured dataset layer. It is not
 trying to replace every memory system. It gives agents a private, explicit place
 to keep rows they are allowed to operate on.
 
+For the wider infrastructure decision, read [how to choose a database for AI
+agents](/blog/database-for-ai-agents). It explains when this structured-row
+layer should sit beside conversation storage, workflow checkpoints, vector
+retrieval, object storage, or a dedicated audit system.
+
 ## FAQ
 
 ### Is an agent-managed dataset the same as agent memory?
