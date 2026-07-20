@@ -265,6 +265,11 @@ For Rowset datasets, the index column is what makes that re-read precise. Use
 the [index-column decision guide](/blog/choose-index-column-agent-rows) before
 building a workflow that will update the same records repeatedly.
 
+If you are selecting infrastructure rather than deciding where one fact belongs,
+use the [database for AI agents decision guide](/blog/database-for-ai-agents).
+It maps conversation history, checkpoints, vector retrieval, structured state,
+artifacts, and audit evidence to separate storage contracts.
+
 ## A setup checklist
 
 Use this checklist before giving an agent persistent data access.
