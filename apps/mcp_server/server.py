@@ -1,4 +1,6 @@
 import json
+import os
+import signal
 from typing import Annotated, Any
 
 from django.db import IntegrityError, close_old_connections
@@ -6,6 +8,8 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token
 from fastmcp.tools.tool import ToolResult
+from posthog import Posthog
+from posthog.mcp import instrument
 from pydantic import Field
 
 from apps.api.services import (
@@ -107,6 +111,11 @@ def _agent_collection_limit_field(resource_name: str):
     )
 
 
+_posthog = Posthog(
+    os.environ["POSTHOG_PROJECT_TOKEN"],
+    host=os.environ.get("POSTHOG_HOST", "https://us.i.posthog.com"),
+)
+
 mcp = FastMCP(
     name="Rowset",
     instructions=(
@@ -122,7 +131,15 @@ mcp = FastMCP(
     ),
     auth=mcp_auth,
 )
+_mcp_analytics = instrument(mcp, _posthog)
 mcp.add_middleware(RowsetMCPLoggingMiddleware())
+
+
+def _shutdown_posthog(signum, frame):
+    _posthog.shutdown()
+
+
+signal.signal(signal.SIGTERM, _shutdown_posthog)
 tool_policy = RowsetToolPolicy(mcp)
 read_tool = tool_policy.read
 write_tool = tool_policy.write
