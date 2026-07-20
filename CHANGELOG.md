@@ -24,6 +24,7 @@ deployment or release cut date.
 
 ### Fixed
 - Rewrote user-facing browser, REST, MCP, and CLI errors with specific actions and recovery steps, stopped exposing backend exception and storage details, and distinguished missing from incorrect public-preview passwords.
+- Suppressed expected async request-cancellation events from Sentry error reporting.
 
 ## 2026-07-19
 
