@@ -25,13 +25,13 @@
         </form>
       {% else %}
         <p class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100">
-          Unable to confirm {{ confirmation.email_address.email }} because it is already confirmed by a different account.
+          That email is already verified on another account. Sign in to that account, use a different email, or contact support.
         </p>
       {% endif %}
     {% else %}
       {% url 'account_email' as email_url %}
       <p class="fb-text-muted mt-4 text-sm leading-6">
-        This email confirmation link expired or is invalid. Please <a href="{{ email_url }}" class="fb-focus rounded-md font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">request a new confirmation email</a>.
+        This email confirmation link has expired or was already used. Please <a href="{{ email_url }}" class="fb-focus rounded-md font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">request a new confirmation email</a>.
       </p>
     {% endif %}
   </section>

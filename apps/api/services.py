@@ -1403,7 +1403,10 @@ def get_profile_dataset(profile: Profile, dataset_key: str) -> Dataset:
     )
 
 
-PUBLIC_DATASET_PASSWORD_ERROR = "Public dataset password is required or invalid."
+PUBLIC_DATASET_PASSWORD_REQUIRED_ERROR = "Add the public dataset password and try again."
+PUBLIC_DATASET_PASSWORD_MISMATCH_ERROR = (
+    "That public dataset password didn’t match. Check it and try again."
+)
 
 
 def get_public_dataset(public_key: str, password: str | None = None) -> Dataset:
@@ -1424,12 +1427,19 @@ def get_public_dataset(public_key: str, password: str | None = None) -> Dataset:
             "Public dataset not found.",
             public_access_state="disabled",
         )
-    if dataset.is_public_password_protected and not dataset.public_password_matches(password or ""):
-        raise DatasetServiceError(
-            403,
-            PUBLIC_DATASET_PASSWORD_ERROR,
-            public_access_state="denied" if password is not None else "locked",
-        )
+    if dataset.is_public_password_protected:
+        if not password:
+            raise DatasetServiceError(
+                403,
+                PUBLIC_DATASET_PASSWORD_REQUIRED_ERROR,
+                public_access_state="locked",
+            )
+        if not dataset.public_password_matches(password):
+            raise DatasetServiceError(
+                403,
+                PUBLIC_DATASET_PASSWORD_MISMATCH_ERROR,
+                public_access_state="denied",
+            )
     return dataset
 
 
@@ -3661,7 +3671,11 @@ def _attach_prepared_dataset_asset(
             )
             saved_files.append((DATASET_ASSET_STORAGE_ALIAS, saved_file_name))
             if saved_file_name != asset.file.name:
-                raise DatasetServiceError(500, f"{label_title} upload path could not be reserved.")
+                raise DatasetServiceError(
+                    500,
+                    f"We couldn't save the {asset_label}. Try attaching it again. "
+                    "If it keeps happening, contact support.",
+                )
             if thumbnail_bytes is not None:
                 saved_thumbnail_name = asset.thumbnail.storage.save(
                     asset.thumbnail.name,
@@ -3671,12 +3685,16 @@ def _attach_prepared_dataset_asset(
                 if saved_thumbnail_name != asset.thumbnail.name:
                     raise DatasetServiceError(
                         500,
-                        f"{label_title} thumbnail path could not be reserved.",
+                        f"We couldn't save the {asset_label}. Try attaching it again. "
+                        "If it keeps happening, contact support.",
                     )
     except Exception:
         _cleanup_saved_dataset_asset_files(
             saved_files,
-            failure_message=f"{label_title} upload failed and saved files were queued for cleanup.",
+            failure_message=(
+                f"We couldn't save the {asset_label}. Try attaching it again. "
+                "If it keeps happening, contact support."
+            ),
         )
         raise
 
@@ -3854,7 +3872,10 @@ def _dataset_vector_search_hits(
             vector_latency_ms=vector_latency_ms,
         )
     except (EmbeddingProviderError, ImproperlyConfigured, VectorStoreError, ValueError) as exc:
-        raise DatasetServiceError(503, f"Dataset vector search failed: {exc}") from exc
+        raise DatasetServiceError(
+            503,
+            "We couldn't search this dataset right now. Try again.",
+        ) from exc
 
 
 def _dataset_search_candidates(
@@ -4082,7 +4103,10 @@ def _profile_vector_search_hits(
             vector_latency_ms=vector_latency_ms,
         )
     except (EmbeddingProviderError, ImproperlyConfigured, VectorStoreError, ValueError) as exc:
-        raise DatasetServiceError(503, f"Profile row vector search failed: {exc}") from exc
+        raise DatasetServiceError(
+            503,
+            "We couldn't search your rows right now. Try again.",
+        ) from exc
 
 
 def _profile_lexical_rows(

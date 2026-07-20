@@ -23,6 +23,7 @@ deployment or release cut date.
 - Added a decision guide for choosing databases for AI agents by separating conversation history, workflow checkpoints, semantic retrieval, structured operational state, artifacts, and audit evidence.
 
 ### Fixed
+- Rewrote user-facing browser, REST, MCP, and CLI errors with specific actions and recovery steps, stopped exposing backend exception and storage details, and distinguished missing from incorrect public-preview passwords.
 - Suppressed expected async request-cancellation events from Sentry error reporting.
 
 ## 2026-07-19

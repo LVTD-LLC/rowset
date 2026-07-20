@@ -205,7 +205,7 @@ test("AI reader reports clipboard failure and releases the busy state", async ()
 
   await component.copyPrompt();
 
-  assert.equal(component.status, "Copy failed");
+  assert.equal(component.status, "Couldn’t copy — try again");
   assert.equal(component.busy, false);
 });
 
@@ -223,6 +223,6 @@ test("AI reader aborts a stalled Markdown request and permits retry", async () =
   timers.values().next().value();
   await copy;
 
-  assert.equal(component.status, "Copy failed");
+  assert.equal(component.status, "Couldn’t copy — try again");
   assert.equal(component.busy, false);
 });

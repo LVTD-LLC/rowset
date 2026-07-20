@@ -403,7 +403,7 @@
         const copied = await Rowset.copyTextToClipboard?.(code.textContent);
         const original = button.dataset.originalLabel || button.textContent;
         button.dataset.originalLabel = original;
-        button.textContent = copied ? "Copied" : "Copy failed";
+        button.textContent = copied ? "Copied" : "Couldn’t copy — try again";
         window.clearTimeout(Number(button.dataset.resetTimer));
         button.dataset.resetTimer = window.setTimeout(() => {
           button.textContent = original;

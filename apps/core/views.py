@@ -76,7 +76,10 @@ logger = get_rowset_logger(__name__)
 
 AGENT_API_KEY_MASK = "***"
 CREATED_AGENT_API_KEY_QUERY_PARAM = "created_agent_api_key"
-SERVER_ERROR_REDIRECT_MESSAGE = "Something went wrong. You have been redirected."
+SERVER_ERROR_REDIRECT_MESSAGE = (
+    "Rowset hit a technical issue and returned you here. Try the action again. "
+    "If it keeps happening, contact support."
+)
 PROGRAMMATIC_ERROR_PATH_PREFIXES = ("/api", "/mcp")
 
 
@@ -280,7 +283,7 @@ class HomeView(DatasetListView):
         if payment_status == "success":
             messages.success(self.request, "Thanks for subscribing, I hope you enjoy the app!")
         elif payment_status == "failed":
-            messages.error(self.request, "Something went wrong with the payment.")
+            messages.error(self.request, "Checkout was canceled. You weren’t charged.")
 
         profile = self.get_profile()
         context["dashboard_stats"] = context["dataset_stats"]
@@ -559,7 +562,11 @@ def resend_confirmation_email(request):
         email_address = EmailAddress.objects.get_for_user(user, user.email)
 
         if not email_address:
-            messages.error(request, "No email address found for your account.")
+            messages.error(
+                request,
+                "This account has no email address. Add one in Settings, then request "
+                "confirmation again.",
+            )
             logger.warning(
                 "email.confirmation.completed",
                 user_id=user.id,
@@ -595,7 +602,11 @@ def resend_confirmation_email(request):
         )
 
     except Exception as exc:
-        messages.error(request, "Failed to send confirmation email. Please try again later.")
+        messages.error(
+            request,
+            "We couldn’t send the confirmation email due to a technical issue. "
+            "Try again in a few minutes.",
+        )
         logger.error(
             "email.confirmation.completed",
             user_id=user.id,
@@ -646,7 +657,10 @@ def create_checkout_session(request, pk, plan):
     price_id = get_price_id_for_plan(plan)
     if not price_id:
         logger.warning("Stripe price id not configured for plan", plan=plan, user_id=user.id)
-        messages.error(request, "Unable to find pricing for the selected plan.")
+        messages.error(
+            request,
+            "That plan isn’t available right now. Choose another plan or contact support.",
+        )
         return redirect("pricing")
 
     try:
@@ -657,7 +671,10 @@ def create_checkout_session(request, pk, plan):
             profile_id=profile.id,
             error_type=type(exc).__name__,
         )
-        messages.error(request, "Unable to start checkout. Please try again.")
+        messages.error(
+            request,
+            "We couldn’t start checkout right now. You haven’t been charged. Try again.",
+        )
         return redirect("pricing")
 
     base_success_url = request.build_absolute_uri(reverse("home"))
@@ -708,7 +725,10 @@ def create_checkout_session(request, pk, plan):
             plan=plan,
             error_type=type(exc).__name__,
         )
-        messages.error(request, "Unable to start checkout. Please try again.")
+        messages.error(
+            request,
+            "We couldn’t start checkout right now. You haven’t been charged. Try again.",
+        )
         return redirect("pricing")
 
     track_activation_event(
@@ -728,7 +748,10 @@ def create_customer_portal_session(request):
     user = request.user
     profile = user.profile
     if not profile.stripe_customer_id:
-        messages.error(request, "No Stripe customer found for this account.")
+        messages.error(
+            request,
+            "Billing isn’t set up for this account yet. Choose a plan to continue.",
+        )
         return redirect("pricing")
 
     try:
@@ -744,7 +767,11 @@ def create_customer_portal_session(request):
             stripe_customer_id=profile.stripe_customer_id,
             error_type=type(exc).__name__,
         )
-        messages.error(request, "Unable to open the billing portal. Please try again.")
+        messages.error(
+            request,
+            "We couldn’t open your billing settings right now. Try again. "
+            "If it keeps happening, contact support.",
+        )
         return redirect("pricing")
 
     return stripe_redirect(session.url)

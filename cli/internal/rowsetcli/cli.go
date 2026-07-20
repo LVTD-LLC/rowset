@@ -43,6 +43,13 @@ type requestOptions struct {
 
 type repeatedStrings []string
 
+type apiErrorResponse struct {
+	Code       string `json:"code"`
+	Message    string `json:"message"`
+	Detail     string `json:"detail"`
+	UpgradeURL string `json:"upgrade_url"`
+}
+
 func (values *repeatedStrings) String() string {
 	return strings.Join(*values, ",")
 }
@@ -1198,7 +1205,7 @@ func doRequest(
 		return err
 	}
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("rowset request failed: %s: %s", resp.Status, strings.TrimSpace(string(responseBody)))
+		return safeRequestError(responseBody)
 	}
 	if opts.outputPath != "" {
 		if err := os.WriteFile(opts.outputPath, responseBody, 0o600); err != nil {
@@ -1216,6 +1223,30 @@ func doRequest(
 	formatted := formatJSON(responseBody, cfg.compact)
 	_, err = streams.Stdout.Write(formatted)
 	return err
+}
+
+func safeRequestError(responseBody []byte) error {
+	payload := apiErrorResponse{}
+	if err := json.Unmarshal(responseBody, &payload); err == nil {
+		details := make([]string, 0, 3)
+		if code := strings.TrimSpace(payload.Code); code != "" {
+			details = append(details, code)
+		}
+		message := strings.TrimSpace(payload.Message)
+		if message == "" {
+			message = strings.TrimSpace(payload.Detail)
+		}
+		if message != "" {
+			details = append(details, message)
+		}
+		if upgradeURL := strings.TrimSpace(payload.UpgradeURL); upgradeURL != "" {
+			details = append(details, "Upgrade: "+upgradeURL)
+		}
+		if len(details) > 0 {
+			return errors.New("Rowset couldn't complete the request — " + strings.Join(details, " — "))
+		}
+	}
+	return errors.New("Rowset couldn't complete the request. Check the command and try again.")
 }
 
 func buildEndpoint(apiBase string, path string, query url.Values, allowAbsolute bool) (string, error) {

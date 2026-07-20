@@ -728,6 +728,32 @@ func TestTrialExpiredErrorIncludesUpgradeGuidance(t *testing.T) {
 	}
 }
 
+func TestRequestErrorHidesUnstructuredResponseBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("database password leaked in stack trace"))
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("ROWSET_API_BASE", server.URL+"/api/")
+	t.Setenv("ROWSET_API_KEY", "test-key")
+
+	err := Run(context.Background(), IO{
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+		Stdin:  strings.NewReader(""),
+	}, []string{"user", "info"})
+
+	if err == nil {
+		t.Fatal("expected request to fail")
+	}
+	if strings.Contains(err.Error(), "database password") {
+		t.Fatalf("expected unstructured response body to stay hidden, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "Check the command and try again") {
+		t.Fatalf("expected recovery guidance, got %v", err)
+	}
+}
+
 func TestGlobalFlagsOverrideEnvironment(t *testing.T) {
 	t.Setenv("ROWSET_API_BASE", "https://wrong.example/api/")
 	t.Setenv("ROWSET_API_KEY", "wrong-key")

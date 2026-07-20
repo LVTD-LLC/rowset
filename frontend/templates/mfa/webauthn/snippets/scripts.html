@@ -8,9 +8,7 @@
 <script>
   document.addEventListener('allauth.error', function (event) {
     event.preventDefault();
-    var message = event.detail && event.detail.exception && event.detail.exception.message
-      ? event.detail.exception.message
-      : 'Passkey setup could not start. Make sure you are using HTTPS and a browser/device that supports passkeys.';
+    var message = 'We couldn’t use the passkey. Try again, or check that this browser and device support passkeys.';
     window.alert(message);
     console.error(event.detail && event.detail.exception ? event.detail.exception : event);
   });

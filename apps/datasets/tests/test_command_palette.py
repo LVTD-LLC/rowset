@@ -134,7 +134,7 @@ def test_command_palette_search_keeps_metadata_results_when_row_search_fails(
     assert response.status_code == 200
     content = response.content.decode()
     assert "Vector Backlog" in content
-    assert "Row search is unavailable right now." in content
+    assert "We couldn’t search rows right now. Try again." in content
 
 
 def test_command_palette_search_keeps_row_results_when_metadata_search_fails(
@@ -192,8 +192,8 @@ def test_command_palette_search_keeps_row_results_when_metadata_search_fails(
     assert response.status_code == 200
     content = response.content.decode()
     assert "P-2" in content
-    assert "Dataset search is unavailable right now." in content
-    assert "Project search is unavailable right now." in content
+    assert "We couldn’t search datasets right now. Try again." in content
+    assert "We couldn’t search projects right now. Try again." in content
 
 
 def test_command_palette_search_skips_malformed_service_results(auth_client, monkeypatch):

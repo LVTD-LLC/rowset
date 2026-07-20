@@ -254,14 +254,23 @@ def test_public_dataset_metadata_does_not_accept_private_dataset_key(client, dja
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    ("header", "expected_status"),
-    [(None, 403), ("wrong-password", 403), ("share-secret", 200)],
+    ("header", "expected_status", "expected_error"),
+    [
+        (None, 403, "Add the public dataset password and try again."),
+        (
+            "wrong-password",
+            403,
+            "That public dataset password didn’t match. Check it and try again.",
+        ),
+        ("share-secret", 200, None),
+    ],
 )
 def test_public_dataset_metadata_requires_the_public_password_header(
     client,
     django_user_model,
     header,
     expected_status,
+    expected_error,
     captured_events,
 ):
     user = django_user_model.objects.create_user(
@@ -285,7 +294,7 @@ def test_public_dataset_metadata_requires_the_public_password_header(
 
     assert response.status_code == expected_status
     if expected_status == 403:
-        assert response.json() == {"detail": "Public dataset password is required or invalid."}
+        assert response.json() == {"detail": expected_error}
     event = captured_events.event("http.request.completed")
     assert event["public_access_state"] == (
         "available" if expected_status == 200 else "locked" if header is None else "denied"
