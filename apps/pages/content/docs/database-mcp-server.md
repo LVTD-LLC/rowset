@@ -10,6 +10,11 @@ A direct database MCP server is useful when an agent needs controlled access to 
 production database. Rowset is useful when the agent needs its own private, structured dataset
 backend without exposing that database.
 
+If you are choosing the storage architecture before choosing an access path, use the [database for
+AI agents decision guide](/blog/database-for-ai-agents). It separates conversation history,
+checkpoints, vector retrieval, operational state, artifacts, and audit evidence before comparing
+infrastructure.
+
 ## The decision
 
 A database MCP server is a bridge into an existing database. It lets an agent inspect tables, run
