@@ -1410,13 +1410,26 @@ def get_public_dataset(public_key: str, password: str | None = None) -> Dataset:
     try:
         dataset = Dataset.objects.get(
             public_key=public_key,
-            public_enabled=True,
             archived_at__isnull=True,
         )
     except (Dataset.DoesNotExist, ValidationError, ValueError) as exc:
-        raise DatasetServiceError(404, "Public dataset not found.") from exc
+        raise DatasetServiceError(
+            404,
+            "Public dataset not found.",
+            public_access_state="not_found",
+        ) from exc
+    if not dataset.public_enabled:
+        raise DatasetServiceError(
+            404,
+            "Public dataset not found.",
+            public_access_state="disabled",
+        )
     if dataset.is_public_password_protected and not dataset.public_password_matches(password or ""):
-        raise DatasetServiceError(403, PUBLIC_DATASET_PASSWORD_ERROR)
+        raise DatasetServiceError(
+            403,
+            PUBLIC_DATASET_PASSWORD_ERROR,
+            public_access_state="denied" if password is not None else "locked",
+        )
     return dataset
 
 

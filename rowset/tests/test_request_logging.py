@@ -115,6 +115,23 @@ def test_request_middleware_classifies_rest_requests(captured_events):
     assert event["outcome"] == "failure"
 
 
+def test_request_middleware_omits_available_public_identity_from_failed_response(
+    captured_events,
+):
+    request = _request("/share/datasets/public-key/")
+    request._rowset_public_access_state = "available"
+    request._rowset_public_content_id = "pd_v1_0123456789abcdef01234567"
+    request._rowset_public_content_surface = "preview"
+
+    RequestLoggingMiddleware(lambda _request: HttpResponse(status=500))(request)
+
+    event = captured_events.event("http.request.completed")
+    assert "content_group" not in event
+    assert "content_id" not in event
+    assert "content_surface" not in event
+    assert "public_access_state" not in event
+
+
 def test_request_middleware_uses_safe_incoming_request_id_and_replaces_unsafe_one(captured_events):
     trusted = RequestFactory().get("/datasets/", HTTP_X_REQUEST_ID="edge.req-123")
     trusted.user = SimpleNamespace(is_authenticated=False)

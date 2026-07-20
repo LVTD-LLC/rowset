@@ -42,7 +42,9 @@
   <body data-csrf-token="{{ csrf_token }}"
         {% if posthog_pageview_enabled %}data-posthog-pageview-enabled="true"
         data-posthog-route="{{ posthog_pageview_route }}"
-        data-posthog-content-group="{{ posthog_content_group }}"{% endif %}
+        data-posthog-content-group="{{ posthog_content_group }}"
+        {% if posthog_content_id %}data-posthog-content-id="{{ posthog_content_id }}"{% endif %}
+        {% if posthog_content_surface %}data-posthog-content-surface="{{ posthog_content_surface }}"{% endif %}{% endif %}
         {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}>
     {% block default_messages %}{% include 'components/messages.html' with messages=messages %}{% endblock default_messages %}
     <div class="isolate min-h-dvh bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100" x-data="appShell" @keydown.escape.window="sidebarOpen = false" @keydown.window="handleShellKeydown($event)">
