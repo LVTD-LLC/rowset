@@ -23,7 +23,9 @@ destructive_started=false
 # shellcheck source=deployment/self-host/env-lib.sh
 . "$script_dir/env-lib.sh"
 validate_environment_contract "$environment_file"
-unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER
+configure_compose_profiles
+vector_search_enabled=$CFG_ROWSET_VECTOR_SEARCH_ENABLED
+unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER QDRANT_API_KEY ROWSET_VECTOR_SEARCH_ENABLED
 export ROWSET_ENV_FILE=$environment_file
 
 compose() {
@@ -35,7 +37,7 @@ cleanup() {
         if test "$destructive_started" = false; then
             compose up -d $running_services >/dev/null 2>&1 || true
         else
-            compose stop caddy backend workers >/dev/null 2>&1 || true
+            compose stop caddy backend workers qdrant >/dev/null 2>&1 || true
             echo "Restore failed after data replacement began; application services remain stopped." >&2
         fi
     fi
@@ -76,7 +78,7 @@ test -n "${backup_dir:-}" || fail BACKUP_SOURCE "bundle has no Rowset backup dir
 running_services=$(compose ps --services --status running | tr '\n' ' ')
 test -n "$running_services" || fail STACK "no Rowset services are running"
 stopped=true
-compose stop caddy backend workers >/dev/null
+compose stop caddy backend workers qdrant >/dev/null
 
 destructive_started=true
 compose exec -T db sh -c \
@@ -90,6 +92,15 @@ compose run --rm --no-deps -T --entrypoint python backend \
     -m deployment.backup_tools restore-media private-media \
     < "$backup_dir/private-media.tar.gz"
 
+if test "$vector_search_enabled" = "True"; then
+    compose run --rm --no-deps -T --entrypoint bash qdrant \
+        -c 'find /qdrant/storage -mindepth 1 -delete'
+fi
+
 compose up -d $running_services >/dev/null
 stopped=false
 printf 'Restore complete from %s\n' "$backup_dir"
+if test "$vector_search_enabled" = "True"; then
+    printf '%s\n' \
+        'Qdrant was cleared because it is a rebuildable index. Run the documented vector backfill.'
+fi

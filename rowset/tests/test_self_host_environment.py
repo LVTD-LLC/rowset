@@ -11,7 +11,7 @@ _INIT = _REPO_ROOT / "deployment/self-host/init-env.sh"
 _START = _REPO_ROOT / "deployment/self-host/start.sh"
 _VALIDATE = _REPO_ROOT / "deployment/self-host/validate-env.sh"
 _CANARY = "canary-value-that-must-never-appear-" + "x" * 64
-_SECRET_KEYS = ("SECRET_KEY", "POSTGRES_PASSWORD", "REDIS_PASSWORD")
+_SECRET_KEYS = ("SECRET_KEY", "POSTGRES_PASSWORD", "REDIS_PASSWORD", "QDRANT_API_KEY")
 
 
 def _safe_values() -> dict[str, str]:
@@ -29,6 +29,10 @@ def _safe_values() -> dict[str, str]:
         "REDIS_HOST": "redis",
         "REDIS_PORT": "6379",
         "REDIS_PASSWORD": "r" * 48,
+        "ROWSET_VECTOR_SEARCH_ENABLED": "False",
+        "QDRANT_URL": "http://qdrant:6333",
+        "QDRANT_API_KEY": "q" * 48,
+        "OPENROUTER_API_KEY": "",
     }
 
 
@@ -95,6 +99,23 @@ def test_validator_accepts_safe_production_file(tmp_path):
     assert result.stderr == ""
 
 
+def test_validator_requires_embedding_key_only_when_vector_search_is_enabled(tmp_path):
+    values = _safe_values()
+    values["ROWSET_VECTOR_SEARCH_ENABLED"] = "True"
+    env_file = tmp_path / ".env"
+    _write_env(env_file, values)
+
+    missing = _run_validate(env_file)
+    assert missing.returncode != 0
+    assert "OPENROUTER_API_KEY" in missing.stderr
+
+    values["OPENROUTER_API_KEY"] = "private-provider-key"
+    _write_env(env_file, values)
+    configured = _run_validate(env_file)
+    assert configured.returncode == 0
+    assert values["OPENROUTER_API_KEY"] not in configured.stdout + configured.stderr
+
+
 @pytest.mark.parametrize(
     "key",
     [
@@ -111,6 +132,9 @@ def test_validator_accepts_safe_production_file(tmp_path):
         "REDIS_HOST",
         "REDIS_PORT",
         "REDIS_PASSWORD",
+        "ROWSET_VECTOR_SEARCH_ENABLED",
+        "QDRANT_URL",
+        "QDRANT_API_KEY",
     ],
 )
 def test_validator_rejects_missing_required_values(tmp_path, key):
@@ -141,9 +165,13 @@ def test_validator_rejects_missing_required_values(tmp_path, key):
         ("POSTGRES_PASSWORD", "p" * 31, "at least 32 characters"),
         ("REDIS_PASSWORD", "rowset", "unsafe development default"),
         ("REDIS_PASSWORD", "r" * 31, "at least 32 characters"),
+        ("QDRANT_API_KEY", "q" * 31, "at least 32 characters"),
         ("SECRET_KEY", "s" * 63 + "$", "safe characters"),
         ("POSTGRES_PASSWORD", "p" * 47 + "#", "safe characters"),
         ("REDIS_PASSWORD", "r" * 47 + "/", "safe characters"),
+        ("QDRANT_API_KEY", "q" * 47 + "/", "safe characters"),
+        ("ROWSET_VECTOR_SEARCH_ENABLED", "true", "must be True or False"),
+        ("QDRANT_URL", "http://localhost:6333", "bundled service"),
         ("POSTGRES_DB", "invalid name", "safe identifier"),
         ("POSTGRES_USER", "-invalid", "safe identifier"),
         ("POSTGRES_HOST", "localhost", "must be db"),
@@ -327,7 +355,8 @@ def test_initializer_generates_distinct_secrets_and_private_file(tmp_path):
     assert len(values["SECRET_KEY"]) >= 50
     assert len(values["POSTGRES_PASSWORD"]) >= 32
     assert len(values["REDIS_PASSWORD"]) >= 32
-    assert len({values[key] for key in _SECRET_KEYS}) == 3
+    assert len(values["QDRANT_API_KEY"]) >= 32
+    assert len({values[key] for key in _SECRET_KEYS}) == 4
     assert stat.S_IMODE(env_file.stat().st_mode) == 0o600
     for key in _SECRET_KEYS:
         assert values[key] not in result.stdout + result.stderr
@@ -548,7 +577,8 @@ def test_concurrent_first_run_leaves_one_stable_secret_set(tmp_path):
         'case "$current" in\n'
         f"  1) printf '{'a' * 96}' ;;\n"
         f"  2) printf '{'b' * 96}' ;;\n"
-        f"  *) printf '{'c' * 96}' ;;\n"
+        f"  3) printf '{'c' * 96}' ;;\n"
+        f"  *) printf '{'d' * 96}' ;;\n"
         "esac\n"
     )
     fake_od.chmod(0o755)
@@ -638,6 +668,8 @@ def _fake_docker(tmp_path: Path) -> tuple[Path, Path]:
         'printf "ROWSET_IMAGE=%s\\n" "${ROWSET_IMAGE-unset}" >> "$DOCKER_LOG"\n'
         'printf "ROWSET_DOMAIN=%s\\n" "${ROWSET_DOMAIN-unset}" >> "$DOCKER_LOG"\n'
         'printf "POSTGRES_USER=%s\\n" "${POSTGRES_USER-unset}" >> "$DOCKER_LOG"\n'
+        'printf "QDRANT_API_KEY=%s\\n" "${QDRANT_API_KEY-unset}" >> "$DOCKER_LOG"\n'
+        'printf "COMPOSE_PROFILES=%s\\n" "${COMPOSE_PROFILES-unset}" >> "$DOCKER_LOG"\n'
         'printf "%s\\n" "$*" >> "$DOCKER_LOG"\n'
     )
     docker.chmod(0o755)
@@ -707,7 +739,30 @@ def test_start_wrapper_validates_then_invokes_production_compose(tmp_path):
         "ROWSET_IMAGE=unset",
         "ROWSET_DOMAIN=unset",
         "POSTGRES_USER=unset",
+        "QDRANT_API_KEY=unset",
+        "COMPOSE_PROFILES=unset",
         f"compose --env-file {env_file.resolve()} -f {_REPO_ROOT / 'docker-compose-prod.yml'} "
         "-p rowset up -d --remove-orphans",
     ]
     assert _CANARY not in result.stdout + result.stderr + docker_log.read_text()
+
+
+def test_start_wrapper_enables_qdrant_profile_for_vector_search(tmp_path):
+    env_file = tmp_path / ".env"
+    values = _safe_values()
+    values["ROWSET_VECTOR_SEARCH_ENABLED"] = "True"
+    values["OPENROUTER_API_KEY"] = "private-provider-key"
+    _write_env(env_file, values)
+    fake_bin, docker_log = _fake_docker(tmp_path)
+
+    result = _run_start(
+        env_file,
+        fake_bin,
+        docker_log,
+        environment={"QDRANT_API_KEY": "attacker-key", "COMPOSE_PROFILES": "attacker"},
+    )
+
+    assert result.returncode == 0
+    assert "QDRANT_API_KEY=unset" in docker_log.read_text()
+    assert "COMPOSE_PROFILES=vector-search" in docker_log.read_text()
+    assert "attacker-key" not in docker_log.read_text()

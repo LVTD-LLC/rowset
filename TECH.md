@@ -8,7 +8,7 @@
 - CLI: Go `rowset` module in `cli/`, using the standard library HTTP client
   against the authenticated REST API.
 - Auth: Django allauth, session auth, API-key auth, hosted MCP bearer auth.
-- Data: PostgreSQL, Redis, Django Q workers.
+- Data: PostgreSQL, Redis, Django Q workers, and optional Qdrant vector retrieval.
 - Tabular processing: Python `csv`, `json`, `sqlite3`, and `zipfile` plus
   Polars for CSV, JSONL, XLSX, SQLite, and Parquet exports.
 - Frontend: Django templates, HTMX, Alpine.js, Tailwind, and PostCSS-built

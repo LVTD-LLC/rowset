@@ -15,7 +15,8 @@ environment_file="$environment_directory/$(basename -- "$environment_file")"
 # shellcheck source=deployment/self-host/env-lib.sh
 . "$script_dir/env-lib.sh"
 validate_environment_contract "$environment_file"
-unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER
+configure_compose_profiles
+unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER QDRANT_API_KEY ROWSET_VECTOR_SEARCH_ENABLED
 export ROWSET_ENV_FILE=$environment_file
 project_name="rowset-restore-drill-$$"
 compose_file=${COMPOSE_FILE:-"$root/docker-compose-prod.yml"}

@@ -420,6 +420,58 @@ def test_doctor_happy_path_is_non_mutating_compact_and_machine_readable(tmp_path
     )
 
 
+def test_doctor_enables_and_authenticates_bundled_qdrant_when_configured(tmp_path):
+    diagnostics = _load_diagnostics()
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "ROWSET_DOMAIN=rowset.example.com\n"
+        "ROWSET_VECTOR_SEARCH_ENABLED=True\n"
+        "QDRANT_API_KEY=private-qdrant-key\n"
+    )
+    services = ["caddy", "db", "redis", "qdrant", "backend", "workers"]
+    command_environments = []
+
+    def respond(command, environment):
+        command_environments.append((command, environment))
+        if command[0].endswith("validate-env.sh"):
+            return diagnostics.CommandResult(0)
+        if command[-2:] == ["config", "--services"]:
+            return diagnostics.CommandResult(0, "\n".join(services) + "\n")
+        if command[-4:] == ["ps", "--all", "--format", "json"]:
+            return diagnostics.CommandResult(
+                0,
+                json.dumps(
+                    [
+                        {"Service": service, "State": "running", "Health": "healthy"}
+                        for service in services
+                    ]
+                ),
+            )
+        if command[0] == "curl":
+            healthy_root = command[-1].endswith("/") and "/mcp/" not in command[-1]
+            return diagnostics.CommandResult(0, "200" if healthy_root else "401")
+        if command[0] == "systemctl":
+            return diagnostics.CommandResult(1)
+        if "exec" in command:
+            return diagnostics.CommandResult(0)
+        raise AssertionError(f"unexpected doctor command: {command}")
+
+    checks, secrets = diagnostics.run_doctor(_REPO_ROOT, env_file, _FakeRunner(respond))
+
+    assert next(check for check in checks if check.id == "DOCTOR_SERVICE_QDRANT").status == "PASS"
+    assert next(check for check in checks if check.id == "DOCTOR_QDRANT").status == "PASS"
+    compose_environments = [
+        environment
+        for command, environment in command_environments
+        if command[0:2] == ["docker", "compose"]
+    ]
+    assert all(
+        environment["COMPOSE_PROFILES"] == "vector-search" for environment in compose_environments
+    )
+    assert all("QDRANT_API_KEY" not in environment for environment in compose_environments)
+    assert "private-qdrant-key" not in diagnostics.render(checks, secrets)
+
+
 def test_preflight_broken_host_reports_stable_failures_without_command_output(
     tmp_path, monkeypatch
 ):
