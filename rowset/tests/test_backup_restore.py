@@ -478,6 +478,9 @@ def test_backup_commands_and_daily_timer_are_shipped():
     assert "restore-bundle" in restore
     assert "verify-directory" in verify
     assert "down -v" in drill
+    assert 'drill_services="db redis backend workers"' in drill
+    assert 'drill_services="db redis qdrant backend workers"' in drill
+    assert drill.count("compose up -d $drill_services") == 2
     assert "restore_drill_state seed" in drill
     assert "restore_drill_state verify" in drill
     assert "backup_output=$(" in drill

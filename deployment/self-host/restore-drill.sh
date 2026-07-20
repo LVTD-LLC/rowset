@@ -16,6 +16,10 @@ environment_file="$environment_directory/$(basename -- "$environment_file")"
 . "$script_dir/env-lib.sh"
 validate_environment_contract "$environment_file"
 configure_compose_profiles
+drill_services="db redis backend workers"
+if test "$CFG_ROWSET_VECTOR_SEARCH_ENABLED" = "True"; then
+    drill_services="db redis qdrant backend workers"
+fi
 unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER QDRANT_API_KEY ROWSET_VECTOR_SEARCH_ENABLED
 export ROWSET_ENV_FILE=$environment_file
 project_name="rowset-restore-drill-$$"
@@ -51,7 +55,7 @@ wait_for_backend() {
 }
 
 printf 'Starting isolated restore-drill stack.\n'
-compose up -d db redis backend workers >/dev/null
+compose up -d $drill_services >/dev/null
 wait_for_backend
 compose exec -T -e ROWSET_RESTORE_DRILL=1 -e ROWSET_ASSET_S3_ENDPOINT_URL= backend \
     python manage.py restore_drill_state seed > "$expected"
@@ -67,7 +71,7 @@ compose down -v --remove-orphans >/dev/null
 compose up -d db >/dev/null
 COMPOSE_PROJECT_NAME="$project_name" \
     "$script_dir/restore.sh" --confirm-destroy-data "$backup_dir" "$environment_file"
-compose up -d redis backend workers >/dev/null
+compose up -d $drill_services >/dev/null
 wait_for_backend
 compose exec -T -e ROWSET_RESTORE_DRILL=1 -e ROWSET_ASSET_S3_ENDPOINT_URL= backend \
     python manage.py restore_drill_state verify < "$expected"
