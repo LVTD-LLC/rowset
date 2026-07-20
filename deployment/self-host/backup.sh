@@ -17,7 +17,8 @@ environment_file="$environment_directory/$(basename -- "$environment_file")"
 # shellcheck source=deployment/self-host/env-lib.sh
 . "$script_dir/env-lib.sh"
 validate_environment_contract "$environment_file"
-unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER
+configure_compose_profiles
+unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER QDRANT_API_KEY ROWSET_VECTOR_SEARCH_ENABLED
 export ROWSET_ENV_FILE=$environment_file
 
 retention_days=$(environment_file_value ROWSET_BACKUP_RETENTION_DAYS "$environment_file" || true)

@@ -311,7 +311,15 @@ def _port_checks(runner: CommandRunner) -> list[Check]:
     ]
 
 
-def _registry_check(root: Path, image: str, host_platform: str, runner: CommandRunner) -> Check:
+def _registry_check(
+    root: Path,
+    image: str,
+    host_platform: str,
+    runner: CommandRunner,
+    *,
+    check_id: str = "PREFLIGHT_REGISTRY",
+    label: str = "release",
+) -> Check:
     with tempfile.TemporaryDirectory(prefix="rowset-preflight-") as docker_config:
         Path(docker_config, "config.json").write_text('{"auths":{}}\n')
         environment = {**os.environ, "DOCKER_CONFIG": docker_config}
@@ -328,13 +336,11 @@ def _registry_check(root: Path, image: str, host_platform: str, runner: CommandR
             ]
         )
     if result.returncode == 0 and platform_result.returncode == 0:
-        return _pass(
-            "PREFLIGHT_REGISTRY", "release manifest is anonymously available for this host"
-        )
+        return _pass(check_id, f"{label} manifest is anonymously available for this host")
     return _fail(
-        "PREFLIGHT_REGISTRY",
-        "release manifest is not anonymously available for this host",
-        "Use a published Rowset release whose manifest includes this host architecture.",
+        check_id,
+        f"{label} manifest is not anonymously available for this host",
+        f"Use a pinned {label} image whose manifest includes this host architecture.",
     )
 
 
@@ -408,6 +414,17 @@ def run_preflight(
                 runner,
             )
         )
+        if environment.get("ROWSET_VECTOR_SEARCH_ENABLED") == "True":
+            checks.append(
+                _registry_check(
+                    root,
+                    "qdrant/qdrant:v1.18.2",
+                    _host_platform(),
+                    runner,
+                    check_id="PREFLIGHT_REGISTRY_QDRANT",
+                    label="Qdrant",
+                )
+            )
     return checks, secrets
 
 
@@ -496,6 +513,12 @@ def run_doctor(root: Path, env_file: Path, runner: CommandRunner) -> tuple[list[
     )
     compose = _compose_base(root, env_file)
     compose_environment = {**os.environ, "ROWSET_ENV_FILE": str(env_file)}
+    for key in ("QDRANT_API_KEY", "ROWSET_VECTOR_SEARCH_ENABLED"):
+        compose_environment.pop(key, None)
+    if environment.get("ROWSET_VECTOR_SEARCH_ENABLED") == "True":
+        compose_environment["COMPOSE_PROFILES"] = "vector-search"
+    else:
+        compose_environment.pop("COMPOSE_PROFILES", None)
     configured = runner.run([*compose, "config", "--services"], env=compose_environment)
     services = sorted(set(configured.stdout.split())) if configured.returncode == 0 else []
     checks.append(
@@ -549,6 +572,31 @@ def run_doctor(root: Path, env_file: Path, runner: CommandRunner) -> tuple[list[
             _pass(check_id, pass_detail)
             if runner.run(command, env=compose_environment).returncode == 0
             else _fail(check_id, fail_detail, remediation)
+        )
+    if environment.get("ROWSET_VECTOR_SEARCH_ENABLED") == "True":
+        qdrant_result = runner.run(
+            [
+                *compose,
+                "exec",
+                "-T",
+                "qdrant",
+                "bash",
+                "-c",
+                "exec 3<>/dev/tcp/127.0.0.1/6333; "
+                "printf 'GET /collections HTTP/1.1\\r\\nHost: localhost\\r\\n' >&3; "
+                "printf 'api-key: %s\\r\\nConnection: close\\r\\n\\r\\n' "
+                '"$QDRANT__SERVICE__API_KEY" >&3; grep -q "200 OK" <&3',
+            ],
+            env=compose_environment,
+        )
+        checks.append(
+            _pass("DOCTOR_QDRANT", "Qdrant accepts authenticated requests")
+            if qdrant_result.returncode == 0
+            else _fail(
+                "DOCTOR_QDRANT",
+                "Qdrant does not accept authenticated requests",
+                "Inspect bounded qdrant logs and verify QDRANT_API_KEY.",
+            )
         )
     domain = environment.get("ROWSET_DOMAIN", "")
     https_status = _http_status(runner, f"https://{domain}/")

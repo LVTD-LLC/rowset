@@ -12,9 +12,13 @@ fi
 environment_file=${1:-"$root/.env"}
 environment_directory=$(CDPATH= cd -- "$(dirname -- "$environment_file")" && pwd)
 environment_file="$environment_directory/$(basename -- "$environment_file")"
+# shellcheck source=deployment/self-host/env-lib.sh
+. "$script_dir/env-lib.sh"
 "$script_dir/validate-env.sh" "$environment_file"
+load_file_configuration "$environment_file"
+configure_compose_profiles
 
-unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER
+unset ROWSET_IMAGE ROWSET_DOMAIN POSTGRES_USER QDRANT_API_KEY ROWSET_VECTOR_SEARCH_ENABLED
 export ROWSET_ENV_FILE=$environment_file
 exec docker compose --env-file "$environment_file" -f "$root/docker-compose-prod.yml" -p rowset \
     up -d --remove-orphans

@@ -11,7 +11,7 @@ _MEDIA_MOUNTS = {
 }
 _CADDYFILE = _REPO_ROOT / "deployment" / "self-host" / "Caddyfile"
 _INSECURE_OVERRIDE = _REPO_ROOT / "deployment" / "self-host" / "compose.insecure-http.yml"
-_PRODUCTION_SERVICES = {"caddy", "db", "redis", "backend", "workers"}
+_PRODUCTION_SERVICES = {"caddy", "db", "redis", "qdrant", "backend", "workers"}
 
 
 def _production_compose():
@@ -31,7 +31,7 @@ def test_caddy_is_the_only_public_web_ingress():
     services = compose["services"]
 
     assert set(services["caddy"]["ports"]) == {"80:80", "443:443", "443:443/udp"}
-    for service_name in {"backend", "workers", "db", "redis"}:
+    for service_name in {"backend", "workers", "db", "redis", "qdrant"}:
         assert "ports" not in services[service_name]
     assert services["backend"]["expose"] == [80]
 
@@ -125,6 +125,23 @@ def test_production_services_load_the_validated_environment_file():
         assert compose["services"][service_name]["env_file"] == ["${ROWSET_ENV_FILE:-.env}"]
 
 
+def test_qdrant_is_private_persistent_authenticated_and_opt_in():
+    compose = _production_compose()
+    qdrant = compose["services"]["qdrant"]
+
+    assert qdrant["image"] == "qdrant/qdrant:v1.18.2"
+    assert qdrant["profiles"] == ["vector-search"]
+    assert "ports" not in qdrant
+    assert qdrant["environment"] == {
+        "QDRANT__SERVICE__API_KEY": (
+            "${QDRANT_API_KEY:?Set QDRANT_API_KEY with deployment/self-host/init-env.sh}"
+        )
+    }
+    assert qdrant["volumes"] == ["qdrant_data:/qdrant/storage"]
+    assert "qdrant_data" in compose["volumes"]
+    assert "/healthz" in qdrant["healthcheck"]["test"][1]
+
+
 def test_production_compose_waits_for_authenticated_redis_health():
     compose = _production_compose()
     redis = compose["services"]["redis"]
@@ -200,7 +217,8 @@ def test_self_hosting_docs_explain_compose_recovery_logging_and_safe_diagnostics
     assert "restart: unless-stopped" in self_hosting
     assert "host restart" in self_hosting
     assert "30 MB per service" in self_hosting
-    assert "150 MB across the five-service stack" in self_hosting
+    assert "150 MB across the five-service baseline" in self_hosting
+    assert "30 MB for Qdrant logs when enabled" in self_hosting
     assert "config --no-env-resolution --no-interpolate" in self_hosting
     assert "Do not share `.env`" in self_hosting
 

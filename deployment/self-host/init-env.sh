@@ -119,6 +119,12 @@ init_postgres_host=$(value_or_default POSTGRES_HOST "$existing_file" db)
 init_postgres_port=$(value_or_default POSTGRES_PORT "$existing_file" 5432)
 init_redis_host=$(value_or_default REDIS_HOST "$existing_file" redis)
 init_redis_port=$(value_or_default REDIS_PORT "$existing_file" 6379)
+init_vector_search_enabled=$(
+    value_or_default ROWSET_VECTOR_SEARCH_ENABLED "$existing_file" \
+        "${ROWSET_VECTOR_SEARCH_ENABLED:-False}"
+)
+init_qdrant_url=$(value_or_default QDRANT_URL "$existing_file" http://qdrant:6333)
+init_openrouter_api_key=$(value_or_default OPENROUTER_API_KEY "$existing_file" "")
 init_secret_key=$(
     secret_or_generate SECRET_KEY "$existing_file" "${SECRET_KEY:-}" "${SECRET_KEY_FILE:-}"
 )
@@ -129,6 +135,10 @@ init_postgres_password=$(
 init_redis_password=$(
     secret_or_generate REDIS_PASSWORD "$existing_file" \
         "${REDIS_PASSWORD:-}" "${REDIS_PASSWORD_FILE:-}"
+)
+init_qdrant_api_key=$(
+    secret_or_generate QDRANT_API_KEY "$existing_file" \
+        "${QDRANT_API_KEY:-}" "${QDRANT_API_KEY_FILE:-}"
 )
 
 temporary_file=$(mktemp "$destination_dir/.rowset-env.XXXXXX")
@@ -153,6 +163,10 @@ seen_postgres_password=0
 seen_redis_host=0
 seen_redis_port=0
 seen_redis_password=0
+seen_qdrant_api_key=0
+seen_vector_search_enabled=0
+seen_qdrant_url=0
+seen_openrouter_api_key=0
 
 while IFS= read -r line || test -n "$line"; do
     case "$line" in
@@ -172,6 +186,19 @@ while IFS= read -r line || test -n "$line"; do
         REDIS_HOST=*) printf 'REDIS_HOST=%s\n' "$init_redis_host"; seen_redis_host=1 ;;
         REDIS_PORT=*) printf 'REDIS_PORT=%s\n' "$init_redis_port"; seen_redis_port=1 ;;
         REDIS_PASSWORD=*) printf 'REDIS_PASSWORD=%s\n' "$init_redis_password"; seen_redis_password=1 ;;
+        QDRANT_API_KEY=*)
+            printf 'QDRANT_API_KEY=%s\n' "$init_qdrant_api_key"
+            seen_qdrant_api_key=1
+            ;;
+        ROWSET_VECTOR_SEARCH_ENABLED=*)
+            printf 'ROWSET_VECTOR_SEARCH_ENABLED=%s\n' "$init_vector_search_enabled"
+            seen_vector_search_enabled=1
+            ;;
+        QDRANT_URL=*) printf 'QDRANT_URL=%s\n' "$init_qdrant_url"; seen_qdrant_url=1 ;;
+        OPENROUTER_API_KEY=*)
+            printf 'OPENROUTER_API_KEY=%s\n' "$init_openrouter_api_key"
+            seen_openrouter_api_key=1
+            ;;
         *) printf '%s\n' "$line" ;;
     esac
 done < "$render_source" > "$temporary_file"
@@ -191,6 +218,13 @@ test "$seen_redis_host" = 1 || printf 'REDIS_HOST=%s\n' "$init_redis_host" >> "$
 test "$seen_redis_port" = 1 || printf 'REDIS_PORT=%s\n' "$init_redis_port" >> "$temporary_file"
 test "$seen_redis_password" = 1 || \
     printf 'REDIS_PASSWORD=%s\n' "$init_redis_password" >> "$temporary_file"
+test "$seen_qdrant_api_key" = 1 || \
+    printf 'QDRANT_API_KEY=%s\n' "$init_qdrant_api_key" >> "$temporary_file"
+test "$seen_vector_search_enabled" = 1 || \
+    printf 'ROWSET_VECTOR_SEARCH_ENABLED=%s\n' "$init_vector_search_enabled" >> "$temporary_file"
+test "$seen_qdrant_url" = 1 || printf 'QDRANT_URL=%s\n' "$init_qdrant_url" >> "$temporary_file"
+test "$seen_openrouter_api_key" = 1 || \
+    printf 'OPENROUTER_API_KEY=%s\n' "$init_openrouter_api_key" >> "$temporary_file"
 
 chmod 600 "$temporary_file"
 "$script_dir/validate-env.sh" "$temporary_file" >/dev/null
