@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import pytest
@@ -57,6 +58,20 @@ def test_before_send_keeps_server_mcp_tool_errors():
     }
 
     assert before_send(event, hint) is event
+
+
+def test_before_send_drops_expected_asyncio_cancellations():
+    cancellation = asyncio.CancelledError()
+    event = {"exception": {"values": [{"type": "CancelledError"}]}}
+    hint = {
+        "exc_info": (
+            asyncio.CancelledError,
+            cancellation,
+            cancellation.__traceback__,
+        )
+    }
+
+    assert before_send(event, hint) is None
 
 
 def test_custom_logging_integration_skips_records_already_sent_by_structlog(monkeypatch):

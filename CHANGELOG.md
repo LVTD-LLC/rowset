@@ -22,6 +22,9 @@ deployment or release cut date.
 - Added privacy-safe, deployment-scoped content identity and bounded access-state telemetry for public dataset access.
 - Added a decision guide for choosing databases for AI agents by separating conversation history, workflow checkpoints, semantic retrieval, structured operational state, artifacts, and audit evidence.
 
+### Fixed
+- Suppressed expected async request-cancellation events from Sentry error reporting.
+
 ## 2026-07-19
 
 ### Added
