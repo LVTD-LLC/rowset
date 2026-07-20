@@ -9,8 +9,8 @@ from apps.core.context_processors import posthog_api_key
 from apps.datasets.tests.factories import create_dataset, create_dataset_row
 
 
-def _request(*, route: str, url_name: str):
-    request = RequestFactory().get(f"/{route}")
+def _request(*, route: str, url_name: str, user_agent: str = "Mozilla/5.0 Chrome/126.0"):
+    request = RequestFactory().get(f"/{route}", HTTP_USER_AGENT=user_agent)
     request.user = AnonymousUser()
     request.resolver_match = SimpleNamespace(route=route, url_name=url_name)
     return request
@@ -23,6 +23,26 @@ def test_posthog_context_enables_normalized_marketing_route():
     assert context["posthog_pageview_enabled"] is True
     assert context["posthog_pageview_route"] == "/docs/:slug"
     assert context["posthog_content_group"] == "docs"
+    assert context["posthog_traffic_category"] == "human"
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_posthog_context_uses_server_derived_ai_agent_category():
+    context = posthog_api_key(
+        _request(route="pricing", url_name="pricing", user_agent="ChatGPT-User/1.0")
+    )
+
+    assert context["posthog_traffic_category"] == "ai_agent"
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_posthog_context_reuses_request_middleware_traffic_category():
+    request = _request(route="pricing", url_name="pricing")
+    request.traffic_category = "crawler"
+
+    context = posthog_api_key(request)
+
+    assert context["posthog_traffic_category"] == "crawler"
 
 
 @override_settings(POSTHOG_API_KEY="phc_test")
@@ -82,6 +102,7 @@ def test_public_dataset_page_wires_normalized_pageview_context(client, profile):
     assert 'data-posthog-pageview-enabled="true"' in content
     assert 'data-posthog-route="/share/datasets/:public_key/"' in content
     assert 'data-posthog-content-group="public_dataset"' in content
+    assert 'data-posthog-traffic-category="unknown_automation"' in content
     assert f'data-posthog-content-id="{response.context["posthog_content_id"]}"' in content
     assert 'data-posthog-content-surface="preview"' in content
     assert response.context["posthog_content_id"].startswith("pd_v1_")

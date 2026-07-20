@@ -11,7 +11,11 @@ test("captures a stable CTA contract without query parameters", () => {
   const window = {
     URL,
     location: { origin: "https://rowset.example" },
-    Rowset: { hasAnalyticsConsent: () => true, posthogEnvironment: "prod" },
+    Rowset: {
+      hasAnalyticsConsent: () => true,
+      posthogEnvironment: "prod",
+      posthogPageviewContext: { trafficCategory: "human" },
+    },
     posthog: { capture: (...args) => captures.push(args) },
   };
   const document = { addEventListener: (name, callback) => { listeners[name] = callback; } };
@@ -28,7 +32,63 @@ test("captures a stable CTA contract without query parameters", () => {
     cta_name: "signup",
     cta_location: "header",
     destination: "/accounts/signup/",
+    traffic_category: "human",
   }]]);
+});
+
+test("captures the updated server-derived traffic category after HTMX navigation", () => {
+  const listeners = {};
+  const captures = [];
+  const window = {
+    URL,
+    location: { origin: "https://rowset.example" },
+    Rowset: {
+      hasAnalyticsConsent: () => true,
+      posthogEnvironment: "prod",
+      posthogPageviewContext: { trafficCategory: "human" },
+    },
+    posthog: { capture: (...args) => captures.push(args) },
+  };
+  const document = { addEventListener: (name, callback) => { listeners[name] = callback; } };
+  const link = {
+    dataset: { posthogCta: "signup", posthogCtaLocation: "docs" },
+    href: "https://rowset.example/accounts/signup/",
+  };
+  vm.runInNewContext(source, { document, window });
+
+  window.Rowset.posthogPageviewContext = { trafficCategory: "ai_agent" };
+  listeners.click({ target: { closest: () => link } });
+
+  assert.equal(captures[0][1].traffic_category, "ai_agent");
+});
+
+test("preserves the last server-derived category when pageview context is disabled", () => {
+  const listeners = {};
+  const captures = [];
+  const window = {
+    URL,
+    location: { origin: "https://rowset.example" },
+    Rowset: {
+      hasAnalyticsConsent: () => true,
+      posthogEnvironment: "prod",
+      posthogPageviewContext: {
+        contentGroup: "",
+        route: "",
+        trafficCategory: "ai_agent",
+      },
+    },
+    posthog: { capture: (...args) => captures.push(args) },
+  };
+  const document = { addEventListener: (name, callback) => { listeners[name] = callback; } };
+  const link = {
+    dataset: { posthogCta: "signup", posthogCtaLocation: "private_shell" },
+    href: "https://rowset.example/accounts/signup/",
+  };
+  vm.runInNewContext(source, { document, window });
+
+  listeners.click({ target: { closest: () => link } });
+
+  assert.equal(captures[0][1].traffic_category, "ai_agent");
 });
 
 test("adds the PostHog session ID to checkout form submissions", () => {

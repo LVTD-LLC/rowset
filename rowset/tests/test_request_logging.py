@@ -104,15 +104,38 @@ def test_request_middleware_binds_actor_and_correlation_context_to_nested_logs(c
 
 
 def test_request_middleware_classifies_rest_requests(captured_events):
-    request = _request("/api/datasets")
+    request = RequestFactory().get(
+        "/api/datasets",
+        HTTP_USER_AGENT="Mozilla/5.0 Chrome/126.0.0.0 Safari/537.36",
+    )
+    request.user = SimpleNamespace(is_authenticated=False)
     request.resolver_match = SimpleNamespace(view_name="api-datasets", route="api/datasets")
 
     RequestLoggingMiddleware(lambda _request: HttpResponse(status=404))(request)
 
     event = captured_events.event("http.request.completed")
     assert event["request.interface"] == "rest"
+    assert event["traffic_category"] == "api_client"
+    assert "user_agent" not in event
+    assert "Mozilla/5.0 Chrome/126.0.0.0 Safari/537.36" not in str(event)
     assert event["http.response.status_class"] == "4xx"
     assert event["outcome"] == "failure"
+
+
+def test_request_middleware_adds_server_derived_traffic_category_to_nested_logs(captured_events):
+    request = RequestFactory().get("/pricing", HTTP_USER_AGENT="ChatGPT-User/1.0")
+    request.user = SimpleNamespace(is_authenticated=False)
+    request.resolver_match = SimpleNamespace(view_name="pricing", route="pricing")
+    domain_logger = get_rowset_logger("request-test-domain")
+
+    def response_with_domain_log(_request):
+        domain_logger.info("page.rendered")
+        return HttpResponse()
+
+    RequestLoggingMiddleware(response_with_domain_log)(request)
+
+    assert captured_events.event("page.rendered")["traffic_category"] == "ai_agent"
+    assert captured_events.event("http.request.completed")["traffic_category"] == "ai_agent"
 
 
 def test_request_middleware_omits_available_public_identity_from_failed_response(

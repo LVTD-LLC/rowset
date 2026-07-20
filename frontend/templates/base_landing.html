@@ -85,6 +85,7 @@
           {% if posthog_pageview_enabled %}data-posthog-pageview-enabled="true"
           data-posthog-route="{{ posthog_pageview_route }}"
           data-posthog-content-group="{{ posthog_content_group }}"
+          data-posthog-traffic-category="{{ posthog_traffic_category }}"
           {% if posthog_content_id %}data-posthog-content-id="{{ posthog_content_id }}"{% endif %}
           {% if posthog_content_surface %}data-posthog-content-surface="{{ posthog_content_surface }}"{% endif %}{% endif %}
           {% if request.user.is_authenticated %}data-user-settings-url="/api/user/settings"{% endif %}>

@@ -64,6 +64,7 @@ def test_mcp_logging_emits_tool_name_identity_outcome_and_duration(
     event = captured_events.event("mcp.request.completed")
     assert event["request.id"] == "mcp.req-1"
     assert event["request.interface"] == "mcp"
+    assert event["traffic_category"] == "api_client"
     assert event["mcp.tool.name"] == "create_dataset"
     assert event["rpc.method"] == "tools/call"
     assert event["profile_id"] == 11

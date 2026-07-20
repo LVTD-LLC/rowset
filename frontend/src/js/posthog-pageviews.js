@@ -11,6 +11,7 @@
     Rowset.posthogPageviewContext = {
       contentGroup: dataset.posthogContentGroup || "",
       route: dataset.posthogRoute || "",
+      trafficCategory: dataset.posthogTrafficCategory || "",
     };
   }
 
@@ -22,6 +23,7 @@
       contentSurface: dataset.posthogContentSurface || "",
       enabled: dataset.posthogPageviewEnabled === "true",
       route: dataset.posthogRoute || "",
+      trafficCategory: dataset.posthogTrafficCategory || "",
     };
   }
 
@@ -45,6 +47,7 @@
       ["posthogContentGroup", context.contentGroup],
       ["posthogContentId", context.contentId],
       ["posthogContentSurface", context.contentSurface],
+      ["posthogTrafficCategory", context.trafficCategory],
     ]) {
       if (value) dataset[key] = value;
       else delete dataset[key];
@@ -57,13 +60,15 @@
     const dataset = document.body?.dataset || {};
     const route = dataset.posthogRoute || "";
     const contentGroup = dataset.posthogContentGroup || "";
+    const trafficCategory = dataset.posthogTrafficCategory || "";
     const contentId = dataset.posthogContentId || "";
     const contentSurface = dataset.posthogContentSurface || "";
 
     if (
       dataset.posthogPageviewEnabled !== "true" ||
       !route.startsWith("/") ||
-      !contentGroup
+      !contentGroup ||
+      !trafficCategory
     ) {
       return null;
     }
@@ -76,7 +81,7 @@
       return null;
     }
 
-    return { contentGroup, contentId, contentSurface, route };
+    return { contentGroup, contentId, contentSurface, route, trafficCategory };
   }
 
   function campaignProperties(search) {
@@ -131,6 +136,7 @@
       context.contentGroup,
       context.contentId,
       context.contentSurface,
+      context.trafficCategory,
       campaign,
     ]);
     if (force !== true && captureKey === lastCaptureKey) {
@@ -157,6 +163,7 @@
       environment: Rowset.posthogEnvironment || "unknown",
       event_version: 1,
       route: context.route,
+      traffic_category: context.trafficCategory,
       ...campaign,
     });
     lastCaptureKey = captureKey;
@@ -184,6 +191,7 @@
       dataset.posthogPageviewEnabled = "true";
       dataset.posthogRoute = responseContext.posthogRoute || "";
       dataset.posthogContentGroup = responseContext.posthogContentGroup || "";
+      dataset.posthogTrafficCategory = responseContext.posthogTrafficCategory || "";
       dataset.posthogContentId = responseContext.posthogContentId || "";
       dataset.posthogContentSurface = responseContext.posthogContentSurface || "";
       syncPrivacyContext();

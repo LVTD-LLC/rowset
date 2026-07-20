@@ -8,6 +8,7 @@ from django.db.models import Prefetch
 
 from apps.core.choices import ProfileStates
 from apps.datasets.models import Dataset, Project, ProjectSection
+from rowset.traffic import classify_traffic
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -126,6 +127,13 @@ def posthog_api_key(request):
         if content_group
         else ""
     )
+    traffic_category = getattr(request, "traffic_category", None)
+    if traffic_category is None:
+        request_interface = "htmx" if bool(getattr(request, "htmx", False)) else "web"
+        traffic_category = classify_traffic(
+            request_interface=request_interface,
+            user_agent=request.headers.get("User-Agent"),
+        )
     public_access_state = getattr(request, "_rowset_public_access_state", "")
     content_id = getattr(request, "_rowset_public_content_id", "")
     content_surface = getattr(request, "_rowset_public_content_surface", "")
@@ -146,6 +154,7 @@ def posthog_api_key(request):
         "posthog_environment": settings.ENVIRONMENT,
         "posthog_pageview_enabled": bool(settings.POSTHOG_API_KEY and normalized_route),
         "posthog_pageview_route": normalized_route,
+        "posthog_traffic_category": traffic_category,
         "posthog_user_email": "",
     }
     if request.user.is_authenticated and hasattr(request.user, "profile"):

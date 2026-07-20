@@ -13,6 +13,7 @@
       cta_name: element.dataset.posthogCta,
       cta_location: element.dataset.posthogCtaLocation || "unknown",
       destination,
+      traffic_category: window.Rowset.posthogPageviewContext?.trafficCategory || "",
     });
   }
 
