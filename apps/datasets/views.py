@@ -309,7 +309,7 @@ def _command_palette_context(request) -> dict[str, object]:
             limit=COMMAND_PALETTE_DATASET_LIMIT,
         )
     except DatasetServiceError:
-        metadata_search_errors.append("Dataset search is unavailable right now.")
+        metadata_search_errors.append("We couldn’t search datasets right now. Try again.")
     else:
         dataset_results = list(
             filter(
@@ -328,7 +328,7 @@ def _command_palette_context(request) -> dict[str, object]:
             limit=COMMAND_PALETTE_PROJECT_LIMIT,
         )
     except DatasetServiceError:
-        metadata_search_errors.append("Project search is unavailable right now.")
+        metadata_search_errors.append("We couldn’t search projects right now. Try again.")
     else:
         project_results = list(
             filter(
@@ -350,7 +350,7 @@ def _command_palette_context(request) -> dict[str, object]:
             limit=COMMAND_PALETTE_ROW_LIMIT,
         )
     except DatasetServiceError:
-        row_search_error = "Row search is unavailable right now."
+        row_search_error = "We couldn’t search rows right now. Try again."
     else:
         row_results = list(
             filter(
@@ -2726,7 +2726,11 @@ def dataset_update_column_settings(request, dataset_key):
     if len(column_names) != len(column_types) or (
         has_description_fields and len(column_names) != len(column_descriptions)
     ):
-        messages.error(request, "Column schema settings were incomplete.")
+        messages.error(
+            request,
+            "We couldn’t save the column settings because some values were missing. "
+            "Review each column and try again.",
+        )
         return redirect("dataset_settings", dataset_key=dataset_key)
 
     column_schema = {}

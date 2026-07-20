@@ -250,7 +250,7 @@
           sourceElement: panelElement.dataset.copyUrl ? null : this.$refs.source,
         });
 
-        this.flashLabel(copied ? "Copied" : "Copy failed", panelElement);
+        this.flashLabel(copied ? "Copied" : "Couldn’t copy — try again", panelElement);
         this.trackCopy(copied, panelElement);
         this.dispatchCopySuccess(copied, panelElement);
         this.busy = false;
@@ -353,9 +353,9 @@
         try {
           const value = await getValue();
           const copied = await Rowset.copyTextToClipboard(value);
-          this.flashStatus(copied ? "Copied" : "Copy failed");
+          this.flashStatus(copied ? "Copied" : "Couldn’t copy — try again");
         } catch (_error) {
-          this.flashStatus("Copy failed");
+          this.flashStatus("Couldn’t copy — try again");
         } finally {
           this.busy = false;
         }
@@ -699,16 +699,22 @@
           const data = await parseJsonResponse(response);
 
           if (!response.ok || data.success === false) {
-            throw new Error(data.message || "Failed to submit feedback. Please try again.");
+            throw new Error(
+              data.message ||
+                "We couldn’t send your feedback due to a technical issue. Your text is still here—try again.",
+            );
           }
 
           this.feedback = "";
           this.closeFeedback();
           Rowset.showMessage?.(data.message || "Feedback submitted successfully.", "success");
         } catch (error) {
-          Rowset.showMessage?.(error.message || "Failed to submit feedback. Please try again.", "error", {
-            autoDismiss: false,
-          });
+          Rowset.showMessage?.(
+            error.message ||
+              "We couldn’t send your feedback due to a technical issue. Your text is still here—try again.",
+            "error",
+            { autoDismiss: false },
+          );
         } finally {
           this.submitting = false;
         }

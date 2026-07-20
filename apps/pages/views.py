@@ -103,7 +103,7 @@ class LandingPageView(PublicMarkdownContextMixin, TemplateView):
                 "Thanks for subscribing, I hope you enjoy the app!",
             )
         elif payment_status == "failed":
-            messages.error(self.request, "Something went wrong with the payment.")
+            messages.error(self.request, "Checkout was canceled. You weren’t charged.")
 
         context["use_case_pages"] = get_use_case_pages()
         context["social_proof_sites"] = SOCIAL_PROOF_SITES

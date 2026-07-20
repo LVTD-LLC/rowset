@@ -377,7 +377,13 @@ def submit_feedback(request: HttpRequest, data: SubmitFeedbackIn):
             error_type=type(exc).__name__,
             profile_id=profile.id,
         )
-        return {"success": False, "message": "Failed to submit feedback. Please try again."}
+        return {
+            "success": False,
+            "message": (
+                "We couldn’t send your feedback due to a technical issue. "
+                "Your text is still here—try again."
+            ),
+        }
 
 
 def _is_post_deploy_smoke_request(request: HttpRequest) -> bool:
@@ -533,7 +539,10 @@ def user_settings(request: HttpRequest):
             profile_id=profile.id,
             exc_info=True,
         )
-        raise HttpError(500, "An unexpected error occurred.") from exc
+        raise HttpError(
+            500,
+            "We couldn’t load your settings due to a technical issue. Try again.",
+        ) from exc
 
 
 @api.get(

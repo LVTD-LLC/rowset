@@ -15,7 +15,12 @@ from apps.core.admin_dashboard import build_admin_dashboard_context
 from apps.core.choices import ProfileStates
 from apps.core.models import AgentApiKey, Feedback, Profile
 from apps.core.services import create_agent_api_key, get_or_create_profile_for_user
-from apps.core.views import build_agent_setup_prompt, get_or_create_stripe_customer, server_error
+from apps.core.views import (
+    SERVER_ERROR_REDIRECT_MESSAGE,
+    build_agent_setup_prompt,
+    get_or_create_stripe_customer,
+    server_error,
+)
 from apps.datasets.models import Dataset, Project
 from rowset.utils import build_absolute_public_url
 
@@ -153,7 +158,7 @@ def test_server_error_redirects_authenticated_browser_requests_to_home(auth_clie
     flash_messages = list(get_messages(response.wsgi_request))
     assert len(flash_messages) == 1
     assert flash_messages[0].level == message_constants.ERROR
-    assert str(flash_messages[0]) == "Something went wrong. You have been redirected."
+    assert str(flash_messages[0]) == SERVER_ERROR_REDIRECT_MESSAGE
 
 
 @override_settings(ROOT_URLCONF=__name__, DEBUG=False)
@@ -167,7 +172,7 @@ def test_server_error_redirects_anonymous_browser_requests_to_landing(client):
     flash_messages = list(get_messages(response.wsgi_request))
     assert len(flash_messages) == 1
     assert flash_messages[0].level == message_constants.ERROR
-    assert str(flash_messages[0]) == "Something went wrong. You have been redirected."
+    assert str(flash_messages[0]) == SERVER_ERROR_REDIRECT_MESSAGE
 
 
 @pytest.mark.django_db
@@ -182,7 +187,7 @@ def test_server_error_redirects_htmx_browser_requests_with_header(auth_client):
     flash_messages = list(get_messages(response.wsgi_request))
     assert len(flash_messages) == 1
     assert flash_messages[0].level == message_constants.ERROR
-    assert str(flash_messages[0]) == "Something went wrong. You have been redirected."
+    assert str(flash_messages[0]) == SERVER_ERROR_REDIRECT_MESSAGE
 
 
 @override_settings(ROOT_URLCONF=__name__)
@@ -211,7 +216,7 @@ def test_server_error_redirect_works_with_project_urlconf(client, monkeypatch):
     flash_messages = list(get_messages(response.wsgi_request))
     assert len(flash_messages) == 1
     assert flash_messages[0].level == message_constants.ERROR
-    assert str(flash_messages[0]) == "Something went wrong. You have been redirected."
+    assert str(flash_messages[0]) == SERVER_ERROR_REDIRECT_MESSAGE
 
 
 @pytest.mark.django_db

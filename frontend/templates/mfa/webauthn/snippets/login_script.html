@@ -26,13 +26,13 @@
           credentials: 'same-origin'
         });
         if (!response.ok) {
-          throw new Error('Unable to fetch passkey data from server.');
+          throw new Error('We couldn’t use the passkey. Try again.');
         }
 
         var data = await response.json();
         var requestOptions = data.request_options || (data.data && data.data.request_options);
         if (!requestOptions || !requestOptions.publicKey) {
-          throw new Error('Passkey login did not receive valid browser options from the server.');
+          throw new Error('We couldn’t use the passkey. Try again.');
         }
 
         var credential = await window.webauthnJSON.get(requestOptions);
