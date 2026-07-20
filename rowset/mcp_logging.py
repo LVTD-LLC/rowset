@@ -12,6 +12,7 @@ from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from apps.core.services import mark_profile_setup_completed
 from rowset.logging_context import bind_actor_context, correlation_id_or_new
 from rowset.traffic import classify_traffic
+from rowset.traffic_analytics import capture_traffic_request
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
@@ -75,11 +76,13 @@ class RowsetMCPLoggingMiddleware(Middleware):
     ) -> Any:
         structlog.contextvars.clear_contextvars()
         started_at = time.perf_counter()
+        rpc_method = context.method or "unknown"
+        traffic_category = classify_traffic(request_interface="mcp", user_agent=None)
         request_context: dict[str, Any] = {
             "request.id": _request_id(),
             "request.interface": "mcp",
-            "rpc.method": context.method or "unknown",
-            "traffic_category": classify_traffic(request_interface="mcp", user_agent=None),
+            "rpc.method": rpc_method,
+            "traffic_category": traffic_category,
         }
         tool_name = getattr(context.message, "name", "") if context.method == "tools/call" else ""
         if tool_name:
@@ -87,13 +90,13 @@ class RowsetMCPLoggingMiddleware(Middleware):
         structlog.contextvars.bind_contextvars(**request_context)
         setup_actor = _bind_access_token_actor()
 
-        outcome = "success"
+        outcome = "failure"
         error_type = ""
         try:
             result = await call_next(context)
-            if bool(getattr(result, "is_error", False)):
-                outcome = "failure"
-            elif setup_actor is not None:
+            if not bool(getattr(result, "is_error", False)):
+                outcome = "success"
+            if outcome == "success" and setup_actor is not None:
                 try:
                     await sync_to_async(mark_profile_setup_completed, thread_sensitive=True)(
                         setup_actor["profile_id"],
@@ -123,5 +126,12 @@ class RowsetMCPLoggingMiddleware(Middleware):
                     attributes["error.type"] = error_type
                 log_method = logger.error if error_type else logger.info
                 log_method("mcp.request.completed", **attributes)
+                capture_traffic_request(
+                    outcome=outcome,
+                    request_interface="mcp",
+                    route="",
+                    status_class="",
+                    traffic_category=traffic_category,
+                )
             finally:
                 structlog.contextvars.clear_contextvars()

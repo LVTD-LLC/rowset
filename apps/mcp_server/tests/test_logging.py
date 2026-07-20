@@ -3,11 +3,14 @@ from types import SimpleNamespace
 
 import pytest
 import structlog
+from django.conf import settings
 from django.db import DatabaseError
+from django.test import override_settings
 from fastmcp.server.auth import AccessToken
 from fastmcp.server.middleware import MiddlewareContext
 from mcp.types import CallToolRequestParams, ListToolsRequest
 
+from rowset import traffic_analytics
 from rowset.mcp_logging import RowsetMCPLoggingMiddleware
 
 
@@ -83,6 +86,85 @@ def test_mcp_logging_emits_tool_name_identity_outcome_and_duration(
     assert structlog.contextvars.get_contextvars() == {}
 
 
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_mcp_logging_emits_privacy_bounded_server_traffic_event(monkeypatch):
+    captured_requests = []
+    monkeypatch.setattr("rowset.mcp_logging.get_access_token", lambda: None)
+    monkeypatch.setattr(
+        "rowset.mcp_logging.get_http_request",
+        lambda: SimpleNamespace(headers={}),
+    )
+    monkeypatch.setattr(
+        traffic_analytics.posthog,
+        "capture",
+        lambda event, **kwargs: captured_requests.append((event, kwargs)),
+    )
+    middleware = RowsetMCPLoggingMiddleware()
+    context = MiddlewareContext(
+        message=CallToolRequestParams(
+            name="create_dataset",
+            arguments={"private": "dataset value"},
+        ),
+        method="tools/call",
+        type="request",
+        source="client",
+    )
+
+    async def call_next(_context):
+        return SimpleNamespace(is_error=False)
+
+    asyncio.run(middleware.on_request(context, call_next))
+
+    assert captured_requests == [
+        (
+            "rowset_traffic_request_observed",
+            {
+                "disable_geoip": True,
+                "properties": {
+                    "$process_person_profile": False,
+                    "environment": settings.ENVIRONMENT,
+                    "event_version": 1,
+                    "outcome": "success",
+                    "request_interface": "mcp",
+                    "traffic_category": "api_client",
+                },
+            },
+        )
+    ]
+    assert "create_dataset" not in str(captured_requests)
+    assert "dataset value" not in str(captured_requests)
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_mcp_logging_never_forwards_untrusted_method_to_posthog(monkeypatch):
+    captured_requests = []
+    monkeypatch.setattr("rowset.mcp_logging.get_access_token", lambda: None)
+    monkeypatch.setattr(
+        "rowset.mcp_logging.get_http_request",
+        lambda: SimpleNamespace(headers={}),
+    )
+    monkeypatch.setattr(
+        traffic_analytics.posthog,
+        "capture",
+        lambda event, **kwargs: captured_requests.append((event, kwargs)),
+    )
+    middleware = RowsetMCPLoggingMiddleware()
+    context = MiddlewareContext(
+        message=ListToolsRequest(),
+        method="secret-custom-method",
+        type="request",
+        source="client",
+    )
+
+    async def call_next(_context):
+        return SimpleNamespace(is_error=False)
+
+    asyncio.run(middleware.on_request(context, call_next))
+
+    assert "route" not in captured_requests[0][1]["properties"]
+    assert "secret-custom-method" not in str(captured_requests)
+
+
 def test_mcp_logging_uses_canonical_token_subject_for_actor_identity(
     captured_events,
     monkeypatch,
@@ -146,6 +228,38 @@ def test_mcp_logging_emits_only_error_type_when_request_raises(captured_events, 
     assert event["error.type"] == "ValueError"
     assert "mcp.tool.name" not in event
     assert "private MCP failure message" not in str(event)
+    assert structlog.contextvars.get_contextvars() == {}
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_mcp_logging_treats_cancelled_requests_as_failures(captured_events, monkeypatch):
+    captured_requests = []
+    monkeypatch.setattr("rowset.mcp_logging.get_access_token", lambda: None)
+    monkeypatch.setattr(
+        "rowset.mcp_logging.get_http_request",
+        lambda: SimpleNamespace(headers={}),
+    )
+    monkeypatch.setattr(
+        traffic_analytics.posthog,
+        "capture",
+        lambda event, **kwargs: captured_requests.append((event, kwargs)),
+    )
+    middleware = RowsetMCPLoggingMiddleware()
+    context = MiddlewareContext(
+        message=ListToolsRequest(),
+        method="tools/list",
+        type="request",
+        source="client",
+    )
+
+    async def call_next(_context):
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(middleware.on_request(context, call_next))
+
+    assert captured_events.event("mcp.request.completed")["outcome"] == "failure"
+    assert captured_requests[0][1]["properties"]["outcome"] == "failure"
     assert structlog.contextvars.get_contextvars() == {}
 
 

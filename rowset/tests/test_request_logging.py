@@ -3,11 +3,13 @@ from types import SimpleNamespace
 
 import pytest
 import structlog
+from django.conf import settings
 from django.http import HttpResponse
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from django.utils.functional import SimpleLazyObject
 from django_htmx.middleware import HtmxDetails
 
+from rowset import traffic_analytics
 from rowset.request_logging import RequestLoggingMiddleware
 from rowset.utils import get_rowset_logger
 
@@ -58,6 +60,29 @@ def test_request_middleware_runs_natively_in_async_mode(captured_events):
     assert response.status_code == 202
     assert event["http.response.status_code"] == 202
     assert event["outcome"] == "success"
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_request_middleware_treats_async_cancellation_as_failure(captured_events, monkeypatch):
+    captured_requests = []
+    monkeypatch.setattr(
+        traffic_analytics.posthog,
+        "capture",
+        lambda event, **kwargs: captured_requests.append((event, kwargs)),
+    )
+    request = _request("/datasets/")
+
+    async def cancelled_response(_request):
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(RequestLoggingMiddleware(cancelled_response)(request))
+
+    event = captured_events.event("http.request.completed")
+    assert event["outcome"] == "failure"
+    assert event["http.response.status_class"] == "5xx"
+    assert captured_requests[0][1]["properties"]["outcome"] == "failure"
+    assert structlog.contextvars.get_contextvars() == {}
 
 
 def test_request_middleware_does_not_resolve_unused_lazy_session_user(captured_events):
@@ -138,6 +163,60 @@ def test_request_middleware_adds_server_derived_traffic_category_to_nested_logs(
     assert captured_events.event("http.request.completed")["traffic_category"] == "ai_agent"
 
 
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_request_middleware_emits_privacy_bounded_server_traffic_event(monkeypatch):
+    captured_requests = []
+    monkeypatch.setattr(
+        traffic_analytics.posthog,
+        "capture",
+        lambda event, **kwargs: captured_requests.append((event, kwargs)),
+    )
+    request = RequestFactory().get(
+        "/pricing?token=private-query-value",
+        HTTP_USER_AGENT="GPTBot/1.2 private-user-agent-value",
+    )
+    request.user = SimpleNamespace(is_authenticated=False)
+    request.resolver_match = SimpleNamespace(view_name="pricing", route="pricing")
+
+    response = RequestLoggingMiddleware(lambda _request: HttpResponse(status=200))(request)
+
+    assert response.status_code == 200
+    assert captured_requests == [
+        (
+            "rowset_traffic_request_observed",
+            {
+                "disable_geoip": True,
+                "properties": {
+                    "$process_person_profile": False,
+                    "environment": settings.ENVIRONMENT,
+                    "event_version": 1,
+                    "outcome": "success",
+                    "request_interface": "web",
+                    "route": "pricing",
+                    "status_class": "2xx",
+                    "traffic_category": "crawler",
+                },
+            },
+        )
+    ]
+    assert "private-query-value" not in str(captured_requests)
+    assert "private-user-agent-value" not in str(captured_requests)
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_request_middleware_preserves_response_when_posthog_capture_fails(monkeypatch):
+    def fail_capture(*_args, **_kwargs):
+        raise RuntimeError("PostHog unavailable")
+
+    monkeypatch.setattr(traffic_analytics.posthog, "capture", fail_capture)
+    request = _request("/pricing")
+    request.resolver_match = SimpleNamespace(view_name="pricing", route="pricing")
+
+    response = RequestLoggingMiddleware(lambda _request: HttpResponse(status=200))(request)
+
+    assert response.status_code == 200
+
+
 def test_request_middleware_omits_available_public_identity_from_failed_response(
     captured_events,
 ):
@@ -153,6 +232,28 @@ def test_request_middleware_omits_available_public_identity_from_failed_response
     assert "content_id" not in event
     assert "content_surface" not in event
     assert "public_access_state" not in event
+
+
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_request_middleware_forwards_available_public_identity_to_posthog(monkeypatch):
+    captured_requests = []
+    monkeypatch.setattr(
+        traffic_analytics.posthog,
+        "capture",
+        lambda event, **kwargs: captured_requests.append((event, kwargs)),
+    )
+    request = _request("/share/datasets/public-key/")
+    request.resolver_match = SimpleNamespace(view_name="public_dataset", route="share/datasets/")
+    request._rowset_public_access_state = "available"
+    request._rowset_public_content_id = "pd_v1_0123456789abcdef01234567"
+    request._rowset_public_content_surface = "preview"
+
+    RequestLoggingMiddleware(lambda _request: HttpResponse(status=200))(request)
+
+    properties = captured_requests[0][1]["properties"]
+    assert properties["content_group"] == "public_dataset"
+    assert properties["content_id"] == "pd_v1_0123456789abcdef01234567"
+    assert properties["content_surface"] == "preview"
 
 
 def test_request_middleware_uses_safe_incoming_request_id_and_replaces_unsafe_one(captured_events):
@@ -231,12 +332,23 @@ def test_request_middleware_process_exception_enriches_framework_generated_500(c
     assert "private framework failure" not in str(event)
 
 
-def test_request_middleware_skips_healthcheck_log_but_returns_request_id(captured_events):
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_request_middleware_skips_healthcheck_log_and_posthog(
+    captured_events,
+    monkeypatch,
+):
+    captured_requests = []
+    monkeypatch.setattr(
+        traffic_analytics.posthog,
+        "capture",
+        lambda event, **kwargs: captured_requests.append((event, kwargs)),
+    )
     request = _request("/api/healthcheck")
     request.resolver_match = SimpleNamespace(view_name="api-1.0.0:healthcheck", route="healthcheck")
 
     response = RequestLoggingMiddleware(lambda _request: HttpResponse(status=200))(request)
 
     assert not any(event.get("event") == "http.request.completed" for event in captured_events)
+    assert captured_requests == []
     assert len(response.headers["X-Request-ID"]) == 32
     assert structlog.contextvars.get_contextvars() == {}
