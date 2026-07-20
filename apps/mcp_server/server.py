@@ -81,6 +81,7 @@ from apps.core.trials import (
     require_unexpired_trial_access,
 )
 from apps.datasets.types import ColumnTypeSpec, DatasetRowInput, JsonObject
+from apps.mcp_server.analytics import configure_mcp_analytics
 from apps.mcp_server.auth import mcp_auth
 from apps.mcp_server.tool_policy import RowsetToolPolicy
 from rowset.mcp_logging import RowsetMCPLoggingMiddleware
@@ -122,6 +123,7 @@ mcp = FastMCP(
     ),
     auth=mcp_auth,
 )
+mcp_analytics = configure_mcp_analytics(mcp)
 mcp.add_middleware(RowsetMCPLoggingMiddleware())
 tool_policy = RowsetToolPolicy(mcp)
 read_tool = tool_policy.read

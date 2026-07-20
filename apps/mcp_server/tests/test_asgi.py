@@ -8,6 +8,7 @@ from starlette.testclient import TestClient
 from apps.api.services import DatasetServiceError
 from apps.core.choices import AgentApiKeyAccessLevel
 from apps.mcp_server.server import AGENT_API_KEY_PROFILE_ATTR, mcp
+from rowset import asgi as asgi_module
 from rowset.asgi import application
 
 MCP_HEADERS = {
@@ -259,6 +260,12 @@ def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     result = _assert_jsonrpc_result(tools_response)
     tools = result["tools"]
     assert tools
+    tools_with_context = {
+        tool["name"] for tool in tools if "context" in tool["inputSchema"]["properties"]
+    }
+    assert tools_with_context == {"submit_feedback"}
+    submit_feedback = next(tool for tool in tools if tool["name"] == "submit_feedback")
+    assert "context" not in submit_feedback["inputSchema"].get("required", [])
     tool_names = {tool["name"] for tool in tools}
     assert "get_user_info" in tool_names
     assert "get_rowset_capabilities" in tool_names
@@ -273,6 +280,22 @@ def test_mcp_tools_list_uses_stateless_json_response(authenticated_mcp):
     assert "Hosted MCP cannot read local file paths" in audio_tool["description"]
     audio_base64_schema = audio_tool["inputSchema"]["properties"]["audio_base64"]
     assert "base64 or a data URI" in audio_base64_schema["description"]
+
+
+def test_mcp_lifespan_flushes_analytics(authenticated_mcp, monkeypatch):
+    calls = []
+
+    class AnalyticsHandle:
+        async def flush(self):
+            calls.append("analytics")
+
+    monkeypatch.setattr(asgi_module, "mcp_analytics", AnalyticsHandle())
+    monkeypatch.setattr(asgi_module.posthog, "flush", lambda: calls.append("posthog"))
+
+    with TestClient(application):
+        pass
+
+    assert calls == ["analytics", "posthog"]
 
 
 def test_mcp_tools_list_exposes_behavior_annotations(authenticated_mcp):
