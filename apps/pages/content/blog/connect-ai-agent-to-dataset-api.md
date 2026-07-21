@@ -127,7 +127,7 @@ private data beyond the secret reference.
 Use a prompt like this:
 
 ```text
-Use Rowset as the private dataset backend for this workflow.
+Use Rowset as the private backend for this workflow's structured data.
 
 REST API base: https://rowset.lvtd.dev/api
 Authentication: send Authorization: Bearer from the private ROWSET_API_KEY env var.

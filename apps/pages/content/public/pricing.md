@@ -1,7 +1,8 @@
 # Rowset pricing
 
-Start with the full Rowset product for 7 days, with no credit card required. Upgrade when you are
-ready to keep live agent workflows running. You can cancel at any time and export your data.
+Hosted Rowset includes full product access for 7 days, then costs $50 per month. Connect an agent,
+create real datasets, and test the workflow with no credit card required. You can cancel at any
+time and export your data. Prefer to operate it yourself? Rowset is open source and self-hostable.
 
 ## 7-day trial — $0
 

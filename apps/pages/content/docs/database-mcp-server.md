@@ -1,14 +1,14 @@
 ---
-title: Database MCP server decision guide
-description: Decide when to connect an agent directly to a database and when to use Rowset as a private dataset backend.
-keywords: database MCP server, Rowset MCP, agent database, dataset backend
+title: "MCP database: direct access or agent-managed data?"
+description: Learn when an MCP database should connect to existing SQL or NoSQL systems and when Rowset is the safer backend for agent-managed workflow data.
+keywords: MCP database, database MCP, database MCP server, Rowset MCP, agent database
 ---
 
-# Database MCP server decision guide
+# MCP database: direct access or agent-managed data?
 
-A direct database MCP server is useful when an agent needs controlled access to an existing
-production database. Rowset is useful when the agent needs its own private, structured dataset
-backend without exposing that database.
+"MCP database" usually means an MCP server that gives an AI agent controlled access to an existing
+database. Rowset solves a different job: it gives trusted agents a private backend for structured
+workflow rows through hosted MCP, REST, or CLI.
 
 If you are choosing the storage architecture before choosing an access path, use the [database for
 AI agents decision guide](/blog/database-for-ai-agents). It separates conversation history,
@@ -21,10 +21,10 @@ A database MCP server is a bridge into an existing database. It lets an agent in
 queries, and sometimes write data. That is a good fit when the task depends on source-of-truth
 records, joins, or a mature database permission model.
 
-Rowset is a hosted dataset workspace for trusted agents. The agent can create datasets, choose a
-stable index column, add instructions, maintain rows, search, export, and optionally share a
-read-only preview. It is a good fit for task boards, feedback queues, personal CRMs, content
-pipelines, QA trackers, research tables, and other workflow-shaped data.
+Rowset is a hosted backend for trusted agents that own the workflow rows. The agent can create
+datasets, choose a stable index column, add instructions, maintain rows, search, export, and
+optionally share a read-only preview. It is a good fit for task boards, feedback queues, personal
+CRMs, content pipelines, QA trackers, research tables, and other workflow-shaped data.
 
 ## Use a direct database MCP server when
 
@@ -119,6 +119,6 @@ key exists, use the generated `rowset_id` path.
 ## Bottom line
 
 Use direct database MCP for controlled access to real source-of-truth tables. Use Rowset when an
-agent needs to maintain its own rows, instructions, context, exports, and optional review previews
-without touching production data directly. The two approaches can work together: database for the
-source of truth, Rowset for agent work.
+agent needs a private backend for its own rows, instructions, context, exports, and optional review
+previews without touching production data directly. The two approaches can work together: database
+for the source of truth, Rowset for agent work.

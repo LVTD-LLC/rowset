@@ -34,7 +34,7 @@
                 <form data-posthog-reset method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit" class="fb-focus min-h-9 px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign out</button></form>
             {% else %}
                 <a href="{% url 'account_login' %}" class="fb-focus px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign in</a>
-                <a href="{% url 'account_signup' %}" data-posthog-cta="signup" data-posthog-cta-location="header_desktop" class="inline-flex min-h-9 items-center justify-center bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Create a backend</a>
+                <a href="{% url 'account_signup' %}" data-posthog-cta="signup" data-posthog-cta-location="header_desktop" class="inline-flex min-h-9 items-center justify-center bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Start 7-day trial</a>
             {% endif %}
         </div>
         <div class="ml-auto lg:hidden" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
@@ -58,7 +58,7 @@
                         <a href="https://github.com/LVTD-LLC/rowset" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">GitHub</a>
                         <a href="{{ pricing_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Pricing</a>
                         <a href="{% url 'account_login' %}" class="fb-focus border-t border-white/20 px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Sign in</a>
-                        <a href="{% url 'account_signup' %}" data-posthog-cta="signup" data-posthog-cta-location="header_mobile" class="bg-[#ffdd3d] px-3 py-3 text-base font-semibold text-[#1313a4] sm:text-sm">Create a backend</a>
+                        <a href="{% url 'account_signup' %}" data-posthog-cta="signup" data-posthog-cta-location="header_mobile" class="bg-[#ffdd3d] px-3 py-3 text-base font-semibold text-[#1313a4] sm:text-sm">Start 7-day trial</a>
                     {% endif %}
                 </nav>
             </div>

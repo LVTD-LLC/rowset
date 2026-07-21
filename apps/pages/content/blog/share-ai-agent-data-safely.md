@@ -63,7 +63,7 @@ The current Model Context Protocol authorization guidance recommends authorizati
 
 Store the key in the agent runtime's secret environment, such as `ROWSET_API_KEY`. Do not paste it into a public issue, shared screenshot, repository file, or exported dataset. The [agent access guide](/docs/configure-agent-access) shows the current bearer-token setup and permission levels.
 
-Private authentication is not enough on its own. Authorization must also be enforced for the requested dataset. OWASP's 2023 API Security guidance says every endpoint that accepts an object identifier should check whether the authenticated user may perform the requested action on that object ([OWASP API1:2023](https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/)). That is the boundary you want from a dataset backend: a valid token should not become access to another account's rows merely because the caller knows an identifier.
+Private authentication is not enough on its own. Authorization must also be enforced for the requested dataset. OWASP's 2023 API Security guidance says every endpoint that accepts an object identifier should check whether the authenticated user may perform the requested action on that object ([OWASP API1:2023](https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/)). That is the boundary you want from a structured data backend: a valid token should not become access to another account's rows merely because the caller knows an identifier.
 
 ## Use an export for a point-in-time handoff
 

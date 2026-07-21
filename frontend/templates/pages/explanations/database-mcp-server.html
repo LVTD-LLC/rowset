@@ -1,23 +1,23 @@
 {% extends docs_base_template %}
 {% load static %}
 {% block meta %}
-    <title>Database MCP server: when to use Rowset instead</title>
+    <title>MCP database: direct access or agent-managed data?</title>
     <meta name="description"
-          content="Choose between direct database MCP servers and Rowset's hosted MCP dataset backend for AI-agent workflows." />
+          content="Learn when an MCP database should connect to existing SQL or NoSQL systems and when Rowset is the safer backend for agent-managed workflow data." />
     <meta name="robots" content="{{ search_robots_policy }}" />
     <link rel="canonical" href="{{ canonical_url }}" />
     <meta property="og:type" content="article" />
     <meta property="og:title"
-          content="Database MCP server: when to use Rowset instead" />
+          content="MCP database: direct access or agent-managed data?" />
     <meta property="og:url"
           content="https://{{ request.get_host }}{% url 'docs_page' slug='database-mcp-server' %}" />
     <meta property="og:description"
-          content="A practical guide to hosted MCP datasets, direct database MCP servers, credentials, row identity, and agent-safe data workflows." />
+          content="A practical guide to direct database MCP access, private workflow data, credentials, stable row identity, and safer agent operations." />
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:title"
-          content="Database MCP server: when to use Rowset instead" />
+          content="MCP database: direct access or agent-managed data?" />
     <meta name="twitter:description"
-          content="How to decide between direct database MCP access and Rowset's private MCP dataset backend." />
+          content="How to choose between direct database MCP access and Rowset's private backend for agent-managed workflow data." />
 {% endblock meta %}
 {% block content %}
     <article class="bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
@@ -29,10 +29,10 @@
                 <p class="fb-label-caps mt-8 text-emerald-700 dark:text-emerald-300">Playbook</p>
                 <div class="mt-6 flex justify-end">{% include "components/ai_reader_menu.html" %}</div>
                 <h1 class="mt-4 text-4xl font-semibold leading-none text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
-                    Database MCP server: when to use Rowset instead
+                    MCP database: direct access or agent-managed data?
                 </h1>
                 <p class="mt-6 text-lg leading-8 text-slate-700 dark:text-slate-300">
-                    A direct database MCP server is useful when an agent needs controlled access to an existing production database. Rowset is useful when the agent needs its own private, structured dataset backend without exposing that database. This playbook explains the difference, the tradeoffs, and a practical setup path.
+                    “MCP database” usually means an MCP server that gives an AI agent controlled access to an existing database. Rowset solves a different job: it gives trusted agents a private backend for structured workflow rows through hosted MCP, REST, or CLI.
                 </p>
                 <div class="mt-8 flex flex-wrap gap-3">
                     <a href="{% url 'docs_page' slug='connect-mcp' %}"
@@ -60,10 +60,10 @@
                         The same power creates risk. Production databases carry sensitive records, application invariants, migration history, access-control assumptions, and accidental footguns. Even read-only access can reveal more than intended. Write access is harder. A helpful agent may update the wrong record, run a broad query, misunderstand a relationship, or treat application tables like a spreadsheet. Direct database access is not wrong, but it should be chosen deliberately.
                     </p>
                     <p>
-                        Rowset takes a narrower path. Instead of connecting an agent directly to the production database, Rowset gives the agent a private dataset backend built for structured rows. The agent can create datasets, choose an index column, add instructions, maintain rows, search, export, and optionally share read-only previews. The data can still come from a product database, a spreadsheet, a CRM export, a support inbox, or a human conversation, but the agent works in a purpose-built row layer rather than inside the system of record.
+                        Rowset takes a narrower path. Instead of connecting an agent directly to the production database, Rowset gives the agent a private backend built for structured workflow rows. The agent can create datasets, choose an index column, add instructions, maintain rows, search, export, and optionally share read-only previews. The data can still come from a product database, a spreadsheet, a CRM export, a support inbox, or a human conversation, but the agent works in a purpose-built row layer rather than inside the system of record.
                     </p>
                     <p>
-                        That distinction matters. A database MCP server is a bridge into an existing database. Rowset is a hosted dataset workspace for trusted agents. If your agent must query an existing database, direct MCP can be the right tool. If your agent needs a place to manage task boards, feedback queues, personal CRM rows, content pipelines, QA trackers, lead lists, research tables, inventory snapshots, or similar operational data, Rowset is often the safer and faster starting point.
+                        That distinction matters. A database MCP server is a bridge into an existing database. Rowset is a hosted backend for trusted agents that own the workflow rows. If your agent must query an existing database, direct MCP can be the right tool. If your agent needs a place to manage task boards, feedback queues, personal CRM rows, content pipelines, QA trackers, lead lists, research tables, inventory snapshots, or similar operational data, Rowset is often the safer and faster starting point.
                     </p>
                     <h2>Use a direct database MCP server when the database is the product surface</h2>
                     <p>
@@ -169,7 +169,7 @@
                     </ol>
                     <h2>Bottom line</h2>
                     <p>
-                        A database MCP server connects an agent to an existing database. Rowset gives an agent a private dataset backend for structured work. Both are useful, but they solve different problems. Use direct database MCP for controlled access to real source-of-truth tables. Use Rowset when an agent needs to maintain its own rows, instructions, context, exports, and optional review previews without touching production data directly.
+                        A database MCP server connects an agent to an existing database. Rowset gives an agent a private backend for structured work. Both are useful, but they solve different problems. Use direct database MCP for controlled access to real source-of-truth tables. Use Rowset when an agent needs to maintain its own rows, instructions, context, exports, and optional review previews without touching production data directly.
                     </p>
                     <p>
                         If you are starting from a workflow rather than a schema, Rowset is usually the smaller move. Start a 7-day trial, create one dataset, connect a trusted agent, and see whether the rows become useful. When they do, you can keep operating in Rowset, export to another system, or build a deeper integration. The important part is that the agent gets structured state without turning your production database into its notebook.
@@ -181,11 +181,11 @@
         <section class="bg-[#f7faf8] dark:bg-[#050807]">
             <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
                 <div>
-                    <h2 class="text-3xl font-semibold text-slate-950 dark:text-white">Give a trusted agent a private dataset backend.</h2>
+                    <h2 class="text-3xl font-semibold text-slate-950 dark:text-white">Give a trusted agent a private backend for structured work.</h2>
                     <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-700 dark:text-slate-300">Use Rowset when the agent needs durable rows, stable indexes, instructions, search, exports, and private MCP/REST access.</p>
                 </div>
                 <div class="flex flex-col gap-3 sm:flex-row">
-                    <a href="{% url 'account_signup' %}" class="fb-button-primary">Create account</a>
+                    <a href="{% url 'account_signup' %}" class="fb-button-primary">Start 7-day trial</a>
                     <a href="{% url 'docs_home' %}" class="fb-button-secondary">Browse docs</a>
                     <a href="{% url 'docs_page' slug='connect-mcp' %}"
                        class="fb-button-secondary">Connect MCP</a>

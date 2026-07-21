@@ -121,7 +121,7 @@ Direct database MCP servers are better when an agent must query an existing
 Postgres, MySQL, SQLite, or warehouse system and the operator is ready to manage
 database credentials, permissions, query cost, and schema safety.
 
-Rowset is narrower. Use it when the agent needs its own private dataset backend
+Rowset is narrower. Use it when the agent needs its own private backend for structured workflow data
 for task boards, CRMs, feedback queues, catalogs, QA trackers, content
 pipelines, or similar structured row workflows.
 If you are comparing Rowset with open-source database workspaces, read
@@ -129,7 +129,7 @@ If you are comparing Rowset with open-source database workspaces, read
 If your team is choosing between spreadsheet-style backends, see
 [NocoDB alternatives for AI-agent-managed datasets](/blog/nocodb-alternatives).
 
-Read [Database MCP server: when to use Rowset instead](/docs/database-mcp-server)
+Read [MCP database: direct access or agent-managed data?](/docs/database-mcp-server)
 for the longer decision guide.
 
 ## Reference

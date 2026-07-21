@@ -79,9 +79,9 @@ and REST access to structured rows, then lets the human owner inspect, export,
 and optionally share read-only previews. It is not trying to be the center of a
 human team's database app.
 
-## What an AI-agent dataset backend needs
+## What a backend for AI-agent workflows needs
 
-An AI-agent dataset backend should optimize for repeatable operations, not only
+A backend for AI-agent workflows should optimize for repeatable operations, not only
 for a nice grid.
 
 The first requirement is stable row identity. Agents should update "the customer
@@ -138,7 +138,7 @@ Use Rowset for workflows like:
 - research tables that an agent updates across sessions
 
 The important difference is scope. Baserow is a broader database and app
-builder. Rowset is a private dataset backend for agent-operated rows. That
+builder. Rowset is a private backend for agent-operated rows. That
 narrowness is the point when you do not want to configure a full workspace just
 to let an agent maintain a table.
 
@@ -351,7 +351,7 @@ an open-source database workspace with app-building features.
 
 ### Is Rowset an open-source Baserow alternative?
 
-No. Rowset is a hosted private dataset backend for trusted AI agents. Choose
+No. Rowset is a hosted private backend for trusted AI agents. Choose
 Baserow if open-source deployment or self-hosting is required.
 
 ### Can AI agents use Baserow?
