@@ -26,6 +26,14 @@ deployment or release cut date.
   field-level proposals, risk-based review, stable-key publication, and deterministic
   reconciliation.
 
+### Changed
+- Simplified self-hosting to one production Compose file and one concise guide using standard
+  Docker Compose commands, inline Caddy configuration, and locally generated secrets.
+
+### Removed
+- Removed the bespoke self-host installer and release bundle, preflight and doctor framework,
+  deployment wrappers, sizing benchmarks, and custom backup/restore automation.
+
 ## 2026-07-20
 
 ### Added

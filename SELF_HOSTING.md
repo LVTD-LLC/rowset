@@ -1,338 +1,122 @@
-# Self-host Rowset
+# Self-host Rowset with Docker Compose
 
-This is the supported Docker Compose path for a single-server Rowset installation. It runs
-PostgreSQL, Redis, the Rowset web process, workers, and Caddy, plus a private Qdrant service when
-semantic search is enabled. Caddy is the only public ingress and manages trusted HTTPS certificates
-automatically.
+Rowset ships one production Compose file. This guide is the deployment interface for people and AI
+agents; there is no installer or Rowset-specific deployment command to learn.
 
-> **Release boundary:** The copy of this guide on `main` describes the next Rowset release and may
-> mention commands that are not in the current `/releases/latest` bundle yet. The installer always
-> installs the guide from the same immutable release as its scripts and image. After installation,
-> continue only with `$HOME/rowset/SELF_HOSTING.md`; do not mix later instructions from `main` into
-> that installation.
-
-## What this path supports
-
-- `linux/amd64` and `linux/arm64` servers
-- one public hostname supplied as `ROWSET_DOMAIN`
-- automatic HTTPS issuance, renewal, and HTTP-to-HTTPS redirects
-- private backend, database, Redis, and worker services
-- optional private, authenticated Qdrant with persistent local storage
-- persistent PostgreSQL, Redis, media, private asset, and Caddy state
-- authenticated browser, REST, and Streamable HTTP MCP traffic
-
-This guide intentionally provides one production proxy path. Caddy is not an application
-dependency: advanced operators can replace it if their ingress preserves forwarded HTTPS, client
-addresses, streaming responses, request sizes, and backend isolation.
+The stack runs Caddy, PostgreSQL, Redis, the Rowset web process, and Rowset workers. Caddy is the
+only public service and obtains HTTPS certificates automatically. Qdrant is an optional private
+service for vector search.
 
 ## Prerequisites
 
-You need:
+Use a Linux server with:
 
-- a VPS or dedicated server running Ubuntu 24.04 on `amd64` or `arm64`
-- at least a 1 vCPU, 4 GB RAM, 25 GB total-disk host class
-- at least 20 GB of free disk after installing the host prerequisites
-- Docker Engine, Docker Buildx, and Docker Compose v2
-- `flock` and `runuser` from the standard Linux `util-linux` package
-- anonymous pull access to the public `ghcr.io/lvtd-llc/rowset` package
-- a domain or subdomain whose DNS you control
-- SSH access with permission to run Docker
-- `curl`, `tar`, and a SHA-256 checksum command
-- inbound TCP ports 80 and 443 open; UDP 443 is optional but enables HTTP/3
+- a public `amd64` or `arm64` CPU;
+- Git and OpenSSL;
+- Docker Engine with Compose v2.23 or newer;
+- at least 4 GB RAM and 25 GB disk;
+- a hostname whose `A` or `AAAA` record points to the server; and
+- inbound TCP ports 80 and 443, plus UDP 443, open in the firewall.
 
-The minimum is a cost-first profile for evaluation and light use. The measured 2 vCPU / 4 GB RAM /
-40 GB profile is the safer starting point. Resize if startup, imports, workers, or database growth
-are slow or unstable. See [`docs/self-host-sizing.md`](docs/self-host-sizing.md) for the profiles,
-amd64/arm64 measurements, image and startup footprints, and capacity planning. Automation must
-consume `deployment/self-host/requirements.json` as the machine-readable source of truth.
+Run the commands below as a user allowed to use Docker. Do not expose PostgreSQL, Redis, Qdrant, or
+the Rowset backend directly to the internet.
 
-The examples assume a dedicated Rowset host. If another service already occupies ports 80 or 443,
-move it or use your existing ingress instead of starting the included Caddy service.
+## 1. Check out a release
 
-## 1. Prepare DNS and firewall
+Clone Rowset and check out the newest dated release. Keeping the source tag and container tag equal
+makes updates and rollbacks understandable.
 
-Create an A record pointing your hostname to the server's public IPv4 address. Add an AAAA record
-only when the server has working public IPv6.
+```bash
+git clone https://github.com/LVTD-LLC/rowset.git
+cd rowset
+ROWSET_VERSION="$(git tag --list '20*' --sort=-version:refname | head -n 1)"
+test -n "$ROWSET_VERSION"
+git checkout "$ROWSET_VERSION"
+```
 
-Allow inbound:
+Published Rowset images support `linux/amd64` and `linux/arm64`. For a stricter supply-chain policy,
+replace the release tag in `ROWSET_IMAGE` with the digest shown by the GitHub release or registry.
 
-- TCP 22 from trusted administration addresses
-- TCP 80 from the internet for certificate validation and HTTPS redirects
-- TCP 443 from the internet for HTTPS
-- UDP 443 from the internet when HTTP/3 is desired
+## 2. Create the production environment
 
-Do not expose ports 5432, 6333, 6379, or 8000. The production Compose file publishes only Caddy's
-web ports.
-
-Confirm DNS before starting the stack:
+Set the public hostname, then create an owner-only `.env` file. The commands generate independent,
+shell-safe secrets locally and do not print them.
 
 ```bash
 export ROWSET_DOMAIN=rowset.example.com
-getent ahosts "$ROWSET_DOMAIN"
+umask 077
+cat > .env <<EOF
+ROWSET_IMAGE=ghcr.io/lvtd-llc/rowset:$ROWSET_VERSION
+ROWSET_DOMAIN=$ROWSET_DOMAIN
+
+ENVIRONMENT=prod
+DEBUG=off
+SECRET_KEY=$(openssl rand -hex 32)
+
+POSTGRES_DB=rowset
+POSTGRES_USER=rowset
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+POSTGRES_PASSWORD=$(openssl rand -hex 32)
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=$(openssl rand -hex 32)
+
+ROWSET_VECTOR_SEARCH_ENABLED=False
+QDRANT_URL=http://qdrant:6333
+QDRANT_API_KEY=$(openssl rand -hex 32)
+OPENROUTER_API_KEY=
+EOF
+chmod 600 .env
 ```
 
-The returned address must match the server. Certificate issuance cannot succeed until public DNS
-and ports 80/443 reach Caddy.
+Replace `rowset.example.com` before continuing. Never commit `.env`, paste it into chat, or share a
+fully interpolated Compose configuration.
 
-## 2. Install one coherent Rowset release
+Optional integrations such as GitHub or Google login, Mailgun, Sentry, PostHog, and S3-compatible
+asset storage use the environment variables documented in [README.md](README.md#environment-variables).
+Add only the integrations you actually use.
+
+Validate the Compose model before it creates anything:
 
 ```bash
-curl -fsSL https://github.com/LVTD-LLC/rowset/releases/latest/download/install-rowset-self-host.sh | sh
-cd "$HOME/rowset"
+docker compose -p rowset -f docker-compose-prod.yml config --quiet
 ```
 
-Stop following the `main` copy of this page after the installer completes. The installer prints a
-bounded command sequence from its release and installs the matching guide at `SELF_HOSTING.md`.
-Follow that installed guide for the rest of setup.
-
-The release installer downloads a checksum-protected self-hosting bundle from the same immutable
-GitHub release as its application image. The bundle contains the matching Compose file, environment
-tools, support scripts, release version, source commit, image reference, and registry digest. It
-records that identity in `.rowset-release` and does not clone deployment files from the moving
-`main` branch.
-
-Inspect the installed identity and verify that the image supports this server:
+## 3. Start Rowset
 
 ```bash
-deployment/self-host/version.sh
-deployment/verify-image-platforms.sh \
-  "$(sed -n 's/^ROWSET_RELEASE_IMAGE=//p' .rowset-release)"
+docker compose -p rowset -f docker-compose-prod.yml pull
+docker compose -p rowset -f docker-compose-prod.yml up -d
 ```
 
-On a first install, the script embedded in `releases/latest` selects that release's friendly dated
-version. On a rerun, it reads `.rowset-release` and reinstalls the recorded version instead of
-silently moving to a newer release. To install a specific release into an empty directory, set
-`ROWSET_VERSION=YYYY.MM.DD-N`. Set `ROWSET_INSTALL_DIR` to use a location other than
-`$HOME/rowset`.
+The Rowset image applies database migrations during startup. Services use `restart: unless-stopped`,
+and Docker rotates each service's local logs at three 10 MB files.
 
-Official releases are promoted only after CI removes its GHCR credentials and proves that the
-matching tag can be inspected and pulled anonymously for both supported architectures. If image
-verification reports `denied` or `unauthorized`, package visibility has regressed and the release
-must not be used.
-
-## 3. Configure the environment
-
-Set the public hostname, then run the production initializer:
+Caddy requests a certificate after DNS and ports 80 and 443 are correct. Inspect startup without
+printing container environments:
 
 ```bash
-export ROWSET_DOMAIN=rowset.example.com
-deployment/self-host/init-env.sh
-deployment/self-host/validate-env.sh
+docker compose -p rowset -f docker-compose-prod.yml ps
+docker compose -p rowset -f docker-compose-prod.yml logs --tail=100 caddy backend workers
 ```
 
-The initializer starts from `deployment/self-host/env.example`, generates independent strong Django,
-PostgreSQL, Redis, and Qdrant secrets, and stores the result in `.env` with mode `0600`. It is idempotent:
-rerunning it preserves every existing nonblank value and never rotates a secret. The validator
-rejects missing values, unsafe development defaults, malformed hostnames or image tags, reused
-secrets, and files that are not private. Both commands report variable names and remediation only;
-they never print secret values.
+## 4. Verify the deployment
 
-For an official bundle, `init-env.sh` obtains `ROWSET_IMAGE` from `.rowset-release`. An operator may
-still export an explicit immutable `ROWSET_IMAGE` before the first initialization for a fork or
-private registry. Once `.env` exists, reruns preserve its configured image.
-
-Only one initializer may run for a destination at a time. If a prior process was forcibly killed,
-remove the adjacent `.env.lock` directory after confirming no initializer is still running.
-
-To supply secrets from a private shell or secret files during first initialization, use direct
-variables or the matching file variables:
+Run Django's production checks inside the deployed container, verify HTTPS without bypassing
+certificate validation, and confirm the private API rejects anonymous access:
 
 ```bash
-export SECRET_KEY_FILE=/run/secrets/rowset-django
-export POSTGRES_PASSWORD_FILE=/run/secrets/rowset-postgres
-export REDIS_PASSWORD_FILE=/run/secrets/rowset-redis
-export QDRANT_API_KEY_FILE=/run/secrets/rowset-qdrant
-deployment/self-host/init-env.sh
-unset SECRET_KEY_FILE POSTGRES_PASSWORD_FILE REDIS_PASSWORD_FILE QDRANT_API_KEY_FILE
-```
-
-`SECRET_KEY`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `QDRANT_API_KEY` are the direct-variable
-alternatives. Do not
-set a direct variable and its `*_FILE` variable together. Secret files must be readable regular files
-containing one nonblank line. The initializer resolves either form into the protected application
-environment file without displaying the value.
-
-Generate a compatible Django secret key with:
-
-```bash
-openssl rand -hex 32
-```
-
-Set the generated value as `SECRET_KEY`, keep it private, and do not reuse it for another service.
-Injected secrets must use only letters, numbers, dots, underscores, tildes, and hyphens. This
-URL-safe alphabet prevents dotenv, Compose, and Redis URL parsing from changing validated bytes.
-
-Compose derives `SITE_URL=https://${ROWSET_DOMAIN}` for the web and worker containers. Do not add a
-scheme, path, or port to `ROWSET_DOMAIN` in production. Startup migrations synchronize the Django
-Site record from this URL; no admin edit is required.
-
-Optional account/email, observability, private asset-storage, and semantic-search variables are
-grouped in `deployment/self-host/env.example`. Leave unused integrations blank. Never commit `.env`.
-
-Cloud provisioning credentials are separate from server application secrets. For example,
-`HCLOUD_TOKEN` belongs in the local provisioning shell or its secret store only. Never add it to the
-server `.env`, pass it to the Rowset containers, or paste it into an agent chat.
-
-### Optional: enable bundled vector search
-
-The initializer prepares Qdrant without starting it: it generates `QDRANT_API_KEY` and sets the
-private Compose URL `QDRANT_URL=http://qdrant:6333`. PostgreSQL remains the source of truth, and the
-normal five-service stack keeps the published minimum sizing profile when vector search is off.
-
-To enable semantic search, edit the protected `.env` file and set both values:
-
-```dotenv
-ROWSET_VECTOR_SEARCH_ENABLED=True
-OPENROUTER_API_KEY=<private OpenRouter API key>
-```
-
-Do not paste the provider key into an agent chat, command argument, issue, or log. A human should
-inject it from a private shell or secret store. Then continue through the normal validation,
-preflight, start, and doctor steps below.
-
-`start.sh` activates the `vector-search` Compose profile automatically. The Qdrant HTTP API remains
-on the private Compose network, requires the generated API key, persists in `qdrant_data`, and is
-checked by both its container health check and doctor. Preflight also verifies that the pinned
-Qdrant image supports the host architecture when vector search is enabled.
-
-Index existing active datasets after the first start:
-
-```bash
-docker compose --env-file .env -f docker-compose-prod.yml -p rowset \
-  exec -T backend python manage.py backfill_dataset_vectors --all --dry-run
-docker compose --env-file .env -f docker-compose-prod.yml -p rowset \
-  exec -T backend python manage.py backfill_dataset_vectors --all --stop-on-error
-```
-
-New and changed rows are indexed by workers after this one-time backfill. If vector search is not
-needed, leave `ROWSET_VECTOR_SEARCH_ENABLED=False`; Qdrant is not started and no embedding-provider
-key is required.
-
-## 4. Run the deterministic preflight
-
-Run the read-only host and release checks after configuration and before starting containers:
-
-```bash
-deployment/self-host/preflight.sh
-```
-
-Preflight validates the supported OS and architecture, CPU, RAM, total disk capacity, current free
-disk space, DNS, availability of ports 80 and 443, Docker Engine, Compose v2, Buildx, anonymous
-access to the configured image manifest, the production environment, and deployment-file
-permissions. The capacity check proves that the host belongs to the published 25 GB class; the
-separate 20 billion-byte free-space floor preserves room for the initial images and stack after
-Docker and the other prerequisites are installed. Preflight consumes
-`deployment/self-host/requirements.json`; do not copy its thresholds into installer logic.
-
-The command emits compact newline-delimited JSON. Every check has a stable `id`, a `PASS` or `FAIL`
-status, and one remediation when it fails. The final `SUMMARY` record is machine-readable, and the
-process exits nonzero when any required check fails. Fix the named failure and rerun preflight; do
-not replace it with improvised host checks. Preflight reads configuration values for validation but
-never prints secrets or creates application data.
-
-## 5. Start Rowset with automatic HTTPS
-
-```bash
-deployment/self-host/start.sh
-```
-
-`start.sh` runs `validate-env.sh` first and starts no container when validation fails. Direct
-`docker compose up` bypasses that host-side permission check and is not the supported startup path.
-
-Inspect startup state and logs:
-
-```bash
-docker compose -f docker-compose-prod.yml -p rowset ps
-docker compose -f docker-compose-prod.yml -p rowset logs --tail=100 caddy backend workers
-```
-
-The Rowset image runs migrations during startup. The backend health check also verifies PostgreSQL
-and Redis before Caddy treats the application as ready.
-
-Caddy requests a public certificate after it can reach the configured hostname. Initial issuance
-normally completes shortly after DNS and firewall prerequisites are correct.
-
-### Lifecycle and local Docker logs
-
-All baseline services, plus Qdrant when enabled, use `restart: unless-stopped`, so containers restart automatically after a Docker
-daemon or host restart unless an operator stopped them explicitly. Backend and workers wait for
-healthy PostgreSQL and authenticated Redis dependencies during Compose startup; Caddy waits for the
-healthy backend.
-
-Docker's local `json-file` logs rotate at three 10 MB files: approximately 30 MB per service and
-150 MB across the five-service baseline, plus up to 30 MB for Qdrant logs when enabled, before small Docker metadata overhead. Application-level
-external logging remains separately configurable through optional observability settings.
-
-To validate or share the Compose structure without resolving `.env` values, use:
-
-```bash
-docker compose --env-file .env -f docker-compose-prod.yml -p rowset \
-  config --no-env-resolution --no-interpolate
-```
-
-Do not share `.env`, ordinary fully resolved `docker compose config` output, or container environment
-output; all can contain secrets.
-
-## 6. Verify web, REST, and MCP
-
-Run the non-mutating post-deployment doctor first:
-
-```bash
-deployment/self-host/doctor.sh
-```
-
-Doctor derives the required service list from the rendered production Compose configuration and
-checks every service, including Qdrant when vector search is enabled. It also verifies
-trusted HTTPS, pending migrations, database and cache readiness, and that unauthenticated REST and
-MCP requests are rejected. Email delivery and the backup timer are reported as optional when they
-are not configured. Like preflight, doctor emits bounded newline-delimited JSON with stable IDs and
-exits nonzero for any required failure.
-
-Fix the single named cause for each failed check and continue until doctor reports a passing summary.
-Use the bounded log command in a failure's remediation instead of dumping full Compose logs. Doctor
-does not create users, keys, datasets, or other product data.
-
-Verify that HTTP redirects once to HTTPS and that HTTPS is healthy:
-
-```bash
-curl -I "http://$ROWSET_DOMAIN"
+docker compose -p rowset -f docker-compose-prod.yml exec -T backend \
+  python manage.py check --deploy
 curl -fsS "https://$ROWSET_DOMAIN/" >/dev/null
+test "$(curl -sS -o /dev/null -w '%{http_code}' \
+  "https://$ROWSET_DOMAIN/api/user")" = "401"
 ```
 
-The HTTP response should redirect to `https://$ROWSET_DOMAIN/`. The HTTPS command must complete
-without `--insecure`; using `-k` would hide certificate failures.
-
-After doctor passes, run the authenticated, mutating post-deployment smoke test from the Rowset
-checkout on the host:
-
-```bash
-deployment/self-host/smoke-test.sh
-```
-
-The command creates a short-lived temporary user and scoped API key, verifies REST authentication,
-initializes MCP, checks live tool discovery, creates a one-row dataset through REST, reads that row
-through MCP, and waits for a real worker task. It removes the worker result, dataset, key, profile,
-and user on both success and failure. The raw key stays in command memory and is never passed as an
-argument or printed.
-
-`smoke-test.sh` uses `docker-compose-prod.yml`, the `rowset` Compose project, and the container's
-`SITE_URL` by default. Pass management-command options after the script when needed:
-
-```bash
-deployment/self-host/smoke-test.sh --base-url "https://$ROWSET_DOMAIN" --timeout 60
-```
-
-For credential safety, `--base-url` must match the configured HTTPS `SITE_URL` origin. HTTP is
-accepted only for loopback and the internal `backend` service during local deployment checks.
-
-Use `--fail-after` with one of `setup`, `rest_auth`, `mcp_initialize`, `mcp_tools`,
-`dataset_create`, `dataset_read`, or `worker` to verify cleanup after a deliberate failure. The
-authenticated smoke test mutates temporary data and is intended for install completion, deployment
-verification, and CI. Keep ordinary load-balancer and uptime checks on the non-mutating health
-endpoint.
-
-Create an account in the browser, create a scoped agent API key in Settings, and store it only in a
-private shell or secret store:
+Create an account in the browser and create a scoped agent API key in Settings. Keep it in a secret
+store or private shell, then verify authenticated REST access:
 
 ```bash
 export ROWSET_API_KEY="replace-with-your-copied-key"
@@ -355,287 +139,80 @@ codex mcp add rowset \
   --bearer-token-env-var ROWSET_API_KEY
 ```
 
-Discover the live tool schemas, then call `get_user_info`, `get_rowset_capabilities`, and
-`get_all_datasets`. Do not put the raw API key in MCP configuration or logs.
+Discover the live tool schemas, then call `get_user_info` and `get_rowset_capabilities`. Do not put
+the raw API key in MCP configuration or logs.
 
-## Certificate renewal and Caddy state
+## Optional vector search
 
-Caddy obtains certificates, renews them in the background, and serves HTTP-to-HTTPS redirects
-without a separate certificate client or host-level timer. The named volumes are:
-
-- `caddy_data`: certificates, private keys, and other durable Caddy state
-- `caddy_config`: autosaved Caddy configuration state
-
-Check certificate maintenance and renewal activity with:
+PostgreSQL remains the source of truth; Qdrant is a rebuildable private index. To enable it, set
+`ROWSET_VECTOR_SEARCH_ENABLED=True` and `OPENROUTER_API_KEY` in `.env`, then start the profile:
 
 ```bash
-docker compose -f docker-compose-prod.yml -p rowset logs caddy
-docker compose -f docker-compose-prod.yml -p rowset exec caddy caddy list-modules >/dev/null
+docker compose -p rowset -f docker-compose-prod.yml --profile vector-search up -d
+docker compose -p rowset -f docker-compose-prod.yml exec -T backend \
+  python manage.py backfill_dataset_vectors --all --dry-run
+docker compose -p rowset -f docker-compose-prod.yml exec -T backend \
+  python manage.py backfill_dataset_vectors --all --stop-on-error
 ```
 
-Normal `up -d` and container recreation preserve these volumes. Never run `docker compose down -v`
-as an update command: it deletes Caddy state along with Rowset's database, Redis, and media data.
+Leave the flag false and use the normal startup command when vector search is not needed.
 
-## Persistent data and backups
+## Data, backups, and updates
 
-The production stack uses these named volumes:
+The Compose project stores durable data in named volumes for PostgreSQL, public media, private
+media, Caddy, and optional Qdrant. Redis and Qdrant are not canonical user-data stores.
 
-- `postgres_data`
-- `redis_data`
-- `qdrant_data` when vector search is enabled
-- `media_data`
-- `private_media_data`
-- `caddy_data`
-- `caddy_config`
-
-Create one coordinated backup of PostgreSQL, public media, and private media with:
-
-```bash
-sudo install -d -m 0700 -o "$USER" -g "$(id -gn)" /var/backups/rowset
-deployment/self-host/backup.sh /var/backups/rowset .env
-```
-
-The command briefly pauses `backend` and `workers` so application writes cannot split the database
-and local file snapshots. It writes a mode `0700` versioned directory containing a PostgreSQL
-custom-format dump, separate `media` and `private_media` archives, format/image/PostgreSQL metadata,
-and SHA-256 checksums. Every file is mode `0600`, and the command validates checksums, archive paths,
-and the PostgreSQL dump before reporting success. Redis is intentionally excluded because Rowset
-does not use it as durable user storage. Qdrant is also excluded because it is a rebuildable index;
-PostgreSQL rows remain the canonical data.
-
-Verify an existing backup without changing application data:
-
-```bash
-deployment/self-host/verify-backup.sh \
-  /var/backups/rowset/rowset-backup-<UTC timestamp> .env
-```
-
-`ROWSET_BACKUP_RETENTION_DAYS` defaults to seven days. Only complete, timestamped Rowset backup
-directories older than that window are pruned; unrelated files and incomplete backups are left for
-operator review.
-
-### Off-server S3-compatible backups
-
-A backup stored only on the Rowset host is **not disaster recovery**: host deletion, disk failure,
-or filesystem corruption can remove the application and every local copy together. Configure an
-already-created private S3-compatible bucket in `.env` to upload each verified backup automatically:
-
-```dotenv
-ROWSET_BACKUP_S3_ENDPOINT_URL=https://s3.example.invalid
-ROWSET_BACKUP_S3_BUCKET=rowset-backups
-ROWSET_BACKUP_S3_ACCESS_KEY_ID=replace-in-private-env
-ROWSET_BACKUP_S3_SECRET_ACCESS_KEY=replace-in-private-env
-ROWSET_BACKUP_S3_REGION=auto
-ROWSET_BACKUP_S3_PREFIX=production/rowset
-```
-
-The backup command uploads with server-side AES-256 encryption and applies the same retention window
-to objects under that prefix. Test the credentials and bucket with a manual backup before relying on
-the timer. Use a bucket policy that grants only list/read/write/delete access to the configured
-prefix, enable provider-side versioning or immutability when available, and alert on failed systemd
-units. The secret values remain only in the owner-only `.env` file.
-
-When `ROWSET_ASSET_S3_ENDPOINT_URL` is configured, private dataset image and audio assets live in
-the object store instead of `private_media_data`. Follow the provider's versioning and backup
-guidance for that source bucket as well; the coordinated local archive cannot copy objects that are
-not mounted in `private_media_data`.
-
-### Schedule and observe backups
-
-Install the checked-in systemd unit and timer from the Rowset checkout directory:
-
-```bash
-sudo install -m 0644 deployment/self-host/systemd/rowset-backup.service \
-  /etc/systemd/system/rowset-backup.service
-sudo install -m 0644 deployment/self-host/systemd/rowset-backup.timer \
-  /etc/systemd/system/rowset-backup.timer
-sudo sh -c 'cat > /etc/rowset-backup.conf' <<EOF
-ROWSET_ROOT=$(pwd)
-ROWSET_ENV_FILE=$(pwd)/.env
-ROWSET_BACKUP_DIR=/var/backups/rowset
-ROWSET_BACKUP_USER=$(id -un)
-EOF
-sudo chmod 0600 /etc/rowset-backup.conf
-sudo systemctl daemon-reload
-sudo systemctl enable --now rowset-backup.timer
-sudo systemctl start rowset-backup.service
-```
-
-The system unit drops privileges to `ROWSET_BACKUP_USER`, which must own `.env`, be able to use
-Docker, and be able to write `ROWSET_BACKUP_DIR`. The timer runs daily, catches up after downtime,
-and leaves failures visible in systemd and the journal. Check both the last result and the next
-scheduled run:
-
-```bash
-systemctl status rowset-backup.service rowset-backup.timer
-journalctl -u rowset-backup.service --since yesterday
-systemctl list-timers rowset-backup.timer
-```
-
-### Restore and drill recovery
-
-Restore only into the intended Rowset stack. The command verifies all artifacts first, stops web and
-worker processes, recreates the configured PostgreSQL database, replaces both local media trees, and
-then restarts the services that were running. It is deliberately destructive and requires an exact
-confirmation flag:
-
-```bash
-deployment/self-host/restore.sh --confirm-destroy-data \
-  /var/backups/rowset/rowset-backup-<UTC timestamp> .env
-```
-
-For an off-server backup, pass its exact `s3://<bucket>/<prefix>/rowset-backup-<timestamp>.tar.gz`
-URI. The configured bucket must match. Preserve a copy of the current `.env`; encrypted and signed
-application data may depend on the original `SECRET_KEY` even when the database and assets restore.
-When vector search is enabled, restore clears `qdrant_data` before restarting services so vectors
-from the newer database state cannot resolve to restored row identifiers. Run the two `--all`
-backfill commands from the vector-search section after restore.
-
-Run the complete recovery proof after setup and periodically thereafter:
-
-```bash
-deployment/self-host/restore-drill.sh --confirm-destroy-isolated-stack .env
-```
-
-The drill creates a unique Compose project without public ports, seeds a user, two related datasets,
-rows, and public/private assets, backs them up, runs `down -v` against only that isolated project,
-restores into fresh volumes, and verifies user authentication, stable keys, relationships, and asset
-hashes. It always removes its temporary project and volumes. A successful backup without a successful
-restore drill is not sufficient recovery evidence.
-
-## Updates
-
-Each dated GitHub release and its `rowset-self-host-<version>.tar.gz` asset are immutable and remain
-available from that release's page, so the previous application image and deployment bundle can be
-retrieved together for rollback. Do not combine files from `main` with an arbitrary image tag.
-
-The initial installer deliberately preserves an existing installed version on rerun. Use the
-documented update and rollback commands when they are available; until then, treat changing
-`.rowset-release`, deployment files, or `ROWSET_IMAGE` as a manual maintenance operation. Back up
-PostgreSQL and local media before any manual change. Do not add `-v` to `down` commands.
-
-## Rotate secrets safely
-
-Initialization never rotates existing secrets. Before a deliberate rotation, back up `.env` to a
-private location, update only the intended assignment with a local editor or secret-management tool,
-then validate and restart:
+Use your infrastructure provider's encrypted volume snapshots when available. Also take regular
+PostgreSQL dumps and copy them off the host:
 
 ```bash
 umask 077
-cp .env ".env.before-rotation-$(date -u +%Y%m%dT%H%M%SZ)"
-deployment/self-host/validate-env.sh
-deployment/self-host/start.sh
+mkdir -p backups
+chmod 700 backups
+docker compose -p rowset -f docker-compose-prod.yml exec -T db \
+  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
+  > "backups/rowset-$(date -u +%Y%m%dT%H%M%SZ).dump"
+chmod 600 backups/*.dump
 ```
 
-Keep the backup only for the recovery window, then destroy it securely according to the host's
-storage policy. Do not paste either file into chat, logs, support tickets, or issues.
+If assets use the local `media_data` and `private_media_data` volumes, include those volumes in the
+same backup window. If assets use S3-compatible storage, enable bucket versioning and back up that
+bucket separately. A backup stored only on the Rowset host is not disaster recovery. Test restores
+in an isolated project before relying on them.
 
-Changing `POSTGRES_PASSWORD` or `REDIS_PASSWORD` only in `.env` breaks connectivity. Rotate the
-credential in PostgreSQL or Redis first using that service's authenticated administration path,
-then update `.env`, validate, and restart the dependent containers.
+Do not run `docker compose down -v`; `-v` deletes the named volumes and user data.
 
-Changing Django's `SECRET_KEY` invalidates signatures made only by the old key. That invalidates
-signed sessions, password-reset links, and similar signed tokens. When continuity is required, set the new
-active key and temporarily add the old key to `SECRET_KEY_FALLBACKS` as a comma-separated value.
-Validate and restart, wait through the chosen transition window, then remove the fallback, validate,
-and restart again. A fallback remains a live secret and must receive the same protection as the
-active key.
-
-## Temporary insecure IP-only diagnostic mode
-
-This mode is only for diagnosing container startup before a hostname is available. It serves plain
-HTTP through Caddy and disables Django's production HTTPS enforcement. It is not a production
-configuration.
-
-Do not create accounts, API keys, or private datasets in this mode. Do not send credentials over
-it. Prefer a disposable DNS hostname that exercises trusted HTTPS whenever possible.
-
-Set `ROWSET_DOMAIN` to the server IP, then load the explicitly insecure override:
+To update, back up first, fetch tags, check out the selected release, update `ROWSET_IMAGE` in
+`.env` to the same tag, then pull and recreate the services:
 
 ```bash
-export ROWSET_DOMAIN=203.0.113.10
-docker compose -f docker-compose-prod.yml \
-  -f deployment/self-host/compose.insecure-http.yml \
-  -p rowset up -d --remove-orphans
-curl -I "http://$ROWSET_DOMAIN"
+git fetch --tags
+git checkout <new-release-tag>
+docker compose -p rowset -f docker-compose-prod.yml pull
+docker compose -p rowset -f docker-compose-prod.yml up -d
+docker compose -p rowset -f docker-compose-prod.yml ps
 ```
 
-Traffic still enters through Caddy; backend port 8000 remains closed. Tear this mode down before
-normal deployment:
-
-```bash
-docker compose -f docker-compose-prod.yml \
-  -f deployment/self-host/compose.insecure-http.yml \
-  -p rowset down
-```
-
-Then configure DNS, restore `ROWSET_DOMAIN` to the hostname, and start only
-`docker-compose-prod.yml`.
+Rollback uses the same sequence with the previous source tag and image tag. Do not mix a Compose
+file from one release with an arbitrary image from another.
 
 ## Troubleshooting
 
-### Caddy cannot obtain a certificate
-
-Check in this order:
+Start with service state and bounded logs:
 
 ```bash
-getent ahosts "$ROWSET_DOMAIN"
-sudo ss -lntup | grep -E ':(80|443)\b'
-docker compose -f docker-compose-prod.yml -p rowset logs --tail=200 caddy
+docker compose -p rowset -f docker-compose-prod.yml ps
+docker compose -p rowset -f docker-compose-prod.yml logs --tail=100 caddy backend db redis workers
 ```
 
-DNS must resolve to this server, ports 80 and 443 must be reachable from the internet, and no other
-process can bind those ports. Do not work around certificate errors with `curl -k`.
+- Certificate failure: confirm DNS points to this server and ports 80/443 are reachable. Do not use
+  `curl -k`; it hides the problem.
+- Caddy 502: inspect backend, PostgreSQL, and Redis health and logs.
+- Configuration failure: run `docker compose -p rowset -f docker-compose-prod.yml config --quiet`
+  and correct the named missing variable in `.env`.
+- Migration or application failure: inspect backend logs, then run `python manage.py check --deploy`
+  through `docker compose exec` as shown above.
+- Unsupported host: use a Linux `amd64` or `arm64` server.
 
-### Caddy returns 502
-
-```bash
-docker compose -f docker-compose-prod.yml -p rowset ps
-docker compose -f docker-compose-prod.yml -p rowset logs --tail=200 backend db redis
-```
-
-Caddy waits for the backend health check. Resolve database, Redis, migration, or environment
-failures reported by the backend.
-
-### Inspect the effective Compose configuration
-
-```bash
-docker compose -f docker-compose-prod.yml -p rowset config
-```
-
-Review hostnames, image references, ports, mounts, and service dependencies. Do not paste output
-containing secrets into public issues or chats.
-
-### Confirm the backend is private
-
-From another host, scan only systems you own or are authorized to test. Ports 80 and 443 should be
-reachable; ports 6333 and 8000 should be closed. PostgreSQL, Qdrant, and Redis must not be publicly
-reachable.
-
-## Environment reference
-
-The core self-hosting values are:
-
-| Variable | Purpose |
-| --- | --- |
-| `ROWSET_IMAGE` | Matching release image from `.rowset-release`, or an explicit immutable override |
-| `ROWSET_DOMAIN` | Public hostname without scheme, path, or port |
-| `ENVIRONMENT` | Set to `prod` for the supported production path |
-| `DEBUG` | Set to `off` in production |
-| `SECRET_KEY` | Long independent Django secret |
-| `SECRET_KEY_FALLBACKS` | Optional comma-separated previous Django keys used only during rotation |
-| `SECRET_KEY_FILE` | First-initialization file input for `SECRET_KEY` |
-| `POSTGRES_DB` | PostgreSQL database name |
-| `POSTGRES_USER` | PostgreSQL user |
-| `POSTGRES_PASSWORD` | Strong PostgreSQL password |
-| `POSTGRES_PASSWORD_FILE` | First-initialization file input for `POSTGRES_PASSWORD` |
-| `REDIS_PASSWORD` | Strong Redis password |
-| `REDIS_PASSWORD_FILE` | First-initialization file input for `REDIS_PASSWORD` |
-| `QDRANT_API_KEY` | Strong generated key shared only by Rowset and bundled Qdrant |
-| `QDRANT_API_KEY_FILE` | First-initialization file input for `QDRANT_API_KEY` |
-| `QDRANT_URL` | Private bundled service URL; keep `http://qdrant:6333` |
-| `ROWSET_VECTOR_SEARCH_ENABLED` | Set `True` to start Qdrant and enable semantic search |
-| `OPENROUTER_API_KEY` | Private embedding-provider key required when vector search is enabled |
-
-`ROWSET_INSECURE_HTTP` is intentionally absent from `.env.example`; only the diagnostic Compose
-override sets it. See `deployment/self-host/env.example` for optional production integrations.
+Only ports 80 and 443 (plus UDP 443) should be public. Ports 5432, 6379, 6333, and the backend's
+internal port must remain private.

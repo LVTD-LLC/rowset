@@ -1,167 +1,10 @@
 import re
 import subprocess
-import tarfile
 from pathlib import Path
 
 import yaml
 
 _REPO_ROOT = Path(__file__).parents[2]
-_VERIFY_SELF_HOST_RELEASE = _REPO_ROOT / "scripts" / "verify-self-host-release-contract.sh"
-
-
-def _build_self_host_release(tmp_path: Path, version: str = "2026.07.16-0") -> Path:
-    output_dir = tmp_path / "release-assets"
-    subprocess.run(
-        [
-            str(_REPO_ROOT / "scripts" / "build-self-host-release.sh"),
-            version,
-            "a" * 40,
-            f"ghcr.io/lvtd-llc/rowset:{version}",
-            "sha256:" + "b" * 64,
-            str(output_dir),
-        ],
-        cwd=_REPO_ROOT,
-        check=True,
-    )
-    return output_dir
-
-
-def test_self_host_release_contract_rejects_a_missing_documented_command(tmp_path):
-    bundle_root = tmp_path / "bundle"
-    bundle_root.mkdir()
-    (bundle_root / "SELF_HOSTING.md").write_text(
-        "Run `deployment/self-host/preflight.sh` before starting Rowset.\n"
-    )
-
-    result = subprocess.run(
-        [str(_VERIFY_SELF_HOST_RELEASE), str(bundle_root)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert "missing documented command: deployment/self-host/preflight.sh" in result.stderr
-
-
-def test_self_host_release_contract_rejects_a_non_executable_documented_command(tmp_path):
-    bundle_root = tmp_path / "bundle"
-    command = bundle_root / "deployment" / "self-host" / "preflight.sh"
-    command.parent.mkdir(parents=True)
-    command.write_text("#!/bin/sh\n")
-    (bundle_root / "SELF_HOSTING.md").write_text(
-        "Run `deployment/self-host/preflight.sh` before starting Rowset.\n"
-    )
-
-    result = subprocess.run(
-        [str(_VERIFY_SELF_HOST_RELEASE), str(bundle_root)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert (
-        "documented command is not executable: deployment/self-host/preflight.sh" in result.stderr
-    )
-
-
-def test_self_host_release_contract_rejects_an_empty_installer_sequence(tmp_path):
-    output_dir = _build_self_host_release(tmp_path / "build")
-    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
-    extracted = tmp_path / "extracted"
-    with tarfile.open(archive) as bundle:
-        bundle.extractall(extracted, filter="data")
-    empty_installer = tmp_path / "empty-installer.sh"
-    empty_installer.write_text("#!/bin/sh\n")
-
-    result = subprocess.run(
-        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted), str(empty_installer)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert "does not match the required command sequence" in result.stderr
-
-
-def test_self_host_release_contract_rejects_a_partial_installer_sequence(tmp_path):
-    output_dir = _build_self_host_release(tmp_path / "build")
-    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
-    extracted = tmp_path / "extracted"
-    with tarfile.open(archive) as bundle:
-        bundle.extractall(extracted, filter="data")
-    installer = output_dir / "install-rowset-self-host.sh"
-    installer.write_text(
-        installer.read_text().replace("printf '  deployment/self-host/doctor.sh\\n'\n", "")
-    )
-
-    result = subprocess.run(
-        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted), str(installer)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert "does not match the required command sequence" in result.stderr
-
-
-def test_self_host_release_contract_rejects_a_guide_with_required_commands_out_of_order(
-    tmp_path,
-):
-    output_dir = _build_self_host_release(tmp_path / "build")
-    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
-    extracted = tmp_path / "extracted"
-    with tarfile.open(archive) as bundle:
-        bundle.extractall(extracted, filter="data")
-    guide = extracted / "SELF_HOSTING.md"
-    guide_text = guide.read_text()
-    guide.write_text(
-        guide_text.replace(
-            "deployment/self-host/version.sh\ndeployment/verify-image-platforms.sh \\\n",
-            "deployment/verify-image-platforms.sh \\\ndeployment/self-host/version.sh\n",
-            1,
-        )
-    )
-
-    result = subprocess.run(
-        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert "SELF_HOSTING.md does not match the required command sequence" in result.stderr
-
-
-def test_self_host_release_contract_rejects_a_missing_linked_guide_file(tmp_path):
-    output_dir = _build_self_host_release(tmp_path / "build")
-    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
-    extracted = tmp_path / "extracted"
-    with tarfile.open(archive) as bundle:
-        bundle.extractall(extracted, filter="data")
-    guide = extracted / "SELF_HOSTING.md"
-    guide.write_text(
-        guide.read_text().replace(
-            "docs/self-host-sizing.md)", "docs/self-host-sizing.md#tested-profiles)"
-        )
-    )
-    linked_file = extracted / "docs" / "self-host-sizing.md"
-    if linked_file.exists():
-        linked_file.unlink()
-
-    result = subprocess.run(
-        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert "missing linked guide file: docs/self-host-sizing.md" in result.stderr
 
 
 def test_publish_workflow_syncs_app_image_and_cli_version_to_release_tag():
@@ -181,21 +24,25 @@ def test_publish_workflow_syncs_app_image_and_cli_version_to_release_tag():
     assert "scripts/install-rowset-cli.sh" in workflow
 
 
-def test_publish_workflow_creates_an_immutable_matching_self_host_release():
+def test_publish_workflow_releases_the_immutable_image_without_self_host_bundles():
     workflow = (_REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text()
     parsed_workflow = yaml.safe_load(workflow)
 
-    assert "scripts/build-self-host-release.sh" in workflow
-    assert "scripts/verify-self-host-release-contract.sh" in workflow
     assert "release_sha: ${{ steps.release.outputs.release_sha }}" in workflow
     assert "ref: ${{ needs.validate.outputs.release_sha }}" in workflow
-    assert "${{ needs.app-image.outputs.digest }}" in workflow
-    assert "rowset-self-host-${RELEASE_TAG}.tar.gz" in workflow
-    assert "install-rowset-self-host.sh" in workflow
+    assert (
+        "${{ needs.validate.outputs.image_name }}:${{ needs.validate.outputs.release_tag }}"
+        in workflow
+    )
+    assert "build-self-host-release.sh" not in workflow
+    assert "verify-self-host-release-contract.sh" not in workflow
+    assert "rowset-self-host-" not in workflow
+    assert "install-rowset-self-host.sh" not in workflow
+    assert "SELF_HOSTING.md" in workflow
     assert '--target "$RELEASE_SHA"' in workflow
     assert "--clobber" not in workflow
     validate_steps = parsed_workflow["jobs"]["validate"]["steps"]
-    assert "Verify self-host release contract" in [step["name"] for step in validate_steps]
+    assert "Verify self-host release contract" not in [step["name"] for step in validate_steps]
     assert parsed_workflow["jobs"]["app-image"]["needs"] == "validate"
 
 
@@ -451,198 +298,3 @@ def test_next_release_tag_uses_dotted_day_and_increments_suffix(tmp_path):
     )
 
     assert result.stdout.strip() == "2026.07.08-3"
-
-
-def test_self_host_release_builder_packages_matching_manifest_and_support_files(tmp_path):
-    output_dir = _build_self_host_release(tmp_path)
-    archive = output_dir / "rowset-self-host-2026.07.16-0.tar.gz"
-    checksum = output_dir / "rowset-self-host-2026.07.16-0.tar.gz.sha256"
-    installer = output_dir / "install-rowset-self-host.sh"
-
-    assert archive.is_file()
-    assert checksum.is_file()
-    assert installer.is_file()
-    assert installer.stat().st_mode & 0o111
-    installer_text = installer.read_text()
-    assert "@ROWSET_RELEASE_VERSION@" not in installer_text
-    assert "preflight.sh" in installer_text
-    assert "Continue with the guide installed from this release" in installer_text
-    assert "deployment/self-host/doctor.sh" in installer_text
-    assert "deployment/self-host/smoke-test.sh" in installer_text
-
-    with tarfile.open(archive) as bundle:
-        members = {member.name.removeprefix("./"): member for member in bundle.getmembers()}
-        manifest = bundle.extractfile("./.rowset-release")
-        assert manifest is not None
-        manifest_text = manifest.read().decode()
-        extracted = tmp_path / "extracted"
-        bundle.extractall(extracted, filter="data")
-
-    assert not any("__pycache__" in member for member in members)
-
-    assert {
-        ".rowset-release",
-        "SELF_HOSTING.md",
-        "docs/self-host-sizing.md",
-        "docker-compose-prod.yml",
-        "deployment/self-host/init-env.sh",
-        "deployment/self-host/preflight.sh",
-        "deployment/self-host/doctor.sh",
-        "deployment/self-host/diagnostics.py",
-        "deployment/self-host/version.sh",
-        "deployment/verify-image-platforms.sh",
-    } <= members.keys()
-    assert "ROWSET_RELEASE_VERSION=2026.07.16-0" in manifest_text
-    assert f"ROWSET_RELEASE_COMMIT={'a' * 40}" in manifest_text
-    assert "ROWSET_RELEASE_IMAGE=ghcr.io/lvtd-llc/rowset:2026.07.16-0" in manifest_text
-    assert f"ROWSET_RELEASE_DIGEST=sha256:{'b' * 64}" in manifest_text
-    assert archive.name in checksum.read_text()
-    contract = subprocess.run(
-        [str(_VERIFY_SELF_HOST_RELEASE), str(extracted), str(installer)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert contract.returncode == 0, contract.stderr
-
-
-def test_self_host_installer_pins_first_release_and_preserves_it_on_rerun(tmp_path):
-    first_assets = _build_self_host_release(tmp_path / "first", "2026.07.16-0")
-    second_assets = _build_self_host_release(tmp_path / "second", "2026.07.16-1")
-    install_dir = tmp_path / "installed path's"
-    environment = {
-        "ROWSET_INSTALL_DIR": str(install_dir),
-        "ROWSET_RELEASE_BASE_URL": first_assets.as_uri(),
-    }
-
-    first = subprocess.run(
-        [str(first_assets / "install-rowset-self-host.sh")],
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert first.returncode == 0, first.stderr
-    quoted_install_dir = "'" + str(install_dir).replace("'", "'\\''") + "'"
-    assert f"  cd {quoted_install_dir}" in first.stdout
-    assert "  export ROWSET_DOMAIN=replace-with-your-rowset-hostname.invalid" in first.stdout
-    assert "Replace the placeholder hostname before continuing." in first.stdout
-    state = (install_dir / ".rowset-release").read_text()
-    assert "ROWSET_RELEASE_VERSION=2026.07.16-0" in state
-
-    rerun = subprocess.run(
-        [str(second_assets / "install-rowset-self-host.sh")],
-        env={
-            **environment,
-            "ROWSET_RELEASE_BASE_URL": first_assets.as_uri(),
-        },
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert rerun.returncode == 0, rerun.stderr
-    assert (install_dir / ".rowset-release").read_text() == state
-
-
-def test_self_host_installer_refuses_to_change_an_existing_release(tmp_path):
-    first_assets = _build_self_host_release(tmp_path / "first", "2026.07.16-0")
-    second_assets = _build_self_host_release(tmp_path / "second", "2026.07.16-1")
-    install_dir = tmp_path / "installed"
-    subprocess.run(
-        [str(first_assets / "install-rowset-self-host.sh")],
-        env={
-            "ROWSET_INSTALL_DIR": str(install_dir),
-            "ROWSET_RELEASE_BASE_URL": first_assets.as_uri(),
-        },
-        check=True,
-    )
-    state = (install_dir / ".rowset-release").read_bytes()
-
-    result = subprocess.run(
-        [str(second_assets / "install-rowset-self-host.sh")],
-        env={
-            "ROWSET_INSTALL_DIR": str(install_dir),
-            "ROWSET_RELEASE_BASE_URL": second_assets.as_uri(),
-            "ROWSET_VERSION": "2026.07.16-1",
-        },
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert "does not update or roll back" in result.stderr
-    assert (install_dir / ".rowset-release").read_bytes() == state
-
-
-def test_self_host_installer_rejects_a_bundle_with_the_wrong_checksum(tmp_path):
-    assets = _build_self_host_release(tmp_path)
-    archive = assets / "rowset-self-host-2026.07.16-0.tar.gz"
-    archive.write_bytes(archive.read_bytes() + b"corrupted")
-    install_dir = tmp_path / "installed"
-
-    result = subprocess.run(
-        [str(assets / "install-rowset-self-host.sh")],
-        env={
-            "ROWSET_INSTALL_DIR": str(install_dir),
-            "ROWSET_RELEASE_BASE_URL": assets.as_uri(),
-        },
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert "checksum verification failed" in result.stderr
-    assert not install_dir.exists()
-
-
-def test_version_command_reports_release_commit_image_and_digest(tmp_path):
-    assets = _build_self_host_release(tmp_path)
-    install_dir = tmp_path / "installed"
-    subprocess.run(
-        [str(assets / "install-rowset-self-host.sh")],
-        env={
-            "ROWSET_INSTALL_DIR": str(install_dir),
-            "ROWSET_RELEASE_BASE_URL": assets.as_uri(),
-        },
-        check=True,
-    )
-
-    result = subprocess.run(
-        [str(install_dir / "deployment" / "self-host" / "version.sh")],
-        cwd=install_dir,
-        text=True,
-        capture_output=True,
-        check=True,
-    )
-
-    assert result.stdout.splitlines() == [
-        "Version: 2026.07.16-0",
-        f"Commit: {'a' * 40}",
-        "Image: ghcr.io/lvtd-llc/rowset:2026.07.16-0",
-        f"Digest: sha256:{'b' * 64}",
-        "Configured image: not initialized",
-    ]
-
-
-def test_version_command_rejects_incomplete_release_metadata(tmp_path):
-    release_file = tmp_path / ".rowset-release"
-    release_file.write_text(
-        "ROWSET_RELEASE_VERSION=2026.07.16-0\n"
-        f"ROWSET_RELEASE_COMMIT={'a' * 40}\n"
-        "ROWSET_RELEASE_IMAGE=ghcr.io/lvtd-llc/rowset:2026.07.16-0\n"
-    )
-
-    result = subprocess.run(
-        [str(_REPO_ROOT / "deployment" / "self-host" / "version.sh")],
-        env={"ROWSET_RELEASE_FILE": str(release_file)},
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode != 0
-    assert "ROWSET_RELEASE_DIGEST" in result.stderr
