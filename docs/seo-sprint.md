@@ -37,7 +37,7 @@ The plan changed materially since the July 4 initialization:
 | 6 | Ship `/blog/baserow-alternatives` | Blog alternatives | completed | #233 |
 | 7 | Ship `/blog/nocodb-alternatives` | Blog alternatives | completed | #239 |
 | 8 | Ship `/blog/connect-ai-agent-to-dataset-api` | Product guide | completed | #244 |
-| 9 | Retarget `/docs/database-mcp-server` around the `mcp database` cluster | Existing-page boost | completed | branch `seo/mcp-database-phase-9` (PR TBD) |
+| 9 | Retarget `/docs/database-mcp-server` around the `mcp database` cluster | Existing-page boost | completed | #343 |
 | 10 | Ship `/blog/spreadsheet-database-for-ai-agents` | Decision guide | pending | - |
 | 11 | Build the off-page starter target list and submission backlog | Off-page | pending | - |
 | 12 | Ship `/vs/airtable` when a sales/use-case trigger exists | Compare | completed | #277 |
