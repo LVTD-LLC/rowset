@@ -33,7 +33,7 @@ The plan changed materially since the July 4 initialization:
 | 2 | Ship the database MCP server guide | Playbook | completed | #196 |
 | 3 | Ship `/blog/airtable-alternatives` | Blog alternatives | completed | #207 |
 | 4 | Ship `/blog/google-sheets-alternatives` | Blog alternatives | completed | #209 |
-| 5 | Repair SEO route drift, sitemap submission, canonicals, and long titles | Technical refresh | completed | PR TBD |
+| 5 | Repair SEO route drift, sitemap submission, canonicals, and long titles | Technical refresh | completed | #341 |
 | 6 | Ship `/blog/baserow-alternatives` | Blog alternatives | completed | #233 |
 | 7 | Ship `/blog/nocodb-alternatives` | Blog alternatives | completed | #239 |
 | 8 | Ship `/blog/connect-ai-agent-to-dataset-api` | Product guide | completed | #244 |
