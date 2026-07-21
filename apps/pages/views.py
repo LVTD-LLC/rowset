@@ -323,10 +323,11 @@ class DatabaseMcpServerExplanationView(TemplateView):
         context["schema_json"] = json_ld(
             [
                 article_schema(
-                    headline="MCP database: direct access or agent-managed data?",
+                    headline="MCP Database: Direct Access vs Agent-Managed Data",
                     description=(
-                        "Learn when an MCP database should connect to an existing SQL or NoSQL "
-                        "system and when Rowset is the safer backend for agent-managed data."
+                        "Compare direct database MCP servers with Rowset's hosted dataset model, "
+                        "including permissions, stable row identity, safety, and best-fit use "
+                        "cases."
                     ),
                     path=path,
                     date_published="2026-07-05",
@@ -337,6 +338,44 @@ class DatabaseMcpServerExplanationView(TemplateView):
                         ("Home", "/"),
                         ("Docs", reverse("docs_page", kwargs={"slug": "quickstart"})),
                         ("MCP database", path),
+                    )
+                ),
+                faq_page_schema(
+                    (
+                        (
+                            "What is database MCP?",
+                            "Database MCP is a Model Context Protocol server that exposes "
+                            "controlled database operations as tools an AI client can discover and "
+                            "call. Depending on the server, those tools may inspect schemas, read "
+                            "configured entities, run approved queries, or write records. MCP is "
+                            "the access layer; the connected database remains the source of truth.",
+                        ),
+                        (
+                            "Can MCP connect to a database?",
+                            "Yes. An MCP server can hold or obtain database credentials, publish a "
+                            "bounded tool surface, and translate agent tool calls into database "
+                            "operations. Production setups should restrict the server identity, "
+                            "exposed entities, fields, actions, query cost, and result size "
+                            "instead of giving the model unrestricted credentials or SQL "
+                            "execution.",
+                        ),
+                        (
+                            "Is there an MCP server for SQL Server?",
+                            "Yes. Microsoft's open-source SQL MCP Server is part of Data API "
+                            "builder and supports SQL Server along with other configured backends. "
+                            "It exposes role-aware entity operations through MCP, REST, and "
+                            "GraphQL while keeping permissions and projections in one "
+                            "configuration rather than exposing the internal schema directly.",
+                        ),
+                        (
+                            "Which databases support MCP?",
+                            "MCP itself is database-neutral. Server implementations currently "
+                            "support systems including PostgreSQL, MySQL, SQL Server, SQLite, "
+                            "warehouses, and several NoSQL databases. Choose by the operations and "
+                            "safeguards you need, then verify the implementation's current "
+                            "connector list, authentication model, permission controls, and "
+                            "maintenance status.",
+                        ),
                     )
                 ),
             ]

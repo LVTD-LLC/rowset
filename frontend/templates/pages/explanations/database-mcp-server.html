@@ -1,21 +1,21 @@
 {% extends docs_base_template %}
 {% load static %}
 {% block meta %}
-    <title>MCP database: direct access or agent-managed data?</title>
+    <title>MCP Database: Direct Access vs Agent-Managed Data</title>
     <meta name="description"
-          content="Learn when an MCP database should connect to existing SQL or NoSQL systems and when Rowset is the safer backend for agent-managed workflow data." />
+          content="Compare direct database MCP servers with Rowset's hosted dataset model, including permissions, stable row identity, safety, and best-fit use cases." />
     <meta name="robots" content="{{ search_robots_policy }}" />
     <link rel="canonical" href="{{ canonical_url }}" />
     <meta property="og:type" content="article" />
     <meta property="og:title"
-          content="MCP database: direct access or agent-managed data?" />
+          content="MCP Database: Direct Access vs Agent-Managed Data" />
     <meta property="og:url"
           content="https://{{ request.get_host }}{% url 'docs_page' slug='database-mcp-server' %}" />
     <meta property="og:description"
-          content="A practical guide to direct database MCP access, private workflow data, credentials, stable row identity, and safer agent operations." />
+          content="Compare direct database MCP access with Rowset's private dataset model for agent workflows, permissions, stable row identity, and safer operations." />
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:title"
-          content="MCP database: direct access or agent-managed data?" />
+          content="MCP Database: Direct Access vs Agent-Managed Data" />
     <meta name="twitter:description"
           content="How to choose between direct database MCP access and Rowset's private backend for agent-managed workflow data." />
 {% endblock meta %}
@@ -26,13 +26,13 @@
             <div class="relative mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
                 <a href="{% url 'landing' %}"
                    class="fb-focus inline-flex rounded-md text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">&larr; Rowset</a>
-                <p class="fb-label-caps mt-8 text-emerald-700 dark:text-emerald-300">Playbook</p>
+                <p class="fb-label-caps mt-8 text-emerald-700 dark:text-emerald-300">Decision guide</p>
                 <div class="mt-6 flex justify-end">{% include "components/ai_reader_menu.html" %}</div>
                 <h1 class="mt-4 text-4xl font-semibold leading-none text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
-                    MCP database: direct access or agent-managed data?
+                    MCP Database: Direct Access vs Agent-Managed Data
                 </h1>
                 <p class="mt-6 text-lg leading-8 text-slate-700 dark:text-slate-300">
-                    “MCP database” usually means an MCP server that gives an AI agent controlled access to an existing database. Rowset solves a different job: it gives trusted agents a private backend for structured workflow rows through hosted MCP, REST, or CLI.
+                    An MCP database server gives an AI agent controlled tools for an existing database. Rowset solves a different job: it gives trusted agents a hosted, private backend for workflow rows they create and maintain through MCP, REST, or CLI.
                 </p>
                 <div class="mt-8 flex flex-wrap gap-3">
                     <a href="{% url 'docs_page' slug='connect-mcp' %}"
@@ -48,29 +48,77 @@
                 <aside class="text-sm leading-6 text-slate-600 dark:text-slate-300">
                     <p class="fb-label-caps text-cyan-700 dark:text-cyan-300">Short answer</p>
                     <p class="mt-3">
-                        Use a database MCP server when the database already exists, the schema is stable, and you want the agent to query or operate against that source. Use Rowset when the agent needs to create and maintain rows as part of its work.
+                        Use a direct database MCP server when the agent must work with source-of-truth tables, joins, or existing application records. Use Rowset when the agent needs a separate work layer with stable row identity, persistent instructions, and human review before downstream effects.
                     </p>
                 </aside>
                 <div class="prose prose-slate max-w-none dark:prose-invert prose-headings:font-semibold prose-a:text-emerald-700 dark:prose-a:text-emerald-300">
-                    <h2>The decision</h2>
+                    <h2>What is an MCP database?</h2>
                     <p>
-                        MCP made it much easier to connect AI agents to tools. That includes database tools. A database MCP server can expose Postgres, MySQL, SQLite, or another data store to an agent through typed tool calls. The agent can inspect tables, run queries, and sometimes write data. For engineering teams, that is powerful. It can turn a model from a passive assistant into a real operator that answers questions from live data or performs controlled database actions.
+                        An MCP database is a database exposed to an AI client through a Model Context Protocol server. The server publishes named tools with defined inputs and behavior, then translates approved tool calls into database operations. The database remains the source of truth; MCP is the discovery and action layer between the agent and that data.
                     </p>
                     <p>
-                        The same power creates risk. Production databases carry sensitive records, application invariants, migration history, access-control assumptions, and accidental footguns. Even read-only access can reveal more than intended. Write access is harder. A helpful agent may update the wrong record, run a broad query, misunderstand a relationship, or treat application tables like a spreadsheet. Direct database access is not wrong, but it should be chosen deliberately.
+                        Current database MCP products expose different levels of abstraction. Google's open-source <a href="https://github.com/googleapis/mcp-toolbox">MCP Toolbox for Databases</a> includes generic tools such as table discovery and SQL execution, plus a framework for restricted, structured production tools. Microsoft's <a href="https://learn.microsoft.com/en-us/azure/data-api-builder/mcp/overview">SQL MCP Server</a> exposes configured entities and deterministic CRUD operations through Data API builder rather than giving the model unrestricted SQL access.
                     </p>
                     <p>
-                        Rowset takes a narrower path. Instead of connecting an agent directly to the production database, Rowset gives the agent a private backend built for structured workflow rows. The agent can create datasets, choose an index column, add instructions, maintain rows, search, export, and optionally share read-only previews. The data can still come from a product database, a spreadsheet, a CRM export, a support inbox, or a human conversation, but the agent works in a purpose-built row layer rather than inside the system of record.
+                        Rowset takes a narrower path. It does not connect the agent to your production database. It gives the agent a private dataset backend for workflow rows, including a stable index, semantic column context, persistent instructions, exports, and optional read-only previews. The agent works in a purpose-built row layer instead of treating the application database as its notebook.
                     </p>
                     <p>
                         That distinction matters. A database MCP server is a bridge into an existing database. Rowset is a hosted backend for trusted agents that own the workflow rows. If your agent must query an existing database, direct MCP can be the right tool. If your agent needs a place to manage task boards, feedback queues, personal CRM rows, content pipelines, QA trackers, lead lists, research tables, inventory snapshots, or similar operational data, Rowset is often the safer and faster starting point.
                     </p>
-                    <h2>Use a direct database MCP server when the database is the product surface</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Decision point</th>
+                                <th>Direct database MCP server</th>
+                                <th>Rowset hosted datasets</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Source of truth</td>
+                                <td>Existing application or analytics database</td>
+                                <td>Agent-owned workflow rows</td>
+                            </tr>
+                            <tr>
+                                <td>Best fit</td>
+                                <td>Live records, joins, large datasets, operational queries</td>
+                                <td>Task boards, research, feedback, CRM, QA, and content workflows</td>
+                            </tr>
+                            <tr>
+                                <td>Safety boundary</td>
+                                <td>Database roles, exposed entities, query controls, and audit logs</td>
+                                <td>Scoped API keys, account ownership, stable indexes, and private-by-default datasets</td>
+                            </tr>
+                            <tr>
+                                <td>Schema ownership</td>
+                                <td>Application or data-platform team</td>
+                                <td>User and trusted agent, within the workflow dataset</td>
+                            </tr>
+                            <tr>
+                                <td>When it wins</td>
+                                <td>The task must operate on current source records</td>
+                                <td>The task needs durable structured state without production access</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <h2>A three-question MCP database decision test</h2>
+                    <ol>
+                        <li>
+                            <strong>Where does the authoritative record live?</strong> If it is an existing product database or warehouse, start with a constrained direct database tool. If the workflow is creating new research, tasks, feedback, or review state, start with an agent-owned dataset.
+                        </li>
+                        <li>
+                            <strong>What happens when the agent is wrong?</strong> A bad query may waste capacity or reveal data; a bad write may violate application rules. Put higher-consequence operations behind narrower tools, approval, and deterministic validation. Use a separate work layer when proposed rows need human review before they affect the source system.
+                        </li>
+                        <li>
+                            <strong>Which identity stays stable across runs?</strong> Existing applications already have primary or business keys. New workflows need an explicit index such as `task_id`, `feedback_id`, or generated `rowset_id` before repeated agent updates are safe.
+                        </li>
+                    </ol>
+                    <h2>When should you use a direct database MCP server?</h2>
                     <p>
                         Some questions belong in the database. If an engineer asks, "Which accounts have a failed renewal job in the last twenty-four hours?", the agent needs access to the production schema or a replica. If a data analyst asks for active subscriptions grouped by plan, the real tables matter. If a support engineer needs to inspect a customer record in the same shape the app uses, a database connection can be appropriate.
                     </p>
                     <p>
-                        Direct database MCP also helps when the database has mature permissions. A read replica, role-based grants, row-level security, query timeouts, audit logs, and narrow schemas can make agent access manageable. The more your database already behaves like a safe API surface, the more reasonable it is to expose through MCP. A database MCP server is also useful for migrations, data-quality checks, exploratory analytics, and operational debugging where SQL is the native language of the task.
+                        Direct database MCP also helps when the database has mature permissions. A read replica, role-based grants, row-level security, query timeouts, audit logs, and narrow schemas can make agent access manageable. The more your database already behaves like a safe API surface, the more reasonable it is to expose through MCP. Microsoft documents the same pattern for SQL MCP Server: choose which tables, views, or stored procedures to expose and apply permissions to each object. A database MCP server is also useful for data-quality checks, exploratory analytics, and operational debugging where SQL is the native language of the task.
                     </p>
                     <p>
                         The best direct database MCP deployments usually share a few traits. They use least-privilege credentials. They separate read and write capabilities. They have query limits. They log agent activity. They avoid putting unrestricted production credentials into a chat session. They keep destructive actions behind explicit user approval. They document the tables an agent should use, and they explain which tables should be ignored.
@@ -78,7 +126,7 @@
                     <p>
                         If you have those guardrails, a database MCP server can be excellent. It lets the agent answer questions without building a custom dashboard. It lets operators inspect state without copying CSVs. It gives engineering teams an interface that matches their existing data model. In this case, Rowset is not trying to replace direct database access. Rowset is for the adjacent problem: the agent needs a durable working dataset that is not the production database itself.
                     </p>
-                    <h2>Use Rowset when the agent owns the workflow rows</h2>
+                    <h2>When should you use Rowset instead of database MCP?</h2>
                     <p>
                         Many agent workflows start without a clean database table. A founder wants an agent-managed personal CRM. A product team wants feedback triage. A QA agent needs a bug and reproduction ledger. A content agent needs a pipeline of briefs, drafts, canonical URLs, owners, and publish dates. A sales agent needs a prospect list with source links, status, and next action. These workflows need structure, but they do not always need a custom app or production database table on day one.
                     </p>
@@ -106,6 +154,20 @@
                     </p>
                     <p>
                         The buffer is also useful for collaboration. A founder can ask one agent to research prospects, another to clean the rows, and a third to draft follow-up tasks, all against the same dataset. A support lead can let an agent cluster requests while a product manager reviews the final themes. An engineer can export the accepted rows and write a small importer later. None of those steps require exposing the whole application database to every agent that touches the workflow.
+                    </p>
+                    <h2>How do you connect an AI agent to a database safely?</h2>
+                    <p>
+                        Safe database MCP starts by shrinking the exposed surface. Give the server a dedicated identity, expose only the tables or operations the workflow needs, separate read tools from write tools, and require explicit approval for destructive actions. Add timeouts, result limits, query budgets, and audit logs before treating the connection as production-ready. A read-only role is a useful baseline, but it does not prevent sensitive rows or columns from being returned.
+                    </p>
+                    <p>
+                        Prefer constrained operations over arbitrary query generation for repeated production work. Microsoft's SQL MCP Server, for example, uses configured entities, role-based access control, and deterministic DML tools; it intentionally avoids unrestricted natural-language-to-SQL behavior. Google's MCP Toolbox supports generic exploration tools but also recommends structured queries and restricted custom tools for production agents. The exact product matters less than the boundary: the agent should receive the smallest useful contract, not ambient access to the whole database.
+                    </p>
+                    <p>
+                        Authorization belongs at the MCP server, not in prompt instructions. The official <a href="https://modelcontextprotocol.io/docs/tutorials/security/authorization">MCP authorization guidance</a> recommends authorization when a server handles databases, user-specific data, audited actions, or per-user rate limits. Keep credentials in the client runtime or secret manager, validate them at the server, and log the authenticated actor and operation without logging secret values or unnecessary row contents.
+                    </p>
+                    <h2>Why does stable row identity matter for agent-managed data?</h2>
+                    <p>
+                        Stable row identity lets an agent update the intended record after the surrounding data changes. A business key such as `feedback_id`, `task_id`, `email`, or `sku` survives sorting, pagination, imports, and later agent sessions. Without one, an agent may rely on row position or fuzzy matching and silently patch the wrong record. Rowset always gives a dataset an index path and can generate `rowset_id` when the workflow has no reliable business key.
                     </p>
                     <h2>What a Rowset MCP setup looks like</h2>
                     <p>
@@ -167,6 +229,29 @@
                         <li>Export snapshots when another system needs a deterministic handoff.</li>
                         <li>Promote the workflow to a custom app or database table only after the row shape proves durable.</li>
                     </ol>
+                    <h2>Frequently asked questions</h2>
+                    <h3>What is database MCP?</h3>
+                    <p>
+                        Database MCP is a Model Context Protocol server that exposes controlled database operations as tools an AI client can discover and call. Depending on the server, those tools may inspect schemas, read configured entities, run approved queries, or write records. MCP is the access layer; the connected database remains the source of truth.
+                    </p>
+                    <h3>Can MCP connect to a database?</h3>
+                    <p>
+                        Yes. An MCP server can hold or obtain database credentials, publish a bounded tool surface, and translate agent tool calls into database operations. Production setups should restrict the server identity, exposed entities, fields, actions, query cost, and result size instead of giving the model unrestricted credentials or SQL execution.
+                    </p>
+                    <h3>Is there an MCP server for SQL Server?</h3>
+                    <p>
+                        Yes. Microsoft's open-source SQL MCP Server is part of Data API builder and supports SQL Server along with other configured backends. It exposes role-aware entity operations through MCP, REST, and GraphQL while keeping permissions and projections in one configuration rather than exposing the internal schema directly.
+                    </p>
+                    <h3>Which databases support MCP?</h3>
+                    <p>
+                        MCP itself is database-neutral. Server implementations currently support systems including PostgreSQL, MySQL, SQL Server, SQLite, warehouses, and several NoSQL databases. Choose by the operations and safeguards you need, then verify the implementation's current connector list, authentication model, permission controls, and maintenance status.
+                    </p>
+                    <h2>Primary sources</h2>
+                    <ul>
+                        <li><a href="https://modelcontextprotocol.io/docs/tutorials/security/authorization">Model Context Protocol: Understanding Authorization in MCP</a></li>
+                        <li><a href="https://github.com/googleapis/mcp-toolbox">Google: MCP Toolbox for Databases</a></li>
+                        <li><a href="https://learn.microsoft.com/en-us/azure/data-api-builder/mcp/overview">Microsoft: SQL MCP Server overview</a></li>
+                    </ul>
                     <h2>Bottom line</h2>
                     <p>
                         A database MCP server connects an agent to an existing database. Rowset gives an agent a private backend for structured work. Both are useful, but they solve different problems. Use direct database MCP for controlled access to real source-of-truth tables. Use Rowset when an agent needs to maintain its own rows, instructions, context, exports, and optional review previews without touching production data directly.
