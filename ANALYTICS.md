@@ -12,6 +12,15 @@ Event names are lowercase snake case and describe completed actions. Every serve
 `distinct_id`. Anonymous public server events use validated pseudonymous browser identity and
 session headers when available and never invent a person identity. Logout calls `reset()`.
 
+`rowset_traffic_request_observed` is the deliberate exception to the person-oriented server event
+contract. It is a personless, GeoIP-disabled request-count signal with no stable or caller-supplied
+identity and `$process_person_profile=false`; the SDK supplies a random event-scoped `distinct_id`.
+Each capture uses a fresh PostHog context so it cannot inherit profile, session, or request tags.
+Rowset supplies only the bounded traffic category, request interface, normalized Django route name,
+outcome/status class, environment, and approved public content identity fields when available. It
+never supplies a raw URL, query string, IP address, user-agent, cookie, authorization value, or MCP
+method. The SDK may add its standard runtime and library context properties.
+
 The primary acquisition funnel is:
 
 1. `$pageview` and `rowset_marketing_cta_clicked`
@@ -91,14 +100,19 @@ Rowset category: their taxonomy and IP-assisted detection can change outside thi
 not substitute them for `traffic_category` in funnels or human-only conversion reporting.
 
 Put the server-derived category on eligible browser pageview/intent context for both full-page and
-HTMX responses, and on public server completion events. Do not reclassify in browser JavaScript.
+HTMX responses, on public server completion events, and on the personless
+`rowset_traffic_request_observed` event emitted after Django and MCP requests complete. Do not
+reclassify in browser JavaScript.
 
 Use PostHog browser events as the canonical source for consented reach and intent, PostHog server
 events for successful engagement and irreversible conversion, and structured request telemetry for
-all request traffic including non-consenting browsers and automation. Report both all-traffic and
-`traffic_category=human` views. Human-only conversion means human-category consented browser reach
-joined to canonical server conversion events through the existing anonymous/profile identity; do
-not divide raw request counts by signups or describe a user-agent category as verified humanity.
+all request traffic including non-consenting browsers and automation. In PostHog, use
+`rowset_traffic_request_observed` for total request volume and category shares; do not add it to
+browser pageviews because the two events measure different things. Report both all-traffic and
+`traffic_category=human` request views. Human-only conversion means human-category consented
+browser reach joined to canonical server conversion events through the existing anonymous/profile
+identity; do not divide raw request counts by signups or describe a user-agent category as verified
+humanity.
 
 ## Attribution and consent
 

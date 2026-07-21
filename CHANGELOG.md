@@ -26,6 +26,8 @@ deployment or release cut date.
 ## 2026-07-20
 
 ### Added
+- Added personless, GeoIP-disabled server request analytics so PostHog can report bounded human,
+  crawler, AI-agent, preview, API-client, and unknown-automation traffic without raw request data.
 - Added privacy-safe MCP usage analytics that records tool and parameter usage without dataset
   contents, tool responses, exception payloads, or MCP schema changes.
 - Added an opt-in self-host Qdrant service with generated authentication, private persistent
