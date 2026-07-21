@@ -1,5 +1,6 @@
 ---
 title: How to model relationships between agent-managed datasets
+seo_title: Model Relationships Between Agent Datasets
 description: Split Rowset datasets when agents need stable cross-row links, then connect them with index values, relationship enforcement, and clear instructions.
 published_at: 2026-07-13
 author: Rasul Kireev

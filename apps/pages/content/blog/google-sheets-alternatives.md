@@ -1,5 +1,6 @@
 ---
 title: Best Google Sheets alternatives for AI-agent-managed datasets
+seo_title: Google Sheets Alternatives for AI Agents
 description: Compare Rowset, Google Sheets, Airtable, Baserow, NocoDB, Grist, Notion, Coda, and Smartsheet for agent-managed rows.
 published_at: 2026-07-06
 author: Rasul Kireev

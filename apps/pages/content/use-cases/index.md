@@ -1,5 +1,6 @@
 ---
 title: AI agent use cases and workflow examples
+seo_title: "AI Agent Use Cases: Workflow Examples"
 description: Start an AI agent workflow with a proven dataset shape for CRMs, task boards, feedback, content, catalogs, research, and QA.
 keywords: AI agent examples, AI agent use cases, AI agent workflows, MCP use cases, agent CRM
 ---

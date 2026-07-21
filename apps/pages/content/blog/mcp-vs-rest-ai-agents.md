@@ -1,5 +1,6 @@
 ---
 title: When should an AI agent use MCP instead of REST?
+seo_title: MCP vs REST for AI Agents
 description: Use MCP when an agent runtime can discover Rowset tools directly; use REST when you need portable HTTP calls, scripts, or clients without MCP support.
 published_at: 2026-07-05
 author: Rasul Kireev

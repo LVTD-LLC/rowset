@@ -1,5 +1,6 @@
 ---
 title: How to connect an AI agent to the Rowset Dataset API
+seo_title: Connect an AI Agent to the Dataset API
 description: A practical setup guide for giving a trusted AI agent private REST access to Rowset datasets without leaking keys or losing row context.
 published_at: 2026-07-12
 author: Rasul Kireev

@@ -38,6 +38,7 @@ class BlogPostValidationError(ValueError):
 class BlogPost:
     slug: str
     title: str
+    seo_title: str
     description: str
     content: str
     html: str
@@ -174,6 +175,7 @@ def load_blog_post(source_path: Path, content_dir: Path | None = None) -> BlogPo
     return BlogPost(
         slug=slug,
         title=_coerce_string(post.get("title")),
+        seo_title=(_coerce_string(post.get("seo_title")) or _coerce_string(post.get("title"))),
         description=_coerce_string(post.get("description")),
         content=content,
         html=markdown.markdown(content, extensions=BLOG_MARKDOWN_EXTENSIONS),

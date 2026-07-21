@@ -338,6 +338,7 @@ def render_content_page(request, section_slug, page_slug):
             "current_page": page_slug,
             "current_group_id": current_group_id,
             "page_title": post.get("title", default_page_title),
+            "seo_title": post.get("seo_title", post.get("title", default_page_title)),
             "section_title": section["label"],
             "meta_description": post.get("description", ""),
             "meta_keywords": post.get("keywords", ""),

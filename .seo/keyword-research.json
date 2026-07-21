@@ -21,7 +21,7 @@
   "confidence": "measured",
   "notes": [
     "GSC remains sparse: 8 impressions and 0 clicks across three query/page rows in the last 90 days, with no meaningful striking-distance opportunity.",
-    "The GSC sitemap API returned zero submitted sitemaps for the Rowset property.",
+    "The GSC sitemap API returned zero submitted sitemaps on 2026-07-15; a 2026-07-21 recheck found the sitemap submitted with zero errors or warnings.",
     "Plausible now records a small Organic Search channel: 6 visitors, 6 visits, and 10 pageviews in the last 90 days.",
     "PostHog now contains product activation events, but all 90-day events belong to one distinct person, so it is not yet valid for conversion-weighted SEO prioritization.",
     "DataForSEO surfaced mcp database as the strongest newly measured cluster: 480 US searches/month, KD 5, and $14.12 CPC.",
@@ -130,9 +130,18 @@
           "position": 60
         }
       ],
-      "submitted_sitemaps": [],
+      "submitted_sitemaps": [
+        {
+          "path": "https://rowset.lvtd.dev/sitemap.xml",
+          "submitted_at": "2026-07-15T10:20:06.206Z",
+          "checked_at": "2026-07-21",
+          "pending": false,
+          "errors": 0,
+          "warnings": 0
+        }
+      ],
       "striking_distance": [],
-      "notes": "No row has enough impressions for a boost phase. Submit or verify the sitemap before interpreting the low baseline as content failure."
+      "notes": "No row has enough impressions for a boost phase. The sitemap is now submitted and healthy; keep treating the sparse baseline cautiously while Google recrawls the repaired URL graph."
     },
     "plausible": {
       "source": "plausible",
@@ -219,10 +228,10 @@
     {
       "cluster": "crawl and URL recovery",
       "target_url": null,
-      "status": "technical",
+      "status": "technical_repair_completed",
       "priority": 0,
-      "signals": {"stale_inventory_urls": 17, "submitted_sitemaps": 0, "missing_canonicals": 2, "long_titles": 12},
-      "notes": "Fix before new content so crawlers and future SEO work use canonical live routes."
+      "signals": {"historical_redirects_restored": 48, "submitted_sitemaps": 1, "missing_canonicals": 0, "long_titles_repaired": 14},
+      "notes": "Phase 5 restores historical routes, normalizes slash variants, and enforces canonical live routes and search-safe titles before more content ships."
     },
     {
       "cluster": "spreadsheet database",
