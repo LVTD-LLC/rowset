@@ -27,7 +27,7 @@
 | 2026-07-18 | Human-in-the-Loop AI Agents: A Practical Workflow | how-to / operational decision guide | `/blog/human-in-the-loop-ai-agents` | human in the loop AI agents | 70 | 11 | MCP access, Dataset API, schema design, dataset instructions, idempotent updates, safe sharing, pricing | #310 |
 | 2026-07-19 | AI Agent Audit Trail: What to Log and How to Build It | implementation / decision guide | `/blog/ai-agent-audit-trail` | AI agent audit trail | 40 | n/a | MCP access, Dataset API, row operations, HITL, idempotency, safe sharing, dataset instructions, pricing | #316 |
 | 2026-07-20 | How to Choose a Database for AI Agents | decision guide | `/blog/database-for-ai-agents` | database for AI agents | 10 | 7 | memory vs state, agent-managed datasets, audit trail, quickstart, MCP, Dataset API, pricing | #328 |
-| 2026-07-21 | AI for Data Cleaning: A Safe Agent Workflow | how-to / operational guide | `/blog/ai-data-cleaning-agent` | AI for data cleaning | 50 | 0 | schema design, row operations, Dataset API, MCP, index guide, idempotency, HITL, audit trail, pricing | pending PR |
+| 2026-07-21 | AI for Data Cleaning: A Safe Agent Workflow | how-to / operational guide | `/blog/ai-data-cleaning-agent` | AI for data cleaning | 50 | 0 | schema design, row operations, Dataset API, MCP, index guide, idempotency, HITL, audit trail, pricing | #334 |
 
 ---
 
