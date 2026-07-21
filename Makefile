@@ -32,7 +32,8 @@ TARGET_ARGS = $(filter-out $@,$(MAKECMDGOALS))
 	serve \
 	shell \
 	template-check \
-	test
+	test \
+	test-pgsandbox
 
 %:
 	@:
@@ -55,6 +56,9 @@ migrate:
 
 test:
 	$(PYTEST_RUN) $(TARGET_ARGS)
+
+test-pgsandbox:
+	$(UV_RUN) python -m rowset.pgsandbox_tests $(TARGET_ARGS)
 
 migrations-check:
 	$(CHECK_PYTHON_RUN) ./manage.py makemigrations --check --dry-run

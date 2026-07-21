@@ -19,6 +19,8 @@ deployment or release cut date.
 ## 2026-07-21
 
 ### Added
+- Added a Docker-free host pytest path backed by disposable PGSandbox databases with
+  automatic migrations, required PostgreSQL extensions, and cleanup.
 - Added opt-in, privacy-safe PostHog AI observability for Pydantic AI agents and embeddings,
   capturing operational metadata while excluding prompts, responses, tool data, embedding inputs,
   and exception details.

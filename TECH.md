@@ -118,6 +118,8 @@ contents.
 ## Testing Notes
 
 - Prefer `make test` over host `pytest`.
+- Use `make test-pgsandbox <pytest args>` for Docker-free host iteration against
+  a disposable PGSandbox database; keep `make ci-local` as the parity check.
 - Use focused backend checks while iterating, then broaden to `make ci-local`
   before review when the change touches shared behavior or multiple surfaces.
 - Dataset validation, API, MCP auth, export, and public-preview changes need

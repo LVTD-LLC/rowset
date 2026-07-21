@@ -791,6 +791,7 @@ environment.
 | `make test` | Run pytest through Docker Compose. |
 | `make test apps/datasets/tests/test_dataset_views.py` | Run a focused test file. |
 | `make test -- -k dataset -q` | Pass pytest flags through the Makefile. |
+| `make test-pgsandbox <pytest args>` | Run host pytest against a disposable PGSandbox database. |
 | `make cli-test` | Run Go tests for the Rowset CLI. |
 | `make cli-build` | Build the Go `rowset` binary under `cli/bin/`. |
 | `make restart-worker` | Recreate the `workers` service. |
@@ -829,6 +830,18 @@ make test apps/datasets/tests/test_dataset_views.py
 make test -- -k public_preview -q
 ```
 
+For Docker-free database tests, install and configure PGSandbox, start a local
+Redis instance on port 6379, then run:
+
+```bash
+make test-pgsandbox apps/datasets/tests/test_dataset_views.py
+```
+
+The runner creates a short-lived PostgreSQL 18 sandbox with Rowset's required
+extensions, applies migrations, runs pytest directly through `uv`, and deletes
+the database even when tests fail. Pytest fixtures and factories remain
+responsible for test data. `make ci-local` remains the Docker-based parity path.
+
 Before PRs that touch backend behavior, run at least:
 
 ```bash
@@ -853,6 +866,7 @@ make cli-build
 
 - Current local CI-equivalent path: `make ci-local`
 - Focused backend tests: `make test apps/datasets/tests/test_dataset_views.py`
+- Docker-free focused backend tests: `make test-pgsandbox <pytest args>`
 - Focused pytest flags: `make test -- -k dataset -q`
 - Migration check: `make migrations-check`
 - Django system checks: `make django-check`
