@@ -6,7 +6,7 @@
 
 Measured re-audit completed on 2026-07-15 from `origin/main` at `b93e5d6`. The refresh used direct Google Search Console, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina Reader, production HTTP checks, and the current repository. Ahrefs is still not connected.
 
-Technical recovery was rechecked on 2026-07-21 from `origin/main` at `377e1e9`. GSC now lists the submitted sitemap with zero errors or warnings. The live audit found exact canonicals and one H1 across all 54 sitemap URLs, plus 14 titles over 60 characters and 13 directly sampled historical routes still returning 404. Phase 5 repairs those remaining repository issues and adds broader regression coverage.
+Technical recovery was rechecked on 2026-07-21 from `origin/main` at `377e1e9`. GSC now lists the submitted sitemap with zero errors or warnings. The live audit found exact canonicals and one H1 across all 54 sitemap URLs, repetitive title boilerplate, and 13 directly sampled historical routes still returning 404. Phase 5 repairs those remaining repository issues and adds broader regression coverage.
 
 The plan changed materially since the July 4 initialization:
 
@@ -33,7 +33,7 @@ The plan changed materially since the July 4 initialization:
 | 2 | Ship the database MCP server guide | Playbook | completed | #196 |
 | 3 | Ship `/blog/airtable-alternatives` | Blog alternatives | completed | #207 |
 | 4 | Ship `/blog/google-sheets-alternatives` | Blog alternatives | completed | #209 |
-| 5 | Repair SEO route drift, sitemap submission, canonicals, and long titles | Technical refresh | completed | #341 |
+| 5 | Repair SEO route drift, sitemap submission, canonicals, and title boilerplate | Technical refresh | completed | #341 |
 | 6 | Ship `/blog/baserow-alternatives` | Blog alternatives | completed | #233 |
 | 7 | Ship `/blog/nocodb-alternatives` | Blog alternatives | completed | #239 |
 | 8 | Ship `/blog/connect-ai-agent-to-dataset-api` | Product guide | completed | #244 |
@@ -77,7 +77,7 @@ The plan changed materially since the July 4 initialization:
 | Exa | connected | runtime credential | MCP database and agentic database searches succeeded | competitor/source discovery | none | surfaced current MCP database tools and agent-database products |
 | Firecrawl | connected | runtime credential | RushDB extraction succeeded | competitor page extraction | none | verified current adjacent-product positioning |
 | Jina Reader | connected | runtime credential | official MCP docs and Rowset route extraction succeeded | clean extraction and route verification | none | confirmed an outdated Rowset MCP URL returns 404 |
-| Live HTTP | connected | direct production access | sitemap, robots, all 54 sitemap URLs, metadata, canonicals, H1s, and 13 sampled historical URLs checked | technical audit | none | canonicals and H1s pass; 14 long titles and 13 historical 404s remained before Phase 5 |
+| Live HTTP | connected | direct production access | sitemap, robots, all 54 sitemap URLs, metadata, canonicals, H1s, and 13 sampled historical URLs checked | technical audit | none | canonicals and H1s pass; repetitive title boilerplate and 13 historical 404s remained before Phase 5 |
 
 ### Current Public Surfaces
 
@@ -102,7 +102,7 @@ Run date: 2026-07-15.
 - All 46 sitemap URLs return 200 with unique titles and descriptions and one H1.
 - Homepage schema includes `Organization` and `SoftwareApplication`.
 - Homepage and pricing are missing canonical tags.
-- Twelve titles exceed 60 characters; the longest cluster is the alternatives and technical blog posts.
+- Twelve titles crossed the audit's 60-character review heuristic; the longest cluster is the alternatives and technical blog posts. This is a review signal, not a hard Google limit.
 - Seventeen of 36 absolute Rowset URLs in the prior link inventory return 404 because they use retired route families or obsolete trailing slashes.
 - GSC's sitemap-list API returned zero submitted sitemaps.
 
@@ -113,7 +113,7 @@ Run date: 2026-07-21.
 - `/sitemap.xml` returns 200 and contains 54 canonical URLs.
 - All 54 sitemap URLs return 200 with exact canonicals and one H1.
 - Homepage and pricing canonicals are now present on current `main`.
-- Fourteen rendered titles exceed 60 characters; Phase 5 reduces redundant brand and section boilerplate while keeping each page's visible title as the single source of truth.
+- Fourteen rendered titles crossed the audit's review heuristic. Google does not define a character limit, so Phase 5 reduces redundant brand and section boilerplate while keeping each page's visible title as the single source of truth.
 - Thirteen sampled historical `/tutorials/*`, `/how-to/*`, and `/explanations/*` URLs still return 404 in production; git history identifies 48 exact historical routes worth preserving.
 - GSC lists `https://rowset.lvtd.dev/sitemap.xml`, submitted 2026-07-15, with `pending=false`, zero errors, and zero warnings.
 
@@ -177,9 +177,9 @@ The earlier spreadsheet-database CPC ($55.70) and database-MCP volume (70) are s
 
 ## Phases
 
-### Phase 5 - Repair Route Drift, Sitemap State, Canonicals, and Titles
+### Phase 5 - Repair Route Drift, Sitemap State, Canonicals, and Title Boilerplate
 
-**Why now:** crawl/indexation is the bottleneck. The July 15 audit found route drift, missing canonicals, long titles, and no sitemap listing. Current `main` fixed the canonicals and GSC now lists a healthy sitemap, but historical routes and 14 long titles still need repair.
+**Why now:** crawl/indexation is the bottleneck. The July 15 audit found route drift, missing canonicals, repetitive title boilerplate, and no sitemap listing. Current `main` fixed the canonicals and GSC now lists a healthy sitemap, but historical routes and the boilerplate still need repair.
 
 **Scope:**
 

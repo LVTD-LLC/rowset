@@ -38,6 +38,6 @@
     "Refreshed from current origin/main b93e5d6 with GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina, and live HTTP checks on 2026-07-15.",
     "No Ahrefs project was available; use DataForSEO KD/backlink/SERP metrics until Ahrefs is connected.",
     "The July 15 re-audit found stale SEO inventory routes after the docs/use-case migration, no sitemap listed by the GSC sitemap API, missing homepage/pricing canonicals, and a stronger mcp database keyword cluster.",
-    "The July 21 Phase 5 recheck found the sitemap submitted and healthy in GSC, current homepage/pricing canonicals fixed, 14 titles over 60 characters, and historical route families still returning 404 before the repair."
+    "The July 21 Phase 5 recheck found the sitemap submitted and healthy in GSC, current homepage/pricing canonicals fixed, repetitive title boilerplate worth simplifying, and historical route families still returning 404 before the repair."
   ]
 }
