@@ -5,6 +5,7 @@ navigation:
       pages:
         - quickstart
         - core-concepts
+        - self-hosting
 
     - label: Features
       description: Create useful datasets, shape rows safely, and choose the right access path for day-to-day work.
