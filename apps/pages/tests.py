@@ -35,6 +35,7 @@ from apps.pages.schema import (
     json_ld,
     use_case_item_list_schema,
 )
+from apps.pages.search import build_canonical_url
 from apps.pages.urls import LEGACY_PUBLIC_REDIRECTS
 
 pytestmark = pytest.mark.django_db
@@ -235,8 +236,11 @@ def test_sitemap_urls_have_canonical_metadata_and_search_safe_titles(client):
                     f"{path}/: slash variant returned {slash_response.status_code} "
                     f"to {slash_response.headers.get('Location')!r}"
                 )
-        if canonical_url != url:
-            failures.append(f"{path}: canonical is {canonical_url!r}, expected {url!r}")
+        expected_canonical_url = build_canonical_url(path)
+        if canonical_url != expected_canonical_url:
+            failures.append(
+                f"{path}: canonical is {canonical_url!r}, expected {expected_canonical_url!r}"
+            )
         if not title:
             failures.append(f"{path}: missing title")
         elif len(title) > 60:
@@ -1210,11 +1214,13 @@ def test_hosted_non_html_public_page_remains_indexable(client):
         "/vs/google-sheets",
     ),
 )
-def test_marketing_routes_are_extensionless(client, path):
+def test_marketing_routes_redirect_to_extensionless_canonical(client, path):
     response = client.get(f"{path}?utm_source=test")
+    slash_response = client.get(f"{path}/?utm_source=test")
 
     assert response.status_code == 200
-    assert client.get(f"{path}/").status_code == 404
+    assert slash_response.status_code == 301
+    assert slash_response.headers["Location"] == f"{path}?utm_source=test"
 
 
 def test_use_cases_page_links_public_use_case_pages(client):
