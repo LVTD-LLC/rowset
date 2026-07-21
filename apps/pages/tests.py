@@ -302,7 +302,10 @@ def test_public_markdown_routes_return_markdown(client, path):
         ("/uses.md", "# Technology behind Rowset"),
         ("/blog.md", "# Rowset field notes"),
         ("/changelog.md", "# Changelog"),
-        ("/docs/database-mcp-server.md", "# MCP database"),
+        (
+            "/docs/database-mcp-server.md",
+            "# MCP Database: Direct Access vs Agent-Managed Data",
+        ),
         ("/vs/airtable.md", "# Rowset vs Airtable"),
         ("/vs/google-sheets.md", "# Rowset vs Google Sheets"),
     ),
@@ -337,7 +340,7 @@ def test_database_mcp_server_markdown_contains_complete_decision_guide(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "## The decision" in content
+    assert "## A three-question MCP database decision test" in content
     assert "## Implementation checklist" in content
     assert "## Bottom line" in content
 
