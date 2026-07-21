@@ -10,7 +10,8 @@ from rowset.utils import build_absolute_public_url
 
 ROWSET_NAME = "Rowset"
 ROWSET_DESCRIPTION = (
-    "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+    "An open-source, self-hostable backend for AI agent workflows with private MCP, REST, "
+    "and CLI access to structured data."
 )
 ROWSET_AUTHOR = "Rasul Kireev"
 

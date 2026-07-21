@@ -2,14 +2,14 @@
 {% load static %}
 {% block meta %}
     <title>Rowset — the open-source backend for AI agent workflows</title>
-    <meta name="description" content="An open-source and self-hostable backend for AI agent workflows. Create, search, update, export, and share structured datasets through MCP, REST, or CLI." />
+    <meta name="description" content="Give AI agents a private, searchable backend for structured data. Create and manage rows through MCP, REST, or CLI—open source and self-hostable." />
     <meta name="keywords" content="open-source AI backend, self-hosted MCP server, AI agent backend, MCP database, dataset API, AI agent infrastructure" />
     <meta name="robots" content="{{ search_robots_policy }}" />
     <link rel="canonical" href="{{ canonical_url }}" />
 {% endblock meta %}
 {% block content %}
     <section id="product" class="bg-[#1313a4] text-white">
-        <p class="sr-only">Agent-native data backend. Dataset backends for AI agents.</p>
+        <p class="sr-only">Backend for AI agent workflows. Private structured data for trusted agents.</p>
         <div class="mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-between px-4 py-10 sm:px-6 lg:px-8">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/30 pb-4 font-mono text-sm"><span>OPEN SOURCE / SELF-HOSTABLE</span><span>MCP / REST / CLI</span></div>
             <div class="py-16 lg:py-24">
@@ -18,9 +18,9 @@
                 </h1>
             </div>
             <div class="grid gap-6 border-t border-white/30 pt-6 lg:grid-cols-[3fr_2fr] lg:items-end">
-                <p class="max-w-[40ch] text-2xl text-pretty text-blue-100 sm:text-xl">Rowset is the open-source and self-hostable MCP database for AI agents. Give every workflow reliable, searchable, structured data—without building another backend.</p>
+                <p class="max-w-[40ch] text-2xl text-pretty text-blue-100 sm:text-xl">Rowset is the open-source, self-hostable backend for AI agent workflows. Give agents private, searchable structured data through MCP, REST, or CLI—without building another backend.</p>
                 <div class="flex flex-col gap-3 sm:flex-row lg:justify-end">
-                    <a href="{% url 'account_signup' %}" class="inline-flex min-h-12 items-center justify-center bg-[#ffdd3d] px-4 py-3 font-semibold text-[#1313a4] hover:bg-white">Create a backend →</a>
+                    <a href="{% url 'account_signup' %}" class="inline-flex min-h-12 items-center justify-center bg-[#ffdd3d] px-4 py-3 font-semibold text-[#1313a4] hover:bg-white">Start your 7-day trial →</a>
                     <a href="https://github.com/LVTD-LLC/rowset" class="fb-focus inline-flex min-h-12 items-center justify-center border border-white/40 px-4 py-3 font-semibold hover:bg-white/10">View source on GitHub</a>
                 </div>
             </div>
@@ -28,8 +28,8 @@
     </section>
     <section class="border-b border-slate-950/10 bg-white text-slate-950 dark:border-white/15 dark:bg-neutral-950 dark:text-white" aria-labelledby="social-proof-heading">
         <div class="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-10 lg:px-8">
-            <h2 id="social-proof-heading" class="font-mono text-sm font-semibold uppercase tracking-wide whitespace-nowrap">Projects that use Rowset</h2>
-            <div class="rs-logo-carousel py-2" aria-label="Projects that use Rowset">
+            <h2 id="social-proof-heading" class="font-mono text-sm font-semibold uppercase tracking-wide whitespace-nowrap">Built with Rowset</h2>
+            <div class="rs-logo-carousel py-2" aria-label="Built with Rowset">
                 <div class="rs-logo-track">
                     <div class="rs-logo-group">
                         {% for site in social_proof_sites %}<a href="https://{{ site.name }}/" target="_blank" rel="noopener noreferrer" class="fb-focus flex size-16 shrink-0 items-center justify-center transition hover:scale-110" title="{{ site.name }}" aria-label="Visit {{ site.name }} in a new tab"><img src="{% static site.icon %}" alt="" width="64" height="64" decoding="async" class="size-16 shrink-0 object-contain" /></a>{% endfor %}
@@ -63,7 +63,7 @@
                     <p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Inside Rowset</p>
                     <h2 id="product-screenshot-heading" class="mt-6 max-w-[18ch] text-5xl font-semibold tracking-tight text-balance sm:text-6xl">See what your agents changed.</h2>
                 </div>
-                <p class="max-w-[42ch] text-xl text-pretty text-slate-600 dark:text-neutral-300">Review projects, recent datasets, row counts, and public previews from one calm control surface.</p>
+                <p class="max-w-[42ch] text-xl text-pretty text-slate-600 dark:text-neutral-300">Review recent datasets, row counts, schema, and sharing state before the next agent run.</p>
             </div>
             <figure class="mt-10 overflow-hidden border-2 border-slate-950 bg-white p-1 dark:border-white dark:bg-slate-950 sm:p-2">
                 <img src="{% static 'vendors/images/landing/product-dashboard-light.webp' %}"
@@ -86,7 +86,7 @@
     <section class="bg-[#ffdd3d] text-[#1313a4]">
         <div class="mx-auto max-w-7xl border-t-2 border-[#1313a4] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
             <p class="font-mono text-sm font-semibold uppercase tracking-wide">AI agent examples</p>
-            <h2 class="mt-8 max-w-[18ch] font-display text-5xl font-semibold tracking-tight text-balance sm:text-7xl">What will your agent keep moving?</h2>
+            <h2 class="mt-8 max-w-[18ch] font-display text-5xl font-semibold tracking-tight text-balance sm:text-7xl">Give your agent a workflow it can keep up to date.</h2>
             <div class="mt-12 flex flex-wrap gap-x-5 gap-y-2 font-display text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
                 <a href="{% url 'use_case_page' slug='content-pipeline' %}" class="hover:text-white">Content pipeline.</a><a href="{% url 'use_case_page' slug='agent-task-board' %}" class="text-[#1313a4]/45 hover:text-white">Agent task board.</a><a href="{% url 'use_case_page' slug='personal-crm' %}" class="hover:text-white">Personal CRM.</a><a href="{% url 'use_case_page' slug='bug-qa-tracker' %}" class="text-[#1313a4]/45 hover:text-white">Bug tracker.</a><a href="{% url 'use_case_page' slug='product-inventory-catalog' %}" class="hover:text-white">Product catalog.</a><a href="{% url 'use_case_page' slug='feedback-triage' %}" class="text-[#1313a4]/45 hover:text-white">Feedback triage.</a><a href="{% url 'use_cases' %}" class="hover:text-white">Anything with rows.</a>
             </div>
@@ -95,7 +95,7 @@
     <section class="bg-white text-slate-950 dark:bg-neutral-950 dark:text-white">
         <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
             <div class="grid gap-12 lg:grid-cols-2 lg:items-start">
-                <div><p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Simple primitives</p><h2 class="mt-6 max-w-[18ch] text-5xl font-semibold tracking-tight text-balance sm:text-6xl">The workflow changes. The backend doesn’t.</h2><p class="mt-6 max-w-[48ch] text-xl text-pretty text-slate-600 dark:text-neutral-300">Agents get a small set of dependable operations they can reuse everywhere. You get data that stays structured, private, and portable.</p></div>
+                <div><p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Simple primitives</p><h2 class="mt-6 max-w-[18ch] text-5xl font-semibold tracking-tight text-balance sm:text-6xl">A private database for agent-managed work.</h2><p class="mt-6 max-w-[48ch] text-xl text-pretty text-slate-600 dark:text-neutral-300">Rowset stores structured rows with stable indexes, schema, instructions, and search. Agents access them through MCP, REST, or CLI—without direct credentials to your production database.</p></div>
                 <dl class="grid gap-px bg-slate-950/10 dark:bg-white/15 sm:grid-cols-2">
                     <div class="bg-white p-6 dark:bg-neutral-950"><dt class="font-mono text-sm font-semibold text-[#1313a4] dark:text-[#ffdd3d]">STORE</dt><dd class="mt-3 text-xl font-semibold">Typed, indexed rows</dd><dd class="mt-2 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Stable business keys, generated IDs, descriptions, links, and flexible column types.</dd></div>
                     <div class="bg-white p-6 dark:bg-neutral-950"><dt class="font-mono text-sm font-semibold text-[#1313a4] dark:text-[#ffdd3d]">FIND</dt><dd class="mt-3 text-xl font-semibold">Exact and semantic search</dd><dd class="mt-2 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Retrieve a known row or search by meaning with vector embeddings.</dd></div>
@@ -110,7 +110,7 @@
             <p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Three steps to agent-ready data</p>
             <h2 class="mt-6 max-w-[24ch] text-5xl font-semibold tracking-tight text-balance sm:text-6xl">Connect once. Then ask your agent to build.</h2>
             <ol role="list" class="mt-12 grid border-y-2 border-slate-950 lg:grid-cols-3 dark:border-white">
-                <li class="py-6 lg:pr-8"><p class="font-mono text-sm text-[#1313a4] dark:text-[#ffdd3d]">01 / CONNECT</p><h3 class="mt-4 text-2xl font-semibold tracking-tight"><a href="{% url 'docs_page' slug='configure-agent-access' %}" class="hover:text-[#1313a4] dark:hover:text-[#ffdd3d]">Copy the setup prompt</a></h3><p class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Add Rowset to a trusted agent with the hosted MCP URL and a bearer API key.</p></li>
+                <li class="py-6 lg:pr-8"><p class="font-mono text-sm text-[#1313a4] dark:text-[#ffdd3d]">01 / CONNECT</p><h3 class="mt-4 text-2xl font-semibold tracking-tight"><a href="{% url 'docs_page' slug='configure-agent-access' %}" class="hover:text-[#1313a4] dark:hover:text-[#ffdd3d]">Copy the setup prompt</a></h3><p class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Give a trusted agent the Rowset setup prompt. It can recommend MCP, REST, or CLI and configure access with a bearer API key.</p></li>
                 <li class="border-t border-slate-950/20 py-6 lg:border-l lg:border-t-0 lg:px-8 dark:border-white/20"><p class="font-mono text-sm text-[#1313a4] dark:text-[#ffdd3d]">02 / DESCRIBE</p><h3 class="mt-4 text-2xl font-semibold tracking-tight">Name the workflow</h3><p class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">Tell the agent what to track. It creates the dataset, schema, and stable index.</p></li>
                 <li class="border-t border-slate-950/20 py-6 lg:border-l lg:border-t-0 lg:pl-8 dark:border-white/20"><p class="font-mono text-sm text-[#1313a4] dark:text-[#ffdd3d]">03 / DELEGATE</p><h3 class="mt-4 text-2xl font-semibold tracking-tight">Let it manage the rows</h3><p class="mt-3 text-base text-pretty text-slate-600 dark:text-neutral-300 sm:text-sm">The agent reads, writes, searches, exports, and shares results through authenticated tools.</p></li>
             </ol>

@@ -27,7 +27,7 @@ faqs:
 ---
 
 Google Sheets is a cloud spreadsheet for human collaboration, calculations, and
-analysis. Rowset is an open-source dataset backend that trusted AI agents
+analysis. Rowset is an open-source backend that trusted AI agents
 operate through the Model Context Protocol (MCP) or REST. Choose Sheets when
 people work in the grid; choose Rowset when an explicitly authorized external
 agent is the primary writer of structured operational rows.

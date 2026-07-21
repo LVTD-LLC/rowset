@@ -1,7 +1,7 @@
 # Rowset: one backend for AI agent workflows
 
-Rowset is an MCP database and dataset API for AI agents. It gives agents reliable,
-searchable structured data without requiring you to build a separate backend for every workflow.
+Rowset is the open-source, self-hostable backend for AI agent workflows. It gives agents private,
+searchable structured data through MCP, REST, or CLI without requiring you to build another backend.
 
 ## What agents can do
 

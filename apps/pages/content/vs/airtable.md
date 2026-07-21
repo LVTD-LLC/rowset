@@ -8,7 +8,7 @@ keywords:
   - Rowset vs Airtable
   - Airtable alternative for AI agents
   - Airtable MCP alternative
-  - AI agent dataset backend
+  - AI agent workflow backend
 faqs:
   - question: Is Rowset a replacement for Airtable?
     answer: Rowset can replace Airtable for a narrow workflow where a trusted AI agent is the main operator and people only need review or exports. It does not replace Airtable's interfaces, forms, formulas, automations, or collaborative app-building surface.
@@ -25,7 +25,7 @@ faqs:
 Rowset and Airtable both store structured rows, but they are built around
 different operators. Choose Airtable when people need to build and use a
 collaborative app with interfaces, forms, views, formulas, and automations.
-Choose Rowset when a trusted external AI agent needs a private dataset backend
+Choose Rowset when a trusted external AI agent needs a private backend for structured workflow data
 it can operate through MCP or REST.
 
 That distinction matters more than the shared grid. Airtable starts with a rich

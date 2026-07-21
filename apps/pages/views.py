@@ -323,20 +323,20 @@ class DatabaseMcpServerExplanationView(TemplateView):
         context["schema_json"] = json_ld(
             [
                 article_schema(
-                    headline="Database MCP server: when to use Rowset instead",
+                    headline="MCP database: direct access or agent-managed data?",
                     description=(
-                        "A practical guide to choosing between direct database MCP servers "
-                        "and Rowset's hosted MCP dataset backend for AI-agent workflows."
+                        "Learn when an MCP database should connect to an existing SQL or NoSQL "
+                        "system and when Rowset is the safer backend for agent-managed data."
                     ),
                     path=path,
                     date_published="2026-07-05",
-                    date_modified="2026-07-05",
+                    date_modified="2026-07-21",
                 ),
                 breadcrumb_list_schema(
                     (
                         ("Home", "/"),
                         ("Docs", reverse("docs_page", kwargs={"slug": "quickstart"})),
-                        ("Database MCP server", path),
+                        ("MCP database", path),
                     )
                 ),
             ]

@@ -1,7 +1,7 @@
 # Rowset field notes
 
-Practical writing about AI agent infrastructure, MCP databases, dataset APIs, and workflows that
-keep structured data useful.
+Practical guides to MCP, dataset APIs, stable row identity, and agent-managed workflows that keep
+structured work moving.
 
 ## Guides
 

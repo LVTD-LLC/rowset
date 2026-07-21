@@ -225,7 +225,7 @@ def test_public_markdown_routes_return_markdown(client, path):
         ("/uses.md", "# Technology behind Rowset"),
         ("/blog.md", "# Rowset field notes"),
         ("/changelog.md", "# Changelog"),
-        ("/docs/database-mcp-server.md", "# Database MCP server"),
+        ("/docs/database-mcp-server.md", "# MCP database"),
         ("/vs/airtable.md", "# Rowset vs Airtable"),
         ("/vs/google-sheets.md", "# Rowset vs Google Sheets"),
     ),
@@ -610,8 +610,8 @@ def test_landing_page_omits_prompt_and_shows_agent_native_positioning(client):
     assert "Agent setup prompt" not in content
     assert "Rowset MCP URL:" not in content
     assert "Rowset skill install:" not in content
-    assert "Agent-native data backend" in content
-    assert "Dataset backends for AI agents" in content
+    assert "Backend for AI agent workflows" in content
+    assert "Private structured data for trusted agents" in content
     assert "Three steps to agent-ready data" in content
     assert "Agent task board" in content
     assert "Feedback triage" in content
@@ -673,7 +673,7 @@ def test_landing_page_links_to_projects_using_rowset(client):
         ("pgsandbox-mcp.lvtd.dev", "pgsandbox-mcp.svg"),
     )
 
-    assert "Projects that use Rowset" in content
+    assert "Built with Rowset" in content
     assert "data-uidotsh" not in content
     assert "ui-picker.js" not in content
     for hostname, icon_name in projects:
@@ -696,13 +696,13 @@ def test_landing_page_presents_open_source_and_self_hosting_as_core_identity(cli
     repository_href = 'href="https://github.com/LVTD-LLC/rowset"'
     self_hosting_href = 'href="https://github.com/LVTD-LLC/rowset#deployment"'
     meta_description = (
-        '<meta name="description" content="An open-source and self-hostable backend for AI '
-        "agent workflows. Create, search, update, export, and share structured datasets through "
-        'MCP, REST, or CLI." />'
+        '<meta name="description" content="Give AI agents a private, searchable backend for '
+        "structured data. Create and manage rows through MCP, REST, or CLI—open source and "
+        'self-hostable." />'
     )
 
     assert "OPEN SOURCE / SELF-HOSTABLE" in hero
-    assert "open-source and self-hostable" in hero
+    assert "open-source, self-hostable" in hero
     assert "View source on GitHub" in hero
     assert "Open source. Self-hostable." in open_source_section
     assert "Run Rowset in our cloud or on your own infrastructure." in open_source_section
@@ -1243,7 +1243,7 @@ def test_database_mcp_server_explanation_has_required_links_and_schema(client):
     text = strip_tags(content)
     words = re.findall(r"\b[\w'-]+\b", text)
 
-    assert "Database MCP server: when to use Rowset instead" in content
+    assert "MCP database: direct access or agent-managed data?" in content
     assert len(words) >= 2500
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
@@ -1296,7 +1296,7 @@ def test_airtable_alternatives_blog_post_has_required_links_schema_and_content(c
     assert "Best Airtable alternatives for AI-agent-managed datasets" in content
     assert len(words) >= 1500
     assert "Why Airtable alternatives changed in 2026" in content
-    assert "What an AI-agent dataset backend needs" in content
+    assert "What a backend for AI-agent workflows needs" in content
     assert "Airtable vs Rowset for AI agents" in content
     assert "Migration paths" in content
     assert "FAQ" in content
@@ -1504,7 +1504,8 @@ def test_schema_helpers_render_valid_homepage_json_ld(client):
     )
     organization = next(entry for entry in schema if entry["@type"] == "Organization")
     assert software_application["description"] == (
-        "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+        "An open-source, self-hostable backend for AI agent workflows with private MCP, REST, "
+        "and CLI access to structured data."
     )
     assert organization["url"].endswith("/")
 
@@ -1564,7 +1565,8 @@ def test_pricing_schema_uses_configured_public_url(client):
 
     assert schema["@type"] == "Product"
     assert schema["description"] == (
-        "An open-source and self-hostable MCP and REST dataset backend for trusted AI agents."
+        "An open-source, self-hostable backend for AI agent workflows with private MCP, REST, "
+        "and CLI access to structured data."
     )
     assert schema["url"] == "https://rowset.example/pricing"
     assert schema["image"] == (
