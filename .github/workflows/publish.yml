@@ -63,24 +63,6 @@ jobs:
           echo "release_sha=${release_sha}" >> "$GITHUB_OUTPUT"
           echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
 
-      - name: Verify self-host release contract
-        shell: bash
-        run: |
-          assets="$RUNNER_TEMP/self-host-assets"
-          extracted="$RUNNER_TEMP/self-host-extracted"
-          scripts/build-self-host-release.sh \
-            "${{ steps.release.outputs.release_tag }}" \
-            "${{ steps.release.outputs.release_sha }}" \
-            "ghcr.io/${GITHUB_REPOSITORY,,}:${{ steps.release.outputs.release_tag }}" \
-            "sha256:$(printf '0%.0s' {1..64})" \
-            "$assets"
-          mkdir -p "$extracted"
-          tar -C "$extracted" -xzf \
-            "$assets/rowset-self-host-${{ steps.release.outputs.release_tag }}.tar.gz"
-          scripts/verify-self-host-release-contract.sh \
-            "$extracted" \
-            "$assets/install-rowset-self-host.sh"
-
   cli:
     name: Build CLI (${{ matrix.goos }}/${{ matrix.goarch }})
     needs: validate
@@ -142,8 +124,6 @@ jobs:
     name: Build and publish app image
     needs: validate
     runs-on: ubuntu-latest
-    outputs:
-      digest: ${{ steps.image.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -246,12 +226,6 @@ jobs:
         shell: bash
         run: |
           cp scripts/install-rowset-cli.sh release-assets/install-rowset-cli.sh
-          scripts/build-self-host-release.sh \
-            "$RELEASE_TAG" \
-            "$RELEASE_SHA" \
-            "$IMAGE_NAME:$RELEASE_TAG" \
-            "${{ needs.app-image.outputs.digest }}" \
-            release-assets
           (cd release-assets && sha256sum *.tar.gz > checksums.txt)
 
       - name: Publish release
@@ -264,13 +238,10 @@ jobs:
             echo "Docker image:"
             echo
             echo "- ${IMAGE_NAME}:${RELEASE_TAG}"
-            echo "- rowset-self-host-${RELEASE_TAG}.tar.gz"
             echo
-            echo "Install the matching self-hosting bundle:"
+            echo "Self-hosting:"
             echo
-            echo '```bash'
-            echo "curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/install-rowset-self-host.sh | sh"
-            echo '```'
+            echo "- https://github.com/${GITHUB_REPOSITORY}/blob/${RELEASE_TAG}/SELF_HOSTING.md"
             echo
             echo "Install the CLI:"
             echo

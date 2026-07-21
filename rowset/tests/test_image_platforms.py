@@ -417,14 +417,14 @@ def test_immutable_tag_guard_only_allows_absent_or_matching_tags(
     assert result.returncode == expected_returncode
 
 
-def test_self_hosting_docs_name_supported_container_architectures_and_preflight():
+def test_self_hosting_docs_name_supported_container_architectures():
     self_hosting = (_REPO_ROOT / "SELF_HOSTING.md").read_text()
     readme = (_REPO_ROOT / "README.md").read_text()
 
     for documentation in (self_hosting, readme):
         assert "linux/amd64" in documentation
         assert "linux/arm64" in documentation
-        assert "deployment/verify-image-platforms.sh" in documentation
+    assert "deployment/verify-image-platforms.sh" not in self_hosting
 
 
 def test_production_compose_uses_the_preflighted_image_for_both_app_services():

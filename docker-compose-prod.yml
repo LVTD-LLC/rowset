@@ -1,5 +1,3 @@
-# Use deployment/self-host/start.sh so validation runs before containers start.
-
 x-service-defaults: &service-defaults
   restart: unless-stopped
   logging:
@@ -16,10 +14,10 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
-    environment:
-      ROWSET_SITE_ADDRESS: ${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname}
+    configs:
+      - source: rowset_caddyfile
+        target: /etc/caddy/Caddyfile
     volumes:
-      - ./deployment/self-host/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -37,7 +35,7 @@ services:
       timeout: 5s
       retries: 5
     env_file:
-      - ${ROWSET_ENV_FILE:-.env}
+      - .env
 
   redis:
     <<: *service-defaults
@@ -55,7 +53,7 @@ services:
       retries: 12
       start_period: 30s
     env_file:
-      - ${ROWSET_ENV_FILE:-.env}
+      - .env
 
   qdrant:
     <<: *service-defaults
@@ -63,7 +61,7 @@ services:
     profiles:
       - vector-search
     environment:
-      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY with deployment/self-host/init-env.sh}
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY in .env}
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
@@ -90,7 +88,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - ${ROWSET_ENV_FILE:-.env}
+      - .env
     environment:
       APP_PROCESS_TYPE: server
       SITE_URL: https://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname}
@@ -108,13 +106,25 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - ${ROWSET_ENV_FILE:-.env}
+      - .env
     environment:
       APP_PROCESS_TYPE: worker
       SITE_URL: https://${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname}
     volumes:
       - media_data:/app/media
       - private_media_data:/app/private_media
+
+configs:
+  rowset_caddyfile:
+    content: |
+      ${ROWSET_DOMAIN:?Set ROWSET_DOMAIN to the public hostname} {
+          request_body {
+              max_size 64MB
+          }
+          reverse_proxy backend:80 {
+              flush_interval -1
+          }
+      }
 
 volumes:
   caddy_data:
