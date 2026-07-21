@@ -37,7 +37,7 @@ The plan changed materially since the July 4 initialization:
 | 6 | Ship `/blog/baserow-alternatives` | Blog alternatives | completed | #233 |
 | 7 | Ship `/blog/nocodb-alternatives` | Blog alternatives | completed | #239 |
 | 8 | Ship `/blog/connect-ai-agent-to-dataset-api` | Product guide | completed | #244 |
-| 9 | Retarget `/docs/database-mcp-server` around the `mcp database` cluster | Existing-page boost | pending | - |
+| 9 | Retarget `/docs/database-mcp-server` around the `mcp database` cluster | Existing-page boost | completed | #343 |
 | 10 | Ship `/blog/spreadsheet-database-for-ai-agents` | Decision guide | pending | - |
 | 11 | Build the off-page starter target list and submission backlog | Off-page | pending | - |
 | 12 | Ship `/vs/airtable` when a sales/use-case trigger exists | Compare | completed | #277 |
@@ -207,6 +207,12 @@ The earlier spreadsheet-database CPC ($55.70) and database-MCP volume (70) are s
 5. Re-run the live SERP and extract the top current official/product pages before drafting.
 
 **Quality gate:** no keyword stuffing, at least three inbound links, current primary sources, honest direct-database-MCP tradeoffs, canonical/schema/sitemap checks green.
+
+**Completed 2026-07-21:** refreshed the Google US SERP for `mcp database` and `database
+mcp`, then retargeted the guide around the architecture decision. The page now includes a direct
+definition, balanced comparison, three-question decision test, safety and stable-identity sections,
+live-PAA FAQs with `FAQPage` schema, and current MCP, Google, and Microsoft primary sources. Added
+inbound links from MCP setup, Dataset API, and MCP-vs-REST content.
 
 ### Phase 10 - Ship `/blog/spreadsheet-database-for-ai-agents`
 

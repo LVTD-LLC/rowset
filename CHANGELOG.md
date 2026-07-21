@@ -30,6 +30,8 @@ deployment or release cut date.
 - Simplified self-hosting to one production Compose file and one concise guide using standard
   Docker Compose commands, inline Caddy configuration, and locally generated secrets.
 - Simplified public-page search titles to use the visible page title with concise Rowset branding.
+- Expanded the MCP database decision guide with current database-server models, explicit safety
+  boundaries, stable row identity guidance, and a direct-access-versus-work-layer comparison.
 
 ### Fixed
 - Restored permanent redirects for retired public content routes and normalized trailing-slash
