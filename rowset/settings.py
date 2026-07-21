@@ -147,6 +147,10 @@ POSTHOG_SERVICE_NAME = (
     or f"rowset-{POSTHOG_DEFAULT_PROCESS_NAME}"
 )
 POSTHOG_SERVICE_VERSION = SENTRY_RELEASE or env("RENDER_GIT_COMMIT", default="") or "unknown"
+POSTHOG_AI_OBSERVABILITY_ENABLED = env.bool(
+    "POSTHOG_AI_OBSERVABILITY_ENABLED",
+    default=False,
+)
 
 
 # Quick-start development settings - unsuitable for production

@@ -32,5 +32,10 @@ class CoreConfig(AppConfig):
             posthog.host = settings.POSTHOG_HOST
             atexit.register(posthog.shutdown)
 
+        if settings.POSTHOG_AI_OBSERVABILITY_ENABLED and settings.POSTHOG_API_KEY:
+            from apps.core.ai_observability import configure_ai_observability
+
+            configure_ai_observability()
+
         if settings.ENVIRONMENT == "dev":
             posthog.debug = True
