@@ -129,8 +129,8 @@ If you are comparing Rowset with open-source database workspaces, read
 If your team is choosing between spreadsheet-style backends, see
 [NocoDB alternatives for AI-agent-managed datasets](/blog/nocodb-alternatives).
 
-Read [MCP database: direct access or agent-managed data?](/docs/database-mcp-server)
-for the longer decision guide.
+Read [MCP Database: Direct Access vs Agent-Managed Data](/docs/database-mcp-server)
+for the longer decision guide, including permission boundaries and stable row identity.
 
 ## Reference
 

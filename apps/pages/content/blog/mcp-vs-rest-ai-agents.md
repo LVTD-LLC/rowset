@@ -45,6 +45,9 @@ API](/docs/dataset-api) with `Authorization: Bearer <key>`.
 Whichever surface you choose, the dataset still needs a stable row identity; use
 the [index-column guide](/blog/choose-index-column-agent-rows) before giving an
 agent write access to production rows.
+If the choice is between connecting an agent to existing source-of-truth tables
+and giving it a separate workflow backend, use the [MCP database decision
+guide](/docs/database-mcp-server) before selecting either access path.
 
 ## What MCP gives the agent
 

@@ -39,7 +39,7 @@
 |---|---|---|---|
 | `/docs/connect-mcp` | https://rowset.lvtd.dev/docs/connect-mcp | Connect an agent through MCP | Alternatives, long-form guides |
 | `/docs/mcp-tools` | https://rowset.lvtd.dev/docs/mcp-tools | MCP tools reference | MCP and implementation content |
-| `/docs/database-mcp-server` | https://rowset.lvtd.dev/docs/database-mcp-server | Database MCP server guide | MCP database cluster |
+| `/docs/database-mcp-server` | https://rowset.lvtd.dev/docs/database-mcp-server | MCP Database: Direct Access vs Agent-Managed Data | MCP database cluster |
 | `/docs/api-overview` | https://rowset.lvtd.dev/docs/api-overview | Rowset API introduction | Alternatives, long-form guides |
 | `/docs/dataset-api` | https://rowset.lvtd.dev/docs/dataset-api | Dataset API | All |
 | `/docs/user-api` | https://rowset.lvtd.dev/docs/user-api | User API | Setup content |
@@ -92,6 +92,7 @@
 | `google-sheets` | Phase 4 | `/blog/google-sheets-alternatives` | Airtable alternatives, agent-managed datasets, index-column guide | homepage, pricing, use cases, Dataset API |
 | `baserow` | Phase 6 | `/blog/baserow-alternatives` | Airtable alternatives, Google Sheets alternatives | homepage, MCP docs, Dataset API |
 | `nocodb` | Phase 7 | `/blog/nocodb-alternatives` | Airtable, Google Sheets, and Baserow alternatives | homepage, MCP docs, Dataset API, pricing |
+| `mcp-database` | Phase 9 | `/docs/database-mcp-server` | MCP setup, Dataset API, MCP-vs-REST guide | MCP docs, Dataset API, agent access, pricing, relevant use cases |
 | `rowset-vs-airtable` | Phase 12 | `/vs/airtable` | shared footer, Airtable alternatives, agent-managed datasets | Airtable alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide |
 | `rowset-vs-google-sheets` | Phase 14 | `/vs/google-sheets` | shared footer, Google Sheets alternatives, agent-managed datasets | Google Sheets alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide |
 
@@ -99,7 +100,6 @@
 
 | Target | Phase | Proposed URL | Required inbound links | Required outbound links |
 |---|---:|---|---|---|
-| MCP database cluster refresh | 9 | `/docs/database-mcp-server` | `/docs/connect-mcp`, `/docs/dataset-api`, `/blog/mcp-vs-rest-ai-agents` | MCP docs, Dataset API, agent access, pricing, relevant use cases |
 | Spreadsheet database decision guide | 10 | `/blog/spreadsheet-database-for-ai-agents` | Google Sheets alternatives, agent-managed datasets, Dataset API docs | spreadsheet alternatives, MCP docs, Dataset API, use cases |
 
 ## Retired Route Redirects

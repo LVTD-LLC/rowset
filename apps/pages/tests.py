@@ -1336,7 +1336,7 @@ def test_database_mcp_server_explanation_has_required_links_and_schema(client):
     text = strip_tags(content)
     words = re.findall(r"\b[\w'-]+\b", text)
 
-    assert "MCP database: direct access or agent-managed data?" in content
+    assert "MCP Database: Direct Access vs Agent-Managed Data" in content
     assert len(words) >= 2500
     assert reverse("docs_page", kwargs={"slug": "connect-mcp"}) in content
     assert reverse("docs_page", kwargs={"slug": "dataset-api"}) in content
@@ -1349,11 +1349,14 @@ def test_database_mcp_server_explanation_has_required_links_and_schema(client):
     assert "https://testserver/mcp/" in content
     assert '"@type": "Article"' in content
     assert '"@type": "BreadcrumbList"' in content
+    assert '"@type": "FAQPage"' in content
     schema = json.loads(_json_ld_payload(content))
     breadcrumb = next(item for item in schema if item["@type"] == "BreadcrumbList")
+    faq = next(item for item in schema if item["@type"] == "FAQPage")
     assert breadcrumb["itemListElement"][1]["item"].endswith(
         reverse("docs_page", kwargs={"slug": "quickstart"})
     )
+    assert len(faq["mainEntity"]) == 4
 
 
 def test_authenticated_database_mcp_server_explanation_uses_app_shell(client):
