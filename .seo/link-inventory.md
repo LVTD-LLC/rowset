@@ -82,6 +82,7 @@
 | `/blog/human-in-the-loop-ai-agents` | https://rowset.lvtd.dev/blog/human-in-the-loop-ai-agents | Human-in-the-Loop AI Agents: A Practical Workflow | human-in-the-loop AI agents, AI agent approval workflow, agent review queue, human oversight for agents, durable approval records |
 | `/blog/ai-agent-audit-trail` | https://rowset.lvtd.dev/blog/ai-agent-audit-trail | AI Agent Audit Trail: What to Log and How to Build It | AI agent audit trail, AI agent audit logs, trace decision and change evidence, agent tool-call logging, agent auditability guide |
 | `/blog/database-for-ai-agents` | https://rowset.lvtd.dev/blog/database-for-ai-agents | How to Choose a Database for AI Agents | database for AI agents, AI agent database, agent storage decision guide, database for agent state, agent data architecture |
+| `/blog/ai-data-cleaning-agent` | https://rowset.lvtd.dev/blog/ai-data-cleaning-agent | AI for Data Cleaning: A Safe Agent Workflow | AI for data cleaning, AI data-cleaning workflow, clean data with an AI agent, reversible agent-led cleanup, source proposal approval publish loop |
 
 ## Shipped SEO Sprint Pages
 
@@ -170,3 +171,8 @@ These routes return 404 in production and must not be selected as internal-link 
 - agent storage decision guide
 - database for agent state
 - agent data architecture
+- AI for data cleaning
+- AI data-cleaning workflow
+- clean data with an AI agent
+- reversible agent-led cleanup
+- source proposal approval publish loop

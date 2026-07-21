@@ -16,6 +16,13 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-21
+
+### Added
+- Added a practical AI data-cleaning guide built around preserved source rows,
+  field-level proposals, risk-based review, stable-key publication, and deterministic
+  reconciliation.
+
 ## 2026-07-20
 
 ### Added
