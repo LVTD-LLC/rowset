@@ -952,6 +952,20 @@ def test_root_content_sections_render_markdown_pages(client):
         assert "Authorization: Bearer YOUR_ROWSET_API_KEY" in content or "dataset" in content
 
 
+def test_self_hosting_guide_is_listed_under_getting_started(client):
+    response = client.get(reverse("docs_page", kwargs={"slug": "self-hosting"}))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    sidebar = _nav_html(content, "Docs pages")
+
+    assert "Self-host Rowset with Docker Compose" in content
+    assert "What you manage" in content
+    assert "Verify the deployment" in content
+    assert "Self-host Rowset with Docker Compose" in sidebar
+    assert sidebar.index("Self-host Rowset with Docker Compose") < sidebar.index("Features")
+
+
 @override_settings(SITE_URL="https://self-hosted.example")
 def test_connection_docs_explain_self_hosted_instance_urls(client):
     cases = (
