@@ -16,14 +16,15 @@ from rowset.logging_context import (
     route_name,
     validate_correlation_id,
 )
+from rowset.public_request_context import PUBLIC_DATASET_CONTENT_SURFACES
 from rowset.traffic import classify_traffic
+from rowset.traffic_analytics import capture_traffic_request
 from rowset.utils import get_rowset_logger
 
 logger = get_rowset_logger(__name__)
 
 _HEALTHCHECK_PATHS = frozenset({"/api/healthcheck"})
 _PUBLIC_ACCESS_STATES = frozenset({"available", "locked", "denied", "disabled", "not_found"})
-_PUBLIC_CONTENT_SURFACES = frozenset({"preview", "row_detail", "markdown", "export"})
 
 
 def _request_id(request: HttpRequest) -> str:
@@ -171,16 +172,19 @@ class RequestLoggingMiddleware:
         # Pick up identity resolved by the view without forcing authentication or profile queries.
         _bind_session_actor(request)
         htmx = getattr(request, "htmx", None)
+        outcome = "failure" if status_code >= 400 else "success"
+        route = route_name(request)
+        status_class = f"{status_code // 100}xx"
         attributes: dict[str, Any] = {
             "http.request.method": request.method,
-            "http.route": route_name(request),
+            "http.route": route,
             "http.response.status_code": status_code,
-            "http.response.status_class": f"{status_code // 100}xx",
+            "http.response.status_class": status_class,
             "http.is_htmx": bool(htmx),
             "htmx.boosted": bool(getattr(htmx, "boosted", False)),
             "htmx.history_restore_request": bool(getattr(htmx, "history_restore_request", False)),
             "duration_ms": round((time.perf_counter() - started_at) * 1_000, 2),
-            "outcome": "failure" if status_code >= 400 else "success",
+            "outcome": outcome,
         }
         if error_type:
             attributes["error.type"] = error_type
@@ -192,7 +196,7 @@ class RequestLoggingMiddleware:
             attributes["public_access_state"] = public_access_state
             attributes["content_group"] = "public_dataset"
             content_surface = getattr(request, "_rowset_public_content_surface", "")
-            if content_surface in _PUBLIC_CONTENT_SURFACES:
+            if content_surface in PUBLIC_DATASET_CONTENT_SURFACES:
                 attributes["content_surface"] = content_surface
             content_id = getattr(request, "_rowset_public_content_id", "")
             if public_access_state == "available" and content_id:
@@ -200,3 +204,13 @@ class RequestLoggingMiddleware:
 
         log_method = logger.error if status_code >= 500 else logger.info
         log_method("http.request.completed", **attributes)
+        capture_traffic_request(
+            content_group=str(attributes.get("content_group", "")),
+            content_id=str(attributes.get("content_id", "")),
+            content_surface=str(attributes.get("content_surface", "")),
+            outcome=outcome,
+            request_interface=_request_interface(request),
+            route=route,
+            status_class=status_class,
+            traffic_category=request.traffic_category,
+        )

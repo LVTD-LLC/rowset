@@ -14,13 +14,13 @@ from apps.datasets.choices import DatasetMutationType
 from apps.datasets.history import record_dataset_mutation
 from apps.datasets.models import Dataset
 from apps.datasets.services import normalize_public_page_size
+from rowset.public_request_context import PublicDatasetContentSurface
 from rowset.utils import build_absolute_public_url
 
 PUBLIC_ACCESS_SESSION_PREFIX = "public_dataset_access_"
 PUBLIC_PREVIEW_ROBOTS_POLICY = "noindex, nofollow, noarchive"
 PUBLIC_PREVIEW_SETTINGS_UPDATED_MESSAGE = "Public preview settings updated."
 PublicDatasetAccessState = Literal["available", "locked", "denied", "disabled", "not_found"]
-PublicDatasetContentSurface = Literal["preview", "row_detail", "markdown", "export"]
 
 
 def public_dataset_content_id(public_key: UUID | str) -> str:
