@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from allauth.account.adapter import DefaultAccountAdapter
+from django.test import override_settings
 
 from apps.core.choices import EmailType
 from apps.core.models import EmailSent, Feedback
@@ -83,6 +84,7 @@ def test_send_transactional_email_returns_false_for_hard_failures(profile):
 
 
 @pytest.mark.django_db
+@override_settings(EMAIL_DELIVERY_RETRY_BACKOFF_SECONDS=(0.0, 0.0, 0.0))
 def test_confirmation_mail_failures_do_not_bubble_to_signup(user, monkeypatch):
     def fake_send_confirmation_mail(self, request, emailconfirmation, signup):
         raise TimeoutError("mailgun unavailable")

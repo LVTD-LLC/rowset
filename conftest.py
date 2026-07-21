@@ -39,6 +39,7 @@ def pytest_configure(config):
 
     from django.conf import settings
 
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
     settings.STORAGES["staticfiles"]["BACKEND"] = (
         "django.contrib.staticfiles.storage.StaticFilesStorage"
     )

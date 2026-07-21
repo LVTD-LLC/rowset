@@ -171,6 +171,7 @@ def _public_content_links(source):
 def test_checked_in_markdown_public_content_links_use_live_extensionless_routes(client):
     retired_routes = []
     broken_routes = []
+    route_locations = {}
 
     for markdown_path in _public_source_markdown_paths():
         source = markdown_path.read_text(encoding="utf-8")
@@ -179,8 +180,11 @@ def test_checked_in_markdown_public_content_links_use_live_extensionless_routes(
             if path != "/" and path.endswith("/"):
                 retired_routes.append(f"{location}: {target}")
                 continue
-            if client.get(path).status_code == 404:
-                broken_routes.append(f"{location}: {target}")
+            route_locations.setdefault(path, []).append((location, target))
+
+    for path, locations in route_locations.items():
+        if client.get(path).status_code == 404:
+            broken_routes.extend(f"{location}: {target}" for location, target in locations)
 
     assert not retired_routes, "Retired trailing-slash public routes:\n" + "\n".join(retired_routes)
     assert not broken_routes, "Broken public content routes:\n" + "\n".join(broken_routes)
