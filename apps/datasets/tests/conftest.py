@@ -7,8 +7,8 @@ from apps.datasets.tests.factories import create_test_user, provision_profile_ap
 def user(django_user_model):
     return create_test_user(
         django_user_model,
-        username="csvuser",
-        email="csvuser@example.com",
+        username="datasetuser",
+        email="datasetuser@example.com",
     )
 
 

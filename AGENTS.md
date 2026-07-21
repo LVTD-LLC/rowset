@@ -52,7 +52,7 @@ browser-friendly and read-only; REST and MCP are the private programmatic paths.
 - Create migrations after model changes: `make makemigrations`
 - Apply migrations: `make migrate`
 - Run tests in the Docker sandbox: `make test`
-- Run a focused test file: `make test apps/datasets/tests/test_csv_datasets.py`
+- Run a focused test file: `make test apps/datasets/tests/test_dataset_views.py`
 - Run focused pytest flags: `make test -- -k dataset -q`
 - Run the current local CI-equivalent path: `make ci-local`
 - Restart workers: `make restart-worker`

@@ -789,7 +789,7 @@ environment.
 | `make makemigrations` | Run Django migration generation in the backend container. |
 | `make migrate` | Apply migrations in the backend container. |
 | `make test` | Run pytest through Docker Compose. |
-| `make test apps/datasets/tests/test_csv_datasets.py` | Run a focused test file. |
+| `make test apps/datasets/tests/test_dataset_views.py` | Run a focused test file. |
 | `make test -- -k dataset -q` | Pass pytest flags through the Makefile. |
 | `make cli-test` | Run Go tests for the Rowset CLI. |
 | `make cli-build` | Build the Go `rowset` binary under `cli/bin/`. |
@@ -825,7 +825,7 @@ Run focused tests while iterating:
 ```bash
 make test apps/mcp_server/tests/test_server.py
 make test apps/api/tests.py
-make test apps/datasets/tests/test_csv_datasets.py
+make test apps/datasets/tests/test_dataset_views.py
 make test -- -k public_preview -q
 ```
 
@@ -852,7 +852,7 @@ make cli-build
 ### Verification
 
 - Current local CI-equivalent path: `make ci-local`
-- Focused backend tests: `make test apps/datasets/tests/test_csv_datasets.py`
+- Focused backend tests: `make test apps/datasets/tests/test_dataset_views.py`
 - Focused pytest flags: `make test -- -k dataset -q`
 - Migration check: `make migrations-check`
 - Django system checks: `make django-check`
