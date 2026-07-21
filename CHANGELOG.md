@@ -19,6 +19,9 @@ deployment or release cut date.
 ## 2026-07-21
 
 ### Added
+- Added opt-in, privacy-safe PostHog AI observability for Pydantic AI agents and embeddings,
+  capturing operational metadata while excluding prompts, responses, tool data, embedding inputs,
+  and exception details.
 - Added a practical AI data-cleaning guide built around preserved source rows,
   field-level proposals, risk-based review, stable-key publication, and deterministic
   reconciliation.
