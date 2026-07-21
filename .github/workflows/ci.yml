@@ -98,7 +98,7 @@ jobs:
         run: make django-check CHECK_PYTHON_RUN="uv run python"
 
       - name: Pytest (with slow-test report)
-        run: make test PYTEST_RUN="uv run pytest" -- -q --durations=25
+        run: make test PYTEST_RUN="uv run pytest" -- -q --durations 25
 
   frontend:
     runs-on: ubuntu-latest
