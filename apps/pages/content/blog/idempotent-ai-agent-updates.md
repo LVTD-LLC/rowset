@@ -30,6 +30,11 @@ The practical pattern is:
 6. Create only when the keyed row is confirmed absent.
 7. Verify the final row after the write.
 
+If the update is part of a cleanup run, keep the raw value and approved proposal
+separate from the published row. The [AI data-cleaning workflow](/blog/ai-data-cleaning-agent)
+shows how to combine stable keys and read-after-write checks with reversible source,
+review, and validation boundaries.
+
 This is an agent-level retry contract for structured rows. It does not turn every API call into an exactly-once operation, but it prevents the common duplicate and double-update failures that appear when an agent repeats work after a timeout.
 
 ## What makes an AI-agent operation idempotent?

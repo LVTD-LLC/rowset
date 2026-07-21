@@ -116,6 +116,9 @@ For retry-prone agent workflows, use a stable index, patch absolute final
 values, and read the row after an uncertain response. The
 [idempotent AI-agent updates guide](/blog/idempotent-ai-agent-updates) includes
 a complete create-or-update and timeout-recovery pattern.
+For cleanup jobs, use the same exact-key contract inside a reversible
+[AI data-cleaning workflow](/blog/ai-data-cleaning-agent) that separates raw rows,
+proposed changes, approval, and verified publication.
 
 Patch by row id:
 

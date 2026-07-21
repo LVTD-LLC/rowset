@@ -27,6 +27,7 @@
 | 2026-07-18 | Human-in-the-Loop AI Agents: A Practical Workflow | how-to / operational decision guide | `/blog/human-in-the-loop-ai-agents` | human in the loop AI agents | 70 | 11 | MCP access, Dataset API, schema design, dataset instructions, idempotent updates, safe sharing, pricing | #310 |
 | 2026-07-19 | AI Agent Audit Trail: What to Log and How to Build It | implementation / decision guide | `/blog/ai-agent-audit-trail` | AI agent audit trail | 40 | n/a | MCP access, Dataset API, row operations, HITL, idempotency, safe sharing, dataset instructions, pricing | #316 |
 | 2026-07-20 | How to Choose a Database for AI Agents | decision guide | `/blog/database-for-ai-agents` | database for AI agents | 10 | 7 | memory vs state, agent-managed datasets, audit trail, quickstart, MCP, Dataset API, pricing | #328 |
+| 2026-07-21 | AI for Data Cleaning: A Safe Agent Workflow | how-to / operational guide | `/blog/ai-data-cleaning-agent` | AI for data cleaning | 50 | 0 | schema design, row operations, Dataset API, MCP, index guide, idempotency, HITL, audit trail, pricing | pending PR |
 
 ---
 
@@ -41,6 +42,8 @@
 | 5 | Human-in-the-loop AI agents | how-to / operational decision guide | human in the loop AI agents | 70 | 11 | informational / implementation | shipped | Shipped 2026-07-18 as `/blog/human-in-the-loop-ai-agents`. |
 | 6 | AI agent audit trail | implementation guide | AI audit trail | 40 | n/a | commercial / implementation | shipped | Shipped 2026-07-19 as `/blog/ai-agent-audit-trail`. |
 | 7 | Database for AI agents | decision guide | database for AI agents | 10 | 7 | commercial | shipped | Shipped 2026-07-20 as `/blog/database-for-ai-agents`; differentiated with a six-contract storage decision framework. |
+| 8 | How to clean data with an AI agent safely | how-to / operational guide | AI for data cleaning | 50 | 0 | commercial / informational | shipped | Shipped 2026-07-21 as `/blog/ai-data-cleaning-agent`; differentiated with a source -> proposal -> approval -> publish loop. |
+| 9 | Agentic database for operational agent state | decision guide | agentic database | 70 | 10 | informational / commercial | 15 | Defer: authority-heavy SERP and material overlap with `/blog/database-for-ai-agents`. |
 
 ---
 
@@ -48,7 +51,7 @@
 
 | Cluster / theme | Pieces shipped | Gaps still open |
 |---|---|---|
-| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates`, `/blog/share-ai-agent-data-safely`, `/blog/human-in-the-loop-ai-agents`, `/blog/ai-agent-audit-trail`, `/blog/database-for-ai-agents` | Generated-index migration patterns |
+| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates`, `/blog/share-ai-agent-data-safely`, `/blog/human-in-the-loop-ai-agents`, `/blog/ai-agent-audit-trail`, `/blog/database-for-ai-agents`, `/blog/ai-data-cleaning-agent` | Generated-index migration patterns |
 | MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents`, `/blog/connect-ai-agent-to-dataset-api`, `/blog/relationship-modeling-agent-datasets` | REST/MCP setup examples with concrete datasets |
 | Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives`, `/vs/airtable`, `/vs/google-sheets` | Spreadsheet database explanation |
 

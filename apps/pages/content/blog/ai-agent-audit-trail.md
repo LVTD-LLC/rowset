@@ -180,6 +180,10 @@ The guide to [idempotent AI-agent updates](/blog/idempotent-ai-agent-updates) co
 
 ## Use Rowset for structured workflow evidence and dataset change history
 
+For a concrete application of this evidence model, the
+[AI data-cleaning workflow](/blog/ai-data-cleaning-agent) records each field-level
+proposal, decision, rule, and published value while preserving the raw source.
+
 Rowset can hold durable, private workflow evidence that agents access through [hosted MCP](/docs/connect-mcp) or the [Dataset API](/docs/dataset-api). Use an explicit index such as `event_id`, controlled event types, semantic column descriptions, and persistent dataset instructions. The [row operations guide](/docs/work-with-rows) documents the current read and mutation paths.
 
 Rowset's signed-in dataset page also records recent dataset changes. The current implementation stores the dataset, actor label, mutation type, target, metadata, and timestamps. Row updates can record changed fields with before-and-after values. Schema changes intentionally avoid copying existing row values into mutation metadata.

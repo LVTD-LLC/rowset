@@ -185,6 +185,7 @@
     }
   },
   "keywords": [
+    {"keyword": "ai for data cleaning", "source": "dataforseo", "search_volume": 50, "keyword_difficulty": 0, "cpc": 12.87, "intent": "commercial", "as_of": "2026-07-21"},
     {"keyword": "mcp database", "source": "dataforseo", "search_volume": 480, "keyword_difficulty": 5, "cpc": 14.12, "intent": "navigational", "as_of": "2026-07-15"},
     {"keyword": "database mcp", "source": "dataforseo", "search_volume": 480, "keyword_difficulty": 5, "cpc": 14.12, "intent": "navigational", "as_of": "2026-07-15"},
     {"keyword": "dataset api", "source": "dataforseo", "search_volume": 480, "keyword_difficulty": 43, "cpc": 23.12, "intent": "informational", "as_of": "2026-07-15"},
