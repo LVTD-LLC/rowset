@@ -5,20 +5,41 @@ import vm from "node:vm";
 
 const source = fs.readFileSync(new URL("./alpine-components.js", import.meta.url), "utf8");
 
-function loadAlpineComponents() {
+function loadAlpineComponents({ storedValues = {} } = {}) {
   const components = new Map();
+  const eventListeners = new Map();
+  const storage = new Map(Object.entries(storedValues));
+  const storageWrites = [];
   const timers = new Map();
   let nextTimerId = 1;
   let initializeAlpine;
   const window = {
+    addEventListener(name, callback) {
+      eventListeners.set(name, callback);
+    },
     clearTimeout(timerId) {
       timers.delete(timerId);
+    },
+    matchMedia() {
+      return { matches: false };
+    },
+    removeEventListener(name) {
+      eventListeners.delete(name);
     },
     setTimeout(callback) {
       const timerId = nextTimerId;
       nextTimerId += 1;
       timers.set(timerId, callback);
       return timerId;
+    },
+  };
+  const localStorage = {
+    getItem(key) {
+      return storage.get(key) ?? null;
+    },
+    setItem(key, value) {
+      storage.set(key, String(value));
+      storageWrites.push([key, String(value)]);
     },
   };
   const context = vm.createContext({
@@ -35,16 +56,37 @@ function loadAlpineComponents() {
           initializeAlpine = callback;
         }
       },
+      body: {
+        classList: { add() {}, remove() {} },
+      },
+      documentElement: {
+        classList: { toggle() {} },
+      },
     },
     fetch: async () => ({ ok: true, text: async () => "# Markdown" }),
     navigator: {},
+    localStorage,
     window,
   });
 
   vm.runInContext(source, context);
   initializeAlpine();
 
-  return { components, context, rowset: context.window.Rowset, timers, window };
+  return {
+    components,
+    context,
+    eventListeners,
+    rowset: context.window.Rowset,
+    storage,
+    storageWrites,
+    timers,
+    window,
+  };
+}
+
+function loadAppShell(storedValues = {}) {
+  const loaded = loadAlpineComponents({ storedValues });
+  return { ...loaded, component: loaded.components.get("appShell")() };
 }
 
 function loadCopyPanel() {
@@ -76,6 +118,108 @@ function loadChoiceFilter(checkedValues = []) {
   component.$refs = { trigger: { focus() {} } };
   return { ...loaded, component };
 }
+
+test("app shell restores sidebar size, visibility, and disclosure preferences", () => {
+  const { component } = loadAppShell({
+    rowsetSidebarCollapsed: "true",
+    rowsetSidebarDisclosures: JSON.stringify({
+      "project:alpha": false,
+      "section:sales": true,
+    }),
+    rowsetSidebarWidth: "376",
+  });
+  const project = {
+    dataset: { sidebarDisclosureKey: "project:alpha" },
+    open: true,
+  };
+  const section = {
+    dataset: { sidebarDisclosureKey: "section:sales" },
+    open: false,
+  };
+
+  component.init();
+  component.syncSidebarDisclosure(project);
+  component.syncSidebarDisclosure(section);
+
+  assert.equal(component.sidebarCollapsed, true);
+  assert.equal(component.sidebarWidth, 376);
+  assert.equal(project.open, false);
+  assert.equal(section.open, true);
+});
+
+test("app shell restores an unsaved disclosure after temporary search expansion", () => {
+  const { component, storageWrites } = loadAppShell();
+  const project = {
+    dataset: { sidebarDisclosureKey: "project:alpha" },
+    open: false,
+  };
+
+  component.init();
+  component.syncSidebarDisclosure(project);
+  component.sidebarQuery = "alpha";
+  component.syncSidebarDisclosure(project);
+
+  assert.equal(project.open, true);
+
+  component.sidebarQuery = "";
+  component.syncSidebarDisclosure(project);
+
+  assert.equal(project.open, false);
+  assert.deepEqual(storageWrites, []);
+});
+
+test("app shell ignores malformed or non-boolean disclosure preferences", () => {
+  const malformed = loadAppShell({ rowsetSidebarDisclosures: "{" }).component;
+  const invalidValues = loadAppShell({
+    rowsetSidebarDisclosures: JSON.stringify({
+      "project:alpha": "false",
+      "section:sales": true,
+    }),
+  }).component;
+
+  malformed.init();
+  invalidValues.init();
+
+  assert.deepEqual(Object.keys(malformed.sidebarDisclosures), []);
+  assert.deepEqual(Object.keys(invalidValues.sidebarDisclosures), ["section:sales"]);
+});
+
+test("app shell persists sidebar interactions and ignores non-user disclosure changes", () => {
+  const { component, eventListeners, storage, storageWrites } = loadAppShell({
+    rowsetSidebarDisclosures: JSON.stringify({ "project:alpha": false }),
+  });
+  const project = {
+    dataset: { sidebarDisclosureKey: "project:alpha" },
+    open: false,
+  };
+
+  component.init();
+  component.startSidebarResize({ preventDefault() {} });
+  eventListeners.get("pointermove")({ clientX: 392 });
+  eventListeners.get("pointerup")();
+  component.toggleSidebar();
+  project.open = true;
+  component.rememberSidebarDisclosure({ currentTarget: project });
+
+  assert.equal(storage.get("rowsetSidebarCollapsed"), "true");
+  assert.equal(storage.get("rowsetSidebarWidth"), "392");
+  assert.deepEqual(JSON.parse(storage.get("rowsetSidebarDisclosures")), {
+    "project:alpha": true,
+  });
+
+  const writesAfterUserInteractions = storageWrites.length;
+  component.rememberSidebarDisclosure({ currentTarget: project });
+
+  assert.equal(storageWrites.length, writesAfterUserInteractions);
+
+  component.sidebarQuery = "alpha";
+  project.open = false;
+  component.rememberSidebarDisclosure({ currentTarget: project });
+
+  assert.deepEqual(JSON.parse(storage.get("rowsetSidebarDisclosures")), {
+    "project:alpha": true,
+  });
+});
 
 test("choice filter summarizes and clears multiple checked choices", () => {
   const { component } = loadChoiceFilter(["P1", "P2"]);

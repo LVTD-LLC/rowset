@@ -109,6 +109,7 @@
     Alpine.data("appShell", () => ({
       sidebarOpen: false,
       sidebarCollapsed: false,
+      sidebarDisclosures: {},
       sidebarWidth: 288,
       sidebarQuery: "",
       theme: "light",
@@ -128,6 +129,18 @@
           const savedWidth = Number.parseInt(localStorage.getItem("rowsetSidebarWidth") || "", 10);
           if (Number.isFinite(savedWidth)) {
             this.sidebarWidth = Math.min(480, Math.max(240, savedWidth));
+          }
+          const savedDisclosures = JSON.parse(
+            localStorage.getItem("rowsetSidebarDisclosures") || "{}",
+          );
+          if (
+            savedDisclosures &&
+            typeof savedDisclosures === "object" &&
+            !Array.isArray(savedDisclosures)
+          ) {
+            this.sidebarDisclosures = Object.fromEntries(
+              Object.entries(savedDisclosures).filter(([, open]) => typeof open === "boolean"),
+            );
           }
         } catch (_error) {
           // Local storage is optional.
@@ -157,6 +170,48 @@
         this.sidebarCollapsed = !this.sidebarCollapsed;
         try {
           localStorage.setItem("rowsetSidebarCollapsed", this.sidebarCollapsed.toString());
+        } catch (_error) {
+          // Local storage is optional.
+        }
+      },
+
+      syncSidebarDisclosure(element) {
+        const key = element?.dataset.sidebarDisclosureKey;
+        if (!key) {
+          return;
+        }
+        if (!Object.hasOwn(element.dataset, "sidebarDisclosureDefaultOpen")) {
+          element.dataset.sidebarDisclosureDefaultOpen = element.open.toString();
+        }
+        if (this.sidebarQuery) {
+          element.open = true;
+          return;
+        }
+        if (Object.hasOwn(this.sidebarDisclosures, key)) {
+          element.open = this.sidebarDisclosures[key];
+          return;
+        }
+        element.open = element.dataset.sidebarDisclosureDefaultOpen === "true";
+      },
+
+      rememberSidebarDisclosure(event) {
+        const element = event.currentTarget;
+        const key = element?.dataset.sidebarDisclosureKey;
+        if (!key || this.sidebarQuery) {
+          return;
+        }
+        if (
+          Object.hasOwn(this.sidebarDisclosures, key) &&
+          this.sidebarDisclosures[key] === element.open
+        ) {
+          return;
+        }
+        this.sidebarDisclosures[key] = element.open;
+        try {
+          localStorage.setItem(
+            "rowsetSidebarDisclosures",
+            JSON.stringify(this.sidebarDisclosures),
+          );
         } catch (_error) {
           // Local storage is optional.
         }

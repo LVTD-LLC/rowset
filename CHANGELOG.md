@@ -34,6 +34,8 @@ deployment or release cut date.
   boundaries, stable row identity guidance, and a direct-access-versus-work-layer comparison.
 
 ### Fixed
+- Preserved sidebar width, collapsed state, and expanded project or section groups across page
+  reloads in the authenticated app.
 - Restored permanent redirects for retired public content routes and normalized trailing-slash
   variants to their canonical URLs.
 

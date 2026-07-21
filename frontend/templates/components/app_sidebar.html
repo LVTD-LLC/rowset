@@ -31,7 +31,7 @@
       </div>
       <div class="mt-2 space-y-1">
         {% for project in app_navigation_projects %}
-          <details class="group relative" data-navigation-project="{{ project.name }}" data-search-text="{{ project.name }} {% for section in project.navigation_sections %}{{ section.name }} {% for dataset in section.navigation_datasets %}{{ dataset.name }} {% endfor %}{% endfor %}{% for dataset in project.navigation_unsectioned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" {% if project.navigation_is_current or forloop.first %}open{% endif %}>
+          <details class="group relative" data-navigation-project="{{ project.name }}" data-sidebar-disclosure-key="project:{{ project.key }}" data-search-text="{{ project.name }} {% for section in project.navigation_sections %}{{ section.name }} {% for dataset in section.navigation_datasets %}{{ dataset.name }} {% endfor %}{% endfor %}{% for dataset in project.navigation_unsectioned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="syncSidebarDisclosure($el)" @toggle="rememberSidebarDisclosure($event)" {% if project.navigation_is_current or forloop.first %}open{% endif %}>
             <summary class="fb-focus flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md py-0 pl-3 pr-12 text-base font-medium text-slate-700 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">
               <span class="shrink-0 text-slate-400 transition-transform group-open:rotate-90" aria-hidden="true">›</span>
               <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
@@ -46,7 +46,7 @@
             <div class="ml-4 border-l border-slate-950/10 pl-2 dark:border-white/10">
               <a href="{{ project.get_absolute_url }}" class="fb-focus flex min-h-10 items-center rounded-md px-3 text-base font-medium {% if request.path == project.get_absolute_url %}bg-slate-950/5 text-slate-950 dark:bg-white/10 dark:text-white{% else %}text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white{% endif %} sm:min-h-8 sm:text-sm">Project overview</a>
               {% for section in project.navigation_sections %}
-                <details class="group/section" data-navigation-section="{{ section.name }}" data-search-text="{{ project.name }} {{ section.name }} {% for dataset in section.navigation_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" {% if section.navigation_is_current or request.resolver_match.view_name == 'home' %}open{% endif %}>
+                <details class="group/section" data-navigation-section="{{ section.name }}" data-sidebar-disclosure-key="section:{{ section.key }}" data-search-text="{{ project.name }} {{ section.name }} {% for dataset in section.navigation_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="syncSidebarDisclosure($el)" @toggle="rememberSidebarDisclosure($event)" {% if section.navigation_is_current or request.resolver_match.view_name == 'home' %}open{% endif %}>
                   <summary class="fb-focus flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-base font-medium text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-8 sm:text-sm">
                     <span class="shrink-0 text-slate-400 transition-transform group-open/section:rotate-90" aria-hidden="true">›</span>
                     <span class="min-w-0 flex-1 truncate">{{ section.name }}</span>
@@ -62,7 +62,7 @@
                 </details>
               {% endfor %}
               {% if project.navigation_unsectioned_datasets %}
-                <details class="group/section" data-search-text="{{ project.name }} no section {% for dataset in project.navigation_unsectioned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" open>
+                <details class="group/section" data-sidebar-disclosure-key="project-no-section:{{ project.key }}" data-search-text="{{ project.name }} no section {% for dataset in project.navigation_unsectioned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="syncSidebarDisclosure($el)" @toggle="rememberSidebarDisclosure($event)" open>
                   <summary class="fb-focus flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-base font-medium text-slate-500 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-8 sm:text-sm">
                     <span class="shrink-0 text-slate-400 transition-transform group-open/section:rotate-90" aria-hidden="true">›</span>
                     <span class="min-w-0 flex-1 truncate">No section</span>
@@ -81,7 +81,7 @@
           <p class="px-3 py-2 text-base text-slate-400 sm:text-sm">No projects yet</p>
         {% endfor %}
         {% if app_navigation_unassigned_datasets %}
-          <details class="group" data-search-text="no project {% for dataset in app_navigation_unassigned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="if (sidebarQuery) $el.open = true" open>
+          <details class="group" data-sidebar-disclosure-key="unassigned-datasets" data-search-text="no project {% for dataset in app_navigation_unassigned_datasets %}{{ dataset.name }} {% endfor %}" x-show="matches($el.dataset.searchText)" x-effect="syncSidebarDisclosure($el)" @toggle="rememberSidebarDisclosure($event)" open>
             <summary class="fb-focus flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-base font-medium text-slate-700 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white sm:min-h-9 sm:text-sm">
               <span class="shrink-0 text-slate-400 transition-transform group-open:rotate-90" aria-hidden="true">›</span>
               <span class="min-w-0 flex-1 truncate">No project</span>

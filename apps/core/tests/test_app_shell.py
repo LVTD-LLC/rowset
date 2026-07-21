@@ -47,6 +47,9 @@ def test_authenticated_app_shell_renders_workspace_tree_and_utility_navigation(
     assert "data-sidebar-filter" in content
     assert 'aria-keyshortcuts="/"' in content
     assert "data-sidebar-resize-handle" in content
+    assert f'data-sidebar-disclosure-key="project:{project.key}"' in content
+    assert f'data-sidebar-disclosure-key="section:{section.key}"' in content
+    assert content.count('@toggle="rememberSidebarDisclosure($event)"') >= 4
     assert 'aria-label="Collapse sidebar"' in content
     assert 'aria-keyshortcuts="Meta+B Control+B"' in content
     assert "data-command-palette-trigger" in content
