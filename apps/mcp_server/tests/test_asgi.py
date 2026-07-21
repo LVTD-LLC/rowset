@@ -7,7 +7,7 @@ from starlette.testclient import TestClient
 
 from apps.api.services import DatasetServiceError
 from apps.core.choices import AgentApiKeyAccessLevel
-from apps.mcp_server.server import AGENT_API_KEY_PROFILE_ATTR, mcp
+from apps.mcp_server.server import AGENT_API_KEY_PROFILE_ATTR
 from rowset import asgi as asgi_module
 from rowset.asgi import application
 
@@ -71,13 +71,6 @@ IDEMPOTENT_MUTATION_TOOL_NAMES = {
 ADMIN_ONLY_TOOL_NAMES = {"create_agent_api_key"}
 
 
-def _mcp_logging_globals():
-    middleware = next(
-        item for item in mcp.middleware if item.__class__.__name__ == "RowsetMCPLoggingMiddleware"
-    )
-    return middleware.on_request.__func__.__globals__
-
-
 @pytest.fixture
 def profile():
     user = SimpleNamespace(
@@ -125,9 +118,8 @@ def authenticated_mcp(monkeypatch, profile):
         "apps.mcp_server.server.activate_or_require_trial_access",
         lambda _profile: None,
     )
-    monkeypatch.setitem(
-        _mcp_logging_globals(),
-        "mark_profile_setup_completed",
+    monkeypatch.setattr(
+        "rowset.mcp_logging.mark_profile_setup_completed",
         lambda _profile_id, **_kwargs: None,
     )
     return profile
@@ -553,34 +545,15 @@ def test_successful_mcp_requests_invoke_setup_completion(authenticated_mcp, monk
     def record_setup_completion(profile_id, **_kwargs):
         completed_profile_ids.append(profile_id)
 
-    monkeypatch.setitem(
-        _mcp_logging_globals(),
-        "mark_profile_setup_completed",
+    monkeypatch.setattr(
+        "rowset.mcp_logging.mark_profile_setup_completed",
         record_setup_completion,
     )
-    monkeypatch.setitem(
-        _mcp_logging_globals(),
-        "_bind_access_token_actor",
-        lambda: {
-            "profile_id": authenticated_mcp.id,
-            "agent_api_key_id": authenticated_mcp.agent_api_key.id,
-            "agent_api_key_access_level": authenticated_mcp.agent_api_key.access_level,
-        },
-    )
-
     with TestClient(application) as client:
         response = client.post(
             "/mcp/",
             headers=_authorization_headers(authenticated_mcp),
-            json=_mcp_request(
-                "initialize",
-                90,
-                {
-                    "protocolVersion": PROTOCOL_VERSION,
-                    "capabilities": {},
-                    "clientInfo": {"name": "rowset-test", "version": "0.1"},
-                },
-            ),
+            json=_mcp_request("tools/list", 90),
         )
 
     _assert_jsonrpc_result(response)
