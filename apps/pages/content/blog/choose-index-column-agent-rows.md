@@ -1,6 +1,5 @@
 ---
 title: How to choose an index column for agent-managed rows
-seo_title: Index Columns for Agent-Managed Rows
 description: Pick an index column agents can safely use to find, update, and link Rowset rows without guessing.
 published_at: 2026-07-05
 author: Rasul Kireev

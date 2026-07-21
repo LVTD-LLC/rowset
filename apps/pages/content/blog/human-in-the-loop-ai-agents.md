@@ -1,6 +1,5 @@
 ---
 title: "Human-in-the-Loop AI Agents: A Practical Workflow"
-seo_title: "Human-in-the-Loop AI Agent Workflow"
 description: Build a human-in-the-loop AI agent workflow with risk-based approval gates, structured decisions, explicit ownership, and verified outcomes.
 published_at: 2026-07-18
 updated_at: 2026-07-18

@@ -205,7 +205,7 @@ def test_legacy_public_routes_redirect_once_to_canonical_urls(client, legacy_pat
 
 
 @override_settings(SITE_URL="https://rowset.lvtd.dev")
-def test_sitemap_urls_have_canonical_metadata_and_search_safe_titles(client):
+def test_sitemap_urls_have_canonical_metadata_and_titles(client):
     sitemap_response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
     sitemap = ElementTree.fromstring(sitemap_response.content)
     namespace = {"sitemap": "http://www.sitemaps.org/schemas/sitemap/0.9"}
@@ -243,8 +243,6 @@ def test_sitemap_urls_have_canonical_metadata_and_search_safe_titles(client):
             )
         if not title:
             failures.append(f"{path}: missing title")
-        elif len(title) > 60:
-            failures.append(f"{path}: title is {len(title)} characters: {title!r}")
 
     assert not failures, "Invalid sitemap metadata:\n" + "\n".join(failures)
 

@@ -200,7 +200,7 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "<title>Agent-managed datasets · Rowset Blog</title>" in content
+    assert "<title>Agent-managed datasets · Rowset</title>" in content
     assert (
         '<meta name="description" content="How AI agents keep Rowset datasets current." />'
         in content
@@ -223,30 +223,6 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
     assert "Rowset dataset workflow" in content
     assert '"@type": "BlogPosting"' in content
     assert '"datePublished": "2026-07-03T00:00:00+00:00"' in content
-
-
-def test_blog_post_uses_optional_seo_title_without_changing_heading(client, blog_posts_dir):
-    write_post(
-        blog_posts_dir,
-        "agent-managed-datasets",
-        {
-            "title": "A deliberately descriptive article heading for human readers",
-            "seo_title": "Agent-Managed Dataset Guide",
-            "description": "How AI agents keep Rowset datasets current.",
-            "published_at": "2026-07-03",
-        },
-        "Agents need stable APIs for rows.",
-    )
-
-    response = client.get(reverse("blog_post", kwargs={"slug": "agent-managed-datasets"}))
-    content = response.content.decode()
-
-    assert "<title>Agent-Managed Dataset Guide · Rowset Blog</title>" in content
-    assert (
-        '<h1 class="mt-6 max-w-[20ch] font-display text-5xl font-semibold tracking-tight '
-        'text-balance sm:text-7xl">A deliberately descriptive article heading for human '
-        "readers</h1>"
-    ) in content
 
 
 def test_blog_post_markdown_is_self_describing_and_has_no_frontmatter(client, blog_posts_dir):

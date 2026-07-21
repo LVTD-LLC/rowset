@@ -1,6 +1,5 @@
 ---
 title: "AI agent memory vs structured state: what goes where?"
-seo_title: "AI Agent Memory vs Structured State"
 description: "Use memory for recall and structured state for current records an AI agent must inspect, update, and share without guessing."
 published_at: 2026-07-14
 author: Rasul Kireev

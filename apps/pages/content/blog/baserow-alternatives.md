@@ -1,6 +1,5 @@
 ---
 title: Best Baserow alternatives for AI-agent-managed datasets
-seo_title: Baserow Alternatives for AI Agent Data
 description: Compare Baserow, Rowset, Airtable, NocoDB, Grist, Supabase, and Google Sheets for agent-managed datasets.
 published_at: 2026-07-09
 author: Rasul Kireev

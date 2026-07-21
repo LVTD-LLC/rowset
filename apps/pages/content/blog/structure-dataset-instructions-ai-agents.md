@@ -1,6 +1,5 @@
 ---
 title: How to structure dataset instructions for AI agents
-seo_title: Dataset Instructions for AI Agents
 description: Write dataset instructions that help AI agents inspect context, update rows safely, and avoid guessing workflow rules.
 published_at: 2026-07-07
 author: Rasul Kireev

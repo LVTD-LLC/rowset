@@ -1,6 +1,5 @@
 ---
 title: Best Airtable alternatives for AI-agent-managed datasets
-seo_title: Airtable Alternatives for AI Agent Data
 description: Compare Airtable, Rowset, Baserow, NocoDB, Grist, Google Sheets, and Retool Database for agent-owned structured rows.
 published_at: 2026-07-05
 author: Rasul Kireev

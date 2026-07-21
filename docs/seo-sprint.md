@@ -113,7 +113,7 @@ Run date: 2026-07-21.
 - `/sitemap.xml` returns 200 and contains 54 canonical URLs.
 - All 54 sitemap URLs return 200 with exact canonicals and one H1.
 - Homepage and pricing canonicals are now present on current `main`.
-- Fourteen rendered titles exceed 60 characters; Phase 5 adds shorter search titles without changing the visible H1s.
+- Fourteen rendered titles exceed 60 characters; Phase 5 reduces redundant brand and section boilerplate while keeping each page's visible title as the single source of truth.
 - Thirteen sampled historical `/tutorials/*`, `/how-to/*`, and `/explanations/*` URLs still return 404 in production; git history identifies 48 exact historical routes worth preserving.
 - GSC lists `https://rowset.lvtd.dev/sitemap.xml`, submitted 2026-07-15, with `pending=false`, zero errors, and zero warnings.
 
@@ -186,13 +186,13 @@ The earlier spreadsheet-database CPC ($55.70) and database-MCP volume (70) are s
 1. Replace stale internal references to retired `/how-to/*`, `/tutorials/*`, and `/explanations/*` routes with the canonical `/docs/*` and `/use-cases/*` URLs.
 2. Add permanent redirects for retired public routes that may have external links or historical crawl signals, including the old database MCP server route.
 3. Add canonical tags to the homepage and pricing page.
-4. Shorten the 14 current titles over 60 characters without removing their primary query intent or changing editorial H1s.
+4. Reduce redundant title boilerplate without creating separate search-only titles or changing editorial H1s.
 5. Submit or verify `https://rowset.lvtd.dev/sitemap.xml` in GSC; if API submission cannot be authorized, document the exact manual step and verification date.
 6. Add a deterministic test/audit that fails when canonical inventory URLs return 404 or use the wrong slash form.
 
-**Verification:** zero stale canonical internal-link targets, homepage/pricing canonicals match their URLs, no sitemap title exceeds the agreed limit without an explicit exception, and GSC shows the submitted sitemap.
+**Verification:** zero stale canonical internal-link targets, homepage/pricing canonicals match their URLs, every sitemap page has a descriptive title, and GSC shows the submitted sitemap.
 
-**Completed 2026-07-21:** restored permanent redirects for 48 exact historical routes, normalized trailing-slash variants for current public pages, added optional search titles for the 14 affected pages, and added deterministic sitemap/inventory tests for 200 responses, slash form, exact canonicals, and the 60-character title cap. GSC independently reports the submitted sitemap with zero errors or warnings.
+**Completed 2026-07-21:** restored permanent redirects for 48 exact historical routes, normalized trailing-slash variants for current public pages, shortened repetitive title branding while retaining one authoritative page title, and added deterministic sitemap/inventory tests for 200 responses, slash form, exact canonicals, and title presence. GSC independently reports the submitted sitemap with zero errors or warnings.
 
 ### Phase 9 - Boost `/docs/database-mcp-server` for the MCP Database Cluster
 

@@ -1,6 +1,5 @@
 ---
 title: "AI Agent Audit Trail: What to Log and How to Build It"
-seo_title: "AI Agent Audit Trail: What to Log"
 description: Build an AI agent audit trail that connects runtime traces, approvals, state changes, outcomes, and privacy controls.
 published_at: 2026-07-19
 updated_at: 2026-07-19

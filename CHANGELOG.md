@@ -29,6 +29,11 @@ deployment or release cut date.
 ### Changed
 - Simplified self-hosting to one production Compose file and one concise guide using standard
   Docker Compose commands, inline Caddy configuration, and locally generated secrets.
+- Simplified public-page search titles to use the visible page title with concise Rowset branding.
+
+### Fixed
+- Restored permanent redirects for retired public content routes and normalized trailing-slash
+  variants to their canonical URLs.
 
 ### Removed
 - Removed the bespoke self-host installer and release bundle, preflight and doctor framework,

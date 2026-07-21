@@ -1,6 +1,5 @@
 ---
 title: "Rowset rowset_id vs business keys: which should agents use?"
-seo_title: "Rowset ID vs Business Keys for AI Agents"
 description: "Use a business key when the workflow already has a stable identifier; use Rowset's generated rowset_id when no natural key is safe."
 published_at: 2026-07-08
 author: Rasul Kireev
