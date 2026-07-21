@@ -44,6 +44,8 @@ deployment or release cut date.
 ### Removed
 - Removed the bespoke self-host installer and release bundle, preflight and doctor framework,
   deployment wrappers, sizing benchmarks, and custom backup/restore automation.
+- Removed the unused MCP-versus-CLI evaluation scaffold and its local CI step; it had no live
+  client adapters, accepted baseline, or product-level regression coverage.
 
 ## 2026-07-20
 
