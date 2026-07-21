@@ -200,7 +200,7 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "<title>Agent-managed datasets · Rowset Blog</title>" in content
+    assert "<title>Agent-managed datasets · Rowset</title>" in content
     assert (
         '<meta name="description" content="How AI agents keep Rowset datasets current." />'
         in content

@@ -7,6 +7,7 @@ from datetime import timedelta
 from html import unescape
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+from xml.etree import ElementTree
 
 import pytest
 from allauth.account.models import EmailAddress
@@ -34,6 +35,8 @@ from apps.pages.schema import (
     json_ld,
     use_case_item_list_schema,
 )
+from apps.pages.search import build_canonical_url
+from apps.pages.urls import LEGACY_PUBLIC_REDIRECTS
 
 pytestmark = pytest.mark.django_db
 
@@ -188,6 +191,80 @@ def test_checked_in_markdown_public_content_links_use_live_extensionless_routes(
 
     assert not retired_routes, "Retired trailing-slash public routes:\n" + "\n".join(retired_routes)
     assert not broken_routes, "Broken public content routes:\n" + "\n".join(broken_routes)
+
+
+@pytest.mark.parametrize(
+    ("legacy_path", "canonical_path"),
+    tuple(LEGACY_PUBLIC_REDIRECTS.items()),
+)
+def test_legacy_public_routes_redirect_once_to_canonical_urls(client, legacy_path, canonical_path):
+    response = client.get(f"/{legacy_path}?source=legacy")
+
+    assert response.status_code == 301
+    assert response.headers["Location"] == f"{canonical_path}?source=legacy"
+
+
+@override_settings(SITE_URL="https://rowset.lvtd.dev")
+def test_sitemap_urls_have_canonical_metadata_and_titles(client):
+    sitemap_response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
+    sitemap = ElementTree.fromstring(sitemap_response.content)
+    namespace = {"sitemap": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    urls = [element.text for element in sitemap.findall("sitemap:url/sitemap:loc", namespace)]
+    failures = []
+
+    for url in urls:
+        path = urlparse(url).path
+        response = client.get(path, secure=True, HTTP_HOST="testserver")
+        content = response.content.decode()
+        title_match = re.search(r"<title>(.*?)</title>", content, re.DOTALL)
+        canonical_match = re.search(r'<link rel="canonical" href="([^"]+)"', content)
+        title = unescape(title_match.group(1).strip()) if title_match else ""
+        canonical_url = canonical_match.group(1) if canonical_match else ""
+
+        if response.status_code != 200:
+            failures.append(f"{path}: returned {response.status_code}")
+        if path != "/" and path.endswith("/"):
+            failures.append(f"{path}: sitemap URL uses a trailing slash")
+        if path != "/":
+            slash_response = client.get(f"{path}/?source=slash")
+            expected_location = f"{path}?source=slash"
+            if (
+                slash_response.status_code != 301
+                or slash_response.headers.get("Location") != expected_location
+            ):
+                failures.append(
+                    f"{path}/: slash variant returned {slash_response.status_code} "
+                    f"to {slash_response.headers.get('Location')!r}"
+                )
+        expected_canonical_url = build_canonical_url(path)
+        if canonical_url != expected_canonical_url:
+            failures.append(
+                f"{path}: canonical is {canonical_url!r}, expected {expected_canonical_url!r}"
+            )
+        if not title:
+            failures.append(f"{path}: missing title")
+
+    assert not failures, "Invalid sitemap metadata:\n" + "\n".join(failures)
+
+
+@override_settings(SITE_URL="https://rowset.lvtd.dev")
+def test_seo_link_inventory_uses_live_canonical_routes(client):
+    inventory_path = Path(settings.BASE_DIR, ".seo/link-inventory.md")
+    active_inventory = inventory_path.read_text(encoding="utf-8").split(
+        "## Retired Route Redirects", maxsplit=1
+    )[0]
+    urls = sorted(set(re.findall(r"https://rowset\.lvtd\.dev(?:/[^\s|`)]+)?", active_inventory)))
+    failures = []
+
+    for url in urls:
+        path = urlparse(url).path or "/"
+        response = client.get(path, secure=True, HTTP_HOST="testserver")
+        if response.status_code != 200:
+            failures.append(f"{url}: returned {response.status_code}")
+        if path != "/" and path.endswith("/"):
+            failures.append(f"{url}: inventory URL uses a trailing slash")
+
+    assert not failures, "Invalid active SEO inventory routes:\n" + "\n".join(failures)
 
 
 @pytest.mark.parametrize(
@@ -1149,11 +1226,13 @@ def test_hosted_non_html_public_page_remains_indexable(client):
         "/vs/google-sheets",
     ),
 )
-def test_marketing_routes_are_extensionless(client, path):
+def test_marketing_routes_redirect_to_extensionless_canonical(client, path):
     response = client.get(f"{path}?utm_source=test")
+    slash_response = client.get(f"{path}/?utm_source=test")
 
     assert response.status_code == 200
-    assert client.get(f"{path}/").status_code == 404
+    assert slash_response.status_code == 301
+    assert slash_response.headers["Location"] == f"{path}?utm_source=test"
 
 
 def test_use_cases_page_links_public_use_case_pages(client):

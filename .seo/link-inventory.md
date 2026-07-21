@@ -1,6 +1,6 @@
 # Rowset - Internal Link Inventory
 
-> Every SEO sprint phase should pick links from this inventory and update it when a new page ships. URLs were reconciled against the production sitemap and live HTTP responses on 2026-07-15. Public HTML routes use canonical no-trailing-slash URLs.
+> Every SEO sprint phase should pick links from this inventory and update it when a new page ships. Active URLs were reconciled against the current 54-URL sitemap and local route rendering on 2026-07-21. Public HTML routes use canonical no-trailing-slash URLs.
 
 ## Existing Pages
 
@@ -102,9 +102,9 @@
 | MCP database cluster refresh | 9 | `/docs/database-mcp-server` | `/docs/connect-mcp`, `/docs/dataset-api`, `/blog/mcp-vs-rest-ai-agents` | MCP docs, Dataset API, agent access, pricing, relevant use cases |
 | Spreadsheet database decision guide | 10 | `/blog/spreadsheet-database-for-ai-agents` | Google Sheets alternatives, agent-managed datasets, Dataset API docs | spreadsheet alternatives, MCP docs, Dataset API, use cases |
 
-## Retired Routes Found in the July 15 Re-Audit
+## Retired Route Redirects
 
-These routes return 404 in production and must not be selected as internal-link targets. Phase 5 decides whether to add permanent redirects for external/backlink preservation.
+These route families remain retired and must not be selected as internal-link targets. Phase 5 restores permanent redirects from their exact historical URLs to preserve external links and crawl signals after deployment.
 
 | Retired route family | Canonical replacement |
 |---|---|
