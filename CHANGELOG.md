@@ -38,6 +38,8 @@ deployment or release cut date.
 ### Fixed
 - Preserved sidebar width, collapsed state, and expanded project or section groups across page
   reloads in the authenticated app.
+- Applied saved sidebar preferences before the first paint to prevent the default layout from
+  flashing during page loads.
 - Restored permanent redirects for retired public content routes and normalized trailing-slash
   variants to their canonical URLs.
 

@@ -21,15 +21,40 @@
     {% endblock social_image_meta %}
     {% include 'components/plausible.html' %}
     {% include 'components/posthog.html' %}
-    <script>
+    <script data-sidebar-preferences-bootstrap>
       (function () {
+        window.Rowset = window.Rowset || {};
+        var sidebarPreferences = {
+          collapsed: false,
+          disclosures: {},
+          width: 288,
+        };
         try {
           var theme = localStorage.getItem("theme");
           if (!theme) {
             theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
           }
           document.documentElement.classList.toggle("dark", theme === "dark");
+          sidebarPreferences.collapsed = localStorage.getItem("rowsetSidebarCollapsed") === "true";
+          var savedWidth = Number.parseInt(localStorage.getItem("rowsetSidebarWidth") || "", 10);
+          if (Number.isFinite(savedWidth)) {
+            sidebarPreferences.width = Math.min(480, Math.max(240, savedWidth));
+          }
+          var savedDisclosures = JSON.parse(localStorage.getItem("rowsetSidebarDisclosures") || "{}");
+          if (savedDisclosures && typeof savedDisclosures === "object" && !Array.isArray(savedDisclosures)) {
+            sidebarPreferences.disclosures = Object.fromEntries(
+              Object.entries(savedDisclosures).filter(function (entry) {
+                return typeof entry[1] === "boolean";
+              }),
+            );
+          }
         } catch (e) {}
+        window.Rowset.sidebarPreferences = sidebarPreferences;
+        document.documentElement.classList.toggle("rowset-sidebar-collapsed", sidebarPreferences.collapsed);
+        document.documentElement.style.setProperty(
+          "--app-sidebar-width",
+          (sidebarPreferences.collapsed ? 64 : sidebarPreferences.width) + "px",
+        );
       })();
     </script>
     <link rel="stylesheet" href="{% static 'css/index.css' %}">
@@ -54,7 +79,18 @@
       <div class="lg:grid lg:min-h-dvh lg:grid-cols-[var(--app-sidebar-width,18rem)_minmax(0,1fr)]" :style="shellStyle">
         <aside class="relative hidden h-dvh border-r border-slate-950/10 bg-slate-50/70 dark:border-white/10 dark:bg-slate-900/40 lg:sticky lg:top-0 lg:block">
           {% include 'components/app_sidebar.html' %}
-          <button type="button" data-sidebar-resize-handle class="absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none opacity-0 hover:opacity-100 focus-visible:opacity-100" aria-label="Resize sidebar" @pointerdown="startSidebarResize($event)" x-show="!sidebarCollapsed"><span class="mx-auto block h-full w-px bg-emerald-500/60" aria-hidden="true"></span></button>
+          <button type="button" data-sidebar-resize-handle data-sidebar-expanded-only class="absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none opacity-0 hover:opacity-100 focus-visible:opacity-100" aria-label="Resize sidebar" @pointerdown="startSidebarResize($event)" x-show="!sidebarCollapsed"><span class="mx-auto block h-full w-px bg-emerald-500/60" aria-hidden="true"></span></button>
+          <script data-sidebar-disclosures-bootstrap>
+            (function (sidebar) {
+              var disclosures = window.Rowset.sidebarPreferences.disclosures;
+              sidebar.querySelectorAll("[data-sidebar-disclosure-key]").forEach(function (element) {
+                var key = element.dataset.sidebarDisclosureKey;
+                if (Object.hasOwn(disclosures, key)) {
+                  element.open = disclosures[key];
+                }
+              });
+            })(document.currentScript.parentElement);
+          </script>
         </aside>
 
         <div class="min-w-0">
