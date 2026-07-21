@@ -50,6 +50,10 @@ def test_authenticated_app_shell_renders_workspace_tree_and_utility_navigation(
     assert f'data-sidebar-disclosure-key="project:{project.key}"' in content
     assert f'data-sidebar-disclosure-key="section:{section.key}"' in content
     assert content.count('@toggle="rememberSidebarDisclosure($event)"') >= 4
+    assert 'window.Rowset.sidebarPreferences = sidebarPreferences' in content
+    assert '"--app-sidebar-width"' in content
+    assert '"rowset-sidebar-collapsed"' in content
+    assert "document.currentScript.parentElement" in content
     assert 'aria-label="Collapse sidebar"' in content
     assert 'aria-keyshortcuts="Meta+B Control+B"' in content
     assert "data-command-palette-trigger" in content

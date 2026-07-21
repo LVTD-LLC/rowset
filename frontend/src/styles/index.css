@@ -23,6 +23,10 @@
     display: none !important;
   }
 
+  html.rowset-sidebar-collapsed [data-sidebar-expanded-only] {
+    display: none !important;
+  }
+
   h1,
   h2,
   h3 {
