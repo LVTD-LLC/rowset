@@ -131,6 +131,7 @@ SENTRY_MAX_BREADCRUMBS = env.int("SENTRY_MAX_BREADCRUMBS", default=100)
 POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
 POSTHOG_HOST = env("POSTHOG_HOST", default="https://us.i.posthog.com").rstrip("/")
 POSTHOG_BROWSER_HOST = (env("POSTHOG_BROWSER_HOST", default="") or POSTHOG_HOST).rstrip("/")
+POSTHOG_UI_HOST = env("POSTHOG_UI_HOST", default="https://us.posthog.com").rstrip("/")
 POSTHOG_LOGS_ENDPOINT = f"{POSTHOG_HOST}/i/v1/logs"
 POSTHOG_LOGS_ENABLED = env.bool(
     "POSTHOG_LOGS_ENABLED",

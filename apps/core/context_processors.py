@@ -150,6 +150,7 @@ def posthog_api_key(request):
         "posthog_content_surface": content_surface,
         "posthog_host": settings.POSTHOG_HOST,
         "posthog_browser_host": settings.POSTHOG_BROWSER_HOST,
+        "posthog_ui_host": settings.POSTHOG_UI_HOST,
         "posthog_distinct_id": "",
         "posthog_environment": settings.ENVIRONMENT,
         "posthog_pageview_enabled": bool(settings.POSTHOG_API_KEY and normalized_route),

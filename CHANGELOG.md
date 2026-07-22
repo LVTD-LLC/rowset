@@ -16,6 +16,12 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-22
+
+### Changed
+- Routed hosted browser analytics through Rowset's first-party PostHog proxy while keeping
+  SDK-generated links pointed at the PostHog app and server telemetry on its regional endpoint.
+
 ## 2026-07-21
 
 ### Added

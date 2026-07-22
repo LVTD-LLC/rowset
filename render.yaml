@@ -138,6 +138,13 @@ envVarGroups:
       - key: ALLOW_SIGNUPS
         value: "True"
 
+      # Route browser analytics through Rowset's first-party PostHog proxy.
+      # Server capture and logs continue to use POSTHOG_HOST from the private env group.
+      - key: POSTHOG_BROWSER_HOST
+        value: https://t.lvtd.dev
+      - key: POSTHOG_UI_HOST
+        value: https://us.posthog.com
+
       # Optional private dataset image asset storage. Leave endpoint blank to use local disk.
       # Cloudflare R2 uses an S3-compatible endpoint and `auto` region.
       - key: ROWSET_ASSET_S3_ENDPOINT_URL
