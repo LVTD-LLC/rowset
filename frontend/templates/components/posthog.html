@@ -67,6 +67,7 @@
       api_host: "{{ posthog_browser_host|escapejs }}",
       autocapture: false,
       before_send: window.Rowset.sanitizePosthogEvent,
+      capture_pageleave: true,
       capture_pageview: false,
       defaults: "2026-05-30",
       person_profiles: "identified_only",

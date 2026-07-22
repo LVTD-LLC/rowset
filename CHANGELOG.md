@@ -22,6 +22,10 @@ deployment or release cut date.
 - Added a spreadsheet-database decision guide for AI-agent workflows, with a six-question
   handoff test covering operator, row identity, schema, relationships, write access, and recovery.
 
+### Fixed
+- Enabled consent-aware PostHog page-leave capture alongside Rowset's privacy-safe manual
+  pageviews so session duration and bounce reporting receive the required leave events.
+
 ## 2026-07-21
 
 ### Added

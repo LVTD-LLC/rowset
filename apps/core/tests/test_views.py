@@ -530,7 +530,7 @@ class TestHomeView:
         assert "Created an API key for Codex." in content
 
     @override_settings(POSTHOG_API_KEY="phc_test")
-    def test_posthog_snippet_tracks_activation_events_without_pageviews(
+    def test_posthog_snippet_tracks_activation_events_without_automatic_pageviews(
         self,
         auth_client,
         profile,
@@ -540,6 +540,7 @@ class TestHomeView:
         content = response.content.decode()
         assert 'posthog.init("phc_test"' in content
         assert "autocapture: false" in content
+        assert "capture_pageleave: true" in content
         assert "capture_pageview: false" in content
         assert "before_send: window.Rowset.sanitizePosthogEvent" in content
         assert 'defaults: "2026-05-30"' in content
