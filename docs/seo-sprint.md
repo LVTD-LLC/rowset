@@ -38,7 +38,7 @@ The plan changed materially since the July 4 initialization:
 | 7 | Ship `/blog/nocodb-alternatives` | Blog alternatives | completed | #239 |
 | 8 | Ship `/blog/connect-ai-agent-to-dataset-api` | Product guide | completed | #244 |
 | 9 | Retarget `/docs/database-mcp-server` around the `mcp database` cluster | Existing-page boost | completed | #343 |
-| 10 | Ship `/blog/spreadsheet-database-for-ai-agents` | Decision guide | pending | - |
+| 10 | Ship `/blog/spreadsheet-database-for-ai-agents` | Decision guide | completed | #349 |
 | 11 | Build the off-page starter target list and submission backlog | Off-page | pending | - |
 | 12 | Ship `/vs/airtable` when a sales/use-case trigger exists | Compare | completed | #277 |
 | 13 | Review the fresh idempotency and agent-memory posts after 30 days of GSC data | Observation gate | pending | not before 2026-08-14 |
@@ -221,6 +221,13 @@ inbound links from MCP setup, Dataset API, and MCP-vs-REST content.
 **Scope:** write a decision guide covering spreadsheet, spreadsheet-database, and agent-dataset-backend choices. Include `use a spreadsheet database if...` and `use Rowset if...` sections.
 
 **Quality gate:** at least 1,800 useful words, current source links, `BlogPosting` schema, links from Google Sheets alternatives and agent-managed datasets, and links out to MCP/Dataset API/use-case pages.
+
+**Completed 2026-07-22:** published a three-surface decision guide covering ordinary
+spreadsheets, relational spreadsheet-databases, and agent dataset backends. The guide
+adds a six-question agent handoff test for operator, identity, schema, relationships,
+write access, and recovery; cites current Google Sheets, Airtable, Grist, and Rowset
+primary sources; and adds inbound links from the Google Sheets alternatives and
+agent-managed dataset guides.
 
 ### Phase 11 - Off-Page Starter Target List
 

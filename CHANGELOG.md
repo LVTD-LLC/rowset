@@ -16,6 +16,12 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-22
+
+### Added
+- Added a spreadsheet-database decision guide for AI-agent workflows, with a six-question
+  handoff test covering operator, row identity, schema, relationships, write access, and recovery.
+
 ## 2026-07-21
 
 ### Added
