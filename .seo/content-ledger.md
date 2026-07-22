@@ -28,7 +28,7 @@
 | 2026-07-19 | AI Agent Audit Trail: What to Log and How to Build It | implementation / decision guide | `/blog/ai-agent-audit-trail` | AI agent audit trail | 40 | n/a | MCP access, Dataset API, row operations, HITL, idempotency, safe sharing, dataset instructions, pricing | #316 |
 | 2026-07-20 | How to Choose a Database for AI Agents | decision guide | `/blog/database-for-ai-agents` | database for AI agents | 10 | 7 | memory vs state, agent-managed datasets, audit trail, quickstart, MCP, Dataset API, pricing | #328 |
 | 2026-07-21 | AI for Data Cleaning: A Safe Agent Workflow | how-to / operational guide | `/blog/ai-data-cleaning-agent` | AI for data cleaning | 50 | 0 | schema design, row operations, Dataset API, MCP, index guide, idempotency, HITL, audit trail, pricing | #334 |
-| 2026-07-22 | Spreadsheet Database for AI Agents: What to Use | comparison / decision guide | `/blog/spreadsheet-database-for-ai-agents` | spreadsheet database | 170 | 22 | Google Sheets alternatives, agent-managed datasets, schema design, MCP, Dataset API, content pipeline, pricing | PR TBD |
+| 2026-07-22 | Spreadsheet Database for AI Agents: What to Use | comparison / decision guide | `/blog/spreadsheet-database-for-ai-agents` | spreadsheet database | 170 | 22 | Google Sheets alternatives, agent-managed datasets, schema design, MCP, Dataset API, content pipeline, pricing | #349 |
 
 ---
 
