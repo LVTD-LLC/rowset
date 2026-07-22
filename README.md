@@ -737,7 +737,6 @@ make manage backfill_dataset_vectors --all --stop-on-error
 | `POSTHOG_API_KEY` | PostHog `phc_` project token for analytics and log ingestion. |
 | `POSTHOG_HOST` | PostHog regional ingestion host. Defaults to the US host. |
 | `POSTHOG_BROWSER_HOST` | First-party PostHog reverse-proxy URL for browser analytics; defaults to `POSTHOG_HOST`. |
-| `POSTHOG_UI_HOST` | PostHog app host used for SDK-generated links when browser analytics uses a proxy. |
 | `POSTHOG_LOGS_ENABLED` | Enables batched OTLP log export; production defaults on when a token exists. |
 | `POSTHOG_LOG_LEVEL` | Minimum level exported to PostHog. Defaults to `INFO`. |
 | `POSTHOG_SERVICE_NAME` | Optional OTel service-name override for PostHog facets. |

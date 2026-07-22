@@ -65,7 +65,7 @@
     })(document, window.posthog || []);
     posthog.init("{{ posthog_api_key|escapejs }}", {
       api_host: "{{ posthog_browser_host|escapejs }}",
-      ui_host: "{{ posthog_ui_host|escapejs }}",
+      ui_host: "https://us.posthog.com",
       autocapture: false,
       before_send: window.Rowset.sanitizePosthogEvent,
       capture_pageview: false,

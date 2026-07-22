@@ -532,7 +532,6 @@ class TestHomeView:
     @override_settings(
         POSTHOG_API_KEY="phc_test",
         POSTHOG_BROWSER_HOST="https://t.lvtd.dev",
-        POSTHOG_UI_HOST="https://us.posthog.com",
     )
     def test_posthog_snippet_tracks_activation_events_without_pageviews(
         self,
