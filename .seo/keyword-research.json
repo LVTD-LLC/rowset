@@ -236,10 +236,10 @@
     {
       "cluster": "spreadsheet database",
       "target_url": "/blog/spreadsheet-database-for-ai-agents",
-      "status": "new_content",
+      "status": "shipped",
       "priority": 3,
       "signals": {"primary_volume": 170, "primary_kd": 22, "primary_cpc": 14.12},
-      "notes": "Viable after technical recovery and MCP database refresh. Keep an explicit use-a-spreadsheet-if honesty section."
+      "notes": "Shipped 2026-07-22 as /blog/spreadsheet-database-for-ai-agents with a six-question agent handoff test and explicit spreadsheet, spreadsheet-database, and Rowset honesty sections."
     },
     {
       "cluster": "agentic database",

@@ -31,6 +31,11 @@ developer. An agent-managed dataset is designed for delegated work: the agent
 needs to understand the shape of the data, follow instructions, write changes,
 and leave a reviewable trail.
 
+If you are choosing among those surfaces, use the [spreadsheet database for AI
+agents decision guide](/blog/spreadsheet-database-for-ai-agents). It compares a
+human spreadsheet, a relational spreadsheet-database, and an agent dataset
+backend by operator, identity, schema, relationships, access, and recovery.
+
 ## The short definition
 
 An agent-managed dataset is a private, structured row store where an AI agent has

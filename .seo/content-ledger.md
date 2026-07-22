@@ -28,6 +28,7 @@
 | 2026-07-19 | AI Agent Audit Trail: What to Log and How to Build It | implementation / decision guide | `/blog/ai-agent-audit-trail` | AI agent audit trail | 40 | n/a | MCP access, Dataset API, row operations, HITL, idempotency, safe sharing, dataset instructions, pricing | #316 |
 | 2026-07-20 | How to Choose a Database for AI Agents | decision guide | `/blog/database-for-ai-agents` | database for AI agents | 10 | 7 | memory vs state, agent-managed datasets, audit trail, quickstart, MCP, Dataset API, pricing | #328 |
 | 2026-07-21 | AI for Data Cleaning: A Safe Agent Workflow | how-to / operational guide | `/blog/ai-data-cleaning-agent` | AI for data cleaning | 50 | 0 | schema design, row operations, Dataset API, MCP, index guide, idempotency, HITL, audit trail, pricing | #334 |
+| 2026-07-22 | Spreadsheet Database for AI Agents: What to Use | comparison / decision guide | `/blog/spreadsheet-database-for-ai-agents` | spreadsheet database | 170 | 22 | Google Sheets alternatives, agent-managed datasets, schema design, MCP, Dataset API, content pipeline, pricing | PR TBD |
 
 ---
 
@@ -38,7 +39,7 @@
 | 1 | AI agent memory vs structured state | comparison/decision guide | AI agent memory vs state | unmeasured | n/a | architecture/decision | shipped | Shipped 2026-07-14 as `/blog/ai-agent-memory-vs-state`. |
 | 2 | How to make AI-agent data updates idempotent | how-to | AI agent idempotent operations | unmeasured | n/a | operational/setup | shipped | Shipped 2026-07-15 as `/blog/idempotent-ai-agent-updates`. |
 | 3 | How to share agent-managed datasets safely | decision guide | share AI agent data | unmeasured | n/a | security/decision | shipped | Shipped 2026-07-16 as `/blog/share-ai-agent-data-safely`. |
-| 4 | spreadsheet database for AI agents | explanation | spreadsheet database | 170 | 20 | informational | 15 | Reserved for the sprint-owned explanation page; do not duplicate as a blog post. |
+| 4 | spreadsheet database for AI agents | comparison / decision guide | spreadsheet database | 170 | 22 | transactional / educational | shipped | Shipped 2026-07-22 as `/blog/spreadsheet-database-for-ai-agents`; differentiated with a six-question agent handoff test. |
 | 5 | Human-in-the-loop AI agents | how-to / operational decision guide | human in the loop AI agents | 70 | 11 | informational / implementation | shipped | Shipped 2026-07-18 as `/blog/human-in-the-loop-ai-agents`. |
 | 6 | AI agent audit trail | implementation guide | AI audit trail | 40 | n/a | commercial / implementation | shipped | Shipped 2026-07-19 as `/blog/ai-agent-audit-trail`. |
 | 7 | Database for AI agents | decision guide | database for AI agents | 10 | 7 | commercial | shipped | Shipped 2026-07-20 as `/blog/database-for-ai-agents`; differentiated with a six-contract storage decision framework. |
@@ -53,7 +54,7 @@
 |---|---|---|
 | Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates`, `/blog/share-ai-agent-data-safely`, `/blog/human-in-the-loop-ai-agents`, `/blog/ai-agent-audit-trail`, `/blog/database-for-ai-agents`, `/blog/ai-data-cleaning-agent` | Generated-index migration patterns |
 | MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents`, `/blog/connect-ai-agent-to-dataset-api`, `/blog/relationship-modeling-agent-datasets` | REST/MCP setup examples with concrete datasets |
-| Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives`, `/vs/airtable`, `/vs/google-sheets` | Spreadsheet database explanation |
+| Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives`, `/blog/spreadsheet-database-for-ai-agents`, `/vs/airtable`, `/vs/google-sheets` | Migration examples for specific human-to-agent workflows |
 
 ---
 
