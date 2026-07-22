@@ -83,6 +83,7 @@
 | `/blog/ai-agent-audit-trail` | https://rowset.lvtd.dev/blog/ai-agent-audit-trail | AI Agent Audit Trail: What to Log and How to Build It | AI agent audit trail, AI agent audit logs, trace decision and change evidence, agent tool-call logging, agent auditability guide |
 | `/blog/database-for-ai-agents` | https://rowset.lvtd.dev/blog/database-for-ai-agents | How to Choose a Database for AI Agents | database for AI agents, AI agent database, agent storage decision guide, database for agent state, agent data architecture |
 | `/blog/ai-data-cleaning-agent` | https://rowset.lvtd.dev/blog/ai-data-cleaning-agent | AI for Data Cleaning: A Safe Agent Workflow | AI for data cleaning, AI data-cleaning workflow, clean data with an AI agent, reversible agent-led cleanup, source proposal approval publish loop |
+| `/blog/spreadsheet-database-for-ai-agents` | https://rowset.lvtd.dev/blog/spreadsheet-database-for-ai-agents | Spreadsheet Database for AI Agents: What to Use | spreadsheet database for AI agents, spreadsheet-database decision guide, agent handoff test, spreadsheet vs agent dataset, relational spreadsheet for agent workflows |
 
 ## Shipped SEO Sprint Pages
 
@@ -95,12 +96,12 @@
 | `mcp-database` | Phase 9 | `/docs/database-mcp-server` | MCP setup, Dataset API, MCP-vs-REST guide | MCP docs, Dataset API, agent access, pricing, relevant use cases |
 | `rowset-vs-airtable` | Phase 12 | `/vs/airtable` | shared footer, Airtable alternatives, agent-managed datasets | Airtable alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide |
 | `rowset-vs-google-sheets` | Phase 14 | `/vs/google-sheets` | shared footer, Google Sheets alternatives, agent-managed datasets | Google Sheets alternatives, pricing, MCP docs, Dataset API, public previews, index-column guide |
+| `spreadsheet-database-for-ai-agents` | Phase 10 | `/blog/spreadsheet-database-for-ai-agents` | Google Sheets alternatives, agent-managed datasets | schema design, MCP docs, Dataset API, row operations, content pipeline, pricing |
 
 ## Pending SEO Sprint Targets
 
-| Target | Phase | Proposed URL | Required inbound links | Required outbound links |
-|---|---:|---|---|---|
-| Spreadsheet database decision guide | 10 | `/blog/spreadsheet-database-for-ai-agents` | Google Sheets alternatives, agent-managed datasets, Dataset API docs | spreadsheet alternatives, MCP docs, Dataset API, use cases |
+No content targets are currently pending. Phase 11 is an off-page research phase, and Phase 13 is
+an observation gate that does not open before 2026-08-14.
 
 ## Retired Route Redirects
 
@@ -176,3 +177,8 @@ These route families remain retired and must not be selected as internal-link ta
 - clean data with an AI agent
 - reversible agent-led cleanup
 - source proposal approval publish loop
+- spreadsheet database for AI agents
+- spreadsheet-database decision guide
+- agent handoff test
+- spreadsheet vs agent dataset
+- relational spreadsheet for agent workflows

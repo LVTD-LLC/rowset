@@ -18,6 +18,10 @@ deployment or release cut date.
 
 ## 2026-07-22
 
+### Added
+- Added a spreadsheet-database decision guide for AI-agent workflows, with a six-question
+  handoff test covering operator, row identity, schema, relationships, write access, and recovery.
+
 ### Changed
 - Routed hosted browser analytics through Rowset's first-party PostHog proxy while keeping
   SDK-generated links pointed at the PostHog app and server telemetry on its regional endpoint.
@@ -44,12 +48,16 @@ deployment or release cut date.
 ### Fixed
 - Preserved sidebar width, collapsed state, and expanded project or section groups across page
   reloads in the authenticated app.
+- Applied saved sidebar preferences before the first paint to prevent the default layout from
+  flashing during page loads.
 - Restored permanent redirects for retired public content routes and normalized trailing-slash
   variants to their canonical URLs.
 
 ### Removed
 - Removed the bespoke self-host installer and release bundle, preflight and doctor framework,
   deployment wrappers, sizing benchmarks, and custom backup/restore automation.
+- Removed the unused MCP-versus-CLI evaluation scaffold and its local CI step; it had no live
+  client adapters, accepted baseline, or product-level regression coverage.
 
 ## 2026-07-20
 

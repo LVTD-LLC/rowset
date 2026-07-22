@@ -53,6 +53,11 @@ Short version: choose Google Sheets when the spreadsheet belongs to people.
 Choose Rowset when the working dataset belongs to trusted agents and humans only
 need ownership, review, exports, or occasional dashboard access.
 
+For the architecture behind that choice, read [Spreadsheet Database for AI
+Agents: What to Use](/blog/spreadsheet-database-for-ai-agents). Its six-question
+handoff test covers the primary operator, stable identity, schema, relationships,
+write access, and recovery before you select a product.
+
 ## Why Google Sheets alternatives changed in 2026
 
 Google Sheets is excellent for fast human collaboration. A person can create a

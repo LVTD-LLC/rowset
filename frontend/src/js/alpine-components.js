@@ -145,6 +145,10 @@
         } catch (_error) {
           // Local storage is optional.
         }
+        document.documentElement.classList.toggle(
+          "rowset-sidebar-collapsed",
+          this.sidebarCollapsed,
+        );
       },
 
       get themeToggleLabel() {
@@ -168,6 +172,10 @@
 
       toggleSidebar() {
         this.sidebarCollapsed = !this.sidebarCollapsed;
+        document.documentElement.classList.toggle(
+          "rowset-sidebar-collapsed",
+          this.sidebarCollapsed,
+        );
         try {
           localStorage.setItem("rowsetSidebarCollapsed", this.sidebarCollapsed.toString());
         } catch (_error) {
