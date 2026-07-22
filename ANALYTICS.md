@@ -117,11 +117,13 @@ humanity.
 ## Attribution and consent
 
 Browser capture is opted out by default. A visitor must choose **Allow analytics** before Rowset
-captures a pageview or CTA. Consent is stored for one year. Declining removes Rowset's attribution
-cookie. Only `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `campaign_id`,
-the normalized landing route, referring domain, and the external referrer origin are retained.
-Referrer paths and query strings are discarded. Click IDs such as `gclid` and `fbclid` are
-intentionally excluded.
+captures a pageview, page-leave event, or CTA. Page-leave capture remains enabled while automatic
+pageview and DOM autocapture stay disabled, so PostHog can calculate consented session duration
+without collecting element interactions. Consent is stored for one year. Declining removes
+Rowset's attribution cookie. Only `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`,
+`utm_term`, `campaign_id`, the normalized landing route, referring domain, and the external
+referrer origin are retained. Referrer paths and query strings are discarded. Click IDs such as
+`gclid` and `fbclid` are intentionally excluded.
 
 After identification, the sanitized first and latest touch are synchronized to the PostHog person
 as `first_touch_*` and `current_touch_*` properties. The first touch is set once; a later tagged

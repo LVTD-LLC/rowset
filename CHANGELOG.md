@@ -26,6 +26,10 @@ deployment or release cut date.
 - Routed hosted browser analytics through Rowset's first-party PostHog proxy while keeping
   SDK-generated links pointed at the PostHog app and server telemetry on its regional endpoint.
 
+### Fixed
+- Enabled consent-aware PostHog page-leave capture alongside Rowset's privacy-safe manual
+  pageviews so session duration and bounce reporting receive the required leave events.
+
 ## 2026-07-21
 
 ### Added

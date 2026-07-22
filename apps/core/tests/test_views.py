@@ -533,7 +533,7 @@ class TestHomeView:
         POSTHOG_API_KEY="phc_test",
         POSTHOG_BROWSER_HOST="https://t.lvtd.dev",
     )
-    def test_posthog_snippet_tracks_activation_events_without_pageviews(
+    def test_posthog_snippet_tracks_activation_events_without_automatic_pageviews(
         self,
         auth_client,
         profile,
@@ -545,6 +545,7 @@ class TestHomeView:
         assert 'api_host: "https://t.lvtd.dev"' in content
         assert 'ui_host: "https://us.posthog.com"' in content
         assert "autocapture: false" in content
+        assert "capture_pageleave: true" in content
         assert "capture_pageview: false" in content
         assert "before_send: window.Rowset.sanitizePosthogEvent" in content
         assert 'defaults: "2026-05-30"' in content
