@@ -139,6 +139,8 @@ equivalents, so campaign reporting does not depend on a browser event arriving a
 - Send browser and backend events to the same project.
 - Set `POSTHOG_BROWSER_HOST` to a first-party reverse proxy in production. It must forward PostHog
   ingestion and static asset paths without caching ingestion responses.
+- Keep the browser SDK's `ui_host` on the US PostHog app so generated links do not point at the
+  ingestion proxy.
 - Keep `POSTHOG_HOST` on the regional PostHog ingestion endpoint for server capture and logs.
 - Exclude `environment != prod`, staff traffic, and known office/VPN traffic in PostHog project
   filters before using dashboards for marketing decisions.

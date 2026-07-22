@@ -529,7 +529,10 @@ class TestHomeView:
         assert "Copy setup prompt" in content
         assert "Created an API key for Codex." in content
 
-    @override_settings(POSTHOG_API_KEY="phc_test")
+    @override_settings(
+        POSTHOG_API_KEY="phc_test",
+        POSTHOG_BROWSER_HOST="https://t.lvtd.dev",
+    )
     def test_posthog_snippet_tracks_activation_events_without_automatic_pageviews(
         self,
         auth_client,
@@ -539,6 +542,8 @@ class TestHomeView:
 
         content = response.content.decode()
         assert 'posthog.init("phc_test"' in content
+        assert 'api_host: "https://t.lvtd.dev"' in content
+        assert 'ui_host: "https://us.posthog.com"' in content
         assert "autocapture: false" in content
         assert "capture_pageleave: true" in content
         assert "capture_pageview: false" in content
