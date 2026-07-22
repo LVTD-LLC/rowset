@@ -322,4 +322,3 @@ Only when the task genuinely needs that database and the operator can bound cred
 cost, schema changes, and destructive actions. For a new agent-owned task queue, catalog, CRM, or
 review workflow, a separate dataset layer can be safer and easier to inspect than broad production
 database access.
-
