@@ -45,8 +45,8 @@ update safely.
 The article introduces and fully implements the **contact -> interaction ->
 commitment loop**: three linked datasets that separate current identity,
 append-only evidence, and future obligations. The pattern includes stable keys,
-relationship checks, retry behavior, send authority, and deterministic
-reconciliation.
+relationship checks, explicit index-matching for generated `rowset_id`, resumable
+partial-write behavior, send authority, and deterministic reconciliation.
 
 ## Entity and topical map
 
@@ -72,6 +72,7 @@ reconciliation.
 | Rowset datasets support explicit index columns, semantic column types, descriptions, instructions, and metadata. | `apps/pages/content/docs/design-schema.md`; `apps/pages/content/docs/create-datasets.md` | primary, current repo 2026-07-23 | verified |
 | `get_dataset` returns current dataset context before row operations. | `apps/pages/content/docs/mcp-tools.md`; `apps/pages/content/docs/work-with-rows.md` | primary, current repo 2026-07-23 | verified |
 | Rowset relationships can enforce that non-blank source values match a target dataset index. | `apps/pages/content/docs/link-datasets.md`; service behavior documented in repo | primary, current repo 2026-07-23 | verified |
+| Cross-dataset row writes commit independently rather than as one atomic transaction. | Rowset MCP/REST row-operation behavior and service boundaries in the current repo | primary, current repo 2026-07-23 | verified |
 | Rowset agent keys have read, read-and-write, and admin permission levels. | `apps/pages/content/docs/configure-agent-access.md`; `apps/pages/content/docs/mcp-tools.md` | primary, current repo 2026-07-23 | verified |
 | Rowset public previews are optional, read-only, and not private agent authentication. | `AGENTS.md`; `apps/pages/content/docs/share-public-previews.md` | primary, current repo 2026-07-23 | verified |
 | Rowset records recent dataset mutations but does not claim immutable audit logging or rollback. | `apps/pages/content/blog/ai-agent-audit-trail.md`; current product docs | primary, current repo 2026-07-23 | verified |

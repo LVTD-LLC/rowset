@@ -98,7 +98,10 @@ describes the current permission levels and bearer-token handling.
 The `people` dataset holds current, bounded facts about each person. Do not index it by a mutable
 display name. Use an upstream `person_id` when one exists. Email can work for a small personal CRM,
 but it becomes awkward when a person changes employers or uses several addresses. If no durable
-business key exists, let Rowset create `rowset_id` and store emails as attributes.
+business key exists, either assign a durable `person_id` once or let Rowset create `rowset_id`.
+This guide uses `person_id` as the explicit index. If you choose generated `rowset_id`, name the
+foreign-key column in the other datasets `person_rowset_id`, store the returned index value there,
+and target `people.rowset_id` when creating relationships.
 
 A useful first schema is:
 
@@ -147,6 +150,7 @@ Use an `interaction_id` index and include:
 | `summary` | Short factual summary |
 | `sentiment` | Optional bounded classification, not a fact |
 | `recorded_by` | Agent, person, or import process |
+| `ingest_run_id` | Run that created the interaction, for partial-run recovery |
 
 Keep the original message in its source system when possible. A CRM summary should capture the
 facts needed for relationship work without copying every sensitive payload into a second system.
@@ -179,6 +183,7 @@ Create a `commitments` dataset indexed by `commitment_id`:
 | `blocked_reason` | text | Required while blocked |
 | `completed_at` | datetime | Evidence of completion time |
 | `evidence_ref` | text | Link or ID proving the outcome |
+| `ingest_run_id` | text | Run that created the commitment |
 
 Add relationships from commitments to both people and interactions. The result is queryable in
 both directions: “What do we owe this person?” and “Which interaction created this promise?”
@@ -217,7 +222,7 @@ schema remembered from an earlier session.
 <a id="run-and-verify"></a>
 ## 6. Run the contact -> interaction -> commitment loop
 
-For every new meeting or message, use one bounded transaction plan:
+For every new meeting or message, use one resumable workflow:
 
 1. Resolve the person by `person_id` or another exact approved key.
 2. If no exact person exists, propose a new person row rather than guessing a merge.
@@ -226,6 +231,12 @@ For every new meeting or message, use one bounded transaction plan:
 5. Create one commitment row per distinct outcome.
 6. Update the person's convenience fields, such as `last_interaction_at`.
 7. Read the changed rows back and confirm their absolute values.
+
+These writes are not one atomic cross-dataset transaction. Assign the interaction ID, commitment
+IDs, and an `ingest_run_id` before the first write. Before each create, read by index; if that row
+already exists, compare it with the intended value and continue from the first missing step. If a
+later write fails, keep the earlier evidence rows, report the incomplete run, and resume with the
+same IDs. Do not delete or rewrite earlier rows to make the run appear complete.
 
 Use absolute desired state for retries. “Set commitment `COM-1042` to `done` with this evidence
 reference” is safer than “complete the latest task.” If a write times out, read the row by index
