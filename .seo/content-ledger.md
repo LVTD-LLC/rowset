@@ -29,6 +29,7 @@
 | 2026-07-20 | How to Choose a Database for AI Agents | decision guide | `/blog/database-for-ai-agents` | database for AI agents | 10 | 7 | memory vs state, agent-managed datasets, audit trail, quickstart, MCP, Dataset API, pricing | #328 |
 | 2026-07-21 | AI for Data Cleaning: A Safe Agent Workflow | how-to / operational guide | `/blog/ai-data-cleaning-agent` | AI for data cleaning | 50 | 0 | schema design, row operations, Dataset API, MCP, index guide, idempotency, HITL, audit trail, pricing | #334 |
 | 2026-07-22 | Spreadsheet Database for AI Agents: What to Use | comparison / decision guide | `/blog/spreadsheet-database-for-ai-agents` | spreadsheet database | 170 | 22 | Google Sheets alternatives, agent-managed datasets, schema design, MCP, Dataset API, content pipeline, pricing | #349 |
+| 2026-07-23 | AI Agent CRM: How to Build One with Structured Datasets | how-to / operational guide | `/blog/ai-agent-crm` | AI agent CRM | 30 | 3 | personal CRM, agent access, schema design, relationships, MCP, idempotency, audit trail, pricing | #352 |
 
 ---
 
@@ -44,7 +45,9 @@
 | 6 | AI agent audit trail | implementation guide | AI audit trail | 40 | n/a | commercial / implementation | shipped | Shipped 2026-07-19 as `/blog/ai-agent-audit-trail`. |
 | 7 | Database for AI agents | decision guide | database for AI agents | 10 | 7 | commercial | shipped | Shipped 2026-07-20 as `/blog/database-for-ai-agents`; differentiated with a six-contract storage decision framework. |
 | 8 | How to clean data with an AI agent safely | how-to / operational guide | AI for data cleaning | 50 | 0 | commercial / informational | shipped | Shipped 2026-07-21 as `/blog/ai-data-cleaning-agent`; differentiated with a source -> proposal -> approval -> publish loop. |
-| 9 | Agentic database for operational agent state | decision guide | agentic database | 70 | 10 | informational / commercial | 15 | Defer: authority-heavy SERP and material overlap with `/blog/database-for-ai-agents`. |
+| 9 | How to build an AI agent CRM | how-to / operational guide | AI agent CRM | 30 | 3 | commercial / implementation | shipped (20) | Shipped 2026-07-23 as `/blog/ai-agent-crm`; differentiated with the contact -> interaction -> commitment loop. |
+| 10 | How to build an AI agent task board | how-to / operational guide | AI agent task management | unmeasured | n/a | commercial / implementation | 17 | Research later: strong Rowset product fit and a live implementation-shaped SERP, but validate volume/KD and separate it clearly from `/use-cases/agent-task-board`. |
+| 11 | Agentic database for operational agent state | decision guide | agentic database | 70 | 10 | informational / commercial | 15 | Defer: authority-heavy SERP and material overlap with `/blog/database-for-ai-agents`. |
 
 ---
 
@@ -52,7 +55,7 @@
 
 | Cluster / theme | Pieces shipped | Gaps still open |
 |---|---|---|
-| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates`, `/blog/share-ai-agent-data-safely`, `/blog/human-in-the-loop-ai-agents`, `/blog/ai-agent-audit-trail`, `/blog/database-for-ai-agents`, `/blog/ai-data-cleaning-agent` | Generated-index migration patterns |
+| Agent-managed datasets | `/blog/agent-managed-datasets`, `/blog/choose-index-column-agent-rows`, `/blog/structure-dataset-instructions-ai-agents`, `/blog/rowset-id-vs-business-keys`, `/blog/relationship-modeling-agent-datasets`, `/blog/ai-agent-memory-vs-state`, `/blog/idempotent-ai-agent-updates`, `/blog/share-ai-agent-data-safely`, `/blog/human-in-the-loop-ai-agents`, `/blog/ai-agent-audit-trail`, `/blog/database-for-ai-agents`, `/blog/ai-data-cleaning-agent`, `/blog/ai-agent-crm` | Generated-index migration patterns |
 | MCP and Dataset API | `/blog/mcp-vs-rest-ai-agents`, `/blog/connect-ai-agent-to-dataset-api`, `/blog/relationship-modeling-agent-datasets` | REST/MCP setup examples with concrete datasets |
 | Spreadsheet/database alternatives | `/blog/airtable-alternatives`, `/blog/google-sheets-alternatives`, `/blog/baserow-alternatives`, `/blog/nocodb-alternatives`, `/blog/spreadsheet-database-for-ai-agents`, `/vs/airtable`, `/vs/google-sheets` | Migration examples for specific human-to-agent workflows |
 
