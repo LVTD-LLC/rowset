@@ -16,6 +16,12 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-23
+
+### Added
+- Added an AI agent CRM implementation guide that separates people, interactions, and
+  commitments into linked datasets with stable identity, scoped access, and verified updates.
+
 ## 2026-07-22
 
 ### Added
