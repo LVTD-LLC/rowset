@@ -158,9 +158,12 @@ OWASP's agent guidance also recommends minimizing sensitive data in agent contex
 from logs.
 
 When the interaction refers to a known person, create a Rowset dataset relationship from
-`interactions.person_id` to `people.person_id`. With enforcement enabled, a non-blank value must
-match an existing person row. The [dataset relationship guide](/docs/link-datasets) explains that
-contract and the current MCP and REST operations.
+`interactions.person_id` to `people.person_id`. That mapping applies to the explicit-index schema
+used throughout this guide. If the people dataset instead uses generated `rowset_id`, replace the
+child column with `person_rowset_id` in both interactions and commitments, then create relationships
+from those columns to `people.rowset_id`. With enforcement enabled, a non-blank value must match an
+existing person row. The [dataset relationship guide](/docs/link-datasets) explains that contract
+and the current MCP and REST operations.
 
 <a id="track-commitments"></a>
 ## 4. Turn promises into commitments
