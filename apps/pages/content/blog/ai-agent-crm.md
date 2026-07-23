@@ -98,10 +98,9 @@ describes the current permission levels and bearer-token handling.
 The `people` dataset holds current, bounded facts about each person. Do not index it by a mutable
 display name. Use an upstream `person_id` when one exists. Email can work for a small personal CRM,
 but it becomes awkward when a person changes employers or uses several addresses. If no durable
-business key exists, either assign a durable `person_id` once or let Rowset create `rowset_id`.
-This guide uses `person_id` as the explicit index. If you choose generated `rowset_id`, name the
-foreign-key column in the other datasets `person_rowset_id`, store the returned index value there,
-and target `people.rowset_id` when creating relationships.
+business key exists, assign a UUID-based `person_id` once and persist it. This three-dataset pattern
+uses that explicit `person_id` consistently for people, interaction relationships, commitment
+relationships, lookups, and updates.
 
 A useful first schema is:
 
@@ -158,12 +157,10 @@ OWASP's agent guidance also recommends minimizing sensitive data in agent contex
 from logs.
 
 When the interaction refers to a known person, create a Rowset dataset relationship from
-`interactions.person_id` to `people.person_id`. That mapping applies to the explicit-index schema
-used throughout this guide. If the people dataset instead uses generated `rowset_id`, replace the
-child column with `person_rowset_id` in both interactions and commitments, then create relationships
-from those columns to `people.rowset_id`. With enforcement enabled, a non-blank value must match an
-existing person row. The [dataset relationship guide](/docs/link-datasets) explains that contract
-and the current MCP and REST operations.
+`interactions.person_id` to `people.person_id`. Create the same relationship from
+`commitments.person_id` to `people.person_id`. With enforcement enabled, a non-blank value must
+match an existing person row. The [dataset relationship guide](/docs/link-datasets) explains that
+contract and the current MCP and REST operations.
 
 <a id="track-commitments"></a>
 ## 4. Turn promises into commitments
@@ -297,8 +294,8 @@ history, or manage follow-ups. The split makes updates narrower and relationship
 ### Can email be the contact index?
 
 Email can index a small CRM when every person has one stable, unique address. Use a `person_id` or
-generated `rowset_id` when people may change addresses, have several emails, or lack an email. Store
-email as a typed attribute in that design.
+assign a UUID-based one when people may change addresses, have several emails, or lack an email.
+Store email as a typed attribute in that design.
 
 ### Should the agent send follow-up emails automatically?
 

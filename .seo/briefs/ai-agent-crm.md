@@ -45,8 +45,8 @@ update safely.
 The article introduces and fully implements the **contact -> interaction ->
 commitment loop**: three linked datasets that separate current identity,
 append-only evidence, and future obligations. The pattern includes stable keys,
-relationship checks, explicit index-matching for generated `rowset_id`, resumable
-partial-write behavior, send authority, and deterministic reconciliation.
+relationship checks, one explicit `person_id` contract, resumable partial-write
+behavior, send authority, and deterministic reconciliation.
 
 ## Entity and topical map
 
