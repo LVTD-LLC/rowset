@@ -22,6 +22,9 @@ deployment or release cut date.
 - Added an AI agent CRM implementation guide that separates people, interactions, and
   commitments into linked datasets with stable identity, scoped access, and verified updates.
 
+### Changed
+- OpenRouter embedding requests now identify Rowset through the standard app-attribution headers.
+
 ## 2026-07-22
 
 ### Added

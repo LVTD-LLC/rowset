@@ -53,6 +53,29 @@ def test_openrouter_embedding_provider_embeds_text_with_configured_model_and_dim
     assert embedder.calls == [("query", "Dataset: Tasks\nTitle: Add vector search")]
 
 
+def test_openrouter_embedding_provider_attributes_requests_to_rowset(monkeypatch):
+    built_embedder = SimpleNamespace()
+
+    def capture_embedder(model, *, settings):
+        built_embedder.model = model
+        built_embedder.settings = settings
+        return built_embedder
+
+    monkeypatch.setattr("apps.datasets.embeddings.Embedder", capture_embedder)
+
+    with override_settings(SITE_URL="https://www.rowset.com"):
+        provider = OpenRouterPydanticAIEmbeddingProvider(
+            api_key="sk-test",
+            base_url="https://openrouter.ai/api/v1",
+        )
+
+    assert provider.embedder is built_embedder
+    assert built_embedder.settings["extra_headers"] == {
+        "HTTP-Referer": "https://www.rowset.com",
+        "X-OpenRouter-Title": "Rowset",
+    }
+
+
 def test_openrouter_embedding_provider_rejects_dimension_mismatch():
     provider = OpenRouterPydanticAIEmbeddingProvider(
         embedder=FakePydanticAIEmbedder([0.1, 0.2]),

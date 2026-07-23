@@ -61,7 +61,16 @@ class OpenRouterPydanticAIEmbeddingProvider:
             self.model,
             provider=OpenAIProvider(base_url=base_url, api_key=api_key),
         )
-        return Embedder(model, settings=EmbeddingSettings(dimensions=self.dimensions))
+        return Embedder(
+            model,
+            settings=EmbeddingSettings(
+                dimensions=self.dimensions,
+                extra_headers={
+                    "HTTP-Referer": settings.SITE_URL,
+                    "X-OpenRouter-Title": "Rowset",
+                },
+            ),
+        )
 
     def embed_text(self, text: str) -> EmbeddingResult:
         return self._embed_query(text)[0]
