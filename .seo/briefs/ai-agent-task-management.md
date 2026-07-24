@@ -101,12 +101,15 @@ Questions to answer:
 | Agent runs use loops with explicit exit conditions such as structured output, errors, tool results, or limits. | [OpenAI practical agent guide, 2026](https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf) | n/a; primary official source is sufficient | verified |
 | Rowset exposes dataset context, stable index lookup, instructions, semantic schema, MCP/REST row operations, and read-back paths. | [Rowset row docs](https://rowset.lvtd.dev/docs/work-with-rows) and [schema docs](https://rowset.lvtd.dev/docs/design-schema) | Rowset repository implementation and tests | verified |
 | A Rowset read followed by an update is not an atomic compare-and-set worker claim. | Current Rowset row-operation docs and implementation do not expose a conditional claim primitive. | Existing HITL guide documents the same read/execution race limitation. | verified |
+| Rowset's current Read + write role also permits destructive dataset, row, schema, and relationship operations; it is not a task-only permission boundary. | Current Rowset MCP permission filtering and tool-role definitions in the repository | The public agent-access and MCP docs describe the account-level role surface. | verified |
 | Rowset is not a full project manager or atomic task queue. | `.seo/brand.md`, repo product docs, and current feature surface | Existing `/use-cases/agent-task-board` positions Rowset as a small task ledger. | verified |
 
 ## Important limitations
 
 - Do not claim atomic worker leasing or exactly-once execution.
 - Do not imply dataset instructions enforce authorization or state transitions server-side.
+- Do not imply a Read + write key isolates the agent from destructive MCP tools; require runtime
+  tool filtering/confirmation or a narrower application proxy.
 - Do not imply task creation authorizes external messages, publication, deletion, or spending.
 - Do not present public previews as authentication or approval.
 - Do not fabricate throughput, reliability, customer, or conversion metrics.

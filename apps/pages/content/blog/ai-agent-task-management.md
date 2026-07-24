@@ -113,7 +113,7 @@ same task directly instead of searching by a title that may change.
 | `blocker` | text | Exact missing decision, dependency, permission, or input |
 | `claimed_at` | datetime | When the current owner started work |
 | `updated_at` | datetime | Last meaningful task-state change |
-| `evidence_ref` | url | Pull request, report, artifact, test run, or source record |
+| `evidence_ref` | text | URL, dataset key, ticket ID, test-run ID, or other evidence locator |
 | `reviewed_by` | text | Person or independent agent that checked the result |
 | `run_id` | text | Runtime execution associated with the latest change |
 
@@ -147,7 +147,8 @@ Put the contract in dataset instructions so a later agent session receives the s
 
 ```text
 Use task_id for every lookup and update.
-Claim only todo tasks. Set owner, claimed_at, and run_id together.
+Let one scheduler or an external transactional claim service assign todo tasks.
+Mirror the assigned owner, claimed_at, and run_id together; do not treat the Rowset patch as a lock.
 Set status=blocked when progress requires a missing input, permission, or decision.
 Move a task to review only when acceptance_criteria are checked and evidence_ref is present.
 Do not move your own task from review to done.
@@ -180,8 +181,11 @@ For Rowset:
 OWASP recommends minimum tool access, separate permission sets for different trust levels, and
 explicit authorization for sensitive operations
 ([OWASP, checked July 2026](https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html)).
-Apply that outside the prompt. A task instruction can tell the agent not to delete rows, while the
-credential and runtime should prevent or interrupt destructive calls.
+Apply that outside the prompt. Rowset's current Read + write role is account-wide and also permits
+destructive MCP operations such as deleting rows, dropping columns, removing relationships, and
+archiving datasets. It cannot isolate a task agent to safe task-row patches. Restrict the tools
+exposed by the agent runtime, require confirmation around destructive calls, and use a separate
+application proxy or narrower integration when a hard server-side task-only boundary is required.
 
 <a id="run-the-task-lifecycle"></a>
 ## 5. Run the claim -> work -> prove -> review lifecycle
@@ -190,13 +194,23 @@ The lifecycle turns a task card into a resumable operating contract.
 
 ### Claim one exact task
 
-Read the row by `task_id` and confirm that its current status is `todo`. Then set an absolute desired
-state: `status=doing`, the new `owner`, `claimed_at`, and the current `run_id`. Read the row again
-before beginning expensive or external work.
+Do not use a Rowset read followed by a patch as a multi-worker claim. Two agents can both read
+`status=todo`, both patch the row, and both start work even if each reads back its own claim before
+the other overwrite arrives.
+
+Choose one safe assignment path:
+
+- **Single scheduler:** one runtime selects and assigns tasks, then workers receive exact task IDs.
+- **Serialized worker:** only one agent can claim from this board at a time.
+- **External transactional claim:** a queue, lock, or lease service atomically assigns the task,
+  then the worker mirrors `status=doing`, `owner`, `claimed_at`, and `run_id` into Rowset.
+
+After assignment, read the row by `task_id` and confirm the mirrored owner and run details before
+work. That read-back detects drift; it does not make the preceding patch atomic.
 
 Do not claim "the first open task" from an old in-memory list. Another worker may have changed the
-board. Query a bounded set, choose one task, and re-read that exact row immediately before the
-claim.
+board. Let the scheduler or transactional claim service choose one task and pass its exact ID to the
+worker.
 
 ### Work against acceptance criteria
 
@@ -243,10 +257,10 @@ bounded, reversible work.
 ## 6. Handle concurrent agents and retry failures
 
 A Rowset task board is useful coordination state, but a read followed by a patch is not an atomic
-compare-and-set claim. Two agents can read the same `todo` row before either update arrives. For a
-small operator-supervised board, re-reading after the claim and surfacing owner conflicts may be
-enough. For a busy multi-worker queue, place an external transactional claim or lease service in
-front of execution.
+compare-and-set claim. Two agents can read the same `todo` row before either update arrives, and
+read-back cannot prevent both from starting. Serialize assignment even on a small board when
+duplicate work would be expensive or external. For a multi-worker queue, place an external
+transactional claim or lease service in front of execution.
 
 Use stable IDs and absolute values for recoverable updates. If a write times out:
 
@@ -293,8 +307,9 @@ must survive a new session or handoff should not depend on the agent remembering
 ### Can multiple AI agents claim tasks from one Rowset dataset?
 
 They can read and update the same private dataset, but Rowset row updates do not provide an atomic
-queue claim. Re-read the exact task after claiming and detect owner conflicts. Use an external lock,
-transactional queue, or lease service when several workers may claim the same task concurrently.
+queue claim, and read-back cannot prevent both workers from starting. Use one serialized scheduler
+or an external lock, transactional queue, or lease service before assigning work. Mirror the result
+to Rowset for coordination and review.
 
 ### What counts as completion evidence?
 
