@@ -1,6 +1,8 @@
 import pytest
 from django.urls import reverse
 
+from apps.pages.content import get_content_template_context
+
 pytestmark = pytest.mark.django_db
 
 
@@ -75,6 +77,19 @@ def test_public_content_search_matches_checked_in_markdown_body(client):
 
     assert "Start with your first agent dataset" in content
     assert reverse("docs_page", kwargs={"slug": "quickstart"}) in content
+
+
+def test_public_content_search_matches_rendered_documentation_values(client):
+    mcp_url = get_content_template_context()["mcp_url"]
+
+    response = client.get(
+        reverse("public_content_search"),
+        {"q": mcp_url},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert "Connect over MCP" in response.content.decode()
 
 
 @pytest.mark.parametrize("as_htmx", (False, True))

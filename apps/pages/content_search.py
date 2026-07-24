@@ -4,13 +4,12 @@ import re
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 
-import frontmatter
-
 from apps.pages.blog import list_blog_posts
 from apps.pages.content import (
     CONTENT_SECTIONS,
     get_content_section_dir,
     get_section_page_url,
+    load_content_page,
 )
 
 MIN_PUBLIC_CONTENT_QUERY_LENGTH = 2
@@ -75,8 +74,7 @@ def _load_content_section_items(section: str):
     items = []
     for source_path in sorted(content_dir.glob("*.md")):
         try:
-            with source_path.open(encoding="utf-8") as file:
-                page = frontmatter.load(file)
+            page, rendered_markdown = load_content_page(section, source_path.stem)
         except Exception:
             continue
 
@@ -89,7 +87,7 @@ def _load_content_section_items(section: str):
                 description=str(page.get("description") or ""),
                 url=get_section_page_url(section, slug),
                 keywords=_metadata_text(page.get("keywords")),
-                body=_plain_markdown(page.content),
+                body=_plain_markdown(rendered_markdown),
             )
         )
     return items
