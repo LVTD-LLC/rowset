@@ -98,6 +98,7 @@ stable `index_column`.
 Useful starting points:
 
 - [Build an AI agent CRM](/blog/ai-agent-crm)
+- [Build a durable AI agent task board](/blog/ai-agent-task-management)
 - [Agent-managed personal CRM](/use-cases/personal-crm)
 - [Agent task board](/use-cases/agent-task-board)
 - [Feedback triage workflow](/use-cases/feedback-triage)

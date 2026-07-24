@@ -21,6 +21,10 @@ robots: index, follow
 
 A human-in-the-loop AI agent workflow should pause before a consequential action, show a named reviewer the exact proposed change and its evidence, require an explicit decision, and verify the result after execution. Review belongs at risk boundaries, not on every agent step.
 
+For delegated work that needs durable ownership, blockers, completion evidence, and a separate
+review state, use the [AI agent task-management
+contract](/blog/ai-agent-task-management) alongside the approval boundary in this guide.
+
 The practical sequence is:
 
 1. Classify the action by reversibility, blast radius, and external effect.
