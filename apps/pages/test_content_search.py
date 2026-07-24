@@ -45,6 +45,7 @@ def test_public_content_search_htmx_response_is_the_results_fragment(client):
     assert "Agent-managed personal CRM" in content
     assert "<html" not in content.lower()
     assert "Search docs, blog, and use cases" not in content
+    assert "HX-Request" in response.headers["Vary"]
 
 
 def test_public_content_search_prompts_before_a_meaningful_query(client):
@@ -74,3 +75,18 @@ def test_public_content_search_matches_checked_in_markdown_body(client):
 
     assert "Start with your first agent dataset" in content
     assert reverse("docs_page", kwargs={"slug": "quickstart"}) in content
+
+
+@pytest.mark.parametrize("as_htmx", (False, True))
+def test_public_content_search_renders_no_matches_state(client, as_htmx):
+    request_kwargs = {"HTTP_HX_REQUEST": "true"} if as_htmx else {}
+
+    response = client.get(
+        reverse("public_content_search"),
+        {"q": "definitely-no-rowset-content-matches-this-query"},
+        **request_kwargs,
+    )
+
+    assert response.status_code == 200
+    assert "No matches" in response.content.decode()
+    assert "HX-Request" in response.headers["Vary"]

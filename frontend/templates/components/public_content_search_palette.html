@@ -62,6 +62,7 @@
                                hx-indicator="#public-content-search-loading"
                                hx-push-url="false"
                                hx-history="false"
+                               @input="clearSelection()"
                                @keydown.arrow-down.prevent="moveSelection(1)"
                                @keydown.arrow-up.prevent="moveSelection(-1)"
                                @keydown.enter.prevent="openActiveResult()" />

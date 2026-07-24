@@ -119,6 +119,18 @@ function loadChoiceFilter(checkedValues = []) {
   return { ...loaded, component };
 }
 
+function loadCommandPalette(results = []) {
+  const loaded = loadAlpineComponents();
+  const component = loaded.components.get("commandPalette")();
+  component.$root = {
+    querySelectorAll(selector) {
+      assert.equal(selector, "[data-command-palette-result]");
+      return results;
+    },
+  };
+  return { ...loaded, component };
+}
+
 test("app shell restores sidebar size, visibility, and disclosure preferences", () => {
   const { component } = loadAppShell({
     rowsetSidebarCollapsed: "true",
@@ -233,6 +245,38 @@ test("choice filter summarizes and clears multiple checked choices", () => {
 
   assert.deepEqual(Array.from(component.selected), []);
   assert.equal(component.summary(), "Any choice");
+});
+
+test("command palette does not open stale results while a new search is pending", () => {
+  const attributes = new Map([["aria-selected", "true"]]);
+  const classes = new Set(["is-active"]);
+  const result = {
+    href: "/docs/old-result",
+    id: "old-result",
+    classList: {
+      toggle(name, enabled) {
+        if (enabled) {
+          classes.add(name);
+        } else {
+          classes.delete(name);
+        }
+      },
+    },
+    setAttribute(name, value) {
+      attributes.set(name, value);
+    },
+  };
+  const { component } = loadCommandPalette([result]);
+  component.activeIndex = 0;
+  component.activeResultId = result.id;
+
+  component.clearSelection();
+  component.openActiveResult();
+
+  assert.equal(component.activeIndex, -1);
+  assert.equal(component.activeResultId, "");
+  assert.equal(attributes.get("aria-selected"), "false");
+  assert.equal(classes.has("is-active"), false);
 });
 
 async function runCopy({ copied }) {
