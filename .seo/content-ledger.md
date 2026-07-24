@@ -30,7 +30,7 @@
 | 2026-07-21 | AI for Data Cleaning: A Safe Agent Workflow | how-to / operational guide | `/blog/ai-data-cleaning-agent` | AI for data cleaning | 50 | 0 | schema design, row operations, Dataset API, MCP, index guide, idempotency, HITL, audit trail, pricing | #334 |
 | 2026-07-22 | Spreadsheet Database for AI Agents: What to Use | comparison / decision guide | `/blog/spreadsheet-database-for-ai-agents` | spreadsheet database | 170 | 22 | Google Sheets alternatives, agent-managed datasets, schema design, MCP, Dataset API, content pipeline, pricing | #349 |
 | 2026-07-23 | AI Agent CRM: How to Build One with Structured Datasets | how-to / operational guide | `/blog/ai-agent-crm` | AI agent CRM | 30 | 3 | personal CRM, agent access, schema design, relationships, MCP, idempotency, audit trail, pricing | #352 |
-| 2026-07-24 | AI Agent Task Management: Build a Durable Task Board | how-to / operational guide | `/blog/ai-agent-task-management` | AI agent task management | 10 | n/a | task-board use case, schema design, MCP, Dataset API, HITL, idempotency, audit trail, pricing | #TBD |
+| 2026-07-24 | AI Agent Task Management: Build a Durable Task Board | how-to / operational guide | `/blog/ai-agent-task-management` | AI agent task management | 10 | n/a | task-board use case, schema design, MCP, Dataset API, HITL, idempotency, audit trail, pricing | #354 |
 
 ---
 
