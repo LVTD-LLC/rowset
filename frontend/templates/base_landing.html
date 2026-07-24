@@ -104,6 +104,10 @@
             {% include 'components/site_footer.html' with nav_variant='landing' %}
             {% if request.user.is_authenticated %}
                 {% include 'components/command_palette.html' %}
+            {% else %}
+                {% block public_content_search_palette %}
+                    {% include 'components/public_content_search_palette.html' %}
+                {% endblock public_content_search_palette %}
             {% endif %}
         </div>
         {% include 'components/chatwoot.html' %}

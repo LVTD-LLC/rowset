@@ -56,6 +56,7 @@ LEGACY_PUBLIC_REDIRECTS = {
 
 urlpatterns = [
     path("", views.LandingPageView.as_view(), name="landing"),
+    path("search", views.public_content_search, name="public_content_search"),
     *(
         path(
             old_path,
