@@ -4,6 +4,7 @@
 {% url 'docs_home' as docs_home_url %}
 {% url 'blog_posts' as blog_posts_url %}
 {% url 'use_cases' as use_cases_url %}
+{% url 'public_content_search' as public_content_search_url %}
 <header class="sticky top-0 z-40 border-b border-white/20 bg-[#1313a4] text-white">
     <div class="mx-auto flex h-16 w-full max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8">
         <a href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{{ landing_url|default:'/' }}{% endif %}"
@@ -33,9 +34,11 @@
                 <a href="{% url 'home' %}" class="inline-flex min-h-9 items-center justify-center bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Open Rowset</a>
                 <form data-posthog-reset method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit" class="fb-focus min-h-9 px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign out</button></form>
             {% else %}
-                <a href="{% url 'public_content_search' %}"
-                   data-command-palette-trigger
-                   class="fb-focus inline-flex min-h-9 items-center justify-center border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10">Search</a>
+                {% if public_content_search_url %}
+                    <a href="{{ public_content_search_url }}"
+                       data-command-palette-trigger
+                       class="fb-focus inline-flex min-h-9 items-center justify-center border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10">Search</a>
+                {% endif %}
                 <a href="{% url 'account_login' %}" class="fb-focus px-3 py-2 text-sm font-semibold hover:bg-white/10">Sign in</a>
                 <a href="{% url 'account_signup' %}" data-posthog-cta="signup" data-posthog-cta-location="header_desktop" class="inline-flex min-h-9 items-center justify-center bg-[#ffdd3d] px-3 py-2 text-sm font-semibold text-[#1313a4] hover:bg-white">Start 7-day trial</a>
             {% endif %}
@@ -55,9 +58,11 @@
                         <button type="button" data-command-palette-trigger class="fb-focus w-full px-3 py-3 text-left text-base font-medium hover:bg-white/10 sm:text-sm">Search data</button>
                         <form data-posthog-reset method="post" action="{% url 'account_logout' %}" class="border-t border-white/20">{% csrf_token %}<button type="submit" class="fb-focus w-full px-3 py-3 text-left text-base font-medium hover:bg-white/10 sm:text-sm">Sign out</button></form>
                     {% else %}
-                        <a href="{% url 'public_content_search' %}"
-                           data-command-palette-trigger
-                           class="fb-focus border-b border-white/20 px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Search</a>
+                        {% if public_content_search_url %}
+                            <a href="{{ public_content_search_url }}"
+                               data-command-palette-trigger
+                               class="fb-focus border-b border-white/20 px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Search</a>
+                        {% endif %}
                         <a href="{{ use_cases_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Use Cases</a>
                         <a href="{{ docs_home_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Docs</a>
                         <a href="{{ blog_posts_url }}" class="fb-focus px-3 py-3 text-base font-medium hover:bg-white/10 sm:text-sm">Blog</a>
