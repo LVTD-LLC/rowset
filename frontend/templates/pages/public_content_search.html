@@ -1,0 +1,42 @@
+{% extends "base_landing.html" %}
+{% block public_content_search_palette %}
+{% endblock public_content_search_palette %}
+{% block meta %}
+    <title>Search Rowset docs, blog, and use cases</title>
+    <meta name="description"
+          content="Search Rowset documentation, blog posts, and practical AI-agent use cases." />
+    <meta name="robots" content="{{ search_robots_policy }}" />
+    <link rel="canonical" href="{{ canonical_url }}" />
+{% endblock meta %}
+{% block content %}
+    <section class="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+        <div class="max-w-2xl">
+            <p class="font-mono text-sm font-semibold uppercase tracking-wide text-[#1313a4] dark:text-[#ffdd3d]">Docs / Blog / Use cases</p>
+            <h1 class="mt-3 font-display text-4xl font-semibold tracking-tight sm:text-5xl">Search Rowset</h1>
+            <p class="mt-4 text-lg leading-8 text-slate-600 dark:text-slate-300">
+                Find setup guidance, feature documentation, workflow examples, and practical articles.
+            </p>
+        </div>
+        <form method="get"
+              action="{% url 'public_content_search' %}"
+              class="mt-8"
+              role="search">
+            <label for="public-content-search-page-query" class="sr-only">Search docs, blog, and use cases</label>
+            <div class="flex flex-col gap-3 sm:flex-row">
+                <input id="public-content-search-page-query"
+                       name="q"
+                       value="{{ query }}"
+                       type="search"
+                       autocomplete="off"
+                       autofocus
+                       placeholder="Search docs, blog, and use cases"
+                       class="fb-input min-h-12 min-w-0 flex-1" />
+                <button type="submit"
+                        class="fb-focus inline-flex min-h-12 items-center justify-center bg-[#1313a4] px-5 py-3 text-sm font-semibold text-white hover:bg-[#0d0d78] dark:bg-[#ffdd3d] dark:text-[#1313a4] dark:hover:bg-white">Search</button>
+            </div>
+        </form>
+        <div class="mt-8 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
+            {% include "pages/partials/public_content_search_results.html" %}
+        </div>
+    </section>
+{% endblock content %}

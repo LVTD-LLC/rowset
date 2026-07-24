@@ -147,7 +147,12 @@ def _validate_source_path(source_path: Path, content_dir: Path) -> None:
         )
 
 
-def load_blog_post(source_path: Path, content_dir: Path | None = None) -> BlogPost:
+def load_blog_post(
+    source_path: Path,
+    content_dir: Path | None = None,
+    *,
+    render_html: bool = True,
+) -> BlogPost:
     content_dir = (content_dir or get_blog_posts_dir()).resolve()
     source_path = source_path.resolve()
     _validate_source_path(source_path, content_dir)
@@ -176,7 +181,9 @@ def load_blog_post(source_path: Path, content_dir: Path | None = None) -> BlogPo
         title=_coerce_string(post.get("title")),
         description=_coerce_string(post.get("description")),
         content=content,
-        html=markdown.markdown(content, extensions=BLOG_MARKDOWN_EXTENSIONS),
+        html=(
+            markdown.markdown(content, extensions=BLOG_MARKDOWN_EXTENSIONS) if render_html else ""
+        ),
         published_at=published_at,
         updated_at=updated_at,
         author=_coerce_string(post.get("author")) or BLOG_DEFAULT_AUTHOR,
@@ -190,7 +197,7 @@ def load_blog_post(source_path: Path, content_dir: Path | None = None) -> BlogPo
     )
 
 
-def list_blog_posts() -> list[BlogPost]:
+def list_blog_posts(*, render_html: bool = True) -> list[BlogPost]:
     content_dir = get_blog_posts_dir().resolve()
     if not content_dir.exists():
         return []
@@ -198,7 +205,13 @@ def list_blog_posts() -> list[BlogPost]:
     posts = []
     for path in content_dir.glob("*.md"):
         try:
-            posts.append(load_blog_post(path, content_dir=content_dir))
+            posts.append(
+                load_blog_post(
+                    path,
+                    content_dir=content_dir,
+                    render_html=render_html,
+                )
+            )
         except BlogPostValidationError:
             # The pages.E002 system check reports invalid posts before deploy.
             pass

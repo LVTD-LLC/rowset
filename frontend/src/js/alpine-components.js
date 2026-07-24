@@ -592,9 +592,18 @@
         this.activeResultId = activeElement?.id || "";
       },
 
+      clearSelection() {
+        this.activeIndex = -1;
+        this.applyActiveResult();
+      },
+
       openActiveResult() {
+        if (this.activeIndex < 0) {
+          return;
+        }
+
         const results = this.resultElements;
-        const result = results[this.activeIndex] || results[0];
+        const result = results[this.activeIndex];
         if (!result?.href) {
           return;
         }

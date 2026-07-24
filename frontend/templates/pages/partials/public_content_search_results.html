@@ -1,0 +1,49 @@
+<div id="public-content-search-results" aria-live="polite">
+    {% if not query %}
+        <div class="px-3 py-10 text-center">
+            <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">Search Rowset’s public guides</p>
+            <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Find documentation, practical use cases, and articles from one place.
+            </p>
+        </div>
+    {% elif query_too_short %}
+        <div class="px-3 py-10 text-center">
+            <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">Keep typing</p>
+            <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Search starts after {{ min_query_length }} characters.
+            </p>
+        </div>
+    {% elif has_results %}
+        <div class="space-y-4">
+            {% for group in result_groups %}
+                <section aria-labelledby="public-content-search-{{ group.slug }}-heading">
+                    <h3 id="public-content-search-{{ group.slug }}-heading"
+                        class="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ group.label }}</h3>
+                    <div class="space-y-1">
+                        {% for result in group.results %}
+                            <a id="public-content-search-result-{{ group.slug }}-{{ forloop.counter }}"
+                               href="{{ result.url }}"
+                               role="option"
+                               aria-selected="false"
+                               data-command-palette-result
+                               class="command-palette-result fb-focus grid gap-1 rounded-md px-3 py-2.5 transition hover:bg-slate-100 dark:hover:bg-slate-900">
+                                <span class="text-sm font-semibold text-slate-950 dark:text-slate-100">{{ result.title }}</span>
+                                {% if result.description %}
+                                    <span class="line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ result.description }}</span>
+                                {% endif %}
+                                <span class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ group.label }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="px-3 py-10 text-center">
+            <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">No matches</p>
+            <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Try a feature name, workflow, or a shorter phrase.
+            </p>
+        </div>
+    {% endif %}
+</div>

@@ -21,6 +21,8 @@ deployment or release cut date.
 ### Added
 - Added an AI agent task-management implementation guide with a durable task schema,
   explicit status transitions, completion evidence, retry reconciliation, and review boundaries.
+- Added public search across Rowset documentation, blog posts, and use cases, with a
+  shareable search page and live results in the signed-out site header.
 
 ## 2026-07-23
 

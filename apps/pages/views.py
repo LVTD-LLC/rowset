@@ -3,6 +3,8 @@ from django.contrib import messages
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_GET
+from django.views.decorators.vary import vary_on_headers
 from django.views.generic import TemplateView
 
 from apps.core.analytics import ROWSET_SIGNUP_COMPLETED, track_activation_event
@@ -29,6 +31,7 @@ from apps.pages.blog import (
 )
 from apps.pages.comparisons import get_comparison_page, render_comparison_markdown
 from apps.pages.content import render_content_page
+from apps.pages.content_search import build_public_content_search_context
 from apps.pages.llms import render_llms_txt
 from apps.pages.public_markdown import (
     build_ai_reader_context,
@@ -49,7 +52,11 @@ from apps.pages.schema import (
     product_schema,
     software_application_schema,
 )
-from apps.pages.search import build_canonical_url, search_robots_policy
+from apps.pages.search import (
+    NOINDEX_ROBOTS_POLICY,
+    build_canonical_url,
+    search_robots_policy,
+)
 from apps.pages.use_cases import get_use_case_pages
 from rowset.utils import build_absolute_public_url, get_rowset_logger
 
@@ -187,6 +194,25 @@ def use_cases_view(request):
 
 def use_case_page_view(request, slug):
     return render_content_page(request, "use-cases", slug)
+
+
+@require_GET
+@vary_on_headers("HX-Request")
+def public_content_search(request):
+    context = build_public_content_search_context(request.GET.get("q", ""))
+    if request.htmx:
+        return render(request, "pages/partials/public_content_search_results.html", context)
+
+    path = reverse("public_content_search")
+    return render(
+        request,
+        "pages/public_content_search.html",
+        {
+            **context,
+            "canonical_url": build_canonical_url(path),
+            "search_robots_policy": NOINDEX_ROBOTS_POLICY,
+        },
+    )
 
 
 def public_page_markdown(request, page_slug):
