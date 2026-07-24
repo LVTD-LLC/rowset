@@ -12,6 +12,8 @@ runs, tools, and handoffs.
 Task status is structured operational state, not a memory the agent may or may
 not retrieve. See [AI agent memory vs structured
 state](/blog/ai-agent-memory-vs-state) for the architecture boundary.
+For the full schema, transition rules, retry behavior, and review contract, read
+[how to build a durable AI agent task board](/blog/ai-agent-task-management).
 
 ## Starter shape
 

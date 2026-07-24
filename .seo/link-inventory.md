@@ -85,6 +85,7 @@
 | `/blog/ai-data-cleaning-agent` | https://rowset.lvtd.dev/blog/ai-data-cleaning-agent | AI for Data Cleaning: A Safe Agent Workflow | AI for data cleaning, AI data-cleaning workflow, clean data with an AI agent, reversible agent-led cleanup, source proposal approval publish loop |
 | `/blog/spreadsheet-database-for-ai-agents` | https://rowset.lvtd.dev/blog/spreadsheet-database-for-ai-agents | Spreadsheet Database for AI Agents: What to Use | spreadsheet database for AI agents, spreadsheet-database decision guide, agent handoff test, spreadsheet vs agent dataset, relational spreadsheet for agent workflows |
 | `/blog/ai-agent-crm` | https://rowset.lvtd.dev/blog/ai-agent-crm | AI Agent CRM: How to Build One with Structured Datasets | AI agent CRM, agent-managed CRM, personal CRM for AI agents, contact interaction commitment loop, structured CRM for agents |
+| `/blog/ai-agent-task-management` | https://rowset.lvtd.dev/blog/ai-agent-task-management | AI Agent Task Management: Build a Durable Task Board | AI agent task management, durable AI agent task board, agent task transition contract, claim work prove review, structured task board for agents |
 
 ## Shipped SEO Sprint Pages
 
@@ -188,3 +189,8 @@ These route families remain retired and must not be selected as internal-link ta
 - personal CRM for AI agents
 - contact interaction commitment loop
 - structured CRM for agents
+- AI agent task management
+- durable AI agent task board
+- agent task transition contract
+- claim work prove review
+- structured task board for agents

@@ -16,6 +16,12 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-07-24
+
+### Added
+- Added an AI agent task-management implementation guide with a durable task schema,
+  explicit status transitions, completion evidence, retry reconciliation, and review boundaries.
+
 ## 2026-07-23
 
 ### Added

@@ -98,6 +98,7 @@ stable `index_column`.
 Useful starting points:
 
 - [Build an AI agent CRM](/blog/ai-agent-crm)
+- [Build a durable AI agent task board](/blog/ai-agent-task-management)
 - [Agent-managed personal CRM](/use-cases/personal-crm)
 - [Agent task board](/use-cases/agent-task-board)
 - [Feedback triage workflow](/use-cases/feedback-triage)
@@ -113,8 +114,11 @@ Agent API key permissions apply to MCP tools:
   relationships, schema, and public preview settings.
 - **Admin** keys can also create new agent API keys through REST or MCP.
 
-Ask before destructive actions such as deleting rows, archiving datasets, or
-clearing public preview passwords.
+Permissions are account-wide, not scoped to one dataset or operation. Read + write also permits
+destructive tools such as deleting rows, dropping columns, removing relationships, and archiving
+datasets. Filter the tools available to a narrowly scoped agent in its runtime or application, and
+ask before destructive actions such as deleting rows, archiving datasets, or clearing public
+preview passwords.
 
 ## Direct database MCP servers
 

@@ -2,7 +2,7 @@
   "product": "Rowset",
   "domain": "https://rowset.lvtd.dev",
   "created_at": "2026-07-04",
-  "updated_at": "2026-07-15",
+  "updated_at": "2026-07-24",
   "mode": "measured_reaudit",
   "source": "blended",
   "sources": [
@@ -194,6 +194,8 @@
     }
   },
   "keywords": [
+    {"keyword": "ai task management", "source": "dataforseo", "search_volume": 210, "keyword_difficulty": 19, "cpc": 57.47, "intent": "informational", "as_of": "2026-07-24"},
+    {"keyword": "ai agent task management", "source": "dataforseo", "search_volume": 10, "keyword_difficulty": null, "cpc": 9.3, "intent": "transactional", "as_of": "2026-07-24"},
     {"keyword": "ai for data cleaning", "source": "dataforseo", "search_volume": 50, "keyword_difficulty": 0, "cpc": 12.87, "intent": "commercial", "as_of": "2026-07-21"},
     {"keyword": "mcp database", "source": "dataforseo", "search_volume": 480, "keyword_difficulty": 5, "cpc": 14.12, "intent": "navigational", "as_of": "2026-07-15"},
     {"keyword": "database mcp", "source": "dataforseo", "search_volume": 480, "keyword_difficulty": 5, "cpc": 14.12, "intent": "navigational", "as_of": "2026-07-15"},
@@ -217,6 +219,14 @@
     {"keyword": "database for ai agents", "source": "dataforseo", "search_volume": 10, "keyword_difficulty": 7, "cpc": 19.47, "intent": "commercial", "as_of": "2026-07-15"}
   ],
   "opportunities": [
+    {
+      "cluster": "ai agent task management",
+      "target_url": "/blog/ai-agent-task-management",
+      "status": "shipped",
+      "priority": 7,
+      "signals": {"primary_volume": 10, "primary_kd": null, "primary_cpc": 9.3, "secondary_volume": 210, "secondary_kd": 19},
+      "notes": "Shipped 2026-07-24 as a long-tail implementation guide. The broader AI task management term is a secondary variant because KD 19 is above the conservative low-authority target band."
+    },
     {
       "cluster": "mcp database",
       "target_url": "/docs/database-mcp-server",
