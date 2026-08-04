@@ -1,0 +1,27 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.LVTD-LLC/rowset",
+  "title": "Rowset",
+  "description": "Create and manage user-owned structured datasets through authenticated MCP tools.",
+  "repository": {
+    "url": "https://github.com/LVTD-LLC/rowset",
+    "source": "github",
+    "id": "1236551558"
+  },
+  "version": "0.1.0",
+  "websiteUrl": "https://rowset.lvtd.dev/docs/database-mcp-server",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://rowset.lvtd.dev/mcp/",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer API key in the form: Bearer <ROWSET_API_KEY>",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
