@@ -359,6 +359,7 @@ def render_content_page(request, section_slug, page_slug):
             **markdown_context,
         }
 
+        request._rowset_public_page_path = page_path
         return render(request, "pages/content/page.html", context)
     except Http404:
         raise

@@ -17,11 +17,22 @@ def _request(*, route: str, url_name: str, user_agent: str = "Mozilla/5.0 Chrome
 
 
 @override_settings(POSTHOG_API_KEY="phc_test")
-def test_posthog_context_enables_normalized_marketing_route():
-    context = posthog_api_key(_request(route="docs/<slug:slug>", url_name="docs_page"))
+@pytest.mark.parametrize(
+    ("published_path", "expected_route"),
+    [
+        ("", "/docs/:slug"),
+        ("/docs/quickstart", "/docs/quickstart"),
+        ("/docs/quickstart?token=private", "/docs/:slug"),
+        ("/datasets/private-record", "/docs/:slug"),
+    ],
+)
+def test_posthog_context_enables_normalized_marketing_route(published_path, expected_route):
+    request = _request(route="docs/<slug:slug>", url_name="docs_page")
+    request._rowset_public_page_path = published_path
+    context = posthog_api_key(request)
 
     assert context["posthog_pageview_enabled"] is True
-    assert context["posthog_pageview_route"] == "/docs/:slug"
+    assert context["posthog_pageview_route"] == expected_route
     assert context["posthog_content_group"] == "docs"
     assert context["posthog_traffic_category"] == "human"
 
@@ -80,13 +91,42 @@ def test_posthog_context_enables_public_dataset_without_exposing_identifiers():
 
 @override_settings(POSTHOG_API_KEY="phc_test")
 def test_posthog_context_excludes_private_app_routes():
-    context = posthog_api_key(
-        _request(route="datasets/<uuid:dataset_key>/", url_name="dataset_detail")
-    )
+    request = _request(route="datasets/<uuid:dataset_key>/", url_name="dataset_detail")
+    request._rowset_public_page_path = "/docs/quickstart"
+    context = posthog_api_key(request)
 
     assert context["posthog_pageview_enabled"] is False
     assert context["posthog_pageview_route"] == ""
     assert context["posthog_content_group"] == ""
+
+
+@pytest.mark.django_db
+@override_settings(POSTHOG_API_KEY="phc_test")
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/docs/quickstart",
+        "/docs/database-mcp-server",
+        "/blog/data-provenance-ai-agents",
+        "/use-cases/agent-task-board",
+        "/vs/google-sheets",
+    ],
+)
+def test_published_content_tracks_canonical_page_without_query_values(client, path):
+    response = client.get(path, {"token": "private-query-value"})
+
+    assert response.status_code == 200
+    assert response.context["posthog_pageview_route"] == path
+    assert f'data-posthog-route="{path}"' in response.content.decode()
+
+
+@pytest.mark.django_db
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_unknown_public_content_does_not_set_concrete_analytics_path(client):
+    response = client.get("/docs/private-user-supplied-value")
+
+    assert response.status_code == 404
+    assert not hasattr(response.wsgi_request, "_rowset_public_page_path")
 
 
 @pytest.mark.django_db

@@ -16,6 +16,13 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-09-16
+
+### Fixed
+- Public docs, blog posts, use-case guides, and comparisons retain their verified
+  page paths in consent-gated analytics and landing attribution. Account routes,
+  dataset identifiers, unknown content slugs, and URL query values remain masked.
+
 ## 2026-08-25
 
 ### Added

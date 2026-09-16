@@ -41,6 +41,12 @@ POSTHOG_PAGEVIEW_GROUPS = {
     "uses": "marketing",
 }
 POSTHOG_ROUTE_PARAMETER_PATTERN = re.compile(r"<(?:[^:>]+:)?([^>]+)>")
+POSTHOG_PUBLIC_CONTENT_ROUTES = {
+    "blog_post": "/blog/",
+    "comparison_page": "/vs/",
+    "docs_page": "/docs/",
+    "use_case_page": "/use-cases/",
+}
 
 
 def app_navigation(request):
@@ -128,6 +134,17 @@ def posthog_api_key(request):
         if content_group
         else ""
     )
+    # Only successful public content loaders may supply a concrete page path.
+    # Never derive it from request.path: unknown slugs and private routes can
+    # contain user data, while these paths come from validated published content.
+    public_prefix = POSTHOG_PUBLIC_CONTENT_ROUTES.get(getattr(resolver_match, "url_name", None))
+    public_path = getattr(request, "_rowset_public_page_path", "")
+    if (
+        public_prefix
+        and isinstance(public_path, str)
+        and re.fullmatch(re.escape(public_prefix) + r"[a-z0-9][a-z0-9-]*", public_path)
+    ):
+        normalized_route = public_path
     traffic_category = getattr(request, "traffic_category", None)
     if traffic_category is None:
         request_interface = "htmx" if bool(getattr(request, "htmx", False)) else "web"
