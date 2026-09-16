@@ -137,6 +137,7 @@ def posthog_api_key(request):
     # Only successful public content loaders may supply a concrete page path.
     # Never derive it from request.path: unknown slugs and private routes can
     # contain user data, while these paths come from validated published content.
+    # fullmatch consumes the entire path, rejecting traversal and query suffixes.
     public_prefix = POSTHOG_PUBLIC_CONTENT_ROUTES.get(getattr(resolver_match, "url_name", None))
     public_path = getattr(request, "_rowset_public_page_path", "")
     if (

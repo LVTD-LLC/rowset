@@ -23,6 +23,7 @@ def _request(*, route: str, url_name: str, user_agent: str = "Mozilla/5.0 Chrome
         ("", "/docs/:slug"),
         ("/docs/quickstart", "/docs/quickstart"),
         ("/docs/quickstart?token=private", "/docs/:slug"),
+        ("/docs/quickstart/../../../private", "/docs/:slug"),
         ("/datasets/private-record", "/docs/:slug"),
     ],
 )
