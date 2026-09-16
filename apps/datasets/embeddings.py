@@ -1,8 +1,11 @@
 import hashlib
+import math
 from dataclasses import dataclass
+from itertools import batched
 from threading import Lock
 from typing import Protocol
 
+import tiktoken
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from pydantic_ai import Embedder
@@ -12,6 +15,49 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from apps.datasets.vector_search import qdrant_is_enabled
+
+OPENAI_EMBEDDING_MAX_TOKENS = 8191
+# 32 * 8191 stays below the provider's 300,000-token request limit.
+EMBEDDING_BATCH_SIZE = 32
+OPENAI_EMBEDDING_MODELS = {
+    "text-embedding-3-small",
+    "text-embedding-3-large",
+    "text-embedding-ada-002",
+}
+
+
+def _embedding_chunks(text: str, model: str) -> list[tuple[str, int]]:
+    """Split only known OpenAI models; preserve every Unicode character."""
+    if model.removeprefix("openai/") not in OPENAI_EMBEDDING_MODELS:
+        return [(text, 1)]
+    encoding = tiktoken.get_encoding("cl100k_base")
+    pending = [text]
+    chunks = []
+    while pending:
+        chunk = pending.pop()
+        # Treat token-like literals in user data as ordinary text.
+        count = len(encoding.encode_ordinary(chunk))
+        if count <= OPENAI_EMBEDDING_MAX_TOKENS:
+            chunks.append((chunk, count))
+        else:
+            # Splitting the string, not decoded token slices, avoids corrupting
+            # multibyte characters. Recount each half after its boundary changes.
+            midpoint = len(chunk) // 2
+            pending.extend((chunk[midpoint:], chunk[:midpoint]))
+    return chunks
+
+
+def _combine_embeddings(results: list[EmbeddingResult], weights: list[int]) -> EmbeddingResult:
+    if len(results) == 1:
+        return results[0]
+    vector = [
+        sum(result.vector[index] * weight for result, weight in zip(results, weights, strict=True))
+        for index in range(results[0].dimensions)
+    ]
+    norm = math.hypot(*vector)
+    if norm:
+        vector = [value / norm for value in vector]
+    return EmbeddingResult(vector, results[0].model, results[0].dimensions)
 
 
 class EmbeddingProviderError(RuntimeError):
@@ -73,28 +119,43 @@ class OpenRouterPydanticAIEmbeddingProvider:
         )
 
     def embed_text(self, text: str) -> EmbeddingResult:
-        return self._embed_query(text)[0]
+        chunks = _embedding_chunks(text, self.model)
+        results = [self._embed_query(chunk)[0] for chunk, _ in chunks]
+        return _combine_embeddings(results, [weight for _, weight in chunks])
 
     def embed_texts(self, texts: list[str]) -> list[EmbeddingResult]:
         if not texts:
             return []
-        return self._embed_documents(texts)
+        documents = [_embedding_chunks(text, self.model) for text in texts]
+        chunks = [chunk for document in documents for chunk, _ in document]
+        results = []
+        for batch in batched(chunks, EMBEDDING_BATCH_SIZE, strict=False):
+            results.extend(self._embed_documents(list(batch)))
+        combined = []
+        offset = 0
+        for document in documents:
+            end = offset + len(document)
+            combined.append(
+                _combine_embeddings(results[offset:end], [weight for _, weight in document])
+            )
+            offset = end
+        return combined
 
     def _embed_query(self, text: str) -> list[EmbeddingResult]:
         try:
             response = self.embedder.embed_query_sync(text)
         except ModelHTTPError as exc:
             raise EmbeddingProviderError(f"OpenRouter embedding request failed: {exc}") from exc
-        return self._embedding_results(response.embeddings)
+        return self._embedding_results(response.embeddings, expected_count=1)
 
     def _embed_documents(self, texts: list[str]) -> list[EmbeddingResult]:
         try:
             response = self.embedder.embed_documents_sync(texts)
         except ModelHTTPError as exc:
             raise EmbeddingProviderError(f"OpenRouter embedding request failed: {exc}") from exc
-        return self._embedding_results(response.embeddings)
+        return self._embedding_results(response.embeddings, expected_count=len(texts))
 
-    def _embedding_results(self, embeddings) -> list[EmbeddingResult]:
+    def _embedding_results(self, embeddings, *, expected_count: int) -> list[EmbeddingResult]:
         results = []
         for embedding in embeddings:
             vector = list(embedding)
@@ -108,6 +169,10 @@ class OpenRouterPydanticAIEmbeddingProvider:
                     model=self.model,
                     dimensions=self.dimensions,
                 )
+            )
+        if len(results) != expected_count:
+            raise EmbeddingProviderError(
+                f"Expected {expected_count} embeddings, got {len(results)}."
             )
         return results
 
