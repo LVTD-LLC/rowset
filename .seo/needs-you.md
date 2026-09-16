@@ -1,5 +1,11 @@
 # Needs you
 
-No decision blocks the current analytics repair.
+No open connection decisions.
 
-Optional: connect Google Search Console in the existing Rowset OpenSEO project for in-app reporting. Direct service-account access is already verified, so this is not required to continue the SEO workflow.
+Google Search Console was connected in OpenSEO by Rasul and verified with a
+read-only request for the Rowset property on 2026-09-16. Direct service-account
+access remains available as a fallback.
+
+Shipping status: PR #405 remains unmerged while the required ReviewGate check
+is blocked by invalid structured reviewer responses; this is not a missing
+Google connection or an unresolved request for credentials.

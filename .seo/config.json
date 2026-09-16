@@ -55,7 +55,7 @@
   ],
   "gsc": {
     "site_url": "https://rowset.lvtd.dev/",
-    "source": "direct service-account API; OpenSEO connection pending"
+    "source": "OpenSEO connection verified 2026-09-16; direct service-account fallback also verified"
   },
   "posthog": {
     "project_id": 493217,
@@ -73,7 +73,8 @@
     "last_sync_at": "2026-08-25",
     "measurements_dataset_key": "6962b938-6f23-4b4b-9571-6835e5249086",
     "backlink_targets_dataset_key": "e2fa779b-bc3d-4e00-b86b-78d54e7df704",
-    "latest_run_index": "rowset:run:2026-09-16-1241"
+    "latest_run_index": "rowset:run:2026-09-16-1241",
+    "_locator_note": "Project, section and dataset keys are resource IDs, not API credentials. Referenced datasets remain private and require authenticated owner access. No tokens, passwords or service-account JSON belong in this file."
   },
   "tool_evidence": {},
   "radar": {
@@ -173,7 +174,7 @@
   },
   "tools_detected": {
     "rowset": "verified existing private ledger and claim store",
-    "openseo": "project created; GSC not connected through OpenSEO",
+    "openseo": "Search Console connected; read verified 2026-09-16",
     "gsc": "direct read verified 2026-09-16",
     "posthog": "project 493217 and recent events verified",
     "psi": "shared credential verified mobile and desktop",
