@@ -1,12 +1,19 @@
 ---
-title: Dataset API
-description: Use Rowset dataset endpoints for row CRUD, indexed lookup, archived datasets, exports, and public previews.
+title: "Dataset API for AI Agents: REST Reference"
+description: Create private datasets and manage rows with Rowset's REST API. Find bearer-key authentication, stable-index lookups, search, exports, and read-only previews.
 keywords: Rowset API, dataset API, CSV API, JSONL API, XLSX API, SQLite API, REST endpoints
 ---
 
 # Dataset API
 
-Every dataset gets a small REST API. Use these endpoints when your app, script, or agent needs to create datasets, read/update rows, export rows, archive datasets, or configure public preview sharing.
+Rowset's Dataset API gives trusted AI agents, scripts, and apps REST access to
+private structured datasets. Create datasets, read and update rows by stable
+index, search data, and export snapshots over HTTP. Private requests require a
+bearer API key; optional public previews use separate read-only endpoints.
+
+This reference covers authentication, dataset and row operations, schema changes,
+exports, and public preview settings. Start with [Authentication](#authentication)
+and the [Base URL](#base-url), then [create a dataset](#create-a-dataset).
 
 For the product-level concept behind these endpoints, read [What is an
 agent-managed dataset?](/blog/agent-managed-datasets). It explains why stable

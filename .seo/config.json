@@ -148,7 +148,7 @@
     "ai_panel_cadence_days": 14,
     "health_diff_cadence_days": 1,
     "claim_reverify_sample": 3,
-    "_comment": "Unattended runs stay under per_run_usd. Cost never overrides a quality gate \u2014 if a decision needs a number, buy it or say you couldn't and why.",
+    "_comment": "The per-run amount is a routine planning target. Standing authorization from 2026-09-16 permits the operator to choose necessary one-off paid SEO research without another approval, including a justified larger report. Preflight and record estimates and actual spend; reuse fresh data. This does not authorize unrelated subscriptions.",
     "link_check_cadence_days": 7
   },
   "select": {
@@ -164,7 +164,8 @@
   "version": "2.2",
   "git": {
     "mode": "pr",
-    "merge_policy": "autonomous"
+    "merge_policy": "autonomous",
+    "_comment": "Standing authority confirmed 2026-09-16: autonomously select and ship SEO posts, docs, site and analytics updates via PR/merge. Preserve appropriate technical checks and explicit task-level no-merge restrictions; do not ask again for routine SEO decisions."
   },
   "openseo": {
     "project_id": "be6253d8-dbcb-4b89-bb35-1f345d1f42fe"
