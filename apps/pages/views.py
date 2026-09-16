@@ -337,6 +337,7 @@ def blog_post_view(request, slug):
         raise Http404("Blog post not found") from exc
 
     path = reverse("blog_post", kwargs={"slug": blog_post.slug})
+    request._rowset_public_page_path = path
     return render(
         request,
         "blog/blog_post.html",
@@ -365,6 +366,7 @@ def blog_post_markdown(request, slug):
 def comparison_page_view(request, slug):
     comparison_page = get_comparison_page(slug)
     path = comparison_page.get_absolute_url()
+    request._rowset_public_page_path = path
     return render(
         request,
         "pages/comparisons/comparison_page.html",
@@ -402,6 +404,7 @@ class DatabaseMcpServerExplanationView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         path = reverse("docs_page", kwargs={"slug": "database-mcp-server"})
+        self.request._rowset_public_page_path = path
         context["mcp_url"] = build_absolute_public_url("/mcp/")
         context.update(build_ai_reader_context(path))
         context["docs_base_template"] = (

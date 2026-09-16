@@ -1,7 +1,9 @@
 {
   "product": "Rowset",
   "domain": "https://rowset.lvtd.dev",
-  "stack": "django-templates",
+  "stack": {
+    "kind": "django-templates"
+  },
   "adapter": "markdown-fallback",
   "language": "python-django-templates",
   "marketing_route_prefix": "apps/pages",
@@ -50,5 +52,133 @@
     "The August 11 content refresh selected referential integrity from a product-native relationship-safety pool using live DataForSEO metrics and SERP evidence.",
     "The August 18 content refresh selected data matching from a cross-system identity pool using live DataForSEO metrics and SERP evidence.",
     "The August 25 content refresh selected data provenance from the open agent-record auditability gap using live DataForSEO metrics and SERP evidence."
-  ]
+  ],
+  "gsc": {
+    "site_url": "https://rowset.lvtd.dev/",
+    "source": "OpenSEO connection verified 2026-09-16; direct service-account fallback also verified"
+  },
+  "posthog": {
+    "project_id": 493217,
+    "host": "https://us.posthog.com"
+  },
+  "research_store": {
+    "backend": "rowset",
+    "datasets": {
+      "content_ledger": "9ae7d0d3-1138-43a0-b3b8-aa05fac12a96",
+      "research_briefs": "3a004cfa-0a7e-4c3a-a517-caca902f38d6"
+    },
+    "project_key": "252ee726-f3ef-486c-a000-80ed6ddb863e",
+    "seo_section_key": "f848bf88-bd6c-4d4c-b904-e24be75cb627",
+    "schema_version": 1,
+    "last_sync_at": "2026-08-25",
+    "measurements_dataset_key": "6962b938-6f23-4b4b-9571-6835e5249086",
+    "backlink_targets_dataset_key": "e2fa779b-bc3d-4e00-b86b-78d54e7df704",
+    "latest_run_index": "rowset:run:2026-09-16-1241",
+    "_locator_note": "Project, section and dataset keys are resource IDs, not API credentials. Referenced datasets remain private and require authenticated owner access. No tokens, passwords or service-account JSON belong in this file."
+  },
+  "tool_evidence": {},
+  "radar": {
+    "_comment": "Demand radar seeds: 5-15 topic phrases in the audience's own words (not product names) and the communities where the ideal customer talks. cadence_days governs the paid tier (news, trends, video); the free tier runs daily.",
+    "seeds": [
+      "database for AI agents",
+      "MCP database",
+      "agent task board",
+      "AI agent structured state",
+      "stable record identity",
+      "dataset API"
+    ],
+    "communities": [
+      "reddit.com/r/<sub>",
+      "<forum domain>"
+    ],
+    "cadence_days": 7
+  },
+  "repo": {
+    "_comment": "Product-change panel (measure.md 4b). scripts/repo_changes.py lists commits since the last run that touch these globs; a shipped feature, a price change or a removed route is the freshest demand signal the site has. Fill with this repo's real paths.",
+    "watch_paths": [
+      "CHANGELOG.md",
+      "PRODUCT.md",
+      "apps/pages/urls.py",
+      "apps/core/models.py",
+      "apps/datasets/migrations/*"
+    ]
+  },
+  "serp": {
+    "_comment": "SERP-feature panel (measure.md 3d). Weekly serp_organic_live_advanced on the top N queries by clicks; serp_features.py records which features appeared and whether the AI Overview cites us.",
+    "top_queries": 20
+  },
+  "distribute": {
+    "_comment": "Restore the full distribute lane: discovery push, Postiz owned-channel drafts, and one third-party brief. Postiz scheduling/posting uses the user's explicit channel/content authorization; site-shipping autonomy is not blanket social/outreach permission.",
+    "social_skill": "postiz",
+    "window_days": 14
+  },
+  "cadence": {
+    "_comment": "Freshness windows in hours; a panel younger than its window is read from cache. See measure.md section 0. Weekly (168) and monthly (720) panels: competitor delta, SERP features, backlinks new/lost, link opportunities, seasonality, on-site search.",
+    "gsc_hours": 20,
+    "health_hours": 6,
+    "link_check_hours": 20,
+    "radar_free_hours": 20,
+    "bing_hours": 20,
+    "outcomes_hours": 20,
+    "competitor_hours": 168,
+    "serp_hours": 168,
+    "backlinks_hours": 168,
+    "link_opportunities_hours": 168,
+    "seasonality_hours": 720,
+    "site_search_hours": 168
+  },
+  "site": {
+    "domain": "https://rowset.lvtd.dev",
+    "sitemap_url": "https://rowset.lvtd.dev/sitemap.xml",
+    "name": "Rowset",
+    "aliases": []
+  },
+  "paths": {
+    "roadmap": "docs/seo-sprint.md",
+    "ledger": ".seo/content-ledger.md",
+    "truth": ".seo/truth.md",
+    "needs_you": ".seo/needs-you.md",
+    "runs": ".seo/runs/",
+    "health": ".seo/health/",
+    "briefs": ".seo/briefs/",
+    "evidence": ".seo/evidence/"
+  },
+  "budget": {
+    "per_run_usd": 2,
+    "ai_panel_cadence_days": 14,
+    "health_diff_cadence_days": 1,
+    "claim_reverify_sample": 3,
+    "_comment": "Unattended runs stay under per_run_usd. Cost never overrides a quality gate \u2014 if a decision needs a number, buy it or say you couldn't and why.",
+    "link_check_cadence_days": 7
+  },
+  "select": {
+    "floor": 9,
+    "_comment": "Below this rubric score (of a possible 40) the best unblocked candidate loses to measure-only. See references/select.md \u00a77."
+  },
+  "bing": {
+    "api_key_env": null,
+    "site_url": null,
+    "_comment": "Optional. api_key_env names the environment variable holding the Bing Webmaster API key; never store the key itself. The AI Performance report is UI-only \u2014 no API. Record Bing as a separate panel, never summed with Google."
+  },
+  "_legacy_keys_note": "Flat pre-v2 keys are kept for anything that still reads them. The nested blocks above are authoritative. `stack` was a string in v1; its value now lives at stack.kind.",
+  "version": "2.2",
+  "git": {
+    "mode": "pr",
+    "merge_policy": "autonomous"
+  },
+  "openseo": {
+    "project_id": "be6253d8-dbcb-4b89-bb35-1f345d1f42fe"
+  },
+  "speed": {
+    "psi_api_key_env": "PSI_API_KEY"
+  },
+  "tools_detected": {
+    "rowset": "verified existing private ledger and claim store",
+    "openseo": "Search Console connected; read verified 2026-09-16",
+    "gsc": "direct read verified 2026-09-16",
+    "posthog": "project 493217 and recent events verified",
+    "psi": "shared credential verified mobile and desktop",
+    "bing": "not configured",
+    "market_research": "not purchased this run"
+  }
 }

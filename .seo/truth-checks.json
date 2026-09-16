@@ -1,0 +1,58 @@
+[
+  {
+    "claim": "Hosted access starts with a seven-day trial, not an ongoing free plan",
+    "paths": [
+      "frontend/templates/pages/pricing.html"
+    ],
+    "urls": [
+      "/pricing"
+    ],
+    "flags": "i",
+    "must_match": [
+      "7-day trial"
+    ],
+    "must_not_match": [
+      "free forever",
+      "free tier",
+      "14-day trial",
+      "30-day trial"
+    ]
+  },
+  {
+    "claim": "Public previews are read-only; private programmatic access is authenticated",
+    "paths": [
+      "apps/pages/content/docs/mcp-rest-public-previews.md",
+      "apps/pages/content/docs/dataset-api.md"
+    ],
+    "urls": [
+      "/docs/mcp-rest-public-previews",
+      "/docs/dataset-api"
+    ],
+    "flags": "i",
+    "must_match": [
+      "read.only",
+      "Bearer"
+    ],
+    "must_not_match": []
+  },
+  {
+    "claim": "Rowset exports CSV, JSONL, XLSX, SQLite and Parquet",
+    "paths": [
+      "frontend/templates/pages/landing-page.html",
+      "apps/pages/content/docs/dataset-api.md"
+    ],
+    "urls": [
+      "/",
+      "/docs/dataset-api"
+    ],
+    "flags": "i",
+    "must_match": [
+      "CSV",
+      "JSONL",
+      "XLSX",
+      "SQLite",
+      "Parquet"
+    ],
+    "must_not_match": []
+  }
+]
