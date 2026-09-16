@@ -19,6 +19,9 @@ deployment or release cut date.
 ## 2026-09-16
 
 ### Fixed
+- Oversized row embeddings are split into token-safe chunks and combined into
+  one length-weighted search vector without truncating stored data or searchable
+  text. Backfill requests are bounded and embedding counts are validated.
 - Public docs, blog posts, use-case guides, and comparisons retain their verified
   page paths in consent-gated analytics and landing attribution. Account routes,
   dataset identifiers, unknown content slugs, and URL query values remain masked.
