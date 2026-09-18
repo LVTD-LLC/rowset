@@ -16,6 +16,12 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-09-18
+
+### Fixed
+- Corrected Rowset self-hosting and Baserow MCP support claims in the Baserow
+  and Google Sheets alternatives guides, with current source links.
+
 ## 2026-09-16
 
 ### Fixed
