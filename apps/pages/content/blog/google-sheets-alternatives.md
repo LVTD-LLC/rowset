@@ -2,6 +2,7 @@
 title: Best Google Sheets alternatives for AI-agent-managed datasets
 description: Compare Rowset, Google Sheets, Airtable, Baserow, NocoDB, Grist, Notion, Coda, and Smartsheet for agent-managed rows.
 published_at: 2026-07-06
+updated_at: 2026-09-18
 author: Rasul Kireev
 keywords:
   - Google Sheets alternatives
@@ -42,7 +43,7 @@ instructions, private authentication, and a review path for humans.
 | [Rowset](https://rowset.lvtd.dev/) | Trusted agents managing private datasets through MCP or REST | You need a full spreadsheet app for human editing |
 | [Google Sheets](https://www.google.com/sheets/about/) | Familiar, collaborative spreadsheets and lightweight analysis | Agents need repeated private writes, schema, and stable row identity |
 | [Airtable](https://airtable.com/) | Collaborative apps, interfaces, automations, and human-owned operational bases | You only need a small backend for agent workflows |
-| [Baserow](https://baserow.io/) | Open-source, self-hostable no-code databases and app building | You want hosted MCP and REST for delegated agent workflows |
+| [Baserow](https://baserow.io/) | Visual databases and app building, with REST and built-in MCP access | You want a focused row store rather than a broader database workspace |
 | [NocoDB](https://nocodb.com/) | A spreadsheet-style UI over Postgres/MySQL and SQL-backed workflows | You do not want to operate or expose a database-backed app surface |
 | [Grist](https://www.getgrist.com/) | Relational spreadsheet workflows with formulas, layouts, and access rules | The agent only needs authenticated row operations and dataset instructions |
 | [Notion](https://developers.notion.com/guides/get-started/overview) | Workspace knowledge, docs, databases, and internal team context | Row updates need a focused dataset API rather than a workspace object model |
@@ -199,7 +200,10 @@ Baserow describes itself as an open-source no-code database and application
 builder, with cloud and self-hosted deployments, API-first design, plugins, and
 application-builder features ([Baserow](https://baserow.io/)). Its database API
 docs describe REST APIs for database operations with token-based authentication
-([Baserow database API](https://baserow.io/user-docs/database-api)).
+([Baserow database API](https://baserow.io/user-docs/database-api)). Baserow also
+provides a [built-in MCP server](https://baserow.io/user-docs/mcp-server) for
+compatible agents to create, read, update, and delete workspace data. You do not
+need to leave Baserow simply to get MCP access.
 
 Choose Baserow if your priority is an Airtable-style no-code database UI or
 app-builder workflow. Choose Rowset if you do not need a whole workspace and
@@ -357,6 +361,7 @@ structured rows.
 
 ### Which Google Sheets alternative is best for self-hosting?
 
-Baserow, NocoDB, and Grist are stronger fits when self-hosting is the main
-requirement. Rowset is a hosted backend for agent workflows, so choose it when the
-agent workflow matters more than operating the data infrastructure yourself.
+Baserow, NocoDB, and Grist are options when you want a self-hosted visual
+database or relational spreadsheet. Rowset is also open source and self-hostable;
+use its [self-hosting guide](/docs/self-hosting) when you want a focused agent
+dataset backend on your own infrastructure. Choose by workflow as well as hosting.

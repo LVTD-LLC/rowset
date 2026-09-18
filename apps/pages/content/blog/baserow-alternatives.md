@@ -2,6 +2,7 @@
 title: Best Baserow alternatives for AI-agent-managed datasets
 description: Compare Baserow, Rowset, Airtable, NocoDB, Grist, Supabase, and Google Sheets for agent-managed datasets.
 published_at: 2026-07-09
+updated_at: 2026-09-18
 author: Rasul Kireev
 keywords:
   - Baserow alternatives
@@ -70,9 +71,10 @@ sessions.
 Baserow has APIs. Its database API docs say database tokens are scoped to
 specific databases and tables, and permissions can be set for create, read,
 update, delete, and schema actions per table ([Baserow database API](https://baserow.io/user-docs/database-api)).
-That is useful. The narrower question is whether you want to operate a Baserow
-workspace for the agent, or give the agent a hosted dataset surface designed
-around MCP discovery, row identity, and workflow instructions.
+Baserow also has a [built-in MCP server](https://baserow.io/user-docs/mcp-server)
+for agents to create, read, update, and delete workspace data. MCP availability
+is not the dividing line. Compare Baserow's broader workspace with Rowset's
+focused dataset surface, row identity, and workflow instructions.
 
 Rowset's answer is deliberately smaller. It gives a trusted agent private MCP
 and REST access to structured rows, then lets the human owner inspect, export,
@@ -145,7 +147,8 @@ to let an agent maintain a table.
 Choose Rowset if the agent needs stable row identity, explicit instructions,
 MCP tool discovery, REST fallback, and a private-by-default ownership boundary.
 Do not choose Rowset if your team needs visual app screens, formulas, complex
-human collaboration, plugins, or self-hosting.
+human collaboration, or plugins. Self-hosting is supported: Rowset can run on
+your infrastructure using the [production Docker Compose stack](/docs/self-hosting).
 
 You can start with a 7-day trial and review [Rowset pricing](/pricing) when the
 workflow needs more hosted datasets or rows.
@@ -167,9 +170,10 @@ Choose Baserow when you need:
 
 Baserow's API surface also makes it reasonable for automation. Its database API
 uses token authentication and lets teams scope token permissions per table
-([Baserow database API](https://baserow.io/user-docs/database-api)). That is a
-good fit when Baserow is already the system of record and the agent is only one
-caller among many.
+([Baserow database API](https://baserow.io/user-docs/database-api)). Its built-in
+MCP server also connects compatible AI clients to workspace data. That is a
+good fit when Baserow is already the system of record, including when an agent
+does most of the row operations.
 
 The drawback is overhead. If the agent only needs a private row store, a broad
 workspace can become more product than the workflow needs. You may end up
@@ -283,12 +287,12 @@ is a trusted agent maintaining rows safely.
 | Question | Choose Baserow if... | Choose Rowset if... |
 |---|---|---|
 | Who is the main operator? | Human teams building and using a database workspace | Trusted AI agents creating and updating rows |
-| What surface matters most? | Tables, forms, app pages, views, automations, plugins | MCP tools, REST endpoints, dataset instructions, row keys |
-| Where does data live? | In a team database workspace or self-hosted deployment | In private hosted datasets owned by the Rowset user |
+| What surface matters most? | Tables, forms, app pages, views, automations, plugins, with API and MCP access | Focused MCP tools, REST endpoints, dataset instructions, row keys |
+| Where does data live? | In Baserow Cloud or your self-hosted workspace | In private datasets on hosted Rowset or your self-hosted instance |
 | What kind of setup do you want? | Workspace configuration and app-building flexibility | Copy a setup prompt/API key and let the agent operate |
 | What should humans review? | The whole operational app | Exports, dashboards, or read-only public previews |
 
-The overlap is real. Both products can store structured rows and expose APIs.
+The overlap is real. Both products support MCP, REST access, and self-hosting.
 The difference is intent. Baserow is broad by design. Rowset is narrow by
 design.
 
@@ -325,12 +329,13 @@ handles the narrow agent-maintained row state.
 
 ## Where Baserow is better
 
-Baserow is better when open-source control, self-hosting, and app-building
-flexibility matter more than a narrow agent handoff.
+Baserow is better when a visual database workspace and app-building flexibility
+matter more than a narrow agent handoff. Both products support self-hosting;
+deployment location alone is not a reason to rule out Rowset.
 
 Choose Baserow over Rowset if:
 
-- you need to self-host the whole database tool
+- you need a self-hosted visual database and application builder
 - humans need to build forms, views, and applications
 - the workflow depends on visual app screens
 - your team wants a broad Airtable-style operating workspace
@@ -351,14 +356,17 @@ an open-source database workspace with app-building features.
 
 ### Is Rowset an open-source Baserow alternative?
 
-No. Rowset is a hosted private backend for trusted AI agents. Choose
-Baserow if open-source deployment or self-hosting is required.
+Yes. Rowset is open source and supports both hosted and self-hosted deployments.
+See the [source repository](https://github.com/LVTD-LLC/rowset) and
+[self-hosting guide](/docs/self-hosting). Choose Baserow when you need its broader
+visual database and application builder, not merely because you need to self-host.
 
 ### Can AI agents use Baserow?
 
-Yes. Baserow has APIs and scoped database tokens. It can work well when Baserow
-is already the workspace of record. Rowset is narrower: it gives agents an MCP
-and REST row backend without requiring a full database workspace.
+Yes. Baserow provides REST APIs and a built-in MCP server for compatible AI
+clients. It can work well when Baserow is already the workspace of record.
+Rowset is narrower: it focuses on private datasets, stable row identity, and
+persistent dataset instructions rather than a full visual database workspace.
 
 ### When should I use NocoDB instead of Baserow or Rowset?
 

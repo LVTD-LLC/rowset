@@ -86,3 +86,10 @@ Most Google Sheets alternatives posts compare spreadsheet and no-code features f
 - Moat is product-native rather than keyword-only: Rowset's MCP/REST dataset layer for trusted agents.
 - Business path links to agent access, MCP setup, Dataset API, pricing-adjacent product flow via internal pages.
 - Avoids generic keyword-list content by explicitly saying when Google Sheets and other tools are better.
+
+
+## Accuracy correction — 2026-09-18
+
+- Rowset supports self-hosting as well as the hosted service; source: `SELF_HOSTING.md` and `/docs/self-hosting`.
+- Baserow has a built-in MCP server; source: https://baserow.io/user-docs/mcp-server. Compare workflow scope without denying supported access paths.
+- Public copy and modification date updated. Private source observations and action lifecycle use the existing Rowset SEO stores.

@@ -54,5 +54,44 @@
       "Parquet"
     ],
     "must_not_match": []
+  },
+  {
+    "claim": "Rowset comparisons acknowledge supported self-hosting",
+    "paths": [
+      "apps/pages/content/blog/baserow-alternatives.md",
+      "apps/pages/content/blog/google-sheets-alternatives.md"
+    ],
+    "urls": [
+      "/blog/baserow-alternatives",
+      "/blog/google-sheets-alternatives"
+    ],
+    "flags": "is",
+    "must_match": [
+      "Rowset is (?:also )?open source",
+      "self-hosting guide"
+    ],
+    "must_not_match": [
+      "No\\. Rowset is a hosted private backend",
+      "plugins, or self-hosting",
+      "Baserow if open-source deployment or self-hosting is required"
+    ]
+  },
+  {
+    "claim": "Baserow supports built-in MCP; comparison is workflow scope",
+    "paths": [
+      "apps/pages/content/blog/baserow-alternatives.md",
+      "apps/pages/content/blog/google-sheets-alternatives.md"
+    ],
+    "urls": [
+      "/blog/baserow-alternatives",
+      "/blog/google-sheets-alternatives"
+    ],
+    "flags": "i",
+    "must_match": [
+      "built-in MCP"
+    ],
+    "must_not_match": [
+      "You want hosted MCP and REST for delegated agent workflows"
+    ]
   }
 ]

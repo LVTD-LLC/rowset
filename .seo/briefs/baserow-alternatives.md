@@ -68,3 +68,10 @@ This post adds a Rowset-native decision framework for Baserow alternatives: choo
 - No fabricated customer stories, quotes, or metrics.
 - Important claims cite primary/product sources inline.
 - FAQ and comparison tables support answer extraction.
+
+
+## Accuracy correction — 2026-09-18
+
+- Rowset supports self-hosting as well as the hosted service; source: `SELF_HOSTING.md` and `/docs/self-hosting`.
+- Baserow has a built-in MCP server; source: https://baserow.io/user-docs/mcp-server. Compare workflow scope without denying supported access paths.
+- Public copy and modification date updated. Private source observations and action lifecycle use the existing Rowset SEO stores.
