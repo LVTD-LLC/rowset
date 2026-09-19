@@ -109,3 +109,21 @@ Inbound links will come from the shared Compare footer,
 - `Article`, `BreadcrumbList`, and seven-question `FAQPage` schema are emitted by
   the comparison template; public Markdown and sitemap discovery are covered by
   application tests. `llms.txt` intentionally indexes documentation only.
+
+## Verification follow-up — 2026-09-19
+
+Reopened primary sources for MCP preview status and restrictions, default API
+quotas and planned over-quota billing, standard cell limits versus the opt-in
+20-million-cell beta, and Gemini eligibility. These claims remain supported.
+The API reference now carries a September 3 update date; the public comparison
+uses our September 19 check date instead of the previous May source-update date.
+
+The July Gemini promotion statements remain supported by Google's historical
+announcements. The public page now links current eligibility guidance and the
+AI Expanded Access help page instead of using a past promotion as buying context.
+No universal usage allowance, new capacity guarantee, or measured performance
+claim was added. Other comparison claims retain their prior verification dates.
+
+Private dated claim observations are in the existing Rowset Research Briefs
+dataset. Search measurements and candidate decisions remain in Measurements
+& Runs; they are not included in this content brief.

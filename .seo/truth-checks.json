@@ -93,5 +93,47 @@
     "must_not_match": [
       "You want hosted MCP and REST for delegated agent workflows"
     ]
+  },
+  {
+    "claim": "Google Sheets comparison acknowledges official MCP preview and separates standard capacity from beta",
+    "paths": [
+      "apps/pages/content/vs/google-sheets.md"
+    ],
+    "urls": [
+      "/vs/google-sheets"
+    ],
+    "flags": "is",
+    "must_match": [
+      "official Sheets MCP",
+      "Developer Preview",
+      "10 million cells",
+      "18,278",
+      "20 million cells",
+      "beta"
+    ],
+    "must_not_match": [
+      "Google Sheets does not support MCP",
+      "20 million cells for every"
+    ]
+  },
+  {
+    "claim": "Google Sheets comparison cites current API quotas and Gemini eligibility, not a past promotional allowance",
+    "paths": [
+      "apps/pages/content/vs/google-sheets.md"
+    ],
+    "urls": [
+      "/vs/google-sheets"
+    ],
+    "flags": "is",
+    "must_match": [
+      "300 read and 300 write",
+      "60 of each",
+      "eligible Google Workspace or Google AI plan",
+      "AI Expanded Access"
+    ],
+    "must_not_match": [
+      "updated May 29, 2026",
+      "higher-limit period to run through July 15"
+    ]
   }
 ]

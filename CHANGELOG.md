@@ -16,6 +16,13 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-09-19
+
+### Changed
+- Re-verified Google Sheets MCP, API quota, capacity, and Gemini access sources
+  in the Rowset comparison; replaced past promotion details with current access
+  guidance and dated the verification scope.
+
 ## 2026-09-18
 
 ### Fixed
