@@ -107,3 +107,9 @@
 - **DR cap:** Ahrefs DR is unavailable; use DataForSEO KD/backlink signals in `.seo/keyword-research.json`.
 - **No duplication:** this piece intentionally avoids the sprint roadmap's `/alternatives`, `/compare`, `/how-to`, and `/explanations` targets.
 - **One piece per run:** this ledger grows by one shipped row per `seo-content` invocation.
+
+## Source maintenance — September 2026
+
+| Date | Action | Target | Scope | Lifecycle source |
+|---|---|---|---|---|
+| 2026-09-19 | verify-product | `/vs/google-sheets` | Rechecked MCP, quota/pricing, capacity and Gemini access sources; updated dated buying guidance without changing the comparison verdict. | Current run PR and private Rowset run record; merge/live states recorded separately. |

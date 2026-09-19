@@ -3,7 +3,7 @@ title: "Rowset vs Google Sheets for AI Agents (2026)"
 description: "Compare Rowset vs Google Sheets for AI agents, collaboration, APIs, automation, row identity, pricing, and structured data workflows."
 author: Rasul Kireev
 published_at: 2026-07-15
-updated_at: 2026-07-15
+updated_at: 2026-09-19
 keywords:
   - Rowset vs Google Sheets
   - Google Sheets alternative for AI agents
@@ -44,7 +44,9 @@ This comparison uses Google's current [Sheets product
 documentation](https://workspace.google.com/products/sheets/), [official Sheets
 MCP reference](https://developers.google.com/workspace/sheets/api/reference/mcp),
 and [API limits](https://developers.google.com/workspace/sheets/api/limits),
-checked July 15, 2026. Rowset claims are limited to shipped product surfaces:
+originally checked July 15, 2026. MCP availability, API quotas and pricing,
+cell limits, and Gemini access were rechecked against Google's documentation
+on September 19, 2026. Rowset claims are limited to shipped product surfaces:
 hosted MCP, REST, CLI, dashboard review, exports, public previews, and the
 [open-source repository](https://github.com/LVTD-LLC/rowset). We compare
 operator fit, collaboration, record identity, automation, scale, portability,
@@ -99,11 +101,14 @@ Google's AI features have moved beyond autocomplete. [Gemini in
 Sheets](https://support.google.com/docs/answer/14356410) can plan and carry out
 multi-step work such as building a tracker, filling or transforming columns,
 creating formulas, formatting ranges, and analyzing data. Availability and
-usage limits vary by account and plan. Google scheduled its promotional
-higher-limit period to run through July 15, 2026; plan-dependent per-user limits
-apply afterward, while AI Expanded Access licenses receive higher limits
-starting July 15. It would be wrong to frame Sheets as a human-only product in
-2026.
+usage limits vary by account and plan. Google's current help page requires an
+eligible Google Workspace or Google AI plan and also identifies its trusted
+tester program as an access path. The [AI Expanded Access
+add-on](https://support.google.com/a/users/answer/16848293) provides higher
+access to advanced Workspace AI capabilities. Check the current eligibility
+and limits for the feature you need; an earlier promotional allowance is not
+a capacity promise for your workflow. It would be wrong to frame Sheets as a
+human-only product in 2026.
 
 Choose Google Sheets when:
 
@@ -201,8 +206,8 @@ remain a working spreadsheet.
 They also require integration work. The application needs Google authorization,
 file permissions, a spreadsheet range or metadata model, retry behavior, and a
 durable way to identify records. [Google's current Sheets API quota
-documentation](https://developers.google.com/workspace/sheets/api/limits), last
-updated May 29, 2026, lists 300 read and 300 write requests per minute per
+documentation](https://developers.google.com/workspace/sheets/api/limits),
+checked September 19, 2026, lists 300 read and 300 write requests per minute per
 project, with 60 of each per minute per user per project. Google recommends
 exponential backoff after quota errors.
 
