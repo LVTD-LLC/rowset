@@ -18,6 +18,10 @@ deployment or release cut date.
 
 ## 2026-09-19
 
+### Fixed
+- Comparison schema regression coverage follows the content modification date
+  while keeping the original Google Sheets comparison publication date fixed.
+
 ### Changed
 - Re-verified Google Sheets MCP, API quota, capacity, and Gemini access sources
   in the Rowset comparison; replaced past promotion details with current access

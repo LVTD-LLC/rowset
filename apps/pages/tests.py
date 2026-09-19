@@ -2081,7 +2081,8 @@ def test_rowset_vs_google_sheets_page_has_required_content_links_and_schema(clie
         "FAQPage",
     ]
     assert schemas[0]["url"] == "https://testserver/vs/google-sheets"
-    assert schemas[0]["dateModified"] == "2026-07-15"
+    assert schemas[0]["dateModified"] == get_comparison_page("google-sheets").updated_at.isoformat()
+    assert schemas[0]["datePublished"] == "2026-07-15"
     assert len(schemas[2]["mainEntity"]) == 7
 
 
