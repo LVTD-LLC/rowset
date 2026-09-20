@@ -16,6 +16,12 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-09-20
+
+### Fixed
+- The blog index skips rendering unused full article bodies while preserving
+  article summaries, links, reading times, and structured data.
+
 ## 2026-09-19
 
 ### Fixed

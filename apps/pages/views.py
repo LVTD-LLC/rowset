@@ -311,7 +311,7 @@ def changelog_markdown(request):
 
 
 def blog_posts_view(request):
-    blog_posts = list_blog_posts()
+    blog_posts = list_blog_posts(render_html=False)
     return render(
         request,
         "blog/blog_posts.html",

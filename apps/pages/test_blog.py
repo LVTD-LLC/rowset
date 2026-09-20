@@ -50,6 +50,33 @@ def test_ai_reader_menu_is_absent_from_blog_index(client, blog_posts_dir):
     assert "Copy Markdown" not in content
 
 
+def test_blog_index_does_not_render_unused_article_bodies(client, blog_posts_dir, monkeypatch):
+    write_post(
+        blog_posts_dir,
+        "summary-only",
+        {
+            "title": "Summary-only listing",
+            "description": "The summary stays available without rendering the article.",
+            "published_at": "2026-07-03",
+        },
+        "# Full article body\n\nThis Markdown belongs on the article page only.",
+    )
+
+    def unexpected_render(*args, **kwargs):
+        raise AssertionError("The blog index must not render article Markdown")
+
+    monkeypatch.setattr("apps.pages.blog.markdown.markdown", unexpected_render)
+    response = client.get(reverse("blog_posts"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Summary-only listing" in content
+    assert "The summary stays available without rendering the article." in content
+    assert 'href="/blog/summary-only"' in content
+    assert '"headline": "Summary-only listing"' in content
+    assert "Full article body" not in content
+
+
 def test_ai_reader_menu_renders_for_blog_post(client, blog_posts_dir):
     write_post(
         blog_posts_dir,
