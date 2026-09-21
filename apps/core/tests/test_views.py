@@ -257,6 +257,9 @@ def test_page_not_found_does_not_load_the_session(auth_client, monkeypatch):
 
     assert response.status_code == 404
     assert b"Page not found" in response.content
+    assert b'content="noindex, follow"' in response.content
+    assert b"application/ld+json" not in response.content
+    assert b"https:///" not in response.content
 
 
 @pytest.mark.django_db
