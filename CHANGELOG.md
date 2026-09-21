@@ -16,6 +16,12 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-09-21
+
+### Fixed
+- Missing-page responses no longer emit incomplete website structured data,
+  while preserving their 404 status, noindex directive, and session-independent rendering.
+
 ## 2026-09-20
 
 ### Fixed

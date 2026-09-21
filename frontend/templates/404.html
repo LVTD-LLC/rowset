@@ -6,6 +6,9 @@
 <meta name="robots" content="noindex, follow" />
 {% endblock meta %}
 
+{% comment %}The context-free error page has no request host or social-image context.{% endcomment %}
+{% block schema %}{% endblock schema %}
+
 {% block content %}
 <main class="grid min-h-[80vh] place-items-center px-6 py-24 sm:py-32 lg:px-8">
   <section class="fb-panel max-w-2xl p-8 sm:p-12" aria-labelledby="not-found-heading">
