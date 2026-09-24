@@ -1,13 +1,15 @@
 from uuid import uuid4
 
+import pytest
 from django.urls import reverse
 
 from apps.api.services import DatasetServiceError
 from apps.datasets.tests.factories import create_dataset, create_project, create_test_user
 
 
-def test_command_palette_search_requires_login(client):
-    response = client.get(reverse("command_palette_search"))
+@pytest.mark.parametrize("scope", ["all", "metadata", "rows"])
+def test_command_palette_search_requires_login(client, scope):
+    response = client.get(reverse("command_palette_search"), {"scope": scope})
 
     assert response.status_code == 302
     assert response["Location"].startswith("/accounts/login/")
@@ -39,11 +41,13 @@ def test_command_palette_search_waits_for_meaningful_query(auth_client, monkeypa
     assert "Search starts after 2 characters" in content
 
 
+@pytest.mark.parametrize("scope", ["all", "metadata", "rows"])
 def test_command_palette_search_returns_dataset_project_and_row_results(
     auth_client,
     django_user_model,
     monkeypatch,
     profile,
+    scope,
 ):
     project = create_project(profile, name="Ada Ops", description="Project for Ada research")
     dataset = create_dataset(
@@ -66,6 +70,7 @@ def test_command_palette_search_returns_dataset_project_and_row_results(
     create_dataset(other_user.profile, name="Other Ada Research")
 
     def fake_search_profile_rows(search_profile, **kwargs):
+        assert scope != "metadata", "Fast metadata search must not wait for embeddings"
         assert search_profile == profile
         assert kwargs["query"] == "Ada"
         assert kwargs["archived"] is False
@@ -96,20 +101,28 @@ def test_command_palette_search_returns_dataset_project_and_row_results(
 
     monkeypatch.setattr("apps.datasets.views.search_profile_rows", fake_search_profile_rows)
 
-    response = auth_client.get(reverse("command_palette_search"), {"q": "Ada"})
+    if scope == "rows":
+
+        def fail_metadata(*args, **kwargs):
+            raise AssertionError("Row search must not repeat metadata searches")
+
+        monkeypatch.setattr("apps.datasets.views.search_profile_datasets", fail_metadata)
+        monkeypatch.setattr("apps.datasets.views.search_profile_projects", fail_metadata)
+
+    response = auth_client.get(reverse("command_palette_search"), {"q": "Ada", "scope": scope})
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Rows" in content
-    assert "Datasets" in content
-    assert "Projects" in content
-    assert "P-1" in content
-    assert "Ada Research" in content
-    assert "Ada Ops" in content
+    assert ("Rows" in content) is (scope != "metadata")
+    assert ("Datasets" in content) is (scope != "rows")
+    assert ("Projects" in content) is (scope != "rows")
     assert "Other Ada Research" not in content
-    assert reverse("dataset_detail", args=[dataset.key]) in content
-    assert reverse("project_detail", args=[project.key]) in content
-    assert reverse("dataset_row_detail", args=[dataset.key, row.id]) in content
+    dataset_url = reverse("dataset_detail", args=[dataset.key])
+    assert (f'href="{dataset_url}"' in content) is (scope != "rows")
+    assert (reverse("project_detail", args=[project.key]) in content) is (scope != "rows")
+    assert (reverse("dataset_row_detail", args=[dataset.key, row.id]) in content) is (
+        scope != "metadata"
+    )
 
 
 def test_command_palette_search_keeps_metadata_results_when_row_search_fails(

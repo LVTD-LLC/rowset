@@ -1,17 +1,21 @@
 {% if not query %}
-    <div class="px-3 py-10 text-center">
-        <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">Search your Rowset workspace</p>
-        <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Type a dataset name, project, row value, or natural language description.
-        </p>
-    </div>
+    {% if search_scope != "rows" %}
+        <div class="px-3 py-10 text-center">
+            <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">Search your Rowset workspace</p>
+            <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Type a dataset name, project, row value, or natural language description.
+            </p>
+        </div>
+    {% endif %}
 {% elif query_too_short %}
-    <div class="px-3 py-10 text-center">
-        <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">Keep typing</p>
-        <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Search starts after {{ min_query_length }} characters so row search stays responsive.
-        </p>
-    </div>
+    {% if search_scope != "rows" %}
+        <div class="px-3 py-10 text-center">
+            <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">Keep typing</p>
+            <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Search starts after {{ min_query_length }} characters so row search stays responsive.
+            </p>
+        </div>
+    {% endif %}
 {% else %}
     {% if has_results %}
         <div class="space-y-3">
@@ -91,7 +95,15 @@
         </div>
     {% else %}
         <div class="px-3 py-10 text-center">
-            <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">No matches</p>
+            <p class="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                {% if search_scope == "metadata" %}
+                    No matching datasets or projects
+                {% elif search_scope == "rows" %}
+                    No matching rows
+                {% else %}
+                    No matches
+                {% endif %}
+            </p>
             <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
                 Try a dataset name, project label, row value, or a more specific natural language query.
             </p>

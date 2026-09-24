@@ -284,26 +284,7 @@ def _command_palette_row_result(result: dict) -> dict[str, object] | None:
     }
 
 
-def _command_palette_context(request) -> dict[str, object]:
-    query = _command_palette_query(request)
-    context = {
-        "query": query,
-        "min_query_length": COMMAND_PALETTE_MIN_QUERY_LENGTH,
-        "query_too_short": False,
-        "dataset_results": [],
-        "project_results": [],
-        "row_results": [],
-        "metadata_search_error": "",
-        "row_search_error": "",
-        "has_results": False,
-    }
-    if not query:
-        return context
-    if len(query) < COMMAND_PALETTE_MIN_QUERY_LENGTH:
-        context["query_too_short"] = True
-        return context
-
-    profile = get_or_create_profile_for_user(request.user)
+def _command_palette_metadata_results(profile, query):
     dataset_results = []
     project_results = []
     metadata_search_errors = []
@@ -345,24 +326,58 @@ def _command_palette_context(request) -> dict[str, object]:
             )
         )
 
+    return dataset_results, project_results, metadata_search_errors
+
+
+def _command_palette_context(request, *, scope: str = "all") -> dict[str, object]:
+    query = _command_palette_query(request)
+    context = {
+        "query": query,
+        "min_query_length": COMMAND_PALETTE_MIN_QUERY_LENGTH,
+        "query_too_short": False,
+        "search_scope": scope,
+        "dataset_results": [],
+        "project_results": [],
+        "row_results": [],
+        "metadata_search_error": "",
+        "row_search_error": "",
+        "has_results": False,
+    }
+    if not query:
+        return context
+    if len(query) < COMMAND_PALETTE_MIN_QUERY_LENGTH:
+        context["query_too_short"] = True
+        return context
+
+    profile = get_or_create_profile_for_user(request.user)
+    dataset_results, project_results, metadata_search_errors = [], [], []
+    if scope != "rows":
+        dataset_results, project_results, metadata_search_errors = (
+            _command_palette_metadata_results(profile, query)
+        )
+
     row_results = []
     row_search_error = ""
-    try:
-        row_payload = search_profile_rows(
-            profile,
-            query=query,
-            archived=False,
-            limit=COMMAND_PALETTE_ROW_LIMIT,
-        )
-    except DatasetServiceError:
-        row_search_error = "We couldn’t search rows right now. Try again."
-    else:
-        row_results = list(
-            filter(
-                None,
-                (_command_palette_row_result(result) for result in row_payload.get("results", [])),
+    if scope != "metadata":
+        try:
+            row_payload = search_profile_rows(
+                profile,
+                query=query,
+                archived=False,
+                limit=COMMAND_PALETTE_ROW_LIMIT,
             )
-        )
+        except DatasetServiceError:
+            row_search_error = "We couldn’t search rows right now. Try again."
+        else:
+            row_results = list(
+                filter(
+                    None,
+                    (
+                        _command_palette_row_result(result)
+                        for result in row_payload.get("results", [])
+                    ),
+                )
+            )
 
     context.update(
         {
@@ -381,10 +396,13 @@ def _command_palette_context(request) -> dict[str, object]:
 @require_http_methods(["GET"])
 @vary_on_headers("HX-Request")
 def command_palette_search(request):
+    scope = request.GET.get("scope", "all")
+    if scope not in {"all", "metadata", "rows"}:
+        scope = "all"
     return render(
         request,
         "components/command_palette_results.html",
-        _command_palette_context(request),
+        _command_palette_context(request, scope=scope),
     )
 
 

@@ -4458,6 +4458,7 @@ def search_profile_rows(
         filter_operators,
         normalized_filters,
     )
+    dataset_started_at = perf_counter()
     dataset_queryset, dataset_filters = _profile_row_search_dataset_queryset(
         profile,
         dataset_key=dataset_key,
@@ -4467,6 +4468,7 @@ def search_profile_rows(
         filters=normalized_filters,
     )
     datasets = list(dataset_queryset)
+    dataset_latency_ms = (perf_counter() - dataset_started_at) * 1000
     if not datasets:
         logger.info(
             "Profile row hybrid search complete",
@@ -4489,6 +4491,9 @@ def search_profile_rows(
             top_vector_score=None,
             embedding_model="",
             embedding_dimensions=None,
+            dataset_latency_ms=round(dataset_latency_ms, 2),
+            lexical_latency_ms=0,
+            hydration_latency_ms=0,
             embedding_latency_ms=0,
             vector_latency_ms=0,
             search_latency_ms=round((perf_counter() - search_started_at) * 1000, 2),
@@ -4516,6 +4521,7 @@ def search_profile_rows(
         vector_store=vector_store,
     )
     vector_hits = vector_search.hits
+    lexical_started_at = perf_counter()
     allowed_row_ids = _profile_allowed_vector_row_ids(
         datasets,
         vector_hits,
@@ -4529,18 +4535,21 @@ def search_profile_rows(
         filter_operators=normalized_filter_operators,
         limit=normalized_limit,
     )
+    lexical_latency_ms = (perf_counter() - lexical_started_at) * 1000
     candidates = _dataset_search_candidates(
         vector_hits=vector_hits,
         lexical_rows=lexical_rows,
         allowed_row_ids=allowed_row_ids,
     )
     ranked_candidates = _rank_dataset_search_candidates(candidates, limit=normalized_limit)
+    hydration_started_at = perf_counter()
     results = _serialize_profile_row_search_results(ranked_candidates)
     results = _sort_profile_row_search_results(
         results,
         sort=normalized_sort,
         direction=normalized_direction,
     )
+    hydration_latency_ms = (perf_counter() - hydration_started_at) * 1000
     hydration_misses = len(ranked_candidates) - len(results)
     top_result = results[0] if results else None
     logger.info(
@@ -4568,6 +4577,9 @@ def search_profile_rows(
         ),
         embedding_model=vector_search.embedding_model,
         embedding_dimensions=vector_search.embedding_dimensions,
+        dataset_latency_ms=round(dataset_latency_ms, 2),
+        lexical_latency_ms=round(lexical_latency_ms, 2),
+        hydration_latency_ms=round(hydration_latency_ms, 2),
         embedding_latency_ms=round(vector_search.embedding_latency_ms, 2),
         vector_latency_ms=round(vector_search.vector_latency_ms, 2),
         search_latency_ms=round((perf_counter() - search_started_at) * 1000, 2),

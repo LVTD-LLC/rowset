@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Callable
 from typing import Any
@@ -116,6 +117,9 @@ class RequestLoggingMiddleware:
             error_type = error_type or str(getattr(request, "_rowset_error_type", ""))
             response.headers["X-Request-ID"] = request_id
             return response
+        except asyncio.CancelledError:
+            status_code = None
+            raise
         except Exception as exc:
             error_type = type(exc).__name__
             raise
@@ -142,6 +146,9 @@ class RequestLoggingMiddleware:
             error_type = error_type or str(getattr(request, "_rowset_error_type", ""))
             response.headers["X-Request-ID"] = request_id
             return response
+        except asyncio.CancelledError:
+            status_code = None
+            raise
         except Exception as exc:
             error_type = type(exc).__name__
             raise
@@ -165,12 +172,25 @@ class RequestLoggingMiddleware:
     def _log_completion(
         request: HttpRequest,
         *,
-        status_code: int,
+        status_code: int | None,
         started_at: float,
         error_type: str,
     ) -> None:
         # Pick up identity resolved by the view without forcing authentication or profile queries.
         _bind_session_actor(request)
+        if status_code is None:
+            # A disconnected/replaced request has no HTTP response. Keep it out
+            # of server-error events and completed-request conversion analytics.
+            logger.info(
+                "http.request.cancelled",
+                **{
+                    "http.request.method": request.method,
+                    "http.route": route_name(request),
+                    "duration_ms": round((time.perf_counter() - started_at) * 1_000, 2),
+                    "outcome": "cancelled",
+                },
+            )
+            return
         htmx = getattr(request, "htmx", None)
         outcome = "failure" if status_code >= 400 else "success"
         route = route_name(request)

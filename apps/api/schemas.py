@@ -457,10 +457,24 @@ class DatasetRelationshipContextOut(Schema):
     incoming: list[DatasetRelationshipOut]
 
 
+class ProfileRowSearchDatasetOut(Schema):
+    key: str
+    name: str
+    project: ProjectReferenceOut | None = None
+    section: ProjectSectionReferenceOut | None = None
+    headers: list[str]
+    index_column: str
+    row_count: int
+    public_enabled: bool
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    archived_at: datetime | None = None
+
+
 class DatasetDetailOut(DatasetSummaryOut):
     relationships: DatasetRelationshipContextOut
-    dataset_references: dict[str, dict[str, JsonObject]]
-    project_references: dict[str, dict[str, JsonObject]]
+    dataset_references: dict[str, dict[str, ProfileRowSearchDatasetOut]]
+    project_references: dict[str, dict[str, ProjectSummaryOut]]
 
 
 class DatasetRelationshipDeleteOut(Schema):
@@ -668,20 +682,6 @@ class ProfileRowSearchIn(Schema):
         description="asc or desc. Defaults to desc when sort is rank, asc otherwise.",
     )
     limit: int = Field(default=10, ge=1, le=50)
-
-
-class ProfileRowSearchDatasetOut(Schema):
-    key: str
-    name: str
-    project: ProjectReferenceOut | None = None
-    section: ProjectSectionReferenceOut | None = None
-    headers: list[str]
-    index_column: str
-    row_count: int
-    public_enabled: bool
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    archived_at: datetime | None = None
 
 
 class ProfileRowSearchResultOut(Schema):
