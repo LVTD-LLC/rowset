@@ -505,7 +505,9 @@
         }
         const parameters = event.detail.requestConfig?.parameters;
         const query = parameters?.q ?? parameters?.get?.("q") ?? "";
-        if (String(query).trim() !== this.$refs.input.value.trim()) {
+        const responseQuery = String(query).trim();
+        const currentQuery = this.$refs.input.value.trim();
+        if (responseQuery !== currentQuery) {
           event.detail.shouldSwap = false;
         }
       },
