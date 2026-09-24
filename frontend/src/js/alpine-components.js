@@ -459,6 +459,7 @@
       activeIndex: -1,
       activeResultId: "",
       afterSwapHandler: null,
+      beforeSwapHandler: null,
       open: false,
       previousBodyOverflow: "",
       returnFocusElement: null,
@@ -466,10 +467,11 @@
 
       init() {
         this.afterSwapHandler = (event) => {
-          if (event.target?.id === "command-palette-results") {
+          if (this.isSearchTarget(event.target)) {
             this.$nextTick(() => this.syncResults());
           }
         };
+        this.beforeSwapHandler = (event) => this.guardSearchResponse(event);
         this.triggerHandler = (event) => {
           const trigger = event.target?.closest?.("[data-command-palette-trigger]");
           if (!trigger) {
@@ -481,6 +483,7 @@
         };
 
         document.body?.addEventListener("htmx:afterSwap", this.afterSwapHandler);
+        document.body?.addEventListener("htmx:beforeSwap", this.beforeSwapHandler);
         document.addEventListener("click", this.triggerHandler);
         this.syncShortcutLabels();
         this.$nextTick(() => this.syncResults());
@@ -488,7 +491,34 @@
 
       destroy() {
         document.body?.removeEventListener("htmx:afterSwap", this.afterSwapHandler);
+        document.body?.removeEventListener("htmx:beforeSwap", this.beforeSwapHandler);
         document.removeEventListener("click", this.triggerHandler);
+      },
+
+      isSearchTarget(element) {
+        return ["command-palette-metadata-results", "command-palette-row-results"].includes(element?.id);
+      },
+
+      guardSearchResponse(event) {
+        if (!this.isSearchTarget(event.detail?.target)) {
+          return;
+        }
+        const parameters = event.detail.requestConfig?.parameters;
+        const query = parameters?.q ?? parameters?.get?.("q") ?? "";
+        const responseQuery = String(query).trim();
+        const currentQuery = this.$refs.input.value.trim();
+        if (responseQuery !== currentQuery) {
+          event.detail.shouldSwap = false;
+        }
+      },
+
+      clearSearchResults() {
+        this.clearSelection();
+        for (const element of [this.$refs.input, this.$refs.rowResults]) {
+          window.htmx?.trigger(element, "htmx:abort");
+        }
+        this.$refs.metadataResults.replaceChildren();
+        this.$refs.rowResults.replaceChildren();
       },
 
       get resultElements() {
@@ -567,7 +597,8 @@
 
       syncResults() {
         const results = this.resultElements;
-        this.activeIndex = results.length > 0 ? 0 : -1;
+        const previousIndex = results.findIndex((element) => element.id === this.activeResultId);
+        this.activeIndex = previousIndex >= 0 ? previousIndex : results.length > 0 ? 0 : -1;
         this.applyActiveResult();
       },
 

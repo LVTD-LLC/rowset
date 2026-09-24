@@ -62,29 +62,6 @@ def test_request_middleware_runs_natively_in_async_mode(captured_events):
     assert event["outcome"] == "success"
 
 
-@override_settings(POSTHOG_API_KEY="phc_test")
-def test_request_middleware_treats_async_cancellation_as_failure(captured_events, monkeypatch):
-    captured_requests = []
-    monkeypatch.setattr(
-        traffic_analytics.posthog,
-        "capture",
-        lambda event, **kwargs: captured_requests.append((event, kwargs)),
-    )
-    request = _request("/datasets/")
-
-    async def cancelled_response(_request):
-        raise asyncio.CancelledError
-
-    with pytest.raises(asyncio.CancelledError):
-        asyncio.run(RequestLoggingMiddleware(cancelled_response)(request))
-
-    event = captured_events.event("http.request.completed")
-    assert event["outcome"] == "failure"
-    assert event["http.response.status_class"] == "5xx"
-    assert captured_requests[0][1]["properties"]["outcome"] == "failure"
-    assert structlog.contextvars.get_contextvars() == {}
-
-
 def test_request_middleware_does_not_resolve_unused_lazy_session_user(captured_events):
     request = _request()
     evaluations = 0
@@ -351,4 +328,35 @@ def test_request_middleware_skips_healthcheck_log_and_posthog(
     assert not any(event.get("event") == "http.request.completed" for event in captured_events)
     assert captured_requests == []
     assert len(response.headers["X-Request-ID"]) == 32
+    assert structlog.contextvars.get_contextvars() == {}
+
+
+@pytest.mark.parametrize("async_mode", [False, True])
+@override_settings(POSTHOG_API_KEY="phc_test")
+def test_request_cancellation_is_not_a_server_error(captured_events, monkeypatch, async_mode):
+    traffic_events = []
+    monkeypatch.setattr(
+        traffic_analytics.posthog, "capture", lambda *args, **kwargs: traffic_events.append(args)
+    )
+    request = _request("/search/")
+
+    def cancelled(_request):
+        raise asyncio.CancelledError()
+
+    async def async_cancelled(_request):
+        raise asyncio.CancelledError()
+
+    middleware = RequestLoggingMiddleware(async_cancelled if async_mode else cancelled)
+    with pytest.raises(asyncio.CancelledError):
+        if async_mode:
+            asyncio.run(middleware(request))
+        else:
+            middleware(request)
+
+    event = captured_events.event("http.request.cancelled")
+    assert event["outcome"] == "cancelled"
+    assert event["level"] == "info"
+    assert "http.response.status_code" not in event
+    assert not any(item["event"] == "http.request.completed" for item in captured_events)
+    assert traffic_events == []
     assert structlog.contextvars.get_contextvars() == {}

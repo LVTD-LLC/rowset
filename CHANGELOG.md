@@ -19,6 +19,12 @@ deployment or release cut date.
 ## 2026-09-24
 
 ### Fixed
+- Show dataset/project search results independently of slower row search, and
+  discard superseded results while keeping keyboard selection stable.
+- Treat disconnected or replaced requests as cancellations, not HTTP 500 errors.
+- Serialize dataset/project reference timestamps through typed API response schemas.
+- Add row-search phase timings to distinguish dataset, lexical, hydration, and
+  embedding latency without logging search text or row contents.
 - Corrected Airtable comparisons to acknowledge official MCP access for external
   agents, and aligned comparison schema coverage with its content update date.
 

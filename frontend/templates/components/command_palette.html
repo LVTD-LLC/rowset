@@ -54,14 +54,16 @@
                            :aria-activedescendant="activeResultId || null"
                            placeholder="Search rows, datasets, and projects"
                            class="block min-h-11 min-w-0 flex-1 border-0 bg-transparent px-0 text-base text-slate-950 placeholder:text-slate-500 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-400"
-                           hx-get="{% url 'command_palette_search' %}"
-                           hx-trigger="input changed delay:220ms, search"
-                           hx-target="#command-palette-results"
+                           hx-get="{% url 'command_palette_search' %}?scope=metadata"
+                           hx-trigger="input delay:220ms, search delay:220ms"
+                           hx-target="#command-palette-metadata-results"
                            hx-swap="innerHTML"
                            hx-sync="this:replace"
                            hx-indicator="#command-palette-loading"
                            hx-push-url="false"
                            hx-history="false"
+                           @input="clearSearchResults()"
+                           @search="clearSearchResults()"
                            @keydown.arrow-down.prevent="moveSelection(1)"
                            @keydown.arrow-up.prevent="moveSelection(-1)"
                            @keydown.enter.prevent="openActiveResult()" />
@@ -87,7 +89,23 @@
                  role="listbox"
                  aria-label="Search results"
                  class="max-h-[min(32rem,62svh)] overflow-y-auto p-2">
-                {% include "components/command_palette_results.html" with query="" min_query_length=2 %}
+                <div id="command-palette-metadata-results" x-ref="metadataResults">
+                    {% include "components/command_palette_results.html" with query="" min_query_length=2 %}
+                </div>
+                <div id="command-palette-row-loading"
+                     class="htmx-indicator px-3 py-2 text-xs text-slate-500"
+                     role="status">Searching rows…</div>
+                <div id="command-palette-row-results"
+                     x-ref="rowResults"
+                     hx-get="{% url 'command_palette_search' %}?scope=rows"
+                     hx-trigger="input delay:350ms from:#command-palette-query, search delay:350ms from:#command-palette-query"
+                     hx-include="#command-palette-query"
+                     hx-target="this"
+                     hx-swap="innerHTML"
+                     hx-sync="this:replace"
+                     hx-indicator="#command-palette-row-loading"
+                     hx-push-url="false"
+                     hx-history="false"></div>
             </div>
         </section>
     </div>

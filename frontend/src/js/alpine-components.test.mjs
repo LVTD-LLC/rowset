@@ -471,3 +471,30 @@ test("AI reader aborts a stalled Markdown request and permits retry", async () =
   assert.equal(component.status, "Couldn’t copy — try again");
   assert.equal(component.busy, false);
 });
+
+
+test("command palette rejects responses for a replaced query in either result section", () => {
+  const { component } = loadCommandPalette();
+  component.$refs = { input: { value: "new query" } };
+  for (const id of ["command-palette-metadata-results", "command-palette-row-results"]) {
+    const detail = {
+      target: { id },
+      requestConfig: { parameters: { q: "old query" } },
+      shouldSwap: true,
+    };
+    component.guardSearchResponse({ detail });
+    assert.equal(detail.shouldSwap, false);
+    for (const [requestQuery, inputQuery] of [
+      ["new query", "new query"],
+      ["  new query  ", "new query"],
+      ["new query", "  new query  "],
+      ["  new query  ", "  new query  "],
+    ]) {
+      detail.requestConfig.parameters.q = requestQuery;
+      component.$refs.input.value = inputQuery;
+      detail.shouldSwap = true;
+      component.guardSearchResponse({ detail });
+      assert.equal(detail.shouldSwap, true);
+    }
+  }
+});

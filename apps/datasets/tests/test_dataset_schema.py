@@ -261,6 +261,15 @@ def test_dataset_api_dataset_reference_columns_accept_archived_datasets(api_clie
     reference = payload["dataset_references"]["task_dataset"][str(target.key)]
     assert reference["name"] == "Review Gate First Implementation Tasks"
     assert reference["archived_at"] == target.archived_at
+
+    detail_response = api_client.get(f"/api/datasets/{dataset.key}")
+    assert detail_response.status_code == 200
+    api_reference = detail_response.json()["dataset_references"]["task_dataset"][str(target.key)]
+    for field in ("created_at", "updated_at", "archived_at"):
+        expected = getattr(target, field)
+        expected = expected.replace(microsecond=expected.microsecond // 1000 * 1000)
+        assert timezone.datetime.fromisoformat(api_reference[field]) == expected
+
     assert reference["row_count"] == 2
 
 
