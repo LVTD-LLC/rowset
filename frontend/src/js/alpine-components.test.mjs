@@ -484,9 +484,17 @@ test("command palette rejects responses for a replaced query in either result se
     };
     component.guardSearchResponse({ detail });
     assert.equal(detail.shouldSwap, false);
-    detail.requestConfig.parameters.q = "new query";
-    detail.shouldSwap = true;
-    component.guardSearchResponse({ detail });
-    assert.equal(detail.shouldSwap, true);
+    for (const [requestQuery, inputQuery] of [
+      ["new query", "new query"],
+      ["  new query  ", "new query"],
+      ["new query", "  new query  "],
+      ["  new query  ", "  new query  "],
+    ]) {
+      detail.requestConfig.parameters.q = requestQuery;
+      component.$refs.input.value = inputQuery;
+      detail.shouldSwap = true;
+      component.guardSearchResponse({ detail });
+      assert.equal(detail.shouldSwap, true);
+    }
   }
 });
