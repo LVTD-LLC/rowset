@@ -112,3 +112,12 @@ validate Rowset alongside an existing Airtable workspace.
 - Publishes a Markdown alternate without adding marketing content to `llms.txt`.
 - Performs a user job beyond ranking: choose an operator model and test it with a five-step sidecar migration.
 - Establishes a reusable `/vs/<slug>` product surface, comparison sitemap, and footer discovery path for future pages.
+
+## Accuracy update — 2026-09-24
+
+Supersedes the earlier inside-Airtable versus external-agent framing. Both
+products support external agents through MCP; compare workflow scope, explicit
+row indexes, dataset instructions, and self-hosting instead. Reverified official
+Airtable MCP capability against [Airtable support](https://support.airtable.com/articles/9897799762-using-the-airtable-mcp-server).
+Private source evidence and action lifecycle remain in the existing Rowset SEO
+measurements and content-ledger datasets named by `.seo/config.json`.

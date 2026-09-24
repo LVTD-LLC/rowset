@@ -16,6 +16,12 @@ deployment or release cut date.
 **Fixed** for any bug fixes.
 **Security** in case of vulnerabilities.
 
+## 2026-09-24
+
+### Fixed
+- Corrected Airtable comparisons to acknowledge official MCP access for external
+  agents, and aligned comparison schema coverage with its content update date.
+
 ## 2026-09-21
 
 ### Fixed

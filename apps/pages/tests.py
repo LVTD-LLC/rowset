@@ -2014,7 +2014,12 @@ def test_rowset_vs_airtable_page_has_required_content_links_and_schema(client):
     assert content.count('class="-mx-5 -my-2 overflow-x-auto whitespace-nowrap sm:-mx-10"') == 1
     assert "Rowset vs Airtable: Which Fits AI Agents? (2026)" in content
     assert "Rowset vs Airtable at a glance" in content
-    assert "AI agents: Airtable Field Agents vs external agent handoff" in content
+    assert "AI agents: embedded AI and external MCP access" in content
+    assert "official MCP server" in content
+    assert (
+        'href="https://support.airtable.com/articles/9897799762-using-the-airtable-mcp-server"'
+        in content
+    )
     assert "The practical migration path is usually a sidecar" in content
     assert "Frequently asked questions" in content
     assert "Airtable is the better operations app for people" in text
@@ -2033,7 +2038,8 @@ def test_rowset_vs_airtable_page_has_required_content_links_and_schema(client):
         "FAQPage",
     ]
     assert schemas[0]["url"] == "https://testserver/vs/airtable"
-    assert schemas[0]["dateModified"] == "2026-07-15"
+    assert schemas[0]["dateModified"] == get_comparison_page("airtable").updated_at.isoformat()
+    assert schemas[0]["datePublished"] == "2026-07-15"
     assert len(schemas[2]["mainEntity"]) == 5
 
 

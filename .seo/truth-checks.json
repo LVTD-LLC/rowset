@@ -135,5 +135,26 @@
       "updated May 29, 2026",
       "higher-limit period to run through July 15"
     ]
+  },
+  {
+    "claim": "Airtable comparisons acknowledge official MCP access for external agents",
+    "paths": [
+      "apps/pages/content/vs/airtable.md",
+      "apps/pages/content/blog/airtable-alternatives.md"
+    ],
+    "urls": [
+      "/vs/airtable",
+      "/blog/airtable-alternatives"
+    ],
+    "flags": "is",
+    "must_match": [
+      "official MCP server",
+      "existing.{0,30}permissions"
+    ],
+    "must_not_match": [
+      "AI agents: Airtable Field Agents vs external agent handoff",
+      "The important boundary is where the agent works",
+      "For agent-managed data, Airtable can work when the agent is supposed to operate"
+    ]
   }
 ]

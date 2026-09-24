@@ -63,3 +63,12 @@ The top SERP pattern for `airtable alternatives` is broad no-code database listi
 - The blog post omits `canonical_url` frontmatter so the blog renderer emits host-aware canonical/schema URLs.
 - The article avoids claiming Rowset replaces Airtable's no-code app builder.
 - The article includes a FAQ section, comparison table, current official source links, and in-body internal links.
+
+## Accuracy update — 2026-09-24
+
+Supersedes the earlier inside-Airtable versus external-agent framing. Both
+products support external agents through MCP; compare workflow scope, explicit
+row indexes, dataset instructions, and self-hosting instead. Reverified official
+Airtable MCP capability against [Airtable support](https://support.airtable.com/articles/9897799762-using-the-airtable-mcp-server).
+Private source evidence and action lifecycle remain in the existing Rowset SEO
+measurements and content-ledger datasets named by `.seo/config.json`.
