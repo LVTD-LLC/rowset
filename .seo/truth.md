@@ -34,3 +34,10 @@ after a provider announcement; do not infer an account-specific entitlement.
 ## High-risk product claims
 
 Do not promise private access without authentication, automatic source synchronization, or security/compliance certifications without specific current evidence. Hosted Pro price remains the existing approved brand value; Stripe catalog was not queried in this run.
+
+## Airtable MCP capability — checked 2026-09-24
+
+Airtable provides an official MCP server for external agents; record reads and
+writes follow existing Airtable permissions. Do not frame external MCP access
+as exclusive to Rowset. Source: https://support.airtable.com/articles/9897799762-using-the-airtable-mcp-server.
+Scope: MCP capability, not a re-verification of July pricing or every API quota.
