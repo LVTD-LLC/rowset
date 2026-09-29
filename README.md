@@ -544,7 +544,7 @@ See [`cli/README.md`](cli/README.md) for the full command list and examples.
 |-- pyproject.toml             # Python dependencies and tooling config
 |-- package.json               # Frontend build/lint dependencies
 |-- Makefile                   # Supported local commands
-`-- .github/workflows/         # CI, ReviewGate, CapRover deploy workflows
+`-- .github/workflows/         # CI, CapRover deploy workflows
 ```
 
 ### Request lifecycle
@@ -929,10 +929,6 @@ CI tests against PostgreSQL 18 (`rasulkireev/custom-postgres:18`), while
 `docker-compose-prod.yml` currently uses PostgreSQL 17
 (`rasulkireev/custom-postgres:17`). Keep that version split in mind for
 database behavior until the stacks are aligned.
-
-ReviewGate reviews same-repository pull requests and supports maintainer
-rereviews with an exact `@reviewgate review` PR comment. Approximate commands
-are ignored.
 
 ## Deployment
 
