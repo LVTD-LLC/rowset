@@ -198,10 +198,7 @@ def test_authenticated_blog_page_on_hosted_origin_remains_indexable(
     content = response.content.decode()
     assert 'data-app-shell="sidebar"' in content
     assert '<meta name="robots" content="index, follow"' in content
-    assert (
-        '<link rel="canonical" href="https://rowset.app/blog/agent-managed-datasets"'
-        in content
-    )
+    assert '<link rel="canonical" href="https://rowset.app/blog/agent-managed-datasets"' in content
     assert "X-Robots-Tag" not in response.headers
 
 
@@ -233,8 +230,7 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
         in content
     )
     assert (
-        '<link rel="canonical" href="https://rowset.app/blog/agent-managed-datasets" />'
-        in content
+        '<link rel="canonical" href="https://rowset.app/blog/agent-managed-datasets" />' in content
     )
     assert '<meta name="robots" content="noindex, nofollow, noarchive" />' in content
     assert "<h2>Why agents need it</h2>" in content
