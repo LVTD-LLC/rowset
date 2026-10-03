@@ -452,7 +452,7 @@ def test_legacy_public_routes_redirect_once_to_canonical_urls(client, legacy_pat
     assert response.headers["Location"] == f"{canonical_path}?source=legacy"
 
 
-@override_settings(SITE_URL="https://rowset.lvtd.dev")
+@override_settings(SITE_URL="https://rowset.app")
 def test_sitemap_urls_have_canonical_metadata_and_titles(client):
     sitemap_response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
     sitemap = ElementTree.fromstring(sitemap_response.content)
@@ -495,7 +495,7 @@ def test_sitemap_urls_have_canonical_metadata_and_titles(client):
     assert not failures, "Invalid sitemap metadata:\n" + "\n".join(failures)
 
 
-@override_settings(SITE_URL="https://rowset.lvtd.dev")
+@override_settings(SITE_URL="https://rowset.app")
 def test_seo_link_inventory_uses_live_canonical_routes(client):
     inventory_path = Path(settings.BASE_DIR, ".seo/link-inventory.md")
     active_inventory = inventory_path.read_text(encoding="utf-8").split(
@@ -1701,14 +1701,14 @@ def test_rowset_social_card_has_open_graph_dimensions():
     assert (width, height) == (1200, 630)
 
 
-@override_settings(SITE_URL="https://rowset.lvtd.dev")
+@override_settings(SITE_URL="https://rowset.app")
 def test_hosted_robots_txt_allows_crawling_and_links_sitemap(client):
     response = client.get(reverse("robots_txt"), secure=True, HTTP_HOST="testserver")
 
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
     assert response.content.decode() == (
-        "User-agent: *\nAllow: /\nSitemap: https://rowset.lvtd.dev/sitemap.xml\n\n"
+        "User-agent: *\nAllow: /\nSitemap: https://rowset.app/sitemap.xml\n\n"
     )
 
 
@@ -1727,7 +1727,7 @@ def test_favicon_redirects_to_collected_static_asset(client):
     assert response["Location"].endswith("/static/vendors/images/favicon.ico")
 
 
-@override_settings(SITE_URL="https://rowset.lvtd.dev")
+@override_settings(SITE_URL="https://rowset.app")
 def test_hosted_sitemap_response_does_not_set_noindex_header(client):
     response = client.get("/sitemap.xml", secure=True, HTTP_HOST="testserver")
 
@@ -1757,18 +1757,18 @@ def test_self_hosted_public_html_is_noindex_with_hosted_canonical(client, path):
     assert response.status_code == 200
     content = response.content.decode()
     assert '<meta name="robots" content="noindex, nofollow, noarchive"' in content
-    assert f'<link rel="canonical" href="https://rowset.lvtd.dev{path}"' in content
+    assert f'<link rel="canonical" href="https://rowset.app{path}"' in content
     assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
 
 
-@override_settings(SITE_URL="https://rowset.lvtd.dev")
+@override_settings(SITE_URL="https://rowset.app")
 def test_hosted_public_html_remains_indexable(client):
     response = client.get("/")
 
     assert response.status_code == 200
     content = response.content.decode()
     assert '<meta name="robots" content="index, follow"' in content
-    assert '<link rel="canonical" href="https://rowset.lvtd.dev/"' in content
+    assert '<link rel="canonical" href="https://rowset.app/"' in content
     assert "X-Robots-Tag" not in response.headers
 
 
@@ -1787,7 +1787,7 @@ def test_self_hosted_non_html_public_pages_are_noindex(client, path):
     assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
 
 
-@override_settings(SITE_URL="https://rowset.lvtd.dev")
+@override_settings(SITE_URL="https://rowset.app")
 def test_hosted_non_html_public_page_remains_indexable(client):
     response = client.get("/docs/quickstart.md")
 
@@ -1985,7 +1985,7 @@ def test_airtable_alternatives_blog_post_has_required_links_schema_and_content(c
     assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
     assert schema["@type"] == "BlogPosting"
 
-    assert schema["url"] == "https://rowset.lvtd.dev/blog/airtable-alternatives"
+    assert schema["url"] == "https://rowset.app/blog/airtable-alternatives"
     assert schema["headline"] == "Best Airtable alternatives for AI-agent-managed datasets"
 
 
@@ -2146,7 +2146,7 @@ def test_dataset_instructions_blog_post_has_required_links_schema_and_content(cl
     assert reverse("use_case_page", kwargs={"slug": "content-pipeline"}) in content
     assert reverse("blog_post", kwargs={"slug": "choose-index-column-agent-rows"}) in content
     assert schema["@type"] == "BlogPosting"
-    assert schema["url"] == "https://rowset.lvtd.dev/blog/structure-dataset-instructions-ai-agents"
+    assert schema["url"] == "https://rowset.app/blog/structure-dataset-instructions-ai-agents"
     assert schema["headline"] == "How to structure dataset instructions for AI agents"
 
 

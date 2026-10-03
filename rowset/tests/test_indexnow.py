@@ -30,7 +30,7 @@ def test_indexnow_key_file_is_unavailable_when_not_configured(client):
 
 @override_settings(
     INDEXNOW_KEY="rowset-indexnow-test-key",
-    SITE_URL="https://rowset.lvtd.dev",
+    SITE_URL="https://rowset.app",
 )
 def test_indexnow_key_file_serves_the_configured_key_without_caching(client):
     response = client.get(reverse("indexnow_key"))

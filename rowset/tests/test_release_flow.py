@@ -69,7 +69,7 @@ def test_main_deploy_notifies_indexnow_after_both_services_deploy():
         "INDEXNOW_AFTER": "${{ github.sha }}",
         "INDEXNOW_BEFORE": "${{ github.event.before }}",
         "INDEXNOW_KEY": "${{ secrets.INDEXNOW_KEY }}",
-        "INDEXNOW_SITE_URL": "https://rowset.lvtd.dev",
+        "INDEXNOW_SITE_URL": "https://rowset.app",
     }
     assert 'if [[ -z "$INDEXNOW_KEY" ]]' in indexnow["run"]
     assert 'git fetch --no-tags --depth=1 origin "$INDEXNOW_BEFORE"' in indexnow["run"]

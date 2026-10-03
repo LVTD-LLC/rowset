@@ -124,7 +124,7 @@ jobs:
           INDEXNOW_AFTER: ${{ github.sha }}
           INDEXNOW_BEFORE: ${{ github.event.before }}
           INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
-          INDEXNOW_SITE_URL: https://rowset.lvtd.dev
+          INDEXNOW_SITE_URL: https://rowset.app
         run: |
           if [[ -z "$INDEXNOW_KEY" ]]; then
             echo "INDEXNOW_KEY is not configured; skipping IndexNow notification."
