@@ -2,7 +2,7 @@ from urllib.parse import urlsplit
 
 from django.conf import settings
 
-CANONICAL_SITE_URL = "https://rowset.lvtd.dev"
+CANONICAL_SITE_URL = "https://rowset.app"
 INDEX_ROBOTS_POLICY = "index, follow"
 NOINDEX_ROBOTS_POLICY = "noindex, nofollow, noarchive"
 
