@@ -35,7 +35,7 @@ def test_blog_index_renders_empty_state(client, blog_posts_dir):
     assert response.status_code == 200
     content = response.content.decode()
     assert "No blog posts are available yet." in content
-    assert 'href="https://rowset.lvtd.dev/blog"' in content
+    assert 'href="https://rowset.app/blog"' in content
     assert '<meta name="robots" content="noindex, nofollow, noarchive"' in content
 
 
@@ -174,7 +174,7 @@ def test_authenticated_blog_pages_use_app_shell(client, blog_posts_dir):
 def test_authenticated_blog_page_on_hosted_origin_remains_indexable(
     client, blog_posts_dir, settings
 ):
-    settings.SITE_URL = "https://rowset.lvtd.dev"
+    settings.SITE_URL = "https://rowset.app"
     write_post(
         blog_posts_dir,
         "agent-managed-datasets",
@@ -199,7 +199,7 @@ def test_authenticated_blog_page_on_hosted_origin_remains_indexable(
     assert 'data-app-shell="sidebar"' in content
     assert '<meta name="robots" content="index, follow"' in content
     assert (
-        '<link rel="canonical" href="https://rowset.lvtd.dev/blog/agent-managed-datasets"'
+        '<link rel="canonical" href="https://rowset.app/blog/agent-managed-datasets"'
         in content
     )
     assert "X-Robots-Tag" not in response.headers
@@ -233,7 +233,7 @@ def test_blog_post_renders_markdown_and_frontmatter_metadata(client, blog_posts_
         in content
     )
     assert (
-        '<link rel="canonical" href="https://rowset.lvtd.dev/blog/agent-managed-datasets" />'
+        '<link rel="canonical" href="https://rowset.app/blog/agent-managed-datasets" />'
         in content
     )
     assert '<meta name="robots" content="noindex, nofollow, noarchive" />' in content
@@ -448,7 +448,7 @@ def test_blog_post_schema_uses_checked_in_markdown_content(blog_posts_dir):
     schema = json.loads(post_schema_json(post))
 
     assert schema["headline"] == "Schema post"
-    assert schema["url"] == "https://rowset.lvtd.dev/blog/schema-post"
+    assert schema["url"] == "https://rowset.app/blog/schema-post"
     assert schema["articleBody"] == "The article body comes from markdown."
 
 
