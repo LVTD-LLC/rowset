@@ -85,6 +85,7 @@ def product_schema() -> dict:
         "@context": "https://schema.org",
         "@type": "Product",
         "name": ROWSET_NAME,
+        "brand": {"@type": "Brand", "name": ROWSET_NAME},
         "description": ROWSET_DESCRIPTION,
         "url": public_url(reverse("pricing")),
         "image": social_card_url(),
