@@ -64,12 +64,14 @@ def software_application_schema() -> dict:
         "offers": [
             {
                 "@type": "Offer",
+                "availability": "https://schema.org/OnlineOnly",
                 "name": "Rowset 7-day trial",
                 "price": "0",
                 "priceCurrency": "USD",
             },
             {
                 "@type": "Offer",
+                "availability": "https://schema.org/OnlineOnly",
                 "name": "Rowset Pro",
                 "price": "50",
                 "priceCurrency": "USD",
@@ -89,6 +91,7 @@ def product_schema() -> dict:
         "offers": [
             {
                 "@type": "Offer",
+                "availability": "https://schema.org/OnlineOnly",
                 "name": "Rowset 7-day trial",
                 "price": "0",
                 "priceCurrency": "USD",
@@ -101,6 +104,7 @@ def product_schema() -> dict:
             },
             {
                 "@type": "Offer",
+                "availability": "https://schema.org/OnlineOnly",
                 "name": "Rowset Pro",
                 "price": "50",
                 "priceCurrency": "USD",
