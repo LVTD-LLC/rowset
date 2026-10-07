@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-07
+
+### Changed
+
+- Send transactional account emails through the dedicated `mg.rowset.app` Mailgun domain with a Rowset-branded sender; allow sender overrides for self-hosted installations.
+
 ## 2026-09-29
 
 ### Removed

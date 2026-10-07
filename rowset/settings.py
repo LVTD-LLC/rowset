@@ -508,13 +508,13 @@ if GOOGLE_CLIENT_ID != "":
     }
 
 MAILGUN_API_KEY = env("MAILGUN_API_KEY", default="")
-MAILGUN_SENDER_DOMAIN = env("MAILGUN_SENDER_DOMAIN", default="mg.lvtd.dev")
+MAILGUN_SENDER_DOMAIN = env("MAILGUN_SENDER_DOMAIN", default="mg.rowset.app")
 ANYMAIL = {
     "MAILGUN_API_KEY": MAILGUN_API_KEY,
     "MAILGUN_SENDER_DOMAIN": MAILGUN_SENDER_DOMAIN,
 }
-DEFAULT_FROM_EMAIL = "Rasul Kireev <rasul@lvtd.dev>"
-SERVER_EMAIL = "Rowset Errors <rasul@lvtd.dev>"
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Rowset <rasul@rowset.app>")
+SERVER_EMAIL = env("SERVER_EMAIL", default="Rowset Errors <rasul@rowset.app>")
 
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
