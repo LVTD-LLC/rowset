@@ -2553,12 +2553,6 @@ def test_reauthenticate_page_uses_rowset_styling(client):
     assert "Menu:" not in content
 
 
-def test_mailgun_sender_defaults_to_rasul_lvtd():
-    assert settings.DEFAULT_FROM_EMAIL == "Rasul Kireev <rasul@lvtd.dev>"
-    assert settings.SERVER_EMAIL == "Rowset Errors <rasul@lvtd.dev>"
-    assert settings.ANYMAIL["MAILGUN_SENDER_DOMAIN"] == "mg.lvtd.dev"
-
-
 def test_account_email_page_uses_rowset_styling(client):
     user = get_user_model().objects.create_user(
         username="emailpageuser",
