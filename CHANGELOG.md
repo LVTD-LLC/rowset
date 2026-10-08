@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-08
+
+### Changed
+
+- Add a private-board setup prompt and a real-task read-back checklist to the agent task-board guide.
+
 ## 2026-10-07
 
 ### Changed
