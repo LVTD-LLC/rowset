@@ -2,6 +2,7 @@
 title: "MCP Database: Direct Access vs Agent-Managed Data"
 description: Compare direct database MCP servers with Rowset's hosted dataset model, including permissions, stable row identity, safety, and best-fit use cases.
 keywords: MCP database, database MCP, database MCP server, Rowset MCP, agent database
+updated_at: 2026-10-10
 ---
 
 # MCP Database: Direct Access vs Agent-Managed Data
@@ -215,3 +216,17 @@ Use direct database MCP for controlled access to real source-of-truth tables. Us
 agent needs a private backend for its own rows, instructions, context, exports, and optional review
 previews without touching production data directly. The two approaches can work together: database
 for the source of truth, Rowset for agent work.
+
+
+## Next step: create one private workflow dataset
+
+If agent-owned workflow rows fit your task, follow the
+[first-dataset quickstart](/docs/quickstart). It covers connecting your agent,
+checking for an existing dataset before creating another, keeping previews off,
+and reading back a real row after a write. You do not need to copy production
+tables to try that workflow.
+
+For a concrete task-board shape, use the
+[agent task-board guide](/use-cases/agent-task-board). Keep upstream credentials
+and any write-back approval in the agent runtime or application; Rowset does not
+synchronize source systems or authorize their actions for you.
