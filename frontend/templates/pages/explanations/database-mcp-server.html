@@ -258,6 +258,20 @@
                         If you are starting from a workflow rather than a schema, Rowset is usually the smaller move. Start a 7-day trial, create one dataset, connect a trusted agent, and see whether the rows become useful. When they do, you can keep operating in Rowset, export to another system, or build a deeper integration. The important part is that the agent gets structured state without turning your production database into its notebook.
                     </p>
                     <p>That keeps the first implementation easy to audit, easy to explain, and easy to roll back.</p>
+                    <h2>Next step: create one private workflow dataset</h2>
+                    <p>
+                        If agent-owned workflow rows fit your task, follow the
+                        <a href="/docs/quickstart">first-dataset quickstart</a>. It covers connecting your agent,
+                        checking for an existing dataset before creating another, keeping previews off,
+                        and reading back a real row after a write. You do not need to copy production
+                        tables to try that workflow.
+                    </p>
+                    <p>
+                        For a concrete task-board shape, use the
+                        <a href="/use-cases/agent-task-board">agent task-board guide</a>. Keep upstream credentials
+                        and any write-back approval in the agent runtime or application; Rowset does not
+                        synchronize source systems or authorize their actions for you.
+                    </p>
                 </div>
             </div>
         </section>

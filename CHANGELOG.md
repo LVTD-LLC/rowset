@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Mirror the MCP setup handoff in the guide's separately rendered HTML page.
+
 - Connect the MCP database decision guide and first-dataset quickstart with clearer architecture and setup handoffs.
 
 ## 2026-10-08
