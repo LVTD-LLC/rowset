@@ -2,6 +2,7 @@
 title: Start with your first agent dataset
 description: Connect a trusted AI agent to Rowset and create one useful API-backed dataset.
 keywords: Rowset tutorial, getting started, MCP, dataset API
+updated_at: 2026-10-10
 ---
 
 # Start with your first agent dataset
@@ -16,6 +17,15 @@ off unless you explicitly ask to share a read-only browser page.
 Use this as the shortest path. After it works, use the broader
 [dataset guide](/docs/datasets) when you need projects, relationships, image
 columns, exports, or public previews.
+
+## Is this the right starting point?
+
+Use this walkthrough when your agent needs to create and maintain its own
+workflow records, such as tasks, research notes, or feedback. If the task is to
+query existing production tables instead, first read
+[MCP database: direct access vs agent-managed data](/docs/database-mcp-server).
+That guide explains which system should remain the source of truth; connecting
+Rowset does not connect your agent to an upstream database automatically.
 
 ## Before you start
 

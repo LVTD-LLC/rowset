@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-10
+
+### Changed
+
+- Connect the MCP database decision guide and first-dataset quickstart with clearer architecture and setup handoffs.
+
 ## 2026-10-08
 
 ### Changed
