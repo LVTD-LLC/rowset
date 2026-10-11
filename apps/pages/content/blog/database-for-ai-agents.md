@@ -2,7 +2,7 @@
 title: "How to Choose a Database for AI Agents"
 description: "Choose an AI agent database by separating conversation, checkpoints, retrieval, operational state, artifacts, and audit evidence."
 published_at: 2026-07-20
-updated_at: 2026-07-20
+updated_at: 2026-10-11
 author: Rasul Kireev
 keywords:
   - database for AI agents
@@ -166,6 +166,18 @@ A practical Rowset fit looks like this:
 Use a different system when you need complex multi-record transactions, stored procedures, custom server-side invariants, unrestricted analytical SQL, a dedicated vector-memory framework, or a compliance-grade immutable ledger. Rowset can sit beside those systems; it does not need to replace them.
 
 To test the operational-state layer, follow the [Rowset quickstart](/docs/quickstart), connect through [hosted MCP](/docs/connect-mcp) or the [Dataset API](/docs/dataset-api), and create one small dataset with an explicit index and instructions. The [pricing page](/pricing) describes the 7-day hosted trial and Pro plan.
+
+### Test one real workflow before moving more data
+
+A successful connection is only the first check. Choose one task or record you actually need to maintain, then use the quickstart to create or reuse a private dataset after confirming the proposed setup. Leave it empty until you have a real source row; do not manufacture sample customer data.
+
+Evaluate the workflow in three steps:
+
+1. **Read by identity.** Store one real row and retain its stable index. Fetch that exact row again and compare the stored values with the source you supplied. A plausible summary is not a read-back.
+2. **Make a bounded change.** Provide one new value for that row, have the agent inspect the current record, and update only the intended field. Read it back again. If a write response is ambiguous, reconcile the stored state before retrying; do not assume every operation is safe to repeat.
+3. **Hand off without the conversation.** In a fresh authorized agent session, supply the dataset reference and row index—not the earlier conversation. Ask the agent to inspect the dataset instructions and retrieve the current row. It should recover the saved state rather than guess what happened.
+
+The [agent task-board walkthrough](/use-cases/agent-task-board) gives a concrete starting shape. Keep previews disabled during the evaluation unless you deliberately need sharing. These checks test a narrow operational workflow, not transaction isolation, concurrent-writer safety, disaster recovery, or audit immutability. If those are requirements, evaluate them separately before choosing the storage layer.
 
 ## Database for AI agents checklist
 

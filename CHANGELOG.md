@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-11
+
+### Changed
+
+- Add a real-record evaluation checklist to the AI-agent database guide, covering indexed read-back, bounded updates, and fresh-session handoff.
+
 ## 2026-10-10
 
 ### Changed
