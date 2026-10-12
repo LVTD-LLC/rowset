@@ -156,5 +156,23 @@
       "The important boundary is where the agent works",
       "For agent-managed data, Airtable can work when the agent is supposed to operate"
     ]
+  },
+  {
+    "claim": "Rowset comparison states the account-wide API-key boundary, not per-dataset grants",
+    "paths": [
+      "apps/pages/content/vs/airtable.md"
+    ],
+    "urls": [
+      "/vs/airtable"
+    ],
+    "flags": "is",
+    "must_match": [
+      "account-wide",
+      "not per-dataset grants",
+      "instructions.{0,40}do not restrict"
+    ],
+    "must_not_match": [
+      "scoped dataset access"
+    ]
   }
 ]

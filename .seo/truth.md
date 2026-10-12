@@ -1,5 +1,16 @@
 # Public product claim guidance
 
+## API-key access boundary — checked 2026-10-12
+
+Rowset API keys select account-wide Read, Read + write, or Admin capability
+levels, not per-dataset grants. Read + write permits destructive operations,
+including row deletion and dataset archiving. Dataset instructions are workflow
+guidance, not an authorization boundary. Sources: `apps/core/services.py`
+(`agent_api_key_access_level_allows`), `apps/api/auth.py`, and
+`apps/pages/content/docs/connect-mcp.md` section 7, checked on main c68535a.
+Avoid describing Rowset access as "scoped dataset access." When discussing
+scoped keys, name the actual account-wide permission level.
+
 Reviewed 2026-09-16 at base c48ec63. Recheck after changes to billing, auth, exports or integrations.
 
 | Claim | Source | Verified |
