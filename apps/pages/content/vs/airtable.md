@@ -209,7 +209,7 @@ read + write also permits destructive operations such as deleting rows and
 archiving datasets. Dataset instructions guide the agent but do not restrict
 what its key can access. Use a trusted agent, limit its available tools in the
 client or application, and require confirmation for destructive actions. Check
-the [MCP permission levels](/docs/connect-mcp#7-use-the-right-permission-level)
+the [MCP permission levels](/docs/connect-mcp)
 before connecting it. If you need a credential restricted to one dataset,
 Rowset's current API keys do not provide that boundary.
 

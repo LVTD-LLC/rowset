@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Link the Airtable comparison to the MCP guide without an unsupported heading fragment.
+
 - Correct the Airtable comparison's access-boundary claim: Rowset API-key permissions are account-wide, not per-dataset grants.
 
 ## 2026-10-11
