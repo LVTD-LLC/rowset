@@ -3,7 +3,7 @@ title: "Rowset vs Airtable: Which Fits AI Agents? (2026)"
 description: "Compare Rowset vs Airtable for AI agents, APIs, collaboration, pricing, self-hosting, and structured data workflows."
 author: Rasul Kireev
 published_at: 2026-07-15
-updated_at: 2026-09-24
+updated_at: 2026-10-12
 keywords:
   - Rowset vs Airtable
   - Airtable alternative for AI agents
@@ -39,7 +39,7 @@ broader; the other is deliberately narrower.
 |---|---|---|
 | Primary operator | Human teams building and using collaborative apps | Trusted AI agents maintaining structured operational state |
 | Main interface | Bases, views, interfaces, forms, automations, and apps | Hosted MCP, REST API, CLI, plus a human control surface |
-| AI model | Field Agents and Omni inside the app; official MCP server for external agents | Bring your own trusted agent and give it scoped dataset access |
+| AI model | Field Agents and Omni inside the app; official MCP server for external agents | Bring your own trusted agent; API-key permission levels apply across your account |
 | Row identity | Airtable record IDs plus user-defined fields | One explicit unique index column, including generated `rowset_id` when needed |
 | Workflow context | Field configuration, app structure, automations, and workspace permissions | Dataset description, instructions, semantic column schema, and JSON metadata |
 | Programmatic access | Official MCP server and REST Web API, subject to permissions and API limits | Hosted MCP and REST with bearer API keys; CLI for scripted work |
@@ -202,6 +202,16 @@ operator boundary around one workflow.
 3. Choose a stable business key or generated `rowset_id` before the first write.
 4. Add dataset instructions that define allowed updates and review conditions.
 5. Review the Rowset dashboard or export before expanding the workflow.
+
+**One workflow is not an access boundary.** Rowset API-key permissions are
+account-wide, not per-dataset grants. A read key is suitable for inspection;
+read + write also permits destructive operations such as deleting rows and
+archiving datasets. Dataset instructions guide the agent but do not restrict
+what its key can access. Use a trusted agent, limit its available tools in the
+client or application, and require confirmation for destructive actions. Check
+the [MCP permission levels](/docs/connect-mcp#7-use-the-right-permission-level)
+before connecting it. If you need a credential restricted to one dataset,
+Rowset's current API keys do not provide that boundary.
 
 This sidecar approach is safer than copying an entire Airtable base and hoping
 the replacement fits. If people keep returning to Airtable to use an interface

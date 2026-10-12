@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-12
+
+### Fixed
+
+- Correct the Airtable comparison's access-boundary claim: Rowset API-key permissions are account-wide, not per-dataset grants.
+
 ## 2026-10-11
 
 ### Changed
