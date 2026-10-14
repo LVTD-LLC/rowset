@@ -174,5 +174,25 @@
     "must_not_match": [
       "scoped dataset access"
     ]
+  },
+  {
+    "claim": "NocoDB comparison acknowledges agent record operations and actual Rowset permissions",
+    "paths": [
+      "apps/pages/content/blog/nocodb-alternatives.md"
+    ],
+    "urls": [
+      "/blog/nocodb-alternatives"
+    ],
+    "flags": "is",
+    "must_match": [
+      "All editions support reading and editing records",
+      "account-wide, not per-dataset grants",
+      "instructions do not restrict"
+    ],
+    "must_not_match": [
+      "NocoDB is not the natural default",
+      "Rowset usually wins",
+      "Agent-driven row updates at scale"
+    ]
   }
 ]
