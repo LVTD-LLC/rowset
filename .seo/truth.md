@@ -52,3 +52,14 @@ Airtable provides an official MCP server for external agents; record reads and
 writes follow existing Airtable permissions. Do not frame external MCP access
 as exclusive to Rowset. Source: https://support.airtable.com/articles/9897799762-using-the-airtable-mcp-server.
 Scope: MCP capability, not a re-verification of July pricing or every API quota.
+
+## NocoDB comparison — checked 2026-10-14
+
+NocoDB supports MCP record reads and writes on all editions, with broader
+workspace tools on Cloud and licensed self-hosted editions. Do not treat an
+agent doing most writes as evidence that Rowset is superior. Source:
+https://nocodb.com/docs/apis-and-mcp/mcp (read 2026-10-14).
+Rowset account-wide permission levels remain as documented above; previews
+do not enforce approval before writes. Sources: docs/connect-mcp.md and
+docs/mcp-rest-public-previews.md at main 221201f. No comparative scale benchmark
+or NocoDB runtime test was performed.

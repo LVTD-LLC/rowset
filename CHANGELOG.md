@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-14
+
+### Fixed
+
+- Ground the NocoDB alternatives guide in supported MCP workflows and clarify Rowset account-wide permissions and review boundaries.
+
 ## 2026-10-12
 
 ### Fixed
