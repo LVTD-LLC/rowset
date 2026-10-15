@@ -1,6 +1,6 @@
 {
   "product": "Rowset",
-  "domain": "https://rowset.lvtd.dev",
+  "domain": "https://rowset.app",
   "stack": {
     "kind": "django-templates"
   },
@@ -27,7 +27,7 @@
     "jina": "connected via runtime credential; MCP and Rowset page extraction verified",
     "web_fetch": "available; 54 sitemap URLs plus legacy routes, metadata, canonicals, H1s, and titles checked live on 2026-07-21"
   },
-  "gsc_property": "https://rowset.lvtd.dev/",
+  "gsc_property": "sc-domain:rowset.app",
   "ahrefs_project_id": null,
   "dataforseo_location": "United States",
   "dataforseo_language": "English",
@@ -42,7 +42,7 @@
     "last_sync_at": "2026-08-25"
   },
   "created_at": "2026-07-04",
-  "updated_at": "2026-08-25",
+  "updated_at": "2026-10-15",
   "notes": [
     "Initialized from latest origin/main after fast-forwarding from c11f1de to 2d9389b.",
     "Refreshed from current origin/main b93e5d6 with GSC, Plausible, PostHog, DataForSEO, Exa, Firecrawl, Jina, and live HTTP checks on 2026-07-15.",
@@ -51,11 +51,16 @@
     "The July 21 Phase 5 recheck found the sitemap submitted and healthy in GSC, current homepage/pricing canonicals fixed, repetitive title boilerplate worth simplifying, and historical route families still returning 404 before the repair.",
     "The August 11 content refresh selected referential integrity from a product-native relationship-safety pool using live DataForSEO metrics and SERP evidence.",
     "The August 18 content refresh selected data matching from a cross-system identity pool using live DataForSEO metrics and SERP evidence.",
-    "The August 25 content refresh selected data provenance from the open agent-record auditability gap using live DataForSEO metrics and SERP evidence."
+    "The August 25 content refresh selected data provenance from the open agent-record auditability gap using live DataForSEO metrics and SERP evidence.",
+    "2026-10-15: Align public SEO domain, sitemap and flat/nested GSC defaults with rowset.app. Preserve rowset.lvtd.dev as migration alias and private API/storage origin; existing research locators, history and legacy Plausible site ID are unchanged. Historical connection notes are dated evidence, not current scope."
   ],
   "gsc": {
-    "site_url": "https://rowset.lvtd.dev/",
-    "source": "OpenSEO connection verified 2026-09-16; direct service-account fallback also verified"
+    "site_url": "sc-domain:rowset.app",
+    "source": "OpenSEO connected property verified 2026-10-15 by URL Inspection and final Search Analytics; current public property only.",
+    "historical_properties": [
+      "https://rowset.lvtd.dev/"
+    ],
+    "_scope_note": "Keep historical property observations separate; do not combine migration-era windows with sc-domain:rowset.app."
   },
   "posthog": {
     "project_id": 493217,
@@ -128,10 +133,12 @@
     "site_search_hours": 168
   },
   "site": {
-    "domain": "https://rowset.lvtd.dev",
-    "sitemap_url": "https://rowset.lvtd.dev/sitemap.xml",
+    "domain": "https://rowset.app",
+    "sitemap_url": "https://rowset.app/sitemap.xml",
     "name": "Rowset",
-    "aliases": []
+    "aliases": [
+      "https://rowset.lvtd.dev"
+    ]
   },
   "paths": {
     "roadmap": "docs/seo-sprint.md",
