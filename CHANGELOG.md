@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-15
+
+### Fixed
+
+- Align SEO operator defaults with the public rowset.app domain and Search Console property while retaining private storage and historical measurement scope.
+
 ## 2026-10-14
 
 ### Fixed
