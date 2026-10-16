@@ -304,7 +304,7 @@ measurements from a user's dataset.
 Start at `offset=0`, process `rows`, and increase the offset by **the number of
 rows returned**, not by `count`. Continue only while `has_more` is true. Treat
 an empty page with `has_more=true` as an error to investigate, rather than
-retrying the same offset indefinitely.
+retrying the same offset forever.
 
 Keep `query`, `filters`, `sort`, and `direction` unchanged between requests.
 Offset pagination is not a snapshot: concurrent writes can change which rows
