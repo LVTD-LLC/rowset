@@ -2,6 +2,10 @@
 
 ## 2026-10-16
 
+### Fixed
+
+- Use clearer pagination retry wording that does not collide with the public-search empty-result test fixture.
+
 ### Changed
 
 - Explain private Dataset API pagination, response counts, text-filter matching, and concurrent-write limitations, with a link from the row workflow guide.
