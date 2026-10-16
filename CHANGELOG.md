@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16
+
+### Changed
+
+- Explain private Dataset API pagination, response counts, text-filter matching, and concurrent-write limitations, with a link from the row workflow guide.
+
 ## 2026-10-15
 
 ### Fixed
