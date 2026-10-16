@@ -279,7 +279,47 @@ dataset key before restoring it. Preview-only archived drafts are omitted.
 GET {{ api_base_url }}/datasets/{dataset_key}/rows
 ```
 
-Returns the dataset rows.
+Returns one page, not necessarily the whole dataset. Use `limit` (up to 500)
+and `offset` to retrieve more. This example reads the first two rows:
+
+```http
+GET {{ api_base_url }}/datasets/{dataset_key}/rows?limit=2&offset=0
+Authorization: Bearer {{ api_key_placeholder }}
+```
+
+The response separates three counts:
+
+| Value | Meaning |
+| --- | --- |
+| `rows.length` | Rows returned in this response |
+| `count` | Rows matching the current query and filters, across all pages |
+| `total_count` | All rows in the dataset before filtering |
+
+For an unchanged five-row dataset with no filters, the first response has two
+items in `rows`, `count=5`, `total_count=5`, and `has_more=true`. Request
+`offset=2`, then `offset=4`, keeping `limit=2`. The final page contains one row
+and has `has_more=false`. These numbers illustrate pagination; they are not
+measurements from a user's dataset.
+
+Start at `offset=0`, process `rows`, and increase the offset by **the number of
+rows returned**, not by `count`. Continue only while `has_more` is true. Treat
+an empty page with `has_more=true` as an error to investigate, rather than
+retrying the same offset indefinitely.
+
+Keep `query`, `filters`, `sort`, and `direction` unchanged between requests.
+Offset pagination is not a snapshot: concurrent writes can change which rows
+appear on later pages. For a completeness-sensitive read, coordinate a pause in
+writes and reconcile records by their stable index.
+
+Pass `filters` as a URL-encoded JSON object using your HTTP client's query
+parameter encoder. Ordinary text-column filters use case-insensitive substring
+matching, not equality. To retrieve one known record exactly, use
+[Get a row by index](#get-a-row-by-index) instead of a text filter.
+
+For the MCP equivalent and row-editing workflow, see
+[Work with rows](/docs/work-with-rows). This example matches the hosted REST
+row-list contract checked on October 16, 2026; inspect your instance's
+[generated API reference](/api/docs) when using a different self-hosted revision.
 
 ## Search rows across datasets
 

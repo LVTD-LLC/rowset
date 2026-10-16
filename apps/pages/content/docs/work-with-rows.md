@@ -36,6 +36,7 @@ GET {{ api_base_url }}/datasets/{dataset_key}/rows
 ```
 
 List rows supports pagination, text query, header filters, sort, and direction.
+For a worked REST example, follow [pagination and response counts](/docs/dataset-api#list-rows).
 
 ## Search rows
 
