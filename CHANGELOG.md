@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-17
+
+### Changed
+
+- Explain private export format choices, full-dataset scope, and snapshot handoff limits, with links from the API guides.
+
 ## 2026-10-16
 
 ### Fixed

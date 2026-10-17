@@ -775,6 +775,9 @@ Deletes a row by Rowset row id.
 
 ## Export a snapshot
 
+For format selection, a private download command, and the full-dataset export
+boundary, see [Save and hand off an export](/docs/archive-export-troubleshoot#export-a-snapshot).
+
 ```http
 GET {{ api_base_url }}/datasets/{dataset_key}/export.csv
 ```

@@ -102,6 +102,10 @@ Use the smaller endpoint pages only when you need a narrow lookup:
 
 ## Related docs
 
+- [Save a private export](/docs/archive-export-troubleshoot#export-a-snapshot)
+  for format choices, a download command, and the difference between a full
+  dataset export and selected API rows.
+
 - [Connect over MCP](/docs/connect-mcp) for agent-native tool access.
 - [Dataset API](/docs/dataset-api) for dataset and row endpoints.
 - [MCP tool reference](/docs/mcp-tools) for MCP tool groups.
