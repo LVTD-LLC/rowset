@@ -7,8 +7,8 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.datasets.models import Dataset
-from apps.datasets.services import rows_to_sqlite_bytes
+from apps.datasets.models import Dataset, DatasetRow
+from apps.datasets.services import iter_export_row_data, rows_to_sqlite_bytes
 from apps.datasets.tests.dataset_test_helpers import (
     create_ready_dataset,
     sqlite_rows,
@@ -18,6 +18,32 @@ from apps.datasets.tests.dataset_test_helpers import (
 )
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.mark.parametrize("row_count", [2, 1001])
+def test_export_row_data_uses_one_query_across_batches(
+    profile, django_assert_num_queries, row_count
+):
+    dataset = create_ready_dataset(profile)
+    extra_data = [
+        {"name": f"Person {number}", "email": f"person{number}@example.com"}
+        for number in range(3, row_count + 1)
+    ]
+    DatasetRow.objects.bulk_create(
+        [
+            DatasetRow(dataset=dataset, row_number=number, index_value=data["email"], data=data)
+            for number, data in enumerate(extra_data, start=3)
+        ]
+    )
+
+    with django_assert_num_queries(1):
+        exported = list(iter_export_row_data(dataset))
+
+    assert exported == [
+        {"name": "Ada", "email": "ada@example.com"},
+        {"name": "Grace", "email": "grace@example.com"},
+        *extra_data,
+    ]
 
 
 def test_dataset_detail_uses_export_menu_and_hides_duplicate_schema(auth_client, profile):
