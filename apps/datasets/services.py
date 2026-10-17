@@ -2907,7 +2907,8 @@ def _iter_export_row_batch(dataset, rows: list[DatasetRow]):
 def iter_export_row_data(dataset):
     batch_size = 1000
     batch = []
-    rows = dataset.rows.order_by("row_number", "id").only("id", "index_value", "data")
+    # The related manager needs dataset_id when attaching the known dataset to each row.
+    rows = dataset.rows.order_by("row_number", "id").only("id", "dataset_id", "index_value", "data")
     for row in rows.iterator(chunk_size=batch_size):
         batch.append(row)
         if len(batch) >= batch_size:

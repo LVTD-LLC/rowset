@@ -2,6 +2,10 @@
 
 ## 2026-10-17
 
+### Fixed
+
+- Avoid a separate dataset-ID lookup for every exported row across snapshot formats.
+
 ### Changed
 
 - Explain private export format choices, full-dataset scope, and snapshot handoff limits, with links from the API guides.
