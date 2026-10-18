@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-18
+
+### Changed
+
+- Clarify agency workflow fit, account-wide agent access, and client-review boundaries in the Airtable alternatives guide.
+
 ## 2026-10-17
 
 ### Fixed

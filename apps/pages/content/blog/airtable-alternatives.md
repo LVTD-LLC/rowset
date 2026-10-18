@@ -2,7 +2,7 @@
 title: Best Airtable alternatives for AI-agent-managed datasets
 description: Compare Airtable, Rowset, Baserow, NocoDB, Grist, Google Sheets, and Retool Database for agent-owned structured rows.
 published_at: 2026-07-05
-updated_at: 2026-09-24
+updated_at: 2026-10-18
 author: Rasul Kireev
 keywords:
   - Airtable alternatives
@@ -309,6 +309,42 @@ The practical decision is simple. If the dataset is the backbone of a human
 operations app, Airtable wins. If the dataset is working memory for a trusted
 agent that needs stable rows and private tool access, Rowset is the cleaner
 fit.
+
+## Which Airtable alternative fits an agency?
+
+For an agency, separate the client-facing workspace from the agent's working
+data. Rowset can hold an internal research queue or QA findings maintained by a
+trusted agent. It is not a client portal or a replacement for the interfaces,
+forms, and approvals your clients already use.
+
+Start with the access question, not the number of tables:
+
+- **Clients need to log in, edit their records, or approve deliverables.** Keep
+  that workflow in a system whose client permissions you can verify. In
+  Airtable, distinguish base access from interface-only access:
+  [base collaborators can view the entire base at their assigned permission
+  level](https://support.airtable.com/articles/5450095623-airtable-base-permissions).
+  Test the actual client experience before adding confidential records.
+- **A trusted internal agent needs to maintain a narrow work queue.** A Rowset
+  sidecar may fit. Start with non-sensitive sample records, a stable index, and
+  one explicit update rule. Use the [first-dataset quickstart](/docs/quickstart)
+  to connect the agent and verify that it can find and update the same row.
+- **Different clients or agents must be unable to read each other's data.**
+  Do not treat separate Rowset projects or datasets as permission boundaries.
+  [Rowset API-key permission levels are account-wide](/docs/connect-mcp), not
+  grants to individual datasets. Dataset instructions guide the agent; they
+  do not enforce isolation. Read + write access also allows destructive row
+  and dataset operations.
+
+For a review-only handoff, an [optional public preview](/docs/share-public-previews)
+is read-only, not an authenticated client workspace or an approval gate. Anyone
+with its link and optional password can read it. Keep confidential client data
+private; do not publish a preview just to make a trial easier.
+
+The useful first test is small: can your trusted agent maintain one internal
+queue reliably, while client access and approvals stay in the existing system?
+If the job requires client isolation instead, choose that permission model
+first rather than stretching Rowset into a portal.
 
 ## Migration paths
 
