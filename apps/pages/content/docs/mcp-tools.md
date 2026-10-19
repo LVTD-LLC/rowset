@@ -2,6 +2,7 @@
 title: MCP tool reference
 description: Look up Rowset MCP tool groups, startup checks, dataset operations, and safety rules.
 keywords: Rowset MCP tools, MCP reference, Rowset agent tools
+updated_at: 2026-10-19
 ---
 
 # MCP tool reference
@@ -22,8 +23,10 @@ For a new or failing connection, verify the account with:
 get_user_info
 ```
 
-`get_user_info` verifies the authenticated Rowset account, completes onboarding,
-and starts the trial. For an unfamiliar feature or troubleshooting, a bare
+`get_user_info` verifies the authenticated Rowset account and completes
+onboarding. MCP reads and API-key creation stay trial-neutral; the MCP trial
+starts on the first dataset or project mutation. CLI and REST user-info requests
+start it immediately. For an unfamiliar feature or troubleshooting, a bare
 `get_rowset_capabilities` call returns a compact `available_topics` index. Pass
 only the topic IDs needed for detailed workflow guidance:
 

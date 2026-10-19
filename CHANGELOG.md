@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-19
+
+### Fixed
+
+- Correct the MCP setup and tool-reference guides: read-only connection verification does not start the trial; distinguish MCP writes from CLI and REST user-info checks.
+
 ## 2026-10-18
 
 ### Changed

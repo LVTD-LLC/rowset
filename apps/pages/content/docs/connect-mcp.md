@@ -2,6 +2,7 @@
 title: Connect over MCP
 description: Connect a compatible AI agent to Rowset over MCP.
 keywords: Rowset MCP, Streamable HTTP MCP, AI agents, bearer token
+updated_at: 2026-10-19
 ---
 
 # Connect over MCP
@@ -68,8 +69,10 @@ For a new connection, ask the agent to call:
 get_user_info
 ```
 
-`get_user_info` verifies the authenticated account, completes onboarding, and
-starts the trial. Repeat it only when diagnosing connection or credential
+`get_user_info` verifies the authenticated account and completes onboarding.
+MCP reads and API-key creation stay trial-neutral; the MCP trial starts on the
+first dataset or project mutation. CLI and REST user-info requests start it
+immediately. Repeat the check only when diagnosing connection or credential
 problems. Do not load capabilities or list datasets merely because a session
 started. Use live MCP tool schemas for the operation at hand. Call
 `get_rowset_capabilities` only for an unfamiliar feature or troubleshooting,
