@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-20
+
+### Changed
+
+- Clarify task-board workflow fit, external coordination needs, and account-wide agent access before the private-board setup prompt.
+
 ## 2026-10-19
 
 ### Fixed
