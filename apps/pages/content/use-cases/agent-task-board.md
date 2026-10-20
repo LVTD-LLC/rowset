@@ -2,7 +2,7 @@
 title: Agent task board
 description: Use Rowset as an agent task board with durable status, owner, priority, blocked-state, and handoff rows.
 keywords: agent task board, AI task tracker, Rowset use case
-date_modified: 2026-10-08
+date_modified: 2026-10-20
 ---
 
 # Agent task board
@@ -16,6 +16,31 @@ not retrieve. See [AI agent memory vs structured
 state](/blog/ai-agent-memory-vs-state) for the architecture boundary.
 For the full schema, transition rules, retry behavior, and review contract, read
 [how to build a durable AI agent task board](/blog/ai-agent-task-management).
+
+## When this task board fits
+
+Use Rowset when you already run a trusted agent and need its task records to
+survive a new session. For example, a content agent can save a draft's status,
+blocker, and PR link so the next run reads the same task instead of rebuilding
+the plan from chat. You supply the runtime and review process.
+
+Choose a task-management system with enforced workflow controls instead if you
+need the board itself to provide dispatch, notifications, or a reviewer-only
+transition to done.
+A Rowset `review` status records a handoff; it does not prevent the writing
+agent from changing that status. Multiple workers also need an external queue
+or serialized assignment, not competing updates to the same task row.
+
+Check the access boundary before connecting: Rowset API keys are account-wide,
+not per-dataset grants. Read + write permits destructive operations as well as
+task updates. A separate project, dataset, or instruction does not isolate a
+client's tasks from the other data accessible to that key. Use only agents you
+trust with that access; use a narrower integration when you need enforced
+task-only permissions. See the [MCP permission levels](/docs/connect-mcp) and
+[task-board access and coordination rules](/blog/ai-agent-task-management).
+
+If that boundary fits your workflow, start with the empty private board below.
+You can add one real task after verifying the connection and schema.
 
 ## Starter shape
 
