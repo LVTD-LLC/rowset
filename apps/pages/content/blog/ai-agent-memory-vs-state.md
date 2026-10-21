@@ -2,6 +2,7 @@
 title: "AI agent memory vs structured state: what goes where?"
 description: "Use memory for recall and structured state for current records an AI agent must inspect, update, and share without guessing."
 published_at: 2026-07-14
+updated_at: 2026-10-21
 author: Rasul Kireev
 keywords:
   - AI agent memory vs state
@@ -170,6 +171,39 @@ work.
 Do not make a checkpoint the only copy of a business fact that matters after the
 run ends. Write the approved outcome to the operational record, then let the
 checkpoint serve its narrower resume-and-recover job.
+
+### Worked example: an approval changes while the agent is stopped
+
+Suppose an agent is preparing a product description for publication. This is a
+fictional workflow, not a Rowset feature that publishes content or enforces
+approvals.
+
+Before the agent stops, its checkpoint records `stage = ready_to_publish` for
+`ARTICLE-104`. While it is stopped, the editor withdraws approval in the current
+content-queue row.
+
+| Stored item | Value when the agent resumes | What it can establish |
+|---|---|---|
+| Memory | The editor usually prefers automatic publishing | A preference, not permission for this article |
+| Checkpoint | `ARTICLE-104`, `stage = ready_to_publish` | Where this execution stopped, not whether approval is still valid |
+| Current content-queue row | `ARTICLE-104`, `status = blocked`, `approval = withdrawn` | The current recorded decision the workflow must check |
+
+Restoring the checkpoint should not replay the publishing action blindly. The
+agent should read `ARTICLE-104` by its stable index, notice the withdrawn
+approval, and stop before calling the publishing system. It can report the
+conflict and request a new decision rather than overwrite the row with the old
+checkpoint's status.
+
+When publication is later authorized, check the destination for an existing
+publication before retrying an uncertain request. Record the confirmed result
+and its destination reference, then read the row back. A saved intention or a
+successful queue update is not proof that publication happened.
+
+With Rowset, use the [exact-index row lookup](/docs/work-with-rows#read-one-row)
+for this current-record check. Keep checkpoint recovery and publication in your
+agent runtime and publishing system. A read followed by a write is not an atomic
+approval lock: concurrent writers or sensitive actions need coordination and
+authorization enforced by the system performing the action.
 
 ## MCP is the interface, not the storage model
 

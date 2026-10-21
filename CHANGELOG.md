@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-21
+
+### Changed
+
+- Add a worked restart example distinguishing saved agent checkpoints from current approval records and confirmed external outcomes.
+
 ## 2026-10-20
 
 ### Changed
