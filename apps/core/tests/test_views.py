@@ -576,6 +576,7 @@ class TestHomeView:
         assert "autocapture: false" in content
         assert "capture_pageleave: true" in content
         assert "capture_pageview: false" in content
+        assert "capture_exceptions: false" in content
         assert "before_send: window.Rowset.sanitizePosthogEvent" in content
         assert 'defaults: "2026-05-30"' in content
         assert 'person_profiles: "identified_only"' in content
