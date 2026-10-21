@@ -199,7 +199,7 @@ publication before retrying an uncertain request. Record the confirmed result
 and its destination reference, then read the row back. A saved intention or a
 successful queue update is not proof that publication happened.
 
-With Rowset, use the [exact-index row lookup](/docs/work-with-rows#read-one-row)
+With Rowset, use the [exact-index row lookup](/docs/work-with-rows)
 for this current-record check. Keep checkpoint recovery and publication in your
 agent runtime and publishing system. A read followed by a write is not an atomic
 approval lock: concurrent writers or sensitive actions need coordination and
