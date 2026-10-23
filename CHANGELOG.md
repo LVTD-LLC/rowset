@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-23
+
+### Changed
+
+- Add a disposable relational-data evaluation trial and enforced-relationship setup links to the spreadsheet-database guide.
+
 ## 2026-10-21
 
 ### Changed

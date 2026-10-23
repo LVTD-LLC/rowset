@@ -2,7 +2,7 @@
 title: "Spreadsheet Database for AI Agents: What to Use"
 description: "Compare spreadsheets, spreadsheet-databases, and agent dataset backends using identity, schema, access, relationships, and recovery."
 published_at: 2026-07-22
-updated_at: 2026-07-22
+updated_at: 2026-10-23
 author: Rasul Kireev
 keywords:
   - spreadsheet database
@@ -139,8 +139,9 @@ visible to human operators.
 
 An agent dataset can use stable reference columns for simpler workflows: `customer_id` on a ticket,
 `campaign_id` on a content item, or `supplier_id` on a product. Rowset also supports relationship
-metadata, but it is not trying to replace a full relational application. The guide to
-[linking agent-managed datasets](/docs/link-datasets) explains the narrower model.
+metadata with optional integrity enforcement, but it is not trying to replace a full relational
+application. The guide to [linking agent-managed datasets](/docs/link-datasets) explains the
+narrower model and what happens when integrity enforcement is enabled.
 
 If the workflow needs transactions across many tables, database constraints, complex joins, or
 application-level invariants, use a conventional relational database. The broader
@@ -173,6 +174,36 @@ updates, read the row back by its stable key and compare it with the intended st
 [row-operations guide](/docs/work-with-rows) covers exact reads and writes, and the
 [AI-agent audit trail guide](/blog/ai-agent-audit-trail) explains the difference between runtime
 traces, authorization decisions, and business-state changes.
+
+## Test relational behavior before choosing a tool
+
+A linked-record picker is not proof that an agent cannot create an orphan through the API.
+Before moving operational data, try this fictional example in a disposable, private test workspace:
+`Customers` contains customer `C-101`; `Orders` contains order `O-201` pointing to `C-101`.
+Use made-up records only, and explicitly authorize the test mutations.
+
+| Trial | What to record before committing to the tool |
+|---|---|
+| Rename the customer’s display name, then read the order through the agent’s actual interface | Whether the link still resolves to `C-101`, independently of its displayed name |
+| Attempt an order pointing to absent customer `C-404` | Whether the API rejects it, stores an invalid reference, or creates something else; do not let the agent invent a customer to make it pass |
+| Attempt to delete referenced customer `C-101` | Whether deletion is blocked, links are cleared, or dependent records are removed; choose the required behavior before migrating |
+
+These are evaluation questions, not results from a cross-product benchmark. Airtable’s
+[linked-record documentation](https://support.airtable.com/v1/docs/understanding-linked-record-relationships-in-airtable)
+and Grist’s [reference-column documentation](https://support.getgrist.com/col-refs/)
+explain their relationship models; test your intended API path rather than assuming identical
+behavior from similar-looking grids.
+
+For Rowset, an **enforced dataset relationship** rejects a non-blank reference to a missing target
+and blocks deleting a referenced target or changing its index while dependents remain. Blank
+references are allowed, so this is not a required-field rule. A text ID column alone does not
+enable enforcement. Follow the [relationship setup guide](/docs/link-datasets), then use the
+[referential-integrity walkthrough](/blog/referential-integrity-ai-agents) for existing-data checks
+and recovery. These protections do not supply general multi-table transactions or approval enforcement.
+
+Keep the richer human workspace if people need its relational views and editing tools. If the
+agent-owned slice fits Rowset, start with the [private dataset quickstart](/docs/quickstart) and
+reproduce this small trial before importing more records.
 
 ## When should an AI agent use a normal spreadsheet?
 
