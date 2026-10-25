@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-25
+
+### Changed
+
+- Add a fictional exact-lookup exercise and private MCP setup handoff to the crosswalk-table guide.
+
 ## 2026-10-23
 
 ### Changed
