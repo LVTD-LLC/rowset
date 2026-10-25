@@ -180,9 +180,9 @@ A useful identity crosswalk needs more than `old_id` and `new_id`. Start with th
 
 | Column | Purpose | Example |
 |---|---|---|
-| `mapping_id` | deterministic row identity | `billing|cus_1842` |
+| `mapping_id` | deterministic row identity | `billing|cus_1842</code> |
 | `source_system` | namespace that issued the alias | `billing` |
-| `source_id` | exact source-local identifier | `cus_1842` |
+| `source_id` | exact source-local identifier | `cus_1842</code> |
 | `canonical_id` | approved target entity | `person_009` |
 | `status` | review and lifecycle state | `approved` |
 | `match_method` | how the candidate was produced | `exact_external_reference` |
@@ -266,9 +266,9 @@ fields above when creating your private practice dataset; leave review evidence 
 
 | `mapping_id` | `source_system` | `source_id` | `canonical_id` | `status` |
 |---|---|---|---|---|
-| `billing\|1842` | `billing` | `1842` | `person_009` | `approved` |
-| `crm\|1842` | `crm` | `1842` | `person_042` | `approved` |
-| `support\|731` | `support` | `731` | `person_009` | `proposed` |
+| <code>billing&#124;1842</code> | `billing` | `1842` | `person_009` | `approved` |
+| <code>crm&#124;1842</code> | `crm` | `1842` | `person_042` | `approved` |
+| <code>support&#124;731</code> | `support` | `731` | `person_009` | `proposed` |
 
 The repeated `1842` is deliberate: a source-local ID does not identify the same person in every
 system. With the toy namespaces here, the separator is unambiguous. For arbitrary IDs that may
