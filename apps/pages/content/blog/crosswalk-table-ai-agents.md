@@ -2,7 +2,7 @@
 title: "Crosswalk Table for AI Agents: Map IDs Safely"
 description: "Build a crosswalk table that maps source IDs to canonical records with review status, evidence, and exact Rowset lookups for AI agents."
 published_at: 2026-08-07
-updated_at: 2026-08-07
+updated_at: 2026-10-25
 author: Rasul Kireev
 keywords:
   - crosswalk table
@@ -13,7 +13,7 @@ topics:
   - agent workflows
   - dataset operations
   - row identity
-canonical_url: https://rowset.lvtd.dev/blog/crosswalk-table-ai-agents
+canonical_url: https://rowset.app/blog/crosswalk-table-ai-agents
 image: /static/vendors/images/logo.png
 image_alt: Rowset logo
 robots: index, follow
@@ -257,6 +257,43 @@ instructions, choice values, and metadata carry this context into later agent se
 With enforcement enabled, Rowset rejects a non-blank canonical ID that does not match a target row;
 the [relationship documentation](/docs/link-datasets) covers creation and resolution through MCP
 and REST.
+
+### Try one exact translation before connecting real systems
+
+Use this **fictional fixture** to check the handoff from a source alias to an approved target.
+These are example rows, not customer data or a completed integration test. Add the other schema
+fields above when creating your private practice dataset; leave review evidence blank for proposals.
+
+| `mapping_id` | `source_system` | `source_id` | `canonical_id` | `status` |
+|---|---|---|---|---|
+| `billing\|1842` | `billing` | `1842` | `person_009` | `approved` |
+| `crm\|1842` | `crm` | `1842` | `person_042` | `approved` |
+| `support\|731` | `support` | `731` | `person_009` | `proposed` |
+
+The repeated `1842` is deliberate: a source-local ID does not identify the same person in every
+system. With the toy namespaces here, the separator is unambiguous. For arbitrary IDs that may
+contain separators, use the [collision-safe composite-key encoding](/blog/composite-primary-key-ai-agents)
+instead of joining raw values.
+
+[Connect a trusted agent over MCP](/docs/connect-mcp), then give it this bounded task:
+
+```text
+Find my private crosswalk practice dataset with a bounded search, or create it
+from the schema above if absent. Inspect its index and instructions first.
+Add the three fictional rows above only if their mapping_ids are absent.
+Do not read or change billing, CRM or support.
+Read billing|1842 and crm|1842 by exact mapping_id. Report different canonical IDs.
+Read support|731, but stop at proposed: do not act on its target.
+Read billing|9999 as a missing-key case. Report no mapping; do not invent one.
+Return the dataset reference and each lookup result. Keep public previews off.
+```
+
+Use the current MCP tool schemas; `get_dataset_row_by_index` is the exact-row operation, not a
+fuzzy search. The [MCP setup guide](/docs/connect-mcp) explains account-wide key permissions and
+when the first mutation starts the trial. Dataset instructions and `status=approved` guide the
+agent; they do not enforce authorization. Your application must enforce approval before any real
+destination write. This exercise checks identity lookup and stop conditions, not source-system
+connectivity or end-to-end write safety.
 
 <a id="agent-crosswalk-workflow"></a>
 ## How should an AI agent use the crosswalk?
