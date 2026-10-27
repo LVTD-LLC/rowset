@@ -2,9 +2,12 @@
 title: Work with rows
 description: Read, search, filter, create, update, and delete Rowset dataset rows through MCP or REST.
 keywords: Rowset rows, row CRUD, row search, dataset rows
+updated_at: 2026-10-27
 ---
 
 # Work with rows
+
+Last updated: October 27, 2026.
 
 Rows are the working records inside an active dataset. Agents should inspect the
 dataset first, then read or change rows using the most stable identifier
@@ -20,6 +23,47 @@ get_dataset
 
 The response gives the agent the headers, index column, instructions, schema,
 project context, relationships, and asset references.
+
+## Save one real row and verify it
+
+Already have a confirmed dataset and a real task, contact, or feedback item to
+save? Give your agent the dataset key or URL and that source input. If you have
+not connected an agent or chosen a dataset, start with the
+[first-dataset quickstart](/docs/quickstart); do not create a second dataset just
+to try row operations.
+
+For a dataset with a stable business-key index, use this handoff:
+
+```text
+Save the real input I provided in the confirmed dataset. Inspect the dataset
+first and preserve its headers, schema, instructions, index, and privacy settings.
+Do not invent missing values. Read the exact index before creating a row. If it
+already exists, compare it with my input and update only the changes I requested;
+report conflicting identity or unclear intent instead of overwriting it.
+After the write, fetch the row again by index and compare the stored fields
+with my input. If the write response is uncertain, read that index before retrying.
+Report whether the row was created, updated, or already matched, and whether
+the separate read-back confirmed the requested values.
+```
+
+The MCP sequence is `get_dataset`, `get_dataset_row_by_index`, the appropriate
+`create_dataset_row` or `update_dataset_row_by_index` call, then a separate
+`get_dataset_row_by_index`. Use the live tool schemas: row `data` is keyed by
+the dataset's actual headers. A missing-row response permits creation only
+after confirming the dataset and index; an authentication or network failure
+does not establish that the row is absent. An unchanged row needs no write.
+
+For a generated `rowset_id` index, keep the key returned by a successful create
+and use it for later reads and updates. If a standalone create's response is
+lost before you receive that key, stop and reconcile the existing rows rather
+than blindly creating another. The
+[index-column guide](/blog/choose-index-column-agent-rows) explains which identity
+path fits your source.
+
+A successful write response alone is not a verified result. If the follow-up
+read fails or differs, report verification as incomplete. With no real source
+input, leave the dataset empty; do not insert a placeholder or enable a public
+preview to prove the connection works.
 
 ## List rows
 

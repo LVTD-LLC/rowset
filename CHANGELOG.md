@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-27
+
+### Changed
+
+- Document the real-input row handoff, duplicate checks, uncertain-write recovery, and separate read-back verification in the row-work guide.
+
 ## 2026-10-25
 
 ### Changed
