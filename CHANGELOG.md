@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28
+
+### Changed
+
+- Explain how to verify retained source versions, distinguish unavailable evidence from access failures, and save provenance-check outcomes without implying automatic evidence capture.
+
 ## 2026-10-27
 
 ### Changed

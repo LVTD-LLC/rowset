@@ -2,7 +2,7 @@
 title: "Data Provenance for AI Agents: What to Record"
 description: "Use a practical data-provenance contract to connect AI-agent results to sources, runs, methods, reviewers, and evidence without copying sensitive payloads."
 published_at: 2026-08-25
-updated_at: 2026-08-25
+updated_at: 2026-10-28
 author: Rasul Kireev
 keywords:
   - data provenance
@@ -12,7 +12,7 @@ topics:
   - agent workflows
   - data quality
   - auditability
-canonical_url: https://rowset.lvtd.dev/blog/data-provenance-ai-agents
+canonical_url: https://rowset.app/blog/data-provenance-ai-agents
 image: /static/vendors/images/logo.png
 image_alt: Rowset logo
 robots: index, follow
@@ -44,6 +44,7 @@ This guide turns those questions into a five-part **PROVE contract**:
 - [A practical provenance schema](#provenance-schema)
 - [How to store provenance in Rowset](#provenance-in-rowset)
 - [A worked example](#provenance-example)
+- [Check the observed evidence version](#check-evidence-version)
 - [Common provenance failures](#provenance-failures)
 - [Data provenance FAQ](#data-provenance-faq)
 
@@ -332,6 +333,40 @@ If the registry later corrects the record, create a new assertion tied to the ne
 Set `supersedes` to the prior provenance ID, review the proposed change, and update the supplier only
 after acceptance. Retain the old assertion by workflow policy and dataset instructions so it remains
 the explanation for the earlier value. Use immutable storage when that retention must be guaranteed.
+
+<a id="check-evidence-version"></a>
+## Check that the evidence still identifies the observed version
+
+Before extending the supplier workflow, try a deliberately changed source. This is a fictional
+exercise, not a Rowset feature or a compliance test.
+
+Suppose the agent observed `vendor-771` at revision `r3` with `country_code = DE`. Later, the same
+source URL serves revision `r4` with `country_code = NL`. Opening that URL successfully does not
+reproduce the evidence for the earlier assertion. W3C distinguishes a resource's current URI from
+identities for particular revisions ([PROV-AQ, section 1.2](https://www.w3.org/TR/prov-aq/#provenance-and-resources)).
+
+Use an agent or application with authorized source access to check the retained revision:
+
+1. **Resolve the recorded version.** Retrieve `r3` from the source's version API or a permitted,
+   protected snapshot, not simply the current page. Record which representation was captured,
+   such as the original response bytes rather than normalized fields.
+2. **Compare like with like.** If you recorded a digest, recompute it over that same representation
+   using the recorded algorithm. A match supports byte agreement, not the truth of the country
+   value or the identity of its author. A digest alone cannot reconstruct missing evidence.
+3. **Keep the outcome explicit.** An available `r3` that matches the recorded digest supports the
+   historical check. Only `r4` available means a version mismatch. Missing retained content means
+   evidence is unavailable. A permission error means access is blocked, not that the evidence is
+   absent. Do not relabel any of these as a verified historical match.
+
+An ETag is an opaque HTTP validator, not necessarily a content hash or a retrievable revision ID
+([RFC 9110, section 8.8.3](https://www.rfc-editor.org/rfc/rfc9110.html#section-8.8.3)). Preserve the
+provider's meaning instead of assuming an ETag can be decoded or used to fetch old bytes.
+
+Keep the old assertion tied to `r3`; stage any correction from `r4` as a new assertion for review.
+Do not copy restricted source content into a public preview to make verification easier. Rowset can
+store the assertion and your check outcome, but your agent or application must retrieve and compare
+the external evidence. Use the [row-work guide](/docs/work-with-rows) for the separate exact-index
+write and read-back; a saved provenance row does not establish that its external evidence resolved.
 
 <a id="provenance-failures"></a>
 ## Common data-provenance failures
