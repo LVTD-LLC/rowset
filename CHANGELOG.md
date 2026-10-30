@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30
+
+### Changed
+
+- Add a fictional structured-output validation exercise and private proposal-storage handoff, separating schema validity, pending review, and customer writes.
+
 ## 2026-10-28
 
 ### Changed

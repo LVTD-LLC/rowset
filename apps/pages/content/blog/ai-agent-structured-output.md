@@ -2,7 +2,7 @@
 title: "AI Agent Structured Output: Validate Before You Store"
 description: "Turn AI agent structured output into durable rows with JSON Schema, business validation, stable identity, staging, and verified writes."
 published_at: 2026-08-03
-updated_at: 2026-08-03
+updated_at: 2026-10-30
 author: Rasul Kireev
 keywords:
   - AI agent structured output
@@ -45,6 +45,7 @@ record, use stale evidence, or request an operation the agent is not allowed to 
 - [Run the write gate](#run-the-write-gate)
 - [Handle retries and schema changes](#handle-retries-and-schema-changes)
 - [Use Rowset as the durable layer](#use-rowset)
+- [Try the contract with one fictional proposal](#try-one-proposal)
 - [Structured output FAQ](#structured-output-faq)
 
 <a id="what-structured-output-does"></a>
@@ -301,6 +302,63 @@ Keep provider credentials in the agent runtime, not in dataset rows. Keep both d
 unless a deliberate read-only public preview is part of the workflow. Rowset datasets are mutable,
 so use a purpose-built immutable store as well when the workflow requires tamper-evident or
 compliance-grade records.
+
+<a id="try-one-proposal"></a>
+## Try the contract with one fictional proposal
+
+Before connecting a real customer system, test whether your worker can distinguish a valid shape
+from permission to write. Use the JSON Schema above and this fictional proposal:
+
+```json
+{
+  "proposal_id": "demo-status-001",
+  "customer_id": "CUS-DEMO-184",
+  "proposed_status": "at_risk",
+  "reason": "Fictional support ticket requests a retention review",
+  "source_refs": ["demo-ticket:921"],
+  "source_version": "r3",
+  "requires_review": true
+}
+```
+
+For the exercise, define the authoritative fixture separately: ticket 921 belongs to
+`CUS-DEMO-184`, revision `r3` is current, and no reviewer has accepted the proposal. These are
+test inputs, not records Rowset or a model has looked up. Your application validator should produce
+these outcomes:
+
+1. **Original proposal:** shape passes; identity and revision match the fixture. Keep review
+   pending and the customer write not started. `requires_review: true` does not mean approved.
+2. **Change only `customer_id` to `CUS-DEMO-999`:** shape still passes, but the ticket belongs to
+   someone else. Fail the identity check; do not change either customer's state.
+3. **Change only `source_version` to `r2`:** shape still passes, but the evidence is stale.
+   Block the write and obtain current evidence before forming a new proposal.
+4. **Change only `requires_review` to the string `"true"`:** shape fails because the contract
+   requires a boolean. Do not coerce it or send it to the customer-write path.
+
+These cases exercise the application boundary, not a provider SDK or a live CRM integration.
+They make Google's [application-validation requirement](https://ai.google.dev/gemini-api/docs/structured-output)
+concrete without treating a schema pass as a business decision.
+
+To keep the original pending proposal for inspection, connect a trusted agent through the
+[private MCP setup](/docs/connect-mcp), then use the [save-one-row and separate read-back
+workflow](/docs/work-with-rows). Reuse a confirmed private proposal dataset if you already have
+one. Give the agent this narrow handoff:
+
+```text
+Save only the fictional demo-status-001 proposal in the private proposal dataset
+I confirm. Inspect its actual headers and index first. Store the proposal JSON as
+text if the dataset uses text cells, alongside contract version demo-v1,
+shape_status passed, meaning_status passed, review_status pending, and write_status
+not_started. Read the exact proposal index before creating it; stop on conflicting
+contents. Fetch it again after saving and compare the stored fields. Do not create
+or update any customer record, publish a preview, or store credentials.
+```
+
+Dataset instructions and status labels do not enforce those gates. Your executor owns them;
+Rowset API-key permissions are account-wide, not per-dataset grants. A successful proposal
+read-back confirms storage, not approval or a customer-state change. Once this exercise behaves
+as expected, repeat it with one authorized real input and your actual validator before enabling
+destination writes.
 
 If this shape -> meaning -> write contract matches your workflow, you can [start a 7-day Rowset
 trial](/pricing) and create the smallest private staging dataset first.
