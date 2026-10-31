@@ -137,7 +137,7 @@ task that is already marked done.
 Choose a real task and its stable identifier. Have your connected agent inspect
 the dataset's current headers, index, choices, and instructions before changing
 anything. Agree which checks belong in the caller, then use the
-[row-work handoff](/docs/work-with-rows#save-one-real-row-and-verify-it) to find or
+[row-work handoff](/docs/work-with-rows) to find or
 save that task and read it back separately. If you have not connected an agent,
 start with [private MCP setup](/docs/connect-mcp).
 
