@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-31
+
+### Changed
+
+- Clarify choice validation versus caller-owned workflow rules in the schema-design guide, with task-status examples and a first-row handoff.
+
 ## 2026-10-30
 
 ### Changed
