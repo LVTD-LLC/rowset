@@ -5,6 +5,7 @@
 ### Changed
 
 - Clarify choice validation versus caller-owned workflow rules in the schema-design guide, with task-status examples and a first-row handoff.
+- Keep the schema guide row-work handoff on the canonical guide URL; the current docs renderer does not emit heading anchors.
 
 ## 2026-10-30
 
