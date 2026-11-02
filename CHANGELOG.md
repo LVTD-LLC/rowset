@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-02
+
+### Changed
+
+- Add exact MCP create-and-resolve arguments to the relationship guide, distinguishing source-row identity from its target and checking missing-target results.
+
 ## 2026-10-31
 
 ### Changed
