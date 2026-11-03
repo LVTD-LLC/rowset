@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03
+
+### Changed
+
+- Document exact MCP dataset creation, returned-key inspection, and a first real task read-back by stable index.
+
 ## 2026-11-02
 
 ### Changed
