@@ -2,7 +2,7 @@
 title: "Crosswalk Table for AI Agents: Map IDs Safely"
 description: "Build a crosswalk table that maps source IDs to canonical records with review status, evidence, and exact Rowset lookups for AI agents."
 published_at: 2026-08-07
-updated_at: 2026-10-25
+updated_at: 2026-11-04
 author: Rasul Kireev
 keywords:
   - crosswalk table
@@ -180,9 +180,9 @@ A useful identity crosswalk needs more than `old_id` and `new_id`. Start with th
 
 | Column | Purpose | Example |
 |---|---|---|
-| `mapping_id` | deterministic row identity | `billing|cus_1842</code> |
+| `mapping_id` | deterministic row identity | <code>billing&#124;cus_1842</code> |
 | `source_system` | namespace that issued the alias | `billing` |
-| `source_id` | exact source-local identifier | `cus_1842</code> |
+| `source_id` | exact source-local identifier | `cus_1842` |
 | `canonical_id` | approved target entity | `person_009` |
 | `status` | review and lifecycle state | `approved` |
 | `match_method` | how the candidate was produced | `exact_external_reference` |

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-04
+
+### Fixed
+
+- Restore complete, copyable source and composite IDs in the crosswalk guide schema table.
+
 ## 2026-11-03
 
 ### Changed
