@@ -63,3 +63,15 @@ Rowset account-wide permission levels remain as documented above; previews
 do not enforce approval before writes. Sources: docs/connect-mcp.md and
 docs/mcp-rest-public-previews.md at main 221201f. No comparative scale benchmark
 or NocoDB runtime test was performed.
+
+## Row labels versus public sharing — checked 2026-11-05
+
+A choice column such as `visibility_level` is descriptive row data, not an
+authorization rule. Public access is enabled and optionally password-protected
+at the dataset level; public row pagination can retrieve the complete dataset.
+A filtered public request is not a recipient access boundary. Keep private
+records private and explicitly curate a separate dataset for a public subset.
+Sources at main 63f228a: apps/api/services.py `get_public_dataset`,
+`list_public_dataset_rows`, and apps/api/tests.py
+`test_public_dataset_rows_can_be_fully_retrieved_with_pagination`.
+No new permission or automatic publishing behavior is claimed.

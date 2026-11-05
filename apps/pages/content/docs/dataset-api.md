@@ -1,6 +1,7 @@
 ---
 title: "Dataset API for AI Agents: REST Reference"
 description: Create private datasets and manage rows with Rowset's REST API. Find bearer-key authentication, stable-index lookups, search, exports, and read-only previews.
+updated_at: 2026-11-05
 keywords: Rowset API, dataset API, CSV API, JSONL API, XLSX API, SQLite API, REST endpoints
 ---
 
@@ -625,11 +626,21 @@ Content-Type: application/json
   "default_value": "internal",
   "column_type": {
     "type": "choice",
-    "description": "Controls whether this row can be shared outside the team",
+    "description": "Records the intended audience for caller-owned review; not an access control",
     "choices": ["internal", "shared"]
   }
 }
 ```
+
+The `visibility_level` column is a workflow label, not a permission setting.
+It does not hide rows or columns from public access. Public sharing is configured
+for the whole dataset, and a recipient can paginate through all its rows. Keep
+mixed private and shareable records in a private dataset; if you need a public
+subset, copy only the approved rows and columns into a separate dataset before
+[enabling its public preview](/docs/share-public-previews). Your agent or
+application must perform that selection; Rowset does not enforce it from this
+label. This sharing boundary was checked against the hosted source on
+November 5, 2026.
 
 To add a formula column, use the same endpoint with calculated column metadata
 and omit `default_value`:
