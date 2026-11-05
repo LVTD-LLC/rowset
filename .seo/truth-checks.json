@@ -194,5 +194,23 @@
       "Rowset usually wins",
       "Agent-driven row updates at scale"
     ]
+  },
+  {
+    "claim": "Row visibility labels do not enforce public access control",
+    "paths": [
+      "apps/pages/content/docs/dataset-api.md"
+    ],
+    "urls": [
+      "/docs/dataset-api"
+    ],
+    "flags": "is",
+    "must_match": [
+      "workflow label, not a permission setting",
+      "whole dataset",
+      "separate dataset"
+    ],
+    "must_not_match": [
+      "Controls whether this row can be shared outside the team"
+    ]
   }
 ]

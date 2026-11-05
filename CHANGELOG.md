@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-05
+
+### Fixed
+
+- Correct the Dataset API example: row visibility labels do not restrict dataset-wide public sharing; curate a separate dataset for a public subset.
+
 ## 2026-11-04
 
 ### Fixed
