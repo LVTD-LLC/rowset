@@ -1,7 +1,7 @@
 ---
 title: "Dataset API for AI Agents: REST Reference"
 description: Create private datasets and manage rows with Rowset's REST API. Find bearer-key authentication, stable-index lookups, search, exports, and read-only previews.
-updated_at: 2026-11-05
+updated_at: 2026-11-06
 keywords: Rowset API, dataset API, CSV API, JSONL API, XLSX API, SQLite API, REST endpoints
 ---
 
@@ -378,7 +378,44 @@ Each result includes the row plus match metadata such as `source`,
 GET {{ api_base_url }}/datasets/{dataset_key}/rows/by-index?index_value={index_value}
 ```
 
-Use this when your workflow has a stable business key like `sku`, `email`, `slug`, or `external_id`.
+Use this when you already know the value of the dataset's index column, such
+as a `sku`, `email`, `slug`, or `external_id`. Inspect the dataset first to
+confirm `index_column`; an email is not a lookup key just because an `email`
+column exists. For a generated index, use the returned `rowset_id` value.
+
+Pass the literal stored value through your HTTP client's query-parameter
+encoder. For example, in a fictional dataset indexed by `email`, this request
+looks up `buyer+ops@example.com` without turning the plus sign into a space:
+
+```bash
+curl --get '{{ api_base_url }}/datasets/{dataset_key}/rows/by-index' \
+  --header "Authorization: Bearer $ROWSET_API_KEY" \
+  --data-urlencode 'index_value=buyer+ops@example.com'
+```
+
+Set `ROWSET_API_KEY` in your trusted local environment and replace
+`{dataset_key}` before running it. Do not paste a real key into shared examples
+or logs. The encoded query value for this example is
+`buyer%2Bops%40example.com`; do not pre-encode it before passing it to
+`--data-urlencode`, which would encode the percent signs again. See the
+[curl query-encoding reference](https://curl.se/docs/manpage.html#--data-urlencode)
+for the command's encoding behavior.
+
+A successful response contains one canonical record in `row`, including
+`row.id`, `row.index_value`, and `row.data`. Check that the returned index is the
+one you intended before using the row in a later write. This lookup does not
+use the substring matching of ordinary text filters or the ranked results of
+hybrid search.
+
+A missing row returns `404`; it does not return an empty `rows` list or create a
+record. Check the instance, dataset key, index column, literal value, and query
+encoding before deciding that a new row is needed. Keep creation as a separate,
+explicit write rather than treating every failed read as permission to insert.
+For the broader identity decision, read
+[how to choose an index column](/blog/choose-index-column-agent-rows).
+
+This example follows the hosted REST lookup implementation checked on
+November 6, 2026. A GET lookup does not change the stored row.
 
 ## Create a row
 

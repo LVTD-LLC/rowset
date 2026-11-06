@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-06
+
+### Documentation
+
+- Explain exact-index REST row lookup, query-value encoding, response readback, and missing-record handling in the Dataset API reference.
+
 ## 2026-11-05
 
 ### Fixed
