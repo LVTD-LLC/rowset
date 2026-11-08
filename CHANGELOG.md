@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-08
+
+### Documentation
+
+- Add a fictional business-key create, update, and replay evaluation to the NocoDB comparison, distinguishing source-checked instructions from benchmark results.
+
 ## 2026-11-06
 
 ### Documentation
