@@ -2,7 +2,7 @@
 title: Best NocoDB alternatives for AI-agent-managed datasets
 description: Compare NocoDB, Rowset, Airtable, Baserow, Google Sheets, and Grist for agent-owned structured row workflows.
 published_at: 2026-07-11
-updated_at: 2026-10-14
+updated_at: 2026-11-08
 author: Rasul Kireev
 keywords:
   - NocoDB alternatives
@@ -194,6 +194,48 @@ also permits destructive operations such as deleting rows and archiving datasets
 Dataset instructions do not restrict what a key can access. Use the
 [permission guide](/docs/connect-mcp) before handing a key to an agent; a prompt
 that says “only edit this dataset” is not an authorization boundary.
+
+## Try the same business-key workflow before switching
+
+Use a private test table or dataset, not live customer records. This is a
+fictional evaluation exercise, not a benchmark we have run against NocoDB.
+The question is whether your agent can maintain one intended record across runs.
+
+Start with fields `ticket_id`, `status`, and `note`, using `ticket_id` as the
+business key. Use the fictional ticket `T-17` with status `open` and note
+`Review documentation`. Keep the key unchanged throughout the exercise.
+
+1. **Inspect before writing.** Have the agent read the actual schema, available
+   tools, and permissions. Confirm the test location and authorize the test
+   writes. A connection prompt is not an access restriction; check the
+   [Rowset account-wide key boundary](/docs/configure-agent-access) or the
+   [NocoDB connection controls](https://nocodb.com/docs/mcp/connections).
+2. **Create only after confirmed absence.** In Rowset, read `T-17` with
+   `get_dataset_row_by_index`, passing the dataset's returned `dataset_key` and
+   `index_value: "T-17"`. A confirmed missing-row response can lead to an
+   authorized `create_dataset_row`, with that key and the three field values in
+   `data`. An authentication failure or timeout is not confirmed absence.
+3. **Change one field, then read again.** If the record exists, use
+   `update_dataset_row_by_index` with the same dataset key, `index_value: "T-17"`,
+   and `data: {"status": "done"}`. Make a separate exact read: the status should
+   be `done`, the note unchanged, and the record identity the same. See the
+   [row-operation guide](/docs/work-with-rows) for the current Rowset tool contract.
+4. **Repeat the request.** Ask for `T-17` to be `done` again. The agent should
+   recognize the already-satisfied state rather than create another ticket.
+   After an uncertain write response, read and compare before deciding to retry.
+   This checks your caller's reconciliation logic, not an exactly-once guarantee.
+
+For NocoDB, its [record-tool documentation](https://nocodb.com/docs/mcp/records),
+checked November 8, 2026, describes `upsertRecords` matching on `fieldsToMergeOn`;
+that tool is not marked as included in Community Edition. Inspect your actual
+connection's tool schema before attempting the equivalent exercise. Where upsert
+is unavailable, evaluate the available query, create, and update path instead.
+Do not copy Rowset argument names into NocoDB calls.
+
+Record what happened at each step, including errors and unresolved reads. Keep
+NocoDB if the existing workspace handles this job well. Evaluate a separate
+Rowset store when its explicit index and dataset-instruction model fits better;
+a successful toy exercise does not prove production concurrency or migration safety.
 
 ## Avoid the common false equivalence
 
