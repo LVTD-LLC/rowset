@@ -2,7 +2,7 @@
 title: "AI Agent for Data Entry: A Safe Structured Workflow"
 description: "Build an AI data-entry agent with source evidence, stable IDs, validation, duplicate checks, approval, and destination read-back."
 published_at: 2026-07-30
-updated_at: 2026-07-30
+updated_at: 2026-11-09
 author: Rasul Kireev
 keywords:
   - AI agent for data entry
@@ -52,6 +52,7 @@ what the destination finally stored.
 - [Connect the agent through MCP or REST](#connect-the-agent)
 - [Run the eight-step workflow](#run-the-data-entry-workflow)
 - [Work through a vendor-intake example](#worked-example)
+- [Turn an intake form into a saved brief](#intake-form-to-brief)
 - [Know where Rowset fits](#where-rowset-fits)
 - [AI data-entry FAQ](#ai-data-entry-faq)
 
@@ -394,6 +395,52 @@ record to the proposal.
 
 This structure leaves payment details, compliance review, and vendor approval outside the
 workflow. If those jobs are added later, give them separate datasets, tools, and authority rules.
+
+<a id="intake-form-to-brief"></a>
+## Turn an intake form into a saved brief
+
+For brief generation, the destination record is the brief, not just the extracted form fields.
+Keep the original answers, generated interpretation, and accepted brief distinguishable. The
+agent or application collects the form; Rowset stores the structured rows it sends.
+
+Try this fictional agency intake: submission `INT-17`, revision `1`, asks for a documentation
+site refresh before a product launch. The customer gives no budget or launch date. Produce a
+proposal that preserves those unknowns rather than inventing a quote or deadline.
+
+Use a private brief dataset indexed by `brief_id`. An illustrative accepted row could contain:
+
+| Field | Fictional value |
+|---|---|
+| `brief_id` | `INT-17-r1` |
+| `source_record_id` | `INT-17` |
+| `source_version` | `1` |
+| `goal` | `Refresh documentation before product launch` |
+| `deliverable` | `Documentation site refresh` |
+| `budget` | `null` |
+| `launch_date` | `null` |
+| `open_questions` | `Confirm budget and launch date` |
+| `review_status` | `approved` |
+| `accepted_entry_id` | `entry-INT-17-r1` |
+
+These are proposed field names, not a built-in Rowset template. Configure nullable fields in the
+[dataset schema](/docs/design-schema); a required missing answer must block acceptance under your
+workflow's rules. `review_status` records a decision; it does not prevent writes by itself.
+
+Check four cases before using real submissions:
+
+1. **Incomplete intake:** save a proposal with open questions. Do not mark it approved or create
+   an accepted brief merely because the generated prose reads well.
+2. **Reviewed revision:** bind approval to the exact answers and brief text. Write the accepted
+   row, then independently [read it by its stable index](/docs/work-with-rows) and compare the
+   persisted fields with that approved proposal.
+3. **Corrected answer:** if the customer supplies a date in revision `2`, preserve revision `1`
+   and prepare a new proposal. Approval of `INT-17-r1` does not approve `INT-17-r2`.
+4. **Uncertain response:** look up `INT-17-r1` before retrying its write. A failed lookup or timeout
+   leaves the outcome unresolved; it is not proof that the brief is missing.
+
+Use the [structured-output guide](/blog/ai-agent-structured-output) to validate the proposed shape.
+This exercise checks your handoff design, not a tested form integration or an automatic approval
+feature. Start with fictional rows before connecting a live intake source.
 
 <a id="where-rowset-fits"></a>
 ## Where Rowset fits in automated data entry

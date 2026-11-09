@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-09
+
+### Documentation
+
+- Add a fictional intake-to-brief example with explicit unknowns, revision-bound approval, and private row readback to the data-entry workflow guide.
+
 ## 2026-11-08
 
 ### Documentation
