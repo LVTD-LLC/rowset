@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-10
+
+### Documentation
+
+- Clarify Baserow REST/MCP versus Rowset account-wide access boundaries and add a private dataset evaluation handoff to the existing comparison.
+
 ## 2026-11-09
 
 ### Documentation
