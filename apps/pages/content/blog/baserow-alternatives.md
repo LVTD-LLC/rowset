@@ -101,7 +101,7 @@ and tools authorized for that connection.
 For Rowset, dataset instructions and a `review_status` column do not enforce an
 access boundary. If your requirement is a key that can write to only one dataset,
 Rowset's account-wide key levels do not meet it. Review the
-[current key permissions](/docs/connect-mcp#7-use-the-right-permission-level) before connecting.
+[current key permissions](/docs/connect-mcp) before connecting.
 
 For a trusted internal agent that can use that account-wide boundary, start with
 the [private dataset quickstart](/docs/quickstart). Use fictional records, inspect
