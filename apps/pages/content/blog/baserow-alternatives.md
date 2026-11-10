@@ -2,7 +2,7 @@
 title: Best Baserow alternatives for AI-agent-managed datasets
 description: Compare Baserow, Rowset, Airtable, NocoDB, Grist, Supabase, and Google Sheets for agent-managed datasets.
 published_at: 2026-07-09
-updated_at: 2026-09-18
+updated_at: 2026-11-10
 author: Rasul Kireev
 keywords:
   - Baserow alternatives
@@ -70,7 +70,7 @@ sessions.
 
 Baserow has APIs. Its database API docs say database tokens are scoped to
 specific databases and tables, and permissions can be set for create, read,
-update, delete, and schema actions per table ([Baserow database API](https://baserow.io/user-docs/database-api)).
+update, and delete actions per table ([Baserow database API](https://baserow.io/user-docs/database-api)).
 Baserow also has a [built-in MCP server](https://baserow.io/user-docs/mcp-server)
 for agents to create, read, update, and delete workspace data. MCP availability
 is not the dividing line. Compare Baserow's broader workspace with Rowset's
@@ -80,6 +80,35 @@ Rowset's answer is deliberately smaller. It gives a trusted agent private MCP
 and REST access to structured rows, then lets the human owner inspect, export,
 and optionally share read-only previews. It is not trying to be the center of a
 human team's database app.
+
+## Compare access boundaries before choosing
+
+MCP support alone does not tell you which records an agent can reach or which
+changes it can make. Compare the exact connection you intend to use:
+
+| Connection | Access boundary to evaluate |
+|---|---|
+| Baserow database API | Configure database-token permissions for the tables and operations the integration needs. |
+| Baserow MCP | Direct ChatGPT and Claude connections select one workspace and allowed tools; read tools are selected by default. Custom connections depend on their endpoint configuration. |
+| Rowset MCP or REST | Read, Read + write, and Admin keys apply across the owner's account, not to one dataset. Read + write also permits row deletion and dataset archiving; Admin adds API-key creation. |
+
+Baserow's [database-token documentation](https://baserow.io/user-docs/database-api)
+and [MCP permission guide](https://baserow.io/user-docs/mcp-server), checked
+November 10, 2026, describe different controls. Do not assume a table restriction
+on a REST token automatically applies to an MCP connection. Inspect the workspace
+and tools authorized for that connection.
+
+For Rowset, dataset instructions and a `review_status` column do not enforce an
+access boundary. If your requirement is a key that can write to only one dataset,
+Rowset's account-wide key levels do not meet it. Review the
+[current key permissions](/docs/connect-mcp) before connecting.
+
+For a trusted internal agent that can use that account-wide boundary, start with
+the [private dataset quickstart](/docs/quickstart). Use fictional records, inspect
+the available tools, and [read back one row by its stable index](/docs/work-with-rows)
+before delegating real work. Begin with Read access for inspection; enable writes
+only after accepting their full scope. This is an evaluation procedure, not a
+tested Baserow migration or a cross-product security benchmark.
 
 ## What a backend for AI-agent workflows needs
 
@@ -124,8 +153,8 @@ tool gives a trusted agent the safest row contract for this workflow?"
 Rowset is the best Baserow alternative when the core worker is a trusted AI
 agent and the dataset exists so that agent can maintain structured rows.
 
-With Rowset, the user owns the account and API keys. The agent gets a scoped
-private path through MCP or REST. It can create datasets, inspect headers,
+With Rowset, the user owns the account and API keys. The agent gets an
+account-wide private path through MCP or REST. It can create datasets, inspect headers,
 follow instructions, update rows by index value, export data, and create
 read-only previews when humans need to review the output.
 
