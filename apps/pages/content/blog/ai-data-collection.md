@@ -339,7 +339,7 @@ key can also change other datasets in that account, including destructive operat
 instructions and an `accepted` status are workflow guidance, not access controls or an enforced
 approval gate. If the collector must be unable to publish or alter other records, enforce that
 boundary in your application or agent runtime; dataset separation alone does not provide it.
-Check the [MCP permission levels](/docs/connect-mcp#7-use-the-right-permission-level) before connecting
+Check the [MCP permission levels](/docs/connect-mcp) before connecting
 the collector.
 
 Put the collection contract in dataset instructions and express field meaning in the column
