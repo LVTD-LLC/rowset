@@ -2,7 +2,7 @@
 title: "AI Data Collection: A Reviewable Agent Workflow"
 description: "Build an AI data collection workflow with source authorization, checkpoints, provenance, validation, human review, and verified publication."
 published_at: 2026-08-01
-updated_at: 2026-08-01
+updated_at: 2026-11-16
 author: Rasul Kireev
 keywords:
   - AI data collection
@@ -324,8 +324,7 @@ Use [hosted MCP](/docs/connect-mcp) when the agent client benefits from tool dis
 structured operations. Use the [Dataset API](/docs/dataset-api) when a scheduled job, script, or
 agent runtime already makes HTTP requests.
 
-Create separate private datasets for the control records when the workflow needs independent
-retention or access rules:
+Use separate private datasets to organize the control records and manage their retention:
 
 ```text
 collection_sources     index: source_id
@@ -333,6 +332,15 @@ collection_runs        index: run_id
 collection_observations index: observation_id
 accepted_records       index: workflow-specific business key
 ```
+
+Separate datasets are not separate API-key permission boundaries. Rowset keys have account-wide
+Read, Read + write, or Admin levels, not per-dataset grants. A collection agent with a Read + write
+key can also change other datasets in that account, including destructive operations. Dataset
+instructions and an `accepted` status are workflow guidance, not access controls or an enforced
+approval gate. If the collector must be unable to publish or alter other records, enforce that
+boundary in your application or agent runtime; dataset separation alone does not provide it.
+Check the [MCP permission levels](/docs/connect-mcp#7-use-the-right-permission-level) before connecting
+the collector.
 
 Put the collection contract in dataset instructions and express field meaning in the column
 schema. Inspect each dataset before row work. Use by-index lookup and update when a stable key

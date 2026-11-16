@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-16
+
+### Fixed
+
+- Clarify that separate collection datasets do not isolate account-wide API-key access or enforce approval before publication.
+
 ## 2026-11-10
 
 ### Documentation

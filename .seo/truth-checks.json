@@ -212,5 +212,23 @@
     "must_not_match": [
       "Controls whether this row can be shared outside the team"
     ]
+  },
+  {
+    "claim": "Collection datasets are organization, not per-dataset API-key access or approval enforcement",
+    "paths": [
+      "apps/pages/content/blog/ai-data-collection.md"
+    ],
+    "urls": [
+      "/blog/ai-data-collection"
+    ],
+    "flags": "is",
+    "must_match": [
+      "account-wide",
+      "not per-dataset grants",
+      "not access controls or an enforced"
+    ],
+    "must_not_match": [
+      "independent\\s+retention or access rules"
+    ]
   }
 ]

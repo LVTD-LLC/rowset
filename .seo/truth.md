@@ -1,5 +1,13 @@
 # Public product claim guidance
 
+## Collection dataset separation — checked 2026-11-16
+
+Separate collection datasets organize records and retention; they do not create per-dataset
+API-key grants or enforce acceptance decisions. Read + write keys retain account-wide destructive
+capabilities. Application/runtime restrictions must enforce a narrower collection workflow.
+Sources: `apps/core/services.py` (`agent_api_key_access_level_allows`), `apps/api/auth.py`,
+and `apps/pages/content/docs/connect-mcp.md` section 7 on main ebbbb7b. Privacy risk: high.
+
 ## API-key access boundary — checked 2026-10-12
 
 Rowset API keys select account-wide Read, Read + write, or Admin capability
