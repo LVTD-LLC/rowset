@@ -123,6 +123,8 @@ describes bearer authentication as an HTTP authentication scheme where the
 client sends the bearer token in the `Authorization` header. Rowset's REST path
 follows that convention.
 
+<a id="verify-the-first-private-read"></a>
+
 ### Verify the first private read
 
 Choose an **existing test dataset** with no sensitive records. Copy its dataset
