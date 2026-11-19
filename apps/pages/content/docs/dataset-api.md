@@ -46,9 +46,7 @@ Query-string keys and alternate API-key headers are rejected. Keep API keys
 private. Copy your real key from Settings or the dashboard agent prompt only
 when you are configuring a trusted client.
 
-<a id="base-url"></a>
-
-## Base URL
+<h2 id="base-url" style="scroll-margin-top: 5rem">Base URL</h2>
 
 ```text
 {{ api_base_url }}
