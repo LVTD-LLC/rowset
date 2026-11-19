@@ -262,7 +262,9 @@ GET {{ api_base_url }}/datasets/{dataset_key}
 
 Use this before row work when a client needs the dataset headers, index column,
 semantic column schema, project context, persistent instructions, relationship
-summaries, and reference metadata without fetching rows.
+summaries, and reference metadata without fetching rows. If you are setting
+up REST access, [verify a first private read with a Read key](/blog/connect-ai-agent-to-dataset-api#verify-the-first-private-read)
+before giving an agent write access.
 
 ## List archived datasets
 

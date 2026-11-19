@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19
+
+### Fixed
+
+- Clarify account-wide API-key permissions in the Dataset API setup guide and show how to verify private REST access before enabling writes.
+
 ## 2026-11-16
 
 ### Fixed

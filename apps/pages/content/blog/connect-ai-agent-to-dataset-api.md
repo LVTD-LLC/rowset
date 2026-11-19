@@ -2,6 +2,7 @@
 title: How to connect an AI agent to the Rowset Dataset API
 description: A practical setup guide for giving a trusted AI agent private REST access to Rowset datasets without leaking keys or losing row context.
 published_at: 2026-07-12
+updated_at: 2026-11-19
 author: Rasul Kireev
 keywords:
   - connect AI agent to Dataset API
@@ -12,13 +13,13 @@ topics:
   - Dataset API
   - agent workflows
   - REST API
-canonical_url: https://rowset.lvtd.dev/blog/connect-ai-agent-to-dataset-api
+canonical_url: https://rowset.app/blog/connect-ai-agent-to-dataset-api
 image: /static/vendors/images/logo.png
 image_alt: Rowset logo
 robots: index, follow
 ---
 
-To connect an AI agent to the Rowset Dataset API, create or copy a scoped
+To connect an AI agent to the Rowset Dataset API, create or copy a least-privilege
 agent API key, store it in the agent runtime as a private secret, send it as
 `Authorization: Bearer <key>`, then have the agent inspect the dataset before
 it creates or updates rows. The setup is small, but the order matters.
@@ -36,7 +37,7 @@ through a connected MCP server.
 
 | Step | What to do | Why it matters |
 |---|---|---|
-| 1 | Create or copy an agent API key in Rowset | The key defines what the trusted client can do |
+| 1 | Create or copy an agent API key in Rowset | Start with Read for the first request |
 | 2 | Store the key as `ROWSET_API_KEY` or another private secret | Bearer tokens give access to whoever holds them |
 | 3 | Set the REST base URL from the Rowset dashboard or docs | The agent needs one stable API origin |
 | 4 | Send `Authorization: Bearer <key>` on private requests | This matches standard bearer-token API practice |
@@ -90,7 +91,10 @@ the job:
   relationships, or preview settings.
 - **Admin** only when the agent must create other agent API keys.
 
-Do not use a broad key because it is convenient.
+These permission levels apply account-wide, not to one dataset. A dataset key
+identifies what to read; it does not restrict what the bearer token can access.
+Read + write also permits destructive operations, so use Read for the first
+check and enable writes only when the workflow needs them.
 [OWASP's API Security Top 10](https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/)
 continues to treat broken authentication as a major API risk, and bearer tokens
 are intentionally simple: whoever has the token can use it until it is revoked
@@ -119,6 +123,30 @@ describes bearer authentication as an HTTP authentication scheme where the
 client sends the bearer token in the `Authorization` header. Rowset's REST path
 follows that convention.
 
+### Verify the first private read
+
+Choose an **existing test dataset** with no sensitive records. Copy its dataset
+key from the dataset page (not its public preview key). With a **Read** key
+already loaded as `ROWSET_API_KEY` in a trusted terminal, run:
+
+```bash
+ROWSET_DATASET_KEY='replace-with-your-test-dataset-key'
+curl --fail --silent --show-error --max-time 20 \
+  --header "Authorization: Bearer ${ROWSET_API_KEY:?Set ROWSET_API_KEY privately}" \
+  "https://rowset.app/api/datasets/${ROWSET_DATASET_KEY}"
+```
+
+For a self-hosted instance, use its own [API base URL](/docs/dataset-api#base-url)
+and a key created on that instance. This request returns dataset details,
+not rows, and does not create or update anything. On success, compare the
+name, headers, and `index_column` with the dataset you meant to open. Keep
+the response private: even metadata can contain sensitive instructions.
+
+If the API returns **401**, check that the runtime loaded a valid bearer key
+for that instance. If it returns **404**, check the dataset key and that the
+dataset belongs to the key's account. Don't switch to a broader key or
+create a replacement dataset just to make this read pass.
+
 ## 3. Give the agent the minimum setup prompt
 
 A good REST setup prompt should be short and operational. It should not contain
@@ -129,7 +157,7 @@ Use a prompt like this:
 ```text
 Use Rowset as the private backend for this workflow's structured data.
 
-REST API base: https://rowset.lvtd.dev/api
+REST API base: https://rowset.app/api
 Authentication: send Authorization: Bearer from the private ROWSET_API_KEY env var.
 
 Before changing rows:
@@ -248,7 +276,7 @@ Use this split:
 
 - Agent writes through private REST or MCP access.
 - Human reviews through the dashboard, exports, or optional read-only previews.
-- Sensitive changes stay behind scoped API keys.
+- Use the lowest permission level that supports the approved work.
 
 That split keeps the agent's mutation path private while still giving humans a
 clean way to review the result.
@@ -278,7 +306,7 @@ relationships, or schema changes.
 ### Treating public previews as access control
 
 Public previews are read-only sharing surfaces. Private mutation belongs in REST
-or MCP with scoped authentication.
+or MCP with bearer authentication.
 
 ### Asking the agent to "sync everything"
 
