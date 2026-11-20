@@ -2,7 +2,7 @@
 title: How to connect an AI agent to the Rowset Dataset API
 description: A practical setup guide for giving a trusted AI agent private REST access to Rowset datasets without leaking keys or losing row context.
 published_at: 2026-07-12
-updated_at: 2026-11-19
+updated_at: 2026-11-20
 author: Rasul Kireev
 keywords:
   - connect AI agent to Dataset API
@@ -233,8 +233,15 @@ it is the step that turns raw API calls into controlled row operations.
 
 ## 6. Use by-index operations for durable row updates
 
-When the dataset has a stable index, prefer by-index operations for lookup and
-update. If the agent may retry after timeouts, follow the
+Before asking the agent to update a row, prove it can find the right one with
+the same Read key. Use the `index_column` from the dataset inspection and give
+the agent one exact value from a known test row. Follow the
+[REST lookup example](/docs/dataset-api#get-a-row-by-index) and check that the
+response's `row.index_value` matches the supplied value. If the lookup returns
+`404`, stop and check the index column, stored value, and URL encoding. A
+failed lookup is not permission to create a row.
+
+If the agent may retry after timeouts, follow the
 [idempotent update contract](/blog/idempotent-ai-agent-updates): identify the
 row by index, patch absolute values, and read the row before replaying an
 uncertain write.

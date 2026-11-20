@@ -1,7 +1,7 @@
 ---
 title: "Dataset API for AI Agents: REST Reference"
 description: Create private datasets and manage rows with Rowset's REST API. Find bearer-key authentication, stable-index lookups, search, exports, and read-only previews.
-updated_at: 2026-11-06
+updated_at: 2026-11-20
 keywords: Rowset API, dataset API, CSV API, JSONL API, XLSX API, SQLite API, REST endpoints
 ---
 
@@ -374,7 +374,7 @@ Each result includes the row plus match metadata such as `source`,
 `vector_rank`, `lexical_rank`, `vector_score`, `point_id`, `chunk_index`,
 `content_hash`, and a short `snippet`.
 
-## Get a row by index
+<h2 id="get-a-row-by-index" style="scroll-margin-top: 5rem">Get a row by index</h2>
 
 ```http
 GET {{ api_base_url }}/datasets/{dataset_key}/rows/by-index?index_value={index_value}
