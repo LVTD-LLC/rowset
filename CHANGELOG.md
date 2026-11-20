@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-20
+
+### Documentation
+
+- Explain how to verify an exact indexed REST read with a Read key before authorizing row writes.
+
 ## 2026-11-19
 
 ### Fixed
