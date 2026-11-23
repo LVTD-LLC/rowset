@@ -113,3 +113,4 @@
 | Date | Action | Target | Scope | Lifecycle source |
 |---|---|---|---|---|
 | 2026-09-19 | verify-product | `/vs/google-sheets` | Rechecked MCP, quota/pricing, capacity and Gemini access sources; updated dated buying guidance without changing the comparison verdict. | Current run PR and private Rowset run record; merge/live states recorded separately. |
+| 2026-11-23 | Activation walkthrough | `/blog/data-provenance-ai-agents` | Verify correction and predecessor by separate indexes. | Current PR and private run record. |

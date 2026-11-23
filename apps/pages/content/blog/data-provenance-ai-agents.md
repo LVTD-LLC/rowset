@@ -2,7 +2,7 @@
 title: "Data Provenance for AI Agents: What to Record"
 description: "Use a practical data-provenance contract to connect AI-agent results to sources, runs, methods, reviewers, and evidence without copying sensitive payloads."
 published_at: 2026-08-25
-updated_at: 2026-10-28
+updated_at: 2026-11-23
 author: Rasul Kireev
 keywords:
   - data provenance
@@ -333,6 +333,20 @@ If the registry later corrects the record, create a new assertion tied to the ne
 Set `supersedes` to the prior provenance ID, review the proposed change, and update the supplier only
 after acceptance. Retain the old assertion by workflow policy and dataset instructions so it remains
 the explanation for the earlier value. Use immutable storage when that retention must be guaranteed.
+
+### Read back both sides of a correction
+
+Suppose the registry changes vendor 771’s status from pending in revision `r3` to approved in `r4`.
+In a private test dataset, give each assertion its own index value: `vendor-771:r3` and
+`vendor-771:r4`. Set the second row’s `supersedes` field to `vendor-771:r3`. Using just the vendor
+ID as the index would address the same row twice.
+
+After writing the correction, make two independent [indexed reads](/docs/dataset-api).
+Read `vendor-771:r4` and check for **approved**, revision **r4**, and the pointer to the earlier
+assertion. Then follow that pointer: the earlier row should still say **pending**, revision **r3**.
+If both reads return approved, stop before publishing the correction: the historical assertion
+may have been overwritten. A successful write alone does not test this. These reads verify the
+stored history, not whether the registry itself was right.
 
 <a id="check-evidence-version"></a>
 ## Check that the evidence still identifies the observed version
