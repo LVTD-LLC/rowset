@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-23
+
+### Documentation
+
+- Add a two-read correction exercise to the data provenance guide.
+
 ## 2026-11-20
 
 ### Documentation
